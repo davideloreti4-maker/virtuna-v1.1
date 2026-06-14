@@ -27,3 +27,20 @@ fine at runtime; its cast error predates this plan (last touched by commit 622d3
 
 **Suggested owner:** a dedicated typecheck-cleanup quick task, or fold into the
 Phase-2 verification pass if a green `tsc` gate is required before milestone merge.
+
+## `src/components/sidebar/Sidebar.tsx` over the 500-line guideline (noted Plan 02-03)
+
+`Sidebar.tsx` is **537 lines** (> the 500-line file guideline). It was already 529
+lines before Plan 02-03 — it crept over the line after the P1-02 `SidebarAccountSelector`
+extraction that originally pulled it under 500. Plan 02-03 Task 2 added net **+8 lines**
+for the score-chip token swap (`scoreTone()` → `bandTone` switch + import).
+
+**Why deferred:** SCOPE BOUNDARY — Task 2 is explicitly scoped to a *color-token swap
+only* ("do NOT change the chip layout … or any other sidebar behavior"). A structural
+split (extracting another sub-component) is out of scope for a token edit and would
+touch unrelated sidebar markup. The new component Plan 02-03 owns (`driver-rows.tsx`,
+181 lines) is well under 500.
+
+**Suggested owner:** a sidebar refactor quick task — extract the history-row /
+score-chip render block (or the Simulations list) into its own file to bring
+`Sidebar.tsx` back under 500.

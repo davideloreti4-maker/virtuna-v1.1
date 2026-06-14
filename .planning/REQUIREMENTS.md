@@ -24,8 +24,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [x] **READ-02**: The hero shows `overall_score`, zone-colored (green/amber/red), with no prose narration.
 - [x] **READ-03**: The hero surfaces the go/no-go gate (`anti_virality_gated` + reason) when the video is gated.
 - [x] **READ-04**: The hero shows watch-through % (`weighted_completion_pct`/`completion_pct`) — shown exactly once, owned here — plus an audience persona cloud.
-- [ ] **READ-05**: The Reading shows 3 always-visible driver rows: Hook (stop-power), Retention (where they drop — `weighted_top_dropoff_t`), Shareability (`share_pull`).
-- [ ] **READ-06**: Tapping a driver row reveals its detail (e.g. Hook → modality breakdown + weakest modality).
+- [x] **READ-05**: The Reading shows 3 always-visible driver rows: Hook (stop-power), Retention (where they drop — `weighted_top_dropoff_t`), Shareability (`share_pull`).
+- [x] **READ-06**: Tapping a driver row reveals its detail (e.g. Hook → modality breakdown + weakest modality).
 - [x] **READ-07**: A "Fix First" block shows the top timestamped fix(es) + copyable hook rewrite(s); extra fixes collapse behind "N more fixes →".
 - [ ] **READ-08**: A "Deeper read" expand reveals the remaining 3 Apollo dims (clarity / substance / credibility) + supporting signals.
 - [ ] **READ-09**: All existing rich board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves…) are preserved as drill-downs — nothing visual is deleted.
@@ -111,8 +111,8 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | READ-02 | Phase 2 | Complete |
 | READ-03 | Phase 2 | Complete |
 | READ-04 | Phase 2 | Complete |
-| READ-05 | Phase 2 | Pending |
-| READ-06 | Phase 2 | Pending |
+| READ-05 | Phase 2 | Complete |
+| READ-06 | Phase 2 | Complete |
 | READ-07 | Phase 2 | Complete |
 | READ-08 | Phase 2 | Pending |
 | READ-10 | Phase 2 | Pending |

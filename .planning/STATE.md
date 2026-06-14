@@ -4,13 +4,13 @@ milestone: v5.0
 milestone_name: Numen Rework
 status: executing
 stopped_at: Completed 02-02-PLAN.md (hero atoms)
-last_updated: "2026-06-14T18:18:57.185Z"
+last_updated: "2026-06-14T18:29:36.792Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 ## Current Position
 
 Phase: 02 (the-reading) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-14
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 80%
 
 ## Hard Constraints (this milestone)
 
@@ -70,6 +70,7 @@ Progress: [███████░░░] 70%
 | Phase 01 P05 | 1min | 3 tasks | 2 files |
 | Phase 02 P02-01 | 9min | 3 tasks | 6 files |
 | Phase 02 P02-02 | 4min | 3 tasks | 5 files |
+| Phase 02 P02-03 | 12min | 2 tasks | 4 files |
 
 ## Phases
 
@@ -108,6 +109,8 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 02]: P2-01: src/components/reading/__tests__/ scaffold + shared makeReadingResult fixture (extends board fixtures.antiVirality + Apollo/heatmap/counterfactuals); scenario helpers cover D-13 degraded states. 14 reading tests green; full suite 1981 green (was 1967). 12 pre-existing tsc errors in untouched files logged to deferred-items.md.
 - [Phase ?]: P2-02: PersonaCloud dots-only (watch% hero-owned, 02-05); golden-angle verbatim from PersonaGraph; cream rgba(236,231,222) fill not white, coral worst-cluster only; returns null on empty personas.
 - [Phase ?]: P2-02: ThumbnailStrip gates on resolveKeyframeUrl(filmstrips,segments,'first') → null when no keyframe (no broken box); plain <img> not next/image, decorative alt='', signed URL never logged (T-02-03). AntiViralityHeader = bare re-export of board verdict component (D-04). 11 new tests; full suite 1992 green (was 1981).
+- [Phase ?]: P2-03: DriverRows is a NEW component (not a FactorBars reuse) — borrows only the 3-col grid + 5px bar markup, rebuilt for 0-100 ApolloDimensions; fixed funnel Hook->Retention->Shareability (no sort), neutral cream bars, ONLY the single weakest in its bandTone zone color + warn glyph; Retention value = drop time via formatTime(weighted_top_dropoff_t) SECONDS (audience-derive, not the ms TopFixesList variant — the 0:08-vs-0:00 trap), bar still fills by retention score; >=44px button -> onRowTap; degrades to 'Not available' on null dimensions (never a fabricated 0).
+- [Phase ?]: P2-03: Sidebar score chips unified onto the THEME-06 score-zone tokens (--color-success/warning/error) via the bandTone SSOT (>=70/40-69/<40) — one score-color language shared with the hero gauge; token swap only, em-dash branch stays muted (carried-forward P1 follow-up CLOSED).
 
 ### Pending Todos
 
@@ -129,6 +132,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T18:18:57.176Z
+Last session: 2026-06-14T18:29:27.859Z
 Stopped at: Completed 02-02-PLAN.md (hero atoms)
 Resume file: None

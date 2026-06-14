@@ -54,7 +54,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 **Plans**: 5 plans
 - [x] 02-01-PLAN.md — Foundation: Wave-0 test scaffold + fixtures, ScoreGauge (zone-colored arc), DrillSheet (generic disclosure container)
 - [x] 02-02-PLAN.md — Hero atoms: static PersonaCloud + watch%, ThumbnailStrip, AntiViralityHeader gate-banner re-export
-- [ ] 02-03-PLAN.md — DriverRows (3 levers, 0-100 bars, Retention drop-time, only-weakest-colored) + sidebar score-chip token unify
+- [x] 02-03-PLAN.md — DriverRows (3 levers, 0-100 bars, Retention drop-time, only-weakest-colored) + sidebar score-chip token unify
 - [ ] 02-04-PLAN.md — Fix First: copyable RewriteItem, FixFirstList (top-3 + inline "N more" + D-14 empty), inline DeeperRead (3 dims)
 - [ ] 02-05-PLAN.md — Integration: Reading container (D-13 gate, single source, vertical IA, one DrillSheet) + /analyze layout restructure + READ-10 no-cut-data guard
 **UI hint**: yes
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. The Reading | 2/5 | In Progress|  |
+| 2. The Reading | 3/5 | In Progress|  |
 | 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
 | 5. Follow-up & Demo | 0/TBD | Not started | - |
