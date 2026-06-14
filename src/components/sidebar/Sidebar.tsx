@@ -457,7 +457,7 @@ export function Sidebar() {
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={async () => { await supabase.auth.signOut(); router.push("/login"); setAccountOpen(false); }}
+                    onClick={async () => { setAccountOpen(false); await supabase.auth.signOut(); /* WR-04: AuthGuard's onAuthStateChange owns the post-logout redirect (→ /login). Don't navigate here too — two competing router calls made the landing route non-deterministic. */ }}
                     className="w-full flex items-center gap-2 px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
                   >
                     <SignOut className="h-4 w-4" />
