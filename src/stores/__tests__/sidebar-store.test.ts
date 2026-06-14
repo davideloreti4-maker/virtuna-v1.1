@@ -96,6 +96,39 @@ describe("sidebar-store — collapsed mode (D-12)", () => {
   });
 });
 
+describe("sidebar-store — persistence (WR-02)", () => {
+  it("does NOT persist isOpen (mobile drawer never restores open)", async () => {
+    const { useSidebarStore } = await import("@/stores/sidebar-store");
+    // Open the drawer, then read what zustand wrote to localStorage.
+    useSidebarStore.getState().open();
+    const persisted = JSON.parse(mockStorage["virtuna-sidebar"] ?? "{}");
+    // partialize must whitelist isCollapsed only — isOpen stays in-memory.
+    expect(persisted.state).not.toHaveProperty("isOpen");
+  });
+
+  it("persists isCollapsed (the real desktop preference)", async () => {
+    const { useSidebarStore } = await import("@/stores/sidebar-store");
+    useSidebarStore.getState().setCollapsed(true);
+    const persisted = JSON.parse(mockStorage["virtuna-sidebar"] ?? "{}");
+    expect(persisted.state.isCollapsed).toBe(true);
+  });
+
+  it("a rehydrated store defaults isOpen back to true even if a prior session left it false", async () => {
+    // Simulate a stale persisted blob that (under the old bug) carried isOpen.
+    mockStorage["virtuna-sidebar"] = JSON.stringify({
+      state: { isOpen: false, isCollapsed: true },
+      version: 0,
+    });
+    vi.resetModules();
+    const { useSidebarStore } = await import("@/stores/sidebar-store");
+    const state = useSidebarStore.getState();
+    // isOpen is NOT in partialize → rehydrate ignores the stale value, keeps default true.
+    expect(state.isOpen).toBe(true);
+    // isCollapsed IS persisted → rehydrates from the stored blob.
+    expect(state.isCollapsed).toBe(true);
+  });
+});
+
 describe("sidebar-store — action contract", () => {
   it("exports all required actions", async () => {
     const { useSidebarStore } = await import("@/stores/sidebar-store");
