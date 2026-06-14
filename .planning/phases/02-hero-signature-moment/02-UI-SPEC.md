@@ -1,10 +1,11 @@
 ---
 phase: 2
 slug: hero-signature-moment
-status: draft
+status: approved
 shadcn_initialized: false
 preset: flat-warm @theme (numen-rework, UAT-locked THEME-06)
 created: 2026-06-15
+reviewed_at: 2026-06-15
 ---
 
 # Phase 2 — UI Design Contract
