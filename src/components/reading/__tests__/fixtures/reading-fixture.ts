@@ -140,6 +140,9 @@ export function makeReadingResult(over: Partial<PredictionResult> = {}): Predict
     // heatmap with ≥3 personas, watch% (0–1), drop time (seconds)
     heatmap: HEATMAP,
     weighted_completion_pct: 0.57,
+    // Retention drop point, SECONDS (PredictionResult top-level field, types.ts
+    // L483 — the canonical path DriverRows' container reads: `data.weighted_top_dropoff_t`).
+    weighted_top_dropoff_t: 8,
     counterfactuals: {
       band: 'mid',
       suggestions: FIX_SUGGESTIONS,
