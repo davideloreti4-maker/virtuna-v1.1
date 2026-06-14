@@ -37,6 +37,7 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { bandTone } from "@/components/board/verdict/verdict-derive";
 import { NumenMark } from "@/components/brand/numen-logo";
 import { useAnalysisHistory } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
@@ -69,16 +70,23 @@ function relativeTime(iso: string | undefined): string {
 }
 
 // ─── score tone ───────────────────────────────────────────────────
-// Reserve color for outliers only — strong scores read soft green, weak
-// read soft amber, the calm middle stays muted. Tones are dimmed to 70%
-// so they whisper rather than shout — refined hints, not a traffic-light
-// column. Coral stays reserved for the brand/primary action; the eye
-// still catches the exceptions at a glance.
+// Unified onto the locked THEME-06 score-zone tokens via the bandTone SSOT
+// (≥70 success / 40–69 warning / <40 error) so the sidebar chip color matches
+// the hero ScoreGauge exactly — one score-color language across the app (P1
+// follow-up). Coral stays reserved for the brand/primary action; the em-dash
+// (remix / no-score) case stays muted.
 function scoreTone(score: number | null | undefined): string {
   if (score == null) return 'text-foreground-muted';
-  if (score >= 80) return 'text-emerald-400/70';
-  if (score < 50) return 'text-amber-400/70';
-  return 'text-foreground-secondary';
+  switch (bandTone(score)) {
+    case 'good':
+      return 'text-success';
+    case 'warn':
+      return 'text-warning';
+    case 'crit':
+      return 'text-error';
+    default:
+      return 'text-foreground-secondary';
+  }
 }
 
 // Branded keyboard-focus ring — replaces the browser-default blue outline on
