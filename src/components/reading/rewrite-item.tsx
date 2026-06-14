@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ApolloRewrite } from '@/lib/engine/types';
 
 // RewriteItem — a single copyable hook rewrite (READ-08, D-15).
@@ -23,12 +23,18 @@ export interface RewriteItemProps {
 
 export function RewriteItem({ rewrite }: RewriteItemProps) {
   const [copied, setCopied] = useState(false);
+  // WR-01: track the "Copied" revert timer so it's cleared on unmount and before
+  // re-scheduling — RewriteItem can unmount within the 1.5s window (drill toggles /
+  // route changes), and a pending setCopied on an unmounted component leaks + warns.
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
 
   function handleCopy() {
     navigator.clipboard.writeText(rewrite.variant)
       .then(() => {
         setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 1500);
       })
       .catch(() => {
         // clipboard unavailable (insecure context / permission denied) — no-op,
