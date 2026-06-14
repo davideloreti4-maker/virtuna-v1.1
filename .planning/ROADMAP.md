@@ -17,6 +17,7 @@ every product visual is a labelled, swappable placeholder slot, not a shipped as
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -31,72 +32,95 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Foundation & Shell
+
 **Goal**: Stand up the marketing page at `/` with the dark Numen brand system, the reusable placeholder-slot component every section will use, the motion foundation behind a reduced-motion fallback, and the header + footer chrome that wraps the scroll.
 **Depends on**: Nothing (first phase)
 **Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, NAV-01, NAV-02, NAV-03
 **Success Criteria** (what must be TRUE):
+
   1. Visiting `/` renders the new marketing page (replacing the old home), dark-only, using the **flat-warm** Numen design system ported from `~/virtuna-numen-rework` (neutral charcoal #262624 bg, cream #ece7de text, terracotta-clay coral #d97757, Inter + Newsreader serif for voice moments, flat-matte — no glass/glow; 6%/10% borders + 12px radius carried as-is). _Supersedes the old `main` Raycast brand — see `phases/01-foundation-shell/01-CONTEXT.md`._
   2. The reusable placeholder-slot component renders labelled, aspect-ratio-correct stand-ins in image / video / avatar / logo variants, each swappable via one prop or one file with no layout shift
   3. Motion is wired via motion (Framer Motion) plus the permitted libs (shadcn/Radix/Magic UI/Aceternity) and every animation respects a global reduced-motion fallback
   4. A header shows the Stele logo + "Numen" wordmark and a "Try it free" CTA, and on small screens it collapses to a mobile-appropriate nav (menu and/or CTA)
   5. A footer provides brand, in-page section links, and legal/social placeholders
+
 **Plans**: 5 plans (3 waves)
 
 Plans:
+**Wave 1**
+
 - [ ] 01-01-PLAN.md (wave 1) — flat-warm theme port + Newsreader wiring + scroll-skeleton route mount at `/` + `(marketing)/layout` pass-through fix + delete `landing/*` & dead routes + `/pricing` surgical fix (FOUND-01, FOUND-02)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-02-PLAN.md (wave 2) — reusable `<Placeholder>` slot (image/video/avatar/logo, `src` one-prop swap, aspect-locked, reduced-motion-gated breathe) (FOUND-03)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
 - [ ] 01-04-PLAN.md (wave 3) — flat-matte header (NumenLogo + anchor nav + "Try it free"→`/signup` + "Sign in"→`/login` + mobile collapse) (NAV-01, NAV-03)
 - [ ] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
 
 ### Phase 2: Hero & Signature Moment
+
 **Goal**: Deliver the hero — a hybrid-voice headline and "Try it free" CTA — anchored by the signature "crowd → score" moment: a synthetic audience reacts to a video and resolves into a virality score, with a static fallback so it never blocks first paint or breaks accessibility.
 **Depends on**: Phase 1
 **Requirements**: HERO-01, HERO-02, HERO-03, HERO-04
 **Success Criteria** (what must be TRUE):
+
   1. The hero presents a hybrid-voice headline + subcopy that communicates "know if it'll pop before you post"
   2. The hero's primary "Try it free" CTA routes to the existing app signup
   3. The hero centerpiece plays the signature "crowd → score" moment — a synthetic audience reacts to a video and resolves into a virality score
   4. With reduced-motion enabled (or before the moment lazy-loads), a static composed frame stands in so first paint is never blocked and accessibility is preserved
+
 **Plans**: TBD
 **UI hint**: yes
 
 Plans:
+
 - [ ] 02-01: TBD — hero layout: headline + subcopy + "Try it free" CTA to app signup (HERO-01, HERO-02)
 - [ ] 02-02: TBD — signature "crowd → score" audience-simulation centerpiece (HERO-03)
 - [ ] 02-03: TBD — static composed fallback + lazy/reduced-motion gating (HERO-04)
 
 ### Phase 3: Story & Showcase
+
 **Goal**: Tell the product story through placeholder frames — a three-step "how it works", a "the reading" showcase of the output, and three to four feature deep-dive blocks that each pair a benefit with a placeholder visual.
 **Depends on**: Phase 1
 **Requirements**: STORY-01, STORY-02, STORY-03
 **Success Criteria** (what must be TRUE):
+
   1. A "how it works" section walks three steps — paste TikTok link → audience simulates → get your reading — using placeholder frames
   2. A "the reading" showcase presents the output (audience simulation, watch-through %, and Hook · Retention (where viewers drop) · Shareability) via placeholder product frames
   3. Three to four feature deep-dive blocks each pair a clear benefit with a placeholder visual
   4. Every product visual in these sections is a labelled placeholder slot from the Phase 1 system, swappable later with no layout shift
+
 **Plans**: TBD
 **UI hint**: yes
 
 Plans:
+
 - [ ] 03-01: TBD — "how it works" three-step section (STORY-01)
 - [ ] 03-02: TBD — "the reading" output showcase (STORY-02)
 - [ ] 03-03: TBD — feature deep-dive blocks (benefit + placeholder visual) (STORY-03)
 
 ### Phase 4: Proof & Conversion
+
 **Goal**: Build trust and drive the click — a social-proof strip and testimonials (placeholder avatars/logos/quotes), a pricing teaser with "Try it free" CTAs, a final full-width CTA band, and an accessible FAQ accordion.
 **Depends on**: Phase 1
 **Requirements**: PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03
 **Success Criteria** (what must be TRUE):
+
   1. A social-proof strip shows creator avatars and a logo wall using placeholder slots
   2. A testimonials section shows creator quote cards with placeholder avatars and quotes
   3. A pricing teaser presents tiers (Starter/Pro) with "Try it free" CTAs (placeholder-ok pricing)
   4. A final full-width CTA band ("Try it free") sits before the footer
   5. An FAQ section answers common creator questions in a keyboard-accessible accordion
+
 **Plans**: TBD
 **UI hint**: yes
 
 Plans:
+
 - [ ] 04-01: TBD — social-proof strip (avatars + logo wall placeholders) (PROOF-01)
 - [ ] 04-02: TBD — testimonials quote cards (PROOF-02)
 - [ ] 04-03: TBD — pricing teaser (Starter/Pro + "Try it free" CTAs) (CONVERT-01)
@@ -104,18 +128,22 @@ Plans:
 - [ ] 04-05: TBD — accessible FAQ accordion (CONVERT-03)
 
 ### Phase 5: Quality Hardening
+
 **Goal**: Lock cross-cutting quality across the whole assembled page — mobile-first responsiveness from 320px up, a premium performance bar with lazy-loaded heavy motion/media and no slot-driven layout shift, and full keyboard + semantic + contrast accessibility.
 **Depends on**: Phase 4 (whole page assembled across Phases 1–4)
 **Requirements**: FOUND-05, FOUND-06, FOUND-07
 **Success Criteria** (what must be TRUE):
+
   1. Every section is responsive mobile-first and renders cleanly from 320px through desktop with no horizontal scroll or broken layout
   2. Heavy motion and media lazy-load, no layout shift is introduced by placeholder slots, and Lighthouse mobile performance scores ≥90
   3. The page is fully keyboard-navigable with semantic landmarks, visible focus states, and WCAG AA contrast on all text/background pairs
   4. The signature moment and other heavy interactions degrade gracefully under reduced-motion and slow-load conditions without blocking content
+
 **Plans**: TBD
 **UI hint**: yes
 
 Plans:
+
 - [ ] 05-01: TBD — responsive audit + fixes, 320px → desktop (FOUND-05)
 - [ ] 05-02: TBD — performance pass: lazy-load heavy motion/media, CLS/Lighthouse ≥90 (FOUND-06)
 - [ ] 05-03: TBD — accessibility pass: landmarks, focus, keyboard nav, WCAG AA contrast (FOUND-07)

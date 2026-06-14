@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: planning
-stopped_at: Phase 1 context gathered (flat-warm reframe)
-last_updated: "2026-06-14T15:56:57.546Z"
-last_activity: 2026-06-14 — ROADMAP.md created (5 phases, 22/22 requirements mapped)
+status: executing
+stopped_at: Phase 1 UI-SPEC approved
+last_updated: "2026-06-14T16:36:52.060Z"
+last_activity: 2026-06-14 -- Phase 1 planning complete
 progress:
   total_phases: 5
   completed_phases: 0
-  total_plans: 0
+  total_plans: 5
   completed_plans: 0
   percent: 0
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 Phase: 1 of 5 (Foundation & Shell)
 Plan: — of — in current phase
-Status: Ready to plan
-Last activity: 2026-06-14 — ROADMAP.md created (5 phases, 22/22 requirements mapped)
+Status: Ready to execute
+Last activity: 2026-06-14 -- Phase 1 planning complete
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -86,6 +86,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:56:57.536Z
-Stopped at: Phase 1 context gathered (flat-warm reframe)
-Resume file: .planning/phases/01-foundation-shell/01-CONTEXT.md
+Last session: 2026-06-14T16:05:42.316Z
+Stopped at: Phase 1 UI-SPEC approved
+Resume file: .planning/phases/01-foundation-shell/01-UI-SPEC.md

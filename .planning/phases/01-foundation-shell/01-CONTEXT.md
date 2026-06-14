@@ -114,9 +114,10 @@ D-01..D-08 and the override note in `<canonical_refs>`.
   *How it works · The Simulation · Pricing · FAQ* — exact set is the planner's call).
 
 ### Doc reconciliation (approved this discussion)
-- **D-24:** Update the landing-v2 milestone docs to the flat-warm override **now** (not deferred):
+- **D-24 [informational]:** Update the landing-v2 milestone docs to the flat-warm override **now** (not deferred):
   `REQUIREMENTS.md` FOUND-02, `ROADMAP.md` Phase 1 Success Criterion #1, and `LANDING-VISION.md`
   §6 brand carry-over. Committed alongside this CONTEXT.
+  _Status: DONE during discuss-phase (commit `671c5329`) — verified 2026-06-14: FOUND-02, VISION §6, and ROADMAP SC#1 all carry the flat-warm wording. This is a doc-reconciliation already executed, NOT execution-phase build work, so it is **not** tracked by any PLAN.md._
 
 ### Claude's Discretion
 - Final hex ramp / serif weights / coral hue — follow numen-rework's locked values (already
