@@ -1,0 +1,124 @@
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Matte-lint — the Wave-0 static gate for the flat-warm reskin (SC-3 / D-07).
+//
+// The transplanted board charts carry Raycast-era matte VIOLATIONS today: the old
+// coral (#FF7F50 / rgba(255,127,80,…)), backdrop blur, the 137deg glass gradient,
+// and `box-shadow: 0 0 Npx` glow halos. The flat-warm taste bar forbids glow /
+// shine / halo / blur-glass and the legacy coral (THEME-06). A human-UAT gate at
+// phase close (D-07) is the real arbiter, but that is expensive — this cheap grep
+// gate catches matte regressions FIRST and gives the reskin plans (03-02/03-03) a
+// hard, automatable target.
+//
+// This is a PURE FS test (default `node` env — no happy-dom pragma): it reads each
+// transplant file as source text and asserts the forbidden RENDER strings are
+// absent. It is INTENTIONALLY RED today for the not-yet-reskinned files (see the
+// RED list below) — that is the gate having teeth. 03-02/03-03 flip it GREEN.
+//
+// Hygiene: it scans ONLY the transplant set; presence/absence of the forbidden
+// render strings is the assertion (occurrences in comments are not separately
+// counted — the contract is "the string must not appear in this source").
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SRC = join(__dirname, '..', '..', '..'); // …/src
+
+/** The transplant set the reskin plans clean (03-CONTEXT § reskin_targets). */
+const TRANSPLANT_FILES = [
+  'components/board/verdict/ScoreDistribution.tsx',
+  'components/board/audience/RetentionChart.tsx',
+  'components/board/content-analysis/CraftFilmstrip.tsx',
+  'components/board/audience/SegmentTable.tsx',
+  'components/board/_kit/PersonaGraph.tsx',
+  'components/board/_kit/StatTile.tsx',
+  'components/board/_kit/DataTable.tsx',
+  'components/board/_kit/KeyframeImage.tsx',
+  'components/board/audience/RetentionPlayer.tsx',
+] as const;
+
+/**
+ * RED-until-reskin file list (informational — every file below FAILS this gate
+ * TODAY and flips GREEN when 03-02/03-03 repoint it to flat-warm tokens). The gate
+ * asserts cleanliness for EVERY transplant file; this list just documents which
+ * ones are expected RED right now so the reskin executor knows the target. Per the
+ * plan's verification, this RED state is intentional and documented — it is the
+ * Wave-0 gate having teeth, NOT a defect in this scaffold.
+ *
+ * Verified by grep at authoring time (03-01):
+ *   - ScoreDistribution  — rgba(255,127,80,…) ×6 + outer glows 0 0 9/13/18px
+ *   - RetentionChart     — #FF7F50 ×3 + rgba(255,127,80,…) ×3
+ *   - CraftFilmstrip     — rgba(255,127,80,…) ×2 + end-cap glow 0 0 10px
+ *   - RetentionPlayer    — #FF7F50 ×4 + backdropFilter: blur(2px)
+ *   - KeyframeImage      — rgba(255,127,80,…) ×1 (coral radial fallback)
+ *
+ * Already GREEN today (informational):
+ *   - PersonaGraph — its matte issues (glass hover card, <animate> pulse, white-
+ *     alpha dots) are real reskin work for 03-03, but NONE are the forbidden RENDER
+ *     strings this gate checks (no #FF7F50, no rgba coral, no backdrop blur, no
+ *     137deg gradient, no 0-0-Npx glow). Verified visually at the D-07 UAT gate.
+ *   - SegmentTable / StatTile / DataTable — Tier-1 token-swap only (white-alpha
+ *     text), no forbidden render strings → clean here.
+ */
+
+/**
+ * Strip legitimate matte shadows before the glow scan so the assertion only fires
+ * on the `0 0 Npx` OUTER halo (the violation), never on:
+ *   - `inset 0 0 Npx …`  (inset shadow — depth, not a halo)
+ *   - `0 0 0 Npx …`       (zero-blur hairline ring, e.g. `0 0 0 1px`)
+ * A single CSS string can legitimately mix an inset hairline with an outer glow
+ * (ScoreDistribution L240: `inset 0 0 0 1px …, 0 0 18px …`) — stripping the inset
+ * first leaves the outer `0 0 18px` glow to be caught.
+ */
+function stripLegitShadows(src: string): string {
+  return src
+    // inset shadows of any blur
+    .replace(/inset\s+0 0 \d+px/g, '')
+    // zero-blur rings: `0 0 0 <spread>` (no halo)
+    .replace(/0 0 0(px)?\b/g, '');
+}
+
+/** The outer-glow halo: `0 0 Npx` with a NON-ZERO blur. The acceptance grep
+ *  (`git grep -nE "0 0 [1-9]"`) anchors on this literal so the gate's glow check is
+ *  greppable in the test source. */
+const GLOW_RE = /0 0 [1-9]\d*px/;
+
+/** Old coral, both forms: the `#FF7F50` literal and its rgba `255,127,80` body
+ *  (ScoreDistribution/CraftFilmstrip/KeyframeImage use the rgba form, not the hex). */
+const OLD_CORAL_HEX_RE = /#FF7F50/i;
+const OLD_CORAL_RGBA_RE = /rgba\(\s*255\s*,\s*127\s*,\s*80/i;
+
+/** Raycast glass gradient. */
+const GLASS_GRADIENT_RE = /linear-gradient\(137deg/i;
+
+/** Backdrop blur — both the CSS property and the React inline-style camelCase form
+ *  (RetentionPlayer uses `backdropFilter: 'blur(2px)'`). Lightning CSS strips it +
+ *  the matte bar forbids it. */
+const BACKDROP_FILTER_RE = /backdrop-filter|backdropFilter/;
+
+/** Collect the forbidden matte render strings present in a source file. */
+function findViolations(src: string): string[] {
+  const scrubbed = stripLegitShadows(src);
+  const violations: string[] = [];
+  if (OLD_CORAL_HEX_RE.test(src)) violations.push('#FF7F50 (old coral)');
+  if (OLD_CORAL_RGBA_RE.test(src)) violations.push('rgba(255,127,80,…) (old coral)');
+  if (GLASS_GRADIENT_RE.test(src)) violations.push('linear-gradient(137deg (Raycast glass)');
+  if (BACKDROP_FILTER_RE.test(src)) violations.push('backdrop-filter / backdropFilter (blur)');
+  if (GLOW_RE.test(scrubbed)) violations.push('box-shadow: 0 0 Npx (glow halo)');
+  return violations;
+}
+
+describe('matte-lint — transplanted charts carry no flat-warm violations (SC-3 / D-07)', () => {
+  // Every transplant file must be matte-clean. This gate is INTENTIONALLY RED today
+  // for the not-yet-reskinned files (ScoreDistribution / RetentionChart /
+  // CraftFilmstrip / RetentionPlayer / KeyframeImage) — that is the documented
+  // Wave-0 gate state (see verification in 03-01-PLAN). 03-02/03-03 reskin those
+  // files and turn this GREEN. The clean files (PersonaGraph / SegmentTable /
+  // StatTile / DataTable) pass today.
+  it.each(TRANSPLANT_FILES)('%s is matte-clean (no #FF7F50, no rgba coral, no backdrop blur, no 137deg gradient, no 0-0-Npx glow)', (rel) => {
+    const src = readFileSync(join(SRC, rel), 'utf8');
+    const violations = findViolations(src);
+    expect(violations, `${rel} carries matte violations: ${violations.join(', ')}`).toEqual([]);
+  });
+});
