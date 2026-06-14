@@ -53,7 +53,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-02-PLAN.md (wave 2) — reusable `<Placeholder>` slot (image/video/avatar/logo, `src` one-prop swap, aspect-locked, reduced-motion-gated breathe) (FOUND-03)
+- [x] 01-02-PLAN.md (wave 2) — reusable `<Placeholder>` slot (image/video/avatar/logo, `src` one-prop swap, aspect-locked, reduced-motion-gated breathe) (FOUND-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 1/5 | In Progress|  |
+| 1. Foundation & Shell | 2/5 | In Progress|  |
 | 2. Hero & Signature Moment | 0/3 | Not started | - |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
