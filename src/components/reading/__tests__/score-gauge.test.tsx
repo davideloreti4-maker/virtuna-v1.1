@@ -38,10 +38,12 @@ describe('ScoreGauge — zone fill from bandTone (READ-02)', () => {
     expect(screen.getByText('Mid')).toBeInTheDocument();
   });
 
-  it('score=30 → red fill + band word "Low"', () => {
+  it('score=30 → red fill + band word "Weak" (WR-02: aligned with Deeper read vocabulary)', () => {
     const { container } = render(<ScoreGauge score={30} />);
     expect(fillCircle(container).getAttribute('stroke')).toBe('var(--color-error)');
-    expect(screen.getByText('Low')).toBeInTheDocument();
+    // WR-02: the gauge's <40 word is "Weak" (matches Deeper read), NOT "Low".
+    expect(screen.getByText('Weak')).toBeInTheDocument();
+    expect(screen.queryByText('Low')).not.toBeInTheDocument();
   });
 
   it('renders the score number with tabular-nums', () => {

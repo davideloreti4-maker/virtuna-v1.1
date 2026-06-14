@@ -9,7 +9,7 @@ import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 // A flat STROKED arc — track + zone-colored fill — NOT a glow/halo/filled pie.
 // The fill zone color is the SSOT `bandTone(score)` (≥70 green / 40–69 amber /
 // <40 red — CORRECTION #2: amber owns the WHOLE 40–69 band). The score number is
-// the one dominant figure, with the band word ("Strong"/"Mid"/"Low") below.
+// the one dominant figure, with the band word ("Strong"/"Mid"/"Weak") below.
 //
 // Phase-4 contract: `score` is a PROP. Phase 4 mounts this same component fed from
 // the live stream; the stroke-dasharray CSS transition glides the fill 0→score as
@@ -26,6 +26,16 @@ const ZONE_VAR: Record<ScoreTone, string> = {
 };
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+/** WR-02: align the gauge's user-facing band word with the app-wide vocabulary.
+ *  bandFromScore returns "Low" for <40, but Deeper read / the score-zone language
+ *  use "Weak" for the same bucket. Remap "Low"→"Weak" here so a single viewport
+ *  never shows two words for one concept. Arc/zone logic is untouched (WR-03). */
+const GAUGE_BAND_LABEL: Record<string, string> = {
+  Strong: 'Strong',
+  Mid: 'Mid',
+  Low: 'Weak',
+};
 
 export interface ScoreGaugeProps {
   /** 0–100 overall score. Stays a prop (Phase-4 drives it from the stream). */
@@ -49,7 +59,8 @@ export function ScoreGauge({ score, size = 120, stroke = 8 }: ScoreGaugeProps) {
   const dash = arcLen * pct;
 
   const color = ZONE_VAR[bandTone(score)];
-  const band = bandFromScore(score);
+  // WR-02: remap "Low"→"Weak" for the user-facing word (zone logic untouched).
+  const band = GAUGE_BAND_LABEL[bandFromScore(score)] ?? bandFromScore(score);
 
   return (
     <div
