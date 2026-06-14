@@ -247,3 +247,55 @@ export const FoldResponseSchema = z.object({
 });
 
 export type FoldResponse = z.infer<typeof FoldResponseSchema>;
+
+// =====================================================
+// Coercion layer — salvage small-model (omni-flash) TYPE sloppiness before Zod.
+// Flash fails the fold not on the simulation TASK but on FORMAT: it emits a string/null
+// where a number is required (scroll_past_second), or returns a bare top-level array
+// instead of {personas:[...]}. `response_format: json_object` does NOT constrain types,
+// and `json_schema` strict is NOT honored by DashScope on omni-flash (returns an array).
+// This coerces types/shape WITHOUT fabricating signal: missing numbers default low,
+// out-of-range values clamp, missing reactions → [] (drops that persona's diversity, never
+// inflates it). Zod still enforces the hard contract (exactly 10 personas) afterward.
+// Verified: omni-flash + coercion held avgRange 0.48 @ 10s where raw flash hard-failed.
+// (.planning/quick/20260614-engine-pipeline-audit/)
+// =====================================================
+function coerceNumber(v: unknown, fallback = 0): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = parseFloat(v.replace(/[^0-9.\-]/g, ""));
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+const clampRange = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Coerce a raw parsed fold response into FoldResponseSchema-compatible shape (types only). */
+export function coerceFoldResponse(raw: unknown): unknown {
+  // Flash sometimes returns a bare array of personas instead of {personas:[...]}.
+  const obj = Array.isArray(raw) ? { personas: raw } : (raw as { personas?: unknown });
+  const personas = Array.isArray(obj?.personas) ? obj.personas : [];
+  return {
+    personas: personas.map((p) => {
+      const pp = (p ?? {}) as Record<string, unknown>;
+      const reactions = Array.isArray(pp.segment_reactions) ? pp.segment_reactions : [];
+      return {
+        archetype: String(pp.archetype ?? ""),
+        persona_id: String(pp.persona_id ?? ""),
+        watch_through_pct: clampRange(coerceNumber(pp.watch_through_pct), 0, 100),
+        share_intent: clampRange(coerceNumber(pp.share_intent), 0, 100),
+        comment_intent: clampRange(coerceNumber(pp.comment_intent), 0, 100),
+        save_intent: clampRange(coerceNumber(pp.save_intent), 0, 100),
+        rewatch_intent: clampRange(coerceNumber(pp.rewatch_intent), 0, 100),
+        scroll_past_second: Math.max(0, coerceNumber(pp.scroll_past_second)),
+        segment_reactions: reactions.map((r) => {
+          const rr = (r ?? {}) as Record<string, unknown>;
+          return {
+            attention: clampRange(coerceNumber(rr.attention), 0, 1),
+            swipe_predicted: rr.swipe_predicted === true || rr.swipe_predicted === "true",
+          };
+        }),
+      };
+    }),
+  };
+}

@@ -65,6 +65,29 @@ const JSON_RETRY_NUDGE =
   "\nIMPORTANT: Your previous response was not valid JSON. Return ONLY the raw JSON object, no explanation.";
 
 /**
+ * Coerce small-model (omni-flash) TYPE sloppiness before Zod. Flash sometimes emits `null`
+ * for required non-empty rationale strings (e.g. cta_segment.rationale → the observed read
+ * failure), failing the WHOLE parse on one prose field. Fills only those required-`.min(1)`
+ * strings with a neutral placeholder — fabricates NO score/perception (D-R1: rationale is
+ * secondary prose, Apollo is the judge). No-op on clean omni-plus output. Critical-field
+ * drift detection still runs after, so a genuinely-empty perception field still triggers retry.
+ */
+function coerceOmniRead(raw: unknown): unknown {
+  if (!raw || typeof raw !== "object") return raw;
+  const r = raw as Record<string, unknown>;
+  const fillStr = (parent: unknown, key: string, fallback: string) => {
+    if (parent && typeof parent === "object") {
+      const o = parent as Record<string, unknown>;
+      if (o[key] == null || o[key] === "") o[key] = fallback;
+    }
+  };
+  fillStr(r.cta_segment, "rationale", "n/a");
+  fillStr(r.hook_decomposition, "rationale", "n/a");
+  fillStr(r.audio_signals, "audio_description", "n/a");
+  return r;
+}
+
+/**
  * F9/D-11 — critical-field drift detection. The Zod parse can SUCCEED yet a perception-critical
  * field be empty/absent on content that should have it (the gap MAX_RETRIES never covered — it
  * fired only on whole-response JSON/Zod failure). Returns the drifted field names so the caller
@@ -267,7 +290,8 @@ export async function analyzeVideoWithOmni(
       const raw     = completion.choices[0]?.message?.content ?? "";
       const cleaned = stripModelOutput(raw);
       const parsed  = JSON.parse(cleaned);
-      const result  = OmniAnalysisZodSchema.safeParse(parsed);
+      const coerced = coerceOmniRead(parsed); // salvage flash null'd required-rationale strings
+      const result  = OmniAnalysisZodSchema.safeParse(coerced);
 
       if (!result.success) {
         log.warn("Omni Zod validation failed", { attempt, error: result.error.message });
