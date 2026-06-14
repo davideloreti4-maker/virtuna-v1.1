@@ -136,6 +136,12 @@ The following placeholders in `reading.panels.test.tsx` are staged and must be a
 - **03-04 / 03-05 (wiring):** activate the relevant `it.todo`s as each rich visual is mounted; the empty-data fixtures are ready for the degradation assertions.
 - **Gate state:** `npx vitest run src/components/reading` = **87 active-passing, 5 intentionally-RED** (the matte-lint dirty files). `npx tsc --noEmit` unchanged at 12 pre-existing errors (zero from 03-01 files). Full suite not re-run here (Wave-0 scaffold only adds tests); the per-wave full-suite check belongs to the reskin/wiring plans per 03-VALIDATION.
 
+## Self-Check: PASSED
+
+- Files: `reading.panels.test.tsx`, `reskin-matte.test.ts`, `reading-fixture.ts`, `03-01-SUMMARY.md` — all FOUND.
+- Commits: `76b84ec0` (Task 1), `e9c1faf4` (Task 2), `c56ac30d` (Task 3) — all FOUND.
+- Gate state confirmed: reading suite 87 active-passing / 5 intentionally-RED (matte-lint); tsc 12 pre-existing errors, 0 from 03-01 files.
+
 ---
 *Phase: 03-rich-visuals-as-drill-downs*
 *Completed: 2026-06-14*
