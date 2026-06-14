@@ -49,7 +49,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md (wave 1) — flat-warm theme port + Newsreader wiring + scroll-skeleton route mount at `/` + `(marketing)/layout` pass-through fix + delete `landing/*` & dead routes + `/pricing` surgical fix (FOUND-01, FOUND-02)
+- [x] 01-01-PLAN.md (wave 1) — flat-warm theme port + Newsreader wiring + scroll-skeleton route mount at `/` + `(marketing)/layout` pass-through fix + delete `landing/*` & dead routes + `/pricing` surgical fix (FOUND-01, FOUND-02)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 0/5 | Not started | - |
+| 1. Foundation & Shell | 1/5 | In Progress|  |
 | 2. Hero & Signature Moment | 0/3 | Not started | - |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
