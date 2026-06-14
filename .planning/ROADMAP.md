@@ -73,14 +73,28 @@ Plans:
   3. The hero centerpiece plays the signature "crowd → score" moment — a synthetic audience reacts to a video and resolves into a virality score
   4. With reduced-motion enabled (or before the moment lazy-loads), a static composed frame stands in so first paint is never blocked and accessibility is preserved
 
-**Plans**: TBD
+**Plans**: 4 plans (4 waves)
 **UI hint**: yes
+
+> Build order ≠ plan-number order (per 02-RESEARCH.md): the canvas (02-02) depends on `ComposedStill` (02-03), so the dependency sequence is **00 → 01 → 03 → 02**. Waves are assigned accordingly.
 
 Plans:
 
-- [ ] 02-01: TBD — hero layout: headline + subcopy + "Try it free" CTA to app signup (HERO-01, HERO-02)
-- [ ] 02-02: TBD — signature "crowd → score" audience-simulation centerpiece (HERO-03)
-- [ ] 02-03: TBD — static composed fallback + lazy/reduced-motion gating (HERO-04)
+**Wave 0**
+
+- [ ] 02-00-PLAN.md (wave 0) — Nyquist Wave-0 test scaffold: 4 RED test files (hero / composed-still / signature-moment-client / hero-constants), happy-dom pragma (HERO-01, HERO-02, HERO-03, HERO-04)
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 02-01-PLAN.md (wave 1) — RSC hero: serif H1 + Inter subcopy + "Try it free" CTA→SIGNUP_URL + "See how it works ↓" scroll-cue + the dimension-locked flat-warm stage shell; replace the page.tsx stub (HERO-01, HERO-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 02-03-PLAN.md (wave 2) — `ComposedStill` (SSR/reduced-motion/mobile floor: phone + static dots + clean coral SVG ring + score) + `hero-constants` + the `"use client"` `SignatureMomentClient` boundary (the ssr:false landmine fix + gating); wire into the Hero stage (HERO-03 still-side, HERO-04)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 02-02-PLAN.md (wave 3) — the bespoke canvas-2D "crowd → score" moment (settle → coral reaction → coalesce into the ring → count-up → slow drift); converges on ComposedStill; BLOCKING human-verify craft checkpoint (HERO-03)
 
 ### Phase 3: Story & Showcase
 
@@ -156,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 0/3 | Not started | - |
+| 2. Hero & Signature Moment | 0/4 | Not started | - |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
