@@ -1,109 +1,138 @@
 import Link from "next/link";
+
 import { cn } from "@/lib/utils";
-import { LinkedinLogo, XLogo, Envelope } from "@phosphor-icons/react/dist/ssr";
+import { NumenLogo } from "@/components/brand/numen-logo";
 
 interface FooterProps {
   className?: string;
 }
 
 /**
- * Footer component matching societies.io design.
- * Includes CTA section + footer bar with social links.
+ * In-page anchor links (NAV-02) — mirror the header nav set exactly
+ * (see src/components/layout/header.tsx NAV_LINKS). They target the
+ * scroll-skeleton section ids the marketing page assigns.
+ */
+const PRODUCT_LINKS = [
+  { label: "How it works", href: "#how-it-works" },
+  { label: "The Simulation", href: "#the-simulation" },
+  { label: "Pricing", href: "#pricing" },
+  { label: "FAQ", href: "#faq" },
+] as const;
+
+/**
+ * Legal placeholders (NAV-02) — labelled, swappable stub links the human
+ * fills later. `href="#"` until real routes exist.
+ */
+const LEGAL_LINKS = [
+  { label: "Privacy", href: "#" },
+  { label: "Terms", href: "#" },
+] as const;
+
+/**
+ * Social placeholders (NAV-02) — labelled, swappable stub links. When real
+ * external targets replace these, add rel="noopener noreferrer" on any
+ * target blank (T-01-05); not applicable while they are in-page `#` stubs.
+ */
+const SOCIAL_LINKS = [
+  { label: "X", href: "#" },
+  { label: "TikTok", href: "#" },
+] as const;
+
+/**
+ * Footer — flat-warm compact marketing chrome (NAV-02 · CONTEXT D-22 ·
+ * UI-SPEC Component Inventory item 3).
+ *
+ * A STATIC server component (no interactivity — static chrome only). Flat-warm:
+ * a tone-step surface with a hairline TOP border, no glass, no gradient, no
+ * shine. Three compact columns:
+ *  1. Brand — the Stele NumenLogo (cream via currentColor) + a one-line tagline.
+ *  2. Product — in-page anchor links mirroring the header nav set.
+ *  3. Legal/social — Privacy · Terms and X · TikTok placeholder stub links.
+ *
+ * Rebuilt from scratch — every trace of the old plagiarized footer is gone
+ * (no booking CTA, no email, no external brand links, no phosphor SSR icons).
  */
 export function Footer({ className }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer role="contentinfo" className={cn("py-24", className)}>
-      <div className="mx-auto max-w-4xl px-6">
-        {/* CTA Section */}
-        <div className="mb-16 text-center">
-          <h2 className="text-[32px] font-normal leading-[36px] text-white sm:text-[40px] sm:leading-[44px]">
-            Ready to understand your audience?
-          </h2>
-          <p className="mt-4 text-lg text-white/80">
-            Join the world&apos;s leading organizations using AI to unlock human
-            insights at scale.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-            <Link
-              href="https://calendly.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="min-h-[44px] rounded-md bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
-            >
-              Book a meeting
-            </Link>
-            <Link
-              href="mailto:founders@societies.io"
-              className="min-h-[44px] rounded border border-white/[0.06] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-white/5"
-            >
-              Contact us
-            </Link>
+    <footer
+      role="contentinfo"
+      className={cn(
+        // Flat tone-step surface + hairline TOP border (flat-matte, no glass/gradient).
+        "border-t border-border bg-background-elevated",
+        className
+      )}
+    >
+      <div className="mx-auto w-full max-w-[1204px] px-4 py-16 md:px-6">
+        <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 md:grid-cols-3">
+          {/* 1 — Brand + tagline */}
+          <div className="flex flex-col gap-3">
+            <span className="flex items-center text-foreground">
+              <NumenLogo size={24} />
+            </span>
+            <p className="max-w-[22ch] text-sm text-foreground-secondary">
+              Know if it&apos;ll pop before you post.
+            </p>
+          </div>
+
+          {/* 2 — Product anchors (mirror the header nav) */}
+          <nav aria-label="Footer product links" className="flex flex-col gap-3">
+            <h2 className="text-sm font-semibold text-foreground">Product</h2>
+            <ul className="flex flex-col gap-2">
+              {PRODUCT_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+
+          {/* 3 — Legal + social placeholders */}
+          <div className="flex flex-col gap-6">
+            <nav aria-label="Footer legal links" className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold text-foreground">Legal</h2>
+              <ul className="flex flex-col gap-2">
+                {LEGAL_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+
+            <nav aria-label="Footer social links" className="flex flex-col gap-3">
+              <h2 className="text-sm font-semibold text-foreground">Social</h2>
+              <ul className="flex flex-col gap-2">
+                {SOCIAL_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
           </div>
         </div>
 
-        {/* Footer Bar */}
-        <div className="flex flex-col items-center gap-8 border-t border-white/[0.06] pt-8 md:flex-row md:justify-between">
-          {/* Left: Brand */}
-          <div className="text-center md:text-left">
-            <div className="font-medium text-white">Artificial Societies</div>
-            <div className="mt-1 text-sm text-gray-400">
-              &copy; {currentYear} Artificial Societies. All rights reserved.
-            </div>
-          </div>
-
-          {/* Center: Legal Links */}
-          <div className="flex flex-wrap items-center justify-center gap-6">
-            <Link
-              href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
-            >
-              Privacy Policy
-            </Link>
-            <Link
-              href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
-            >
-              Terms of Service
-            </Link>
-            <Link
-              href="/coming-soon"
-              className="text-sm text-gray-400 transition-colors hover:text-white"
-            >
-              Subprocessors
-            </Link>
-          </div>
-
-          {/* Right: Social Links */}
-          <div className="flex items-center gap-2">
-            <a
-              href="https://www.linkedin.com/company/artificial-societies"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
-              aria-label="LinkedIn"
-            >
-              <LinkedinLogo className="h-5 w-5" weight="fill" />
-            </a>
-            <a
-              href="https://x.com/societiesio"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
-              aria-label="X (Twitter)"
-            >
-              <XLogo className="h-5 w-5" weight="fill" />
-            </a>
-            <a
-              href="mailto:founders@societies.io"
-              className="flex h-11 w-11 items-center justify-center text-gray-400 transition-colors hover:text-white"
-              aria-label="Email"
-            >
-              <Envelope className="h-5 w-5" weight="fill" />
-            </a>
-          </div>
-        </div>
+        {/* Fine print — cream-muted, non-essential (≥ muted-contrast guidance). */}
+        <p className="mt-12 border-t border-border pt-6 text-sm text-foreground-muted">
+          &copy; {currentYear} Numen Machines
+        </p>
       </div>
     </footer>
   );
