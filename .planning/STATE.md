@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
-status: ready_to_plan
-stopped_at: Phase 01 complete (5/5) — ready to discuss Phase 2
-last_updated: 2026-06-14T15:02:15.048Z
+status: planning
+stopped_at: Phase 2 context gathered
+last_updated: "2026-06-14T15:37:54.582Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 5
@@ -122,6 +122,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T14:30:58.806Z
-Stopped at: Completed 01-05-PLAN.md (plan 5 of 5) — Phase 01 code-complete, THEME-06 locked, ready for verification
-Resume file: None
+Last session: 2026-06-14T15:37:54.572Z
+Stopped at: Phase 2 context gathered
+Resume file: .planning/phases/02-the-reading/02-CONTEXT.md
