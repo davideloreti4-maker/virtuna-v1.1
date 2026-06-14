@@ -3,7 +3,7 @@
 import { AuthGuard } from "./auth-guard";
 import { Sidebar, SidebarHamburger } from "@/components/sidebar/Sidebar";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 interface AppShellProps {
@@ -20,13 +20,19 @@ const CONTENT_GUTTER = 12;
 
 export function AppShell({ children }: AppShellProps) {
   const { isCollapsed } = useSidebarStore();
-  const isMobile = useIsMobile();
+  const { isMobile, hydrated } = useIsMobileHydrated();
   const reducedMotion = usePrefersReducedMotion();
 
   // Mobile (D-15): the sidebar is an overlay drawer — content does not shift.
   // Desktop (D-14): content shifts right by the real sidebar width.
+  // WR-03: until the viewport is measured (`hydrated`), assume DESKTOP — the
+  // dominant app context — so the first paint starts at the sidebar offset
+  // instead of 0px and then snapping 244px right once `useIsMobile` corrects.
+  // (Mobile is the post-mount correction; an extra ~244px gutter for one frame
+  // on a real phone is invisible because the drawer is an overlay anyway.)
+  const treatAsMobile = hydrated && isMobile;
   const sidebarWidth = isCollapsed ? SIDEBAR_RAIL : SIDEBAR_EXPANDED;
-  const offset = isMobile ? 0 : SIDEBAR_INSET + sidebarWidth + CONTENT_GUTTER;
+  const offset = treatAsMobile ? 0 : SIDEBAR_INSET + sidebarWidth + CONTENT_GUTTER;
 
   return (
     <AuthGuard>
