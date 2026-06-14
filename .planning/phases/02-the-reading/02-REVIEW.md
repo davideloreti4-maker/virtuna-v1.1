@@ -35,7 +35,13 @@ findings:
   warning: 6
   info: 4
   total: 11
-status: issues_found
+findings_open:
+  critical: 0
+  warning: 1
+  info: 4
+  total: 5
+status: resolved
+resolution: "CR-01 + WR-01/02/03/04/05 fixed (commits 3c899248, a947a3d6, d7fb3009, 28f73b67, 3d27a8a5, e044096c); WR-06 deferred to Phase 4 stage-reveal; IN-01..04 deferred (cosmetic). Suite 2041 green, build clean."
 ---
 
 # Phase 2: Code Review Report
@@ -43,7 +49,19 @@ status: issues_found
 **Reviewed:** 2026-06-14T21:15:00Z
 **Depth:** standard
 **Files Reviewed:** 26
-**Status:** issues_found
+**Status:** resolved (6 fixed, 5 deferred)
+
+## Resolution (2026-06-14)
+
+Fixed and committed atomically after review:
+- **CR-01** fabricated `0%` watch → `heroWatchPct` nullable, caption gated, +regression test (both null paths) — `3c899248`
+- **WR-01** RewriteItem `setTimeout` cleanup — `a947a3d6`
+- **WR-02** gauge band "Low"→"Weak" alignment — `d7fb3009`
+- **WR-03** clamp+finite-guard displayed score/aria — `28f73b67`
+- **WR-04 (contrast)** override link coral→`--color-accent-foreground` via thin reading-local fork (shared board untouched) — `3d27a8a5`
+- **WR-05** gate AntiViralityHeader on real `id` (no shared dismissal key) — `e044096c`
+
+Deferred (by decision): **WR-06** (gauge 0→score transition is the Phase-4 stage-reveal animation) + **IN-01..04** (cosmetic/maintainability). Suite 2041 green, build clean.
 
 ## Summary
 
