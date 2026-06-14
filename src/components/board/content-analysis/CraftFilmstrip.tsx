@@ -50,21 +50,21 @@ function Cell({ cell }: { cell: CraftCell }) {
           style={{ filter: energyGradeFilter(cell.intensity) }}
         />
       )}
-      {/* per-cell vignette + seam highlight → reads as filmed, not flat */}
+      {/* per-cell vignette + seam → reads as filmed, not flat (footage texture,
+          not chrome — Pitfall 4). White-shine seam highlight removed (matte). */}
       <div
         className="pointer-events-none absolute inset-0 z-[2]"
         style={{
           boxShadow:
-            'inset 0 0 26px rgba(0,0,0,.5), inset -1px 0 0 rgba(0,0,0,.3), inset 1px 0 0 rgba(255,255,255,.02)',
+            'inset 0 0 26px rgba(0,0,0,.5), inset -1px 0 0 rgba(0,0,0,.3)',
         }}
       />
-      {/* hook zone: quiet brighter top edge — the strong open */}
+      {/* hook zone: quiet brighter top edge — the strong open (no white-shine inset) */}
       {cell.isHook && (
         <div
           className="pointer-events-none absolute inset-0 z-[3]"
           style={{
-            boxShadow: 'inset 0 2px 0 0 rgba(255,255,255,.34)',
-            background: 'linear-gradient(180deg, rgba(255,255,255,.07), transparent 26%)',
+            background: 'linear-gradient(180deg, rgba(236,231,222,.07), transparent 26%)',
           }}
         />
       )}
@@ -95,7 +95,7 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
       <div className="relative mb-2 h-[18px]">
         {cells.some((c) => c.isHook) && (
           <div
-            className="absolute bottom-0 left-0 text-[10px] font-medium uppercase tracking-[0.13em] text-white/40"
+            className="absolute bottom-0 left-0 text-[10px] font-medium uppercase tracking-[0.13em] text-foreground-muted"
             data-testid="craft-mark-hook"
           >
             {COPY.HOOK_MARK}
@@ -116,8 +116,8 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
       <div
         className="relative flex h-[118px] gap-[1.5px] overflow-hidden rounded-[9px]"
         style={{
-          border: '1px solid rgba(255,255,255,.07)',
-          boxShadow: 'inset 0 1px 0 0 rgba(255,255,255,.05), 0 1px 2px rgba(0,0,0,.4)',
+          border: '1px solid var(--color-border)',
+          boxShadow: '0 1px 2px rgba(0,0,0,.4)',
         }}
         data-testid="craft-strip"
       >
@@ -147,12 +147,12 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
         {!ctaPresent && (
           <div
             className="pointer-events-none absolute bottom-0 right-0 top-0 z-[5] w-[30%]"
-            style={{ background: 'linear-gradient(90deg, transparent, rgba(255,127,80,.14))' }}
+            style={{ background: 'linear-gradient(90deg, transparent, oklch(0.68 0.13 33 / 0.14))' }}
             data-testid="craft-endcap"
           >
             <div
               className="absolute bottom-0 right-0 top-0 w-[2px]"
-              style={{ background: 'var(--color-accent)', boxShadow: '0 0 10px rgba(255,127,80,.55)' }}
+              style={{ background: 'var(--color-accent)' }}
             />
           </div>
         )}
@@ -168,14 +168,14 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
                   className="flex-1 rounded-[1px]"
                   style={{
                     height: `${Math.max(2, amp * 100)}%`,
-                    background: 'rgba(244,244,245,.26)',
+                    background: 'rgba(236,231,222,.26)',
                     opacity: 0.5 + (hasArc ? amp * 0.5 : 0),
                   }}
                 />
               ))
-            : <div className="h-px w-full" style={{ background: 'rgba(244,244,245,.16)' }} />}
+            : <div className="h-px w-full" style={{ background: 'rgba(236,231,222,.16)' }} />}
         </div>
-        <span className="whitespace-nowrap text-[11px] tabular-nums text-white/40">
+        <span className="whitespace-nowrap text-[11px] tabular-nums text-foreground-muted">
           {audio
             ? `${audioCaption} · ${Math.round(audio.silence_ratio * 100)}% silence`
             : COPY.AUDIO_NONE_CAPTION}
@@ -183,7 +183,7 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
       </div>
 
       {/* time axis */}
-      <div className="mt-[9px] flex justify-between text-[10.5px] tabular-nums text-white/[0.22]">
+      <div className="mt-[9px] flex justify-between text-[10.5px] tabular-nums text-foreground-muted">
         <span>0:00</span>
         <span>{formatTimeSec(durationSec)}</span>
       </div>
