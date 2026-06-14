@@ -44,3 +44,18 @@ touch unrelated sidebar markup. The new component Plan 02-03 owns (`driver-rows.
 **Suggested owner:** a sidebar refactor quick task — extract the history-row /
 score-chip render block (or the Simulations list) into its own file to bring
 `Sidebar.tsx` back under 500.
+
+## `fix-first.test.tsx` unused `within` import (noted Plan 02-05)
+
+`src/components/reading/__tests__/fix-first.test.tsx:3` imports `within` from
+`@testing-library/react` but never uses it → `tsc --noEmit` TS6133 (a 13th
+strict-typecheck-only error, on top of the 12 above). Introduced by Plan 02-04
+commit `1890a5de` (the FixFirstList RED test), NOT by 02-05.
+
+**Why deferred:** SCOPE BOUNDARY — 02-05 did not touch `fix-first.test.tsx`. The
+error is typecheck-only: `npm test` (vitest) is green and `npm run build` (Next.js
+production typecheck) is **clean (exit 0)** — it does not fail on this, so it is
+non-blocking for the phase gate.
+
+**Suggested owner:** fold into the same typecheck-cleanup quick task as the 12
+pre-existing `tsc` errors above (drop the unused `within` import — one-line fix).

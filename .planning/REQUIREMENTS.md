@@ -20,7 +20,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Reading — the consolidated result thread
 
-- [ ] **READ-01**: The Reading lays out top-to-bottom: hero → 3 driver rows → Fix First → deeper read → composer.
+- [x] **READ-01**: The Reading lays out top-to-bottom: hero → 3 driver rows → Fix First → deeper read → composer.
 - [x] **READ-02**: The hero shows `overall_score`, zone-colored (green/amber/red), with no prose narration.
 - [x] **READ-03**: The hero surfaces the go/no-go gate (`anti_virality_gated` + reason) when the video is gated.
 - [x] **READ-04**: The hero shows watch-through % (`weighted_completion_pct`/`completion_pct`) — shown exactly once, owned here — plus an audience persona cloud.
@@ -29,7 +29,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [x] **READ-07**: A "Fix First" block shows the top timestamped fix(es) + copyable hook rewrite(s); extra fixes collapse behind "N more fixes →".
 - [x] **READ-08**: A "Deeper read" expand reveals the remaining 3 Apollo dims (clarity / substance / credibility) + supporting signals.
 - [ ] **READ-09**: All existing rich board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves…) are preserved as drill-downs — nothing visual is deleted.
-- [ ] **READ-10**: Cut data never appears in the Reading (`feature_vector`, `score_weights`, `signal_availability`, dead sub-scores, telemetry, model names, `critique`, `predicted_engagement`, dead modules).
+- [x] **READ-10**: Cut data never appears in the Reading (`feature_vector`, `score_weights`, `signal_availability`, dead sub-scores, telemetry, model names, `critique`, `predicted_engagement`, dead modules).
 
 ### Reveal — stage-by-stage materialization
 
@@ -107,7 +107,7 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | THEME-04 | Phase 1 | Complete |
 | THEME-05 | Phase 1 | Complete |
 | THEME-06 | Phase 1 | Complete |
-| READ-01 | Phase 2 | Pending |
+| READ-01 | Phase 2 | Complete |
 | READ-02 | Phase 2 | Complete |
 | READ-03 | Phase 2 | Complete |
 | READ-04 | Phase 2 | Complete |
@@ -115,7 +115,7 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | READ-06 | Phase 2 | Complete |
 | READ-07 | Phase 2 | Complete |
 | READ-08 | Phase 2 | Complete |
-| READ-10 | Phase 2 | Pending |
+| READ-10 | Phase 2 | Complete |
 | READ-09 | Phase 3 | Pending |
 | REVEAL-01 | Phase 4 | Pending |
 | REVEAL-02 | Phase 4 | Pending |

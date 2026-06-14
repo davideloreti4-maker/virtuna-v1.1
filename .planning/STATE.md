@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
-status: executing
+status: verifying
 stopped_at: Completed 02-04-PLAN.md (Fix First + Deeper Read)
-last_updated: "2026-06-14T18:44:43.240Z"
+last_updated: "2026-06-14T19:01:40.695Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 9
-  percent: 20
+  completed_plans: 10
+  percent: 40
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 
 Phase: 02 (the-reading) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-14
 
-Progress: [█████████░] 90%
+Progress: [██████████] 100%
 
 ## Hard Constraints (this milestone)
 
@@ -72,6 +72,7 @@ Progress: [█████████░] 90%
 | Phase 02 P02-02 | 4min | 3 tasks | 5 files |
 | Phase 02 P02-03 | 12min | 2 tasks | 4 files |
 | Phase 02 P02-04 | 7min | 3 tasks | 6 files |
+| Phase 02 P02-05 | 11min | 3 tasks | 6 files |
 
 ## Phases
 
@@ -116,6 +117,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 02]: P2-04: Light two-tier (D-10) — FixFirstList overflow = one-way useState 'N more fixes' reveal; DeeperRead = vendored Radix Accordion inline expand; NEITHER a Sheet (heavy half stays DrillSheet).
 - [Phase 02]: P2-04: D-13/D-14 as correctness — zero fixes is a WIN ('Nothing urgent to fix'), null Apollo -> DeeperRead returns null + FixFirstList omits the rewrite section (no fabricated 0 / placeholder chip).
 - [Phase 02]: P2-04: reading cluster is board-store-free (no useBoardStore under src/components/reading/, grep=0 + bare-mount); BAND_COLOR repointed emerald/amber/red -> THEME-06 zone tokens success/warning/error. Full suite 2019 green (was 2000).
+- [Phase 02]: P2-05: Reading container (reading.tsx) is the single usePermalinkAnalysis subscriber — children are pure prop-driven leaves (severs the InsightHeroFrame per-leaf re-subscribe); data source abstracted so Phase 4 swaps in useAnalysisStream at the container only.
+- [Phase 02]: P2-05: D-13 honesty gate runs FIRST — no-id→inert(composer shell owns screen), id+!data→error, analysis_unavailable→CouldNotAnalyze (fabricated 0 NEVER reaches ScoreGauge); partial annotates; apollo-null degrades rows/deeper while hero/gate resolve from overall_score. Watch% hero-OWNED, rendered exactly once OUTSIDE PersonaCloud so it survives the empty-personas path (READ-04).
+- [Phase 02]: P2-05: Landmine-0 DONE — /analyze layout inverted to mount <Reading/> (Board retired from the mount, board sources+route files preserved dormant); one DrillSheet driven by closed-union panelId(hook|retention|shareability|personas) with native D-12 content = the Phase-3 rich-chart/PersonaGraph seam. READ-10 standing no-cut-data guard added. Full suite 2035 green (was 2019); build clean. Phase 02 code-complete → /gsd-verify-work.
 
 ### Pending Todos
 
@@ -137,6 +141,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T18:44:43.230Z
+Last session: 2026-06-14T19:01:12.926Z
 Stopped at: Completed 02-04-PLAN.md (Fix First + Deeper Read)
 Resume file: None

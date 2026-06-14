@@ -16,7 +16,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
 
 - [x] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate (completed 2026-06-14)
-- [ ] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean
+- [x] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean (completed 2026-06-14)
 - [ ] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces
 - [ ] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document
 - [ ] **Phase 5: Follow-up & Demo** - Text follow-up in the same composer (reuse "Ask the expert") + a first-run live demo Reading on a known viral video
@@ -56,7 +56,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - [x] 02-02-PLAN.md — Hero atoms: static PersonaCloud + watch%, ThumbnailStrip, AntiViralityHeader gate-banner re-export
 - [x] 02-03-PLAN.md — DriverRows (3 levers, 0-100 bars, Retention drop-time, only-weakest-colored) + sidebar score-chip token unify
 - [x] 02-04-PLAN.md — Fix First: copyable RewriteItem, FixFirstList (top-3 + inline "N more" + D-14 empty), inline DeeperRead (3 dims)
-- [ ] 02-05-PLAN.md — Integration: Reading container (D-13 gate, single source, vertical IA, one DrillSheet) + /analyze layout restructure + READ-10 no-cut-data guard
+- [x] 02-05-PLAN.md — Integration: Reading container (D-13 gate, single source, vertical IA, one DrillSheet) + /analyze layout restructure + READ-10 no-cut-data guard
 **UI hint**: yes
 
 ### Phase 3: Rich Visuals as Drill-Downs
@@ -100,7 +100,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. The Reading | 4/5 | In Progress|  |
+| 2. The Reading | 5/5 | Complete   | 2026-06-14 |
 | 3. Rich Visuals as Drill-Downs | 0/TBD | Not started | - |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
 | 5. Follow-up & Demo | 0/TBD | Not started | - |
