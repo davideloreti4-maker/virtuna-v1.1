@@ -71,6 +71,31 @@ describe('ScoreGauge — zone fill from bandTone (READ-02)', () => {
     expect(style).toMatch(/stroke-dasharray/);
   });
 
+  // WR-03: a malformed prop (out-of-range / NaN) must clamp consistently across the
+  // centered number, the band derivation, AND the aria-label — never "Score 105 of
+  // 100" / a negative number / "NaN" while the arc silently clamps.
+  it('clamps an over-range score (105) to 100 in BOTH the number and the aria-label', () => {
+    render(<ScoreGauge score={105} />);
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.queryByText('105')).not.toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAttribute('aria-label', 'Score 100 of 100, Strong');
+  });
+
+  it('clamps a negative score (-3) to 0 in BOTH the number and the aria-label', () => {
+    render(<ScoreGauge score={-3} />);
+    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.queryByText('-3')).not.toBeInTheDocument();
+    // 0 < 40 → "Weak" (WR-02 vocabulary).
+    expect(screen.getByRole('img')).toHaveAttribute('aria-label', 'Score 0 of 100, Weak');
+  });
+
+  it('coerces a non-finite score (NaN) to 0 — never renders "NaN"', () => {
+    const { container } = render(<ScoreGauge score={NaN} />);
+    expect(container.textContent ?? '').not.toMatch(/NaN/);
+    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByRole('img')).toHaveAttribute('aria-label', 'Score 0 of 100, Weak');
+  });
+
   it('passes axe (role=img + aria-label)', async () => {
     const { container } = render(<ScoreGauge score={71} />);
     const results = await axe(container);

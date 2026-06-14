@@ -49,23 +49,30 @@ export interface ScoreGaugeProps {
 export function ScoreGauge({ score, size = 120, stroke = 8 }: ScoreGaugeProps) {
   const reduced = usePrefersReducedMotion();
 
+  // WR-03: clamp + finite-guard the DISPLAYED score ONCE, then reuse it for the
+  // arc fill, the centered number, the band derivation, AND the aria-label — so a
+  // malformed prop (105, -3, NaN) can never show "Score 105 of 100" / "NaN" while
+  // the arc silently clamps. `overall_score` is typed number with no range promise
+  // at this boundary, so the component normalizes defensively (honesty contract).
+  const shown = Math.round(clamp(Number.isFinite(score) ? score : 0, 0, 100));
+
   const r = (size - stroke) / 2;
   const cx = size / 2;
   const cy = size / 2;
   const circumference = 2 * Math.PI * r;
   const sweep = 0.75; // 270° dial — gap at the bottom (start rotated −225°)
   const arcLen = circumference * sweep;
-  const pct = clamp(score, 0, 100) / 100;
+  const pct = shown / 100;
   const dash = arcLen * pct;
 
-  const color = ZONE_VAR[bandTone(score)];
+  const color = ZONE_VAR[bandTone(shown)];
   // WR-02: remap "Low"→"Weak" for the user-facing word (zone logic untouched).
-  const band = GAUGE_BAND_LABEL[bandFromScore(score)] ?? bandFromScore(score);
+  const band = GAUGE_BAND_LABEL[bandFromScore(shown)] ?? bandFromScore(shown);
 
   return (
     <div
       role="img"
-      aria-label={`Score ${score} of 100, ${band}`}
+      aria-label={`Score ${shown} of 100, ${band}`}
       className="relative inline-flex items-center justify-center"
       style={{ width: size, height: size }}
     >
@@ -105,7 +112,7 @@ export function ScoreGauge({ score, size = 120, stroke = 8 }: ScoreGaugeProps) {
       {/* number + band word, centered over the dial */}
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-4xl font-semibold leading-none tabular-nums text-foreground">
-          {score}
+          {shown}
         </span>
         <span
           className="mt-1 text-base font-medium leading-tight"
