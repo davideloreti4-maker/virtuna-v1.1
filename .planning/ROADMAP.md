@@ -68,7 +68,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
   2. Every preserved visual renders correctly outside the Konva canvas (transplanted to DOM/React/SVG, no pan/zoom shell) with real engine output, no throwing or grey-cell fallbacks
   3. The drill-down visuals are reskinned to the flat-warm system — no Raycast glass, no glow/shine — and read consistently with the rest of the Reading
 **Plans**: 6 plans
-- [ ] 03-01-PLAN.md — Wave-0 test scaffold: reading.panels.test.tsx (per-panel render + degradation) + empty-data fixtures + reskin-matte grep lint
+- [x] 03-01-PLAN.md — Wave-0 test scaffold: reading.panels.test.tsx (per-panel render + degradation) + empty-data fixtures + reskin-matte grep lint
 - [ ] 03-02-PLAN.md — Tier-2 re-treat (heavy reskin): ScoreDistribution + RetentionChart + CraftFilmstrip + RetentionPlayer to matte flat-warm (kill glows/blur/old-coral, keep footage grading, fix --color-frame bug)
 - [ ] 03-03-PLAN.md — Tier-1 token-swaps (SegmentTable/DataTable/StatTile/KeyframeImage) + PersonaGraph re-treat (SVG matte, reduced-motion gate, mobile tap-to-reveal)
 - [ ] 03-04-PLAN.md — New score panel (D-02): gauge onOpen + closed-union extension + ScoreDistribution wiring; swap personas→PersonaGraph + shareability→StatTileRow (PanelEmpty guards)
@@ -107,6 +107,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. The Reading | 5/5 | Complete   | 2026-06-14 |
-| 3. Rich Visuals as Drill-Downs | 0/6 | Not started | - |
+| 3. Rich Visuals as Drill-Downs | 1/6 | In Progress|  |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
 | 5. Follow-up & Demo | 0/TBD | Not started | - |
