@@ -32,12 +32,12 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
-
-// TikTok-only client check (D-21). Mirrors the SERVER trust-boundary regex at
-// /api/analyze (route L465: /^https?:\/\/(www\.|vm\.)?tiktok\.com\//). The
-// client check is a fast UX reject; ContentForm's SOCIAL_URL_PATTERN ALSO
-// allows Instagram — the slim composer must NOT (TikTok-only for v1).
-const TIKTOK_URL_PATTERN = /^https?:\/\/(www\.|vm\.)?tiktok\.com\//i;
+// TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
+// boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
+// server /api/analyze route, so the fast UX reject can never drift from the
+// server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
+// slim composer must NOT (TikTok-only for v1).
+import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
