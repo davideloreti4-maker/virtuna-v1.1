@@ -81,34 +81,41 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | — | Pending |
-| FOUND-02 | — | Pending |
-| FOUND-03 | — | Pending |
-| FOUND-04 | — | Pending |
-| FOUND-05 | — | Pending |
-| FOUND-06 | — | Pending |
-| FOUND-07 | — | Pending |
-| NAV-01 | — | Pending |
-| NAV-02 | — | Pending |
-| NAV-03 | — | Pending |
-| HERO-01 | — | Pending |
-| HERO-02 | — | Pending |
-| HERO-03 | — | Pending |
-| HERO-04 | — | Pending |
-| PROOF-01 | — | Pending |
-| PROOF-02 | — | Pending |
-| STORY-01 | — | Pending |
-| STORY-02 | — | Pending |
-| STORY-03 | — | Pending |
-| CONVERT-01 | — | Pending |
-| CONVERT-02 | — | Pending |
-| CONVERT-03 | — | Pending |
+| FOUND-01 | Phase 1 | Pending |
+| FOUND-02 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Pending |
+| FOUND-05 | Phase 5 | Pending |
+| FOUND-06 | Phase 5 | Pending |
+| FOUND-07 | Phase 5 | Pending |
+| NAV-01 | Phase 1 | Pending |
+| NAV-02 | Phase 1 | Pending |
+| NAV-03 | Phase 1 | Pending |
+| HERO-01 | Phase 2 | Pending |
+| HERO-02 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Pending |
+| HERO-04 | Phase 2 | Pending |
+| PROOF-01 | Phase 4 | Pending |
+| PROOF-02 | Phase 4 | Pending |
+| STORY-01 | Phase 3 | Pending |
+| STORY-02 | Phase 3 | Pending |
+| STORY-03 | Phase 3 | Pending |
+| CONVERT-01 | Phase 4 | Pending |
+| CONVERT-02 | Phase 4 | Pending |
+| CONVERT-03 | Phase 4 | Pending |
 
 **Coverage:**
 - v1 requirements: 22 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 22 ⚠️
+- Mapped to phases: 22 ✓
+- Unmapped: 0 ✓
+
+Per-phase rollup:
+- Phase 1 (Foundation & Shell): FOUND-01, FOUND-02, FOUND-03, FOUND-04, NAV-01, NAV-02, NAV-03 (7)
+- Phase 2 (Hero & Signature Moment): HERO-01, HERO-02, HERO-03, HERO-04 (4)
+- Phase 3 (Story & Showcase): STORY-01, STORY-02, STORY-03 (3)
+- Phase 4 (Proof & Conversion): PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03 (5)
+- Phase 5 (Quality Hardening): FOUND-05, FOUND-06, FOUND-07 (3)
 
 ---
 *Requirements defined: 2026-06-14*
-*Last updated: 2026-06-14 after initial definition*
+*Last updated: 2026-06-14 — traceability populated by roadmap creation (5 phases, 22/22 mapped)*
