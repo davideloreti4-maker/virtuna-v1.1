@@ -22,7 +22,7 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 ### Navigation & Chrome (NAV)
 
 - [x] **NAV-01**: A header shows the Stele logo + "Numen" wordmark and a "Try it free" CTA
-- [ ] **NAV-02**: A footer provides brand, in-page section links, and legal/social placeholders
+- [x] **NAV-02**: A footer provides brand, in-page section links, and legal/social placeholders
 - [x] **NAV-03**: On small screens the header collapses to a mobile-appropriate nav (menu and/or CTA)
 
 ### Hero & Signature Moment (HERO)
@@ -89,7 +89,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | FOUND-06 | Phase 5 | Pending |
 | FOUND-07 | Phase 5 | Pending |
 | NAV-01 | Phase 1 | Complete |
-| NAV-02 | Phase 1 | Pending |
+| NAV-02 | Phase 1 | Complete |
 | NAV-03 | Phase 1 | Complete |
 | HERO-01 | Phase 2 | Pending |
 | HERO-02 | Phase 2 | Pending |

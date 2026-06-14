@@ -59,7 +59,7 @@ Plans:
 
 - [ ] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
 - [x] 01-04-PLAN.md (wave 3) — flat-matte header (NumenLogo + anchor nav + "Try it free"→`/signup` + "Sign in"→`/login` + mobile collapse) (NAV-01, NAV-03)
-- [ ] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
+- [x] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
 
 ### Phase 2: Hero & Signature Moment
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 3/5 | In Progress|  |
+| 1. Foundation & Shell | 4/5 | In Progress|  |
 | 2. Hero & Signature Moment | 0/3 | Not started | - |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
