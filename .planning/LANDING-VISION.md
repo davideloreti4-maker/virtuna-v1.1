@@ -64,9 +64,13 @@ Make slots obvious, consistently styled, and trivially swappable (one prop / one
   default, client only where interactive (motion).
 - **Libs permitted:** shadcn/ui, Radix, Magic UI, Aceternity UI, motion (Framer Motion).
   Pull components in deliberately — don't bloat; keep the bundle and the taste tight.
-- **Brand (from `main` / `BRAND-BIBLE.md`):** coral accent `#FF7F50`, Inter, dark
-  `#07080a`, Raycast tokens (6% borders, 10% hover, 12px card radius), "Stele" logo +
-  "Numen" wordmark (`numen-logo.tsx`).
+- **Brand (flat-warm — ported from `~/virtuna-numen-rework`, SUPERSEDES the old `main`
+  Raycast brand):** neutral charcoal surfaces (`#262624`), cream text (`#ece7de`, never
+  pure white), terracotta-clay coral accent (`~#d97757`, matured from `#FF7F50`), Inter for
+  UI + **Newsreader serif for voice moments**, flat-matte (no glass/glow; depth = tone-step +
+  hairline 6% borders, 12px radius), "Stele" logo + "Numen" wordmark (`numen-logo.tsx`).
+  _Updated 2026-06-14 per Phase 1 discussion — `BRAND-BIBLE.md` is stale; SSOT is
+  `~/virtuna-numen-rework/src/app/globals.css` + `.planning/phases/01-foundation-shell/01-CONTEXT.md`._
 - **Known Tailwind v4 gotchas** (see root `CLAUDE.md`): dark oklch inaccuracy → use hex
   for very dark tokens; Lightning CSS strips `backdrop-filter` → apply via inline style.
 

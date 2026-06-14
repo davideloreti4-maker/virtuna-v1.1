@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Depends on**: Nothing (first phase)
 **Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, NAV-01, NAV-02, NAV-03
 **Success Criteria** (what must be TRUE):
-  1. Visiting `/` renders the new marketing page (replacing the old home), dark-only, using Numen brand tokens carried from `main` (coral #FF7F50, Inter, #07080a background, Raycast 6%/10% borders, 12px radius)
+  1. Visiting `/` renders the new marketing page (replacing the old home), dark-only, using the **flat-warm** Numen design system ported from `~/virtuna-numen-rework` (neutral charcoal #262624 bg, cream #ece7de text, terracotta-clay coral #d97757, Inter + Newsreader serif for voice moments, flat-matte — no glass/glow; 6%/10% borders + 12px radius carried as-is). _Supersedes the old `main` Raycast brand — see `phases/01-foundation-shell/01-CONTEXT.md`._
   2. The reusable placeholder-slot component renders labelled, aspect-ratio-correct stand-ins in image / video / avatar / logo variants, each swappable via one prop or one file with no layout shift
   3. Motion is wired via motion (Framer Motion) plus the permitted libs (shadcn/Radix/Magic UI/Aceternity) and every animation respects a global reduced-motion fallback
   4. A header shows the Stele logo + "Numen" wordmark and a "Try it free" CTA, and on small screens it collapses to a mobile-appropriate nav (menu and/or CTA)
@@ -43,7 +43,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: TBD
 
 Plans:
-- [ ] 01-01: TBD — route mount at `/` + dark brand token wiring (FOUND-01, FOUND-02)
+- [ ] 01-01: TBD — flat-warm design-system port (charcoal/cream/terracotta + Newsreader) + route mount at `/` (FOUND-01, FOUND-02)
 - [ ] 01-02: TBD — placeholder-slot component (image/video/avatar/logo variants) (FOUND-03)
 - [ ] 01-03: TBD — motion foundation + global reduced-motion fallback (FOUND-04)
 - [ ] 01-04: TBD — header chrome (logo + wordmark + CTA, mobile collapse) (NAV-01, NAV-03)

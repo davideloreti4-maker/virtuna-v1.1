@@ -12,7 +12,7 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 ### Foundation & Cross-Cutting (FOUND)
 
 - [ ] **FOUND-01**: Visitor lands on the new marketing page at `/`, replacing the current home
-- [ ] **FOUND-02**: Page renders dark-only using Numen brand tokens carried from `main` (coral #FF7F50, Inter, #07080a, Raycast 6%/10% borders, 12px radius)
+- [ ] **FOUND-02**: Page renders dark-only using the **flat-warm** Numen design system ported from the `~/virtuna-numen-rework` worktree (neutral charcoal #262624 surfaces, cream #ece7de text, terracotta-clay coral #d97757, Inter for UI + Newsreader serif for voice moments, flat-matte — no glass/glow; 6%/10% borders + 12px radius carried as-is). _Supersedes the old `main` Raycast brand (#FF7F50/#07080a/glass) — see `phases/01-foundation-shell/01-CONTEXT.md`._
 - [ ] **FOUND-03**: A reusable placeholder-slot component renders labelled, aspect-ratio-correct stand-ins (image / video / avatar / logo variants) swappable via one prop or one file
 - [ ] **FOUND-04**: Motion is wired via motion (Framer Motion) plus permitted libs (shadcn/Radix/Magic UI/Aceternity) behind a global reduced-motion fallback
 - [ ] **FOUND-05**: Every section is responsive mobile-first, from 320px through desktop
