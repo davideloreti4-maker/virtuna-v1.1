@@ -23,7 +23,7 @@ every product visual is a labelled, swappable placeholder slot, not a shipped as
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation & Shell** - `/` mount, dark brand tokens, the placeholder-slot system, motion/reduced-motion wiring, and header + footer chrome
+- [x] **Phase 1: Foundation & Shell** - `/` mount, dark brand tokens, the placeholder-slot system, motion/reduced-motion wiring, and header + footer chrome (completed 2026-06-14)
 - [ ] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature "crowd → score" audience-simulation centerpiece (with a static fallback)
 - [ ] **Phase 3: Story & Showcase** - How-it-works, "the reading" product showcase, and feature deep-dive blocks (placeholder frames)
 - [ ] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ
@@ -57,7 +57,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
+- [x] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
 - [x] 01-04-PLAN.md (wave 3) — flat-matte header (NumenLogo + anchor nav + "Try it free"→`/signup` + "Sign in"→`/login` + mobile collapse) (NAV-01, NAV-03)
 - [x] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
 
@@ -155,7 +155,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation & Shell | 4/5 | In Progress|  |
+| 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 0/3 | Not started | - |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |

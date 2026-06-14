@@ -14,7 +14,7 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 - [x] **FOUND-01**: Visitor lands on the new marketing page at `/`, replacing the current home
 - [x] **FOUND-02**: Page renders dark-only using the **flat-warm** Numen design system ported from the `~/virtuna-numen-rework` worktree (neutral charcoal #262624 surfaces, cream #ece7de text, terracotta-clay coral #d97757, Inter for UI + Newsreader serif for voice moments, flat-matte — no glass/glow; 6%/10% borders + 12px radius carried as-is). _Supersedes the old `main` Raycast brand (#FF7F50/#07080a/glass) — see `phases/01-foundation-shell/01-CONTEXT.md`._
 - [x] **FOUND-03**: A reusable placeholder-slot component renders labelled, aspect-ratio-correct stand-ins (image / video / avatar / logo variants) swappable via one prop or one file
-- [ ] **FOUND-04**: Motion is wired via motion (Framer Motion) plus permitted libs (shadcn/Radix/Magic UI/Aceternity) behind a global reduced-motion fallback
+- [x] **FOUND-04**: Motion is wired via motion (Framer Motion) plus permitted libs (shadcn/Radix/Magic UI/Aceternity) behind a global reduced-motion fallback
 - [ ] **FOUND-05**: Every section is responsive mobile-first, from 320px through desktop
 - [ ] **FOUND-06**: Heavy motion/media lazy-loads and the page holds a premium performance bar (no layout shift from slots; Lighthouse mobile performance ≥90)
 - [ ] **FOUND-07**: The page is keyboard-navigable with semantic landmarks, visible focus states, and WCAG AA contrast
@@ -84,7 +84,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | FOUND-01 | Phase 1 | Complete |
 | FOUND-02 | Phase 1 | Complete |
 | FOUND-03 | Phase 1 | Complete |
-| FOUND-04 | Phase 1 | Pending |
+| FOUND-04 | Phase 1 | Complete |
 | FOUND-05 | Phase 5 | Pending |
 | FOUND-06 | Phase 5 | Pending |
 | FOUND-07 | Phase 5 | Pending |
