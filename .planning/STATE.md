@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
 status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-06-14T15:37:54.582Z"
+stopped_at: Phase 02 UI-SPEC approved (6/6 dimensions PASS)
+last_updated: "2026-06-14T15:49:59.397Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 5
@@ -122,6 +122,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:37:54.572Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-the-reading/02-CONTEXT.md
+Last session: 2026-06-14T15:49:59.387Z
+Stopped at: Phase 02 UI-SPEC approved (6/6 dimensions PASS)
+Resume file: .planning/phases/02-the-reading/02-UI-SPEC.md
