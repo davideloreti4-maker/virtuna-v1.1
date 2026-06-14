@@ -181,3 +181,59 @@ export function makeApolloNullResult(over: Partial<PredictionResult> = {}): Pred
     ...over,
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase-3 (Rich Visuals as Drill-Downs) empty-data helpers — the degradation
+// inputs for `reading.panels.test.tsx` (SC-2 / D-13). Every transplanted visual
+// must fall to PanelEmpty ("Not available for this read.") on a real null/thin
+// shape — NEVER throw, NEVER a grey-cell box, NEVER a fabricated 0. These hit on
+// permalink reload and on genuine engine partials.
+//
+// Each helper composes on TOP of makeReadingResult(over) and overrides ONLY the
+// field under test, so unrelated fields stay valid (no hand-built partial result)
+// and a schema drift fails at compile (the override stays `Partial<PredictionResult>`).
+// makeApolloNullResult (above) is the apollo-null degradation — reuse it, do NOT
+// duplicate it here.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** heatmap absent entirely → the retention + personas panels have no curve /
+ *  segments / personas to read. Both must degrade to PanelEmpty (the curve SVG and
+ *  the persona graph never render an empty shell). Mirrors a permalink row whose
+ *  heatmap never persisted / a text read with no audience sim. */
+export function makeEmptyHeatmapResult(over: Partial<PredictionResult> = {}): PredictionResult {
+  return makeReadingResult({
+    heatmap: null,
+    ...over,
+  });
+}
+
+/** heatmap present but `personas: []` (and no sim results) → buildPersonaNodes
+ *  returns [] → the personas panel degrades to PanelEmpty (mirror PersonaCloud's
+ *  null path). Segments/curve are KEPT so ONLY the persona-derived path goes empty. */
+export function makeEmptyPersonasResult(over: Partial<PredictionResult> = {}): PredictionResult {
+  return makeReadingResult({
+    heatmap: { ...HEATMAP, personas: [] } as HeatmapPayload,
+    persona_simulation_results: undefined,
+    ...over,
+  });
+}
+
+/** heatmap present but `segments: []` → no retention curve/table rows to draw →
+ *  the retention panel degrades to PanelEmpty instead of an empty SVG. Personas are
+ *  KEPT so ONLY the segment-derived paths go empty. */
+export function makeEmptySegmentsResult(over: Partial<PredictionResult> = {}): PredictionResult {
+  return makeReadingResult({
+    heatmap: { ...HEATMAP, segments: [] } as HeatmapPayload,
+    ...over,
+  });
+}
+
+/** `behavioral_predictions` absent → deriveBehavioralTiles returns [] (never a
+ *  fabricated 0%) → the shareability rate tiles are empty. With no share_pull
+ *  evidence either, the shareability panel degrades to PanelEmpty. */
+export function makeNoBehavioralResult(over: Partial<PredictionResult> = {}): PredictionResult {
+  return makeReadingResult({
+    behavioral_predictions: undefined,
+    ...over,
+  });
+}
