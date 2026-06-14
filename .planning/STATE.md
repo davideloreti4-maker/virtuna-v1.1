@@ -4,14 +4,14 @@ milestone: v5.0
 milestone_name: Numen Rework
 status: executing
 stopped_at: Phase 02 UI-SPEC approved (6/6 dimensions PASS)
-last_updated: "2026-06-14T16:35:10.813Z"
-last_activity: 2026-06-14 -- Phase 02 planning complete
+last_updated: "2026-06-14T18:10:10.298Z"
+last_activity: 2026-06-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 5
-  percent: 20
+  completed_plans: 6
+  percent: 60
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
-**Current focus:** Phase 2 — the reading
+**Current focus:** Phase 02 — the-reading
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (the-reading) — EXECUTING
+Plan: 2 of 5
 Status: Ready to execute
-Last activity: 2026-06-14 -- Phase 02 planning complete
+Last activity: 2026-06-14
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 60%
 
 ## Hard Constraints (this milestone)
 
@@ -68,6 +68,7 @@ Progress: [██████████] 100%
 | Phase 1 P3 | 5min | 3 tasks | 6 files |
 | Phase 1 P4 | 4min | 2 tasks | 3 files |
 | Phase 01 P05 | 1min | 3 tasks | 2 files |
+| Phase 02 P02-01 | 9min | 3 tasks | 6 files |
 
 ## Phases
 
@@ -101,6 +102,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: P1-04: /home auth-gated twice — (app) layout getUser gate (01-03) + PROTECTED_PREFIXES entry (defense-in-depth, Spoofing); unauthenticated /home -> /login w/ deep link. /analyze + /analyze/[id] kept dormant-but-reachable (still protected, IDOR-defended permalink untouched).
 - [Phase ?]: P1-04: Fixed latent bug — the authed-auth-page redirect was DEAD CODE shadowed by the public-path early-returns (/login & /signup are public). Added AUTH_PAGES carve-out + moved the redirect before the public-skip so signed-in /login/signup visitors actually reach /home; anon visitors still see the page.
 - [Phase 01]: P1-05: THEME-06 / D-07 SIGNED via a live human review on the running shell — the flat-warm system is LOCKED for rollout. Locked values: charcoal app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b; lone-accent coral oklch(0.68 0.13 33) ≈ #d97757 (text-on-coral #1a0f0a); serif = Newsreader; score zones green oklch(0.68 0.17 145) / amber oklch(0.75 0.15 85) / red oklch(0.60 0.20 25); greeting "Ready to simulate your audience, [Name]?". Phase 01 code-complete (13/13 reqs). Follow-ups: UAT screenshots 0/4 (env-gated, harness committed at 8f8e8acb), sidebar score-chip token-unify deferred to Phase 2.
+- [Phase 02]: P2-01: ScoreGauge fill uses bandTone() SSOT — amber owns the WHOLE 40-69 band (correction #2, never red there); score is a Phase-4-drivable prop; matte (no glow/halo/filter).
+- [Phase 02]: P2-01: DrillSheet is generic children-based (no panel registry) — the Phase-3/5 mount point; side switches bottom-mobile/right-desktop via useIsMobile; flat-warm (shadow-none, no inset, no blur). Forwarded side as data-side on shared ui/sheet.tsx (Rule 3 blocking, additive — no other consumers).
+- [Phase 02]: P2-01: src/components/reading/__tests__/ scaffold + shared makeReadingResult fixture (extends board fixtures.antiVirality + Apollo/heatmap/counterfactuals); scenario helpers cover D-13 degraded states. 14 reading tests green; full suite 1981 green (was 1967). 12 pre-existing tsc errors in untouched files logged to deferred-items.md.
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T15:49:59.387Z
+Last session: 2026-06-14T18:10:01.426Z
 Stopped at: Phase 02 UI-SPEC approved (6/6 dimensions PASS)
-Resume file: .planning/phases/02-the-reading/02-UI-SPEC.md
+Resume file: None
