@@ -27,7 +27,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 - [x] **READ-05**: The Reading shows 3 always-visible driver rows: Hook (stop-power), Retention (where they drop — `weighted_top_dropoff_t`), Shareability (`share_pull`).
 - [x] **READ-06**: Tapping a driver row reveals its detail (e.g. Hook → modality breakdown + weakest modality).
 - [x] **READ-07**: A "Fix First" block shows the top timestamped fix(es) + copyable hook rewrite(s); extra fixes collapse behind "N more fixes →".
-- [ ] **READ-08**: A "Deeper read" expand reveals the remaining 3 Apollo dims (clarity / substance / credibility) + supporting signals.
+- [x] **READ-08**: A "Deeper read" expand reveals the remaining 3 Apollo dims (clarity / substance / credibility) + supporting signals.
 - [ ] **READ-09**: All existing rich board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves…) are preserved as drill-downs — nothing visual is deleted.
 - [ ] **READ-10**: Cut data never appears in the Reading (`feature_vector`, `score_weights`, `signal_availability`, dead sub-scores, telemetry, model names, `critique`, `predicted_engagement`, dead modules).
 
@@ -114,7 +114,7 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | READ-05 | Phase 2 | Complete |
 | READ-06 | Phase 2 | Complete |
 | READ-07 | Phase 2 | Complete |
-| READ-08 | Phase 2 | Pending |
+| READ-08 | Phase 2 | Complete |
 | READ-10 | Phase 2 | Pending |
 | READ-09 | Phase 3 | Pending |
 | REVEAL-01 | Phase 4 | Pending |

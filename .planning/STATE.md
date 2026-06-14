@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
 status: executing
-stopped_at: Completed 02-02-PLAN.md (hero atoms)
-last_updated: "2026-06-14T18:29:36.792Z"
+stopped_at: Completed 02-04-PLAN.md (Fix First + Deeper Read)
+last_updated: "2026-06-14T18:44:43.240Z"
 last_activity: 2026-06-14
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 20
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BR
 ## Current Position
 
 Phase: 02 (the-reading) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-14
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 90%
 
 ## Hard Constraints (this milestone)
 
@@ -71,6 +71,7 @@ Progress: [████████░░] 80%
 | Phase 02 P02-01 | 9min | 3 tasks | 6 files |
 | Phase 02 P02-02 | 4min | 3 tasks | 5 files |
 | Phase 02 P02-03 | 12min | 2 tasks | 4 files |
+| Phase 02 P02-04 | 7min | 3 tasks | 6 files |
 
 ## Phases
 
@@ -111,6 +112,10 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase ?]: P2-02: ThumbnailStrip gates on resolveKeyframeUrl(filmstrips,segments,'first') → null when no keyframe (no broken box); plain <img> not next/image, decorative alt='', signed URL never logged (T-02-03). AntiViralityHeader = bare re-export of board verdict component (D-04). 11 new tests; full suite 1992 green (was 1981).
 - [Phase ?]: P2-03: DriverRows is a NEW component (not a FactorBars reuse) — borrows only the 3-col grid + 5px bar markup, rebuilt for 0-100 ApolloDimensions; fixed funnel Hook->Retention->Shareability (no sort), neutral cream bars, ONLY the single weakest in its bandTone zone color + warn glyph; Retention value = drop time via formatTime(weighted_top_dropoff_t) SECONDS (audience-derive, not the ms TopFixesList variant — the 0:08-vs-0:00 trap), bar still fills by retention score; >=44px button -> onRowTap; degrades to 'Not available' on null dimensions (never a fabricated 0).
 - [Phase ?]: P2-03: Sidebar score chips unified onto the THEME-06 score-zone tokens (--color-success/warning/error) via the bandTone SSOT (>=70/40-69/<40) — one score-color language shared with the hero gauge; token swap only, em-dash branch stays muted (carried-forward P1 follow-up CLOSED).
+- [Phase 02]: P2-04: RewriteItem/FixFirstList/DeeperRead built — the actionable bottom of the Reading; copyable hook rewrites (D-15) are the literal payload (Copy = sanctioned coral surface, Copy->Copied->Copy 1.5s, graceful clipboard failure).
+- [Phase 02]: P2-04: Light two-tier (D-10) — FixFirstList overflow = one-way useState 'N more fixes' reveal; DeeperRead = vendored Radix Accordion inline expand; NEITHER a Sheet (heavy half stays DrillSheet).
+- [Phase 02]: P2-04: D-13/D-14 as correctness — zero fixes is a WIN ('Nothing urgent to fix'), null Apollo -> DeeperRead returns null + FixFirstList omits the rewrite section (no fabricated 0 / placeholder chip).
+- [Phase 02]: P2-04: reading cluster is board-store-free (no useBoardStore under src/components/reading/, grep=0 + bare-mount); BAND_COLOR repointed emerald/amber/red -> THEME-06 zone tokens success/warning/error. Full suite 2019 green (was 2000).
 
 ### Pending Todos
 
@@ -132,6 +137,6 @@ Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify compet
 
 ## Session Continuity
 
-Last session: 2026-06-14T18:29:27.859Z
-Stopped at: Completed 02-02-PLAN.md (hero atoms)
+Last session: 2026-06-14T18:44:43.230Z
+Stopped at: Completed 02-04-PLAN.md (Fix First + Deeper Read)
 Resume file: None
