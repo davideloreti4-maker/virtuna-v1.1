@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Header, Footer } from "@/components/layout";
+import { MotionConfigShell } from "@/components/marketing";
 
 export const metadata: Metadata = {
   title: "Numen — Know if it'll pop before you post",
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default function HomePage() {
   return (
-    <>
+    <MotionConfigShell>
       <Header />
       <main>
         {/* Hero — the serif voice headline + crowd→score signature land in Phase 2. */}
@@ -79,6 +80,6 @@ export default function HomePage() {
         </section>
       </main>
       <Footer />
-    </>
+    </MotionConfigShell>
   );
 }
