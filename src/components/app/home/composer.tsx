@@ -78,16 +78,28 @@ export function Composer({ className }: ComposerProps) {
   // it only calls onFileSelect for an accepted MP4/MOV/WebM under 200MB.)
   const canSubmit = (isValidTikTok || file !== null) && !submitting;
 
-  // ── Navigate-on-id (lifted from Board.tsx L300-307) ──────────────────────
+  // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
-  // SSE started{id}; useAnalysisStream surfaces it as stream.analysisId. The
+  // SSE started{id}; useAnalysisStream surfaces it as stream.analysisId. A
   // null -> string transition is what fires the /analyze/[id] navigation.
+  //
+  // WR-05: a bare null->string flip is NOT a safe trigger in the pinned
+  // (permalink) layout — useAnalysisStream also sets analysisId from the URL
+  // on hydration (use-analysis-stream.ts:521), which would push us to an
+  // /analyze/[id] the user never submitted. Board distinguishes "an id I
+  // started streaming" from "an id that appeared via hydration" with a ref.
+  // We mirror that: navigation is ARMED only when handleSubmit actually calls
+  // stream.start (pendingNavRef), so a hydration-sourced id can never navigate.
   const prevAnalysisIdRef = useRef<string | null>(stream.analysisId);
+  const pendingNavRef = useRef(false);
   useEffect(() => {
     const id = stream.analysisId;
-    if (id && prevAnalysisIdRef.current === null) {
+    if (id && prevAnalysisIdRef.current === null && pendingNavRef.current) {
+      pendingNavRef.current = false;
       router.push(`/analyze/${id}`);
     }
+    // Re-arming only happens in handleSubmit; here we just track the value so
+    // the next genuine null->string (after a fresh submit) is detectable.
     prevAnalysisIdRef.current = id;
   }, [stream.analysisId, router]);
 
@@ -117,6 +129,10 @@ export function Composer({ className }: ComposerProps) {
           setSubmitting(false);
           return;
         }
+        // WR-05: arm navigation — this run's started{id} is a real submission,
+        // so the null->string flip it produces SHOULD navigate (unlike a
+        // hydration-sourced id, which never arms this).
+        pendingNavRef.current = true;
         await stream
           .start({
             input_mode: "video_upload",
@@ -135,6 +151,8 @@ export function Composer({ className }: ComposerProps) {
     if (!isValidTikTok) return;
     setSubmitting(true);
     try {
+      // WR-05: arm navigation for this real submission (see upload path above).
+      pendingNavRef.current = true;
       await stream
         .start({
           input_mode: "tiktok_url",
