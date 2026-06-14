@@ -73,7 +73,10 @@ describe("<Placeholder>", () => {
 
       const root = container.querySelector('[data-variant="image"]');
       expect(root).not.toBeNull();
-      expect((root as HTMLElement).style.aspectRatio).toBe("16/9");
+      // CSSOM normalizes "16/9" → "16 / 9"; compare whitespace-insensitively.
+      expect((root as HTMLElement).style.aspectRatio.replace(/\s+/g, "")).toBe(
+        "16/9"
+      );
     });
 
     it("defaults the avatar variant to a 1/1 aspect ratio", () => {
@@ -83,7 +86,9 @@ describe("<Placeholder>", () => {
 
       const root = container.querySelector('[data-variant="avatar"]');
       expect(root).not.toBeNull();
-      expect((root as HTMLElement).style.aspectRatio).toBe("1/1");
+      expect((root as HTMLElement).style.aspectRatio.replace(/\s+/g, "")).toBe(
+        "1/1"
+      );
     });
   });
 
