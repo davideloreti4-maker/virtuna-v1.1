@@ -149,13 +149,17 @@ describe('drill-down: retention panel (READ-09)', () => {
 // shareability panel — tap the Shareability driver row → DrillSheet("Shareability")
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: shareability panel (READ-09)', () => {
-  it('renders on real data without throwing — share_pull dimension body mounts', async () => {
+  it('renders on real data without throwing — StatTileRow + share_pull evidence mount', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
     await user.click(screen.getByTestId('driver-row-shareability'));
     const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
-    expect(within(dialog).getByTestId('panel-dimension')).toBeInTheDocument();
+    // 03-04 swap: the rate tiles (StatTileRow) replace the native dimension body…
+    expect(within(dialog).getByTestId('stat-tile-row')).toBeInTheDocument();
+    // …and the share_pull lever evidence is kept as supporting text.
+    expect(within(dialog).getByTestId('panel-shareability')).toBeInTheDocument();
+    expect(within(dialog).getByText(/identity-signalling/i)).toBeInTheDocument();
   });
 
   it('degrades gracefully on apollo-null — the driver rows show "Not available", no throw, no fabricated 0', () => {
@@ -178,22 +182,55 @@ describe('drill-down: shareability panel (READ-09)', () => {
     expect(rows.textContent ?? '').not.toMatch(/\b0\b/);
   });
 
-  // 03-04/03-05 add the StatTile rate tiles (share/comment/save/loop) beside the
-  // share_pull evidence — activate when wired. The sheet-level PanelEmpty for the
-  // share_pull dimension is unreachable by tap while rows degrade; the wiring plans
-  // decide the affordance.
-  it.todo('shareability panel mounts StatTile rate tiles (share/comment/save/loop) (03-04/03-05)');
-  it.todo(
-    'shareability rate tiles degrade gracefully (omit absent metrics, never a fabricated 0%) using makeNoBehavioralResult (03-04/03-05)',
-  );
-  it.todo('shareability panel shows PanelEmpty when the share_pull dimension is absent (03-04)');
+  // ── 03-04 swap: StatTile rate tiles (deriveBehavioralTiles) beside the share_pull
+  //    evidence. The first assertion (tiles + evidence mount) is covered above. ──
+  it('mounts the behavioral rate tiles (deriveBehavioralTiles) on real data', async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByTestId('driver-row-shareability'));
+    const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
+    // The fixture's behavioral_predictions emit ≥1 *_pct → ≥1 StatTile renders.
+    expect(within(dialog).getAllByTestId('stat-tile').length).toBeGreaterThan(0);
+  });
+
+  it('rate tiles degrade gracefully via makeNoBehavioralResult — tiles omitted, NO fabricated 0%, share_pull evidence still shows', async () => {
+    // behavioral_predictions absent → deriveBehavioralTiles returns [] (StatTileRow
+    // renders nothing — NEVER a fabricated "0%"); the share_pull dimension is STILL
+    // present (apollo kept), so the row stays clickable and the panel shows the
+    // evidence text. This is the reachable D-13 honesty path.
+    mockState = {
+      id: 'sim-1',
+      data: makeNoBehavioralResult(),
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByTestId('driver-row-shareability'));
+    const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
+    // No rate tiles (the StatTileRow self-omits on empty) → no fabricated 0% tile.
+    expect(within(dialog).queryByTestId('stat-tile-row')).not.toBeInTheDocument();
+    expect(within(dialog).queryByTestId('stat-tile')).not.toBeInTheDocument();
+    // But the share_pull evidence is kept (no throw, no grey-cell).
+    expect(within(dialog).getByTestId('panel-shareability')).toBeInTheDocument();
+    expect(within(dialog).getByText(/identity-signalling/i)).toBeInTheDocument();
+  });
+
+  // Strictly unreachable by tap (verified): emptying the share_pull dimension flips
+  // DriverRows to its degraded NON-clickable branch (driver-rows.tsx L67 — any of
+  // hook/retention/share absent ⇒ degraded), so the Shareability sheet can never be
+  // opened in that state. The code guard EXISTS (`tiles.length === 0 && !dim →
+  // PanelEmpty` in the shareability body), but it has no tap path; covering it needs
+  // a direct-mount harness (deferred to 03-05). Honest staging, not a gap.
+  it.todo('shareability panel PanelEmpty when BOTH tiles and the share_pull dim are absent — unreachable by tap (03-05 direct-mount)');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // personas panel — tap the persona cloud (role="button") → DrillSheet("Audience")
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: personas panel (READ-09)', () => {
-  it('renders on real data without throwing — persona list mounts', async () => {
+  it('renders on real data without throwing — the full PersonaGraph mounts (03-04 swap)', async () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
@@ -204,15 +241,19 @@ describe('drill-down: personas panel (READ-09)', () => {
       .closest('[role="button"]') as HTMLElement;
     await user.click(cloud);
     const dialog = await screen.findByRole('dialog', { name: 'Audience' });
-    expect(within(dialog).getByTestId('panel-personas')).toBeInTheDocument();
+    // 03-04 swap: the native persona list → the full PersonaGraph (SVG cloud).
+    expect(within(dialog).getByTestId('persona-graph')).toBeInTheDocument();
+    // The native list is gone.
+    expect(within(dialog).queryByTestId('panel-personas')).not.toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on empty personas (no throw, no grey-cell)', async () => {
     // personas:[] → PersonaCloud returns null (the hero cloud omits itself); the
     // gauge button stays (it's score-driven, independent of personas). Assert the
     // CLOUD svg is gone — not "no buttons" (the gauge is always a button now after
-    // D-02). The open-sheet PanelEmpty for empty personas is asserted in the
-    // dedicated test below (03-04 opens the sheet via the gauge-independent path).
+    // D-02). PersonasPanel's own PanelEmpty guard (nodes.length===0) is the in-sheet
+    // degrade, but it shares buildPersonaNodes with the cloud — so an empty cohort
+    // hides BOTH the cloud and its only tap source (unreachable by tap, see todo).
     mockState = {
       id: 'sim-1',
       data: makeEmptyPersonasResult(),
@@ -227,10 +268,11 @@ describe('drill-down: personas panel (READ-09)', () => {
     // And no throw occurred reaching this assertion (render above did not throw).
   });
 
-  // 03-03/03-04 swap the native persona list for the full PersonaGraph (SVG, not
-  // Canvas — RESEARCH correction); hover→tap on mobile. Activate when wired.
-  it.todo('personas panel mounts PersonaGraph (full 200-dot SVG cloud, hover→tap) (03-03/03-04)');
-  it.todo('personas panel degrades to PanelEmpty on empty personas inside the open sheet (03-03/03-04)');
+  // PersonaGraph mount on real data is asserted in the first test above (03-04 swap).
+  // The in-sheet PanelEmpty for empty personas is unreachable by tap (the cloud and
+  // the panel share buildPersonaNodes — an empty cohort hides the cloud tap source);
+  // the PanelEmpty guard exists in PersonasPanel, covered by direct-mount in 03-05.
+  it.todo('personas panel PanelEmpty on empty personas inside the open sheet — unreachable by tap (03-05 direct-mount)');
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -15,12 +15,15 @@ import {
   averageWatchThrough,
   formatTime,
 } from '@/components/board/audience/audience-derive';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 // Phase-3 transplanted LEAF visuals (NEVER a *Node/*Frame/*Hero — those drag
 // useBoardStore back, breaking the reading cluster's store-free invariant). Props
 // are re-derived here from the already-authorized `data`.
 import { ScoreDistribution } from '@/components/board/verdict/ScoreDistribution';
-import { confidenceRange } from '@/components/board/verdict/verdict-derive';
+import { confidenceRange, deriveBehavioralTiles } from '@/components/board/verdict/verdict-derive';
 import { useComparisons } from '@/components/board/verdict/use-comparisons';
+import { PersonaGraph } from '@/components/board/_kit/PersonaGraph';
+import { StatTileRow, type StatTileData } from '@/components/board/_kit/StatTile';
 
 import { ThumbnailStrip } from './thumbnail-strip';
 import { AntiViralityHeader } from './anti-virality-header';
@@ -231,9 +234,14 @@ function PanelContent({
         />
       );
     case 'shareability':
-      return <DimensionPanel dim={dims?.find((d) => d.name === 'share_pull')} />;
+      return (
+        <ShareabilityPanel
+          data={data}
+          dim={dims?.find((d) => d.name === 'share_pull')}
+        />
+      );
     case 'personas':
-      return <PersonasPanel heatmap={data.heatmap ?? null} />;
+      return <PersonasPanel data={data} />;
     case 'score':
       return <ScorePanel data={data} id={id} />;
   }
@@ -375,30 +383,57 @@ function DimensionPanel({ dim }: { dim: ApolloDimension | undefined }) {
   );
 }
 
-function PersonasPanel({ heatmap }: { heatmap: HeatmapPayload | null }) {
-  const personas = heatmap?.personas ?? [];
-  if (personas.length === 0) return <PanelEmpty />;
-  // Native persona list (the Phase-3 PersonaGraph seam — P3 mounts the Canvas here).
+/** Personas panel (D-03) — the full PersonaGraph (the 200-dot SVG cloud, hover→tap
+ *  on mobile), swapped in for the P2 native list. Builds PersonaNode[] via the SAME
+ *  call PersonaCloud makes (worstBadGroupKey(buildSegmentGroups(...)) → buildPersonaNodes).
+ *  Empty nodes → PanelEmpty (mirrors PersonaCloud's null path — no throw, no grey-cell).
+ *  reducedMotion gates PersonaGraph's <animate> pulse; the tap-to-reveal is
+ *  self-contained in PersonaGraph (03-03), so no extra prop. READ-10: reads only the
+ *  derived nodes (from heatmap/sim) — never spreads `data`. */
+function PersonasPanel({ data }: { data: PredictionResult }) {
+  const reducedMotion = usePrefersReducedMotion();
+  const heatmap = data.heatmap ?? null;
+  const badKey = worstBadGroupKey(buildSegmentGroups(heatmap, data.persona_simulation_results));
+  const nodes = buildPersonaNodes(heatmap, data.persona_simulation_results, badKey);
+  if (nodes.length === 0) return <PanelEmpty />;
+  return <PersonaGraph personas={nodes} reducedMotion={reducedMotion} />;
+}
+
+/** Shareability panel (D-03) — the behavioral rate tiles (deriveBehavioralTiles:
+ *  share/completion/comment/save, omitting absent *_pct — never a fabricated 0%)
+ *  with the single weakest tile marked coral, followed by the share_pull lever
+ *  evidence as supporting text. PanelEmpty only when BOTH tiles and the dim are
+ *  absent (no throw, no grey-cell). READ-10: reads only the derived tiles
+ *  (behavioral_predictions) + dim.evidence — never spreads `data`. */
+function ShareabilityPanel({
+  data,
+  dim,
+}: {
+  data: PredictionResult;
+  dim: ApolloDimension | undefined;
+}) {
+  const tiles: StatTileData[] = deriveBehavioralTiles(data);
+  // Mark the single weakest tile (lowest numeric value) coral; the rest stay default.
+  if (tiles.length > 0) {
+    let weakestIdx = 0;
+    let weakestVal = Number.POSITIVE_INFINITY;
+    tiles.forEach((t, i) => {
+      const v = Number.parseFloat(t.v);
+      if (Number.isFinite(v) && v < weakestVal) {
+        weakestVal = v;
+        weakestIdx = i;
+      }
+    });
+    tiles[weakestIdx] = { ...tiles[weakestIdx]!, tone: 'accent' };
+  }
+  if (tiles.length === 0 && !dim) return <PanelEmpty />;
   return (
-    <ul data-testid="panel-personas" className="flex flex-col gap-1 pt-2">
-      {personas.map((p) => {
-        const mean =
-          p.attentions.length > 0
-            ? p.attentions.reduce((a, b) => a + b, 0) / p.attentions.length
-            : 0;
-        return (
-          <li
-            key={p.id}
-            className="flex items-center justify-between gap-3 py-1 text-[13px]"
-          >
-            <span className="text-foreground-secondary">{p.archetype ?? p.slot_type}</span>
-            <span className="tabular-nums text-foreground-muted">
-              {Math.round(mean * 100)}% watch
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <div data-testid="panel-shareability" className="flex flex-col gap-3 pt-2">
+      <StatTileRow tiles={tiles} />
+      {dim?.evidence && (
+        <p className="text-[13px] text-foreground-secondary">{dim.evidence}</p>
+      )}
+    </div>
   );
 }
 

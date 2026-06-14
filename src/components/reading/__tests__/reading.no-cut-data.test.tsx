@@ -92,6 +92,15 @@ vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
 vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+// The score panel (D-02) runs a panel-local useComparisons(id) (useQuery). Mock it
+// so no QueryClientProvider is needed and the niche cohort is deterministic — a real
+// cohort here renders ScoreDistribution's field histogram (the richest score surface
+// for the READ-10 sweep below). The cohort numbers are NOT cut/jargon fields.
+vi.mock('@/components/board/verdict/use-comparisons', () => ({
+  useComparisons: () => ({
+    data: { history: [], niche: { median: 58, p75: 74, count: 120, histogram: [2, 4, 8, 14, 22, 26, 18, 12, 8, 6] } },
+  }),
+}));
 
 import { Reading } from '../reading';
 
@@ -150,8 +159,19 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
       await user.keyboard('{Escape}');
     }
 
-    // Personas panel via the cloud.
-    const cloud = container.querySelector('[role="button"]') as HTMLElement;
+    // Score panel via the hero gauge (D-02, NEW raw-data surface — guard it too).
+    await user.click(screen.getByRole('button', { name: /Score \d+ of 100/ }));
+    const scoreDialog = await screen.findByRole('dialog', { name: 'Score' });
+    const scoreText = scoreDialog.textContent ?? '';
+    for (const banned of BANNED_STRINGS) {
+      expect(scoreText).not.toContain(banned);
+    }
+    await user.keyboard('{Escape}');
+
+    // Personas panel via the cloud (target the cloud svg — the gauge is also a button now).
+    const cloud = container
+      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
+      .closest('[role="button"]') as HTMLElement;
     await user.click(cloud);
     const personasDialog = await screen.findByRole('dialog', { name: 'Audience' });
     const personasText = personasDialog.textContent ?? '';
@@ -164,7 +184,7 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
     render(<Reading />);
     // The gauge score + the driver rows + Fix First still render from the
     // whitelisted fields — proving the test renders a real, populated thread.
-    expect(screen.getByRole('img', { name: /Score \d+ of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score \d+ of 100/ })).toBeInTheDocument();
     expect(screen.getByTestId('driver-rows')).toBeInTheDocument();
     expect(screen.getByTestId('fix-first')).toBeInTheDocument();
   });

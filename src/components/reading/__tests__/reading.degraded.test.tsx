@@ -35,8 +35,8 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
     // The dedicated "couldn't analyze" state.
     expect(screen.getByText(/We couldn.t analyze this video/i)).toBeInTheDocument();
 
-    // The gauge (a role="img" "Score N of 100") is NOT rendered.
-    expect(screen.queryByRole('img', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
+    // The gauge (a role="button" "Score N of 100" — D-02 tap target) is NOT rendered.
+    expect(screen.queryByRole('button', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
 
     // The literal "0" does not appear in the score region (no gauge, no "0%").
     expect(container.querySelector('[data-testid="reading-hero"]')).toBeNull();
@@ -49,7 +49,7 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
 
     expect(screen.getByTestId('reading-partial')).toHaveTextContent(/Partial read/i);
     // Hero + rows still render (the partial flag annotates; it does not gate).
-    expect(screen.getByRole('img', { name: /Score \d+ of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score \d+ of 100/ })).toBeInTheDocument();
     expect(screen.getByTestId('driver-rows')).toBeInTheDocument();
   });
 
@@ -62,7 +62,7 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
     expect(() => render(<Reading />)).not.toThrow();
 
     // Hero gauge still resolves from overall_score (never null).
-    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
 
     // DriverRows degrades to the "Not available" labels — never a fabricated 0.
     const rows = screen.getByTestId('driver-rows');
@@ -123,7 +123,7 @@ describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watc
     render(<Reading />);
 
     // The gauge still resolves from overall_score — this is a real, scored read.
-    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
 
     // The watch% caption is OMITTED — no testid, no "% watch" text, no "0".
     expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
@@ -142,7 +142,7 @@ describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watc
     };
     render(<Reading />);
 
-    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
     expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
     const hero = screen.getByTestId('reading-hero');
     expect(hero.textContent ?? '').not.toMatch(/% watch/i);

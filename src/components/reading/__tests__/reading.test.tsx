@@ -162,7 +162,8 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     await user.click(cloud);
 
     const dialog = await screen.findByRole('dialog', { name: 'Audience' });
-    expect(within(dialog).getByTestId('panel-personas')).toBeInTheDocument();
+    // 03-04 wired the Phase-3 seam: the cloud now opens the full PersonaGraph.
+    expect(within(dialog).getByTestId('persona-graph')).toBeInTheDocument();
   });
 
   it('has no a11y violations in the healthy state', async () => {
