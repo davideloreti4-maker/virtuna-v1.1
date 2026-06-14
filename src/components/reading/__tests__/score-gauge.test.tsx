@@ -4,7 +4,8 @@ import { render, screen } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 
 // usePrefersReducedMotion is mocked per-test to assert both motion branches.
-const reducedMotionMock = vi.fn<[], boolean>();
+// vitest 4 `vi.fn` takes a single function-type argument (not <Args, Return>).
+const reducedMotionMock = vi.fn<() => boolean>();
 vi.mock('@/hooks/usePrefersReducedMotion', () => ({
   usePrefersReducedMotion: () => reducedMotionMock(),
 }));
