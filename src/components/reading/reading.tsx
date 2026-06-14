@@ -82,14 +82,21 @@ function readApollo(data: PredictionResult): PredictionResult['apollo_reasoning'
 
 /** Hero-owned watch% (READ-04). Container-computed so it survives the empty-
  *  personas degraded path (PersonaCloud returns null there). averageWatchThrough
- *  is already a 0–100 int; the fallback ×100s the heatmap completion fraction. */
-function heroWatchPct(heatmap: HeatmapPayload | null | undefined): number {
+ *  is already a 0–100 int; the fallback ×100s the heatmap completion fraction.
+ *
+ *  D-13 honesty contract (CR-01): returns null — NOT a fabricated 0 — when
+ *  watch-through is genuinely underivable (no personas AND no weighted_completion_pct,
+ *  or heatmap absent entirely). The caller omits the "% watch" caption when null,
+ *  exactly like the score gate. The field is genuinely absent on text / tiktok-url
+ *  reads and on permalink rows where Pass 2 fell below threshold (types.ts:482). */
+function heroWatchPct(heatmap: HeatmapPayload | null | undefined): number | null {
   const hm = heatmap ?? null;
   const badKey = worstBadGroupKey(buildSegmentGroups(hm, undefined));
   const nodes = buildPersonaNodes(hm, undefined, badKey);
   const avg = averageWatchThrough(nodes);
   if (avg != null) return avg;
-  return Math.round((hm?.weighted_completion_pct ?? 0) * 100);
+  const wc = hm?.weighted_completion_pct;
+  return wc != null ? Math.round(wc * 100) : null;
 }
 
 export function Reading() {
@@ -146,10 +153,14 @@ export function Reading() {
             onOpen={() => setPanel('personas')}
           />
           {/* watch% — hero-owned, rendered EXACTLY ONCE, OUTSIDE the cloud so it
-              survives the empty-personas degraded path (READ-04). */}
-          <p data-testid="reading-watch" className="text-sm text-foreground-secondary">
-            <span className="font-semibold tabular-nums text-foreground">{watch}%</span> watch
-          </p>
+              survives the empty-personas degraded path (READ-04). Omitted entirely
+              when watch-through is genuinely underivable — never a fabricated 0
+              presented as a real figure (D-13 / CR-01). */}
+          {watch != null && (
+            <p data-testid="reading-watch" className="text-sm text-foreground-secondary">
+              <span className="font-semibold tabular-nums text-foreground">{watch}%</span> watch
+            </p>
+          )}
         </div>
       </section>
 

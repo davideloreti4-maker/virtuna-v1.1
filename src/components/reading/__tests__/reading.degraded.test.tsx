@@ -94,3 +94,65 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
     expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CR-01 — hero watch% must NEVER render a fabricated "0% watch" when watch-through
+// is genuinely underivable (D-13 honesty contract). averageWatchThrough returns
+// null on empty personas; the heatmap fallback (weighted_completion_pct) is itself
+// genuinely absent on text / tiktok-url reads and on sub-threshold permalink rows.
+// Both null paths must OMIT the caption — not show "0% watch" beside a real gauge.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watch)', () => {
+  it('empty personas + weighted_completion_pct null → NO "% watch" caption (scored read)', () => {
+    // A scored read (gauge renders) but the watch-through is genuinely underivable:
+    // no personas AND no weighted_completion_pct. Must NOT fabricate "0% watch".
+    const heatmap = {
+      segments: [],
+      personas: [],
+      weighted_curve: [],
+      weights: {},
+      weights_source: 'default',
+      weighted_completion_pct: null,
+      weighted_top_dropoff_t: null,
+    } as unknown as PredictionResult['heatmap'];
+    mockState = {
+      id: 'sim-1',
+      data: makeReadingResult({ overall_score: 64, heatmap }),
+      isLoading: false,
+    };
+    render(<Reading />);
+
+    // The gauge still resolves from overall_score — this is a real, scored read.
+    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
+
+    // The watch% caption is OMITTED — no testid, no "% watch" text, no "0".
+    expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
+    const hero = screen.getByTestId('reading-hero');
+    expect(hero.textContent ?? '').not.toMatch(/% watch/i);
+    expect(hero.textContent ?? '').not.toMatch(/0%/);
+  });
+
+  it('heatmap null on a scored read → NO "% watch" caption', () => {
+    // heroWatchPct(null) → buildPersonaNodes(null) → [] → averageWatchThrough → null,
+    // and the weighted_completion_pct fallback has no heatmap to read → null. Omit.
+    mockState = {
+      id: 'sim-1',
+      data: makeReadingResult({ overall_score: 64, heatmap: null }),
+      isLoading: false,
+    };
+    render(<Reading />);
+
+    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
+    const hero = screen.getByTestId('reading-hero');
+    expect(hero.textContent ?? '').not.toMatch(/% watch/i);
+    expect(hero.textContent ?? '').not.toMatch(/0%/);
+  });
+
+  it('still renders "% watch" on a healthy read (the guard is not vacuous)', () => {
+    mockState = { id: 'sim-1', data: makeReadingResult(), isLoading: false };
+    render(<Reading />);
+    // The healthy fixture has personas → a real, non-null watch% caption renders.
+    expect(screen.getByTestId('reading-watch')).toHaveTextContent(/% watch/i);
+  });
+});
