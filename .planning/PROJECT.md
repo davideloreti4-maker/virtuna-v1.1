@@ -8,18 +8,29 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: v4.1 MVP Ready
+## Current Milestone: Landing v2 — Refined Marketing Site
 
-**Goal:** Walk each major pillar of the platform one at a time and fix, optimize, and refine it toward an MVP-ready state — not a feature build, a brownfield refinement pass.
+> Scoped to the `milestone/landing-v2` worktree. The product-engine milestone line
+> (v4.x / numen-rework v5.0) is tracked on its own worktrees; the `## Status` and
+> `## Current State` sections below are product-line history, not this milestone.
 
-**Pillars (loose phases — audit → fix → verify):**
-- Engine pipeline — Apollo 3-call flow (Qwen I/O, prompt quality, latency, correctness)
-- Board / Test mode — analyze board UI/UX (frames, rendering, wiring)
-- Board / Remix mode — remix board UI/UX
-- Chat feature — "ask the expert" dock UI/UX + grounding
-- General UI/UX — cross-cutting polish (Numen brand, Raycast language, mobile, a11y, dead UI)
+**Goal:** Ship one refined, dark, single-scroll marketing landing at `/` for Numen —
+OpusClip structure × Linear/Raycast craft × a crowd→score signature moment — that clears
+the taste bar five prior attempts missed. Marketing surface only; all product visuals are
+swappable placeholders.
 
-**Flexible by design:** phases are loose; surfaced to-dos get added via `/gsd-phase add` or peeled off with `/gsd-quick`. No upfront research (refinement of shipped surfaces).
+**Target features:**
+- Single long-scroll landing at `/` (replaces home), dark-only, mobile-first
+- Hero with the signature "crowd → score" audience-simulation moment
+- How-it-works + "the reading" product showcase (placeholder frames)
+- Feature deep-dives, social proof, testimonials, pricing teaser (placeholders)
+- Primary CTA "Try it free" → existing app signup; final CTA band + FAQ + footer
+- Placeholder-slot system (one-prop swap) + motion-lib foundation (shadcn/Radix/Magic UI/Aceternity/motion)
+
+**Scope guardrails:** marketing surface only — no engine/app/Supabase product logic beyond
+the CTA link. Refined > flashy; calm, purposeful motion. Brand carries over from `main`
+(coral #FF7F50, Inter, dark Raycast tokens, Stele logo). Inputs: `.planning/LANDING-VISION.md`
++ `.planning/MILESTONE.md`. Five prior attempts abandoned — reference only, do not revive.
 
 ## Status: Intelligence Surface drop — Milestone 1b shipped
 
@@ -274,4 +285,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-09 — started v4.1 MVP Ready milestone in `~/virtuna-mvp-ready/`. Brownfield refinement pass across all pillars (engine pipeline, board/test, board/remix, chat, general UI/UX); loose pillar phases, no upfront research. Forks from main @1d9e3294 (post Numen rebrand). Prior: v4.0 Apollo shipped + archived 2026-06-06.*
+*Last updated: 2026-06-14 — started Landing v2 (Refined Marketing Site) milestone in `~/virtuna-landing-v2/` (`milestone/landing-v2`, forks main @e07dbd6d). Edit scoped to this branch; product-line sections preserved for merge reconciliation. Prior product milestone: v4.1 MVP Ready (Phase 1 merged to main 2026-06-11).*
