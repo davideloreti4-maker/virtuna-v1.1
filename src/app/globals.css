@@ -347,3 +347,24 @@ body {
     }
   }
 }
+
+/* ============================================
+ * REDUCED MOTION (FOUND-04, CONTEXT D-17 layer 2)
+ * ============================================
+ *
+ * Layer 1 (<MotionConfig reducedMotion="user">, src/components/marketing/
+ * motion-config.tsx) halts every Framer `motion.*` element under the OS
+ * reduce setting. This block is layer 2: it stops the NON-Framer CSS
+ * animations that MotionConfig cannot reach. Pairs with the
+ * `motion-reduce:animate-none` Tailwind utility on ui/skeleton.tsx and the
+ * opt-in <Placeholder> breathe. No animation is load-bearing for content or
+ * first paint, so a hard stop is safe.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-skeleton-breathe,
+  .animate-shimmer,
+  .animate-marquee,
+  .animate-marquee-vertical {
+    animation: none !important;
+  }
+}
