@@ -36,7 +36,6 @@ interface FinalCtaBandProps {
 export function FinalCtaBand({ className }: FinalCtaBandProps) {
   return (
     <div
-      data-section="final-cta"
       className={cn(
         "relative w-full border-y border-border bg-surface-elevated",
         "py-20 md:py-28",

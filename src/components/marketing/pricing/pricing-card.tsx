@@ -24,6 +24,9 @@ export interface PricingCardProps {
   bullets: string[];
   /** CTA label, e.g. "Try it free" */
   ctaLabel?: string;
+  /** Risk-reducer microcopy under the CTA. Tier-specific (CR-03): the Pro card
+   *  charges after the trial, so it must NOT claim "no credit card". */
+  microcopy?: string;
 }
 
 /**
@@ -43,6 +46,7 @@ export function PricingCard({
   highlighted = false,
   bullets,
   ctaLabel = "Try it free",
+  microcopy,
 }: PricingCardProps) {
   return (
     <article
@@ -102,9 +106,11 @@ export function PricingCard({
         <Button asChild variant="primary" size="lg">
           <Link href={SIGNUP_URL}>{ctaLabel}</Link>
         </Button>
-        <p className="text-center text-xs text-foreground-muted">
-          Free to start — no credit card
-        </p>
+        {microcopy && (
+          <p className="text-center text-xs text-foreground-muted">
+            {microcopy}
+          </p>
+        )}
       </div>
     </article>
   );

@@ -18,6 +18,7 @@ const TIERS = [
       "Hook & retention breakdown",
     ],
     ctaLabel: "Try it free",
+    microcopy: "Free to start — no credit card",
   },
   {
     name: "Pro",
@@ -34,6 +35,7 @@ const TIERS = [
       "Priority support",
     ],
     ctaLabel: "Try it free",
+    microcopy: "7-day free trial — cancel anytime",
   },
 ] as const;
 
@@ -68,6 +70,7 @@ export function PricingTeaser({ className }: { className?: string }) {
             highlighted={tier.highlighted}
             bullets={[...tier.bullets]}
             ctaLabel={tier.ctaLabel}
+            microcopy={tier.microcopy}
           />
         ))}
       </div>

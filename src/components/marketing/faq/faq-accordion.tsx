@@ -24,37 +24,50 @@ import { cn } from "@/lib/utils";
  *     text-foreground         replaces text-white
  *     text-foreground/80      replaces text-white/80
  *     text-foreground-secondary replaces text-gray-400
+ *     [&>svg]:text-foreground recolors the CaretDown chevron — its direct
+ *       text-white is not className-inheritable, so an arbitrary `> svg`
+ *       variant overrides it by specificity, still WITHOUT touching the
+ *       shared primitive (CR-01).
  * - No dangerouslySetInnerHTML (T-04-03-01 — React escapes strings natively).
  * - No coral (keep accent precious — only CTA uses it).
  */
 
 interface FaqItem {
+  /** Stable identity — used as the Radix value + React key so copy edits to `q`
+   *  never reset accordion state or collide on duplicate questions (WR-01). */
+  id: string;
   q: string;
   a: string;
 }
 
 const FAQ_ITEMS: readonly FaqItem[] = [
   {
+    id: "faq-how-it-works",
     q: "How does it actually know if my video will perform?",
     a: "Numen runs a synthetic audience — thousands of simulated viewer profiles built from real engagement patterns. Each profile watches your video frame-by-frame and reacts the way real TikTok audiences do. The result is your predicted score, watch-through %, and the exact second viewers are most likely to drop. It's not a guess — it's a simulation.",
   },
   {
+    id: "faq-platforms",
     q: "Does it work for platforms other than TikTok?",
     a: "Right now Numen is TikTok-first. The simulation model is trained on TikTok-specific engagement patterns — scroll behavior, hook windows, watch-through benchmarks. Instagram Reels and YouTube Shorts are on the roadmap. For TikTok creators, you get the most accurate predictions available.",
   },
   {
+    id: "faq-niche",
     q: "What if my niche is small or unusual?",
     a: "Numen performs well across niches because it models viewer behavior rather than content categories. Whether you make finance content, dark comedy, or niche hobby videos, the audience simulation adapts to what viewers in your category actually respond to — short hooks, longer storytelling, rapid cuts, or slow builds.",
   },
   {
+    id: "faq-privacy",
     q: "Does Numen store or share my videos?",
     a: "No. Numen analyzes your TikTok link — the video lives on TikTok's servers, not ours. We never upload or retain your content. Your analysis results are private to your account and are never shared or sold.",
   },
   {
+    id: "faq-free-trial",
     q: "Is it free to try?",
     a: "Yes. You can run your first Simulation free — no credit card required. The free tier lets you experience the full prediction output so you can judge accuracy on your own content before deciding. Paid plans unlock higher usage, deeper breakdowns, and retention heatmaps.",
   },
   {
+    id: "faq-duration",
     q: "How long does a Simulation take?",
     a: "Most Simulations complete in under 90 seconds. You paste a TikTok link, the synthetic audience runs, and you get a full prediction report — score, watch-through %, hook strength, and drop-point — before you would have posted and waited 48 hours for real data.",
   },
@@ -69,11 +82,11 @@ export function FaqAccordion({ className }: { className?: string }) {
     >
       {FAQ_ITEMS.map((item) => (
         <AccordionItem
-          key={item.q}
-          value={item.q}
+          key={item.id}
+          value={item.id}
           className="border-border bg-surface-elevated/50"
         >
-          <AccordionTrigger className="text-foreground hover:text-foreground/80">
+          <AccordionTrigger className="text-foreground hover:text-foreground/80 [&>svg]:text-foreground">
             {item.q}
           </AccordionTrigger>
           <AccordionContent className="text-foreground-secondary">

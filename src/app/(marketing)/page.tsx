@@ -139,7 +139,7 @@ export default function HomePage() {
 
         {/* Full-bleed CTA band — before Footer, no max-w-5xl inner measure (D-12).
             The band owns its own full-bleed surface. No scroll-anchor / nav link (D-19). */}
-        <section data-section="final-cta" className="border-t border-border">
+        <section data-section="final-cta">
           <FinalCtaBand />
         </section>
       </main>
