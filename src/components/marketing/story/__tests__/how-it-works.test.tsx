@@ -21,9 +21,10 @@ describe("<HowItWorks /> — STORY-01", () => {
   it("renders exactly 3 ordered step blocks", () => {
     const { container } = render(<HowItWorks />);
 
-    // Each step pairs an ordinal marker + a Placeholder visual; assert there
-    // are exactly 3 product visuals (one per step) via the data-variant hook.
-    const slots = container.querySelectorAll("[data-variant]");
+    // Each step pairs an ordinal marker + a product-skeleton visual; assert
+    // there are exactly 3 step visuals (one per step) via the stable
+    // `data-step-visual` hook (03-05 skeletons carry no data-variant).
+    const slots = container.querySelectorAll("[data-step-visual]");
     expect(slots.length).toBe(3);
   });
 
@@ -51,15 +52,19 @@ describe("<HowItWorks /> — STORY-01", () => {
     expect(three).toBeTruthy();
   });
 
-  it("each step visual is a <Placeholder> with an inline aspect-ratio (no-CLS)", () => {
+  it("each step visual sits in an aspect-stable box (no-CLS)", () => {
     const { container } = render(<HowItWorks />);
 
-    const slots = container.querySelectorAll("[data-variant]");
+    const slots = container.querySelectorAll("[data-step-visual]");
     expect(slots.length).toBe(3);
-    // Success Criterion 4: every product visual is a Placeholder with the
-    // no-CLS inline aspect-ratio set (placeholder.tsx line 120).
+    // Success Criterion 4: every step visual wrapper reserves an aspect-locked
+    // box (an `aspect-*` class OR an inline aspectRatio) so the skeleton mount
+    // introduces no layout shift.
     slots.forEach((slot) => {
-      expect((slot as HTMLElement).style.aspectRatio.length).toBeGreaterThan(0);
+      const el = slot as HTMLElement;
+      const hasAspectClass = /\baspect-/.test(el.className);
+      const hasInlineAspect = el.style.aspectRatio.length > 0;
+      expect(hasAspectClass || hasInlineAspect).toBe(true);
     });
   });
 
