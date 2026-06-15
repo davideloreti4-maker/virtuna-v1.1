@@ -36,8 +36,13 @@ describe("product-skeleton primitives", () => {
     it("shows a score number >= 70 (honesty floor) and the band word 'Strong'", () => {
       const { container } = render(<ScoreGaugeSkeleton />);
 
-      // The fixed sample score is 87 (>= BAND_THRESHOLDS.STRONG = 70).
-      expect(container.textContent ?? "").toMatch(/\b(7\d|8\d|9\d|100)\b/);
+      // The fixed sample score is 87 (>= BAND_THRESHOLDS.STRONG = 70). Parse
+      // the first 2-3 digit run and assert it clears the honesty floor — a
+      // \b-anchored regex breaks when the number abuts the band word
+      // ("87Strong"), so read the value instead of pattern-matching boundaries.
+      const scoreMatch = (container.textContent ?? "").match(/(\d{2,3})/);
+      expect(scoreMatch).not.toBeNull();
+      expect(Number(scoreMatch?.[1])).toBeGreaterThanOrEqual(70);
       expect(screen.getAllByText(/strong/i).length).toBeGreaterThanOrEqual(1);
     });
 
