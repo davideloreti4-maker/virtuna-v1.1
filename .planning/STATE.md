@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-06-15T11:04:50.383Z"
+stopped_at: Completed 03-06-PLAN.md
+last_updated: "2026-06-15T11:08:43.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 14
-  percent: 40
+  completed_plans: 15
+  percent: 44
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 03 (story-showcase) — GAP CLOSURE IN PROGRESS
-Plan: 4 base done + gap-closure 03-04 DONE (5 gap plans 03-04..03-08; 03-05 next)
-Status: 03-04 shipped product-skeleton primitives + removed '16:10' dev label (GAP-1/GAP-2); 03-05 consumes the primitives next
+Plan: 4 base done + gap-closure 03-04, 03-06 DONE (5 gap plans 03-04..03-08; 03-05/07/08 remain)
+Status: 03-06 tightened page rhythm (py-16 md:py-20) + scroll-mt-20 anchors (GAP-3/GAP-5) + refreshed docblock (IN-02); / stays static. 03-05 consumes the 03-04 primitives next
 Last activity: 2026-06-15
 
-Progress: [████████░░] 78%
+Progress: [████████░░] 83%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [████████░░] 78%
 | Phase 03 P02 | ~12min | 2 tasks | 3 files |
 | Phase 03 P03 | 4min | 3 tasks | 6 files |
 | Phase 03 P04 | ~6min | 2 tasks | 7 files (gap-closure) |
+| Phase 03 P06 | ~4min | 1 task | 1 file (gap-closure) |
 
 ## Accumulated Context
 
@@ -115,6 +116,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-04: device chrome (BrowserChrome/PhoneChrome) factored into skeletons/ so 03-05 reuses chrome without re-importing the hero
 - [Phase ?]: 03-04: '16:10' dev ratio label removed from marketing Placeholder; no-CLS aspectRatio inline lock kept intact
 - [Phase ?]: 03-04: IN-04 NOT applied — CVA VariantProps allows null so variant ?? 'image' fallback is required (tsc TS2322)
+- [Phase ?]: 03-06: page.tsx scroll-mt-20 (80px) on all 6 anchors clears the 64px sticky header with ~16px room (GAP-5); section rhythm tightened py-20 → py-16 md:py-20 (hero py-12 md:py-16) for desktop density (GAP-3 page-level); docblock refreshed (IN-02); / stays statically prerendered (pure RSC, build ○ /)
 
 ### Pending Todos
 
@@ -138,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T11:04:46.052Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-06-15T11:08:43.000Z
+Stopped at: Completed 03-06-PLAN.md
 Resume file: None
