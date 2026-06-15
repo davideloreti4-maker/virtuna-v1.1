@@ -26,7 +26,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation & Shell** - `/` mount, dark brand tokens, the placeholder-slot system, motion/reduced-motion wiring, and header + footer chrome (completed 2026-06-14)
 - [x] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature centerpiece — pivoted from a canvas "crowd → score" animation to a **product-shot showcase** (desktop reading window + phone TikTok, swappable Placeholder slots) after live craft review (completed 2026-06-15)
 - [x] **Phase 3: Story & Showcase** - How-it-works, "the reading" product showcase, and feature deep-dive blocks (placeholder frames) (completed 2026-06-15)
-- [ ] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ
+- [x] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ (completed 2026-06-15)
 - [ ] **Phase 5: Quality Hardening** - Final responsive, performance, and accessibility pass across the whole page
 
 ## Phase Details
@@ -167,7 +167,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 04-05-PLAN.md (wave 2) — integration: extend the marketing barrel + wire all 5 sections into `page.tsx` in the D-18 order (strip under #hero, testimonials after #features, fill #pricing/#faq, band before footer) + static-build gate (○ /) + NAV unchanged (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
+- [x] 04-05-PLAN.md (wave 2) — integration: extend the marketing barrel + wire all 5 sections into `page.tsx` in the D-18 order (strip under #hero, testimonials after #features, fill #pricing/#faq, band before footer) + static-build gate (○ /) + NAV unchanged (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
 
 ### Phase 5: Quality Hardening
 
@@ -200,5 +200,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
-| 4. Proof & Conversion | 5/6 | In Progress|  |
+| 4. Proof & Conversion | 6/6 | Complete   | 2026-06-15 |
 | 5. Quality Hardening | 0/3 | Not started | - |
