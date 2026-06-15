@@ -99,3 +99,7 @@ The full suite shows 2 failing test files, both Wave-0 RED gates seeded in 03-00
 - `src/components/layout/__tests__/footer.test.tsx > links to the nav anchor #features` — the footer `#features` anchor is wired in 03-03.
 
 Full suite otherwise: **1962 passed**, 26 skipped, 1 failed (the footer #features assertion above).
+
+## Self-Check: PASSED
+
+All 3 key files exist on disk and all 3 commits (c7f73ee0, ece5a27f, 834dea0f) are present in git history.
