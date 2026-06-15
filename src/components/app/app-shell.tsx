@@ -36,11 +36,11 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <AuthGuard>
-      <div className="h-screen bg-background">
+      <div className="h-screen overflow-hidden bg-background">
         <SidebarHamburger />
         <Sidebar />
         <main
-          className="h-full overflow-auto"
+          className="relative h-full overflow-auto"
           style={{
             marginLeft: `${offset}px`,
             transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",

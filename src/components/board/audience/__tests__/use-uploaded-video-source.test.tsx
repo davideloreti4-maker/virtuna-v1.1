@@ -61,7 +61,7 @@ describe('useUploadedVideoSource', () => {
     expect(result.current.src).toBeNull();
   });
 
-  it('yields no source for tiktok_url mode and never signs', () => {
+  it('yields no source for tiktok_url mode WITHOUT a stored path (never signs)', () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal('fetch', fetchSpy);
 
@@ -71,6 +71,28 @@ describe('useUploadedVideoSource', () => {
 
     expect(result.current).toEqual({ src: null, status: 'idle' });
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('signs a re-hosted tiktok_url path on reload (reading-ux S1)', async () => {
+    // tiktok_url runs now re-host the real mp4 to an owner-prefixed, signable path,
+    // so the scrubber resolves a playable source on permalink reload just like uploads.
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ url: 'https://signed/tiktok.mp4' }),
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const { result } = renderHook(() =>
+      useUploadedVideoSource(
+        rowResult({ input_mode: 'tiktok_url', video_storage_path: 'user-1/tiktok-abc.mp4' }),
+        null,
+      ),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe('ready'));
+    expect(result.current.src).toBe('https://signed/tiktok.mp4');
+    expect(fetchSpy).toHaveBeenCalledWith('/api/videos/sign?path=user-1%2Ftiktok-abc.mp4');
   });
 
   it('yields no source when result is null', () => {

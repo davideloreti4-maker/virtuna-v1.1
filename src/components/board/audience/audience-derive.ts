@@ -642,6 +642,9 @@ export function buildDropMoments(
 export interface CohortDropFrame {
   url: string | null;
   timecode: string;
+  /** Drop time in SECONDS — lets a scrubber sync a "leaving now" highlight to the
+   *  playhead (reading-ux S2 2026-06-15). Same value the `timecode` formats. */
+  tSec: number;
 }
 
 export function cohortDropFrame(
@@ -694,5 +697,6 @@ export function cohortDropFrame(
   return {
     url: frameForSegmentIndex(filmstrips, segments, index),
     timecode: formatTime(dropSec),
+    tSec: dropSec,
   };
 }

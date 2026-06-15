@@ -91,7 +91,7 @@ let mockState: { id: string | null; data: PredictionResult | null; isLoading: bo
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 // The score panel (D-02) runs a panel-local useComparisons(id) (useQuery). Mock it
 // so no QueryClientProvider is needed and the niche cohort is deterministic — a real
 // cohort here renders ScoreDistribution's field histogram (the richest score surface
@@ -107,6 +107,11 @@ vi.mock('@/components/board/verdict/use-comparisons', () => ({
 // a URL string is NOT a cut/jargon field (the sweep asserts no banned sentinels leak).
 vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
   usePermalinkFilmstrips: () => ({ 0: 'https://example.test/frame-0.jpg', 2: 'https://example.test/frame-2.jpg' }),
+}));
+// The retention scrubber resolves a video via useUploadedVideoSource (fetch). Mock
+// it so the drill sweep needs no network; a signed URL is not a cut/jargon field.
+vi.mock('@/components/board/audience/use-uploaded-video-source', () => ({
+  useUploadedVideoSource: () => ({ src: 'https://example.test/clip.mp4', status: 'ready' }),
 }));
 
 import { Reading } from '../reading';
@@ -152,47 +157,32 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
-    // Open each panel in turn (Hook, Retention, Shareability via rows; Personas
-    // via the cloud) — the drill content is the richest surface, so prove the
-    // banned fields stay out there too.
-    for (const panelTrigger of ['driver-row-hook', 'driver-row-retention', 'driver-row-shareability']) {
-      await user.click(screen.getByTestId(panelTrigger));
-      const dialog = await screen.findByRole('dialog');
-      const dialogText = dialog.textContent ?? '';
+    // Expand each drill panel in turn (inline accordion — Hook, Retention,
+    // Shareability, Audience, Niche rank). The expanded panel is the richest raw-data
+    // surface, so sweep the whole thread with each one open.
+    const panels: Array<[string, string]> = [
+      ['row-trigger-score', 'score-distribution'],
+      ['row-trigger-hook', 'panel-hook'],
+      ['row-trigger-retention', 'retention-scrubber-cluster'],
+      ['row-trigger-shareability', 'panel-shareability'],
+      ['row-trigger-personas', 'panel-personas-list'],
+    ];
+    for (const [trigger, content] of panels) {
+      await user.click(screen.getByTestId(trigger));
+      await screen.findByTestId(content); // wait for the panel to mount
+      const text = container.textContent ?? '';
       for (const banned of BANNED_STRINGS) {
-        expect(dialogText).not.toContain(banned);
+        expect(text).not.toContain(banned);
       }
-      // Close before opening the next.
-      await user.keyboard('{Escape}');
-    }
-
-    // Score panel via the hero gauge (D-02, NEW raw-data surface — guard it too).
-    await user.click(screen.getByRole('button', { name: /Score \d+ of 100/ }));
-    const scoreDialog = await screen.findByRole('dialog', { name: 'Score' });
-    const scoreText = scoreDialog.textContent ?? '';
-    for (const banned of BANNED_STRINGS) {
-      expect(scoreText).not.toContain(banned);
-    }
-    await user.keyboard('{Escape}');
-
-    // Personas panel via the cloud (target the cloud svg — the gauge is also a button now).
-    const cloud = container
-      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
-      .closest('[role="button"]') as HTMLElement;
-    await user.click(cloud);
-    const personasDialog = await screen.findByRole('dialog', { name: 'Audience' });
-    const personasText = personasDialog.textContent ?? '';
-    for (const banned of BANNED_STRINGS) {
-      expect(personasText).not.toContain(banned);
     }
   });
 
   it('still renders the legitimate whitelisted content (the guard is not vacuous)', () => {
     render(<Reading />);
-    // The gauge score + the driver rows + Fix First still render from the
+    // The gauge score + the accordion rows + Fix First still render from the
     // whitelisted fields — proving the test renders a real, populated thread.
-    expect(screen.getByRole('button', { name: /Score \d+ of 100/ })).toBeInTheDocument();
-    expect(screen.getByTestId('driver-rows')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score \d+ of 100/ })).toBeInTheDocument();
+    expect(screen.getByTestId('reading-accordion')).toBeInTheDocument();
     expect(screen.getByTestId('fix-first')).toBeInTheDocument();
   });
 });

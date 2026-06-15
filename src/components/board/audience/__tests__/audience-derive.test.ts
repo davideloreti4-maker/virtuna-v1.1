@@ -555,6 +555,8 @@ describe('cohortDropFrame', () => {
     expect(frame).not.toBeNull();
     expect(frame!.timecode).toBe('0:21');
     expect(frame!.url).toBe('https://signed/frame-7.jpg');
+    // tSec is the numeric drop time (reading-ux S2) — the scrubber syncs "leaving now" off it.
+    expect(frame!.tSec).toBe(21);
   });
 
   it('falls back to the cohort lowest-attention segment when no swipe time', () => {

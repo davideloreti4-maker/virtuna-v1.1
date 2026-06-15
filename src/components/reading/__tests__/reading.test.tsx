@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import type { HeatmapPayload, PredictionResult } from '@/lib/engine/types';
@@ -20,7 +20,36 @@ vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
 }));
 
 // Keep the DrillSheet's side switch deterministic (desktop = right).
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
+
+// ThumbnailStrip now reads its keyframe map from usePermalinkFilmstrips() (lazy
+// useQuery) so the hero poster renders on permalink reload. It's eager (top of the
+// tree), so the container needs this mock to mount without a QueryClientProvider.
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({}),
+}));
+
+// The persistent follow-up chat (ReadingChat) drives useExpertChat, which fetches
+// history on mount. Mock it inert so the container tests need no network/QueryClient.
+vi.mock('@/hooks/queries/use-expert-chat', () => ({
+  useExpertChat: () => ({
+    messages: [],
+    streamingText: '',
+    isStreaming: false,
+    error: null,
+    send: () => {},
+    stop: () => {},
+    clearMessages: () => {},
+    loadHistory: async () => {},
+  }),
+}));
+
+// The container now reads the niche cohort (useComparisons) for the hero "Niche
+// rank" stat + the Audience-&-context row. Mock it inert (no cohort) so the tests
+// mount without a QueryClientProvider; the niche stat simply omits (D-13).
+vi.mock('@/components/board/verdict/use-comparisons', () => ({
+  useComparisons: () => ({ data: undefined }),
+}));
 
 import { Reading } from '../reading';
 
@@ -29,9 +58,10 @@ beforeEach(() => {
 });
 
 describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
-  it('lays the blocks top-to-bottom: thumbnail → hero → driver rows → Fix First → Deeper read (READ-01)', () => {
-    // Give the thumbnail a real keyframe so the strip renders (it omits itself
-    // otherwise) — proves it sits ABOVE the hero in DOM order.
+  it('lays the blocks top-to-bottom: hero → your audience → score drivers → audience & context → Fix First → Deeper read (READ-01)', () => {
+    // Give the hero poster a real keyframe so the <img> renders INSIDE the hero
+    // scorecard (the standalone thumbnail strip is retired — the poster is now part
+    // of "THE READ" card, no longer a block above it).
     const data = makeReadingResult();
     const heatmap = {
       ...(data.heatmap as HeatmapPayload),
@@ -43,52 +73,48 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
 
     const { container } = render(<Reading />);
 
-    // Collect the ordered anchors that mark each block.
+    // The poster lives INSIDE the hero scorecard now (not a strip above it).
+    const hero = container.querySelector<HTMLElement>('[data-testid="reading-hero"]')!;
+    expect(hero.querySelector('img[alt=""]')).toBeInTheDocument();
+
+    // Collect the ordered section anchors that mark each block. The audience
+    // overview (breakout) now sits directly under the hero, above Score drivers.
+    const ids = [
+      'reading-hero',
+      'audience-breakout',
+      'reading-accordion',
+      'reading-audience-context',
+      'fix-first',
+      'deeper-read',
+    ];
     const order = Array.from(
-      container.querySelectorAll<HTMLElement>(
-        'img[alt=""], [data-testid="reading-hero"], [data-testid="driver-rows"], [data-testid="fix-first"], [data-testid="deeper-read"]',
-      ),
-    );
+      container.querySelectorAll<HTMLElement>(ids.map((id) => `[data-testid="${id}"]`).join(', ')),
+    ).map((el) => el.dataset.testid);
 
-    const thumbIdx = order.findIndex((el) => el.tagName === 'IMG');
-    const heroIdx = order.findIndex((el) => el.dataset.testid === 'reading-hero');
-    const rowsIdx = order.findIndex((el) => el.dataset.testid === 'driver-rows');
-    const fixIdx = order.findIndex((el) => el.dataset.testid === 'fix-first');
-    const deeperIdx = order.findIndex((el) => el.dataset.testid === 'deeper-read');
-
-    expect(thumbIdx).toBeGreaterThanOrEqual(0);
-    expect(thumbIdx).toBeLessThan(heroIdx);
-    expect(heroIdx).toBeLessThan(rowsIdx);
-    expect(rowsIdx).toBeLessThan(fixIdx);
-    expect(fixIdx).toBeLessThan(deeperIdx);
+    // Each anchor present and in the locked vertical order.
+    const indices = ids.map((id) => order.indexOf(id));
+    expect(indices.every((i) => i >= 0)).toBe(true);
+    for (let i = 1; i < indices.length; i++) {
+      expect(indices[i - 1]).toBeLessThan(indices[i]!);
+    }
   });
 
-  it('renders the gauge from overall_score and the watch% caption EXACTLY ONCE (READ-04 owned-once)', () => {
+  it('renders the gauge from overall_score and the hero watch-through stat EXACTLY ONCE (READ-04 owned-once)', () => {
     mockState = { id: 'sim-1', data: makeReadingResult({ overall_score: 71 }), isLoading: false };
-    const { container } = render(<Reading />);
+    render(<Reading />);
 
-    // The gauge exposes the score via its aria-label (now a button — D-02 tap target).
-    expect(screen.getByRole('button', { name: /Score 71 of 100/ })).toBeInTheDocument();
+    // The gauge exposes the score via its aria-label (display-only img — UX rework).
+    expect(screen.getByRole('img', { name: /Score 71 of 100/ })).toBeInTheDocument();
 
-    // The hero-owned "{n}% watch" caption renders EXACTLY ONCE (the cloud no
-    // longer renders an aggregate caption — the container owns it). Count the
-    // caption ELEMENTS, not raw textContent (the cloud's sr-only per-persona
-    // "watch-through" mirror is a distinct a11y string, not the hero caption).
+    // The hero-owned watch-through stat renders EXACTLY ONCE. The persona dot-cloud
+    // that used to emit a second aggregate caption is gone (replaced by the
+    // AudienceOrbit, which carries no watch caption) — so the container owns it alone.
     expect(screen.getAllByTestId('reading-watch')).toHaveLength(1);
-    expect(screen.getByTestId('reading-watch').textContent).toMatch(/^\d+%\s*watch$/);
-
-    // No element anywhere renders the bare aggregate "{n}% watch" caption twice:
-    // assert the cloud component does not emit a matching standalone caption.
-    const captions = Array.from(container.querySelectorAll<HTMLElement>('p, span')).filter((el) =>
-      /^\s*\d+%\s*watch\s*$/.test(el.textContent ?? ''),
-    );
-    // Only the hero <p data-testid="reading-watch"> matches (its inner <span> holds
-    // "{n}%" only, so it alone has the full "{n}% watch" text).
-    expect(captions).toHaveLength(1);
-    expect(captions[0]?.dataset.testid).toBe('reading-watch');
+    // New scorecard format: the value is "{n}%" (its "Watch-through" label is a sibling).
+    expect(screen.getByTestId('reading-watch').textContent).toMatch(/^\d+%$/);
   });
 
-  it('places the gate banner ABOVE the gauge when anti_virality_gated, score still present (READ-03/D-04)', () => {
+  it('shows the score for an anti-virality-gated read with NO top gate banner (banner removed per UX)', () => {
     mockState = {
       id: 'sim-1',
       data: makeReadingResult({
@@ -100,19 +126,16 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     };
     const { container } = render(<Reading />);
 
-    // Gauge (score) still rendered (now a button — D-02 tap target).
-    const gauge = screen.getByRole('button', { name: /Score 38 of 100/ });
-    expect(gauge).toBeInTheDocument();
+    // Gauge (score) still rendered (display-only img — UX rework).
+    expect(screen.getByRole('img', { name: /Score 38 of 100/ })).toBeInTheDocument();
 
-    // The gate banner sits before the hero section in DOM order.
-    const hero = container.querySelector('[data-testid="reading-hero"]')!;
-    // The AntiViralityHeader copy contains "post" (override link "Post anyway →"
-    // / header copy). Assert SOMETHING from the banner precedes the hero.
-    const banner = screen.getByText(/post anyway/i);
-    expect(banner.compareDocumentPosition(hero) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // The "Don't post yet" gradient banner is no longer mounted above the read
+    // (removed during the hero rework — the signal can be relocated if wanted).
+    expect(container.querySelector('[data-testid="av-header"]')).toBeNull();
+    expect(screen.queryByText(/post anyway/i)).toBeNull();
   });
 
-  it('watch% survives the empty-personas degraded path — caption present, NO cloud svg (READ-04)', () => {
+  it('watch% survives the empty-personas degraded path — stat present, NO orbit/cloud svg (READ-04)', () => {
     const data = makeReadingResult();
     const heatmap = {
       ...(data.heatmap as HeatmapPayload),
@@ -123,47 +146,40 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
 
     const { container } = render(<Reading />);
 
-    // PersonaCloud returns null on empty personas → no aria-labelled cloud svg.
+    // Both audience visuals need personas: the old dot-cloud and the new breakout
+    // overview each omit on empty personas → neither renders (no empty shell).
     expect(
       container.querySelector('svg[aria-label="Audience watch-through by persona"]'),
     ).toBeNull();
+    expect(container.querySelector('[data-testid="audience-breakout"]')).toBeNull();
 
-    // But the hero-owned watch% caption is STILL present exactly once — it is
-    // container-owned, so it survives the empty-personas path where the cloud omits.
+    // But the hero-owned watch stat is STILL present exactly once — it is
+    // container-owned, so it survives the empty-personas path.
     expect(screen.getAllByTestId('reading-watch')).toHaveLength(1);
     // Fallback = round(0.42*100) = 42.
-    expect(screen.getByTestId('reading-watch').textContent).toMatch(/^42%\s*watch$/);
+    expect(screen.getByTestId('reading-watch').textContent).toMatch(/^42%$/);
   });
 
-  it('opens the ONE DrillSheet with native content when a driver row is tapped (READ-07)', async () => {
+  it('expands the Hook panel INLINE when the Hook row is tapped (accordion drill-down)', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    // No dialog before interaction.
+    // No panel content before interaction (collapsed accordion).
+    expect(screen.queryByTestId('panel-hook')).not.toBeInTheDocument();
+
+    // Tap the Hook row → its panel expands IN PLACE (no bottom-sheet / dialog).
+    await user.click(screen.getByTestId('row-trigger-hook'));
+    expect(await screen.findByTestId('panel-hook')).toBeInTheDocument();
+    // Inline expand — never a modal dialog (the DrillSheet is retired here).
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-    // Tap the Hook row → the single DrillSheet opens, named by its title.
-    await user.click(screen.getByTestId('driver-row-hook'));
-    const dialog = await screen.findByRole('dialog', { name: 'Hook' });
-    expect(dialog).toBeInTheDocument();
-
-    // Native hook content rendered (modality rows), NOT a stub.
-    expect(within(dialog).getByTestId('panel-hook')).toBeInTheDocument();
   });
 
-  it('the cloud opens the Phase-3 personas seam in the same single DrillSheet', async () => {
-    const user = userEvent.setup();
-    const { container } = render(<Reading />);
-
-    // Target the cloud SPECIFICALLY (the gauge is now also a button — D-02 score tap).
-    const cloud = container
-      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
-      .closest('[role="button"]') as HTMLElement;
-    await user.click(cloud);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Audience' });
-    // 03-04 wired the Phase-3 seam: the cloud now opens the full PersonaGraph.
-    expect(within(dialog).getByTestId('persona-graph')).toBeInTheDocument();
+  it('shows the audience overview (breakout) under the hero AND the revived deep-dive drill row', () => {
+    render(<Reading />);
+    // The hero folds in the breakout cascade (audience OVERVIEW); the persona deep-dive
+    // is now also revived as the "Audience" accordion row (S3 2026-06-15).
+    expect(screen.getByTestId('audience-breakout')).toBeInTheDocument();
+    expect(screen.getByTestId('row-trigger-personas')).toBeInTheDocument();
   });
 
   it('has no a11y violations in the healthy state', async () => {

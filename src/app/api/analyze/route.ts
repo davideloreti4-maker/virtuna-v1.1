@@ -657,7 +657,11 @@ export async function POST(request: Request) {
     // Shared INSERT builder — produces the analysis_results row for either branch.
     const buildInsertRow = (
       finalResult: PredictionResult,
-      _ruleContributions: Array<Record<string, unknown>>
+      _ruleContributions: Array<Record<string, unknown>>,
+      // reading-ux S1 (2026-06-15): tiktok_url re-host path surfaced by the pipeline
+      // (PipelineResult.video_storage_path). Null for video_upload (validated path wins
+      // below) and text mode. Persisting it lets the retention scrubber replay on reload.
+      pipelineVideoPath?: string | null,
     ) => ({
       user_id: user.id,
       content_text: validated.content_text ?? "",
@@ -705,18 +709,20 @@ export async function POST(request: Request) {
       // it from `geminiResult.analysis.audio_signals?.audio_description ?? null`;
       // null when audio_signals absent. Column added by Plan 06-02 migration.
       audio_description: finalResult.audio_description ?? null,
-      // Phase 11 (INT-05): Persist Supabase Storage path so retention cron can delete it.
-      // Only set for video_upload mode; null for tiktok_url/text modes.
-      // Board-fix: when retention is NOT opted in, the video is deleted right after
-      // analysis (cleanupUploadedStorage below), so persisting its path would leave a
-      // stale key that 404s in /api/videos/sign on permalink reload. Null it here so
-      // the board degrades cleanly instead of requesting a dead object.
+      // Phase 11 (INT-05): Persist Supabase Storage path so /api/videos/sign can mint
+      // a playable URL on permalink reload (the reading retention scrubber needs real
+      // video on EVERY read — reading-ux 2026-06-15, Option A). Set for ALL video_upload
+      // rows regardless of storage_retention_opted_in: the file is no longer deleted on
+      // the success path (the two success-path cleanupUploadedStorage calls were removed);
+      // the 30-day retention cron still expires non-opted-in videos, after which the
+      // scrubber degrades to the keyframe filmstrip. For tiktok_url, the pipeline re-hosts
+      // the real mp4 into an owner-prefixed path and surfaces it as pipelineVideoPath
+      // (reading-ux S1 2026-06-15) — persisted here so the scrubber replays on reload too.
+      // Text mode → both are null.
       video_storage_path:
-        validated.input_mode === "video_upload" &&
-        validated.video_storage_path &&
-        retentionOptedIn
+        validated.input_mode === "video_upload" && validated.video_storage_path
           ? validated.video_storage_path
-          : null,
+          : pipelineVideoPath ?? null,
       // Persist the assembled HeatmapPayload so /api/analysis/[id] can return
       // the real segments/personas/weighted_curve on permalink replay instead
       // of falling back to the server-side synth.
@@ -758,6 +764,9 @@ export async function POST(request: Request) {
         pipelineResult = await runPredictionPipeline(validated, {
           requestId,
           bypassCache,
+          // reading-ux S1 (2026-06-15): owner id so a tiktok_url re-host lands at a
+          // signable, owner-prefixed path and is kept on success for the scrubber.
+          userId: user.id,
         });
       } catch (pipelineError) {
         // Phase 3 (260528-nsb): cleanup orphan on JSON-branch pipeline throw.
@@ -785,7 +794,7 @@ export async function POST(request: Request) {
       const jsonInsertId = nanoid(12);
       const { error: insertError } = await service
         .from("analysis_results")
-        .insert({ ...buildInsertRow(finalResult, ruleContributions), id: jsonInsertId });
+        .insert({ ...buildInsertRow(finalResult, ruleContributions, pipelineResult.video_storage_path), id: jsonInsertId });
 
       if (insertError) {
         log.error("DB insert failed (json)", { error: insertError.message });
@@ -813,10 +822,11 @@ export async function POST(request: Request) {
         { onConflict: "user_id,period_start,period_type" }
       );
 
-      // Phase 11 (INT-05/D-04): Delete uploaded video only if user has NOT opted into retention.
-      // Opted-in users keep their video; retention cron handles 30-day expiry.
-      // Phase 3 (260528-nsb): use cleanupUploadedStorage helper (logs on failure, no silent swallow).
-      cleanupUploadedStorage(service, validated, retentionOptedIn, log);
+      // reading-ux 2026-06-15 (Option A): uploaded videos are now KEPT on the success
+      // path so the retention scrubber has a playable source on permalink reload. The
+      // 30-day retention cron still expires non-opted-in videos. (Orphan cleanup still
+      // runs on the cache-hit / 429 / pipeline-error branches, where no row references
+      // the upload.) The former success-path cleanupUploadedStorage call was removed here.
 
       // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter — triggers banner at count % 10.
       // Uses DB function to avoid read-then-write race condition.
@@ -962,6 +972,14 @@ export async function POST(request: Request) {
           const pipelineResult = await runPredictionPipeline(validated, {
             requestId,
             bypassCache,
+            // Thread the row id so the pipeline can fire-and-forget filmstrip
+            // keyframe extraction at wave_0_complete (pipeline.ts gates the
+            // trigger on opts.analysisId — without this it was ALWAYS undefined,
+            // so keyframes were never extracted for ANY analysis).
+            analysisId,
+            // reading-ux S1 (2026-06-15): owner id so a tiktok_url re-host lands at a
+            // signable, owner-prefixed path and is kept on success for the scrubber.
+            userId: user.id,
             onStageEvent: (event: StageEvent) => {
               send("stage", event);
             },
@@ -1011,7 +1029,7 @@ export async function POST(request: Request) {
           const { error: insertError } = await service
             .from("analysis_results")
             .upsert(
-              { ...buildInsertRow(finalResult, ruleContributions), id: analysisId },
+              { ...buildInsertRow(finalResult, ruleContributions, pipelineResult.video_storage_path), id: analysisId },
               { onConflict: "id" }
             );
 
@@ -1102,9 +1120,10 @@ export async function POST(request: Request) {
 
           send("complete", finalResult);
 
-          // Phase 11 (INT-05/D-04): Opt-in gate (mirrors JSON branch).
-          // Phase 3 (260528-nsb): use cleanupUploadedStorage helper (logs on failure, no silent swallow).
-          cleanupUploadedStorage(service, validated, retentionOptedIn, log);
+          // reading-ux 2026-06-15 (Option A): KEEP the uploaded video on success so the
+          // retention scrubber resolves a playable URL on permalink reload (mirrors the
+          // JSON branch). Orphan cleanup still runs on the pipeline-error branch below
+          // and on the cache-hit / 429 early returns. Former success-path cleanup removed.
 
           // Phase 11 (PROFILE-16/D-08): Atomic lifetime analysis counter (mirrors JSON branch).
           void (async () => {
