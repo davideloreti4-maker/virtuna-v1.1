@@ -4,7 +4,7 @@ milestone: landing-v2
 milestone_name: milestone
 status: verifying
 stopped_at: Completed 04-04-PLAN.md (FinalCtaBand — CONVERT-02 GREEN)
-last_updated: "2026-06-15T18:00:32.982Z"
+last_updated: "2026-06-15T18:21:46.753Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 ## Current Position
 
-Phase: 04 (proof-conversion) — EXECUTING
-Plan: 6 of 6
+Phase: 5
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-06-15
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 14
+- Total plans completed: 20
 - Average duration: —
 - Total execution time: —
 
@@ -46,6 +46,7 @@ Progress: [██████████] 100%
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
 | 03 | 9 | - | - |
+| 04 | 6 | - | - |
 
 **Recent Trend:**
 
