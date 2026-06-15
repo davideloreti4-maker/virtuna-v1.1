@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { HeatmapPayload } from '@/lib/engine/types';
 import { resolveKeyframeUrl, type KeyframeSegmentLike } from '@/components/board/_kit';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 
 /**
  * ThumbnailStrip — the static video poster at the top of the thread (READ-03,
@@ -33,9 +34,15 @@ function asKeyframeSegments(
 export function ThumbnailStrip({ heatmap }: ThumbnailStripProps) {
   const [failed, setFailed] = useState(false);
 
+  // The persisted keyframe map for this permalink (same source RetentionPanel
+  // uses). WITHOUT this the strip only saw heatmap.segments[].keyframe_uri, which
+  // is always null on reload → the hero poster never rendered. {} when no id /
+  // no frames, in which case the gate below omits the strip cleanly.
+  const filmstrips = usePermalinkFilmstrips();
+
   // Earliest available real frame ('first' target). null in text / tiktok-url
   // modes with no keyframe → the gate below omits the strip.
-  const src = resolveKeyframeUrl(undefined, asKeyframeSegments(heatmap?.segments), 'first');
+  const src = resolveKeyframeUrl(filmstrips, asKeyframeSegments(heatmap?.segments), 'first');
 
   // Real-video gate + failed-load gate: no src (or a failed image) → render nothing.
   if (!src || failed) return null;

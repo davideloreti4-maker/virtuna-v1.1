@@ -4,16 +4,20 @@
 // reuse without reaching into individual files.
 
 export { Reading } from './reading';
-export { ReadingThread } from './reading-thread';
-export { FollowUpThread } from './follow-up-thread';
-export { FollowUpProvider, useFollowUp } from './follow-up-context';
 
 export { ScoreGauge } from './score-gauge';
 export { PersonaCloud } from './persona-cloud';
 export { ThumbnailStrip } from './thumbnail-strip';
 export { AntiViralityHeader } from './anti-virality-header';
-export { DriverRows } from './driver-rows';
+export { ReadingHero } from './reading-hero';
+export { AudienceOrbit } from './audience-orbit';
+export { AudienceBreakout } from './audience-breakout';
+export { ReadingSection } from './reading-section';
+export { ScoreDriversSection, AudienceContextSection } from './reading-accordion';
 export { FixFirstList } from './fix-first-list';
 export { RewriteItem } from './rewrite-item';
 export { DeeperRead } from './deeper-read';
+export { ReadingChat } from './reading-chat';
 export { DrillSheet } from './drill-sheet';
+export { RetentionScrubber } from './retention-scrubber';
+export { PanelShell, LegendKey, PanelSection, PanelEmpty } from './panel-shell';
