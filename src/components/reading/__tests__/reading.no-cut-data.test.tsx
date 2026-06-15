@@ -152,47 +152,32 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
-    // Open each panel in turn (Hook, Retention, Shareability via rows; Personas
-    // via the cloud) — the drill content is the richest surface, so prove the
-    // banned fields stay out there too.
-    for (const panelTrigger of ['driver-row-hook', 'driver-row-retention', 'driver-row-shareability']) {
-      await user.click(screen.getByTestId(panelTrigger));
-      const dialog = await screen.findByRole('dialog');
-      const dialogText = dialog.textContent ?? '';
+    // Expand each drill panel in turn (inline accordion — Score, Audience, Hook,
+    // Retention, Shareability). The expanded panel is the richest raw-data surface,
+    // so sweep the whole thread with each one open. type="single" → one at a time.
+    const panels: Array<[string, string]> = [
+      ['row-trigger-score', 'score-distribution'],
+      ['row-trigger-personas', 'panel-personas-list'],
+      ['row-trigger-hook', 'panel-hook'],
+      ['row-trigger-retention', 'panel-retention-cluster'],
+      ['row-trigger-shareability', 'panel-shareability'],
+    ];
+    for (const [trigger, content] of panels) {
+      await user.click(screen.getByTestId(trigger));
+      await screen.findByTestId(content); // wait for the panel to mount
+      const text = container.textContent ?? '';
       for (const banned of BANNED_STRINGS) {
-        expect(dialogText).not.toContain(banned);
+        expect(text).not.toContain(banned);
       }
-      // Close before opening the next.
-      await user.keyboard('{Escape}');
-    }
-
-    // Score panel via the hero gauge (D-02, NEW raw-data surface — guard it too).
-    await user.click(screen.getByRole('button', { name: /Score \d+ of 100/ }));
-    const scoreDialog = await screen.findByRole('dialog', { name: 'Score' });
-    const scoreText = scoreDialog.textContent ?? '';
-    for (const banned of BANNED_STRINGS) {
-      expect(scoreText).not.toContain(banned);
-    }
-    await user.keyboard('{Escape}');
-
-    // Personas panel via the cloud (target the cloud svg — the gauge is also a button now).
-    const cloud = container
-      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
-      .closest('[role="button"]') as HTMLElement;
-    await user.click(cloud);
-    const personasDialog = await screen.findByRole('dialog', { name: 'Audience' });
-    const personasText = personasDialog.textContent ?? '';
-    for (const banned of BANNED_STRINGS) {
-      expect(personasText).not.toContain(banned);
     }
   });
 
   it('still renders the legitimate whitelisted content (the guard is not vacuous)', () => {
     render(<Reading />);
-    // The gauge score + the driver rows + Fix First still render from the
+    // The gauge score + the accordion rows + Fix First still render from the
     // whitelisted fields — proving the test renders a real, populated thread.
-    expect(screen.getByRole('button', { name: /Score \d+ of 100/ })).toBeInTheDocument();
-    expect(screen.getByTestId('driver-rows')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score \d+ of 100/ })).toBeInTheDocument();
+    expect(screen.getByTestId('reading-accordion')).toBeInTheDocument();
     expect(screen.getByTestId('fix-first')).toBeInTheDocument();
   });
 });

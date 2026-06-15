@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'vitest-axe';
 import type { HeatmapPayload, PredictionResult } from '@/lib/engine/types';
@@ -29,7 +29,7 @@ beforeEach(() => {
 });
 
 describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
-  it('lays the blocks top-to-bottom: thumbnail → hero → driver rows → Fix First → Deeper read (READ-01)', () => {
+  it('lays the blocks top-to-bottom: thumbnail → hero → accordion → Fix First → Deeper read (READ-01)', () => {
     // Give the thumbnail a real keyframe so the strip renders (it omits itself
     // otherwise) — proves it sits ABOVE the hero in DOM order.
     const data = makeReadingResult();
@@ -46,13 +46,13 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     // Collect the ordered anchors that mark each block.
     const order = Array.from(
       container.querySelectorAll<HTMLElement>(
-        'img[alt=""], [data-testid="reading-hero"], [data-testid="driver-rows"], [data-testid="fix-first"], [data-testid="deeper-read"]',
+        'img[alt=""], [data-testid="reading-hero"], [data-testid="reading-accordion"], [data-testid="fix-first"], [data-testid="deeper-read"]',
       ),
     );
 
     const thumbIdx = order.findIndex((el) => el.tagName === 'IMG');
     const heroIdx = order.findIndex((el) => el.dataset.testid === 'reading-hero');
-    const rowsIdx = order.findIndex((el) => el.dataset.testid === 'driver-rows');
+    const rowsIdx = order.findIndex((el) => el.dataset.testid === 'reading-accordion');
     const fixIdx = order.findIndex((el) => el.dataset.testid === 'fix-first');
     const deeperIdx = order.findIndex((el) => el.dataset.testid === 'deeper-read');
 
@@ -67,8 +67,8 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     mockState = { id: 'sim-1', data: makeReadingResult({ overall_score: 71 }), isLoading: false };
     const { container } = render(<Reading />);
 
-    // The gauge exposes the score via its aria-label (now a button — D-02 tap target).
-    expect(screen.getByRole('button', { name: /Score 71 of 100/ })).toBeInTheDocument();
+    // The gauge exposes the score via its aria-label (display-only img — UX rework).
+    expect(screen.getByRole('img', { name: /Score 71 of 100/ })).toBeInTheDocument();
 
     // The hero-owned "{n}% watch" caption renders EXACTLY ONCE (the cloud no
     // longer renders an aggregate caption — the container owns it). Count the
@@ -100,8 +100,8 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     };
     const { container } = render(<Reading />);
 
-    // Gauge (score) still rendered (now a button — D-02 tap target).
-    const gauge = screen.getByRole('button', { name: /Score 38 of 100/ });
+    // Gauge (score) still rendered (display-only img — UX rework).
+    const gauge = screen.getByRole('img', { name: /Score 38 of 100/ });
     expect(gauge).toBeInTheDocument();
 
     // The gate banner sits before the hero section in DOM order.
@@ -135,35 +135,28 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     expect(screen.getByTestId('reading-watch').textContent).toMatch(/^42%\s*watch$/);
   });
 
-  it('opens the ONE DrillSheet with native content when a driver row is tapped (READ-07)', async () => {
+  it('expands the Hook panel INLINE when the Hook row is tapped (accordion drill-down)', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    // No dialog before interaction.
+    // No panel content before interaction (collapsed accordion).
+    expect(screen.queryByTestId('panel-hook')).not.toBeInTheDocument();
+
+    // Tap the Hook row → its panel expands IN PLACE (no bottom-sheet / dialog).
+    await user.click(screen.getByTestId('row-trigger-hook'));
+    expect(await screen.findByTestId('panel-hook')).toBeInTheDocument();
+    // Inline expand — never a modal dialog (the DrillSheet is retired here).
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-
-    // Tap the Hook row → the single DrillSheet opens, named by its title.
-    await user.click(screen.getByTestId('driver-row-hook'));
-    const dialog = await screen.findByRole('dialog', { name: 'Hook' });
-    expect(dialog).toBeInTheDocument();
-
-    // Native hook content rendered (modality rows), NOT a stub.
-    expect(within(dialog).getByTestId('panel-hook')).toBeInTheDocument();
   });
 
-  it('the cloud opens the Phase-3 personas seam in the same single DrillSheet', async () => {
+  it('expands the Audience panel (demoted graph + ranked persona list) from the Audience row', async () => {
     const user = userEvent.setup();
-    const { container } = render(<Reading />);
+    render(<Reading />);
 
-    // Target the cloud SPECIFICALLY (the gauge is now also a button — D-02 score tap).
-    const cloud = container
-      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
-      .closest('[role="button"]') as HTMLElement;
-    await user.click(cloud);
-
-    const dialog = await screen.findByRole('dialog', { name: 'Audience' });
-    // 03-04 wired the Phase-3 seam: the cloud now opens the full PersonaGraph.
-    expect(within(dialog).getByTestId('persona-graph')).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-personas'));
+    // List-led audience drill-down: the demoted graph header + the ranked list.
+    expect(await screen.findByTestId('persona-graph')).toBeInTheDocument();
+    expect(screen.getByTestId('panel-personas-list')).toBeInTheDocument();
   });
 
   it('has no a11y violations in the healthy state', async () => {

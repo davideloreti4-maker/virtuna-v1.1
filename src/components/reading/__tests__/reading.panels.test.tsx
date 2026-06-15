@@ -25,34 +25,26 @@ vi.mock('@/components/board/verdict/use-comparisons', () => ({
   useComparisons: () => ({ data: mockComparisons }),
 }));
 
-// The retention composed cluster (03-05) reads its keyframe map from a panel-local
-// usePermalinkFilmstrips() (lazy useQuery → fetch /api/analyze/{id}/filmstrips).
-// Mock it so the cluster mounts without a QueryClientProvider and no real network is
-// hit. `{}` (no frames) is the realistic test default — the heatmap segments exist
-// (so the curve + cohorts render), the filmstrip self-gates to neutral cells with no
-// keyframes (the graceful, no-grey-cell path). Mirrors the useComparisons mock above.
+// The retention composed cluster reads its keyframe map from a panel-local
+// usePermalinkFilmstrips() (lazy useQuery). Mock it so the cluster mounts without a
+// QueryClientProvider. `{}` (no frames) is the realistic default — the heatmap
+// segments still exist (curve + cohorts render); the filmstrip self-gates to neutral
+// cells with no keyframes (the graceful, no-grey-cell path).
 let mockFilmstrips: Record<number, string> = {};
 vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
   usePermalinkFilmstrips: () => mockFilmstrips,
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wave-0 panel scaffold (03-01) — the per-panel render + degradation gate the
-// rest of Phase 3 verifies against (03-VALIDATION § Wave 0). The SVG leaf charts
-// (RetentionChart / SegmentTable / PersonaGraph / CraftFilmstrip / ScoreDistribution
-// / StatTile) have NO direct render tests today; this file is that coverage gap.
+// Drill-down panels (UX rework 2026-06-15) — every panel now expands INLINE inside
+// the ReadingAccordion (the DrillSheet is retired). The interaction is uniform: tap
+// a row trigger (`row-trigger-<panel>`) → its panel content mounts in place. type=
+// "single" collapsible → exactly one panel open at a time, so `screen` queries
+// resolve unambiguously against the open panel.
 //
-// SC-2 is the phase spine: every drill-down panel must (a) render real engine
-// output with NO throw and NO grey-cell fallback, and (b) degrade to the calm
-// PanelEmpty ("Not available for this read.") on null/thin data — never a throw,
-// never a fabricated 0 (D-13). This file asserts BOTH for the 4 panels that exist
-// TODAY (hook / retention / shareability / personas), and stages the rich-visual +
-// `score`-panel assertions as `it.todo` for the downstream plans (03-02/03/04/05)
-// to activate — so the contract surface is agreed up front, not a moving target.
-//
-// Mock setup mirrors reading.test.tsx EXACTLY (same vi.mock targets): the container
-// is the single usePermalinkAnalysis subscriber, so we drive it with a fixture and
-// keep the DrillSheet side switch deterministic (desktop = right drawer).
+// SC-2 spine (unchanged): every panel must (a) render real engine output with NO
+// throw and NO grey-cell, and (b) degrade to the calm PanelEmpty on null/thin data —
+// never a throw, never a fabricated 0 (D-13).
 // ─────────────────────────────────────────────────────────────────────────────
 
 let mockState: { id: string | null; data: PredictionResult | null; isLoading: boolean } = {
@@ -77,48 +69,41 @@ beforeEach(() => {
 const PANEL_EMPTY_COPY = 'Not available for this read.';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// hook panel — tap the Hook driver row → DrillSheet("Hook")
+// hook panel — tap the Hook row → inline panel-hook
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: hook panel (READ-09)', () => {
   it('renders on real data without throwing — modality rows mount', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-hook'));
-    const dialog = await screen.findByRole('dialog', { name: 'Hook' });
-    expect(within(dialog).getByTestId('panel-hook')).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-hook'));
+    expect(await screen.findByTestId('panel-hook')).toBeInTheDocument();
   });
 
   it('keeps the 0–10 modality rows (reskin-only, Pitfall 3 — bar width caps at 0–10, never 0–100)', async () => {
-    // 03-05 verifies the hook panel is reskin-only: the modality rows stay on the
-    // 0–10 scale. The fixture's text_overlay_score=6.6 → a ~66% bar (6.6 × 10),
-    // NOT a 660% overflow. Assert the panel mounts the rows + the score value reads
-    // a single-digit 0–10 figure (the weakest is the fixture's text_overlay_score).
+    // The modality rows stay on the 0–10 scale. The fixture's text_overlay_score=6.6
+    // → a ~66% bar (6.6 × 10), NOT a 660% overflow. Assert the panel mounts the rows +
+    // every printed modality value reads a 0–10 figure (a 0–100 mis-scale would print
+    // e.g. 87, not ≤10). Scope to the value spans only (exclude the "/10" suffix).
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-hook'));
-    const dialog = await screen.findByRole('dialog', { name: 'Hook' });
-    const panel = within(dialog).getByTestId('panel-hook');
-    // The visual_stop_power row (a 0–10 score) renders a value ≤ 10 — proving the
-    // 0–10 contract held (a 0–100 mis-scale would print e.g. 87, not ≤10).
+    await user.click(screen.getByTestId('row-trigger-hook'));
+    const panel = await screen.findByTestId('panel-hook');
     expect(panel).toHaveTextContent(/Visual stop power/i);
-    // No fabricated 0% / overflow — every printed modality value is a 0–10 figure.
     const values = within(panel).getAllByText(/^\d+(\.\d+)?$/);
     expect(values.length).toBeGreaterThan(0);
     for (const v of values) {
-      expect(Number(v.textContent)).toBeLessThanOrEqual(10);
+      // The value span reads "{n}/10" (the "/10" is a child span); parseFloat takes
+      // the leading 0–10 figure. A 0–100 mis-scale would parse e.g. 87, not ≤10.
+      expect(parseFloat(v.textContent ?? '')).toBeLessThanOrEqual(10);
     }
   });
 
   it('degrades gracefully when hook_decomposition is absent — falls to the hook dimension, no throw, no grey-cell', async () => {
-    // ARCHITECTURE NOTE (verified against PanelContent + DriverRows): the hook
-    // panel's true PanelEmpty requires BOTH hook_decomposition null AND no hook
-    // dimension — but removing the hook dim flips DriverRows to its degraded branch
-    // (generic, NON-clickable rows), so the sheet becomes unreachable by tap. The
-    // REACHABLE graceful path: keep the dims (rows stay clickable) but null the
-    // hook_decomposition → HookPanel falls back to the hook dimension's lever/
-    // evidence (panel-dimension), never a throw, never an empty bar grid.
+    // hook_decomposition null but the hook DIMENSION present → the Hook row stays
+    // enabled and HookPanel falls back to the hook dimension's lever/evidence
+    // (panel-dimension), never a throw, never an empty bar grid.
     mockState = {
       id: 'sim-1',
       data: makeReadingResult({ hook_decomposition: undefined }),
@@ -127,57 +112,54 @@ describe('drill-down: hook panel (READ-09)', () => {
     const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
 
-    await user.click(screen.getByTestId('driver-row-hook'));
-    const dialog = await screen.findByRole('dialog', { name: 'Hook' });
+    await user.click(screen.getByTestId('row-trigger-hook'));
     // Graceful fallback body (the §2 hook lever) — NOT the modality bar grid.
-    expect(within(dialog).getByTestId('panel-dimension')).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('panel-hook')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('panel-dimension')).toBeInTheDocument();
+    expect(screen.queryByTestId('panel-hook')).not.toBeInTheDocument();
   });
 
-  it('hook sheet-level PanelEmpty (both hook_decomposition AND the hook dim absent) is unreachable by tap — DriverRows degrades non-clickable', async () => {
-    // RESOLVES the 03-01/03-04 staged hook PanelEmpty todo (honestly, NOT fabricated):
-    // the HookPanel's `if (!hook && !dim) return <PanelEmpty/>` guard EXISTS, but it
-    // has no tap path — removing the hook dimension flips DriverRows to its degraded
-    // branch (driver-rows.tsx L67: !hook || !retention || !share ⇒ degraded), which
-    // renders generic NON-clickable `driver-row` divs with no `driver-row-hook`
-    // button. So the sheet can never be opened in the both-absent state. This asserts
-    // that verified architectural fact (the reachable consequence), no throw.
+  it('hook PanelEmpty (both hook_decomposition AND the hook dim absent) is unreachable by tap — the Hook row is disabled', async () => {
+    // apollo-null removes the hook dimension → the Hook lever row has no score, so
+    // the accordion renders it DISABLED with "Not available" (honest, never a
+    // fabricated 0). A disabled row can't expand, so the both-absent PanelEmpty has
+    // no tap path — the verified architectural fact, now expressed as a disabled row.
     mockState = {
       id: 'sim-1',
       data: makeApolloNullResult({ hook_decomposition: undefined }),
       isLoading: false,
     };
+    const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
-    // No clickable hook tap source exists (the both-absent state degrades the rows).
-    expect(screen.queryByTestId('driver-row-hook')).not.toBeInTheDocument();
-    // The degraded rows show "Not available" (honest, never a fabricated 0).
-    const rows = screen.getByTestId('driver-rows');
-    expect(rows.textContent ?? '').toMatch(/Not available/);
+
+    const trigger = screen.getByTestId('row-trigger-hook');
+    expect(trigger).toBeDisabled();
+    // Clicking the disabled row does nothing — no panel content mounts.
+    await user.click(trigger);
+    expect(screen.queryByTestId('panel-hook')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('panel-dimension')).not.toBeInTheDocument();
+    // The degraded row shows "Not available" (honest, never a fabricated 0).
+    expect(screen.getByTestId('reading-accordion').textContent ?? '').toMatch(/Not available/);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// retention panel — tap the Retention driver row → DrillSheet("Retention")
+// retention panel — tap the Retention row → inline composed "watch journey" cluster
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: retention panel (READ-09)', () => {
   it('renders on real data without throwing — the composed watch-journey cluster mounts', async () => {
-    // 03-05 swap: the P2 native drop-list (panel-retention) is retired; the
-    // Retention row now opens the composed cluster (curve + filmstrip + table).
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
+    await user.click(screen.getByTestId('row-trigger-retention'));
     // All three rich visuals mount on ONE aligned timeline; the native list is gone.
-    expect(within(dialog).getByTestId('retention-chart')).toBeInTheDocument();
-    expect(within(dialog).getByTestId('craft-filmstrip')).toBeInTheDocument();
-    expect(within(dialog).getByTestId('segment-table')).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('panel-retention')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('retention-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('craft-filmstrip')).toBeInTheDocument();
+    expect(screen.getByTestId('segment-table')).toBeInTheDocument();
+    expect(screen.queryByTestId('panel-retention')).not.toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on empty segments (no throw, no empty SVG shell)', async () => {
-    // makeEmptySegmentsResult → heatmap.segments:[] → no timeline to align the
-    // composed cluster to → PanelEmpty (the Pitfall-5 guard), never an empty SVG.
+    // makeEmptySegmentsResult → heatmap.segments:[] → no timeline → PanelEmpty.
     mockState = {
       id: 'sim-1',
       data: makeEmptySegmentsResult({ dropoff_segment_indices: undefined }),
@@ -186,10 +168,9 @@ describe('drill-down: retention panel (READ-09)', () => {
     const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    expect(within(dialog).getByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('retention-chart')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-retention'));
+    expect(await screen.findByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
+    expect(screen.queryByTestId('retention-chart')).not.toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on a null heatmap (no throw)', async () => {
@@ -202,69 +183,55 @@ describe('drill-down: retention panel (READ-09)', () => {
     const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    expect(within(dialog).getByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('retention-chart')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-retention'));
+    expect(await screen.findByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
+    expect(screen.queryByTestId('retention-chart')).not.toBeInTheDocument();
   });
 
-  // ── Rich-visual mounts (03-05 swaps the native list for the composed
-  //    "watch journey" cluster: RetentionChart + CraftFilmstrip + SegmentTable). ──
   it('mounts RetentionChart (curve + niche/ghost overlay) on real data', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    // The composed cluster replaces the native segment list with the rich chart.
-    expect(within(dialog).getByTestId('retention-chart')).toBeInTheDocument();
-    expect(within(dialog).queryByTestId('panel-retention')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-retention'));
+    expect(await screen.findByTestId('retention-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('panel-retention')).not.toBeInTheDocument();
   });
 
   it('mounts CraftFilmstrip timeline-paired with the curve (D-04)', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    // The filmstrip consumes the SAME segments + filmstrips map → aligned timeline.
-    expect(within(dialog).getByTestId('craft-filmstrip')).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-retention'));
+    expect(await screen.findByTestId('craft-filmstrip')).toBeInTheDocument();
   });
 
   it('mounts SegmentTable (who-leaves cohort breakdown)', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-retention'));
-    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    expect(within(dialog).getByTestId('segment-table')).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-retention'));
+    expect(await screen.findByTestId('segment-table')).toBeInTheDocument();
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// shareability panel — tap the Shareability driver row → DrillSheet("Shareability")
+// shareability panel — tap the Shareability row → inline tiles
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: shareability panel (READ-09)', () => {
-  it('renders on real data without throwing — StatTileRow + share_pull evidence mount', async () => {
+  it('renders on real data without throwing — StatTileRow mounts', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-shareability'));
-    const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
-    // 03-04 swap: the rate tiles (StatTileRow) replace the native dimension body…
-    expect(within(dialog).getByTestId('stat-tile-row')).toBeInTheDocument();
-    // …and the share_pull lever evidence is kept as supporting text.
-    expect(within(dialog).getByTestId('panel-shareability')).toBeInTheDocument();
-    expect(within(dialog).getByText(/identity-signalling/i)).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-shareability'));
+    // The rate tiles (StatTileRow) are the instrument body.
+    expect(await screen.findByTestId('panel-shareability')).toBeInTheDocument();
+    expect(screen.getByTestId('stat-tile-row')).toBeInTheDocument();
   });
 
-  it('degrades gracefully on apollo-null — the driver rows show "Not available", no throw, no fabricated 0', () => {
-    // ARCHITECTURE NOTE (verified): the shareability panel reads the exact
-    // share_pull dimension; emptying it removes the dim, which flips DriverRows to
-    // its degraded branch (NON-clickable rows) — so the sheet can't be opened by
-    // tap in this state. The REACHABLE honesty signal on apollo-null is the
-    // DriverRows degraded copy: the levers are shown as "Not available" rather than
-    // a fabricated 0 (D-13). The sheet-level shareability PanelEmpty is staged below.
+  it('degrades gracefully on apollo-null — the rows show "Not available", no throw, no fabricated 0', () => {
+    // apollo-null removes the share_pull dimension → the Shareability lever row is
+    // disabled with "Not available". The reachable D-13 honesty signal: never a
+    // fabricated 0.
     mockState = {
       id: 'sim-1',
       data: makeApolloNullResult({ behavioral_predictions: undefined }),
@@ -272,29 +239,25 @@ describe('drill-down: shareability panel (READ-09)', () => {
     };
     expect(() => render(<Reading />)).not.toThrow();
 
-    const rows = screen.getByTestId('driver-rows');
+    const rows = screen.getByTestId('reading-accordion');
     expect(rows.textContent ?? '').toMatch(/Not available/);
-    // Never a fabricated 0 in the degraded rows.
     expect(rows.textContent ?? '').not.toMatch(/\b0\b/);
   });
 
-  // ── 03-04 swap: StatTile rate tiles (deriveBehavioralTiles) beside the share_pull
-  //    evidence. The first assertion (tiles + evidence mount) is covered above. ──
   it('mounts the behavioral rate tiles (deriveBehavioralTiles) on real data', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-shareability'));
-    const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
+    await user.click(screen.getByTestId('row-trigger-shareability'));
+    await screen.findByTestId('panel-shareability');
     // The fixture's behavioral_predictions emit ≥1 *_pct → ≥1 StatTile renders.
-    expect(within(dialog).getAllByTestId('stat-tile').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('stat-tile').length).toBeGreaterThan(0);
   });
 
-  it('rate tiles degrade gracefully via makeNoBehavioralResult — tiles omitted, NO fabricated 0%, share_pull evidence still shows', async () => {
+  it('rate tiles degrade gracefully via makeNoBehavioralResult — tiles omitted, NO fabricated 0%, evidence shows', async () => {
     // behavioral_predictions absent → deriveBehavioralTiles returns [] (StatTileRow
     // renders nothing — NEVER a fabricated "0%"); the share_pull dimension is STILL
-    // present (apollo kept), so the row stays clickable and the panel shows the
-    // evidence text. This is the reachable D-13 honesty path.
+    // present (apollo kept), so the row stays enabled and the panel mounts.
     mockState = {
       id: 'sim-1',
       data: makeNoBehavioralResult(),
@@ -303,66 +266,54 @@ describe('drill-down: shareability panel (READ-09)', () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByTestId('driver-row-shareability'));
-    const dialog = await screen.findByRole('dialog', { name: 'Shareability' });
+    await user.click(screen.getByTestId('row-trigger-shareability'));
+    expect(await screen.findByTestId('panel-shareability')).toBeInTheDocument();
     // No rate tiles (the StatTileRow self-omits on empty) → no fabricated 0% tile.
-    expect(within(dialog).queryByTestId('stat-tile-row')).not.toBeInTheDocument();
-    expect(within(dialog).queryByTestId('stat-tile')).not.toBeInTheDocument();
-    // But the share_pull evidence is kept (no throw, no grey-cell).
-    expect(within(dialog).getByTestId('panel-shareability')).toBeInTheDocument();
-    expect(within(dialog).getByText(/identity-signalling/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('stat-tile-row')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stat-tile')).not.toBeInTheDocument();
   });
 
-  it('shareability sheet-level PanelEmpty (both tiles AND the share_pull dim absent) is unreachable by tap — DriverRows degrades non-clickable', async () => {
-    // RESOLVES the 03-04 staged shareability PanelEmpty todo (honestly, NOT
-    // fabricated): the body's `tiles.length === 0 && !dim → PanelEmpty` guard EXISTS,
-    // but it has no tap path. Emptying the share_pull dimension (apollo-null) flips
-    // DriverRows to its degraded NON-clickable branch (driver-rows.tsx L67 — any of
-    // hook/retention/share absent ⇒ degraded), so the Shareability sheet can never be
-    // opened in the both-absent state. Asserts that verified fact; the reachable
-    // honesty path (rows show "Not available", never a fabricated 0/0%) holds.
+  it('shareability PanelEmpty (both tiles AND the share_pull dim absent) is unreachable by tap — the row is disabled', async () => {
+    // apollo-null empties the share_pull dimension → the Shareability lever row is
+    // disabled, so the both-absent PanelEmpty has no tap path. The reachable honesty
+    // path holds (rows show "Not available", never a fabricated 0/0%).
     mockState = {
       id: 'sim-1',
       data: makeApolloNullResult({ behavioral_predictions: undefined }),
       isLoading: false,
     };
+    const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
-    // No clickable shareability tap source exists in the both-absent state.
-    expect(screen.queryByTestId('driver-row-shareability')).not.toBeInTheDocument();
-    const rows = screen.getByTestId('driver-rows');
+
+    const trigger = screen.getByTestId('row-trigger-shareability');
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByTestId('panel-shareability')).not.toBeInTheDocument();
+    const rows = screen.getByTestId('reading-accordion');
     expect(rows.textContent ?? '').toMatch(/Not available/);
     expect(rows.textContent ?? '').not.toMatch(/\b0%/);
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// personas panel — tap the persona cloud (role="button") → DrillSheet("Audience")
+// audience panel — tap the Audience row → inline list-led panel (graph + ranked list)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('drill-down: personas panel (READ-09)', () => {
-  it('renders on real data without throwing — the full PersonaGraph mounts (03-04 swap)', async () => {
+describe('drill-down: audience panel (READ-09)', () => {
+  it('renders on real data without throwing — the demoted graph + ranked list mount', async () => {
     const user = userEvent.setup();
-    const { container } = render(<Reading />);
+    render(<Reading />);
 
-    // The hero now has TWO tap sources (the gauge=score + the cloud=audience), so
-    // target the cloud SPECIFICALLY via its svg (the gauge's button is /Score …/).
-    const cloud = container
-      .querySelector('svg[aria-label="Audience watch-through by persona"]')!
-      .closest('[role="button"]') as HTMLElement;
-    await user.click(cloud);
-    const dialog = await screen.findByRole('dialog', { name: 'Audience' });
-    // 03-04 swap: the native persona list → the full PersonaGraph (SVG cloud).
-    expect(within(dialog).getByTestId('persona-graph')).toBeInTheDocument();
-    // The native list is gone.
-    expect(within(dialog).queryByTestId('panel-personas')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-personas'));
+    // List-led: the ranked persona list IS the content; the graph is a demoted header.
+    expect(await screen.findByTestId('panel-personas-list')).toBeInTheDocument();
+    expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
+    // The native P2 list is gone.
+    expect(screen.queryByTestId('panel-personas')).not.toBeInTheDocument();
   });
 
-  it('degrades to PanelEmpty on empty personas (no throw, no grey-cell)', async () => {
-    // personas:[] → PersonaCloud returns null (the hero cloud omits itself); the
-    // gauge button stays (it's score-driven, independent of personas). Assert the
-    // CLOUD svg is gone — not "no buttons" (the gauge is always a button now after
-    // D-02). PersonasPanel's own PanelEmpty guard (nodes.length===0) is the in-sheet
-    // degrade, but it shares buildPersonaNodes with the cloud — so an empty cohort
-    // hides BOTH the cloud and its only tap source (unreachable by tap, see todo).
+  it('empty personas → no Audience row at all (the cloud + row share the empty cohort)', () => {
+    // personas:[] → buildAudienceNodes returns [] → the hero cloud omits itself AND
+    // the accordion omits the Audience row (no fabricated empty panel, no tap path).
     mockState = {
       id: 'sim-1',
       data: makeEmptyPersonasResult(),
@@ -370,52 +321,26 @@ describe('drill-down: personas panel (READ-09)', () => {
     };
     const { container } = render(<Reading />);
 
-    // Empty personas → the hero cloud omits itself (no cloud svg / tap source).
     expect(
       container.querySelector('svg[aria-label="Audience watch-through by persona"]'),
     ).toBeNull();
-    // And no throw occurred reaching this assertion (render above did not throw).
-  });
-
-  it('personas sheet-level PanelEmpty (empty cohort) is unreachable by tap — the cloud (the only tap source) hides itself first', () => {
-    // RESOLVES the 03-04 staged personas PanelEmpty todo (honestly, NOT fabricated):
-    // PersonasPanel's `nodes.length === 0 → PanelEmpty` guard EXISTS, but it shares
-    // buildPersonaNodes with PersonaCloud — so an empty cohort makes the cloud omit
-    // itself (its only tap source), and the sheet can never be opened in that state.
-    // Asserts that verified fact: empty personas → no cloud svg → no persona tap path,
-    // no throw. (The gauge button stays — it's score-driven, independent of personas.)
-    mockState = {
-      id: 'sim-1',
-      data: makeEmptyPersonasResult(),
-      isLoading: false,
-    };
-    const { container } = render(<Reading />);
-    // The cloud (the only persona tap source) hid itself → the in-sheet PanelEmpty
-    // for empty personas is genuinely unreachable by tap.
-    expect(
-      container.querySelector('svg[aria-label="Audience watch-through by persona"]'),
-    ).toBeNull();
+    expect(screen.queryByTestId('row-trigger-personas')).not.toBeInTheDocument();
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// score panel — the NEW 5th panel (D-02). Does not exist until 03-04 adds the
-// gauge `onOpen` + extends the closed PanelId union + a ScorePanel case. Staged as
-// todos here so this file is the agreed contract surface for that wiring.
+// score panel — tap the Score row → inline ScoreDistribution
 // ─────────────────────────────────────────────────────────────────────────────
-describe('drill-down: score panel (READ-09, D-02 — NEW in 03-04)', () => {
-  it("opens from the hero gauge onOpen → setPanel('score'), titled 'Score'", async () => {
+describe('drill-down: score panel (READ-09, D-02)', () => {
+  it('opens the Score panel inline when the Score row is tapped', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    // No dialog before tapping the gauge.
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // No panel content before tapping.
+    expect(screen.queryByTestId('score-distribution')).not.toBeInTheDocument();
 
-    // The gauge is the only role="button" exposing the score (aria-label "Score N…").
-    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
-    // PANEL_TITLE.score === 'Score' → the single DrillSheet opens named "Score".
-    const dialog = await screen.findByRole('dialog', { name: 'Score' });
-    expect(dialog).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-score'));
+    expect(await screen.findByTestId('score-distribution')).toBeInTheDocument();
   });
 
   it('mounts ScoreDistribution (niche histogram + confidence range) on a real cohort', async () => {
@@ -427,33 +352,26 @@ describe('drill-down: score panel (READ-09, D-02 — NEW in 03-04)', () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Score' });
-    const dist = within(dialog).getByTestId('score-distribution');
-    expect(dist).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-score'));
+    const dist = await screen.findByTestId('score-distribution');
     // overall_score=71 + count=120 → field mode (the grounded histogram).
     expect(dist.dataset.mode).toBe('field');
-    expect(within(dialog).getByTestId('score-field')).toBeInTheDocument();
+    expect(screen.getByTestId('score-field')).toBeInTheDocument();
   });
 
   it('degrades honestly when niche is null → ScoreDistribution absolute/lane mode, no throw', async () => {
-    // mockComparisons.niche stays null (the beforeEach default) → the panel-local
-    // useComparisons returns no cohort → ScoreDistribution falls to absolute mode
+    // mockComparisons.niche stays null → ScoreDistribution falls to absolute mode
     // (the in-panel honest degrade — NEVER a throw, NEVER a fabricated 0).
     const user = userEvent.setup();
     expect(() => render(<Reading />)).not.toThrow();
 
-    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Score' });
-    const dist = within(dialog).getByTestId('score-distribution');
-    // null niche → 'absolute' mode (lane plot, no histogram) — still renders the score.
+    await user.click(screen.getByTestId('row-trigger-score'));
+    const dist = await screen.findByTestId('score-distribution');
     expect(dist.dataset.mode).toBe('absolute');
-    expect(within(dialog).getByTestId('score-lane')).toBeInTheDocument();
+    expect(screen.getByTestId('score-lane')).toBeInTheDocument();
   });
 
   it('suppresses the "likely lo–hi" range text on HIGH confidence (showRangeText gate)', async () => {
-    // confidence_label HIGH → showRangeText=false → no "likely N–N" caption; the
-    // band is still drawn. MEDIUM/LOW would show it (VerdictNode recipe parity).
     mockState = {
       id: 'sim-1',
       data: makeReadingResult({ confidence_label: 'HIGH', confidence: 0.9 }),
@@ -462,19 +380,15 @@ describe('drill-down: score panel (READ-09, D-02 — NEW in 03-04)', () => {
     const user = userEvent.setup();
     render(<Reading />);
 
-    await user.click(screen.getByRole('button', { name: /Score 71 of 100/ }));
-    const dialog = await screen.findByRole('dialog', { name: 'Score' });
-    expect(within(dialog).getByTestId('score-distribution')).toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-score'));
+    expect(await screen.findByTestId('score-distribution')).toBeInTheDocument();
     // The band always draws; the numeric range caption is suppressed for HIGH.
-    expect(within(dialog).queryByText(/likely\s/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/likely\s/i)).not.toBeInTheDocument();
   });
 });
 
-// Reference so makeNoBehavioralResult is exercised by the type-checker now (its
-// behavioral assertions activate in 03-04/03-05). Asserts the empty-behavioral
-// fixture renders the Reading without throwing today (the shareability tiles it
-// feeds don't exist yet, but the container must already tolerate the shape).
-describe('empty-behavioral fixture tolerance (Wave-0 guard)', () => {
+// The empty-behavioral fixture must render the Reading without throwing.
+describe('empty-behavioral fixture tolerance', () => {
   it('Reading renders without throwing on makeNoBehavioralResult', () => {
     mockState = { id: 'sim-1', data: makeNoBehavioralResult(), isLoading: false };
     expect(() => render(<Reading />)).not.toThrow();
