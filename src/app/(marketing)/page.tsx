@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Header, Footer } from "@/components/layout";
-import { MotionConfigShell } from "@/components/marketing";
+import { Hero, MotionConfigShell } from "@/components/marketing";
 
 export const metadata: Metadata = {
   title: "Numen — Know if it'll pop before you post",
@@ -27,14 +27,12 @@ export default function HomePage() {
     <MotionConfigShell>
       <Header />
       <main>
-        {/* Hero — the serif voice headline + crowd→score signature land in Phase 2. */}
-        <section
-          id="hero"
-          className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center"
-        >
-          <p className="text-sm font-semibold uppercase tracking-wide text-foreground-muted">
-            Hero — coming in Phase 2
-          </p>
+        {/* Hero — serif voice headline + CTA + the contained signature stage
+            (the crowd→score moment mounts into the stage in 02-02/02-03).
+            <Hero> owns its own centering/measure; the section supplies the
+            scroll-anchor id + vertical rhythm (UI-SPEC §Spacing). */}
+        <section id="hero" className="px-6 py-16 md:py-20">
+          <Hero />
         </section>
 
         {/* How it works */}
