@@ -4,9 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
 
-import { HERO_SCORE } from "./hero-constants";
-import { ComposedStill } from "./composed-still";
-import { SignatureMomentClient } from "./signature-moment-client";
+import { Placeholder } from "@/components/marketing/placeholder";
 
 interface HeroProps {
   className?: string;
@@ -86,32 +84,46 @@ export function Hero({ className }: HeroProps) {
         </a>
       </div>
 
-      {/* 4 — The contained flat-warm STAGE (D-07): the arena the signature
-          "crowd → score" moment coalesces within. Dimension-locked via an
-          inline aspect-ratio so the canvas/still mount with no CLS (Pitfall 3).
-          Tone-step surface + hairline 6% border + 12px radius — flat-matte
-          (no glass/shine/glow). `relative` so the client island overlays the
-          still in the SAME box.
+      {/* 4 — Hero showcase (PROTOTYPE composition): the product, shown.
+          desktop window = Numen's READING (the output) · phone in front = the
+          TikTok you paste (the input). Reads left→right as paste → prediction.
+          Both surfaces are swappable <Placeholder> slots (FOUND-03); the device
+          chrome is flat-warm set-dressing. The canvas "crowd→score" moment is
+          retired pending re-plan. */}
+      <div className="relative mt-4 w-full max-w-4xl pb-12 sm:pb-16">
+        {/* Desktop window — the reading (output) */}
+        <div className="overflow-hidden rounded-2xl border border-border shadow-float">
+          {/* window chrome */}
+          <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-3">
+            <span className="flex gap-2" aria-hidden="true">
+              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
+              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
+              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
+            </span>
+            <span className="mx-auto rounded-md bg-background px-4 py-1 text-xs text-foreground-muted">
+              numen.app
+            </span>
+          </div>
+          {/* window body — reading placeholder */}
+          <Placeholder
+            variant="image"
+            aspect="16/9"
+            label="Numen reading"
+            className="rounded-none border-0"
+          />
+        </div>
 
-          Two layers, stacked in this one dimension-locked box (D-15/D-16):
-           • <ComposedStill> — the RSC universal floor (phone + settled dots +
-             clean coral arc ring + final score). Paints pre-hydration, zero JS;
-             it is also the reduced-motion / mobile / at-rest frame.
-           • <SignatureMomentClient> — the "use client" boundary. On desktop +
-             motion-OK it lazy-mounts the canvas (its `dynamic(ssr:false)` lives
-             inside that module) ABSOLUTELY OVER the still and plays once; under
-             reduced-motion / mobile / low-GPU it renders nothing and the still
-             stands. The phone now lives INSIDE ComposedStill. Hero stays an RSC. */}
-      <div
-        className={cn(
-          "relative mt-2 flex w-full items-center justify-center overflow-hidden",
-          "rounded-[--radius-lg] border border-border bg-surface",
-          "p-6 md:p-8"
-        )}
-        style={{ aspectRatio: "16 / 10" }}
-      >
-        <ComposedStill score={HERO_SCORE} />
-        <SignatureMomentClient score={HERO_SCORE} />
+        {/* Phone — your TikTok (input), in front of the window's lower-left */}
+        <div className="absolute bottom-0 left-0 w-[22%] min-w-[108px] sm:left-4">
+          <div className="overflow-hidden rounded-[1.75rem] border-[6px] border-background-elevated bg-background-elevated shadow-float">
+            <Placeholder
+              variant="video"
+              aspect="9/16"
+              label="Your TikTok"
+              className="rounded-[1.3rem] border-0"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
