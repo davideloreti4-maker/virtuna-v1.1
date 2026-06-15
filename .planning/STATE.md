@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
 milestone: landing-v2
-milestone_name: Refined Marketing Site
-status: planning
-stopped_at: Phase 4 planned (6 plans, plan-checker PASS)
-last_updated: "2026-06-15T16:00:00.000Z"
+milestone_name: milestone
+status: executing
+stopped_at: Completed 04-00-PLAN.md (Wave-0 Nyquist RED scaffold)
+last_updated: "2026-06-15T17:36:25.684Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 24
-  completed_plans: 18
+  completed_plans: 19
   percent: 60
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE.md
 
 **Core value:** A refined, premium marketing landing that makes a creator instantly *get* Numen — "know if it'll pop before you post" — and click "Try it free."
-**Current focus:** Phase 4 — proof & conversion
+**Current focus:** Phase 04 — proof-conversion
 
 ## Current Position
 
-Phase: 4
-Plan: 6 plans created (04-00..04-05, 3 waves) — plan-checker PASS, 0 blockers
-Status: Ready to execute (`/gsd-execute-phase 4`)
+Phase: 04 (proof-conversion) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
 Last activity: 2026-06-15
 
 Progress: [██████████] 100%
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 03 P07 | ~12min | 2 tasks | 4 files (gap-closure, TDD) |
 | Phase 03 P08 | ~6min | 1 task tasks | 2 files (gap-closure) files |
 | Phase 03 P05 | ~10min | 4 tasks | 7 files (gap-closure) |
+| Phase 04 P00 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -129,6 +130,7 @@ Recent decisions affecting current work:
 - [Phase 03-05]: 03-05: filled the Simulation device frame with the 03-04 gauge/cloud/driver-rows skeleton + capped the window body max-h-[460px] (GAP-2 — the ~640px void is gone); reused the existing inline browser chrome (not BrowserChrome) to avoid a duplicate numen.app pill
 - [Phase 03-05]: 03-05: how-it-works steps + feature blocks now show intentional 03-04 product skeletons (GAP-1) in data-step-visual / data-feature-visual aspect-stable wrappers (skeletons carry no data-variant); feature rows top-align (items-start) at a wider-shorter aspect-[16/9] max-h-[300px] framed in BrowserChrome + denser gap-12 md:gap-16 row rhythm (GAP-3 component-level)
 - [Phase 03-05]: 03-05: WR-04 closed — the filled frame now also renders watch-through/Hook/Retention/drop/Shareability, so the simulation-showcase output assertions are scoped to the outputs <dl> via within(dl)+getAllByText; <h2> 'The Simulation' kept as the sole rendered /simulat/i node + a GAP-2 structural gate added (>=1 arc circle + >=6 circles + driver labels)
+- [Phase ?]: 04-00: data-testid anchors (testimonial-handle, testimonial-metric, cta-close-line, pricing-bullet) are the Wave-1 integration contract; stable ids (social-proof, testimonials, data-section=final-cta) are the 04-05 contract
 
 ### Pending Todos
 
@@ -152,6 +154,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T16:00:00.000Z
-Stopped at: Phase 4 planned (6 plans, plan-checker PASS — ready to execute)
-Resume file: .planning/phases/04-proof-conversion/04-00-PLAN.md (or `/gsd-execute-phase 4`)
+Last session: 2026-06-15T17:36:25.681Z
+Stopped at: Completed 04-00-PLAN.md (Wave-0 Nyquist RED scaffold)
+Resume file: None

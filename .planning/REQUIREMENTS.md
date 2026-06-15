@@ -34,8 +34,8 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 
 ### Social Proof (PROOF)
 
-- [ ] **PROOF-01**: A social-proof strip shows creator avatars and a logo wall (placeholder slots)
-- [ ] **PROOF-02**: A testimonials section shows creator quote cards (placeholder avatars + quotes)
+- [x] **PROOF-01**: A social-proof strip shows creator avatars and a logo wall (placeholder slots)
+- [x] **PROOF-02**: A testimonials section shows creator quote cards (placeholder avatars + quotes)
 
 ### Story & Showcase (STORY)
 
@@ -45,9 +45,9 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 
 ### Conversion (CONVERT)
 
-- [ ] **CONVERT-01**: A pricing teaser presents tiers (Starter/Pro) with "Try it free" CTAs (placeholder-ok pricing)
-- [ ] **CONVERT-02**: A final full-width CTA band ("Try it free") sits before the footer
-- [ ] **CONVERT-03**: An FAQ section answers common creator questions in an accessible accordion
+- [x] **CONVERT-01**: A pricing teaser presents tiers (Starter/Pro) with "Try it free" CTAs (placeholder-ok pricing)
+- [x] **CONVERT-02**: A final full-width CTA band ("Try it free") sits before the footer
+- [x] **CONVERT-03**: An FAQ section answers common creator questions in an accessible accordion
 
 ## v2 Requirements
 
@@ -95,21 +95,23 @@ Which phases cover which requirements. Populated during roadmap creation.
 | HERO-02 | Phase 2 | Complete |
 | HERO-03 | Phase 2 | Complete (revised — product-shot showcase) |
 | HERO-04 | Phase 2 | Complete (static by construction) |
-| PROOF-01 | Phase 4 | Pending |
-| PROOF-02 | Phase 4 | Pending |
+| PROOF-01 | Phase 4 | Complete |
+| PROOF-02 | Phase 4 | Complete |
 | STORY-01 | Phase 3 | Complete |
 | STORY-02 | Phase 3 | Complete |
 | STORY-03 | Phase 3 | Complete |
-| CONVERT-01 | Phase 4 | Pending |
-| CONVERT-02 | Phase 4 | Pending |
-| CONVERT-03 | Phase 4 | Pending |
+| CONVERT-01 | Phase 4 | Complete |
+| CONVERT-02 | Phase 4 | Complete |
+| CONVERT-03 | Phase 4 | Complete |
 
 **Coverage:**
+
 - v1 requirements: 22 total
 - Mapped to phases: 22 ✓
 - Unmapped: 0 ✓
 
 Per-phase rollup:
+
 - Phase 1 (Foundation & Shell): FOUND-01, FOUND-02, FOUND-03, FOUND-04, NAV-01, NAV-02, NAV-03 (7)
 - Phase 2 (Hero & Signature Moment): HERO-01, HERO-02, HERO-03, HERO-04 (4)
 - Phase 3 (Story & Showcase): STORY-01, STORY-02, STORY-03 (3)

@@ -156,7 +156,7 @@ Plans:
 
 **Wave 0**
 
-- [ ] 04-00-PLAN.md (wave 0) — Nyquist RED scaffold: 5 section test files + page-order/NAV-lock cross test (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
+- [x] 04-00-PLAN.md (wave 0) — Nyquist RED scaffold: 5 section test files + page-order/NAV-lock cross test (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
 
 **Wave 1** *(blocked on Wave 0; file-disjoint, parallel)*
 
@@ -200,5 +200,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
-| 4. Proof & Conversion | 0/6 | Not started | - |
+| 4. Proof & Conversion | 1/6 | In Progress|  |
 | 5. Quality Hardening | 0/3 | Not started | - |
