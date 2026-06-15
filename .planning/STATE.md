@@ -4,13 +4,13 @@ milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: executing
 stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-06-15T00:02:31.374Z"
-last_activity: 2026-06-15 -- Phase 2 planning complete
+last_updated: "2026-06-15T00:41:40.088Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
   percent: 20
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE.md
 
 **Core value:** A refined, premium marketing landing that makes a creator instantly *get* Numen — "know if it'll pop before you post" — and click "Try it free."
-**Current focus:** Phase 2 — hero & signature moment
+**Current focus:** Phase 02 — hero-signature-moment
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
+Phase: 02 (hero-signature-moment) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-15 -- Phase 2 planning complete
+Last activity: 2026-06-15
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 67%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [██████████] 100%
 | Phase 01 P04 | 7min | 2 tasks | 2 files |
 | Phase 01 P05 | 4min | 2 tasks | 2 files |
 | Phase 01 P03 | 3min | 2 tasks | 4 files |
+| Phase 02 P00 | 10min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,8 @@ Recent decisions affecting current work:
 - [Phase 01-03]: 01-03: MotionConfigShell (<MotionConfig reducedMotion='user'>) wraps the FULL chrome (Header+main+Footer); page stays RSC and / stays statically prerendered
 - [Phase 01-03]: 01-03: two-layer reduced-motion contract = MotionConfig (Framer) + CSS @media (prefers-reduced-motion: reduce) animation:none for skeleton-breathe/shimmer/marquee/marquee-vertical
 - [Phase 01-03]: 01-03: D-16 satisfied by VERIFY (6/6 motion/* on motion/react, 0 framer-motion) + MotionConfig wiring, NOT migration; framer-motion dep retained (4 product files), removal deferred to Phase 5
+- [Phase ?]: 02-00: Wave-0 hero tests RED-by-design — module-not-found is the success signal; HERO-01..04 turn GREEN in 02-01/02-03, not here
+- [Phase ?]: 02-00: SVG ring geometry re-derived in-test (radius 114, offset=circumference·(1−score/100)) + token assertions (var(--color-accent), threshold from verdict-constants) catch a hardcoded ring/hex
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-14T23:10:06.623Z
+Last session: 2026-06-15T00:41:20.400Z
 Stopped at: Phase 2 UI-SPEC approved
-Resume file: .planning/phases/02-hero-signature-moment/02-UI-SPEC.md
+Resume file: None

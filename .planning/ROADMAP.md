@@ -82,7 +82,7 @@ Plans:
 
 **Wave 0**
 
-- [ ] 02-00-PLAN.md (wave 0) — Nyquist Wave-0 test scaffold: 4 RED test files (hero / composed-still / signature-moment-client / hero-constants), happy-dom pragma (HERO-01, HERO-02, HERO-03, HERO-04)
+- [x] 02-00-PLAN.md (wave 0) — Nyquist Wave-0 test scaffold: 4 RED test files (hero / composed-still / signature-moment-client / hero-constants), happy-dom pragma (HERO-01, HERO-02, HERO-03, HERO-04)
 
 **Wave 1** *(blocked on Wave 0)*
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 0/4 | Not started | - |
+| 2. Hero & Signature Moment | 1/4 | In Progress|  |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
