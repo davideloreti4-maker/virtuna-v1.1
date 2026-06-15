@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-06-15T01:00:46.172Z"
+stopped_at: Phase 2 — 02-03 closed out (resume); 02-02 canvas next (blocking human-verify)
+last_updated: "2026-06-15T08:40:00.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 20
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 02 (hero-signature-moment) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
+Plan: 4 of 4 (02-02 signature canvas — last incomplete plan)
+Status: 02-03 complete (closed out on resume); ready to execute 02-02 (blocking human-verify checkpoint)
 Last activity: 2026-06-15
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [████████░░] 78%
 | Phase 01 P03 | 3min | 2 tasks | 4 files |
 | Phase 02 P00 | 10min | 2 tasks | 4 files |
 | Phase 02 P01 | 8min | 2 tasks | 4 files |
+| Phase 02 P03 | ~30min | 2 tasks | 4 files (+1 stub) |
 
 ## Accumulated Context
 
@@ -85,6 +86,10 @@ Recent decisions affecting current work:
 - [Phase 02-01]: Hero is a PURE RSC — no client directive, no lazy ssr-disabled import in hero.tsx/page.tsx (the 02-00 landmine); client island + canvas deferred to 02-03/02-02. / stays statically prerendered (verified ○ in build route table).
 - [Phase 02-01]: The hero STAGE shell owns the no-CLS aspect-lock (inline aspect-ratio 16/10) — the fixed box 02-03's ComposedStill + 02-02's client island mount into with zero layout shift.
 - [Phase 02-01]: Stage holds a labelled Placeholder(variant=video,aspect=9/16) as visible scaffolding; the 02-03/02-02 swap-in seam is marked in hero.tsx. Coral is the lone accent, only on the primary CTA.
+- [Phase 02-03]: dynamic(ssr:false) canvas import lives ONLY in signature-moment-client.tsx ('use client'); Hero/page stay pure RSC and / stays statically prerendered (○). THE Next-16 landmine fix (mirrors Board.tsx), verified by clean build.
+- [Phase 02-03]: ComposedStill = pure-RSC universal floor (D-15) — phone + deterministic seeded-PRNG settled dot field (~46 SVG circles, never Math.random → no hydration mismatch) + clean re-derived coral arc ring (glow/tiers/white/framer-motion STRIPPED) + static coral score; role=img/aria-label + aspect-lock. Serves SSR/reduced-motion/mobile/at-rest.
+- [Phase 02-03]: SignatureMomentClient gate = !reduced && !isMobile && tier!=='low' && !fpsDropped → return null on still paths (canvas rAF never mounts under reduced-motion, Pitfall 5); ComposedStill is its dynamic loading fallback. hero-constants.ts is the score(87)/geometry(240/12)/timing/palette SSOT shared with the 02-02 canvas.
+- [Phase 02-03]: CLOSED OUT ON RESUME — code was committed in a prior session (feat 86b744ba + auto-wip 5574c4f4) but never got a SUMMARY/tracking; reconciled here. Needed a TEMPORARY signature-canvas.tsx stub (re-renders ComposedStill) so the ssr:false import + vitest collector resolve — 02-02 REPLACES it. WATCH: the auto-wip hook can pre-empt the executor's atomic-commit protocol mid-plan.
 
 ### Pending Todos
 

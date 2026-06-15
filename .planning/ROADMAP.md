@@ -90,7 +90,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 02-03-PLAN.md (wave 2) — `ComposedStill` (SSR/reduced-motion/mobile floor: phone + static dots + clean coral SVG ring + score) + `hero-constants` + the `"use client"` `SignatureMomentClient` boundary (the ssr:false landmine fix + gating); wire into the Hero stage (HERO-03 still-side, HERO-04)
+- [x] 02-03-PLAN.md (wave 2) — `ComposedStill` (SSR/reduced-motion/mobile floor: phone + static dots + clean coral SVG ring + score) + `hero-constants` + the `"use client"` `SignatureMomentClient` boundary (the ssr:false landmine fix + gating); wire into the Hero stage (HERO-03 still-side, HERO-04)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 2/4 | In Progress|  |
+| 2. Hero & Signature Moment | 3/4 | In Progress|  |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
