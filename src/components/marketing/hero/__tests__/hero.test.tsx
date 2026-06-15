@@ -9,7 +9,7 @@ import { SIGNUP_URL } from "@/lib/routes";
  * Phase 2 Nyquist gate — HERO-01..04 on the RSC <Hero>.
  *
  * HERO-01/02 = the headline/subcopy/CTA cluster. HERO-03/04 = the product-shot
- * showcase (desktop reading window + phone TikTok, both swappable Placeholder
+ * showcase (desktop Simulation window + phone TikTok, both swappable Placeholder
  * slots) that REPLACED the retired canvas "crowd → score" moment after live
  * craft review. The old composed-still / signature-moment-client / hero-constants
  * suites were removed with their components.
@@ -41,9 +41,12 @@ describe("<Hero />", () => {
       render(<Hero />);
 
       // D-11: one tight Inter mechanism line. Product noun = "Simulation"
-      // (D-23 carried). Planner-flexible wording → assert the noun, not the
-      // full sentence. Accept the noun or its verb form.
-      const noun = screen.getByText(/simulat(?:es|ion|e)/i);
+      // (D-23 carried). Planner-flexible wording → assert the verb form
+      // "simulates" that the subcopy uses. Scoped to the verb (not the bare
+      // /simulat/i stem) so it does NOT collide with the desktop showcase
+      // slot label "Numen Simulation" (WR-01) — the subcopy stays the unique
+      // /simulates/i node.
+      const noun = screen.getByText(/simulates/i);
       expect(noun).toBeTruthy();
       expect(noun.textContent?.trim().length ?? 0).toBeGreaterThan(0);
     });
@@ -68,12 +71,13 @@ describe("<Hero />", () => {
   });
 
   describe("HERO-03/04 — product-shot showcase (output + input)", () => {
-    it("renders the desktop reading slot (the OUTPUT)", () => {
+    it("renders the desktop Simulation slot (the OUTPUT)", () => {
       render(<Hero />);
 
       // Swappable Placeholder slot — real desktop screenshot/video swaps in
       // via `src` later; the labelled stand-in proves the slot is wired now.
-      expect(screen.getByText(/numen reading/i)).toBeTruthy();
+      // WR-01: pins the locked product noun "Simulation", never "reading".
+      expect(screen.getByText(/numen simulation/i)).toBeTruthy();
     });
 
     it("renders the phone TikTok slot (the INPUT)", () => {

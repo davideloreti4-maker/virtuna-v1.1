@@ -24,11 +24,11 @@ interface HeroProps {
  *  3. CTA cluster — dominant coral "Try it free" → SIGNUP_URL (HERO-02) +
  *     a quieter "See how it works ↓" scroll-cue → #how-it-works (D-12).
  *  4. the product-shot SHOWCASE (HERO-03/04): a flat-warm desktop browser
- *     window (the Numen reading = the OUTPUT) with a phone in front (the TikTok
- *     you paste = the INPUT), reading left→right as paste → prediction. Both
- *     screens are swappable <Placeholder> slots (FOUND-03) — real desktop/mobile
- *     screenshots or video drop in via the one `src` prop later; the device
- *     chrome, layered shadows, and warm seat are the permanent set-dressing.
+ *     window (the Numen Simulation = the OUTPUT) with a phone in front (the
+ *     TikTok you paste = the INPUT), reading left→right as paste → prediction.
+ *     Both screens are swappable <Placeholder> slots (FOUND-03) — real
+ *     desktop/mobile screenshots or video drop in via the one `src` prop later;
+ *     the device chrome, layered shadows, and warm seat are permanent dressing.
  *
  * NOTE: this replaced the original bespoke canvas "crowd → score" signature
  * moment (the 02-02/02-03 plans). That direction read as a tech-demo, not a
@@ -89,8 +89,8 @@ export function Hero({ className }: HeroProps) {
         </a>
       </div>
 
-      {/* 4 — Hero showcase: the product, shown. desktop window = Numen's
-          READING (output) · phone in front = the TikTok you paste (input).
+      {/* 4 — Hero showcase: the product, shown. desktop window = the Numen
+          SIMULATION (output) · phone in front = the TikTok you paste (input).
           Reads left→right as paste → prediction. Both screens are swappable
           <Placeholder> slots (FOUND-03) — real desktop/mobile screenshots or
           video drop in via `src` later; the device chrome, depth, and seating
@@ -107,7 +107,7 @@ export function Hero({ className }: HeroProps) {
           }}
         />
 
-        {/* Desktop window — the reading (output). Inset from the left so the
+        {/* Desktop window — the Simulation (output). Inset from the left so the
             phone overlaps the lower-right without crowding. Frame is the
             lightest surface so it reads as a window floating on the page. */}
         <div className="mr-auto w-[88%] sm:w-[84%]">
@@ -125,11 +125,11 @@ export function Hero({ className }: HeroProps) {
               {/* spacer keeps the address pill optically centered vs the dots */}
               <span className="w-[42px]" aria-hidden="true" />
             </div>
-            {/* window body — desktop reading screenshot slot (inset darker) */}
+            {/* window body — desktop Simulation screenshot slot (inset darker) */}
             <Placeholder
               variant="image"
               aspect="16/10"
-              label="Numen reading"
+              label="Numen Simulation"
               className="rounded-none border-0 bg-surface"
             />
           </div>
