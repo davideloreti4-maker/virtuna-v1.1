@@ -85,22 +85,34 @@ export function Hero({ className }: HeroProps) {
       </div>
 
       {/* 4 — Hero showcase: the product, shown. desktop window = Numen's
-          READING (the output) · phone in front = the TikTok you paste (the
-          input). Reads left→right as paste → prediction. Both screens are
-          swappable <Placeholder> slots (FOUND-03) — real desktop/mobile
-          screenshots or video drop in via the one `src` prop later; the device
-          chrome + depth here is the permanent set-dressing. */}
-      <div className="relative mt-6 w-full max-w-5xl pb-10 sm:pb-14">
-        {/* Desktop window — the reading (output). Sits inset from the left so
-            the phone has room to overlap the lower-right without crowding. */}
+          READING (output) · phone in front = the TikTok you paste (input).
+          Reads left→right as paste → prediction. Both screens are swappable
+          <Placeholder> slots (FOUND-03) — real desktop/mobile screenshots or
+          video drop in via `src` later; the device chrome, depth, and seating
+          here are permanent set-dressing. */}
+      <div className="relative mt-6 w-full max-w-5xl pb-6 sm:pb-10">
+        {/* Soft warm seat — a faint matte pool that floats the composition off
+            the flat page (cream at very low alpha; NOT a glow). */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-x-20 -inset-y-12 -z-10"
+          style={{
+            background:
+              "radial-gradient(68% 60% at 50% 36%, rgba(236,231,222,0.07), transparent 70%)",
+          }}
+        />
+
+        {/* Desktop window — the reading (output). Inset from the left so the
+            phone overlaps the lower-right without crowding. Frame is the
+            lightest surface so it reads as a window floating on the page. */}
         <div className="mr-auto w-[88%] sm:w-[84%]">
-          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_30px_60px_-18px_rgba(0,0,0,0.65),0_10px_22px_-10px_rgba(0,0,0,0.45)]">
-            {/* window chrome — slim browser bar */}
-            <div className="flex items-center border-b border-border bg-surface px-4 py-2.5">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated shadow-[0_40px_80px_-24px_rgba(0,0,0,0.72),0_14px_30px_-12px_rgba(0,0,0,0.5)]">
+            {/* window chrome — slim browser bar (inherits the frame surface) */}
+            <div className="flex items-center border-b border-border px-4 py-2.5">
               <span className="flex gap-2" aria-hidden="true">
-                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
-                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
               </span>
               <span className="mx-auto rounded-md bg-background px-4 py-1 font-mono text-[11px] tracking-wide text-foreground-muted">
                 numen.app
@@ -108,26 +120,26 @@ export function Hero({ className }: HeroProps) {
               {/* spacer keeps the address pill optically centered vs the dots */}
               <span className="w-[42px]" aria-hidden="true" />
             </div>
-            {/* window body — desktop reading screenshot slot */}
+            {/* window body — desktop reading screenshot slot (inset darker) */}
             <Placeholder
               variant="image"
               aspect="16/10"
               label="Numen reading"
-              className="rounded-none border-0 bg-background-elevated"
+              className="rounded-none border-0 bg-surface"
             />
           </div>
         </div>
 
         {/* Phone — your TikTok (input), in front of the window's lower-right.
             Sibling of the window (not a child) so it overflows cleanly; its own
-            deeper shadow reads as "in front". */}
-        <div className="absolute bottom-0 right-0 w-[19%] min-w-[112px] sm:right-2">
-          <div className="overflow-hidden rounded-[2rem] border-[5px] border-background-elevated bg-background-elevated shadow-[0_22px_44px_-12px_rgba(0,0,0,0.8)]">
+            deeper shadow + a hairline ring read as "in front". */}
+        <div className="absolute bottom-0 right-0 w-[16.5%] min-w-[104px] sm:right-4">
+          <div className="overflow-hidden rounded-[1.8rem] border-[5px] border-background-elevated bg-background-elevated shadow-[0_28px_52px_-14px_rgba(0,0,0,0.85)] ring-1 ring-border">
             <Placeholder
               variant="video"
               aspect="9/16"
               label="Your TikTok"
-              className="rounded-[1.55rem] border-0"
+              className="rounded-[1.55rem] border-0 bg-surface"
             />
           </div>
         </div>
