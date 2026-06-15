@@ -4,6 +4,7 @@ import {
   Hero,
   HowItWorks,
   SimulationShowcase,
+  FeatureBlocks,
   MotionConfigShell,
 } from "@/components/marketing";
 
@@ -56,6 +57,17 @@ export default function HomePage() {
         <section id="the-simulation" className="border-t border-border px-6 py-20">
           <div className="mx-auto max-w-5xl">
             <SimulationShowcase />
+          </div>
+        </section>
+
+        {/* Features — STORY-03 deep-dive blocks. The section owns the LOCKED
+            rhythm (id/border/padding/measure); <FeatureBlocks/> renders its own
+            real cream heading + the alternating benefit + Placeholder rows
+            (D-E / Pitfall 3 — an ADD between The Simulation and Pricing, not a
+            fill of an existing section). */}
+        <section id="features" className="border-t border-border px-6 py-20">
+          <div className="mx-auto max-w-5xl">
+            <FeatureBlocks />
           </div>
         </section>
 

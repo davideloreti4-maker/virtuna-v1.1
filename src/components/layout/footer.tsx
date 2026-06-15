@@ -15,6 +15,7 @@ interface FooterProps {
 const PRODUCT_LINKS = [
   { label: "How it works", href: "#how-it-works" },
   { label: "The Simulation", href: "#the-simulation" },
+  { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
   { label: "FAQ", href: "#faq" },
 ] as const;
