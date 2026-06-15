@@ -8,9 +8,11 @@ A social media intelligence platform for TikTok creators. Helps creators predict
 
 AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
 
-## Current Milestone: v5.0 Numen Rework
+## Shipped Milestone: v5.0 Numen Rework — ✅ 2026-06-15
 
-**Goal:** Rework the existing UI/UX into the Numen vision — collapse the product to **one thread per video (a "Reading")**, mobile-first — by **rethemeing + restructuring the existing board/app components** (NOT a ground-up rebuild). Presentation-layer only; engine frozen at 3.19.0.
+**Status:** SHIPPED — merged to `main` via PR #20 (squash `9babd2d2`). 27/28 v1 reqs shipped (DEMO-01 deferred). Both human-UAT gates (THEME-06, D-07) locked. Full suite 2102 green, engine frozen 3.19.0. Archived: `milestones/v5.0-ROADMAP.md` · `milestones/v5.0-REQUIREMENTS.md` · `milestones/v5.0-phases/`. **Next:** `/gsd-new-milestone` (fresh requirements).
+
+**Goal (delivered):** Reworked the existing UI/UX into the Numen vision — collapsed the product to **one thread per video (a "Reading")**, mobile-first — by **rethemeing + restructuring the existing board/app components** (NOT a ground-up rebuild). Presentation-layer only; engine frozen at 3.19.0.
 
 **Target features (v1):**
 - Home (serif greeting + universal composer) + reskinned sidebar (reuse `useAnalysisHistory`); ingestion via the composer (`+` upload / paste-URL auto-detect); two layouts (centered empty → bottom-pinned active)
@@ -28,6 +30,12 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ### Validated
 
+- ✓ Flat-warm token system (charcoal + terracotta coral + Newsreader serif), Raycast glass retired everywhere; THEME-06 human-UAT locked -- v5.0
+- ✓ Consolidated Reading thread (hero score+gate+watch%+persona cloud → 3 driver rows → Fix First → deeper read), cut-data clean; `/analyze` mounts `<Reading>` (Konva board retired) -- v5.0
+- ✓ Rich board visuals re-housed as flat-warm drill-downs (ScoreDistribution, PersonaGraph, RetentionChart, CraftFilmstrip, SegmentTable, hook modality); D-07 human-UAT locked -- v5.0
+- ✓ Stage-reveal (real-signal fidelity): branded skeleton + live persona/keyframe signals + calm reduced-motion settle cascade -- v5.0
+- ✓ In-thread text follow-up (bottom-pinned composer → "Ask the expert" chat tail + quick-action chips) -- v5.0
+- ~ First-run live demo Reading (DEMO-01) — DEFERRED from v5.0, carry forward
 - Real Supabase auth with middleware enforcement, Google OAuth PKCE, deep link preservation -- MVP Launch
 - Landing page with hero, hive demo (lazy-loaded), features, social proof, FAQ, pricing -- MVP Launch
 - Progressive onboarding: TikTok @handle connect, goal personalization, 4-tooltip system -- MVP Launch

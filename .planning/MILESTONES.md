@@ -407,3 +407,35 @@
 - 68 console.* calls remain in non-engine files (API routes, client components) — tech debt for future
 
 ---
+
+## v5.0 Numen Rework — 2026-06-15
+
+**Delivered:** Reworked the existing UI/UX into the Numen vision — the product collapses to one thread per video (a "Reading"): a flat-warm themed shell, a consolidated score-forward Reading thread, the rich board visuals re-housed as drill-downs, a real-signal stage-reveal, and an in-thread "Ask the expert" follow-up. Presentation-layer only; engine FROZEN at 3.19.0 throughout.
+
+**Phases completed:** 5 phases, 18 plans (P1 ×5, P2 ×5, P3 ×6; P4 + P5 via quick execution)
+
+**Key accomplishments:**
+
+- Flat-warm token system (charcoal surfaces + terracotta coral + Newsreader serif) replacing Raycast glass everywhere incl. sidebar; clean `/home` composer + collapsible sidebar; THEME-06 human-UAT gate LOCKED
+- Consolidated Reading thread: hero (score gauge + persona cloud + watch%) → 3 driver rows → Fix First → deeper read, cut-data clean; `/analyze` inverted to mount `<Reading>` (Konva board retired from the mount, sources dormant)
+- Rich board visuals transplanted off Konva into the Reading's DrillSheet (ScoreDistribution, PersonaGraph, RetentionChart, CraftFilmstrip, SegmentTable, StatTiles, hook modality), reskinned flat-warm matte; D-07 human-UAT gate LOCKED
+- Stage-reveal (real-signal fidelity): branded in-flight skeleton + liveness from the signals surviving the composer→permalink nav (personas + keyframes via reconnect SSE) + a calm reduced-motion-gated settle cascade
+- In-thread follow-up: the bottom-pinned composer becomes the "Ask the expert" chat tail inside a Simulation (reuses `/api/analyze/[id]/chat` verbatim); quick-action chips seed the composer
+
+**Stats:**
+
+- 124 commits, 78 code files changed (+7,227 / -777 lines)
+- 28 v1 requirements — 27 shipped, 1 deferred (DEMO-01)
+- 5 phases, 18 plans
+- 3 days (2026-06-13 → 2026-06-15)
+- Full suite 2102 green; clean build; engine frozen 3.19.0
+
+**Git range:** `milestone/numen-rework` → `main` via PR #20 (squash `9babd2d2`)
+
+**Known deferred items:**
+
+- DEMO-01 (first-run live demo Reading) — descoped from v5.0 at the user's direction during close; carry to a later milestone
+- Live craft-UAT pass on the P4 stage-reveal motion + P5 follow-up chat (mobile + desktop) — recurring milestone pattern; non-blocking
+- CraftFilmstrip audio-band `variants` dual-read on reloaded uploads — non-blocking polish
+
+---

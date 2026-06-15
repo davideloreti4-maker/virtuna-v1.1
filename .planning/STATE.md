@@ -21,7 +21,7 @@ progress:
 See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
-**Current focus:** MILESTONE COMPLETE — pending merge to main.
+**Current focus:** v5.0 SHIPPED + ARCHIVED (merged to main PR #20, tagged v5.0). Next: `/gsd-new-milestone` for fresh requirements.
 
 ## Current Position
 
