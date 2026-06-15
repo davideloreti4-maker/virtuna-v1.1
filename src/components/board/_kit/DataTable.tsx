@@ -26,10 +26,10 @@ function colClass<R>(c: DataColumn<R>, idx: number) {
   return cn(
     'min-w-0 text-[13px]',
     c.align === 'right'
-      ? 'shrink-0 text-right tabular-nums text-white/90'
+      ? 'shrink-0 text-right tabular-nums text-foreground'
       : idx === 0
-        ? 'flex-1 truncate text-white/80'
-        : 'shrink-0 text-white/70',
+        ? 'flex-1 truncate text-foreground-secondary'
+        : 'shrink-0 text-foreground-secondary',
     c.className,
   );
 }
@@ -47,7 +47,7 @@ export function DataTable<R>({
       {hasHeader && (
         <div
           className={cn(
-            'flex items-center gap-3 border-b border-white/[0.06]',
+            'flex items-center gap-3 border-b border-[var(--color-border)]',
             dense ? 'pb-1.5' : 'pb-2',
           )}
         >
@@ -56,7 +56,7 @@ export function DataTable<R>({
               key={c.key}
               className={cn(
                 colClass(c, idx),
-                '!text-[10px] uppercase tracking-[0.06em] text-white/35',
+                '!text-[10px] uppercase tracking-[0.06em] text-foreground-muted',
               )}
             >
               {c.label}
@@ -68,7 +68,7 @@ export function DataTable<R>({
         <div
           key={rowKey(row, i)}
           className={cn(
-            'flex items-center gap-3 border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]',
+            'flex items-center gap-3 border-b border-[var(--color-border)] transition-colors hover:bg-white/[0.02]',
             dense ? 'py-1.5' : 'py-2.5',
           )}
           data-testid="data-row"

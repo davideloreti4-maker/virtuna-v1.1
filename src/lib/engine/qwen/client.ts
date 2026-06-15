@@ -34,7 +34,11 @@ export const QWEN_SEED = 7;
 // on the weak-hook case) at ~5× lower GA cost. omni is the foundation the fold + Apollo
 // both reason over → highest-leverage latency lever. Rollback: QWEN_OMNI_MODEL=qwen3.5-omni-plus.
 export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5-omni-flash";
-export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.6-plus";
+// Shared reasoning model (chat / decode / adapt / text-mode / fold-plus fallback).
+// Default 3.6-plus -> 3.7-plus 2026-06-15, mirroring the Apollo move below: 3.7-plus
+// is newer, faster + cheaper at equal insight, and accepts the same DashScope params.
+// Not separately A/B'd on chat/decode/adapt this session. Rollback: QWEN_REASONING_MODEL=qwen3.6-plus.
+export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7-plus";
 export const QWEN_FAST_MODEL      = process.env.QWEN_FAST_MODEL      ?? "qwen3.6-flash";
 // Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
 // QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.

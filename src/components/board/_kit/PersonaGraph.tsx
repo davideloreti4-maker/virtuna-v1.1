@@ -7,7 +7,13 @@ import { cn } from '@/lib/utils';
  * hero visual. Deterministic golden-angle layout (seeded — stable across
  * renders / SSR), faint nearest-neighbour links, 200 viewer dots distributed
  * proportionally around persona anchors. Node size ∝ weight; fill ∝
- * watch-through; the worst cluster reads coral. Hover → glass detail card.
+ * watch-through; the worst cluster reads coral.
+ *
+ * Flat-warm matte (THEME-06): cream-alpha dots/links/nodes (never pure white),
+ * a flat `--color-surface` detail card (no glass, no heavy drop shadow), and the
+ * calm `<animate>` pulse is gated on `reducedMotion`. The detail card is shown by
+ * hover on desktop AND by TAP on touch (a tapped node pins its card; a tap
+ * elsewhere dismisses) — no hover-only affordance on touch.
  * An sr-only list mirrors the data for assistive tech.
  */
 export interface PersonaNode {
@@ -50,7 +56,13 @@ export function PersonaGraph({
   reducedMotion = false,
   className,
 }: PersonaGraphProps) {
+  // `hover` = desktop pointer-over preview; `pinned` = a tapped node (touch, or a
+  // deliberate click). The card shows the pinned node when one is pinned, else the
+  // hovered node — so touch (which has no hover) reveals via tap, and a tap on the
+  // empty canvas dismisses. `active` is the node the card renders for.
   const [hover, setHover] = useState<number | null>(null);
+  const [pinned, setPinned] = useState<number | null>(null);
+  const active = pinned ?? hover;
 
   const nodes = useMemo(() => {
     const cx = VB_W / 2;
@@ -92,7 +104,8 @@ export function PersonaGraph({
         out.push({
           x: nd.x + Math.cos(angle) * mag,
           y: nd.y + Math.sin(angle) * mag,
-          fill: accent ? 'var(--color-accent)' : `rgba(255,255,255,${(0.2 + wt * 0.5).toFixed(2)})`,
+          // Cream-alpha (matches persona-cloud), coral for the worst cluster.
+          fill: accent ? 'var(--color-accent)' : `rgba(236, 231, 222, ${(0.2 + wt * 0.5).toFixed(2)})`,
           opacity: 0.35 + rnd() * 0.5,
         });
       }
@@ -130,6 +143,8 @@ export function PersonaGraph({
       className={cn('relative w-full', className)}
       style={{ height }}
       data-testid="persona-graph"
+      // Tap on empty canvas dismisses a pinned card (node taps stopPropagation).
+      onClick={() => setPinned(null)}
     >
       <svg
         viewBox={`0 0 ${VB_W} ${VB_H}`}
@@ -148,8 +163,7 @@ export function PersonaGraph({
             y1={l.y1}
             x2={l.x2}
             y2={l.y2}
-            stroke="white"
-            strokeOpacity={0.06}
+            stroke="rgba(236, 231, 222, 0.06)"
             strokeWidth={0.5}
           />
         ))}
@@ -157,22 +171,27 @@ export function PersonaGraph({
           const accent = nd.tone === 'accent';
           const fill = accent
             ? 'var(--color-accent)'
-            : `rgba(255,255,255,${(0.28 + Math.max(0, Math.min(1, nd.watchThrough)) * 0.5).toFixed(2)})`;
+            : `rgba(236, 231, 222, ${(0.28 + Math.max(0, Math.min(1, nd.watchThrough)) * 0.5).toFixed(2)})`;
           return (
             <g
               key={nd.id}
               onMouseEnter={() => setHover(i)}
               onMouseLeave={() => setHover((h) => (h === i ? null : h))}
+              // Touch/click: pin this node's card (toggle off if already pinned);
+              // stopPropagation so the container's dismiss handler doesn't clear it.
+              onClick={(e) => {
+                e.stopPropagation();
+                setPinned((p) => (p === i ? null : i));
+              }}
               className="cursor-pointer"
             >
-              {hover === i && (
+              {active === i && (
                 <circle
                   cx={nd.x}
                   cy={nd.y}
                   r={nd.rad + 4}
                   fill="none"
-                  stroke={accent ? 'var(--color-accent)' : 'white'}
-                  strokeOpacity={0.4}
+                  stroke={accent ? 'var(--color-accent)' : 'rgba(236, 231, 222, 0.4)'}
                   strokeWidth={1}
                 />
               )}
@@ -181,8 +200,8 @@ export function PersonaGraph({
                 cy={nd.y}
                 r={nd.rad}
                 fill={fill}
-                stroke={accent ? 'var(--color-accent)' : 'white'}
-                strokeOpacity={accent ? 0.6 : 0.12}
+                stroke={accent ? 'var(--color-accent)' : 'rgba(236, 231, 222, 0.12)'}
+                strokeOpacity={accent ? 0.6 : 1}
                 strokeWidth={accent ? 1.2 : 0.6}
               >
                 {!reducedMotion && (
@@ -199,34 +218,36 @@ export function PersonaGraph({
         })}
       </svg>
 
-      {hover !== null &&
-        nodes[hover] &&
+      {active !== null &&
+        nodes[active] &&
         (() => {
-          const nd = nodes[hover];
+          const nd = nodes[active];
           return (
             <div
-              className="pointer-events-none absolute z-10 w-[152px] rounded-[10px] border border-white/10 bg-[#18191a]/95 p-2.5 shadow-xl"
+              // Flat matte card: solid --color-surface + hairline border, the ONE
+              // allowed float shadow (no glass, no heavy drop shadow).
+              className="pointer-events-none absolute z-10 w-[152px] rounded-[10px] border border-[var(--color-border)] bg-surface p-2.5 shadow-float"
               style={{
                 left: `${(nd.x / VB_W) * 100}%`,
                 top: `${(nd.y / VB_H) * 100}%`,
                 transform: 'translate(-50%, calc(-100% - 12px))',
               }}
             >
-              <div className="text-[12px] font-semibold text-white">{nd.label}</div>
+              <div className="text-[12px] font-semibold text-foreground">{nd.label}</div>
               <div className="mt-1 flex items-center justify-between text-[11px]">
-                <span className="text-white/45">Watch-through</span>
-                <span className="tabular-nums text-white/90">
+                <span className="text-foreground-muted">Watch-through</span>
+                <span className="tabular-nums text-foreground">
                   {Math.round(nd.watchThrough * 100)}%
                 </span>
               </div>
               {nd.dropAt && (
                 <div className="mt-0.5 flex items-center justify-between text-[11px]">
-                  <span className="text-white/45">Drops at</span>
-                  <span className="tabular-nums text-white/90">{nd.dropAt}</span>
+                  <span className="text-foreground-muted">Drops at</span>
+                  <span className="tabular-nums text-foreground">{nd.dropAt}</span>
                 </div>
               )}
               {nd.segment && (
-                <div className="mt-1 text-[10px] uppercase tracking-[0.06em] text-white/40">
+                <div className="mt-1 text-[10px] uppercase tracking-[0.06em] text-foreground-muted">
                   {nd.segment}
                 </div>
               )}

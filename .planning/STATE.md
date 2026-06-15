@@ -1,15 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: mvp-ready
-milestone_name: MVP Ready (v4.1, Phase 1 only)
-status: Awaiting next milestone
-last_updated: "2026-06-11T00:00:00.000Z"
-last_activity: 2026-06-11 — v4.1 Phase 1 (engine) merged to main; milestone closed early (P2–5 superseded by Numen Surface)
+milestone: v5.0
+milestone_name: Numen Rework
+status: complete
+stopped_at: Milestone complete — all 5 phases shipped (DEMO-01 deferred)
+last_updated: "2026-06-15T19:45:00.000Z"
+last_activity: 2026-06-15 -- Phases 4 + 5 shipped (quick execution); milestone closed
 progress:
   total_phases: 5
-  completed_phases: 1
-  total_plans: 22
-  completed_plans: 5
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -17,135 +18,133 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md · Rebrand vision (next milestone): .planning/NUMEN-SURFACE-VISION.md · Cut-list SSOT: .planning/ENGINE-MAP.md
+See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
+
+**Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
+**Current focus:** MILESTONE COMPLETE — pending merge to main.
 
 ## Current Position
 
-Phase: v4.1 MVP Ready — Phase 1 (engine) merged; milestone closed early
-Plan: —
-Status: Awaiting next milestone — **Numen Surface (v5.0 rebrand/UX rework)**. Launch from trunk via `/gsd-new-milestone`; feed it `.planning/NUMEN-SURFACE-VISION.md`. Carries forward: SMOKE GATE, UAT sign-off, ENG-06 D-12 (see vision §7b).
-Last activity: 2026-06-11 — Merged milestone/mvp-ready Phase 1 (engine, ENGINE_VERSION 3.19.0) into main; archived phase dir to milestones/v4.1-mvp-ready/
+Phase: — (all 5 phases complete)
+Status: Milestone v5.0 Numen Rework COMPLETE — 27/28 v1 reqs shipped, DEMO-01 deferred.
+Last activity: 2026-06-15 -- Phases 4 (Stage-Reveal) + 5 (Follow-up) shipped via quick execution; Phase 3 D-07 UAT locked earlier today.
+Next: merge `milestone/numen-rework` → `main` (needs user go-ahead) + optional live UAT craft pass.
 
-## Deferred Items
+Progress: [██████████] 100% (5/5 phases)
 
-Acknowledged and deferred at v4.0 Apollo milestone close (2026-06-06):
+## Hard Constraints (this milestone)
 
-| Category | Item | Status | Note |
-|----------|------|--------|------|
-| quick_task | 260505-jdk-initialize-shadcn-ui-cli-components-json | missing | orphaned ref — dir gone |
-| quick_task | 260528-mzd-strip-retrieval-similar-videos-trending | missing | orphaned ref — dir gone |
-| quick_task | 260528-nqx-wire-hook-decomp-emotion-arc | missing | orphaned ref — dir gone |
-| quick_task | 260528-nsb-phase-3-fix-orphaned-video-storage-diagn | missing | orphaned ref — dir gone |
-| quick_task | (2 more orphaned quick-task refs) | missing | dirs gone |
-| uat_gap | 2 UAT gap flags | stale | P5 UAT now complete (5/5 PASS); flags predate close-out |
-| verification_gap | 2 verification gap flags | stale | P5 VERIFICATION reconciled human_needed→pass |
+- **Engine FROZEN at 3.19.0** — no `lib/engine/` changes. Presentation only. Every phase works in `src/components/**`, `src/app/**`, hooks, tokens.
+- **Reuse** `src/components/board/**` visuals as drill-downs (transplant off Konva, reskin to flat-warm).
+- **Do NOT reuse** `milestone/numen-surface`'s `numen/`+`reading/` kit (reference only).
+- **Konva canvas retired**; `/analyze` left dormant (not deleted).
+- **Score-forward, NO prose narration.**
+- **Flat-warm visual system is HUMAN-UAT-GATED** — locked only after human review (the THEME-06 gate lands in Phase 1, against the built shell).
+- **Component/motion libs permitted** at executor discretion (Radix, shadcn, MagicUI, Aceternity, motion/Framer Motion) within the flat-warm + matte (no glow/shine/halo) + calm-motion taste bar.
 
-These are bookkeeping orphans / superseded-by-close-out flags, not live work. The milestone shipped to main with all requirements satisfied.
+## Performance Metrics
+
+**Velocity:**
+
+- Total plans completed: 15
+- Average duration: ~5 min/plan
+- Total execution time: ~25 min (Phase 01)
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 01 Foundation & Shell | 5/5 | ~25 min | ~5 min |
+| 01 | 5 | - | - |
+| 02 | 5 | - | - |
+
+**Recent Trend:**
+
+- Last 5 plans: 5min · 10min · 5min · 4min · 1min
+- Trend: Phase 01 code-complete
+
+*Updated after each plan completion*
+| Phase 01 P01 | 5 | 3 tasks | 2 files |
+| Phase 1 P2 | 10min | 3 tasks | 6 files |
+| Phase 1 P3 | 5min | 3 tasks | 6 files |
+| Phase 1 P4 | 4min | 2 tasks | 3 files |
+| Phase 01 P05 | 1min | 3 tasks | 2 files |
+| Phase 02 P02-01 | 9min | 3 tasks | 6 files |
+| Phase 02 P02-02 | 4min | 3 tasks | 5 files |
+| Phase 02 P02-03 | 12min | 2 tasks | 4 files |
+| Phase 02 P02-04 | 7min | 3 tasks | 6 files |
+| Phase 02 P02-05 | 11min | 3 tasks | 6 files |
 
 ## Phases
 
-| # | Phase | Status |
-|---|-------|--------|
-| 1 | Strip to Senses | COMPLETE (2026-06-04) — 6/6 plans done |
-| 2 | Omni Verbatim | COMPLETE (2026-06-04) — 3/3 plans done; R1 proven on real run (gwxLeHphZCxK); D-02 silent deferred HUMAN-UAT |
-| 3 | Apollo Reasoner (Brain 1, the moat) | COMPLETE — 4/4 plans done (corpus v1 unblocked it; reasoner + remix re-grounding + aggregator/route/pipeline wiring) |
-| 4 | Audience-Sim Fold (Brain 2, the bet) | COMPLETE (2026-06-05) — 5/5 plans done; **10-pass DELETED**, fold is sole audience-sim path (verified in code); FOLD_THINKING_BUDGET=1000; ENGINE_VERSION 3.6.0 |
-| 5 | Wire + Surface | COMPLETE (2026-06-06) — 4/4 plans done; D-01 rubric-sum + R11 range + InsightHeroFrame (hero) + dead-UI strip; verifier 18/18 code, `human_needed` for 5 live UAT items |
+| # | Phase | Requirements | Status |
+|---|-------|--------------|--------|
+| 1 | Foundation & Shell | SHELL-01..07, THEME-01..06 (13) | Complete (code; verification pending) |
+| 2 | The Reading | READ-01..08, READ-10 (9) | Not started |
+| 3 | Rich Visuals as Drill-Downs | READ-09 (1) | Not started |
+| 4 | Stage-Reveal | REVEAL-01, REVEAL-02 (2) | Not started |
+| 5 | Follow-up & Demo | CHAT-01, CHAT-02, DEMO-01 (3) | Not started |
 
-## Quick Tasks Completed
+Execution order: 1 → 2 → 3 → 4 → 5
 
-| Date | Slug | Result |
-|------|------|--------|
-| 2026-06-05 | engine-latency-quality-spine-ab | Spine A/B + Apollo budget sweep + fold trim + **omni-flash flip**. **E2E 116→74s (−36%; −76% from original ~312s) across 6 real runs, quality verified.** Shipped (ENGINE_VERSION 3.7.0): omni plus→**flash** (36→17s, A/B'd 2 videos: verbatim richer + correct flop), Apollo thinking_budget 3000→1500 (insight NOT budget-bound), fold reason+t_start/t_end drops (63→46s), FOLD_MAX 8000→4000. Final: omni 17 / fold ~50 / deepseek ~53. **Key audit: the FOLD NEVER sees video frames** (analysisId never threaded → keyframes always null; fold reasons over omni's TEXT). **<45s is now a PRODUCT decision** (2×5 fold split [conflicts 1-call mandate] OR progressive painting [number shifts]), not tuning. → `.planning/quick/20260605-engine-latency-quality-spine-ab/` |
-| 2026-06-06 | 260607-00u-build-ask-the-expert-chat-dock | **"Ask the expert" chat dock — v1 shipped.** Dual-mode CommandBar (pre-analysis form untouched; post-analysis = Ask input + demoted New analysis), fixed-DOM upward ~60vh thread surviving Konva pan/zoom, seeded prompts (from ceiling_capper/weakest dim/top rewrite), scope chip wired to board-store `selectedNodeId`, permalink replay, mobile full-height sheet. Backend: `analysis_chats` migration (RLS ownership-join, applied to remote) + streaming Qwen/DashScope route `/api/analyze/[id]/chat` (SSE token/done, per-analysis cap + rate limit, **zero new engine cost** — grounded on cached row) + GET history. **Qwen-only honored** (no Claude/Gemini imports); frame-citation camera-jump + coach/what-if **deferred to v2**. 26 tests green, build clean (fixed: regen'd Supabase types for `analysis_chats`). 4 commits. → `.planning/quick/260607-00u-build-ask-the-expert-chat-dock-for-the-a/` |
-| 2026-06-06 | 260607-00u-chat-dock-v2-refinement | **UI/UX refinement v2 — shipped + browser-verified (desktop+mobile).** Iterated via 3 sketches (`.planning/sketches/chat-dock-redesign{,-v2}.html` + `chat-composer-variants.html`, composer variant A). **Unified single panel** (sticky header/clear/collapse → scroll thread → composer; deleted THREAD_BOTTOM_OFFSET magic gap). **Markdown answers** (bold lead + ≤3 bullets, concise system prompt). **§corpus citations as inline pills** (§1/§9) + **`↗ frame-tag`** parsed from a `FRAME:` marker (static; camera-jump still v2-feature). **Composer A**: embedded inline send (subtle→coral), `✦ Try` suggestion row with bold weakest-signal prompts, capability placeholder. **Streaming + Stop**, error/rate-limit (amber), jump-to-latest, copy/regenerate. **Mobile true full-height sheet** (fixed inline-maxHeight override bug). Keyboard (⌘K/Esc/↑/⌘⌫), a11y (role=log, throttled aria-live, reduced-motion). Verified live: new answer renders bold+bullets+§pills+Content-craft tag, streaming shows Stop, send flips coral. 27 tests green, build clean. **NOTE: concurrent "sighted reasoner" engine WIP was auto-committed as `53d53eb9 "test: changes"` by the auto-commit hook during merge — preserved, mislabeled, not mine.** Minor follow-up: mobile global hamburger overlaps sheet header. → REFINE-SPEC.md in quick dir |
+## Accumulated Context
 
-## Decisions locked (2026-06-05, 04-05 FLIP-AND-DELETE) — ✅ LIVE IN CODE (verified 2026-06-06)
+### Decisions
 
-> This block is the CURRENT truth. The older "SHADOW / fold dormant / deferred to P5" framing below
-> (in the P4-05 COMPLETE narrative) was superseded same day by this user mandate and is STALE.
-> Code verification 2026-06-06: `runWave3Pass2` DELETED (pass2.ts + pipeline.ts:734); no live
-> `ENGINE_USE_FOLD` flag; `FOLD_THINKING_BUDGET` default = 1000 (fold.ts:57); ENGINE_VERSION 3.6.0.
+Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 
-- **FLIP EXECUTED (user mandate, supersedes D-09/D-10)** — 10-pass (runWave3Pass2 + runWave3 Pass-1 loop) DELETED; fold (runFold) is the sole audience-sim path; no fallback to persona loops; no ENGINE_USE_FOLD flag. **The P4-05 carry-forward (lower budget → re-run referee → flip) is therefore DONE — not deferred to P5.**
-- **FOLD_THINKING_BUDGET 4000→1000** — A/B validated: budget=1000 returned in 89.9s with diverse curves. Margin thin — do NOT raise timeout; trim FOLD_MAX_TOKENS for headroom if needed. **Live: fold.ts:57 default 1000.**
-- **ENGINE_VERSION 3.6.0** — later spine-A/B quick task bumped 3.4.0 → 3.6.0 (reason-drop + FOLD_MAX 4000 + Apollo budget 1500). Cache invalidation required for pre-fold rows.
-- **behavioralSource default: "fold"** — deepseek fallback kept for fold failures and eval harness back-compat; "personas" option removed.
-- **FLIP commit: `2a96e1b7`** — build green, 939 tests pass, grep confirms zero live runWave3Pass2 references.
+- v5.0: Stand down the Numen Surface ground-up rebuild; retheme + restructure the EXISTING board/app components instead (ground-up proved too costly for the payoff; rich board visuals reused as drill-downs, not rebuilt).
+- v5.0: Visual system is human-UAT-gated; component/motion libs (Radix/shadcn/MagicUI/Aceternity/motion+Framer Motion) permitted at executor discretion within the flat-warm + calm-motion taste bar.
+- v5.0: Engine frozen 3.19.0 — this is a presentation-layer milestone.
+- [Phase ?]: P1-01: Flat-warm @theme migration — charcoal surfaces as exact HEX (oklch L<0.15 miscompiles), Raycast glass/glow stripped (Layer A), --shadow-float the lone shadow; all values [UAT], lock at THEME-06.
+- [Phase ?]: P1-01: Newsreader wired as --font-newsreader -> @theme --font-serif (mirrors Inter pattern, no self-reference); serif available, not yet consumed (greeting = 01-03).
+- [Phase ?]: P1-02: Flat-warm sidebar — Layer-B inline glass stripped, dead affordances (Pinned/Projects/Boards/Running) cut, 'Recent' relabelled 'Simulations'; SidebarAccountSelector extracted to hold Sidebar.tsx under 500 lines.
+- [Phase ?]: P1-02: Revived desktop sidebar collapse (Cmd/Ctrl-\ icon rail, persisted sidebar-store) + mobile drawer; app-shell main marginLeft offset wired to real sidebar width (0 mobile / rail / 220 expanded). New Simulation CTA -> /home; history rows KEEP /analyze/[id] (no /s/[id] rename).
+- [Phase ?]: P1-03: Built /home (authed server page in (app), inherits getUser gate + AppShell) + serif greeting (font-serif, useProfile name italic, isLoading name-less so no [Name] flash, NumenMark stele coral) + centered composer; NO chips (D-18), NO demo (D-25), NO Simulation list under composer.
+- [Phase ?]: P1-03: Slim composer reuses validated sub-parts (VideoUpload bare + TikTok-only regex mirroring server /api/analyze L465 + lifted Board navigate-on-id loop) — NOT ContentForm (Pitfall 5: no intent/tier/3-tab/IG). Rejects non-TikTok incl. Instagram with exact D-21 copy + disabled submit.
+- [Phase ?]: P1-03: Two-layout = one component, data-layout centered (no route id) / pinned (id present) via useParams; permalink kept as /analyze/[id] (no /s/[id] rename, RESEARCH A2); composer navigates there on stream.analysisId. Authed-landing repoint to /home is plan 01-04.
+- [Phase ?]: P1-04: Default authed landing repointed to /home (D-23) at BOTH decision points — middleware authed-off-auth-page redirect (/analyze->/home) + auth/callback default (?? /dashboard -> ?? /home); /dashboard sunset 308 also retargeted /home. Same-origin (open-redirect guard V5).
+- [Phase ?]: P1-04: /home auth-gated twice — (app) layout getUser gate (01-03) + PROTECTED_PREFIXES entry (defense-in-depth, Spoofing); unauthenticated /home -> /login w/ deep link. /analyze + /analyze/[id] kept dormant-but-reachable (still protected, IDOR-defended permalink untouched).
+- [Phase ?]: P1-04: Fixed latent bug — the authed-auth-page redirect was DEAD CODE shadowed by the public-path early-returns (/login & /signup are public). Added AUTH_PAGES carve-out + moved the redirect before the public-skip so signed-in /login/signup visitors actually reach /home; anon visitors still see the page.
+- [Phase 01]: P1-05: THEME-06 / D-07 SIGNED via a live human review on the running shell — the flat-warm system is LOCKED for rollout. Locked values: charcoal app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b; lone-accent coral oklch(0.68 0.13 33) ≈ #d97757 (text-on-coral #1a0f0a); serif = Newsreader; score zones green oklch(0.68 0.17 145) / amber oklch(0.75 0.15 85) / red oklch(0.60 0.20 25); greeting "Ready to simulate your audience, [Name]?". Phase 01 code-complete (13/13 reqs). Follow-ups: UAT screenshots 0/4 (env-gated, harness committed at 8f8e8acb), sidebar score-chip token-unify deferred to Phase 2.
+- [Phase 02]: P2-01: ScoreGauge fill uses bandTone() SSOT — amber owns the WHOLE 40-69 band (correction #2, never red there); score is a Phase-4-drivable prop; matte (no glow/halo/filter).
+- [Phase 02]: P2-01: DrillSheet is generic children-based (no panel registry) — the Phase-3/5 mount point; side switches bottom-mobile/right-desktop via useIsMobile; flat-warm (shadow-none, no inset, no blur). Forwarded side as data-side on shared ui/sheet.tsx (Rule 3 blocking, additive — no other consumers).
+- [Phase 02]: P2-01: src/components/reading/__tests__/ scaffold + shared makeReadingResult fixture (extends board fixtures.antiVirality + Apollo/heatmap/counterfactuals); scenario helpers cover D-13 degraded states. 14 reading tests green; full suite 1981 green (was 1967). 12 pre-existing tsc errors in untouched files logged to deferred-items.md.
+- [Phase ?]: P2-02: PersonaCloud dots-only (watch% hero-owned, 02-05); golden-angle verbatim from PersonaGraph; cream rgba(236,231,222) fill not white, coral worst-cluster only; returns null on empty personas.
+- [Phase ?]: P2-02: ThumbnailStrip gates on resolveKeyframeUrl(filmstrips,segments,'first') → null when no keyframe (no broken box); plain <img> not next/image, decorative alt='', signed URL never logged (T-02-03). AntiViralityHeader = bare re-export of board verdict component (D-04). 11 new tests; full suite 1992 green (was 1981).
+- [Phase ?]: P2-03: DriverRows is a NEW component (not a FactorBars reuse) — borrows only the 3-col grid + 5px bar markup, rebuilt for 0-100 ApolloDimensions; fixed funnel Hook->Retention->Shareability (no sort), neutral cream bars, ONLY the single weakest in its bandTone zone color + warn glyph; Retention value = drop time via formatTime(weighted_top_dropoff_t) SECONDS (audience-derive, not the ms TopFixesList variant — the 0:08-vs-0:00 trap), bar still fills by retention score; >=44px button -> onRowTap; degrades to 'Not available' on null dimensions (never a fabricated 0).
+- [Phase ?]: P2-03: Sidebar score chips unified onto the THEME-06 score-zone tokens (--color-success/warning/error) via the bandTone SSOT (>=70/40-69/<40) — one score-color language shared with the hero gauge; token swap only, em-dash branch stays muted (carried-forward P1 follow-up CLOSED).
+- [Phase 02]: P2-04: RewriteItem/FixFirstList/DeeperRead built — the actionable bottom of the Reading; copyable hook rewrites (D-15) are the literal payload (Copy = sanctioned coral surface, Copy->Copied->Copy 1.5s, graceful clipboard failure).
+- [Phase 02]: P2-04: Light two-tier (D-10) — FixFirstList overflow = one-way useState 'N more fixes' reveal; DeeperRead = vendored Radix Accordion inline expand; NEITHER a Sheet (heavy half stays DrillSheet).
+- [Phase 02]: P2-04: D-13/D-14 as correctness — zero fixes is a WIN ('Nothing urgent to fix'), null Apollo -> DeeperRead returns null + FixFirstList omits the rewrite section (no fabricated 0 / placeholder chip).
+- [Phase 02]: P2-04: reading cluster is board-store-free (no useBoardStore under src/components/reading/, grep=0 + bare-mount); BAND_COLOR repointed emerald/amber/red -> THEME-06 zone tokens success/warning/error. Full suite 2019 green (was 2000).
+- [Phase 02]: P2-05: Reading container (reading.tsx) is the single usePermalinkAnalysis subscriber — children are pure prop-driven leaves (severs the InsightHeroFrame per-leaf re-subscribe); data source abstracted so Phase 4 swaps in useAnalysisStream at the container only.
+- [Phase 02]: P2-05: D-13 honesty gate runs FIRST — no-id→inert(composer shell owns screen), id+!data→error, analysis_unavailable→CouldNotAnalyze (fabricated 0 NEVER reaches ScoreGauge); partial annotates; apollo-null degrades rows/deeper while hero/gate resolve from overall_score. Watch% hero-OWNED, rendered exactly once OUTSIDE PersonaCloud so it survives the empty-personas path (READ-04).
+- [Phase 02]: P2-05: Landmine-0 DONE — /analyze layout inverted to mount <Reading/> (Board retired from the mount, board sources+route files preserved dormant); one DrillSheet driven by closed-union panelId(hook|retention|shareability|personas) with native D-12 content = the Phase-3 rich-chart/PersonaGraph seam. READ-10 standing no-cut-data guard added. Full suite 2035 green (was 2019); build clean. Phase 02 code-complete → /gsd-verify-work.
+- [Phase 03]: P3-06: D-07 human-UAT gate LOCKED (2026-06-15) — all 5 reskinned drill-downs reviewed live (mobile+desktop), matte flat-warm confirmed; RetentionPlayer EXCLUDED by default (static composition is the SC-2-safe path on permalink reload), CraftFilmstrip audio-band dual-read = non-blocking follow-up. Precondition met (suite 2084 green + clean build). Phase 3 COMPLETE (6/6).
+- [Phase 04]: Stage-Reveal fidelity = REAL-SIGNAL reveal (user-approved at close). Literal per-engine-stage block reveal is unreachable: live stage_start/end events ride the composer POST body-reader that unmounts on the /home→/analyze/[id] router.push, and the frozen engine never persists stage progress (the reconnect SSE emits only partial/filmstrip_segment_ready/complete). So: branded IA skeleton + liveness from those surviving signals + a calm reduced-motion-gated settle cascade. Store-free hook (no useBoardStore — reading-cluster invariant). REVEAL-01/02 met.
+- [Phase 05]: Follow-up = the bottom-pinned composer becomes the "Ask the expert" chat input when pinned+inside FollowUpProvider (routes to /api/analyze/[id]/chat verbatim, NOT a new analysis); shared useExpertChat via FollowUpProvider so composer+tail share state; quick-action chips SEED the draft (not auto-send); gated to a completed Simulation; no separate dock. CHAT-01/02 met. **DEMO-01 DESCOPED from v5.0 (user direction at close) — deferred to a later milestone.** Engine + chat API unchanged.
 
-## Decisions locked (2026-06-05, 04-04)
+### Pending Todos
 
-- **Both aggregateScores paths share ONE pipeline call per run (useFold:true)** — fold LLM call counted exactly once per pipeline invocation; R7 call-count assertion is structurally honest.
-- **swipeSegments uses run1 values as representative for drop-point comparison** — segment ordering stable across runs; averaging indices would be lossy.
-- **wave_3_persona_* + wave_3_pass2_persona_* regex counts the 20 individual calls** — matches actual stage names in wave3.ts (10 pass1 personas) + pass2.ts (10 pass2 personas).
-- **04-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts composite complete: 3-metric gate (parity<=5, diversity>=0.8x, drop>=6/10), R7 call-count assertion, R8 2-runs averaging, per-video table, advisory overall verdict (D-05). tsc zero errors in script. Commit: `aa3a8428`. Next: `/gsd-execute-phase 4 04-05` — real-API referee run + production-flip human checkpoint.
+[From .planning/todos/pending/]
 
-## Decisions locked (2026-06-05, 04-03)
+None yet.
 
-- **adaptFoldToPersonaSimResults synthesizes reasoning from archetype** — `PersonaSimulationResult.reasoning` is required (min 1) but absent from FoldResponse; `"fold-derived: {archetype}"` satisfies the constraint without inventing data.
-- **Pass2PersonaResult does NOT have swipe_predicted_at / segment_reasons** — those are computed by `assembleHeatmapPayload` from `segment_reactions`; adapter populates only the 6 required fields; heatmap derivation unchanged (D-11/D-12).
-- **behavioralSource:"fold" branch uses IIFE** — clean 3-way fallback (fold → personas → deepseek) without nested ternaries; production default "deepseek" byte-unchanged (D-09).
-- **pipeline foldOutcome uses ENGINE_USE_FOLD=1 flag** — default OFF; 10-pass `runWave3Pass2` call site preserved dormant-not-deleted (D-09 rollback path, T-04-06).
-- **04-03 COMPLETE (2026-06-05)** — fold adapters real (fold-adapter.test.ts + fold-diversity-guard.test.ts 6/6 GREEN); aggregator "fold" branch routes behavioral aggregate + heatmap from foldOutcome; pipeline threads foldOutcome default OFF; ab-fold-referee @ts-expect-error shim removed; 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline).
+### Blockers/Concerns
 
-## Decisions locked (2026-06-05, 04-02)
+[Issues that affect future work]
 
-- **FoldArchetypeSchema uses z.string() for archetype** — test fixture (fold-schema.test.ts) uses a different archetype set than the real registry; z.enum would reject all 5 test cases; structural constraints (.length(10), attention [0,1], reason ≤200) still enforced; real archetype enum is a Plan 03 adapter concern.
-- **computeAvgCurveRange + checkDiversityGuard exported from fold.ts** — fold-internal utilities used post-parse in runFold; fold-diversity-guard.test.ts imports them from fold.ts per PATTERNS.md; not deferred to Plan 03.
-- **04-02 COMPLETE (2026-06-05)** — fold-prompts.ts (byte-stable 10-archetype prompt + FoldResponseSchema + buildFoldUserContent) + fold.ts (single bounded qwen3.6-plus thinking call, R7); fold-schema.test.ts 5/5 GREEN; tsc 0 errors in new files; exactly 1 completions.create.
+- **THEME-06 UAT gate (Phase 1): RESOLVED 2026-06-14** — the flat-warm system was reviewed live on the running shell by the human and SIGNED OFF (LOCKED for rollout). Locked values recorded in Decisions (P1-05) + 01-05-SUMMARY.md. Phases 2-5 reskin onto these as the fixed source of truth.
+- **Calibration items (brief §7): LOCKED at THEME-06** — charcoal ramp (app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b), score zones (green oklch(0.68 0.17 145) / amber 0.75 0.15 85 / red 0.60 0.20 25), coral oklch(0.68 0.13 33)≈#d97757, serif=Newsreader. Still OPEN (Phase 2+): how the thread settles (reveal → resting doc, Phase 4); mobile sidebar drawer vs bottom-sheet.
+- **Minor follow-ups (non-blocking):** (1) UAT screenshots 0/4 — env-gated at capture time; harness committed at 8f8e8acb, run once E2E creds + a completed Simulation id exist. (2) Sidebar score chips use Tailwind emerald-400/amber-400, not the --color-success/warning/error score-zone tokens — unify in Phase 2 when the hero score lands.
 
-## Decisions locked (2026-06-05, 04-01)
+## Deferred Items
 
-- **REDUCED referee VIDEO_SET (2 of 6)** — user decision 2026-06-05; D-03 composite degrades gracefully (drop-point agreement is per-video); deferred 4 D-04 slots (hook-strength × niche spread) to be added before Plan 04 referee runs. `gwxLeHphZCxK` (.mp4, good) + `IMG_0012` (.mov, bad/weak hook) confirmed on disk.
+Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify competitor analysis — "the moat"), in-thread monetization, desktop dense-instrument (Konva successor), Reading share/export growth loop. See REQUIREMENTS.md v2 section.
 
-## Decisions locked (2026-06-03)
+## Session Continuity
 
-- **Keep the score** (0–100) + a **confidence** indicator — framed as Apollo's expert assessment (the LLM is the ground truth, like a chess engine's position eval). NOT demoted to a band. Rederive it from Apollo (+ Audience-Sim), drop the dead 7-source blend + corpus-percentile framing. Delete only the fabricated engagement counts. (R5/R9 updated.)
-- **Keep engagement prediction — but grounded.** The current `predicted-engagement` is fake (views = f(score)+sine jitter, ignores creator reach). Delete that derivation in P1; rebuild in P5 grounded in creator baseline (follower tier/history) × quality read, shown as a range + confidence (R11). Concept is valid; the implementation wasn't.
-- **Value > moat:** build the value pillars; corpus is multi-source + matures over time, not a build gate. See VISION.md.
-- **Determinism = tolerance band, NOT byte-identity (2026-06-04, P1 01-01 baseline).** Ran the 2-run gate on a fixed video (temp0+seed already live in pass2): `overall_score` **79 vs 78**, behavioral **75 vs 71**, visual stable **82,82**. Drift isolated to wave3 pass2 thinking-mode persona pass × 10 Qwen calls — provider-level nondeterminism temp0+seed can't pin. **R8 amended** → "deterministic within provider noise band"; **D3.2 score-identity reframed** (Plan 06): post-strip score must land in the **78–79 band** on the same video + derivation structurally unchanged (behavioral-40% + visual-35% renorm), not byte-equal. Strip only touches dead paths so it can't move the score; the ±1 is pre-existing noise. Memory: `engine-determinism-gate`.
-
-## Pre-flight findings — resolved (2026-06-03)
-
-1. ✅ **Stale/Remix-blind** → merged `origin/main`; Remix re-scanned + folded (R12, ENGINE-MAP Remix section).
-2. ✅ **P1 sequencing** → P1 is now subtractive only; score keeps its existing derivation until P3/P5 (no "rederive from Apollo" before Apollo exists).
-3. ✅ **Long-lived branch** → P1 + P2 marked independently shippable to main (ship promptly).
-4. ✅ **A/B referee (R10)** → P4 will revive `corpus/eval-harness.ts` + `eval-runner.ts`.
-5. ✅ **Score = composite** principle banked in P3.
-6. ✅ **Determinism vs creativity** → scoring temp0+seed, rewrite variants may use temp>0 (noted in P3).
-7. 🔲 **Corpus v1** → user's parallel track; the long pole for P3. START NOW.
-
-## Next action
-
-> **CURRENT (2026-06-06):** Phases 1–4 COMPLETE + engine optimized **312→74s (−76%, ENGINE_VERSION 3.7.0, pushed)**. **Phase 5 DISCUSSED** — `05-CONTEXT.md` written (4 areas locked: rubric-sum score→band, progressive per-frame reveal + <45s dropped, R11 gated on researcher input-check, R4 satisfied surface-time to protect R6, insight-hero surface set). Next step (FRESH SESSION): `/clear` then **`/gsd-plan-phase 5`** (reads `05-CONTEXT.md`). ⚠ Two context decisions hand the researcher real work: (D-05) confirm whether creator-baseline data reaches the engine → gates R11; (D-07) R4 reinterpreted generation→surface. **Standalone backlog (any time):** dead keyframe→fold cleanup (`/gsd-quick` #2), broader omni-flash QA (#4). **Also outstanding: PR #13 (P1+P2 → main) still OPEN.** Notes below are HISTORICAL per-plan records.
-
----
-
-**P1 executed + complete** (6/6 plans, 2026-06-04). **P2 PLANNED** (2026-06-04) — research + validation + pattern-map + 3 verified plans (3 waves). Planner picked **persistence Option A** (dedicated `verbatim` JSONB column, mirrors emotion_arc). Plan-checker caught + the planner fixed a real BLOCKER: per-segment `spoken_text`/`on_screen_text` had no persistence path (declared+prompted but dropped before the DB — the segment-axis twin of the emotion_arc bug); now threaded on BOTH the inline shape AND exported `SegmentSchema` → normalizeSegments → aggregator pluck → `VerbatimPayload.segments` → both route inserts → `verbatim->'segments'` real-run proof. VERIFICATION PASSED iteration 2.
-
-- **02-01** (Wave 1) — ✅ COMPLETE (2026-06-04) — schema + prompt contracts + 20-case Wave 0 regression test all GREEN
-- **02-02** (Wave 2) — ✅ COMPLETE (2026-06-04) — VerbatimPayload + aggregator pluck/thread + verbatim JSONB migration (live on prod) + db types + both route sites :594/:921 + ENGINE_VERSION 3.2.0
-- **02-03** (Wave 3) — ✅ COMPLETE (2026-06-04) — R1 proven on real DB rows (gwxLeHphZCxK: hook+5-seg both axes), R6 ~106s under 300s cap, R12 51/51 green, R8 grep=2; D-02 silent deferred HUMAN-UAT
-
-**P2 COMPLETE.** **SHIPPED 2026-06-05 → PR #13** (`milestone/engine-opt` → `main`, 88 commits, 103 files). Code fully verified; both VERIFICATIONs `human_needed` only for live-env/deferred-UAT reasons — carried as a post-merge checklist in the PR body (R6 latency, R8 determinism, R12 remix smoke, D-02 silence honesty, R1 row reconfirm). Corpus v1 **ready** (`KNOWLEDGE-CORE.md` v1.1 validated) → P3 unblocked. **[HISTORICAL — P3 has since been planned, executed, and completed (4/4 plans). PR #13 still open.]**
-
-**P4-02 COMPLETE (2026-06-05)** — fold LLM layer: `fold-prompts.ts` (byte-stable 10-archetype system prompt + FoldResponseSchema + buildFoldUserContent) + `fold.ts` (single bounded qwen3.6-plus thinking call — the 20→1 fold — with Zod boundary validation, segment-count guard, diversity guard, cache-aware cost telemetry). fold-schema.test.ts 5/5 GREEN. Commits: `42a6e85b` (fold-prompts), `18b8bdc2` (fold).
-
-**P4-03 COMPLETE (2026-06-05)** — fold adapters (real implementations replacing stubs): `adaptFoldToPersonaSimResults` + `adaptFoldToPass2Results` (with niche_deep→niche normalization); aggregator "fold" branch (behavioral aggregate + heatmap from foldOutcome); pipeline `foldOutcome: Wave3FoldOutcome | null` default OFF (ENGINE_USE_FOLD=1); ab-fold-referee @ts-expect-error shim removed. 1826/1826 tests GREEN. Commits: `f289eaf5` (adapters), `bf44f0d3` (aggregator + pipeline).
-
-**P4-04 COMPLETE (2026-06-05)** — ab-fold-referee.ts 3-metric composite: behavioral parity <=5, diversity >=0.8x avgCurveRange, drop-point agreement >=6/10 archetypes; R7 call-count assertion (wave_3_fold=1 vs wave_3_persona_*+wave_3_pass2_persona_*=20); R8 2-runs-per-path averaging; per-video table; advisory overall verdict (REPRODUCE/BEAT/PARTIAL/MISS, D-05 no exit-1 on metric miss); COST_CAP_CENTS wired. tsc zero errors. Commit: `aa3a8428`.
-
-**P4-05 COMPLETE (2026-06-05) — P4 COMPLETE.** Real-API referee run: MISS 0/2 (fold timed out at 90s, thinking_budget=4000, every run). R7 CONFIRMED. Commit: `1923ad77`. ~~SHADOW decision (D-10): 10-pass intact, fold dormant; P5 carry-forward to lower budget → re-run → flip.~~ **⚠ SUPERSEDED SAME DAY** by the FLIP-AND-DELETE mandate (block above): 10-pass deleted, fold is live, budget already 1000. The carry-forward is DONE, not pending in P5.
-
-## Open bets / to verify
-
-- Fold quality (R10): **RESOLVED** — budget cut to 1000 (89.9s, diverse curves), flip executed, fold live as sole path. R7 confirmed. (Was "deferred to P5" — no longer.)
-- ✅ **DB row counts (01-01 Task 4):** trending_sounds=0, outcomes=0, scraped_videos=7389 (benign — Plan 03 removes trends.ts call site before Plan 05 dormant move).
-- Archetype count in the fold (10 vs ~5).
-- `optimal-post.ts`: honest signal or cut.
-- Corpus v1: data sources + distillation form + size (→ cached-prompt vs retrieval threshold). Biggest unknown.
-- Remix decode/adapt: confirm clean re-grounding on the shared core without breaking `/api/remix/adapt`.
-
-## Operator Next Steps
-
-- Start the next milestone with /gsd-new-milestone
+Last session: 2026-06-14T20:32:07.888Z
+Stopped at: Phase 3 UI-SPEC approved
+Resume file: .planning/phases/03-rich-visuals-as-drill-downs/03-UI-SPEC.md

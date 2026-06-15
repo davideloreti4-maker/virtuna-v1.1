@@ -12,11 +12,45 @@ import {
  * Exchanges the authorization code for a session, processes
  * referral cookies, and redirects to the intended destination.
  */
+
+/**
+ * CR-01 — Open-redirect guard for the client-supplied `next` param.
+ *
+ * `new URL(next, origin)` does NOT pin the host: a protocol-relative
+ * (`//evil.com`), backslash (`/\evil.com`), or absolute (`https://evil.com`)
+ * value overrides the origin entirely, so the post-login redirect would
+ * escape to an arbitrary host. We only accept a root-relative same-origin
+ * path: exactly one leading `/`, no `//`, no backslashes, and (defense in
+ * depth) a resolved URL whose origin still matches. Anything else falls
+ * back to /home.
+ */
+export function safeNext(raw: string | null, origin: string): string {
+  if (!raw) return "/home";
+  // Must be root-relative: single leading slash, no protocol-relative "//",
+  // no backslash (browsers treat "\" as "/" in URLs, so "/\evil.com" escapes).
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.includes("\\")) {
+    return "/home";
+  }
+  // Defense-in-depth: confirm the resolved URL stays on origin.
+  try {
+    const resolved = new URL(raw, origin);
+    if (resolved.origin !== origin) return "/home";
+    return resolved.pathname + resolved.search + resolved.hash;
+  } catch {
+    return "/home";
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/dashboard";
   const origin = request.nextUrl.origin;
+  // D-23 — default authed landing is /home (was /dashboard, which 308-redirects anyway).
+  // `next` is user-supplied, so it MUST pass safeNext() (CR-01): only a
+  // same-origin root-relative path survives; protocol-relative/absolute/
+  // backslash values fall back to /home. Do NOT trust `new URL(next, origin)`
+  // alone — it does not enforce same-origin.
+  const next = safeNext(searchParams.get("next"), origin);
 
   if (!code) {
     return NextResponse.redirect(
@@ -53,7 +87,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Detect first-time users and redirect to onboarding
+  // Detect first-time users and redirect to onboarding.
+  // `next` is already safeNext()-validated (same-origin path); `/welcome` is a
+  // server-controlled literal — so `new URL(redirectTo, origin)` below is safe.
   let redirectTo = next;
   if (data.user) {
     const { data: profile } = await supabase

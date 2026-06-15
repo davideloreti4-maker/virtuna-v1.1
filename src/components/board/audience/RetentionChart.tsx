@@ -130,14 +130,14 @@ export function RetentionChart({
         >
           <defs>
             <linearGradient id="retentionFill" gradientUnits="userSpaceOnUse" x1="0" y1={PAD_TOP} x2="0" y2={FLOOR_Y}>
-              <stop offset="0%" stopColor="rgba(255,255,255,0.10)" />
-              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="0%" stopColor="rgba(236,231,222,0.06)" />
+              <stop offset="100%" stopColor="rgba(236,231,222,0)" />
             </linearGradient>
           </defs>
           {/* y guides — 100% (hook baseline) + 50%, dashed; floor = 0% */}
-          <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="rgba(255,255,255,0.08)" strokeWidth="1" strokeDasharray="2 4" />
-          <line x1="0" y1={yForValue(0.5)} x2={VB_W} y2={yForValue(0.5)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" strokeDasharray="2 4" />
-          <line x1="0" y1={FLOOR_Y} x2={VB_W} y2={FLOOR_Y} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+          <line x1="0" y1={PAD_TOP} x2={VB_W} y2={PAD_TOP} stroke="rgba(236,231,222,0.08)" strokeWidth="1" strokeDasharray="2 4" />
+          <line x1="0" y1={yForValue(0.5)} x2={VB_W} y2={yForValue(0.5)} stroke="rgba(236,231,222,0.06)" strokeWidth="1" strokeDasharray="2 4" />
+          <line x1="0" y1={FLOOR_Y} x2={VB_W} y2={FLOOR_Y} stroke="rgba(236,231,222,0.06)" strokeWidth="1" />
           {/* survival area fill beneath the curve */}
           {areaPath && <path d={areaPath} fill="url(#retentionFill)" stroke="none" />}
           {/* niche comparison (dashed ghost) */}
@@ -145,7 +145,7 @@ export function RetentionChart({
             <path
               d={ghostPath}
               fill="none"
-              stroke="rgba(255,255,255,0.16)"
+              stroke="rgba(236,231,222,0.16)"
               strokeWidth="1.5"
               strokeDasharray="3 4"
             />
@@ -157,22 +157,22 @@ export function RetentionChart({
               y1={PAD_TOP}
               x2={dropGeo.x}
               y2={FLOOR_Y}
-              stroke="rgba(255,127,80,0.22)"
+              stroke="oklch(0.68 0.13 33 / 0.4)"
               strokeWidth="1"
             />
           )}
-          {/* survival curve (neutral white) */}
+          {/* survival curve (neutral cream) */}
           {survivalPath && (
             <path
               d={survivalPath}
               fill="none"
-              stroke="rgba(255,255,255,0.72)"
+              stroke="rgba(236,231,222,0.72)"
               strokeWidth="2"
               strokeLinecap="round"
             />
           )}
           {/* single coral mark at the drop */}
-          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="#FF7F50" />}
+          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="var(--color-accent)" />}
         </svg>
 
         {/* drop delta label (coral), positioned above the dot */}
@@ -181,7 +181,7 @@ export function RetentionChart({
             className="absolute tabular-nums"
             style={{
               fontSize: 11,
-              color: '#FF7F50',
+              color: 'var(--color-accent)',
               fontWeight: 600,
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
@@ -196,7 +196,7 @@ export function RetentionChart({
         {ghostPath && (
           <div
             className="absolute"
-            style={{ right: 0, top: '64%', fontSize: 11, color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
+            style={{ right: 0, top: '64%', fontSize: 11, color: 'rgba(236,231,222,0.34)', fontWeight: 500 }}
           >
             niche
           </div>
@@ -205,13 +205,13 @@ export function RetentionChart({
         {/* y-axis labels aligned to the 100% / 50% guides (TikTok-style) */}
         <div
           className="pointer-events-none absolute right-0 tabular-nums"
-          style={{ top: `${(PAD_TOP / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
+          style={{ top: `${(PAD_TOP / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(236,231,222,0.34)', fontWeight: 500 }}
         >
           100%
         </div>
         <div
           className="pointer-events-none absolute right-0 tabular-nums"
-          style={{ top: `${(yForValue(0.5) / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
+          style={{ top: `${(yForValue(0.5) / VB_H) * 100}%`, transform: 'translateY(-50%)', fontSize: 10, color: 'rgba(236,231,222,0.34)', fontWeight: 500 }}
         >
           50%
         </div>
@@ -233,12 +233,12 @@ export function RetentionChart({
                 width: `${cell.widthPct}%`,
                 aspectRatio: '16 / 9',
                 backgroundImage: cell.url ? `url('${cell.url}')` : undefined,
-                backgroundColor: cell.url ? undefined : 'rgba(255,255,255,0.016)',
-                borderColor: cell.isDrop ? 'rgba(255,127,80,0.55)' : 'rgba(255,255,255,0.06)',
+                backgroundColor: cell.url ? undefined : 'rgba(236,231,222,0.016)',
+                borderColor: cell.isDrop ? 'oklch(0.68 0.13 33 / 0.55)' : 'var(--color-border)',
                 filter: cell.isDrop
                   ? 'brightness(.78) saturate(.8) contrast(1.04)'
                   : 'brightness(.5) saturate(.7) contrast(1.04)',
-                boxShadow: cell.isDrop ? 'rgba(255,127,80,0.14) 0 0 0 1px' : undefined,
+                boxShadow: cell.isDrop ? 'oklch(0.68 0.13 33 / 0.14) 0 0 0 1px' : undefined,
                 transition: 'filter .2s',
               }}
             />
@@ -249,7 +249,7 @@ export function RetentionChart({
       {/* time axis */}
       <div
         className="relative tabular-nums"
-        style={{ height: 16, marginTop: 7, fontSize: 11, color: 'rgba(255,255,255,0.34)' }}
+        style={{ height: 16, marginTop: 7, fontSize: 11, color: 'rgba(236,231,222,0.34)' }}
         aria-hidden="true"
       >
         <span className="absolute left-0">0:00</span>
@@ -259,7 +259,7 @@ export function RetentionChart({
             style={{
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
-              color: '#FF7F50',
+              color: 'var(--color-accent)',
               fontWeight: 600,
             }}
           >
