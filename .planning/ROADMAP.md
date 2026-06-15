@@ -27,7 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature centerpiece — pivoted from a canvas "crowd → score" animation to a **product-shot showcase** (desktop reading window + phone TikTok, swappable Placeholder slots) after live craft review (completed 2026-06-15)
 - [x] **Phase 3: Story & Showcase** - How-it-works, "the reading" product showcase, and feature deep-dive blocks (placeholder frames) (completed 2026-06-15)
 - [x] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ (completed 2026-06-15)
-- [ ] **Phase 5: Quality Hardening** - Final responsive, performance, and accessibility pass across the whole page
+- [x] **Phase 5: Quality Hardening** - Final responsive, performance, and accessibility pass across the whole page (completed 2026-06-15)
 
 ## Phase Details
 
@@ -181,14 +181,12 @@ Plans:
   3. The page is fully keyboard-navigable with semantic landmarks, visible focus states, and WCAG AA contrast on all text/background pairs
   4. The signature moment and other heavy interactions degrade gracefully under reduced-motion and slow-load conditions without blocking content
 
-**Plans**: TBD
+**Plans**: 1 quick-execution pass (audit-driven — the page already passed P2/P3/P4 live craft UAT, so hardening narrowed to the systematic gaps an audit surfaced).
 **UI hint**: yes
 
 Plans:
 
-- [ ] 05-01: TBD — responsive audit + fixes, 320px → desktop (FOUND-05)
-- [ ] 05-02: TBD — performance pass: lazy-load heavy motion/media, CLS/Lighthouse ≥90 (FOUND-06)
-- [ ] 05-03: TBD — accessibility pass: landmarks, focus, keyboard nav, WCAG AA contrast (FOUND-07)
+- [x] 05-01: Quality hardening pass (FOUND-05/06/07) — audit found the page already responsive (all grids mobile-first `grid-cols-1 → md:`, verified no horizontal scroll at 320px) and CLS-safe (Placeholder aspect-locks its box, D-14). Two systematic gaps closed: (a) **a11y FOUND-07** — plain text links (header nav/login/logo, mobile-panel links, footer link groups) had hover but no visible keyboard-focus state; added a shared `FOCUS_RING` (`src/lib/utils.ts`) coral ring + offset, applied across header + footer (Button/hero-cue already had rings). (b) **perf FOUND-06** — `<Placeholder>` real-media swap now lazy-loads: `loading="lazy"` + `decoding="async"` on img, `preload="none"` on video, so heavy assets never block first paint when they land. Verified: full suite 2005 green, build clean (`○ /` static), live `:focus-visible` ring + 320px no-overflow confirmed via Playwright.
 
 ## Progress
 
@@ -201,4 +199,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
 | 4. Proof & Conversion | 6/6 | Complete    | 2026-06-15 |
-| 5. Quality Hardening | 0/3 | Not started | - |
+| 5. Quality Hardening | 1/1 | Complete    | 2026-06-15 |

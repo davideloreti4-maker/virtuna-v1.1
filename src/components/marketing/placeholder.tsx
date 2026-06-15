@@ -133,6 +133,9 @@ const Placeholder = React.forwardRef<HTMLDivElement, PlaceholderProps>(
               loop
               muted
               playsInline
+              // FOUND-06 — heavy media must not block first paint: defer the
+              // download until the element scrolls near the viewport.
+              preload="none"
               aria-label={label}
             />
           ) : (
@@ -141,6 +144,10 @@ const Placeholder = React.forwardRef<HTMLDivElement, PlaceholderProps>(
               src={src}
               alt={label ?? ""}
               className="h-full w-full object-cover"
+              // FOUND-06 — lazy-load + async-decode so off-screen stand-ins
+              // never block first paint (the box is already aspect-reserved).
+              loading="lazy"
+              decoding="async"
             />
           )
         ) : (

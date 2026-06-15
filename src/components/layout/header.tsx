@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING } from "@/lib/utils";
 import { NumenLogo } from "@/components/brand/numen-logo";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL, LOGIN_URL } from "@/lib/routes";
@@ -126,7 +126,7 @@ export function Header({ className }: HeaderProps) {
         <Link
           href="#hero"
           aria-label="Numen home"
-          className="flex items-center text-foreground"
+          className={cn("flex items-center text-foreground", FOCUS_RING)}
         >
           <NumenLogo size={26} />
         </Link>
@@ -137,7 +137,10 @@ export function Header({ className }: HeaderProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+              className={cn(
+                "text-sm text-foreground-secondary transition-colors hover:text-foreground",
+                FOCUS_RING
+              )}
             >
               {link.label}
             </Link>
@@ -148,7 +151,10 @@ export function Header({ className }: HeaderProps) {
         <div className="hidden items-center gap-3 md:flex">
           <Link
             href={LOGIN_URL}
-            className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+            className={cn(
+              "text-sm text-foreground-secondary transition-colors hover:text-foreground",
+              FOCUS_RING
+            )}
           >
             Sign in
           </Link>
@@ -190,7 +196,11 @@ export function Header({ className }: HeaderProps) {
                 key={link.href}
                 href={link.href}
                 onClick={closeMenu}
-                className="flex min-h-[44px] items-center rounded-md px-2 text-sm text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground"
+                className={cn(
+                  "flex min-h-[44px] items-center rounded-md px-2 text-sm text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground",
+                  FOCUS_RING,
+                  "focus-visible:ring-offset-background-elevated"
+                )}
               >
                 {link.label}
               </Link>
@@ -199,7 +209,11 @@ export function Header({ className }: HeaderProps) {
             <Link
               href={LOGIN_URL}
               onClick={closeMenu}
-              className="flex min-h-[44px] items-center rounded-md px-2 text-sm text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground"
+              className={cn(
+                "flex min-h-[44px] items-center rounded-md px-2 text-sm text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground",
+                FOCUS_RING,
+                "focus-visible:ring-offset-background-elevated"
+              )}
             >
               Sign in
             </Link>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { cn } from "@/lib/utils";
+import { cn, FOCUS_RING } from "@/lib/utils";
 import { NumenLogo } from "@/components/brand/numen-logo";
 import { NAV_LINKS } from "@/lib/nav";
 
@@ -73,7 +73,11 @@ export function Footer({ className }: FooterProps) {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                    className={cn(
+                      "text-sm text-foreground-secondary transition-colors hover:text-foreground",
+                      FOCUS_RING,
+                      "focus-visible:ring-offset-background-elevated"
+                    )}
                   >
                     {link.label}
                   </Link>
@@ -91,7 +95,11 @@ export function Footer({ className }: FooterProps) {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                      className={cn(
+                      "text-sm text-foreground-secondary transition-colors hover:text-foreground",
+                      FOCUS_RING,
+                      "focus-visible:ring-offset-background-elevated"
+                    )}
                     >
                       {link.label}
                     </Link>
@@ -107,7 +115,11 @@ export function Footer({ className }: FooterProps) {
                   <li key={link.label}>
                     <Link
                       href={link.href}
-                      className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
+                      className={cn(
+                      "text-sm text-foreground-secondary transition-colors hover:text-foreground",
+                      FOCUS_RING,
+                      "focus-visible:ring-offset-background-elevated"
+                    )}
                     >
                       {link.label}
                     </Link>
