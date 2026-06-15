@@ -10,7 +10,8 @@ const inter = Inter({
 });
 
 // [UAT] serif typeface — Newsreader (Frame A); may swap to Source Serif 4 at THEME-06.
-// Voice moments ONLY (greeting/hero); 400 + italic (italic = name accent in the greeting). No element consumes it yet (plan 01-03).
+// Voice moments ONLY (hero headline); 400 + italic. No element consumes it yet (lands Phase 2);
+// --font-serif resolves to it via the ported globals.css (D-05).
 const newsreader = Newsreader({
   subsets: ["latin"],
   display: "swap",

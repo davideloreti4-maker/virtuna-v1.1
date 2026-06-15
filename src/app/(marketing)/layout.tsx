@@ -1,30 +1,15 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import { Header } from "@/components/layout/header";
-import "../globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-inter",
-  preload: false,
-});
-
-export const metadata: Metadata = {
-  title: "Artificial Societies | Human Behavior, Simulated",
-  description:
-    "AI personas that replicate real-world attitudes, beliefs, and opinions. Research that was impossible is now instant.",
-};
-
+/**
+ * Marketing route-group layout — bare pass-through (D-10).
+ *
+ * The root layout is the sole owner of the document shell, the font variables
+ * (Inter + Newsreader), and base metadata. This file previously duplicated that
+ * shell plus a redundant Inter and stale marketing metadata, and rendered the
+ * header; all of that was removed. The header now lives in each marketing page
+ * (the `/` skeleton owns header + main + footer), and each page exports its own
+ * page metadata.
+ */
 export default function MarketingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang="en" className={`${inter.variable}`}>
-      <body className="min-h-screen bg-background font-sans antialiased">
-        <Header />
-        {children}
-      </body>
-    </html>
-  );
+  return <>{children}</>;
 }
