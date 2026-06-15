@@ -2,23 +2,11 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { NumenLogo } from "@/components/brand/numen-logo";
+import { NAV_LINKS } from "@/lib/nav";
 
 interface FooterProps {
   className?: string;
 }
-
-/**
- * In-page anchor links (NAV-02) — mirror the header nav set exactly
- * (see src/components/layout/header.tsx NAV_LINKS). They target the
- * scroll-skeleton section ids the marketing page assigns.
- */
-const PRODUCT_LINKS = [
-  { label: "How it works", href: "#how-it-works" },
-  { label: "The Simulation", href: "#the-simulation" },
-  { label: "Features", href: "#features" },
-  { label: "Pricing", href: "#pricing" },
-  { label: "FAQ", href: "#faq" },
-] as const;
 
 /**
  * Legal placeholders (NAV-02) — labelled, swappable stub links the human
@@ -81,7 +69,7 @@ export function Footer({ className }: FooterProps) {
           <nav aria-label="Footer product links" className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-foreground">Product</h2>
             <ul className="flex flex-col gap-2">
-              {PRODUCT_LINKS.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
