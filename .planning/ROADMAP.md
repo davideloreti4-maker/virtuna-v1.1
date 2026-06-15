@@ -86,7 +86,7 @@ Plans:
 
 **Wave 1** *(blocked on Wave 0)*
 
-- [ ] 02-01-PLAN.md (wave 1) — RSC hero: serif H1 + Inter subcopy + "Try it free" CTA→SIGNUP_URL + "See how it works ↓" scroll-cue + the dimension-locked flat-warm stage shell; replace the page.tsx stub (HERO-01, HERO-02)
+- [x] 02-01-PLAN.md (wave 1) — RSC hero: serif H1 + Inter subcopy + "Try it free" CTA→SIGNUP_URL + "See how it works ↓" scroll-cue + the dimension-locked flat-warm stage shell; replace the page.tsx stub (HERO-01, HERO-02)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 1/4 | In Progress|  |
+| 2. Hero & Signature Moment | 2/4 | In Progress|  |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |

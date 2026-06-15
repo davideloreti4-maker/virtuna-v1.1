@@ -27,8 +27,8 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 
 ### Hero & Signature Moment (HERO)
 
-- [ ] **HERO-01**: The hero presents a hybrid-voice headline + subcopy communicating "know if it'll pop before you post"
-- [ ] **HERO-02**: The hero's primary "Try it free" CTA routes to the existing app signup
+- [x] **HERO-01**: The hero presents a hybrid-voice headline + subcopy communicating "know if it'll pop before you post"
+- [x] **HERO-02**: The hero's primary "Try it free" CTA routes to the existing app signup
 - [ ] **HERO-03**: The hero centerpiece is the signature "crowd → score" moment — a synthetic audience reacts to a video and resolves into a virality score
 - [ ] **HERO-04**: The signature moment has a reduced-motion / lazy fallback (static composed frame) so it never blocks first paint or breaks accessibility
 
@@ -91,8 +91,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | NAV-01 | Phase 1 | Complete |
 | NAV-02 | Phase 1 | Complete |
 | NAV-03 | Phase 1 | Complete |
-| HERO-01 | Phase 2 | Pending |
-| HERO-02 | Phase 2 | Pending |
+| HERO-01 | Phase 2 | Complete |
+| HERO-02 | Phase 2 | Complete |
 | HERO-03 | Phase 2 | Pending |
 | HERO-04 | Phase 2 | Pending |
 | PROOF-01 | Phase 4 | Pending |
