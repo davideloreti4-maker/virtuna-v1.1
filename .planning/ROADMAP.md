@@ -17,7 +17,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 
 - [x] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate (completed 2026-06-14)
 - [x] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean (completed 2026-06-14)
-- [ ] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces
+- [x] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces (completed 2026-06-15)
 - [ ] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document
 - [ ] **Phase 5: Follow-up & Demo** - Text follow-up in the same composer (reuse "Ask the expert") + a first-run live demo Reading on a known viral video
 
@@ -73,7 +73,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - [x] 03-03-PLAN.md — Tier-1 token-swaps (SegmentTable/DataTable/StatTile/KeyframeImage) + PersonaGraph re-treat (SVG matte, reduced-motion gate, mobile tap-to-reveal)
 - [x] 03-04-PLAN.md — New score panel (D-02): gauge onOpen + closed-union extension + ScoreDistribution wiring; swap personas→PersonaGraph + shareability→StatTileRow (PanelEmpty guards)
 - [x] 03-05-PLAN.md — Retention composed watch-journey (RetentionChart + CraftFilmstrip + SegmentTable, aligned/scrollable, store-free via usePermalinkFilmstrips) + hook reskin-verify + degradation guard
-- [ ] 03-06-PLAN.md — Blocking D-07 human-UAT gate: full-suite-green + clean-build precondition, live mobile+desktop review of all 5 reskinned drill-downs
+- [x] 03-06-PLAN.md — Blocking D-07 human-UAT gate: full-suite-green + clean-build precondition, live mobile+desktop review of all 5 reskinned drill-downs (LOCKED 2026-06-15)
 **UI hint**: yes
 
 ### Phase 4: Stage-Reveal
@@ -107,6 +107,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. The Reading | 5/5 | Complete   | 2026-06-14 |
-| 3. Rich Visuals as Drill-Downs | 5/6 | In Progress|  |
+| 3. Rich Visuals as Drill-Downs | 6/6 | Complete   | 2026-06-15 |
 | 4. Stage-Reveal | 0/TBD | Not started | - |
 | 5. Follow-up & Demo | 0/TBD | Not started | - |
