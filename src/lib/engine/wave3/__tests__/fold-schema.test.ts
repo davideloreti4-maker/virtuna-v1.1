@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { FoldResponseSchema } from "../fold-prompts";
+import { FoldResponseSchema, coerceFoldResponse } from "../fold-prompts";
 
 // ---------------------------------------------------------------------------
 // Shared fixture builder
@@ -90,6 +90,62 @@ describe("FoldResponseSchema", () => {
     data.personas[2].segment_reactions.push({ t_start: 15, t_end: 20, attention: -0.1, swipe_predicted: false });
     const result = FoldResponseSchema.safeParse(data);
     expect(result.success).toBe(false);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // coerceFoldResponse — the pre-Zod salvage layer (flash/omni TYPE sloppiness).
+  // Reproduces the live failure (run BtnOYjuLoZEb, 2026-06-15): 7/10 personas
+  // came back with scroll_past_second:null → schema rejected the WHOLE fold twice
+  // → 0 personas persisted (signal_availability.personas=false). Coercion maps
+  // null→0 ("watches fully") so the read survives, WITHOUT fabricating signal.
+  // ─────────────────────────────────────────────────────────────────────────
+  it("REGRESSION: scroll_past_second:null is rejected RAW but SURVIVES after coercion (→0)", () => {
+    const data = makeValid10();
+    // Mirror the live failure: most personas null on scroll_past_second.
+    for (const i of [0, 1, 2, 3, 5, 6, 8]) {
+      (data.personas[i] as Record<string, unknown>).scroll_past_second = null;
+    }
+    // Raw → schema fails (this is exactly what happened live, twice).
+    expect(FoldResponseSchema.safeParse(data).success).toBe(false);
+    // Coerced → passes, and the null became 0 (not fabricated drop time).
+    const coerced = coerceFoldResponse(data);
+    const result = FoldResponseSchema.safeParse(coerced);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.personas[0]!.scroll_past_second).toBe(0);
+      expect(result.data.personas.length).toBe(10);
+    }
+  });
+
+  it("coerces stringified numbers and units, and clamps out-of-range intents", () => {
+    const data = makeValid10();
+    (data.personas[0] as Record<string, unknown>).watch_through_pct = "95";
+    (data.personas[0] as Record<string, unknown>).scroll_past_second = "2.5s";
+    (data.personas[1] as Record<string, unknown>).share_intent = 140; // over 100 → clamp
+    const result = FoldResponseSchema.safeParse(coerceFoldResponse(data));
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.personas[0]!.watch_through_pct).toBe(95);
+      expect(result.data.personas[0]!.scroll_past_second).toBe(2.5);
+      expect(result.data.personas[1]!.share_intent).toBe(100);
+    }
+  });
+
+  it("salvages a bare top-level personas array (flash drops the {personas} wrapper)", () => {
+    const bare = makeValid10().personas; // an ARRAY, not { personas: [...] }
+    const result = FoldResponseSchema.safeParse(coerceFoldResponse(bare));
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.personas.length).toBe(10);
+  });
+
+  it("is a NO-OP on already-valid omni-plus-shaped output (never mutates good data)", () => {
+    const valid = makeValid10();
+    const result = FoldResponseSchema.safeParse(coerceFoldResponse(valid));
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.personas[0]!.watch_through_pct).toBe(80);
+      expect(result.data.personas[0]!.scroll_past_second).toBe(0);
+    }
   });
 
   it("strips any per-segment reason the model still emits (reason dropped 2026-06-05)", () => {

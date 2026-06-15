@@ -10,6 +10,7 @@ import {
  * Covers all (app) route group pages.
  */
 const PROTECTED_PREFIXES = [
+  "/home",           // D-23 — default authed landing (defense-in-depth on top of the (app) layout getUser gate)
   "/analyze",        // D-25 — /dashboard sunset
   "/brand-deals",
   "/settings",
@@ -17,6 +18,14 @@ const PROTECTED_PREFIXES = [
   "/referrals",
   "/competitors",
 ];
+
+/**
+ * Auth pages an authenticated user must NOT see. Signed-in visitors to these
+ * are bounced to the default authed landing (/home, D-23). These are public for
+ * unauthenticated visitors, so they are NOT in PROTECTED_PREFIXES — but they must
+ * bypass the public-path fast-return below so the authed-redirect check can run.
+ */
+const AUTH_PAGES = ["/login", "/signup"];
 
 /**
  * Public paths that skip auth checks entirely.
@@ -48,18 +57,23 @@ function isProtectedPath(pathname: string): boolean {
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // Phase 2 D-25 — /dashboard is sunset. Redirect to /analyze.
+  // D-25 — /dashboard is sunset. Redirect to the new authed landing /home (D-23).
   // Must run BEFORE Supabase client creation so the redirect fires regardless of auth state.
   // Subpaths drop (no /dashboard/* surfaces survive; Workspace milestone hasn't shipped).
   // Use same-origin clone to prevent open redirect (V5 input validation — RESEARCH §Security).
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/analyze";
+    url.pathname = "/home";
     return NextResponse.redirect(url, 308); // Permanent redirect — /dashboard is sunset
   }
 
+  // Auth pages (/login, /signup) are public for signed-OUT users, but a signed-IN
+  // user must be bounced to /home (D-23). They therefore must NOT take the public
+  // fast-return — they need getUser() to decide. Every other public path stays fast.
+  const isAuthPage = AUTH_PAGES.includes(pathname);
+
   // Skip Supabase entirely for paths that need no auth logic.
-  if (isPublicPath(pathname) && !request.nextUrl.searchParams.has("ref")) {
+  if (isPublicPath(pathname) && !isAuthPage && !request.nextUrl.searchParams.has("ref")) {
     return NextResponse.next({ request });
   }
 
@@ -112,7 +126,14 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
-  // Skip auth checks for public paths
+  // Redirect authenticated users away from auth pages to the default landing /home (D-23).
+  // Runs BEFORE the public-path skip so it is reachable for /login & /signup (which are
+  // public for signed-out users). same-origin new URL(path, request.url) — no open redirect (V5).
+  if (user && isAuthPage) {
+    return NextResponse.redirect(new URL("/home", request.url));
+  }
+
+  // Skip auth checks for public paths (incl. an unauthenticated visitor to an auth page).
   if (isPublicPath(pathname)) {
     return supabaseResponse;
   }
@@ -124,11 +145,6 @@ export async function updateSession(request: NextRequest) {
     const returnTo = request.nextUrl.pathname + request.nextUrl.search;
     loginUrl.searchParams.set("next", returnTo);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // Redirect authenticated users away from auth pages to /analyze
-  if (user && (pathname === "/login" || pathname === "/signup")) {
-    return NextResponse.redirect(new URL("/analyze", request.url));
   }
 
   // Redirect authenticated users without onboarding to /welcome

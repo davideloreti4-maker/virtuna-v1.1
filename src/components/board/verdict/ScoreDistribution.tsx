@@ -68,8 +68,7 @@ export function ScoreDistribution({
         className,
       )}
       style={{
-        background:
-          'linear-gradient(180deg, rgba(255,255,255,0.022), rgba(255,255,255,0) 72%)',
+        background: 'var(--color-surface)',
       }}
       data-testid="score-distribution"
       data-mode={mode}
@@ -81,7 +80,7 @@ export function ScoreDistribution({
       )}
 
       {/* axis row */}
-      <div className="relative h-[30px] text-[9.5px] text-white/40">
+      <div className="relative h-[30px] text-[9.5px] text-foreground-muted">
         <span className="absolute left-px top-[9px]">0</span>
         <span className="absolute right-px top-[9px]">100</span>
         {niche && (
@@ -151,7 +150,7 @@ function FieldPlot({
           style={{
             left: `${d.left}%`,
             top: d.top,
-            background: d.inBand ? 'rgba(255,127,80,0.34)' : 'rgba(255,255,255,0.19)',
+            background: d.inBand ? 'oklch(0.68 0.13 33 / 0.34)' : 'rgba(236,231,222,0.19)',
           }}
         />
       ))}
@@ -160,7 +159,7 @@ function FieldPlot({
       {/* scale key */}
       {dotScale > 1 && (
         <span
-          className="absolute right-0 top-0 text-[9px] text-white/30"
+          className="absolute right-0 top-0 text-[9px] text-foreground-muted"
           data-testid="dot-scale-key"
         >
           each ● ≈ {dotScale}
@@ -192,9 +191,7 @@ function LanePlot({
         <div
           className="relative h-[14px] rounded-full"
           style={{
-            background: 'rgba(255,255,255,0.045)',
-            boxShadow:
-              'inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 1px rgba(0,0,0,0.35)',
+            background: 'var(--color-border)',
           }}
         >
           {/* fill to score only when we have a niche to rank against */}
@@ -203,8 +200,7 @@ function LanePlot({
               className="absolute inset-y-0 left-0 rounded-full"
               style={{
                 width: `${score}%`,
-                background:
-                  'linear-gradient(90deg, rgba(255,255,255,0.10), rgba(255,255,255,0.22))',
+                background: 'rgba(236,231,222,0.18)',
               }}
             />
           )}
@@ -212,7 +208,7 @@ function LanePlot({
             <span
               key={q}
               className="absolute top-1/2 h-[6px] w-px -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${q}%`, background: 'rgba(255,255,255,0.10)' }}
+              style={{ left: `${q}%`, background: 'rgba(236,231,222,0.10)' }}
             />
           ))}
         </div>
@@ -236,8 +232,8 @@ function Band({ left, width }: { left: number; width: number }) {
         width: `${width}%`,
         top: 2,
         height: BASE - 2,
-        background: 'rgba(255,127,80,0.08)',
-        boxShadow: 'inset 0 0 0 1px rgba(255,127,80,0.22), 0 0 18px rgba(255,127,80,0.10)',
+        background: 'oklch(0.68 0.13 33 / 0.08)',
+        boxShadow: 'inset 0 0 0 1px oklch(0.68 0.13 33 / 0.22)',
       }}
       data-testid="confidence-band"
       aria-hidden
@@ -253,7 +249,7 @@ function MedianTick({ left }: { left: number }) {
         left: `${clampPct(left)}%`,
         top: 2,
         height: BASE - 2,
-        borderLeft: '1px dashed rgba(255,255,255,0.22)',
+        borderLeft: '1px dashed rgba(236,231,222,0.22)',
         transform: 'translateX(-0.5px)',
       }}
       aria-hidden
@@ -270,7 +266,7 @@ function P75Tick({ left }: { left: number }) {
         left: `${clampPct(left)}%`,
         top: 14,
         height: BASE - 14,
-        borderLeft: '1px dotted rgba(255,255,255,0.14)',
+        borderLeft: '1px dotted rgba(236,231,222,0.14)',
         transform: 'translateX(-0.5px)',
       }}
       aria-hidden
@@ -283,14 +279,14 @@ function Baseline() {
     <>
       <div
         className="absolute left-0 right-0"
-        style={{ top: BASE, height: 1, background: 'rgba(255,255,255,0.07)' }}
+        style={{ top: BASE, height: 1, background: 'rgba(236,231,222,0.07)' }}
         aria-hidden
       />
       {[0, 25, 50, 75, 100].map((q) => (
         <span
           key={q}
           className="absolute h-[4px] w-px -translate-x-1/2"
-          style={{ left: `${q}%`, top: BASE, background: 'rgba(255,255,255,0.10)' }}
+          style={{ left: `${q}%`, top: BASE, background: 'rgba(236,231,222,0.10)' }}
           aria-hidden
         />
       ))}
@@ -311,19 +307,17 @@ function YouMarker({ left, label = 'you' }: { left: number; label?: string }) {
           width: 1.5,
           background: 'var(--color-accent)',
           transform: 'translateX(-0.75px)',
-          boxShadow: '0 0 9px rgba(255,127,80,0.5)',
         }}
         aria-hidden
       />
-      {/* dot on baseline */}
+      {/* dot on baseline — solid coral + hairline surface ring (no glow) */}
       <div
         className="absolute h-[11px] w-[11px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
           left: `${left}%`,
           top: BASE,
           background: 'var(--color-accent)',
-          border: '1.5px solid var(--color-frame, #161719)',
-          boxShadow: '0 0 13px rgba(255,127,80,0.7)',
+          border: '1.5px solid var(--color-surface)',
         }}
         aria-hidden
       />
@@ -333,8 +327,8 @@ function YouMarker({ left, label = 'you' }: { left: number; label?: string }) {
         style={{
           left: `${left}%`,
           top: -8,
-          background: '#1c1d20',
-          borderColor: 'rgba(255,127,80,0.42)',
+          background: 'var(--color-surface)',
+          borderColor: 'oklch(0.68 0.13 33 / 0.42)',
           boxShadow: '0 4px 14px -4px rgba(0,0,0,0.6)',
         }}
         data-testid="you-chip"

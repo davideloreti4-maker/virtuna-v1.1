@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
+import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
 // stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
@@ -460,10 +461,11 @@ export async function POST(request: Request) {
       }
     }
 
-    // TikTok URL format validation
+    // TikTok URL format validation — WR-01: shared trust-boundary regex
+    // (src/lib/tiktok-url.ts), byte-identical to the client composer check so
+    // the two cannot drift (the client previously carried a looser /i flag).
     if (body.input_mode === "tiktok_url" && body.tiktok_url) {
-      const tiktokPattern = /^https?:\/\/(www\.|vm\.)?tiktok\.com\//;
-      if (!tiktokPattern.test(body.tiktok_url)) {
+      if (!TIKTOK_URL_PATTERN.test(body.tiktok_url)) {
         return Response.json(
           { error: "Invalid TikTok URL. Must be a tiktok.com link." },
           { status: 400 }

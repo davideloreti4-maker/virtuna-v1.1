@@ -1,192 +1,102 @@
-# Roadmap: Landing v2 — Refined Marketing Site
+# Roadmap — v5.0 Numen Rework
 
 ## Overview
 
-Five phases take Numen from an empty `/` route to a refined, dark, single-scroll
-marketing landing that clears the taste bar five prior attempts missed. We build
-**Foundation first** (the `/` mount, dark brand tokens, the reusable placeholder-slot
-system, and the motion + reduced-motion wiring) because every downstream section depends
-on it. Next the **Hero & Signature Moment** — the highest-craft, highest-risk "crowd →
-score" audience-simulation centerpiece — gets its own phase and the room it needs. Then
-the scroll body fills in: the **Story & Showcase** (how-it-works + "the reading" +
-feature deep-dives) and **Proof & Conversion** (social proof, testimonials, pricing
-teaser, final CTA, FAQ). A final **Quality Hardening** pass locks responsive behavior,
-the performance bar, and accessibility across the whole page. Marketing surface only —
-every product visual is a labelled, swappable placeholder slot, not a shipped asset.
+A **presentation-layer rework**. The engine is FROZEN at 3.19.0 — no phase touches `lib/engine/`. Every phase works in `src/components/**`, `src/app/**`, hooks, and design tokens only. The product collapses to **one thread per video (a "Reading")**: the user drops a video, the first AI turn IS the Reading, and a persistent composer handles follow-ups. The Konva canvas is retired; the rich board *visuals* are reused — transplanted off Konva, reskinned to a new flat-warm system, and re-authored as drill-downs (nothing visual is deleted, nothing rebuilt that already exists).
+
+The journey: lay the flat-warm visual foundation and the shell the Reading lives in (gated by a human visual-UAT review against that real surface) → author the consolidated Reading thread's information architecture → transplant the rich board visuals into the Reading as drill-downs → make the ~45–60s analysis read as progress via stage-reveal → add the text follow-up tail and the first-run demo. Each phase is an independently shippable, demoable slice. Concrete to-dos are discovered at `/gsd-discuss-phase` / `/gsd-plan-phase` time; the requirements below are the contract this roadmap maps, not a frozen task list.
+
+**Source of truth:** `.planning/NUMEN-REWORK-BRIEF.md` (LOCKED) · **Requirements:** `.planning/REQUIREMENTS.md`
 
 ## Phases
 
 **Phase Numbering:**
+- Milestone-scoped: restarts at Phase 1 (per project convention; no global counter).
+- Integer phases (1, 2, 3): planned milestone work.
+- Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
 
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
-
-Decimal phases appear between their surrounding integers in numeric order.
-
-- [x] **Phase 1: Foundation & Shell** - `/` mount, dark brand tokens, the placeholder-slot system, motion/reduced-motion wiring, and header + footer chrome (completed 2026-06-14)
-- [x] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature centerpiece — pivoted from a canvas "crowd → score" animation to a **product-shot showcase** (desktop reading window + phone TikTok, swappable Placeholder slots) after live craft review (completed 2026-06-15)
-- [x] **Phase 3: Story & Showcase** - How-it-works, "the reading" product showcase, and feature deep-dive blocks (placeholder frames) (completed 2026-06-15)
-- [x] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ (completed 2026-06-15)
-- [x] **Phase 5: Quality Hardening** - Final responsive, performance, and accessibility pass across the whole page (completed 2026-06-15)
+- [x] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate (completed 2026-06-14)
+- [x] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean (completed 2026-06-14)
+- [x] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces (completed 2026-06-15)
+- [x] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document (completed 2026-06-15, real-signal fidelity)
+- [x] **Phase 5: Follow-up & Demo** - Text follow-up in the same composer (reuse "Ask the expert"); DEMO-01 descoped from v5.0 (completed 2026-06-15)
 
 ## Phase Details
 
 ### Phase 1: Foundation & Shell
-
-**Goal**: Stand up the marketing page at `/` with the dark Numen brand system, the reusable placeholder-slot component every section will use, the motion foundation behind a reduced-motion fallback, and the header + footer chrome that wraps the scroll.
-**Depends on**: Nothing (first phase)
-**Requirements**: FOUND-01, FOUND-02, FOUND-03, FOUND-04, NAV-01, NAV-02, NAV-03
+**Goal**: Establish the flat-warm visual system and build the app shell the Reading lives in — the clean home (serif greeting + universal composer + starter chips), the two composer layouts (centered when empty → bottom-pinned when a Reading exists), ingestion via the composer (`+` upload / paste-URL auto-detect), and the reskinned sidebar of past Readings (reuse `useAnalysisHistory`). The flat-warm system is reskinned OFF the Raycast glass and is **human-UAT-gated against this real built shell** before it's locked for rollout — most downstream surfaces reskin onto it, so it must be approved here, against something real, not in the abstract. Mobile-first; desktop is the same shell, widened. Reuse `src/components/app/app-shell.tsx` + `src/components/sidebar/Sidebar.tsx` (keep structure + history wiring; strip the 137deg gradient, blur, and inset shine). Do NOT reuse the `milestone/numen-surface` `numen/`+`reading/` kit.
+**Depends on**: Nothing (first phase — the visual foundation + the frame everything else sits in)
+**Requirements**: SHELL-01, SHELL-02, SHELL-03, SHELL-04, SHELL-05, SHELL-06, SHELL-07, THEME-01, THEME-02, THEME-03, THEME-04, THEME-05, THEME-06
 **Success Criteria** (what must be TRUE):
-
-  1. Visiting `/` renders the new marketing page (replacing the old home), dark-only, using the **flat-warm** Numen design system ported from `~/virtuna-numen-rework` (neutral charcoal #262624 bg, cream #ece7de text, terracotta-clay coral #d97757, Inter + Newsreader serif for voice moments, flat-matte — no glass/glow; 6%/10% borders + 12px radius carried as-is). _Supersedes the old `main` Raycast brand — see `phases/01-foundation-shell/01-CONTEXT.md`._
-  2. The reusable placeholder-slot component renders labelled, aspect-ratio-correct stand-ins in image / video / avatar / logo variants, each swappable via one prop or one file with no layout shift
-  3. Motion is wired via motion (Framer Motion) plus the permitted libs (shadcn/Radix/Magic UI/Aceternity) and every animation respects a global reduced-motion fallback
-  4. A header shows the Stele logo + "Numen" wordmark and a "Try it free" CTA, and on small screens it collapses to a mobile-appropriate nav (menu and/or CTA)
-  5. A footer provides brand, in-page section links, and legal/social placeholders
-
-**Plans**: 5 plans (3 waves)
-
-Plans:
-**Wave 1**
-
-- [x] 01-01-PLAN.md (wave 1) — flat-warm theme port + Newsreader wiring + scroll-skeleton route mount at `/` + `(marketing)/layout` pass-through fix + delete `landing/*` & dead routes + `/pricing` surgical fix (FOUND-01, FOUND-02)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 01-02-PLAN.md (wave 2) — reusable `<Placeholder>` slot (image/video/avatar/logo, `src` one-prop swap, aspect-locked, reduced-motion-gated breathe) (FOUND-03)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 01-03-PLAN.md (wave 3) — motion foundation: `<MotionConfig reducedMotion="user">` + CSS `@media (prefers-reduced-motion: reduce)` block + D-16 verify (FOUND-04)
-- [x] 01-04-PLAN.md (wave 3) — flat-matte header (NumenLogo + anchor nav + "Try it free"→`/signup` + "Sign in"→`/login` + mobile collapse) (NAV-01, NAV-03)
-- [x] 01-05-PLAN.md (wave 3) — flat-warm footer (brand + tagline + anchor mirror + Privacy/Terms/X/TikTok placeholders) (NAV-02)
-
-### Phase 2: Hero & Signature Moment
-
-**Goal**: Deliver the hero — a hybrid-voice headline and "Try it free" CTA — anchored by the signature "crowd → score" moment: a synthetic audience reacts to a video and resolves into a virality score, with a static fallback so it never blocks first paint or breaks accessibility.
-**Depends on**: Phase 1
-**Requirements**: HERO-01, HERO-02, HERO-03, HERO-04
-**Success Criteria** (what must be TRUE):
-
-  1. The hero presents a hybrid-voice headline + subcopy that communicates "know if it'll pop before you post"
-  2. The hero's primary "Try it free" CTA routes to the existing app signup
-  3. The hero centerpiece plays the signature "crowd → score" moment — a synthetic audience reacts to a video and resolves into a virality score
-  4. With reduced-motion enabled (or before the moment lazy-loads), a static composed frame stands in so first paint is never blocked and accessibility is preserved
-
-**Plans**: 4 plans (4 waves)
+  1. A first-time user lands on a clean home — serif greeting + the centered universal composer with starter chips (Paste link · Upload · Try a demo) and the Numen stele glyph; no Reading list crowds the composer
+  2. A user can start a Reading by pasting a video URL (auto-detected) OR uploading a file via the composer `+`; once a Reading exists the same composer drops to bottom-pinned and the thread fills the scroll area above
+  3. A user sees their past Readings in a sidebar — collapsible on desktop, drawer on mobile (sourced from `useAnalysisHistory`) — and reopening one restores the full thread via permalink
+  4. The shell renders correctly on a phone (mobile-first) and as the same shell widened on desktop, with the Raycast glass (137deg gradient + blur + inset shine) gone everywhere including the sidebar — surfaces read flat-warm matte (no glow/shine/halo), serif for the greeting, sans for chrome, hairline borders, calm motion, coral as the lone accent
+  5. The flat-warm visual system passes an explicit **human-UAT review gate** on this built shell and is signed off as locked for rollout before later phases reskin onto it
+**Plans**: 5 plans
+- [x] 01-01-PLAN.md — Flat-warm @theme token migration (charcoal hex, terracotta coral, glass strip Layer A) + serif wiring (THEME-01..05)
+- [x] 01-02-PLAN.md — Sidebar reskin: strip inline glass (Layer B), revive collapse (⌘\), cut dead affordances, "Simulations" list + app-shell offset (SHELL-05/07, THEME-02/05)
+- [x] 01-03-PLAN.md — Clean home + slim TikTok/upload composer (two-layout) + serif greeting + NumenMark (SHELL-01..04/06, THEME-04/05)
+- [x] 01-04-PLAN.md — Repoint authed landing → /home (middleware + auth callback), keep /analyze dormant (SHELL-06, D-23)
+- [x] 01-05-PLAN.md — THEME-06 human-UAT gate: full-suite + clean-build precondition, 4 UAT screenshots, blocking sign-off (THEME-01/03/06, SHELL-07)
 **UI hint**: yes
 
-> Build order ≠ plan-number order (per 02-RESEARCH.md): the canvas (02-02) depends on `ComposedStill` (02-03), so the dependency sequence is **00 → 01 → 03 → 02**. Waves are assigned accordingly.
-
-Plans:
-
-**Wave 0**
-
-- [x] 02-00-PLAN.md (wave 0) — Nyquist Wave-0 test scaffold: 4 RED test files (hero / composed-still / signature-moment-client / hero-constants), happy-dom pragma (HERO-01, HERO-02, HERO-03, HERO-04)
-
-**Wave 1** *(blocked on Wave 0)*
-
-- [x] 02-01-PLAN.md (wave 1) — RSC hero: serif H1 + Inter subcopy + "Try it free" CTA→SIGNUP_URL + "See how it works ↓" scroll-cue + the dimension-locked flat-warm stage shell; replace the page.tsx stub (HERO-01, HERO-02)
-
-**Wave 2** *(blocked on Wave 1)*
-
-- [x] 02-03-PLAN.md (wave 2) — ~~`ComposedStill` + `hero-constants` + the `"use client"` `SignatureMomentClient` ssr:false boundary~~ **SUPERSEDED** by the 02-02 pivot; these components were built then deleted when the canvas moment was retired (HERO-04 now satisfied by the fully-static product-shot hero). See 02-02-SUMMARY.
-
-**Wave 3** *(blocked on Wave 2)*
-
-- [x] 02-02-PLAN.md (wave 3) — ~~bespoke canvas-2D "crowd → score" moment~~ **PIVOTED**: the canvas was built (`7fc9ec77`) then REJECTED at the blocking human craft-verify (read as a tech-demo). Replaced with a **product-shot showcase** — flat-warm desktop reading window + phone TikTok, both swappable Placeholder slots (HERO-03 reinterpreted as "the product, shown" · HERO-04 satisfied: fully static, no-CLS). See 02-02-SUMMARY.
-
-### Phase 3: Story & Showcase
-
-**Goal**: Tell the product story through placeholder frames — a three-step "how it works", a "the reading"/Simulation showcase of the output, and three to four feature deep-dive blocks that each pair a benefit with a placeholder visual.
-**Depends on**: Phase 1
-**Requirements**: STORY-01, STORY-02, STORY-03
+### Phase 2: The Reading
+**Goal**: Author the consolidated Reading thread — the information architecture that reduces the engine's ~40 fields to the four questions a creator actually has. Lay it out top-to-bottom: **hero** (`overall_score` zone-colored green/amber/red with NO prose narration; the go/no-go gate `anti_virality_gated`+reason when gated; watch-through % `weighted_completion_pct`/`completion_pct` shown exactly once and owned here; an audience persona cloud) → **3 always-visible driver rows** (Hook = stop-power; Retention = *where they drop*, `weighted_top_dropoff_t`; Shareability = `share_pull`) with a tap target on each row → **Fix First** (top timestamped fix(es) + copyable hook rewrite(s); extras collapse behind "N more fixes →") → **Deeper read** expand (remaining 3 Apollo dims clarity/substance/credibility + supporting signals). Cut data never appears (`feature_vector`, `score_weights`, telemetry, model names, `critique`, `predicted_engagement`, dead modules — see brief §2.9). This phase ships the thread structure with simple/native detail content; the rich transplanted visuals fill the disclosure surfaces in Phase 3.
+**Depends on**: Phase 1 (the Reading renders inside the shell frame and on the locked flat-warm system)
+**Requirements**: READ-01, READ-02, READ-03, READ-04, READ-05, READ-06, READ-07, READ-08, READ-10
 **Success Criteria** (what must be TRUE):
-
-  1. A "how it works" section walks three steps — paste TikTok link → audience simulates → get your reading — using placeholder frames
-  2. A "the reading" showcase presents the output (audience simulation, watch-through %, and Hook · Retention (where viewers drop) · Shareability) via placeholder product frames
-  3. Three to four feature deep-dive blocks each pair a clear benefit with a placeholder visual
-  4. Every product visual in these sections is a labelled placeholder slot from the Phase 1 system, swappable later with no layout shift
-
-**Plans**: 4 base plans (4 waves) + 5 gap-closure plans (2 waves) — live UAT 2026-06-15 found visual-craft + a11y gaps; refinements keep the STUB LOCK (no real assets) and the "Simulation" noun.
+  1. After analysis, a user sees a Reading laid out hero → 3 driver rows → Fix First → deeper read, in that order, inside the thread
+  2. The hero shows the `overall_score` zone-colored (green/amber/red) with no prose/horoscope narration, surfaces the go/no-go gate + reason when the video is gated, and shows watch-through % exactly once (owned by the hero) alongside an audience persona cloud
+  3. A user sees three always-visible driver rows — Hook, Retention (showing *where they drop*, e.g. "⚠ 0:08"), Shareability — and tapping a row reveals its detail (e.g. Hook → modality breakdown + weakest modality)
+  4. A "Fix First" block shows the top timestamped fix(es) with copyable hook rewrite(s), extra fixes collapsed behind "N more fixes →", and a "Deeper read" expand reveals the remaining 3 Apollo dimensions (clarity / substance / credibility) plus supporting signals
+  5. No cut/jargon data appears anywhere in the Reading (no `feature_vector`, `score_weights`, telemetry, model names, `critique`, `predicted_engagement`, or dead-module output)
+**Plans**: 5 plans
+- [x] 02-01-PLAN.md — Foundation: Wave-0 test scaffold + fixtures, ScoreGauge (zone-colored arc), DrillSheet (generic disclosure container)
+- [x] 02-02-PLAN.md — Hero atoms: static PersonaCloud + watch%, ThumbnailStrip, AntiViralityHeader gate-banner re-export
+- [x] 02-03-PLAN.md — DriverRows (3 levers, 0-100 bars, Retention drop-time, only-weakest-colored) + sidebar score-chip token unify
+- [x] 02-04-PLAN.md — Fix First: copyable RewriteItem, FixFirstList (top-3 + inline "N more" + D-14 empty), inline DeeperRead (3 dims)
+- [x] 02-05-PLAN.md — Integration: Reading container (D-13 gate, single source, vertical IA, one DrillSheet) + /analyze layout restructure + READ-10 no-cut-data guard
 **UI hint**: yes
 
-Plans:
-
-- [x] 03-00-PLAN.md (wave 0) — Nyquist test scaffold: 3 RED story test files (how-it-works / simulation-showcase / feature-blocks) + extend footer anchor test with #features (STORY-01, STORY-02, STORY-03)
-- [x] 03-01-PLAN.md (wave 1) — "How it works" three-step section filling #how-it-works (STORY-01)
-- [x] 03-02-PLAN.md (wave 2) — "The Simulation" output showcase filling #the-simulation (STORY-02)
-- [x] 03-03-PLAN.md (wave 3) — feature deep-dive blocks + new #features section + "Features" nav anchor (header + footer) + BLOCKING static-build gate (STORY-03)
-
-**Gap closure** *(from 03-VERIFICATION.md live UAT — `gap_closure: true`)*
-
-**Wave 1** *(file-disjoint, parallel)*
-
-- [x] 03-04-PLAN.md (wave 1) — static-SVG product-skeleton primitives (score-gauge / audience-cloud / driver-rows / device-chrome) + remove the "16:10" dev label from the marketing Placeholder (GAP-1 primitives, IN-04)
-- [x] 03-06-PLAN.md (wave 1) — page rhythm: tighter section padding (GAP-3 page-level) + `scroll-margin-top` anchors (GAP-5) + refreshed docblock (IN-02)
-- [x] 03-07-PLAN.md (wave 1) — mobile-nav a11y: Escape-close + focus trap + focus restore (GAP-4 / WR-03) + scroll-lock save/restore (WR-02) + shared `src/lib/nav.ts` constant (IN-03)
-- [x] 03-08-PLAN.md (wave 1) — hero noun lock: "Numen reading" → "Numen Simulation" + test assertion (WR-01)
-
-**Wave 2** *(blocked on 03-04)*
-
-- [x] 03-05-PLAN.md (wave 2, depends 03-04) — apply skeletons + craft polish to the 3 story sections: fill the Simulation device frame (GAP-2), step skeletons (GAP-1), feature-block balance (GAP-3 component-level) + docblock (IN-01) + de-brittle tests (WR-04)
-
-### Phase 4: Proof & Conversion
-
-**Goal**: Build trust and drive the click — a social-proof strip and testimonials (placeholder avatars/logos/quotes), a pricing teaser with "Try it free" CTAs, a final full-width CTA band, and an accessible FAQ accordion.
-**Depends on**: Phase 1
-**Requirements**: PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03
+### Phase 3: Rich Visuals as Drill-Downs
+**Goal**: Preserve every rich board visual by transplanting it into the Reading's disclosure surfaces (the driver-row detail taps and the deeper-read expand built in Phase 2). Take `RetentionChart`, `PersonaGraph`, the filmstrip, `FactorBars`, `SegmentTable`, the emotion arc, niche/ghost curves, hook-modality sub-scores, `InsightHero`, `ScoreDistribution`, etc. from `src/components/board/**`, drop the Konva *shell* (pan/zoom, camera, world-space positioning) while keeping the DOM/React/SVG frame *components*, and reskin them to the locked flat-warm tokens. Nothing visual is deleted; nothing already-built is rebuilt. They become the heavy content that's one tap away from the headline.
+**Depends on**: Phase 2 (the drill-down surfaces — row-detail + deeper-read — must exist to receive the visuals) and Phase 1 (visuals reskin onto the locked flat-warm system)
+**Requirements**: READ-09
 **Success Criteria** (what must be TRUE):
-
-  1. A social-proof strip shows creator avatars and a logo wall using placeholder slots
-  2. A testimonials section shows creator quote cards with placeholder avatars and quotes
-  3. A pricing teaser presents tiers (Starter/Pro) with "Try it free" CTAs (placeholder-ok pricing)
-  4. A final full-width CTA band ("Try it free") sits before the footer
-  5. An FAQ section answers common creator questions in a keyboard-accessible accordion
-
-**Plans**: 6 plans (3 waves)
+  1. From a driver row or the deeper-read expand, a user can open the rich visuals — RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable, emotion arc, niche/ghost curves — as drill-downs from the Reading
+  2. Every preserved visual renders correctly outside the Konva canvas (transplanted to DOM/React/SVG, no pan/zoom shell) with real engine output, no throwing or grey-cell fallbacks
+  3. The drill-down visuals are reskinned to the flat-warm system — no Raycast glass, no glow/shine — and read consistently with the rest of the Reading
+**Plans**: 6 plans
+- [x] 03-01-PLAN.md — Wave-0 test scaffold: reading.panels.test.tsx (per-panel render + degradation) + empty-data fixtures + reskin-matte grep lint
+- [x] 03-02-PLAN.md — Tier-2 re-treat (heavy reskin): ScoreDistribution + RetentionChart + CraftFilmstrip + RetentionPlayer to matte flat-warm (kill glows/blur/old-coral, keep footage grading, fix --color-frame bug)
+- [x] 03-03-PLAN.md — Tier-1 token-swaps (SegmentTable/DataTable/StatTile/KeyframeImage) + PersonaGraph re-treat (SVG matte, reduced-motion gate, mobile tap-to-reveal)
+- [x] 03-04-PLAN.md — New score panel (D-02): gauge onOpen + closed-union extension + ScoreDistribution wiring; swap personas→PersonaGraph + shareability→StatTileRow (PanelEmpty guards)
+- [x] 03-05-PLAN.md — Retention composed watch-journey (RetentionChart + CraftFilmstrip + SegmentTable, aligned/scrollable, store-free via usePermalinkFilmstrips) + hook reskin-verify + degradation guard
+- [x] 03-06-PLAN.md — Blocking D-07 human-UAT gate: full-suite-green + clean-build precondition, live mobile+desktop review of all 5 reskinned drill-downs (LOCKED 2026-06-15)
 **UI hint**: yes
 
-> Build order = wave order. The five section COMPONENTS are built file-disjoint in Wave 1
-> (subdirs `proof/ pricing/ faq/ cta/`); a single Wave-2 integration plan owns the lone
-> `page.tsx` edit (page.tsx write-contention — never two plans editing it in one wave). The
-> CTA band is full-bleed (breaks `max-w-5xl`, D-12); the FAQ is the lone client island.
-
-Plans:
-
-**Wave 0**
-
-- [x] 04-00-PLAN.md (wave 0) — Nyquist RED scaffold: 5 section test files + page-order/NAV-lock cross test (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
-
-**Wave 1** *(blocked on Wave 0; file-disjoint, parallel)*
-
-- [x] 04-01-PLAN.md (wave 1) — social-proof strip (peer-count stat + reduced-motion-gated logo marquee) + bespoke flat-warm testimonials 3-card grid (PROOF-01, PROOF-02)
-- [x] 04-02-PLAN.md (wave 1) — pricing teaser: bespoke flat-warm Starter + Pro cards (Pro "Most popular", placeholder $/mo + trial, both CTAs → SIGNUP_URL, no checkout machinery) (CONVERT-01)
-- [x] 04-03-PLAN.md (wave 1) — FAQ: RSC wrapper + Radix single-open accordion client island, 6 objection-busting Q&A, cold tokens restyled flat-warm (CONVERT-03)
-- [x] 04-04-PLAN.md (wave 1) — final full-width CTA band: serif close-line + "Try it free" CTA + risk-reducer microcopy + muted ScoreGaugeSkeleton echo (CONVERT-02)
-
-**Wave 2** *(blocked on Wave 1)*
-
-- [x] 04-05-PLAN.md (wave 2) — integration: extend the marketing barrel + wire all 5 sections into `page.tsx` in the D-18 order (strip under #hero, testimonials after #features, fill #pricing/#faq, band before footer) + static-build gate (○ /) + NAV unchanged (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
-
-### Phase 5: Quality Hardening
-
-**Goal**: Lock cross-cutting quality across the whole assembled page — mobile-first responsiveness from 320px up, a premium performance bar with lazy-loaded heavy motion/media and no slot-driven layout shift, and full keyboard + semantic + contrast accessibility.
-**Depends on**: Phase 4 (whole page assembled across Phases 1–4)
-**Requirements**: FOUND-05, FOUND-06, FOUND-07
+### Phase 4: Stage-Reveal
+**Goal**: Make the ~45–60s analysis wait read as progress, not a spinner. Drive the Reading off the existing `useAnalysisStream` so each block/headline materializes as its corresponding engine stage completes (hero appears, then driver rows, then Fix First, etc.), then settles into a stable resting Reading with no layout thrash on completion. Reuse the existing stream + permalink hooks; calm-motion taste bar (no flashy reveals).
+**Depends on**: Phase 3 (all Reading blocks and their drill-downs must exist before they can be progressively revealed; reveal animates the real, complete Reading)
+**Requirements**: REVEAL-01, REVEAL-02
 **Success Criteria** (what must be TRUE):
-
-  1. Every section is responsive mobile-first and renders cleanly from 320px through desktop with no horizontal scroll or broken layout
-  2. Heavy motion and media lazy-load, no layout shift is introduced by placeholder slots, and Lighthouse mobile performance scores ≥90
-  3. The page is fully keyboard-navigable with semantic landmarks, visible focus states, and WCAG AA contrast on all text/background pairs
-  4. The signature moment and other heavy interactions degrade gracefully under reduced-motion and slow-load conditions without blocking content
-
-**Plans**: 1 quick-execution pass (audit-driven — the page already passed P2/P3/P4 live craft UAT, so hardening narrowed to the systematic gaps an audit surfaced).
+  1. While analysis runs, a user watches the Reading build block-by-block as each engine stage completes (driven by `useAnalysisStream`) — the wait reads as visible progress, not a single spinner
+  2. When all stages finish, the thread settles into a stable resting Reading with no layout thrash, reflow, or jump on completion
+  3. The reveal motion stays within the calm/soft taste bar (no flashy or jarring transitions) and respects reduced-motion
+**Plans**: executed inline (quick execution) — see `phases/04-stage-reveal/04-SUMMARY.md`
 **UI hint**: yes
 
-Plans:
-
-- [x] 05-01: Quality hardening pass (FOUND-05/06/07) — audit found the page already responsive (all grids mobile-first `grid-cols-1 → md:`, verified no horizontal scroll at 320px) and CLS-safe (Placeholder aspect-locks its box, D-14). Two systematic gaps closed: (a) **a11y FOUND-07** — plain text links (header nav/login/logo, mobile-panel links, footer link groups) had hover but no visible keyboard-focus state; added a shared `FOCUS_RING` (`src/lib/utils.ts`) coral ring + offset, applied across header + footer (Button/hero-cue already had rings). (b) **perf FOUND-06** — `<Placeholder>` real-media swap now lazy-loads: `loading="lazy"` + `decoding="async"` on img, `preload="none"` on video, so heavy assets never block first paint when they land. Verified: full suite 2005 green, build clean (`○ /` static), live `:focus-visible` ring + 320px no-overflow confirmed via Playwright.
+### Phase 5: Follow-up & Demo
+**Goal**: Close the loop with the two tail features. **Follow-up:** after the Reading, the same bottom-pinned composer accepts a free-text follow-up and returns the answer inline in the thread — repurpose the existing "Ask the expert" chat (`/api/analyze/[id]/chat`) as the thread tail (no separate dock), with quick-action chips ("why this?", "rewrite hook") that seed follow-up prompts into the composer. **Demo:** a first-time user sees a live demo Reading on a known viral video before uploading anything, rendered with the real Reading components (show the magic first). Presentation only — reuse the existing chat backend; no engine changes.
+**Depends on**: Phase 4 (the demo renders a complete Reading with stage-reveal; follow-ups append to the finished thread)
+**Requirements**: CHAT-01, CHAT-02, DEMO-01
+**Success Criteria** (what must be TRUE):
+  1. After a Reading, a user can type a free-text follow-up into the same composer and receive a response inline in the thread (reusing "Ask the expert"), with no separate chat dock
+  2. Quick-action chips (e.g. "why this?", "rewrite hook") seed follow-up prompts into the composer when tapped
+  3. A first-time user sees a live demo Reading on a known viral video — rendered with the real Reading components — before uploading anything of their own *(DEMO-01 — descoped from v5.0 during milestone close; deferred to a later milestone)*
+**Plans**: executed inline (quick execution) — see `phases/05-follow-up/05-SUMMARY.md`; DEMO-01 deferred
+**UI hint**: yes
 
 ## Progress
 
@@ -196,7 +106,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
-| 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
-| 4. Proof & Conversion | 6/6 | Complete    | 2026-06-15 |
-| 5. Quality Hardening | 1/1 | Complete    | 2026-06-15 |
+| 2. The Reading | 5/5 | Complete   | 2026-06-14 |
+| 3. Rich Visuals as Drill-Downs | 6/6 | Complete   | 2026-06-15 |
+| 4. Stage-Reveal | inline | Complete   | 2026-06-15 |
+| 5. Follow-up & Demo | inline | Complete (DEMO-01 deferred) | 2026-06-15 |

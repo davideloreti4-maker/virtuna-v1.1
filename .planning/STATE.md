@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: landing-v2
-milestone_name: milestone
+milestone: v5.0
+milestone_name: Numen Rework
 status: complete
-stopped_at: Completed Phase 5 quality-hardening pass (FOUND-05/06/07) — milestone done
-last_updated: "2026-06-15T18:30:00.000Z"
-last_activity: 2026-06-15
+stopped_at: Milestone complete — all 5 phases shipped (DEMO-01 deferred)
+last_updated: "2026-06-15T19:45:00.000Z"
+last_activity: 2026-06-15 -- Phases 4 + 5 shipped (quick execution); milestone closed
 progress:
   total_phases: 5
   completed_phases: 5
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 18
+  completed_plans: 18
   percent: 100
 ---
 
@@ -18,136 +18,116 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE.md
+See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
 
-**Core value:** A refined, premium marketing landing that makes a creator instantly *get* Numen — "know if it'll pop before you post" — and click "Try it free."
-**Current focus:** Milestone COMPLETE — all 5 phases shipped, ready for PR → main.
+**Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
+**Current focus:** MILESTONE COMPLETE — pending merge to main.
 
 ## Current Position
 
-Phase: 5 (final)
-Plan: 05-01 quality-hardening pass — complete
-Status: Milestone complete — full suite 2005 green, build clean (`○ /` static), live 320px + focus-ring verified. Shipping PR.
-Last activity: 2026-06-15
+Phase: — (all 5 phases complete)
+Status: Milestone v5.0 Numen Rework COMPLETE — 27/28 v1 reqs shipped, DEMO-01 deferred.
+Last activity: 2026-06-15 -- Phases 4 (Stage-Reveal) + 5 (Follow-up) shipped via quick execution; Phase 3 D-07 UAT locked earlier today.
+Next: merge `milestone/numen-rework` → `main` (needs user go-ahead) + optional live UAT craft pass.
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (5/5 phases)
+
+## Hard Constraints (this milestone)
+
+- **Engine FROZEN at 3.19.0** — no `lib/engine/` changes. Presentation only. Every phase works in `src/components/**`, `src/app/**`, hooks, tokens.
+- **Reuse** `src/components/board/**` visuals as drill-downs (transplant off Konva, reskin to flat-warm).
+- **Do NOT reuse** `milestone/numen-surface`'s `numen/`+`reading/` kit (reference only).
+- **Konva canvas retired**; `/analyze` left dormant (not deleted).
+- **Score-forward, NO prose narration.**
+- **Flat-warm visual system is HUMAN-UAT-GATED** — locked only after human review (the THEME-06 gate lands in Phase 1, against the built shell).
+- **Component/motion libs permitted** at executor discretion (Radix, shadcn, MagicUI, Aceternity, motion/Framer Motion) within the flat-warm + matte (no glow/shine/halo) + calm-motion taste bar.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 20
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 15
+- Average duration: ~5 min/plan
+- Total execution time: ~25 min (Phase 01)
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
+| 01 Foundation & Shell | 5/5 | ~25 min | ~5 min |
 | 01 | 5 | - | - |
-| 03 | 9 | - | - |
-| 04 | 6 | - | - |
+| 02 | 5 | - | - |
 
 **Recent Trend:**
 
-- Last 5 plans: —
-- Trend: —
+- Last 5 plans: 5min · 10min · 5min · 4min · 1min
+- Trend: Phase 01 code-complete
 
 *Updated after each plan completion*
-| Phase 01 P01 | 9 | 3 tasks | 6 files |
-| Phase 01 P02 | 5min | 2 tasks | 3 files |
-| Phase 01 P04 | 7min | 2 tasks | 2 files |
-| Phase 01 P05 | 4min | 2 tasks | 2 files |
-| Phase 01 P03 | 3min | 2 tasks | 4 files |
-| Phase 02 P00 | 10min | 2 tasks | 4 files |
-| Phase 02 P01 | 8min | 2 tasks | 4 files |
-| Phase 02 P03 | ~30min | 2 tasks | 4 files (+1 stub) |
-| Phase 02 P02 | ~session | canvas→pivot | product-shot showcase (−5 files) |
-| Phase 03 P00 | 1min | 2 tasks | 4 files |
-| Phase 03 P01 | 18min | 2 tasks | 3 files |
-| Phase 03 P02 | ~12min | 2 tasks | 3 files |
-| Phase 03 P03 | 4min | 3 tasks | 6 files |
-| Phase 03 P04 | ~6min | 2 tasks | 7 files (gap-closure) |
-| Phase 03 P06 | ~4min | 1 task | 1 file (gap-closure) |
-| Phase 03 P07 | ~12min | 2 tasks | 4 files (gap-closure, TDD) |
-| Phase 03 P08 | ~6min | 1 task tasks | 2 files (gap-closure) files |
-| Phase 03 P05 | ~10min | 4 tasks | 7 files (gap-closure) |
-| Phase 04 P00 | 4min | 2 tasks | 6 files |
-| Phase 04 P01 | ~5min | 2 tasks | 3 files |
-| Phase 04 P02 | ~6min | 2 tasks | 2 files |
-| Phase 04 P03 | ~5min | 2 tasks | 2 files |
-| Phase 04 P04 | ~4min | 1 task | 1 file |
-| Phase 04 P05 | 5min | 2 tasks | 2 files |
+| Phase 01 P01 | 5 | 3 tasks | 2 files |
+| Phase 1 P2 | 10min | 3 tasks | 6 files |
+| Phase 1 P3 | 5min | 3 tasks | 6 files |
+| Phase 1 P4 | 4min | 2 tasks | 3 files |
+| Phase 01 P05 | 1min | 3 tasks | 2 files |
+| Phase 02 P02-01 | 9min | 3 tasks | 6 files |
+| Phase 02 P02-02 | 4min | 3 tasks | 5 files |
+| Phase 02 P02-03 | 12min | 2 tasks | 4 files |
+| Phase 02 P02-04 | 7min | 3 tasks | 6 files |
+| Phase 02 P02-05 | 11min | 3 tasks | 6 files |
+
+## Phases
+
+| # | Phase | Requirements | Status |
+|---|-------|--------------|--------|
+| 1 | Foundation & Shell | SHELL-01..07, THEME-01..06 (13) | Complete (code; verification pending) |
+| 2 | The Reading | READ-01..08, READ-10 (9) | Not started |
+| 3 | Rich Visuals as Drill-Downs | READ-09 (1) | Not started |
+| 4 | Stage-Reveal | REVEAL-01, REVEAL-02 (2) | Not started |
+| 5 | Follow-up & Demo | CHAT-01, CHAT-02, DEMO-01 (3) | Not started |
+
+Execution order: 1 → 2 → 3 → 4 → 5
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
+Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 
-- Roadmap: Hero signature moment ("crowd → score", HERO-03/04) isolated in its own phase (Phase 2) — highest-craft, highest-risk item gets the room it needs.
-- Roadmap: Cross-cutting quality (FOUND-05 responsive, FOUND-06 perf/lazy, FOUND-07 a11y) mapped to a final hardening pass (Phase 5) over the assembled page; seeded as standing criteria from Foundation onward.
-- Milestone: Marketing surface only — every product visual is a labelled, swappable placeholder slot (FOUND-03), never a shipped asset.
-- [Phase ?]: 01-01: Adopted numen-rework flat-warm @theme wholesale (charcoal #262624 / cream #ece7de / terracotta coral); cold Raycast brand retired
-- [Phase ?]: 01-01: page.tsx owns Header+main+Footer; (marketing)/layout.tsx is a bare pass-through (D-10 double-html bug fixed)
-- [Phase ?]: 01-01: Nav/section anchors = hero/how-it-works/the-simulation/pricing/faq (D-23 Simulation noun); src/lib/routes.ts holds shared CTA URLs
-- [Phase ?]: 01-02: <Placeholder> breathe is an opt-in boolean prop (default OFF), double-gated via animate-skeleton-breathe + motion-reduce:animate-none
-- [Phase ?]: 01-02: marketing dir + barrel established (D-15); per-variant default aspect (image/video 16/9, avatar 1/1, logo 3/1); logo icon-only, video play-triangle overlay
-- [Phase ?]: 01-04: Header rewritten flat-matte — bar = #1a1a18 opaque (no blur), logo → #hero; mobile = useState disclosure (NOT Radix Sheet, D-21) with shadow-float panel that closes on tap; CTA via Button asChild → SIGNUP_URL/LOGIN_URL
-- [Phase ?]: 01-05: Footer rebuilt flat-warm as a STATIC server component (no use client) — tone-step #1a1a18 surface + hairline TOP border, no glass/gradient; product anchors mirror the header nav, legal/social are labelled href='#' placeholder stubs (D-22)
-- [Phase 01-03]: 01-03: MotionConfigShell (<MotionConfig reducedMotion='user'>) wraps the FULL chrome (Header+main+Footer); page stays RSC and / stays statically prerendered
-- [Phase 01-03]: 01-03: two-layer reduced-motion contract = MotionConfig (Framer) + CSS @media (prefers-reduced-motion: reduce) animation:none for skeleton-breathe/shimmer/marquee/marquee-vertical
-- [Phase 01-03]: 01-03: D-16 satisfied by VERIFY (6/6 motion/* on motion/react, 0 framer-motion) + MotionConfig wiring, NOT migration; framer-motion dep retained (4 product files), removal deferred to Phase 5
-- [Phase ?]: 02-00: Wave-0 hero tests RED-by-design — module-not-found is the success signal; HERO-01..04 turn GREEN in 02-01/02-03, not here
-- [Phase ?]: 02-00: SVG ring geometry re-derived in-test (radius 114, offset=circumference·(1−score/100)) + token assertions (var(--color-accent), threshold from verdict-constants) catch a hardcoded ring/hex
-- [Phase 02-01]: Hero is a PURE RSC — no client directive, no lazy ssr-disabled import in hero.tsx/page.tsx (the 02-00 landmine); client island + canvas deferred to 02-03/02-02. / stays statically prerendered (verified ○ in build route table).
-- [Phase 02-01]: The hero STAGE shell owns the no-CLS aspect-lock (inline aspect-ratio 16/10) — the fixed box 02-03's ComposedStill + 02-02's client island mount into with zero layout shift.
-- [Phase 02-01]: Stage holds a labelled Placeholder(variant=video,aspect=9/16) as visible scaffolding; the 02-03/02-02 swap-in seam is marked in hero.tsx. Coral is the lone accent, only on the primary CTA.
-- [Phase 02-03]: dynamic(ssr:false) canvas import lives ONLY in signature-moment-client.tsx ('use client'); Hero/page stay pure RSC and / stays statically prerendered (○). THE Next-16 landmine fix (mirrors Board.tsx), verified by clean build.
-- [Phase 02-03]: ComposedStill = pure-RSC universal floor (D-15) — phone + deterministic seeded-PRNG settled dot field (~46 SVG circles, never Math.random → no hydration mismatch) + clean re-derived coral arc ring (glow/tiers/white/framer-motion STRIPPED) + static coral score; role=img/aria-label + aspect-lock. Serves SSR/reduced-motion/mobile/at-rest.
-- [Phase 02-03]: SignatureMomentClient gate = !reduced && !isMobile && tier!=='low' && !fpsDropped → return null on still paths (canvas rAF never mounts under reduced-motion, Pitfall 5); ComposedStill is its dynamic loading fallback. hero-constants.ts is the score(87)/geometry(240/12)/timing/palette SSOT shared with the 02-02 canvas.
-- [Phase 02-03]: CLOSED OUT ON RESUME — code was committed in a prior session (feat 86b744ba + auto-wip 5574c4f4) but never got a SUMMARY/tracking; reconciled here. Needed a TEMPORARY signature-canvas.tsx stub (re-renders ComposedStill) so the ssr:false import + vitest collector resolve — 02-02 REPLACES it. WATCH: the auto-wip hook can pre-empt the executor's atomic-commit protocol mid-plan.
-- [Phase 02-02]: **PIVOT — canvas signature moment RETIRED.** The bespoke canvas "crowd → score" (built 7fc9ec77) was REJECTED at the blocking human craft-verify: read as a screensaver/tech-demo (420-particle cloud, doubled+rough ring from the canvas stacking on ComposedStill, particles outside the stage, score/label collision). Root cause = conceptual (abstract effect ≠ premium product hero) + architectural (client canvas stacked a second mis-scaled instrument over the SSR still).
-- [Phase 02-02]: **NEW hero = PRODUCT-SHOT showcase** (user-chosen, OpusClip/Vercel/sandcastles pattern): flat-warm desktop browser window = the Numen reading (OUTPUT) + a phone in front = the TikTok you paste (INPUT); reads left→right as paste → prediction. Both screens are swappable <Placeholder> slots (FOUND-03) — real desktop/mobile screenshots or a screen-capture video drop in via `src` once numen-rework ships. Device chrome + layered shadows + faint warm radial seat = permanent craft; phone is a sibling of the overflow-hidden window with its own shadow+ring to read "in front".
-- [Phase 02-02]: HERO-03 REINTERPRETED = "the product, shown" (not the animated crowd). HERO-04 satisfied by construction = hero is fully static (pure RSC, no client JS/canvas) + aspect-locked slots ⇒ no-CLS, accessible. 02-03's components (ComposedStill, hero-constants, SignatureMomentClient ssr:false boundary) + the canvas + their 02-00 Nyquist suites were DELETED; hero.test.tsx re-scoped (8 tests gate the showcase). Suite 1949 green, build clean, / static.
-- [Phase 02-02]: DEFERRED to Phase 5 — showcase is desktop-tuned (absolute phone, lg shadows); responsive restack at mobile widths + perf/a11y = FOUND-05/06/07 sweep. ASSET follow-up (product): swap placeholders → real desktop+mobile screenshots, then a looping screen-capture video.
-- [Phase ?]: 03-00: Wave-0 story tests RED-by-design — module-not-found for HowItWorks/SimulationShowcase/FeatureBlocks is the success signal; STORY-01/02/03 turn GREEN in 03-01/02/03
-- [Phase ?]: 03-00: 'The Simulation' heading asserted VERBATIM (matches #the-simulation anchor); 5 outputs + step copy matched by stable tokens; noun discipline gated (Simulation present, 'reading' forbidden)
-- [Phase ?]: 03-00: footer.test.tsx it.each extended with #features (between #the-simulation and #pricing) — RED until 03-03 wires footer.tsx PRODUCT_LINKS
-- [Phase ?]: 03-01: HowItWorks is a pure RSC; StaggerReveal entrance is the only client island; / stays statically prerendered
-- [Phase ?]: 03-01: use the named StaggerRevealItem export in RSCs — StaggerReveal.Item static prop is undefined across the RSC to client prerender boundary (next build crash on /)
-- [Phase ?]: 03-01: single canonical product-noun node ('Get your Simulation' title) satisfies the gate getByText(/simulat.../); step 2 = 'The audience reacts', step-3 label = 'Your prediction'
-- [Phase ?]: 03-02: SimulationShowcase RSC built (STORY-02) — flat-warm device-framed Placeholder (hero browser-window chrome reused, not imported) names all 5 outputs; #the-simulation stub filled in place; 7/7 STORY-02 gate GREEN, / stays static
-- [Phase ?]: 03-02: copy↔test token discipline — LOCKED <h2>'The Simulation' is the sole /simulat/i node; Placeholder label='Your prediction', output-1 label='Audience reaction' so 03-00 single-match getByText queries resolve unambiguously
-- [Phase ?]: 03-03: STORY-03 FeatureBlocks = 4 alternating benefit + Placeholder deep-dive rows (pure RSC); FeatureBlock flip idiom (cn(flip && md:order-1/2)) = canonical in-repo alternating-row pattern
-- [Phase ?]: 03-03: new #features section mounted between #the-simulation and #pricing; one NAV_LINKS edit surfaces 'Features' in desktop bar + mobile panel (5 links), footer mirrors it
-- [Phase ?]: 03-03: phase static-prerender guarantee HOLDS — all 4 story files pure RSC, assembled / builds ○ static (exit 0); full suite 1967 green
-- [Phase ?]: 03-04: product-skeleton primitives = pure-RSC static SVG (score gauge 270deg arc + 87/Strong, 18-dot audience cloud + 68% watch-through, Hook/Retention/Shareability driver rows + drops at 0:07); coral kept precious (1 dot + 1 bar)
-- [Phase ?]: 03-04: device chrome (BrowserChrome/PhoneChrome) factored into skeletons/ so 03-05 reuses chrome without re-importing the hero
-- [Phase ?]: 03-04: '16:10' dev ratio label removed from marketing Placeholder; no-CLS aspectRatio inline lock kept intact
-- [Phase ?]: 03-04: IN-04 NOT applied — CVA VariantProps allows null so variant ?? 'image' fallback is required (tsc TS2322)
-- [Phase ?]: 03-06: page.tsx scroll-mt-20 (80px) on all 6 anchors clears the 64px sticky header with ~16px room (GAP-5); section rhythm tightened py-20 → py-16 md:py-20 (hero py-12 md:py-16) for desktop density (GAP-3 page-level); docblock refreshed (IN-02); / stays statically prerendered (pure RSC, build ○ /)
-- [Phase ?]: 03-07: src/lib/nav.ts = single source of truth for the in-page nav set (IN-03); header NAV_LINKS + footer PRODUCT_LINKS hand-duplicated arrays deleted, both import { NAV_LINKS } from "@/lib/nav" (rendered output byte-identical, footer suite GREEN)
-- [Phase ?]: 03-07: mobile-nav a11y closed (GAP-4/WR-03) — Escape-close + focus trap (Tab/Shift+Tab wrap on a[href],button) + focus restore to trigger on a wasOpenRef-gated open→closed transition (never steals focus on mount); trap/restore INLINE in header.tsx (a11y.ts has no helper, header is the only consumer)
-- [Phase ?]: 03-07: WR-02 scroll-lock fixed — useEffect snapshots `const prev = document.body.style.overflow`, sets "hidden" while open, restores `prev` in cleanup (no bare `= ""` clobber of a pre-existing lock owner); aria-expanded/aria-controls/panel id/data-testid unchanged, no visual change, / stays ○ static
-- [Phase 03-08]: 03-08: hero desktop slot label 'Numen reading' to 'Numen Simulation' — the last place on / shipping the retired noun is gone; page-wide 'Simulation, never reading' lock now holds above the fold (WR-01)
-- [Phase 03-08]: 03-08: HERO-01 subcopy assertion narrowed /simulat(es|ion|e)/i to /simulates/i so the new 'Numen Simulation' slot label does not create a second /simulat/i match (single-match getByText discipline, carried from 03-02)
-- [Phase 03-05]: 03-05: filled the Simulation device frame with the 03-04 gauge/cloud/driver-rows skeleton + capped the window body max-h-[460px] (GAP-2 — the ~640px void is gone); reused the existing inline browser chrome (not BrowserChrome) to avoid a duplicate numen.app pill
-- [Phase 03-05]: 03-05: how-it-works steps + feature blocks now show intentional 03-04 product skeletons (GAP-1) in data-step-visual / data-feature-visual aspect-stable wrappers (skeletons carry no data-variant); feature rows top-align (items-start) at a wider-shorter aspect-[16/9] max-h-[300px] framed in BrowserChrome + denser gap-12 md:gap-16 row rhythm (GAP-3 component-level)
-- [Phase 03-05]: 03-05: WR-04 closed — the filled frame now also renders watch-through/Hook/Retention/drop/Shareability, so the simulation-showcase output assertions are scoped to the outputs <dl> via within(dl)+getAllByText; <h2> 'The Simulation' kept as the sole rendered /simulat/i node + a GAP-2 structural gate added (>=1 arc circle + >=6 circles + driver labels)
-- [Phase ?]: 04-00: data-testid anchors (testimonial-handle, testimonial-metric, cta-close-line, pricing-bullet) are the Wave-1 integration contract; stable ids (social-proof, testimonials, data-section=final-cta) are the 04-05 contract
-- [Phase 04-01]: SocialProofStrip: marquee aria-hidden wrapper at container level — logo wall decorative, trust stat carries accessible meaning; 6 logo slots for denser visual rhythm
-- [Phase 04-01]: TestimonialCard: article+blockquote semantics + data-testid=testimonial-metric/handle; zero import from ui/testimonial-card (cold-brand avoided); fictional placeholder testimonials (D-21/T-04-01-01 accept)
-- [Phase 04-02]: PricingCard: pure RSC, flat-warm card, Badge accent/secondary, Button asChild→SIGNUP_URL, D-20 microcopy; no Supabase/Whop/checkout (D-10 enforced)
-- [Phase 04-02]: PricingTeaser: 2-up TIERS grid, Pro highlighted via border-accent/25+ring-1 ring-accent/20 (token-legal, no glow); CONVERT-01 5/5 GREEN
-- [Phase 04-03]: FaqAccordion: "use client" Radix single-open accordion (type="single" collapsible), 6 objection Q&As; cold-brand tokens overridden at call site only (border-border/bg-surface-elevated/text-foreground/text-foreground-secondary); ui/accordion.tsx primitive untouched; CONVERT-03 2/2 GREEN
-- [Phase 04-03]: Faq RSC: pure RSC wrapper (no "use client") → / stays ○ static; sans-serif h2 heading + cream-secondary subhead; lone client leaf = FaqAccordion
-- [Phase 04-04]: FinalCtaBand: pure RSC full-bleed band; Newsreader serif close-line (data-testid=cta-close-line, D-13); Button asChild→SIGNUP_URL coral CTA + D-20 microcopy; ScoreGaugeSkeleton echo (opacity-70 scale-75, D-14); legal warm-seat radial (cream rgba 0.07); CONVERT-02 3/3 GREEN
+- v5.0: Stand down the Numen Surface ground-up rebuild; retheme + restructure the EXISTING board/app components instead (ground-up proved too costly for the payoff; rich board visuals reused as drill-downs, not rebuilt).
+- v5.0: Visual system is human-UAT-gated; component/motion libs (Radix/shadcn/MagicUI/Aceternity/motion+Framer Motion) permitted at executor discretion within the flat-warm + calm-motion taste bar.
+- v5.0: Engine frozen 3.19.0 — this is a presentation-layer milestone.
+- [Phase ?]: P1-01: Flat-warm @theme migration — charcoal surfaces as exact HEX (oklch L<0.15 miscompiles), Raycast glass/glow stripped (Layer A), --shadow-float the lone shadow; all values [UAT], lock at THEME-06.
+- [Phase ?]: P1-01: Newsreader wired as --font-newsreader -> @theme --font-serif (mirrors Inter pattern, no self-reference); serif available, not yet consumed (greeting = 01-03).
+- [Phase ?]: P1-02: Flat-warm sidebar — Layer-B inline glass stripped, dead affordances (Pinned/Projects/Boards/Running) cut, 'Recent' relabelled 'Simulations'; SidebarAccountSelector extracted to hold Sidebar.tsx under 500 lines.
+- [Phase ?]: P1-02: Revived desktop sidebar collapse (Cmd/Ctrl-\ icon rail, persisted sidebar-store) + mobile drawer; app-shell main marginLeft offset wired to real sidebar width (0 mobile / rail / 220 expanded). New Simulation CTA -> /home; history rows KEEP /analyze/[id] (no /s/[id] rename).
+- [Phase ?]: P1-03: Built /home (authed server page in (app), inherits getUser gate + AppShell) + serif greeting (font-serif, useProfile name italic, isLoading name-less so no [Name] flash, NumenMark stele coral) + centered composer; NO chips (D-18), NO demo (D-25), NO Simulation list under composer.
+- [Phase ?]: P1-03: Slim composer reuses validated sub-parts (VideoUpload bare + TikTok-only regex mirroring server /api/analyze L465 + lifted Board navigate-on-id loop) — NOT ContentForm (Pitfall 5: no intent/tier/3-tab/IG). Rejects non-TikTok incl. Instagram with exact D-21 copy + disabled submit.
+- [Phase ?]: P1-03: Two-layout = one component, data-layout centered (no route id) / pinned (id present) via useParams; permalink kept as /analyze/[id] (no /s/[id] rename, RESEARCH A2); composer navigates there on stream.analysisId. Authed-landing repoint to /home is plan 01-04.
+- [Phase ?]: P1-04: Default authed landing repointed to /home (D-23) at BOTH decision points — middleware authed-off-auth-page redirect (/analyze->/home) + auth/callback default (?? /dashboard -> ?? /home); /dashboard sunset 308 also retargeted /home. Same-origin (open-redirect guard V5).
+- [Phase ?]: P1-04: /home auth-gated twice — (app) layout getUser gate (01-03) + PROTECTED_PREFIXES entry (defense-in-depth, Spoofing); unauthenticated /home -> /login w/ deep link. /analyze + /analyze/[id] kept dormant-but-reachable (still protected, IDOR-defended permalink untouched).
+- [Phase ?]: P1-04: Fixed latent bug — the authed-auth-page redirect was DEAD CODE shadowed by the public-path early-returns (/login & /signup are public). Added AUTH_PAGES carve-out + moved the redirect before the public-skip so signed-in /login/signup visitors actually reach /home; anon visitors still see the page.
+- [Phase 01]: P1-05: THEME-06 / D-07 SIGNED via a live human review on the running shell — the flat-warm system is LOCKED for rollout. Locked values: charcoal app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b; lone-accent coral oklch(0.68 0.13 33) ≈ #d97757 (text-on-coral #1a0f0a); serif = Newsreader; score zones green oklch(0.68 0.17 145) / amber oklch(0.75 0.15 85) / red oklch(0.60 0.20 25); greeting "Ready to simulate your audience, [Name]?". Phase 01 code-complete (13/13 reqs). Follow-ups: UAT screenshots 0/4 (env-gated, harness committed at 8f8e8acb), sidebar score-chip token-unify deferred to Phase 2.
+- [Phase 02]: P2-01: ScoreGauge fill uses bandTone() SSOT — amber owns the WHOLE 40-69 band (correction #2, never red there); score is a Phase-4-drivable prop; matte (no glow/halo/filter).
+- [Phase 02]: P2-01: DrillSheet is generic children-based (no panel registry) — the Phase-3/5 mount point; side switches bottom-mobile/right-desktop via useIsMobile; flat-warm (shadow-none, no inset, no blur). Forwarded side as data-side on shared ui/sheet.tsx (Rule 3 blocking, additive — no other consumers).
+- [Phase 02]: P2-01: src/components/reading/__tests__/ scaffold + shared makeReadingResult fixture (extends board fixtures.antiVirality + Apollo/heatmap/counterfactuals); scenario helpers cover D-13 degraded states. 14 reading tests green; full suite 1981 green (was 1967). 12 pre-existing tsc errors in untouched files logged to deferred-items.md.
+- [Phase ?]: P2-02: PersonaCloud dots-only (watch% hero-owned, 02-05); golden-angle verbatim from PersonaGraph; cream rgba(236,231,222) fill not white, coral worst-cluster only; returns null on empty personas.
+- [Phase ?]: P2-02: ThumbnailStrip gates on resolveKeyframeUrl(filmstrips,segments,'first') → null when no keyframe (no broken box); plain <img> not next/image, decorative alt='', signed URL never logged (T-02-03). AntiViralityHeader = bare re-export of board verdict component (D-04). 11 new tests; full suite 1992 green (was 1981).
+- [Phase ?]: P2-03: DriverRows is a NEW component (not a FactorBars reuse) — borrows only the 3-col grid + 5px bar markup, rebuilt for 0-100 ApolloDimensions; fixed funnel Hook->Retention->Shareability (no sort), neutral cream bars, ONLY the single weakest in its bandTone zone color + warn glyph; Retention value = drop time via formatTime(weighted_top_dropoff_t) SECONDS (audience-derive, not the ms TopFixesList variant — the 0:08-vs-0:00 trap), bar still fills by retention score; >=44px button -> onRowTap; degrades to 'Not available' on null dimensions (never a fabricated 0).
+- [Phase ?]: P2-03: Sidebar score chips unified onto the THEME-06 score-zone tokens (--color-success/warning/error) via the bandTone SSOT (>=70/40-69/<40) — one score-color language shared with the hero gauge; token swap only, em-dash branch stays muted (carried-forward P1 follow-up CLOSED).
+- [Phase 02]: P2-04: RewriteItem/FixFirstList/DeeperRead built — the actionable bottom of the Reading; copyable hook rewrites (D-15) are the literal payload (Copy = sanctioned coral surface, Copy->Copied->Copy 1.5s, graceful clipboard failure).
+- [Phase 02]: P2-04: Light two-tier (D-10) — FixFirstList overflow = one-way useState 'N more fixes' reveal; DeeperRead = vendored Radix Accordion inline expand; NEITHER a Sheet (heavy half stays DrillSheet).
+- [Phase 02]: P2-04: D-13/D-14 as correctness — zero fixes is a WIN ('Nothing urgent to fix'), null Apollo -> DeeperRead returns null + FixFirstList omits the rewrite section (no fabricated 0 / placeholder chip).
+- [Phase 02]: P2-04: reading cluster is board-store-free (no useBoardStore under src/components/reading/, grep=0 + bare-mount); BAND_COLOR repointed emerald/amber/red -> THEME-06 zone tokens success/warning/error. Full suite 2019 green (was 2000).
+- [Phase 02]: P2-05: Reading container (reading.tsx) is the single usePermalinkAnalysis subscriber — children are pure prop-driven leaves (severs the InsightHeroFrame per-leaf re-subscribe); data source abstracted so Phase 4 swaps in useAnalysisStream at the container only.
+- [Phase 02]: P2-05: D-13 honesty gate runs FIRST — no-id→inert(composer shell owns screen), id+!data→error, analysis_unavailable→CouldNotAnalyze (fabricated 0 NEVER reaches ScoreGauge); partial annotates; apollo-null degrades rows/deeper while hero/gate resolve from overall_score. Watch% hero-OWNED, rendered exactly once OUTSIDE PersonaCloud so it survives the empty-personas path (READ-04).
+- [Phase 02]: P2-05: Landmine-0 DONE — /analyze layout inverted to mount <Reading/> (Board retired from the mount, board sources+route files preserved dormant); one DrillSheet driven by closed-union panelId(hook|retention|shareability|personas) with native D-12 content = the Phase-3 rich-chart/PersonaGraph seam. READ-10 standing no-cut-data guard added. Full suite 2035 green (was 2019); build clean. Phase 02 code-complete → /gsd-verify-work.
+- [Phase 03]: P3-06: D-07 human-UAT gate LOCKED (2026-06-15) — all 5 reskinned drill-downs reviewed live (mobile+desktop), matte flat-warm confirmed; RetentionPlayer EXCLUDED by default (static composition is the SC-2-safe path on permalink reload), CraftFilmstrip audio-band dual-read = non-blocking follow-up. Precondition met (suite 2084 green + clean build). Phase 3 COMPLETE (6/6).
+- [Phase 04]: Stage-Reveal fidelity = REAL-SIGNAL reveal (user-approved at close). Literal per-engine-stage block reveal is unreachable: live stage_start/end events ride the composer POST body-reader that unmounts on the /home→/analyze/[id] router.push, and the frozen engine never persists stage progress (the reconnect SSE emits only partial/filmstrip_segment_ready/complete). So: branded IA skeleton + liveness from those surviving signals + a calm reduced-motion-gated settle cascade. Store-free hook (no useBoardStore — reading-cluster invariant). REVEAL-01/02 met.
+- [Phase 05]: Follow-up = the bottom-pinned composer becomes the "Ask the expert" chat input when pinned+inside FollowUpProvider (routes to /api/analyze/[id]/chat verbatim, NOT a new analysis); shared useExpertChat via FollowUpProvider so composer+tail share state; quick-action chips SEED the draft (not auto-send); gated to a completed Simulation; no separate dock. CHAT-01/02 met. **DEMO-01 DESCOPED from v5.0 (user direction at close) — deferred to a later milestone.** Engine + chat API unchanged.
 
 ### Pending Todos
 
-[From .planning/todos/pending/ — ideas captured during sessions]
+[From .planning/todos/pending/]
 
 None yet.
 
@@ -155,18 +135,16 @@ None yet.
 
 [Issues that affect future work]
 
-None yet.
+- **THEME-06 UAT gate (Phase 1): RESOLVED 2026-06-14** — the flat-warm system was reviewed live on the running shell by the human and SIGNED OFF (LOCKED for rollout). Locked values recorded in Decisions (P1-05) + 01-05-SUMMARY.md. Phases 2-5 reskin onto these as the fixed source of truth.
+- **Calibration items (brief §7): LOCKED at THEME-06** — charcoal ramp (app #262624 / sidebar #1a1a18 / composer #1e1d1b / chip #2f2e2b), score zones (green oklch(0.68 0.17 145) / amber 0.75 0.15 85 / red 0.60 0.20 25), coral oklch(0.68 0.13 33)≈#d97757, serif=Newsreader. Still OPEN (Phase 2+): how the thread settles (reveal → resting doc, Phase 4); mobile sidebar drawer vs bottom-sheet.
+- **Minor follow-ups (non-blocking):** (1) UAT screenshots 0/4 — env-gated at capture time; harness committed at 8f8e8acb, run once E2E creds + a completed Simulation id exist. (2) Sidebar score chips use Tailwind emerald-400/amber-400, not the --color-success/warning/error score-zone tokens — unify in Phase 2 when the hero score lands.
 
 ## Deferred Items
 
-Items acknowledged and carried forward from previous milestone close:
-
-| Category | Item | Status | Deferred At |
-|----------|------|--------|-------------|
-| *(none)* | | | |
+Deferred to later milestones per brief §3 (NOT v1): agentic tools (Apify competitor analysis — "the moat"), in-thread monetization, desktop dense-instrument (Konva successor), Reading share/export growth loop. See REQUIREMENTS.md v2 section.
 
 ## Session Continuity
 
-Last session: 2026-06-15T18:00:32.979Z
-Stopped at: Completed 04-04-PLAN.md (FinalCtaBand — CONVERT-02 GREEN)
-Resume file: None
+Last session: 2026-06-14T20:32:07.888Z
+Stopped at: Phase 3 UI-SPEC approved
+Resume file: .planning/phases/03-rich-visuals-as-drill-downs/03-UI-SPEC.md

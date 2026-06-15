@@ -29,6 +29,15 @@ vi.mock('@/stores/sidebar-store', () => ({
   }),
 }));
 
+// Desktop + expanded so the full Simulations list renders (not the icon rail).
+vi.mock('@/hooks/useIsMobile', () => ({
+  useIsMobile: () => false,
+}));
+
+vi.mock('@/hooks/usePrefersReducedMotion', () => ({
+  usePrefersReducedMotion: () => true,
+}));
+
 // Sidebar imported dynamically per test to pick up vi.doMock overrides
 void 0; // placeholder — see dynamic imports below
 
@@ -61,7 +70,7 @@ describe('Sidebar recent boards label', () => {
     expect((labels[0]?.textContent ?? '').length).toBeLessThanOrEqual(38);
   });
 
-  it('falls back to "Analysis · ..." when content_text is null', async () => {
+  it('falls back to "Simulation · ..." when content_text is null', async () => {
     vi.resetModules();
     mockHistory([
       { id: 'xyz', content_text: null, overall_score: null, created_at: new Date().toISOString() },
@@ -69,7 +78,38 @@ describe('Sidebar recent boards label', () => {
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
     const labels = screen.getAllByTestId('sidebar-board-label');
-    expect(labels[0]?.textContent).toMatch(/^Analysis\s·/);
+    expect(labels[0]?.textContent).toMatch(/^Simulation\s·/);
+  });
+
+  it('WR-06: drops the dangling separator when created_at is absent/malformed', async () => {
+    vi.resetModules();
+    mockHistory([
+      // No created_at AND null content_text — the empty-time fallback path.
+      { id: 'no-date', content_text: null, overall_score: null },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    const labels = screen.getAllByTestId('sidebar-board-label');
+    const text = (labels[0]?.textContent ?? '').trim();
+    // Label is exactly "Simulation" — no trailing "·", no "NaN".
+    expect(text).toBe('Simulation');
+    expect(text).not.toContain('·');
+    expect(text).not.toMatch(/nan/i);
+  });
+
+  it('WR-06: rolls up old dates past "day" (no raw large day counts)', async () => {
+    vi.resetModules();
+    const fortyFiveDaysAgo = new Date(Date.now() - 45 * 86400 * 1000).toISOString();
+    mockHistory([
+      { id: 'old', content_text: null, overall_score: null, created_at: fortyFiveDaysAgo },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    const labels = screen.getAllByTestId('sidebar-board-label');
+    const text = labels[0]?.textContent ?? '';
+    // 45 days rolls up to a month bucket — must NOT print "45 day(s)".
+    expect(text).not.toMatch(/45\s*day/i);
+    expect(text).toMatch(/month|mo\b/i);
   });
 
   it('shows score chip with rounded overall_score', async () => {
@@ -92,5 +132,36 @@ describe('Sidebar recent boards label', () => {
     render(<Fresh />);
     const chips = screen.getAllByTestId('sidebar-score-chip');
     expect(chips[0]?.textContent?.trim()).toBe('—');
+  });
+});
+
+describe('Sidebar composition — Simulations label + no dead affordances (D-11/D-13)', () => {
+  it('labels the history section "Simulations" (not "Recent")', async () => {
+    vi.resetModules();
+    mockHistory([
+      { id: 'abc', content_text: 'A simulated video', overall_score: 80 },
+    ]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.getByText('Simulations')).toBeInTheDocument();
+    expect(screen.queryByText('Recent')).toBeNull();
+  });
+
+  it('renders no Pinned / Projects / Boards dead affordances', async () => {
+    vi.resetModules();
+    mockHistory([]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.queryByText('Pinned')).toBeNull();
+    expect(screen.queryByText('Projects')).toBeNull();
+    expect(screen.queryByText('Boards')).toBeNull();
+  });
+
+  it('empty state reads "No simulations yet."', async () => {
+    vi.resetModules();
+    mockHistory([]);
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+    expect(screen.getByText(/no simulations yet/i)).toBeInTheDocument();
   });
 });

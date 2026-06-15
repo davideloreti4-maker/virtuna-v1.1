@@ -145,7 +145,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
       {/* video preview */}
       <div
         className="relative mx-auto overflow-hidden rounded-[12px] border border-white/[0.06]"
-        style={{ height: 200, maxWidth: '100%', backgroundColor: '#0c0d0f' }}
+        style={{ height: 200, maxWidth: '100%', backgroundColor: 'var(--color-surface)' }}
       >
         <video
           ref={videoRef}
@@ -171,7 +171,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
           >
             <span
               className="grid h-11 w-11 place-items-center rounded-full"
-              style={{ backgroundColor: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}
+              style={{ backgroundColor: 'rgba(0,0,0,0.55)' }}
             >
               <PlayIcon />
             </span>
@@ -192,17 +192,17 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
             {/* playhead line */}
             <div
               className="absolute top-0 w-px"
-              style={{ left: leftPct, height: VB_H, backgroundColor: 'rgba(255,255,255,0.85)' }}
+              style={{ left: leftPct, height: VB_H, backgroundColor: 'rgba(236,231,222,0.85)' }}
             />
-            {/* knob riding the curve */}
+            {/* knob riding the curve — solid coral + hairline coral ring (no glow) */}
             <div
               className="absolute h-[11px] w-[11px] rounded-full"
               style={{
                 left: leftPct,
                 top: knobTop,
                 transform: 'translate(-50%, -50%)',
-                backgroundColor: '#FF7F50',
-                boxShadow: '0 0 0 3px rgba(255,127,80,0.22), 0 0 0 1px rgba(255,255,255,0.5) inset',
+                backgroundColor: 'var(--color-accent)',
+                boxShadow: '0 0 0 1px oklch(0.68 0.13 33 / 0.4)',
               }}
             />
             {/* tooltip drawer */}
@@ -211,17 +211,16 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
               style={{
                 left: leftPct,
                 top: 0,
-                borderColor: 'rgba(255,255,255,0.08)',
-                backgroundColor: '#18191a',
-                boxShadow: 'rgba(255,255,255,0.1) 0 1px 0 0 inset',
+                borderColor: 'var(--color-border)',
+                backgroundColor: 'var(--color-surface)',
                 marginLeft: pct > 0.85 ? -28 : pct < 0.15 ? 28 : 0,
               }}
             >
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: 600 }}>
+              <div style={{ fontSize: 11, color: 'rgba(236,231,222,0.9)', fontWeight: 600 }}>
                 {formatTime(displayTime)}
               </div>
               {normalized.length > 0 && (
-                <div style={{ fontSize: 11, color: '#FF7F50', fontWeight: 600 }}>{retentionPct}%</div>
+                <div style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 600 }}>{retentionPct}%</div>
               )}
             </div>
           </div>
@@ -245,12 +244,12 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
         {/* track */}
         <div
           className="absolute left-0 right-0 top-1/2 -translate-y-1/2 rounded-full"
-          style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.08)' }}
+          style={{ height: 3, backgroundColor: 'rgba(236,231,222,0.08)' }}
         />
         {/* filled */}
         <div
           className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
-          style={{ height: 3, width: leftPct, backgroundColor: '#FF7F50' }}
+          style={{ height: 3, width: leftPct, backgroundColor: 'var(--color-accent)' }}
         />
         {/* handle */}
         <div
@@ -258,7 +257,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
           style={{
             left: leftPct,
             transform: 'translate(-50%, -50%)',
-            backgroundColor: '#fff',
+            backgroundColor: 'var(--color-foreground)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.5)',
           }}
         />
@@ -274,13 +273,13 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
         >
           {playing ? <PauseIcon /> : <PlayIcon small />}
         </button>
-        <span style={{ color: '#FF7F50', fontWeight: 600 }}>
+        <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
           {formatTime(displayTime)}
           {normalized.length > 0 && (
-            <span style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 500 }}> ({retentionPct}%)</span>
+            <span style={{ color: 'rgba(236,231,222,0.45)', fontWeight: 500 }}> ({retentionPct}%)</span>
           )}
         </span>
-        <span className="ml-auto" style={{ color: 'rgba(255,255,255,0.34)' }}>
+        <span className="ml-auto" style={{ color: 'rgba(236,231,222,0.34)' }}>
           {formatTime(displayDuration)}
         </span>
       </div>
@@ -292,7 +291,7 @@ function PlayIcon({ small }: { small?: boolean }) {
   const s = small ? 11 : 18;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M8 5.5v13l11-6.5L8 5.5Z" fill={small ? '#fff' : '#fff'} />
+      <path d="M8 5.5v13l11-6.5L8 5.5Z" fill="var(--color-foreground)" />
     </svg>
   );
 }
@@ -300,8 +299,8 @@ function PlayIcon({ small }: { small?: boolean }) {
 function PauseIcon() {
   return (
     <svg width={11} height={11} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="6" y="5" width="4" height="14" rx="1" fill="#fff" />
-      <rect x="14" y="5" width="4" height="14" rx="1" fill="#fff" />
+      <rect x="6" y="5" width="4" height="14" rx="1" fill="var(--color-foreground)" />
+      <rect x="14" y="5" width="4" height="14" rx="1" fill="var(--color-foreground)" />
     </svg>
   );
 }
