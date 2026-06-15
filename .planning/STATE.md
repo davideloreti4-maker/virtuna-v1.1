@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-01-PLAN.md (social-proof strip + testimonials RSC)
-last_updated: "2026-06-15T17:40:00.000Z"
+stopped_at: Completed 04-02-PLAN.md (pricing teaser — Starter + Pro, CONVERT-01 GREEN)
+last_updated: "2026-06-15T18:10:00.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 04 (proof-conversion) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-06-15
 
@@ -73,6 +73,7 @@ Progress: [██████████] 100%
 | Phase 03 P05 | ~10min | 4 tasks | 7 files (gap-closure) |
 | Phase 04 P00 | 4min | 2 tasks | 6 files |
 | Phase 04 P01 | ~5min | 2 tasks | 3 files |
+| Phase 04 P02 | ~6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 04-00: data-testid anchors (testimonial-handle, testimonial-metric, cta-close-line, pricing-bullet) are the Wave-1 integration contract; stable ids (social-proof, testimonials, data-section=final-cta) are the 04-05 contract
 - [Phase 04-01]: SocialProofStrip: marquee aria-hidden wrapper at container level — logo wall decorative, trust stat carries accessible meaning; 6 logo slots for denser visual rhythm
 - [Phase 04-01]: TestimonialCard: article+blockquote semantics + data-testid=testimonial-metric/handle; zero import from ui/testimonial-card (cold-brand avoided); fictional placeholder testimonials (D-21/T-04-01-01 accept)
+- [Phase 04-02]: PricingCard: pure RSC, flat-warm card, Badge accent/secondary, Button asChild→SIGNUP_URL, D-20 microcopy; no Supabase/Whop/checkout (D-10 enforced)
+- [Phase 04-02]: PricingTeaser: 2-up TIERS grid, Pro highlighted via border-accent/25+ring-1 ring-accent/20 (token-legal, no glow); CONVERT-01 5/5 GREEN
 
 ### Pending Todos
 
