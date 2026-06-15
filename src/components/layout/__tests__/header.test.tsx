@@ -84,4 +84,108 @@ describe("<Header>", () => {
       expect(screen.queryByTestId("mobile-nav-panel")).toBeNull();
     });
   });
+
+  /**
+   * GAP-4 / WR-02 / WR-03 — accessible mobile disclosure.
+   * Escape-to-close, focus trap while open, focus restore to the trigger on
+   * close, and a non-destructive body scroll-lock that saves/restores the prior
+   * overflow value (no bare `= ""` clobber).
+   */
+  describe("mobile a11y — Escape / focus / scroll-lock (GAP-4, WR-02, WR-03)", () => {
+    it("closes the panel and flips the trigger back to 'Open menu' when Escape is pressed", async () => {
+      const user = userEvent.setup();
+      render(<Header />);
+
+      await user.click(screen.getByRole("button", { name: /open menu/i }));
+      expect(screen.getByTestId("mobile-nav-panel")).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+
+      // The panel collapses and the trigger reverts to "Open menu".
+      expect(screen.queryByTestId("mobile-nav-panel")).toBeNull();
+      expect(
+        screen.getByRole("button", { name: /open menu/i })
+      ).toBeInTheDocument();
+    });
+
+    it("restores focus to the trigger button after closing via Escape", async () => {
+      const user = userEvent.setup();
+      render(<Header />);
+
+      const trigger = screen.getByRole("button", { name: /open menu/i });
+      await user.click(trigger);
+      expect(screen.getByTestId("mobile-nav-panel")).toBeInTheDocument();
+
+      await user.keyboard("{Escape}");
+
+      // Focus returns to the (now "Open menu") trigger button.
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /open menu/i })
+      );
+    });
+
+    it("restores focus to the trigger button after closing via a link tap", async () => {
+      const user = userEvent.setup();
+      render(<Header />);
+
+      const trigger = screen.getByRole("button", { name: /open menu/i });
+      await user.click(trigger);
+      const panel = screen.getByTestId("mobile-nav-panel");
+
+      await user.click(
+        within(panel).getByRole("link", { name: /how it works/i })
+      );
+
+      expect(screen.queryByTestId("mobile-nav-panel")).toBeNull();
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: /open menu/i })
+      );
+    });
+
+    it("traps focus inside the panel — Tab from the last focusable wraps to the first", async () => {
+      const user = userEvent.setup();
+      render(<Header />);
+
+      await user.click(screen.getByRole("button", { name: /open menu/i }));
+      const panel = screen.getByTestId("mobile-nav-panel");
+
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>("a[href], button")
+      );
+      expect(focusables.length).toBeGreaterThan(1);
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+
+      // Park focus on the last focusable, then Tab — focus must wrap to the first
+      // and never escape the panel container.
+      last.focus();
+      expect(document.activeElement).toBe(last);
+      await user.tab();
+      expect(document.activeElement).toBe(first);
+      expect(panel.contains(document.activeElement)).toBe(true);
+
+      // Shift+Tab from the first wraps back to the last (still inside the panel).
+      await user.tab({ shift: true });
+      expect(document.activeElement).toBe(last);
+      expect(panel.contains(document.activeElement)).toBe(true);
+    });
+
+    it("saves and restores the prior body overflow value (WR-02 — no clobber)", async () => {
+      const user = userEvent.setup();
+      // Simulate a pre-existing scroll-lock owner.
+      document.body.style.overflow = "scroll";
+      render(<Header />);
+
+      await user.click(screen.getByRole("button", { name: /open menu/i }));
+      // While open the body is locked.
+      expect(document.body.style.overflow).toBe("hidden");
+
+      await user.keyboard("{Escape}");
+      // On close the PRIOR value is restored — not clobbered to "".
+      expect(document.body.style.overflow).toBe("scroll");
+
+      // Cleanup so the global body style does not leak to other tests.
+      document.body.style.overflow = "";
+    });
+  });
 });
