@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: "03-08 locked the product noun above the fold (WR-01) — hero desktop showcase slot renamed 'Numen reading' to 'Numen Simulation'; the last place on / shipping the retired noun is gone, hero test pins /numen simulation/i, hero suite 8/8, / stays static. 03-05 remains (consumes the 03-04 primitives)"
-stopped_at: Completed 03-08-PLAN.md
-last_updated: "2026-06-15T11:21:40.114Z"
+status: "03-05 (final gap plan) DONE — applied the 03-04 product-skeleton primitives to all three story sections (Simulation frame filled + height-capped GAP-2; how-it-works steps + feature blocks show intentional skeletons GAP-1; feature rows top-aligned wider-shorter + denser rhythm GAP-3 component-level); IN-01 + WR-04 fixed; story suite 30/30 GREEN, all sections pure RSC, / stays ○ static. Phase 03 gap-closure complete (18/18 plans)"
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-06-15T11:31:30.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 ## Current Position
 
-Phase: 03 (story-showcase) — GAP CLOSURE IN PROGRESS
-Plan: 4 base done + gap-closure 03-04, 03-06, 03-07, 03-08 DONE (5 gap plans 03-04..03-08; only 03-05 remains)
-Status: 03-08 locked the product noun above the fold (WR-01) — hero desktop showcase slot renamed "Numen reading" → "Numen Simulation"; the last place on / shipping the retired noun is gone, hero test pins /numen simulation/i, hero suite 8/8, / stays static. 03-05 consumes the 03-04 primitives next
+Phase: 03 (story-showcase) — GAP CLOSURE COMPLETE
+Plan: 4 base done + all 5 gap plans (03-04, 03-05, 03-06, 03-07, 03-08) DONE
+Status: 03-05 (final gap plan) DONE — applied the 03-04 product-skeleton primitives to all three story sections: Simulation frame filled + height-capped (GAP-2), how-it-works steps + feature blocks show intentional skeletons not empty boxes (GAP-1), feature rows top-aligned wider-shorter + denser rhythm (GAP-3 component-level); IN-01 docblock + WR-04 brittle queries fixed; story suite 30/30 GREEN, all sections pure RSC, / stays ○ static
 Last activity: 2026-06-15
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -69,6 +69,7 @@ Progress: [█████████░] 94%
 | Phase 03 P06 | ~4min | 1 task | 1 file (gap-closure) |
 | Phase 03 P07 | ~12min | 2 tasks | 4 files (gap-closure, TDD) |
 | Phase 03 P08 | ~6min | 1 task tasks | 2 files (gap-closure) files |
+| Phase 03 P05 | ~10min | 4 tasks | 7 files (gap-closure) |
 
 ## Accumulated Context
 
@@ -124,6 +125,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-07: WR-02 scroll-lock fixed — useEffect snapshots `const prev = document.body.style.overflow`, sets "hidden" while open, restores `prev` in cleanup (no bare `= ""` clobber of a pre-existing lock owner); aria-expanded/aria-controls/panel id/data-testid unchanged, no visual change, / stays ○ static
 - [Phase 03-08]: 03-08: hero desktop slot label 'Numen reading' to 'Numen Simulation' — the last place on / shipping the retired noun is gone; page-wide 'Simulation, never reading' lock now holds above the fold (WR-01)
 - [Phase 03-08]: 03-08: HERO-01 subcopy assertion narrowed /simulat(es|ion|e)/i to /simulates/i so the new 'Numen Simulation' slot label does not create a second /simulat/i match (single-match getByText discipline, carried from 03-02)
+- [Phase 03-05]: 03-05: filled the Simulation device frame with the 03-04 gauge/cloud/driver-rows skeleton + capped the window body max-h-[460px] (GAP-2 — the ~640px void is gone); reused the existing inline browser chrome (not BrowserChrome) to avoid a duplicate numen.app pill
+- [Phase 03-05]: 03-05: how-it-works steps + feature blocks now show intentional 03-04 product skeletons (GAP-1) in data-step-visual / data-feature-visual aspect-stable wrappers (skeletons carry no data-variant); feature rows top-align (items-start) at a wider-shorter aspect-[16/9] max-h-[300px] framed in BrowserChrome + denser gap-12 md:gap-16 row rhythm (GAP-3 component-level)
+- [Phase 03-05]: 03-05: WR-04 closed — the filled frame now also renders watch-through/Hook/Retention/drop/Shareability, so the simulation-showcase output assertions are scoped to the outputs <dl> via within(dl)+getAllByText; <h2> 'The Simulation' kept as the sole rendered /simulat/i node + a GAP-2 structural gate added (>=1 arc circle + >=6 circles + driver labels)
 
 ### Pending Todos
 
@@ -147,6 +151,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T11:21:40.108Z
-Stopped at: Completed 03-08-PLAN.md
+Last session: 2026-06-15T11:31:30.000Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None

@@ -129,7 +129,7 @@ Plans:
 
 **Wave 2** *(blocked on 03-04)*
 
-- [ ] 03-05-PLAN.md (wave 2, depends 03-04) — apply skeletons + craft polish to the 3 story sections: fill the Simulation device frame (GAP-2), step skeletons (GAP-1), feature-block balance (GAP-3 component-level) + docblock (IN-01) + de-brittle tests (WR-04)
+- [x] 03-05-PLAN.md (wave 2, depends 03-04) — apply skeletons + craft polish to the 3 story sections: fill the Simulation device frame (GAP-2), step skeletons (GAP-1), feature-block balance (GAP-3 component-level) + docblock (IN-01) + de-brittle tests (WR-04)
 
 ### Phase 4: Proof & Conversion
 
@@ -185,6 +185,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
-| 3. Story & Showcase | 8/9 | In Progress|  |
+| 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
