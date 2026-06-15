@@ -42,8 +42,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === "SIGNED_OUT" || !session) {
-          // Session expired or user signed out — redirect to landing page
-          router.replace("/");
+          // WR-04: single owner of the post-logout redirect. Go to /login
+          // (consistent with checkSession's no-session path and the
+          // middleware's unauth redirect) rather than "/", so the explicit
+          // sign-out handler in the Sidebar can simply call signOut() and let
+          // this fire the one authoritative navigation.
+          router.replace("/login");
         }
       }
     );

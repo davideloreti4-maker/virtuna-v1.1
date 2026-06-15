@@ -51,9 +51,9 @@ export function KeyframeImage({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-[6px] border bg-[#0c0b10]',
+        'relative overflow-hidden rounded-[6px] border bg-[var(--color-surface)]',
         RATIO[ratio],
-        marked ? 'border-accent/60' : 'border-white/[0.07]',
+        marked ? 'border-accent/60' : 'border-[var(--color-border)]',
         className,
       )}
       data-testid="keyframe"
@@ -72,9 +72,11 @@ export function KeyframeImage({
         <div
           className="absolute inset-0"
           style={{
+            // Matte fallback: a flat energy-graded charcoal wash (cream-alpha
+            // center → surface edge). No coral halo impersonating real footage.
             background:
               fallbackScene ??
-              `radial-gradient(120% 100% at 50% 35%, rgba(255,127,80,${(0.05 + energy * 0.12).toFixed(2)}) 0%, #0b0a10 72%)`,
+              `radial-gradient(120% 100% at 50% 35%, rgba(236,231,222,${(0.02 + energy * 0.05).toFixed(2)}) 0%, var(--color-surface) 72%)`,
           }}
         />
       )}
@@ -84,8 +86,8 @@ export function KeyframeImage({
       />
       {play && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white/15">
-            <div className="ml-[2px] h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-white/90" />
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(236,231,222,0.15)]">
+            <div className="ml-[2px] h-0 w-0 border-y-[5px] border-l-[8px] border-y-transparent border-l-foreground" />
           </div>
         </div>
       )}
@@ -95,12 +97,12 @@ export function KeyframeImage({
         </span>
       )}
       {timecode && (
-        <span className="absolute bottom-1 left-1 rounded-[3px] bg-black/55 px-1 text-[8px] tabular-nums text-white/85">
+        <span className="absolute bottom-1 left-1 rounded-[3px] bg-black/55 px-1 text-[8px] tabular-nums text-foreground">
           {timecode}
         </span>
       )}
       {badge && (
-        <span className="absolute bottom-1 right-1 rounded-[3px] bg-black/55 px-1 text-[8px] tabular-nums text-white/85">
+        <span className="absolute bottom-1 right-1 rounded-[3px] bg-black/55 px-1 text-[8px] tabular-nums text-foreground">
           {badge}
         </span>
       )}

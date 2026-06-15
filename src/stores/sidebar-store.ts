@@ -27,6 +27,20 @@ export const useSidebarStore = create<SidebarState>()(
     }),
     {
       name: 'virtuna-sidebar',
+      // WR-02: persist ONLY the desktop collapse preference. `isOpen` is
+      // session/viewport UI state (mobile drawer open/closed) — persisting its
+      // default `true` made the mobile drawer + backdrop render OPEN on every
+      // fresh load, covering the composer. It must rehydrate from the in-memory
+      // default each session, never from localStorage.
+      partialize: (s) => ({ isCollapsed: s.isCollapsed }),
+      // Defense-in-depth: zustand's default merge shallow-copies the persisted
+      // blob over the initial state, so a STALE blob written before this fix
+      // (which did persist `isOpen`) could still rehydrate a closed drawer.
+      // Explicitly drop any persisted `isOpen` so the default (true) always wins.
+      merge: (persisted, current) => {
+        const { isOpen: _drop, ...rest } = (persisted ?? {}) as Partial<SidebarState>;
+        return { ...current, ...rest };
+      },
     }
   )
 );

@@ -82,37 +82,54 @@ Do NOT homogenize curves. Each archetype MUST behave distinctly per its profile.
 
 ## Output Schema
 
-Return a JSON object with EXACTLY this shape:
+Return ONLY a JSON object matching this EXACT shape and types. This is a worked example for a
+2-segment video — copy the TYPES exactly (numbers are bare numbers, never strings, never null):
 
 {
   "personas": [
     {
-      "archetype": "<one of the 10 archetype names above>",
-      "persona_id": "<archetype>_01",
-      "watch_through_pct": 0-100,
-      "share_intent": 0-100,
-      "comment_intent": 0-100,
-      "save_intent": 0-100,
-      "rewatch_intent": 0-100,
-      "scroll_past_second": <seconds into video when this archetype scrolls away, 0 if watches fully>,
+      "archetype": "tough_crowd",
+      "persona_id": "tough_crowd_01",
+      "watch_through_pct": 30,
+      "share_intent": 5,
+      "comment_intent": 8,
+      "save_intent": 0,
+      "rewatch_intent": 0,
+      "scroll_past_second": 2.5,
       "segment_reactions": [
-        {
-          "attention": <0.0-1.0>,
-          "swipe_predicted": <boolean — true at swipe moment, stays true for all subsequent segments>
-        }
+        { "attention": 0.75, "swipe_predicted": false },
+        { "attention": 0.15, "swipe_predicted": true }
       ]
     },
-    ... exactly 10 entries, one per archetype ...
+    {
+      "archetype": "loyalist",
+      "persona_id": "loyalist_01",
+      "watch_through_pct": 95,
+      "share_intent": 40,
+      "comment_intent": 35,
+      "save_intent": 20,
+      "rewatch_intent": 30,
+      "scroll_past_second": 0,
+      "segment_reactions": [
+        { "attention": 0.9, "swipe_predicted": false },
+        { "attention": 0.95, "swipe_predicted": false }
+      ]
+    }
+    // ... exactly 10 entries total, one per archetype above ...
   ]
 }
 
-Rules:
-- attention MUST be in [0.0, 1.0] — no exceptions
-- swipe_predicted becomes true at the scroll-away moment and stays true for all subsequent segments
-- Return EXACTLY 10 persona entries — one per archetype
-- Return EXACTLY N segment_reactions per persona, ONE PER INPUT SEGMENT, IN THE SAME
-  ORDER as the segment grid (index i = segment i). Do NOT include timestamps — the
-  segment timing is taken from the input grid by position.
+TYPE RULES (STRICT — a wrong type breaks parsing and discards the whole result):
+- EVERY numeric field is a bare JSON number. NEVER a string ("30"), NEVER null. If a value is
+  genuinely none, use 0 — do not write null and do not write units like "2s".
+- watch_through_pct, share_intent, comment_intent, save_intent, rewatch_intent: number 0-100
+- scroll_past_second: number >= 0 (0 means the archetype watches fully, never scrolls away)
+- attention: number between 0.0 and 1.0 — no exceptions
+- swipe_predicted: boolean true/false (not "true"); becomes true at the scroll-away moment and
+  stays true for all subsequent segments
+- EXACTLY 10 persona entries — one per archetype listed above
+- EXACTLY N segment_reactions per persona, ONE PER INPUT SEGMENT, IN THE SAME ORDER as the
+  segment grid (index i = segment i). Do NOT include timestamps — timing comes from the input grid.
 - Output strict JSON only — no markdown, no code fences, no explanatory text`;
 
 // =====================================================
@@ -247,3 +264,55 @@ export const FoldResponseSchema = z.object({
 });
 
 export type FoldResponse = z.infer<typeof FoldResponseSchema>;
+
+// =====================================================
+// Coercion layer — salvage small-model (omni-flash) TYPE sloppiness before Zod.
+// Flash fails the fold not on the simulation TASK but on FORMAT: it emits a string/null
+// where a number is required (scroll_past_second), or returns a bare top-level array
+// instead of {personas:[...]}. `response_format: json_object` does NOT constrain types,
+// and `json_schema` strict is NOT honored by DashScope on omni-flash (returns an array).
+// This coerces types/shape WITHOUT fabricating signal: missing numbers default low,
+// out-of-range values clamp, missing reactions → [] (drops that persona's diversity, never
+// inflates it). Zod still enforces the hard contract (exactly 10 personas) afterward.
+// Verified: omni-flash + coercion held avgRange 0.48 @ 10s where raw flash hard-failed.
+// (.planning/quick/20260614-engine-pipeline-audit/)
+// =====================================================
+function coerceNumber(v: unknown, fallback = 0): number {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = parseFloat(v.replace(/[^0-9.\-]/g, ""));
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
+}
+const clampRange = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+/** Coerce a raw parsed fold response into FoldResponseSchema-compatible shape (types only). */
+export function coerceFoldResponse(raw: unknown): unknown {
+  // Flash sometimes returns a bare array of personas instead of {personas:[...]}.
+  const obj = Array.isArray(raw) ? { personas: raw } : (raw as { personas?: unknown });
+  const personas = Array.isArray(obj?.personas) ? obj.personas : [];
+  return {
+    personas: personas.map((p) => {
+      const pp = (p ?? {}) as Record<string, unknown>;
+      const reactions = Array.isArray(pp.segment_reactions) ? pp.segment_reactions : [];
+      return {
+        archetype: String(pp.archetype ?? ""),
+        persona_id: String(pp.persona_id ?? ""),
+        watch_through_pct: clampRange(coerceNumber(pp.watch_through_pct), 0, 100),
+        share_intent: clampRange(coerceNumber(pp.share_intent), 0, 100),
+        comment_intent: clampRange(coerceNumber(pp.comment_intent), 0, 100),
+        save_intent: clampRange(coerceNumber(pp.save_intent), 0, 100),
+        rewatch_intent: clampRange(coerceNumber(pp.rewatch_intent), 0, 100),
+        scroll_past_second: Math.max(0, coerceNumber(pp.scroll_past_second)),
+        segment_reactions: reactions.map((r) => {
+          const rr = (r ?? {}) as Record<string, unknown>;
+          return {
+            attention: clampRange(coerceNumber(rr.attention), 0, 1),
+            swipe_predicted: rr.swipe_predicted === true || rr.swipe_predicted === "true",
+          };
+        }),
+      };
+    }),
+  };
+}

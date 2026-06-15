@@ -29,12 +29,12 @@ export function StatTile({ k, v, u, delta, s, em, tone = 'default' }: StatTileDa
         'flex min-h-[72px] flex-col rounded-[11px] border px-3 py-[11px]',
         tone === 'accent'
           ? 'border-accent/25 bg-accent/[0.035]'
-          : 'border-white/[0.06] bg-white/[0.016]',
+          : 'border-[var(--color-border)] bg-[var(--color-surface-elevated)]/40',
       )}
       data-testid="stat-tile"
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="min-w-0 text-[9.5px] uppercase leading-[1.25] tracking-[0.08em] text-white/55">
+        <span className="min-w-0 text-[9.5px] uppercase leading-[1.25] tracking-[0.08em] text-foreground-muted">
           {k}
         </span>
         {delta && (
@@ -43,13 +43,13 @@ export function StatTile({ k, v, u, delta, s, em, tone = 'default' }: StatTileDa
           </span>
         )}
       </div>
-      <div className="mt-auto pt-2 text-[18px] font-semibold leading-none tabular-nums text-white/95">
+      <div className="mt-auto pt-2 text-[18px] font-semibold leading-none tabular-nums text-foreground">
         {v}
-        {u && <span className="ml-[1px] text-[10px] font-medium text-white/40">{u}</span>}
+        {u && <span className="ml-[1px] text-[10px] font-medium text-foreground-muted">{u}</span>}
       </div>
       {s && (
-        <div className="mt-[7px] truncate text-[10px] text-white/55">
-          {em && <span className="font-semibold text-white/75">{em} </span>}
+        <div className="mt-[7px] truncate text-[10px] text-foreground-muted">
+          {em && <span className="font-semibold text-foreground-secondary">{em} </span>}
           {s}
         </div>
       )}

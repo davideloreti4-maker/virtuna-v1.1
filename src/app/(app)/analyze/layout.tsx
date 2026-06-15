@@ -1,19 +1,38 @@
 import { Suspense } from 'react';
-import { Board } from '@/components/board/Board';
+import { ReadingThread } from '@/components/reading';
 
 /**
  * Shared layout for /analyze and /analyze/[id].
- * Keeps the same <Board> instance mounted across the URL transition so Konva
- * Stage transform survives submit → /analyze/[id] (RESEARCH Pitfall 2).
+ *
+ * LANDMINE 0 (02-05) — the mount is INVERTED. This layout used to render the
+ * Konva canvas; the Reading thread now replaces it. The same persistence
+ * rationale holds: a single <Reading> instance stays mounted across the
+ * submit → /analyze/[id] URL transition, so the Reading reads the id from
+ * `useParams()` (via usePermalinkAnalysis) and renders the same thread the
+ * composer just streamed — no remount flash.
+ *
+ * The Konva canvas (camera / pan-zoom / 8-frame stage) is retired here, but the
+ * legacy visual components live on as Phase-3 drill-down sources (NOT deleted),
+ * and the /analyze route files stay reachable (dormant, not removed) per the
+ * milestone constraint.
+ *
+ * With no route id (/analyze), the Reading is inert — it renders nothing and the
+ * Phase-1 AppShell composer-centered shell (from (app)/layout.tsx) owns the
+ * screen. With an id, the Reading composes its vertical thread inside the
+ * AppShell 760px column.
+ *
+ * PHASE 5 — the mount is now <ReadingThread>, which wraps <Reading> with the
+ * follow-up tail + the bottom-pinned composer (shared chat state). The thread/
+ * composer appear only once the Simulation is complete; before that ReadingThread
+ * renders just the Reading (its skeleton/states), unchanged.
  */
 export default function AnalyzeLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={null}>
-      <Board />
-      {/* `children` from page.tsx or [id]/page.tsx renders OVER the board.
-          In Phase 2 the page bodies become server-only data fetchers;
-          actual UI lives inside <Board>'s DOM overlays. We keep `children`
-          here only to satisfy Next.js — page.tsx will return null in Task 7. */}
+      <ReadingThread />
+      {/* `children` from page.tsx / [id]/page.tsx are metadata-only server shells
+          (both return null). Kept here only to satisfy Next.js's layout/page
+          contract; all UI lives in <ReadingThread>. */}
       <div className="sr-only">{children}</div>
     </Suspense>
   );

@@ -10,17 +10,19 @@
    * Source: raycast.com extraction + coral scale
    * ============================================ */
 
-  /* --- Coral Scale (brand, replaces Raycast red) --- */
-  /* Source: 39-CORAL-SCALE.md */
-  --color-coral-100: oklch(0.97 0.03 40);
-  --color-coral-200: oklch(0.93 0.06 40);
-  --color-coral-300: oklch(0.87 0.10 40);
-  --color-coral-400: oklch(0.78 0.14 40);
-  --color-coral-500: oklch(0.72 0.16 40);  /* Base #FF7F50 */
-  --color-coral-600: oklch(0.60 0.14 40);
-  --color-coral-700: oklch(0.48 0.12 40);
-  --color-coral-800: oklch(0.38 0.10 40);
-  --color-coral-900: oklch(0.28 0.08 40);
+  /* --- Coral Scale (brand) — matured toward terracotta/clay (D-04) --- */
+  /* [UAT] Frame A — locks at THEME-06. Base hue 40 -> ~33, slightly deeper + desaturated. */
+  /* oklch is SAFE here: lightness ~0.68 is well above the L<0.15 dark-surface miscompile zone. */
+  /* Stays distinct from the alert-red score zone (error hue ~25). */
+  --color-coral-100: oklch(0.97 0.025 33);  /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-200: oklch(0.93 0.05 33);   /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-300: oklch(0.87 0.08 33);   /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-400: oklch(0.76 0.11 33);   /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-500: oklch(0.68 0.13 33);   /* [UAT] Frame A — terracotta clay base, approx #d97757 */
+  --color-coral-600: oklch(0.58 0.115 33);  /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-700: oklch(0.47 0.10 33);   /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-800: oklch(0.37 0.08 33);   /* [UAT] Frame A — locks at THEME-06 */
+  --color-coral-900: oklch(0.28 0.065 33);  /* [UAT] Frame A — locks at THEME-06 */
 
   /* --- Gray Scale --- */
   /* Source: raycast.com computed styles extraction (2026-02-05) */
@@ -35,12 +37,26 @@
   --color-gray-700: #3a3b3d;
   --color-gray-800: #222326;
   --color-gray-900: #1a1b1e;   /* rgb(26,27,30) — Raycast elevated surface */
-  --color-gray-950: #07080a;   /* rgb(7,8,10) — Raycast body background */
+  --color-gray-950: #07080a;   /* rgb(7,8,10) — Raycast body background (kept: data/score components still ref the ramp) */
 
-  /* --- Semantic Colors (raw values) --- */
-  --color-success-raw: oklch(0.68 0.17 145);
-  --color-warning-raw: oklch(0.75 0.15 85);
-  --color-error-raw: oklch(0.60 0.20 25);
+  /* --- Charcoal Surface Scale (flat-warm, THEME-01/D-01/D-02) --- */
+  /* Neutral charcoal, de-blued — NOT warm-brown. Warmth lives in cream text + coral, not the surface. */
+  /* MUST be exact HEX: oklch with L<0.15 compiles wrong in Tailwind v4 @theme (CLAUDE.md gotcha). */
+  --color-charcoal-app: #262624;       /* [UAT] Frame A — dominant app surface (replaces cold #07080a) */
+  --color-charcoal-sidebar: #1a1a18;   /* [UAT] Frame A — sidebar, one tone-step off the app */
+  --color-charcoal-composer: #1e1d1b;  /* [UAT] Frame A — composer card surface */
+  --color-charcoal-chip: #2f2e2b;      /* [UAT] Frame A — chips / lifted matte surfaces */
+
+  /* --- Cream Text Scale (flat-warm, D-02) — never pure white --- */
+  --color-cream-primary: #ece7de;      /* [UAT] Frame A — brightest text (never #fff) */
+  --color-cream-secondary: #c2bdb4;    /* [UAT] Frame A — default chrome / typed text */
+  --color-cream-muted: #8a857c;        /* [UAT] Frame A — placeholders, labels, timestamps, em-dash empty */
+
+  /* --- Semantic Colors (raw values) — score-zone DATA colors, kept per THEME-03 --- */
+  /* Retained (not chrome): the only non-coral color, used on score chips/values. */
+  --color-success-raw: oklch(0.68 0.17 145);  /* [UAT] Frame A — score zone green */
+  --color-warning-raw: oklch(0.75 0.15 85);   /* [UAT] Frame A — score zone amber */
+  --color-error-raw: oklch(0.60 0.20 25);     /* [UAT] Frame A — score zone red; stays distinct from coral (hue ~33) */
   --color-info-raw: oklch(0.62 0.19 250);
 
   /* --- Spacing Scale (8px base) --- */
@@ -65,22 +81,22 @@
    * ============================================ */
 
   /* --- Backgrounds --- */
-  /* Source: raycast.com body rgb(7,8,10), cards rgba(0,0,0,0.44), surfaces rgba(34,34,34,0.85) */
-  --color-background: var(--color-gray-950);
-  --color-background-elevated: var(--color-gray-900);
-  --color-surface: #18191a;     /* rgb(24,25,26) — Raycast bg-200 exact */
-  --color-surface-elevated: #222326;  /* rgb(34,35,38) — Raycast elevated panels */
+  /* Flat-warm charcoal (THEME-01/D-01): neutral, de-blued, matte. Repointed off the cold gray ramp. */
+  --color-background: var(--color-charcoal-app);          /* [UAT] Frame A — was var(--color-gray-950) #07080a */
+  --color-background-elevated: var(--color-charcoal-sidebar);  /* [UAT] Frame A — was var(--color-gray-900) */
+  --color-surface: var(--color-charcoal-composer);        /* [UAT] Frame A — was #18191a */
+  --color-surface-elevated: var(--color-charcoal-chip);   /* [UAT] Frame A — was #222326 */
 
-  /* --- Text --- */
-  --color-foreground: var(--color-gray-50);
-  --color-foreground-secondary: var(--color-gray-400);
-  --color-foreground-muted: var(--color-gray-500);
+  /* --- Text (cream, never pure white — D-02) --- */
+  --color-foreground: var(--color-cream-primary);         /* [UAT] Frame A — was var(--color-gray-50) #f9f9f9 */
+  --color-foreground-secondary: var(--color-cream-secondary);  /* [UAT] Frame A — was var(--color-gray-400) */
+  --color-foreground-muted: var(--color-cream-muted);     /* [UAT] Frame A — was var(--color-gray-500) */
 
   /* --- Accent (Coral) --- */
   --color-accent: var(--color-coral-500);
   --color-accent-hover: var(--color-coral-400);
   --color-accent-active: var(--color-coral-600);
-  --color-accent-foreground: #1a0f0a;  /* Dark brown — 7.2:1 on coral-500, WCAG AAA */
+  --color-accent-foreground: #1a0f0a;  /* [UAT] Frame A — dark brown on terracotta coral; verify AA at THEME-06 (>7:1 on #d97757) */
 
   /* --- Semantic Status --- */
   --color-success: var(--color-success-raw);
@@ -101,8 +117,10 @@
   --color-disabled: rgba(128, 128, 128, 0.5);
 
   /* --- Font Families --- */
-  /* Source: raycast.com - Inter for all text (matching Raycast 1:1) */
+  /* Inter for ALL data/UI/chrome (THEME-04). Serif is voice-moments ONLY (greeting/hero) — wired here, consumed in plan 01-03. */
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* [UAT] serif typeface — Newsreader (Frame A); may swap to Source Serif 4 at THEME-06 */
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", monospace;
 
   /* --- Font Sizes (from extraction) --- */
@@ -136,15 +154,18 @@
   --tracking-normal: 0;
   --tracking-wide: 0.02em;
 
-  /* --- Shadow Scale --- */
-  /* Source: raycast.com button and card shadows */
+  /* --- Shadow Scale (flat-warm, matte — D-05) --- */
+  /* Depth = tone-step + hairline borders. NO inset white shine, NO glow, NO halo. */
+  /* Glass + glow shadow tokens REMOVED (THEME-02 Layer A): the Raycast inset-shine glass shadow */
+  /* and the coral glow are gone; resting surfaces use border + tone only. */
   --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.2);
   --shadow-md: 0 4px 6px oklch(0 0 0 / 0.15), 0 2px 4px oklch(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px oklch(0 0 0 / 0.15), 0 4px 6px oklch(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px oklch(0 0 0 / 0.15), 0 10px 10px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.05);
-  --shadow-glass: 0 8px 32px oklch(0 0 0 / 0.2), inset 0 1px 0 oklch(1 0 0 / 0.1);
-  --shadow-glow-accent: 0 0 20px oklch(0.72 0.16 40 / 0.3);
-  --shadow-button: rgba(0, 0, 0, 0.5) 0px 0px 0px 2px, rgba(255, 255, 255, 0.19) 0px 0px 14px 0px, rgba(0, 0, 0, 0.2) 0px -1px 0.4px 0px inset, rgba(255, 255, 255, 0.2) 0px 1px 0.4px 0px inset;
+  /* Whisper-soft float — the ONLY allowed shadow, for GENUINELY floating surfaces (composer, popovers) — D-05 */
+  --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.35);  /* [UAT] Frame A — composer/popover only */
+  /* Button: flat matte (inset white-shine layers stripped). Hairline ring + soft drop, no shine. */
+  --shadow-button: rgba(0, 0, 0, 0.5) 0px 0px 0px 2px, rgba(0, 0, 0, 0.2) 0px 1px 2px 0px;  /* [UAT] Frame A — flat matte */
 
   /* --- Radius Scale --- */
   /* Source: raycast.com - 6px, 8px, 12px, 16px common */
@@ -186,14 +207,12 @@
   --breakpoint-xl: 1280px;
   --breakpoint-2xl: 1536px;
 
-  /* --- Gradients --- */
-  /* Source: raycast.com navbar, cards, features */
-  --gradient-coral: linear-gradient(135deg, var(--color-coral-400), var(--color-coral-500), var(--color-coral-600));
-  --gradient-card-bg: linear-gradient(137deg, #111214 4.87%, #0c0d0f 75.88%);
+  /* --- Gradients (flat-warm — THEME-02 Layer A) --- */
+  /* The Raycast 137deg glass gradients + the radial feature halo are REMOVED (vetoed ambient lighting, D-05/D-06). */
+  /* --gradient-card-bg is FLATTENED to a solid charcoal (kept as a token so existing var() refs resolve). */
+  --gradient-coral: linear-gradient(135deg, var(--color-coral-400), var(--color-coral-500), var(--color-coral-600));  /* coral, not glass — kept; now references matured terracotta */
+  --gradient-card-bg: var(--color-charcoal-composer);  /* [UAT] Frame A — flattened from a 137deg glass gradient to solid charcoal */
   --gradient-overlay: linear-gradient(180deg, transparent, oklch(0 0 0 / 0.8));
-  --gradient-navbar: linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%);
-  --gradient-glass: linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%);
-  --gradient-feature: radial-gradient(85.77% 49.97% at 51% 5.12%, rgba(255, 148, 148, 0.11) 0px, rgba(222, 226, 255, 0.08) 45.83%, rgba(241, 242, 255, 0.02) 100%);
 
   /* --- Animation Variables --- */
   --animate-accordion-down: accordion-down 0.2s ease-out;
@@ -224,7 +243,7 @@
   --rounding-normal: 8px;
   --color-fg: var(--color-foreground);
   --color-fg-300: var(--color-foreground-muted);
-  --color-accent-transparent: oklch(0.72 0.16 40 / 0.15);
+  --color-accent-transparent: oklch(0.68 0.13 33 / 0.15);  /* [UAT] Frame A — tracks matured terracotta coral */
   --color-red: var(--color-error);
   --color-red-transparent: oklch(0.60 0.20 25 / 0.15);
   --ease-out: var(--ease-out-cubic);
@@ -292,6 +311,31 @@
 
 .animate-skeleton-breathe {
   animation: skeleton-breathe 1.2s ease-in-out infinite;
+}
+
+/* Phase-4 stage-reveal (REVEAL-01/02): a calm fade-up for each Reading block as
+ * the thread settles. Blocks stagger via an inline animation-delay. Soft + short
+ * (no flashy transitions) per the calm-motion taste bar. */
+@keyframes reading-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reading-reveal {
+  animation: reading-reveal 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Respect reduced-motion: no slide/fade, blocks simply appear at rest. */
+@media (prefers-reduced-motion: reduce) {
+  .reading-reveal {
+    animation: none;
+  }
 }
 
 /* ============================================

@@ -29,6 +29,7 @@ import {
   STABLE_FOLD_SYSTEM_PROMPT,
   buildFoldUserContent,
   FoldResponseSchema,
+  coerceFoldResponse,
   type FoldResponse,
 } from "./fold-prompts";
 import type { PersonaSlot } from "./persona-registry";
@@ -312,6 +313,7 @@ export async function runFold(
   const stageStart = emitStageStart(onStageEvent, "wave_3_fold", 4);
 
   const ai = getQwenClient();
+  log.info("fold start", { model: FOLD_MODEL, thinking: FOLD_USE_THINKING, segments: segments.length });
   const warnings: string[] = [];
   let fold_success = false;
   let costCents = 0;
@@ -382,8 +384,13 @@ export async function runFold(
       const text = stripModelOutput(raw);
       const parsed = JSON.parse(text) as unknown;
 
+      // Coerce small-model (omni-flash) TYPE/shape sloppiness before Zod — flash fails the
+      // fold on FORMAT (non-number scroll_past_second, bare top-level array), not the TASK.
+      // No-op on clean omni-plus output; salvages flash. Zod still enforces the 10-persona contract.
+      const coerced = coerceFoldResponse(parsed);
+
       // T-04-01 mitigation: validate at the model boundary (V5).
-      const validated = FoldResponseSchema.safeParse(parsed);
+      const validated = FoldResponseSchema.safeParse(coerced);
       if (!validated.success) {
         const msg = `fold validation failed (attempt ${attempt}/${FOLD_RETRY_ATTEMPTS}): ${validated.error.message}`;
         warnings.push(msg);
