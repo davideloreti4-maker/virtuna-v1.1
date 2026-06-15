@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: "03-07 closed the mobile-nav a11y gap (Escape-close + focus trap + focus restore, GAP-4/WR-03) + WR-02 scroll-lock save/restore + lifted header/footer nav into shared @/lib/nav (IN-03); layout suite 22/22, / stays static. 03-05/03-08 remain"
-stopped_at: Completed 03-07-PLAN.md
-last_updated: "2026-06-15T11:15:05.103Z"
+status: "03-08 locked the product noun above the fold (WR-01) — hero desktop showcase slot renamed 'Numen reading' to 'Numen Simulation'; the last place on / shipping the retired noun is gone, hero test pins /numen simulation/i, hero suite 8/8, / stays static. 03-05 remains (consumes the 03-04 primitives)"
+stopped_at: Completed 03-08-PLAN.md
+last_updated: "2026-06-15T11:21:40.114Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 18
-  completed_plans: 16
-  percent: 89
+  completed_plans: 17
+  percent: 94
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 03 (story-showcase) — GAP CLOSURE IN PROGRESS
-Plan: 4 base done + gap-closure 03-04, 03-06, 03-07 DONE (5 gap plans 03-04..03-08; 03-05/03-08 remain)
-Status: 03-07 closed the mobile-nav a11y gap (Escape-close + focus trap + focus restore to trigger, GAP-4/WR-03), folded the WR-02 scroll-lock save/restore, and lifted the header/footer nav arrays into shared @/lib/nav (IN-03); layout suite 22/22, / stays static. 03-05 consumes the 03-04 primitives next
+Plan: 4 base done + gap-closure 03-04, 03-06, 03-07, 03-08 DONE (5 gap plans 03-04..03-08; only 03-05 remains)
+Status: 03-08 locked the product noun above the fold (WR-01) — hero desktop showcase slot renamed "Numen reading" → "Numen Simulation"; the last place on / shipping the retired noun is gone, hero test pins /numen simulation/i, hero suite 8/8, / stays static. 03-05 consumes the 03-04 primitives next
 Last activity: 2026-06-15
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 94%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [█████████░] 89%
 | Phase 03 P04 | ~6min | 2 tasks | 7 files (gap-closure) |
 | Phase 03 P06 | ~4min | 1 task | 1 file (gap-closure) |
 | Phase 03 P07 | ~12min | 2 tasks | 4 files (gap-closure, TDD) |
+| Phase 03 P08 | ~6min | 1 task tasks | 2 files (gap-closure) files |
 
 ## Accumulated Context
 
@@ -121,6 +122,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-07: src/lib/nav.ts = single source of truth for the in-page nav set (IN-03); header NAV_LINKS + footer PRODUCT_LINKS hand-duplicated arrays deleted, both import { NAV_LINKS } from "@/lib/nav" (rendered output byte-identical, footer suite GREEN)
 - [Phase ?]: 03-07: mobile-nav a11y closed (GAP-4/WR-03) — Escape-close + focus trap (Tab/Shift+Tab wrap on a[href],button) + focus restore to trigger on a wasOpenRef-gated open→closed transition (never steals focus on mount); trap/restore INLINE in header.tsx (a11y.ts has no helper, header is the only consumer)
 - [Phase ?]: 03-07: WR-02 scroll-lock fixed — useEffect snapshots `const prev = document.body.style.overflow`, sets "hidden" while open, restores `prev` in cleanup (no bare `= ""` clobber of a pre-existing lock owner); aria-expanded/aria-controls/panel id/data-testid unchanged, no visual change, / stays ○ static
+- [Phase 03-08]: 03-08: hero desktop slot label 'Numen reading' to 'Numen Simulation' — the last place on / shipping the retired noun is gone; page-wide 'Simulation, never reading' lock now holds above the fold (WR-01)
+- [Phase 03-08]: 03-08: HERO-01 subcopy assertion narrowed /simulat(es|ion|e)/i to /simulates/i so the new 'Numen Simulation' slot label does not create a second /simulat/i match (single-match getByText discipline, carried from 03-02)
 
 ### Pending Todos
 
@@ -144,6 +147,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T11:15:05.098Z
-Stopped at: Completed 03-06-PLAN.md
+Last session: 2026-06-15T11:21:40.108Z
+Stopped at: Completed 03-08-PLAN.md
 Resume file: None

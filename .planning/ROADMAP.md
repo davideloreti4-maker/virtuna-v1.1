@@ -125,7 +125,7 @@ Plans:
 - [x] 03-04-PLAN.md (wave 1) — static-SVG product-skeleton primitives (score-gauge / audience-cloud / driver-rows / device-chrome) + remove the "16:10" dev label from the marketing Placeholder (GAP-1 primitives, IN-04)
 - [x] 03-06-PLAN.md (wave 1) — page rhythm: tighter section padding (GAP-3 page-level) + `scroll-margin-top` anchors (GAP-5) + refreshed docblock (IN-02)
 - [x] 03-07-PLAN.md (wave 1) — mobile-nav a11y: Escape-close + focus trap + focus restore (GAP-4 / WR-03) + scroll-lock save/restore (WR-02) + shared `src/lib/nav.ts` constant (IN-03)
-- [ ] 03-08-PLAN.md (wave 1) — hero noun lock: "Numen reading" → "Numen Simulation" + test assertion (WR-01)
+- [x] 03-08-PLAN.md (wave 1) — hero noun lock: "Numen reading" → "Numen Simulation" + test assertion (WR-01)
 
 **Wave 2** *(blocked on 03-04)*
 
@@ -185,6 +185,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
-| 3. Story & Showcase | 7/9 | In Progress|  |
+| 3. Story & Showcase | 8/9 | In Progress|  |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
