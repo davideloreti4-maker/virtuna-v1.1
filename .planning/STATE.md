@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: verifying
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-06-15T09:19:28.441Z"
+status: ready-to-execute
+stopped_at: Planned 03-04..03-08 gap-closure plans (live UAT craft + a11y gaps)
+last_updated: "2026-06-15T11:35:00.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 ## Current Position
 
-Phase: 03 (story-showcase) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
+Phase: 03 (story-showcase) — GAP CLOSURE PLANNED
+Plan: 4 base done + 5 gap-closure plans (03-04..03-08) ready
+Status: Live UAT found visual-craft + a11y gaps → gap plans ready to execute (`--gaps-only`)
 Last activity: 2026-06-15
 
 Progress: [██████████] 100%
