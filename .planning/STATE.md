@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: executing
-stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-06-15T09:12:50.322Z"
+status: verifying
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-06-15T09:19:28.441Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 40
+  completed_plans: 13
+  percent: 60
 ---
 
 # Project State
@@ -27,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 Phase: 03 (story-showcase) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-15
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Progress: [█████████░] 92%
 | Phase 03 P00 | 1min | 2 tasks | 4 files |
 | Phase 03 P01 | 18min | 2 tasks | 3 files |
 | Phase 03 P02 | ~12min | 2 tasks | 3 files |
+| Phase 03 P03 | 4min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-01: single canonical product-noun node ('Get your Simulation' title) satisfies the gate getByText(/simulat.../); step 2 = 'The audience reacts', step-3 label = 'Your prediction'
 - [Phase ?]: 03-02: SimulationShowcase RSC built (STORY-02) — flat-warm device-framed Placeholder (hero browser-window chrome reused, not imported) names all 5 outputs; #the-simulation stub filled in place; 7/7 STORY-02 gate GREEN, / stays static
 - [Phase ?]: 03-02: copy↔test token discipline — LOCKED <h2>'The Simulation' is the sole /simulat/i node; Placeholder label='Your prediction', output-1 label='Audience reaction' so 03-00 single-match getByText queries resolve unambiguously
+- [Phase ?]: 03-03: STORY-03 FeatureBlocks = 4 alternating benefit + Placeholder deep-dive rows (pure RSC); FeatureBlock flip idiom (cn(flip && md:order-1/2)) = canonical in-repo alternating-row pattern
+- [Phase ?]: 03-03: new #features section mounted between #the-simulation and #pricing; one NAV_LINKS edit surfaces 'Features' in desktop bar + mobile panel (5 links), footer mirrors it
+- [Phase ?]: 03-03: phase static-prerender guarantee HOLDS — all 4 story files pure RSC, assembled / builds ○ static (exit 0); full suite 1967 green
 
 ### Pending Todos
 
@@ -129,6 +133,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T09:12:33.868Z
-Stopped at: Phase 2 UI-SPEC approved
+Last session: 2026-06-15T09:19:28.435Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
