@@ -39,7 +39,7 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 
 ### Story & Showcase (STORY)
 
-- [ ] **STORY-01**: A "how it works" section walks three steps — paste TikTok link → audience simulates → get your reading (placeholder frames)
+- [x] **STORY-01**: A "how it works" section walks three steps — paste TikTok link → audience simulates → get your reading (placeholder frames)
 - [ ] **STORY-02**: A "the reading" showcase presents the output — audience simulation, watch-through %, and Hook · Retention (where viewers drop) · Shareability — via placeholder product frames
 - [ ] **STORY-03**: Three to four feature deep-dive blocks each pair a benefit with a placeholder visual
 
@@ -97,7 +97,7 @@ Which phases cover which requirements. Populated during roadmap creation.
 | HERO-04 | Phase 2 | Complete (static by construction) |
 | PROOF-01 | Phase 4 | Pending |
 | PROOF-02 | Phase 4 | Pending |
-| STORY-01 | Phase 3 | Pending |
+| STORY-01 | Phase 3 | Complete |
 | STORY-02 | Phase 3 | Pending |
 | STORY-03 | Phase 3 | Pending |
 | CONVERT-01 | Phase 4 | Pending |

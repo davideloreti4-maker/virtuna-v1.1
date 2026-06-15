@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * static-prop form yields `undefined` and crashes `next build` on `/`.)
  * Explains the loop in three calm beats, mirroring the hero subcopy:
  *   1. Paste a TikTok link
- *   2. The audience simulates
+ *   2. The audience reacts (a synthetic audience simulates the reaction)
  *   3. Get your Simulation
  *
  * Each step pairs a small mono numeral + a labelled, aspect-locked <Placeholder>

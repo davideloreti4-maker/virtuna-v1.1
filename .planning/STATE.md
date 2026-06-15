@@ -4,13 +4,13 @@ milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: executing
 stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-06-15T08:55:12.130Z"
+last_updated: "2026-06-15T09:04:31.030Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 10
+  completed_plans: 11
   percent: 40
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 03 (story-showcase) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-15
 
-Progress: [████████░░] 77%
+Progress: [█████████░] 85%
 
 ## Performance Metrics
 
@@ -62,6 +62,7 @@ Progress: [████████░░] 77%
 | Phase 02 P03 | ~30min | 2 tasks | 4 files (+1 stub) |
 | Phase 02 P02 | ~session | canvas→pivot | product-shot showcase (−5 files) |
 | Phase 03 P00 | 1min | 2 tasks | 4 files |
+| Phase 03 P01 | 18min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-00: Wave-0 story tests RED-by-design — module-not-found for HowItWorks/SimulationShowcase/FeatureBlocks is the success signal; STORY-01/02/03 turn GREEN in 03-01/02/03
 - [Phase ?]: 03-00: 'The Simulation' heading asserted VERBATIM (matches #the-simulation anchor); 5 outputs + step copy matched by stable tokens; noun discipline gated (Simulation present, 'reading' forbidden)
 - [Phase ?]: 03-00: footer.test.tsx it.each extended with #features (between #the-simulation and #pricing) — RED until 03-03 wires footer.tsx PRODUCT_LINKS
+- [Phase ?]: 03-01: HowItWorks is a pure RSC; StaggerReveal entrance is the only client island; / stays statically prerendered
+- [Phase ?]: 03-01: use the named StaggerRevealItem export in RSCs — StaggerReveal.Item static prop is undefined across the RSC to client prerender boundary (next build crash on /)
+- [Phase ?]: 03-01: single canonical product-noun node ('Get your Simulation' title) satisfies the gate getByText(/simulat.../); step 2 = 'The audience reacts', step-3 label = 'Your prediction'
 
 ### Pending Todos
 
@@ -122,6 +126,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T08:54:55.053Z
+Last session: 2026-06-15T09:04:11.244Z
 Stopped at: Phase 2 UI-SPEC approved
 Resume file: None
