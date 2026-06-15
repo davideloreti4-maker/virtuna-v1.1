@@ -73,6 +73,50 @@ describe('FixFirstList — top-3 fixes + inline expand + D-14 (READ-07/08)', () 
     expect(screen.getByText('Nothing urgent to fix')).toBeInTheDocument();
   });
 
+  // Score-aware empty state — counterfactuals are dormant (post-R9), so fixItems is
+  // ALWAYS empty today. Without the score gate every Reading claimed "This one's
+  // solid", even a 27 flop. The win must be reserved for a genuinely strong read.
+  it('empty + WEAK score names the weakest lever — never claims "This one\'s solid"', () => {
+    render(
+      <FixFirstList
+        fixes={[]}
+        rewrites={null}
+        score={27}
+        weakestLever={{ label: 'Hook', score: 20 }}
+      />,
+    );
+    expect(screen.getByText(/Start with your hook/i)).toBeInTheDocument();
+    expect(screen.getByText(/weakest lever, at 20\/100/i)).toBeInTheDocument();
+    expect(screen.queryByText("This one's solid.")).not.toBeInTheDocument();
+  });
+
+  it('empty + a red lever under an otherwise-good overall still does NOT claim solid', () => {
+    // overall 72 (good band) but the hook is in the red (<40) → honest, not "solid".
+    render(
+      <FixFirstList
+        fixes={[]}
+        rewrites={null}
+        score={72}
+        weakestLever={{ label: 'Hook', score: 31 }}
+      />,
+    );
+    expect(screen.getByText(/Start with your hook/i)).toBeInTheDocument();
+    expect(screen.queryByText("This one's solid.")).not.toBeInTheDocument();
+  });
+
+  it('empty + genuinely STRONG score (good overall, no red lever) → the solid win', () => {
+    render(
+      <FixFirstList
+        fixes={[]}
+        rewrites={null}
+        score={85}
+        weakestLever={{ label: 'Retention', score: 74 }}
+      />,
+    );
+    expect(screen.getByText('Nothing urgent to fix')).toBeInTheDocument();
+    expect(screen.getByText("This one's solid.")).toBeInTheDocument();
+  });
+
   it('D-14 no rewrites: rewrites null → fixes render WITHOUT any Copy/RewriteItem chip', () => {
     render(<FixFirstList fixes={fixes()} rewrites={null} />);
     // fixes present

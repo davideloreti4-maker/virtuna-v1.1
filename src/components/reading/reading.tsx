@@ -168,6 +168,18 @@ export function Reading() {
   // Dual-read BEFORE deriving rows/rewrites/dims.
   const apollo = readApollo(data);
 
+  // In-flight: the composer streamed this run but unmounted on navigation, so the
+  // result arrives via usePermalinkAnalysis's poll (not the dead SSE). While the
+  // placeholder row is still processing (overall_score:null + engine_version
+  // 'pending'), show the calm live state — NOT a fabricated 0-gauge and NOT the
+  // "couldn't analyze" copy (which is reserved for a genuinely failed read). The
+  // poll flips this to the real Reading the moment the pipeline completes.
+  const processing =
+    (data as { processing?: boolean }).processing ??
+    (data.overall_score == null &&
+      (data as { engine_version?: string | null }).engine_version === 'pending');
+  if (processing) return <ReadingLoading />;
+
   if (data.analysis_unavailable) return <CouldNotAnalyze />;
 
   const watch = heroWatchPct(data.heatmap);
@@ -175,6 +187,25 @@ export function Reading() {
   // Canonical drop-time path the existing DriverRows test reads (top-level,
   // SECONDS — types.ts L483), with the heatmap mirror as a fallback.
   const dropT = data.weighted_top_dropoff_t ?? data.heatmap?.weighted_top_dropoff_t ?? null;
+
+  // The single weakest of the three driver levers (same min-score rule DriverRows
+  // uses) — feeds FixFirstList's honest empty-state copy so a weak read never
+  // claims "This one's solid" (counterfactuals are dormant → fixItems always empty).
+  const weakestLever = (() => {
+    if (!dims) return null;
+    const levers = ([
+      ['hook', 'Hook'],
+      ['retention', 'Retention'],
+      ['share_pull', 'Shareability'],
+    ] as const)
+      .map(([name, label]) => {
+        const d = dims.find((x) => x.name === name);
+        return d ? { label: label as string, score: d.score } : null;
+      })
+      .filter((x): x is { label: string; score: number } => x != null);
+    if (levers.length === 0) return null;
+    return levers.reduce((a, b) => (b.score < a.score ? b : a));
+  })();
 
   return (
     <div data-testid="reading" className="mx-auto flex w-full max-w-[760px] flex-col gap-8 px-4 py-8">
@@ -226,7 +257,12 @@ export function Reading() {
       <DriverRows dimensions={dims} dropT={dropT} onRowTap={setPanel} />
 
       {/* 5 — actionable fixes + copyable hook rewrites */}
-      <FixFirstList fixes={data.counterfactuals?.suggestions} rewrites={apollo?.rewrites} />
+      <FixFirstList
+        fixes={data.counterfactuals?.suggestions}
+        rewrites={apollo?.rewrites}
+        score={data.overall_score}
+        weakestLever={weakestLever}
+      />
 
       {/* 6 — light inline expand of the remaining 3 dimensions */}
       <DeeperRead dimensions={dims} />

@@ -135,13 +135,30 @@ export async function GET(
       signal_availability?: { gemini?: boolean; behavioral?: boolean } | null;
       heatmap?: unknown;
     };
+    // In-flight discriminator: the POST route inserts a placeholder row
+    // (overall_score:null + engine_version:'pending') BEFORE the pipeline runs and
+    // UPSERTs the real values ~57s later. A row in that window is STILL PROCESSING,
+    // not failed — the client polls it to completion (usePermalinkAnalysis).
+    const isProcessing =
+      overall == null && (data as { engine_version?: string | null }).engine_version === "pending";
+
     // T1.5 — degradation honesty. No dedicated column; derive from the persisted
     // signal_availability JSONB (both core signals dead = "couldn't analyze") so a
     // reloaded permalink renders the same honest state the live run did.
+    //
+    // Two guards make this honest for non-final rows:
+    //  - `isProcessing` rows are never "unavailable" — they haven't finished (this
+    //    is the fix for the placeholder showing "We couldn't analyze this video"
+    //    on every fresh run until a manual refresh).
+    //  - The column DEFAULTs to `'{}'` (migration 20260517120000). An empty object
+    //    means "signals UNKNOWN", NOT "both dead" — `!sa.gemini && !sa.behavioral`
+    //    would read `{}` as a dual-failure. Only treat it as unavailable when the
+    //    map actually carries the two keys.
     const sa = extras.signal_availability ?? null;
+    const saHasSignals = !!sa && ("gemini" in sa || "behavioral" in sa);
     const analysis_unavailable =
       extras.analysis_unavailable ??
-      (sa ? !sa.gemini && !sa.behavioral : false);
+      (isProcessing ? false : saHasSignals ? !sa!.gemini && !sa!.behavioral : false);
     const heatmap = extras.heatmap ?? synthHeatmap();
 
     // Optimal posting window — like the heatmap/confidence shims above, older
@@ -189,6 +206,11 @@ export async function GET(
         extras.anti_virality_gated ??
         (confidence == null ? false : confidence < 0.4),
       analysis_unavailable,
+      // True while the placeholder row's pipeline is still running server-side
+      // (overall_score:null + engine_version:'pending'). The client polls on this
+      // and renders the live "Reading your simulation…" state instead of a 0-gauge
+      // or the "couldn't analyze" copy.
+      processing: isProcessing,
       heatmap,
       optimal_post_window,
     };

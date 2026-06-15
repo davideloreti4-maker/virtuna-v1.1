@@ -96,6 +96,61 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// IN-FLIGHT gate — the placeholder row (overall_score:null + engine_version
+// 'pending') is the row the composer's POST inserts BEFORE the ~57s pipeline
+// finishes. The composer unmounts on the /home → /analyze/[id] nav (aborting its
+// SSE), so the finished result reaches the Reading via usePermalinkAnalysis's
+// poll, not the stream. While that row is in-flight the Reading must show the calm
+// live state — NOT the "couldn't analyze" copy (the bug: the row's `'{}'`-default
+// signal_availability derived analysis_unavailable=true), NOT a fabricated 0-gauge.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Reading container — in-flight (still processing) gate', () => {
+  const makeInFlight = (over: Record<string, unknown> = {}) =>
+    ({
+      ...makeReadingResult(),
+      overall_score: null,
+      engine_version: 'pending',
+      analysis_unavailable: false,
+      ...over,
+    }) as unknown as PredictionResult;
+
+  it('processing:true → the calm live "Reading…" state (never CouldNotAnalyze, never a 0-gauge)', () => {
+    mockState = { id: 'sim-1', data: makeInFlight({ processing: true }), isLoading: false };
+    const { container } = render(<Reading />);
+
+    expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
+    // NOT the failure copy, NOT the real thread, NOT a fabricated 0 gauge.
+    expect(screen.queryByText(/We couldn.t analyze this video/i)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-testid="reading-hero"]')).toBeNull();
+  });
+
+  it('derives in-flight from null score + engine_version "pending" even without the processing flag', () => {
+    // Older permalink shapes (pre-fix route) omit `processing`; the null+pending
+    // discriminator still resolves to the live state.
+    mockState = { id: 'sim-1', data: makeInFlight(), isLoading: false };
+    render(<Reading />);
+    expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
+  });
+
+  it('a genuinely failed read (analysis_unavailable, NOT processing) still shows CouldNotAnalyze', () => {
+    // The fix must not swallow the real failure state.
+    mockState = { id: 'sim-1', data: makeUnavailableResult(), isLoading: false };
+    render(<Reading />);
+    expect(screen.getByText(/We couldn.t analyze this video/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('reading-loading')).not.toBeInTheDocument();
+  });
+
+  it('a completed read (real score) renders the thread, not the live state (guard not vacuous)', () => {
+    mockState = { id: 'sim-1', data: makeReadingResult({ overall_score: 64 }), isLoading: false };
+    render(<Reading />);
+    expect(screen.getByTestId('reading')).toBeInTheDocument();
+    expect(screen.queryByTestId('reading-loading')).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // CR-01 — hero watch% must NEVER render a fabricated "0% watch" when watch-through
 // is genuinely underivable (D-13 honesty contract). averageWatchThrough returns
 // null on empty personas; the heatmap fallback (weighted_completion_pct) is itself
