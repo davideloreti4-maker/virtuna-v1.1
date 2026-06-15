@@ -6,6 +6,11 @@ import {
   SimulationShowcase,
   FeatureBlocks,
   MotionConfigShell,
+  SocialProofStrip,
+  Testimonials,
+  PricingTeaser,
+  Faq,
+  FinalCtaBand,
 } from "@/components/marketing";
 
 export const metadata: Metadata = {
@@ -15,24 +20,25 @@ export const metadata: Metadata = {
 };
 
 /**
- * Single-scroll marketing landing for Numen.
+ * Single-scroll marketing landing for Numen — Phase 4 complete.
  *
  * Server component (no client directive). Owns the full single-scroll chrome:
  * a flat-matte header + a main of anchored story sections + a footer (the
  * marketing layout is a bare pass-through — the root layout owns the document
  * shell).
  *
- * Each <section id> is both a nav/footer anchor target AND a content mount
- * point. The hero (#hero), how-it-works (#how-it-works), the-simulation
- * (#the-simulation), and features (#features) now render real STORY content;
- * only #pricing and #faq remain placeholder stubs (Phase 4 fills them).
+ * D-18 section order (locked):
+ *   #hero → #social-proof (trust strip) → #how-it-works → #the-simulation →
+ *   #features → #testimonials (conversion zone) → #pricing (PricingTeaser) →
+ *   #faq (Faq) → final-cta band (full-bleed, no max-w-5xl, D-12) → Footer
  *
- * Every section carries `scroll-mt-20` (5rem) so its heading clears the 64px
- * sticky header by a reliable, intentional offset (GAP-5) rather than by
- * accidental padding. Section vertical padding is tightened to a denser
- * responsive rhythm (`py-16 md:py-20`) so the assembled body reads
- * higher-density on desktop (GAP-3). Hairline `border-t border-border`
- * separators and the `mx-auto max-w-5xl` inner measure are preserved.
+ * NAV_LINKS (src/lib/nav.ts) is unchanged at exactly 5 anchors (D-19). The
+ * social-proof strip, testimonials section, and CTA band have NO nav anchors.
+ *
+ * Every standard section carries `scroll-mt-20` so headings clear the 64px
+ * sticky header. The social-proof strip uses tighter padding (`py-8 md:py-10`)
+ * as it is a thin trust bar, not a full section. The full-bleed CTA band (D-12)
+ * has no max-w-5xl inner measure — it owns its own surface.
  */
 export default function HomePage() {
   return (
@@ -45,6 +51,18 @@ export default function HomePage() {
             scroll-anchor id + vertical rhythm (UI-SPEC §Spacing). */}
         <section id="hero" className="scroll-mt-20 px-6 py-12 md:py-16">
           <Hero />
+        </section>
+
+        {/* Social-proof strip — trust bar riding directly under the hero (D-01/D-18).
+            Thin vertical padding (py-8 md:py-10) — it is a strip, not a full section.
+            No nav anchor (D-19). */}
+        <section
+          id="social-proof"
+          className="scroll-mt-20 border-t border-border px-6 py-8 md:py-10"
+        >
+          <div className="mx-auto max-w-5xl">
+            <SocialProofStrip />
+          </div>
         </section>
 
         {/* How it works — STORY-01. The section owns the LOCKED rhythm
@@ -86,28 +104,43 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Pricing teaser — placeholder stub (Phase 4). */}
+        {/* Testimonials — conversion zone (D-05/D-18). After features, before
+            pricing. Full locked rhythm. No nav anchor (D-19). */}
+        <section
+          id="testimonials"
+          className="scroll-mt-20 border-t border-border px-6 py-16 md:py-20"
+        >
+          <div className="mx-auto max-w-5xl">
+            <Testimonials />
+          </div>
+        </section>
+
+        {/* Pricing teaser — #pricing stub filled (Phase 4 / CONVERT-01). */}
         <section
           id="pricing"
           className="scroll-mt-20 border-t border-border px-6 py-16 md:py-20"
         >
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-3xl font-semibold text-foreground-muted">
-              Pricing
-            </h2>
+            <PricingTeaser />
           </div>
         </section>
 
-        {/* FAQ — placeholder stub (Phase 4). */}
+        {/* FAQ — #faq stub filled (Phase 4 / CONVERT-03). The Faq RSC wrapper
+            mounts the FaqAccordion client island; only the accordion carries
+            "use client", keeping the page root RSC and / statically prerendered. */}
         <section
           id="faq"
           className="scroll-mt-20 border-t border-border px-6 py-16 md:py-20"
         >
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-3xl font-semibold text-foreground-muted">
-              FAQ
-            </h2>
+            <Faq />
           </div>
+        </section>
+
+        {/* Full-bleed CTA band — before Footer, no max-w-5xl inner measure (D-12).
+            The band owns its own full-bleed surface. No scroll-anchor / nav link (D-19). */}
+        <section data-section="final-cta" className="border-t border-border">
+          <FinalCtaBand />
         </section>
       </main>
       <Footer />
