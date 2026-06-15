@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: ready-to-execute
-stopped_at: Planned 03-04..03-08 gap-closure plans (live UAT craft + a11y gaps)
-last_updated: "2026-06-15T11:35:00.000Z"
+status: executing
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-06-15T11:04:50.383Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
-  percent: 60
+  completed_phases: 2
+  total_plans: 18
+  completed_plans: 14
+  percent: 40
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 ## Current Position
 
-Phase: 03 (story-showcase) — GAP CLOSURE PLANNED
-Plan: 4 base done + 5 gap-closure plans (03-04..03-08) ready
-Status: Live UAT found visual-craft + a11y gaps → gap plans ready to execute (`--gaps-only`)
+Phase: 03 (story-showcase) — GAP CLOSURE IN PROGRESS
+Plan: 4 base done + gap-closure 03-04 DONE (5 gap plans 03-04..03-08; 03-05 next)
+Status: 03-04 shipped product-skeleton primitives + removed '16:10' dev label (GAP-1/GAP-2); 03-05 consumes the primitives next
 Last activity: 2026-06-15
 
-Progress: [██████████] 100%
+Progress: [████████░░] 78%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Progress: [██████████] 100%
 | Phase 03 P01 | 18min | 2 tasks | 3 files |
 | Phase 03 P02 | ~12min | 2 tasks | 3 files |
 | Phase 03 P03 | 4min | 3 tasks | 6 files |
+| Phase 03 P04 | ~6min | 2 tasks | 7 files (gap-closure) |
 
 ## Accumulated Context
 
@@ -110,6 +111,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-03: STORY-03 FeatureBlocks = 4 alternating benefit + Placeholder deep-dive rows (pure RSC); FeatureBlock flip idiom (cn(flip && md:order-1/2)) = canonical in-repo alternating-row pattern
 - [Phase ?]: 03-03: new #features section mounted between #the-simulation and #pricing; one NAV_LINKS edit surfaces 'Features' in desktop bar + mobile panel (5 links), footer mirrors it
 - [Phase ?]: 03-03: phase static-prerender guarantee HOLDS — all 4 story files pure RSC, assembled / builds ○ static (exit 0); full suite 1967 green
+- [Phase ?]: 03-04: product-skeleton primitives = pure-RSC static SVG (score gauge 270deg arc + 87/Strong, 18-dot audience cloud + 68% watch-through, Hook/Retention/Shareability driver rows + drops at 0:07); coral kept precious (1 dot + 1 bar)
+- [Phase ?]: 03-04: device chrome (BrowserChrome/PhoneChrome) factored into skeletons/ so 03-05 reuses chrome without re-importing the hero
+- [Phase ?]: 03-04: '16:10' dev ratio label removed from marketing Placeholder; no-CLS aspectRatio inline lock kept intact
+- [Phase ?]: 03-04: IN-04 NOT applied — CVA VariantProps allows null so variant ?? 'image' fallback is required (tsc TS2322)
 
 ### Pending Todos
 
@@ -133,6 +138,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T09:19:28.435Z
+Last session: 2026-06-15T11:04:46.052Z
 Stopped at: Completed 03-03-PLAN.md
 Resume file: None
