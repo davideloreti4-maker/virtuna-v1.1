@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Numen Rework
-status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-06-14T21:53:52.685Z"
-last_activity: 2026-06-14 -- Phase 03 execution started
+status: complete
+stopped_at: Milestone complete — all 5 phases shipped (DEMO-01 deferred)
+last_updated: "2026-06-15T19:45:00.000Z"
+last_activity: 2026-06-15 -- Phases 4 + 5 shipped (quick execution); milestone closed
 progress:
   total_phases: 5
-  completed_phases: 2
-  total_plans: 16
-  completed_plans: 10
-  percent: 40
+  completed_phases: 5
+  total_plans: 18
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md · Milestone brief (LOCKED): .planning/NUMEN-REWORK-BRIEF.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence that tells TikTok creators whether their content will resonate — delivered as one clean thread per video (a "Reading").
-**Current focus:** Phase 03 — rich-visuals-as-drill-downs
+**Current focus:** MILESTONE COMPLETE — pending merge to main.
 
 ## Current Position
 
-Phase: 03 (rich-visuals-as-drill-downs) — EXECUTING
-Plan: 1 of 6
-Status: Executing Phase 03
-Last activity: 2026-06-14 -- Phase 03 execution started
+Phase: — (all 5 phases complete)
+Status: Milestone v5.0 Numen Rework COMPLETE — 27/28 v1 reqs shipped, DEMO-01 deferred.
+Last activity: 2026-06-15 -- Phases 4 (Stage-Reveal) + 5 (Follow-up) shipped via quick execution; Phase 3 D-07 UAT locked earlier today.
+Next: merge `milestone/numen-rework` → `main` (needs user go-ahead) + optional live UAT craft pass.
 
-Progress: [██████████] 100%
+Progress: [██████████] 100% (5/5 phases)
 
 ## Hard Constraints (this milestone)
 
@@ -121,6 +121,9 @@ Full log in PROJECT.md Key Decisions. Recent decisions affecting current work:
 - [Phase 02]: P2-05: Reading container (reading.tsx) is the single usePermalinkAnalysis subscriber — children are pure prop-driven leaves (severs the InsightHeroFrame per-leaf re-subscribe); data source abstracted so Phase 4 swaps in useAnalysisStream at the container only.
 - [Phase 02]: P2-05: D-13 honesty gate runs FIRST — no-id→inert(composer shell owns screen), id+!data→error, analysis_unavailable→CouldNotAnalyze (fabricated 0 NEVER reaches ScoreGauge); partial annotates; apollo-null degrades rows/deeper while hero/gate resolve from overall_score. Watch% hero-OWNED, rendered exactly once OUTSIDE PersonaCloud so it survives the empty-personas path (READ-04).
 - [Phase 02]: P2-05: Landmine-0 DONE — /analyze layout inverted to mount <Reading/> (Board retired from the mount, board sources+route files preserved dormant); one DrillSheet driven by closed-union panelId(hook|retention|shareability|personas) with native D-12 content = the Phase-3 rich-chart/PersonaGraph seam. READ-10 standing no-cut-data guard added. Full suite 2035 green (was 2019); build clean. Phase 02 code-complete → /gsd-verify-work.
+- [Phase 03]: P3-06: D-07 human-UAT gate LOCKED (2026-06-15) — all 5 reskinned drill-downs reviewed live (mobile+desktop), matte flat-warm confirmed; RetentionPlayer EXCLUDED by default (static composition is the SC-2-safe path on permalink reload), CraftFilmstrip audio-band dual-read = non-blocking follow-up. Precondition met (suite 2084 green + clean build). Phase 3 COMPLETE (6/6).
+- [Phase 04]: Stage-Reveal fidelity = REAL-SIGNAL reveal (user-approved at close). Literal per-engine-stage block reveal is unreachable: live stage_start/end events ride the composer POST body-reader that unmounts on the /home→/analyze/[id] router.push, and the frozen engine never persists stage progress (the reconnect SSE emits only partial/filmstrip_segment_ready/complete). So: branded IA skeleton + liveness from those surviving signals + a calm reduced-motion-gated settle cascade. Store-free hook (no useBoardStore — reading-cluster invariant). REVEAL-01/02 met.
+- [Phase 05]: Follow-up = the bottom-pinned composer becomes the "Ask the expert" chat input when pinned+inside FollowUpProvider (routes to /api/analyze/[id]/chat verbatim, NOT a new analysis); shared useExpertChat via FollowUpProvider so composer+tail share state; quick-action chips SEED the draft (not auto-send); gated to a completed Simulation; no separate dock. CHAT-01/02 met. **DEMO-01 DESCOPED from v5.0 (user direction at close) — deferred to a later milestone.** Engine + chat API unchanged.
 
 ### Pending Todos
 

@@ -18,8 +18,8 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 - [x] **Phase 1: Foundation & Shell** - Flat-warm token system + the home/composer/sidebar shell the Reading lives in, locked by a human visual-UAT gate (completed 2026-06-14)
 - [x] **Phase 2: The Reading** - The consolidated result thread's information architecture: hero → 3 driver rows → Fix First → deeper read, cut-data clean (completed 2026-06-14)
 - [x] **Phase 3: Rich Visuals as Drill-Downs** - Transplant the board visuals (RetentionChart, PersonaGraph, filmstrip, FactorBars, SegmentTable…) off Konva, reskinned, into the Reading's disclosure surfaces (completed 2026-06-15)
-- [ ] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document
-- [ ] **Phase 5: Follow-up & Demo** - Text follow-up in the same composer (reuse "Ask the expert") + a first-run live demo Reading on a known viral video
+- [x] **Phase 4: Stage-Reveal** - The Reading materializes block-by-block as engine stages complete, then settles to a stable resting document (completed 2026-06-15, real-signal fidelity)
+- [x] **Phase 5: Follow-up & Demo** - Text follow-up in the same composer (reuse "Ask the expert"); DEMO-01 descoped from v5.0 (completed 2026-06-15)
 
 ## Phase Details
 
@@ -84,7 +84,7 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
   1. While analysis runs, a user watches the Reading build block-by-block as each engine stage completes (driven by `useAnalysisStream`) — the wait reads as visible progress, not a single spinner
   2. When all stages finish, the thread settles into a stable resting Reading with no layout thrash, reflow, or jump on completion
   3. The reveal motion stays within the calm/soft taste bar (no flashy or jarring transitions) and respects reduced-motion
-**Plans**: TBD
+**Plans**: executed inline (quick execution) — see `phases/04-stage-reveal/04-SUMMARY.md`
 **UI hint**: yes
 
 ### Phase 5: Follow-up & Demo
@@ -94,8 +94,8 @@ The journey: lay the flat-warm visual foundation and the shell the Reading lives
 **Success Criteria** (what must be TRUE):
   1. After a Reading, a user can type a free-text follow-up into the same composer and receive a response inline in the thread (reusing "Ask the expert"), with no separate chat dock
   2. Quick-action chips (e.g. "why this?", "rewrite hook") seed follow-up prompts into the composer when tapped
-  3. A first-time user sees a live demo Reading on a known viral video — rendered with the real Reading components — before uploading anything of their own
-**Plans**: TBD
+  3. A first-time user sees a live demo Reading on a known viral video — rendered with the real Reading components — before uploading anything of their own *(DEMO-01 — descoped from v5.0 during milestone close; deferred to a later milestone)*
+**Plans**: executed inline (quick execution) — see `phases/05-follow-up/05-SUMMARY.md`; DEMO-01 deferred
 **UI hint**: yes
 
 ## Progress
@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. The Reading | 5/5 | Complete   | 2026-06-14 |
 | 3. Rich Visuals as Drill-Downs | 6/6 | Complete   | 2026-06-15 |
-| 4. Stage-Reveal | 0/TBD | Not started | - |
-| 5. Follow-up & Demo | 0/TBD | Not started | - |
+| 4. Stage-Reveal | inline | Complete   | 2026-06-15 |
+| 5. Follow-up & Demo | inline | Complete (DEMO-01 deferred) | 2026-06-15 |

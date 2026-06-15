@@ -33,8 +33,8 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Reveal — stage-by-stage materialization
 
-- [ ] **REVEAL-01**: While analysis runs, each Reading block/headline materializes as its engine stage completes (driven by `useAnalysisStream`), so the ~45–60s wait reads as progress, not a spinner.
-- [ ] **REVEAL-02**: When all stages complete, the thread settles into a stable resting Reading (no layout thrash on completion).
+- [x] **REVEAL-01**: While analysis runs, the Reading shows a branded skeleton of its IA that fills in from the real signals surviving the composer→permalink nav (personas streaming + keyframes extracting, via the reconnect SSE), so the ~45–60s wait reads as progress, not a spinner. *(Real-signal fidelity — the approved Phase-4 scope: literal per-engine-stage block reveal isn't reachable because stage events don't survive nav and the frozen engine doesn't persist stage progress. See STATE decision.)*
+- [x] **REVEAL-02**: When the Simulation completes, the core blocks (hero → rows → Fix First) cascade in via a calm reduced-motion-gated fade-up and settle with no layout thrash (the skeleton reserves the IA rhythm).
 
 ### Theme — flat-warm visual system (HUMAN-UAT-GATED)
 
@@ -47,12 +47,12 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Chat — basic text follow-up
 
-- [ ] **CHAT-01**: After the Reading, the user can ask a free-text follow-up in the same composer and receive a response inline in the thread (reuse "Ask the expert" `/api/analyze/[id]/chat`).
-- [ ] **CHAT-02**: Quick-action chips (e.g. "why this?", "rewrite hook") seed follow-up prompts in the composer.
+- [x] **CHAT-01**: After the Reading, the user can ask a free-text follow-up in the same bottom-pinned composer and receive a response inline in the thread (reuses "Ask the expert" `/api/analyze/[id]/chat` verbatim; no separate dock).
+- [x] **CHAT-02**: Quick-action chips ("Why this score?", "Rewrite my hook", "How do I fix retention?") seed follow-up prompts into the same composer (seed, not auto-send).
 
 ### Demo — first-run magic
 
-- [ ] **DEMO-01**: A first-time user sees a live demo Reading on a known viral video before uploading anything (rendered with the real Reading components).
+- [~] **DEMO-01**: A first-time user sees a live demo Reading on a known viral video before uploading anything (rendered with the real Reading components). **DEFERRED 2026-06-15** — descoped from v5.0 at the user's direction during milestone close (follow-up shipped without it). Carry to a later milestone.
 
 ## v2 Requirements
 
@@ -116,12 +116,12 @@ Each v1 requirement maps to exactly one phase. 28/28 mapped — no orphans, no d
 | READ-07 | Phase 2 | Complete |
 | READ-08 | Phase 2 | Complete |
 | READ-10 | Phase 2 | Complete |
-| READ-09 | Phase 3 | Pending |
-| REVEAL-01 | Phase 4 | Pending |
-| REVEAL-02 | Phase 4 | Pending |
-| CHAT-01 | Phase 5 | Pending |
-| CHAT-02 | Phase 5 | Pending |
-| DEMO-01 | Phase 5 | Pending |
+| READ-09 | Phase 3 | Complete |
+| REVEAL-01 | Phase 4 | Complete |
+| REVEAL-02 | Phase 4 | Complete |
+| CHAT-01 | Phase 5 | Complete |
+| CHAT-02 | Phase 5 | Complete |
+| DEMO-01 | Phase 5 | Deferred (descoped from v5.0) |
 
 **Coverage:**
 - v1 requirements: 28 total (SHELL ×7, READ ×10, REVEAL ×2, THEME ×6, CHAT ×2, DEMO ×1)
