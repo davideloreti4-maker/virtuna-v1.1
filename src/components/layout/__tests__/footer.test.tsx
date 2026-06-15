@@ -38,6 +38,7 @@ describe("<Footer>", () => {
     it.each([
       ["#how-it-works"],
       ["#the-simulation"],
+      ["#features"],
       ["#pricing"],
       ["#faq"],
     ])("links to the nav anchor %s", (anchor) => {
