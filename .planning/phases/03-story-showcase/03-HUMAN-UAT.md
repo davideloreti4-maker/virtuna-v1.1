@@ -1,47 +1,56 @@
 ---
-status: diagnosed
+status: partial
 phase: 03-story-showcase
 source: [03-VERIFICATION.md]
 started: 2026-06-15T09:29:29Z
-updated: 2026-06-15T09:55:00Z
+updated: 2026-06-15T14:10:00Z
+re_review: true
+prior_cycle: "diagnosed 5 gaps (GAP-1..5) + WR-01/02/03 — all closed in code by 03-04..03-08; re-verification 4/4 criteria + 12/12 truths GREEN; awaiting live craft sign-off"
 ---
 
 ## Current Test
 
-[complete — issues found, routed to gap closure]
+[awaiting human live re-review — gap-closure code-verified GREEN, craft sign-off pending]
 
 ## Tests
 
-### 1. Story-body visual craft pass at `/`
-expected: The three new sections (#how-it-works, #the-simulation, #features) read as premium/calm and on-brand (flat-warm). Labelled `<Placeholder>` slots read as intentional design, not as missing/broken content. No layout shift as they mount.
+### 1. Live craft re-review at `/` (≈1440px) — the gate the gaps came from
+expected: Open `/` (npm run dev) and scroll the story body — How it works → The Simulation → Features. The now-filled skeleton slots (3 step visuals; the device-framed Simulation window: gauge 87/"Strong" → 18-dot audience cloud + "68% watch-through" → Hook/Retention("drops at 0:07")/Shareability bars; the 4 framed feature visuals) read as "this is the real product, screenshot pending" — an intentional product skeleton vocabulary, NOT unfinished/broken boxes. The Simulation frame reads as a compact product window (no ~640px dead void). Body reads premium/calm/flat-warm at comfortable density. Clears the taste bar five prior attempts + the Phase-2 hero missed.
+result: [pending]
 
-result: ISSUE — sections render and stack correctly, but the craft does not clear the taste bar. Placeholders read as unfinished (flat dark boxes + tiny image icon + literal "16:10" dev label). The Simulation device frame is a ~640px empty void. Feature-block text floats against tall images; overall low-density / too much whitespace. (GAP-1, GAP-2, GAP-3)
+### 2. Mobile-nav a11y live keyboard check (≤375px)
+expected: Open the hamburger panel, then: (a) press Escape → panel closes and focus returns to the hamburger trigger; (b) reopen + Tab past the last item → focus wraps to the first and never escapes the panel; (c) from a mid-scroll position, open then close → page scroll/overflow restored to its prior value (not clobbered/jumped). No keyboard trap with scroll locked. (Unit tests 5/5 GREEN; this confirms the lived runtime feel.)
+result: [pending]
 
-### 2. Nav anchors + mobile disclosure
-expected: Header shows 5 nav links; clicking "Features" scrolls to the new `#features` section. Footer product links include "Features". Mobile nav panel opens, lists all 5 links, and closes correctly after navigation.
+### 3. Anchor-scroll + section-offset live check (GAP-5)
+expected: Click each of the 5 header nav links AND the 5 footer Product links (How it works · The Simulation · Features · Pricing · FAQ). Each smooth-scrolls to its section and the heading clears the 65px sticky header by a comfortable, consistent offset (scroll-mt-20 = 80px) — no heading tucked under the bar. "Features" lands between The Simulation and Pricing.
+result: [pending]
 
-result: PARTIAL — desktop 5 links + footer Features verified; mobile panel opens/lists 5 links + CTA, closes on link-tap, navigates to #features. BUT Escape does not close the panel and there is no focus trap (a11y gap, GAP-4); anchor offset is only coincidental (no scroll-margin-top, GAP-5).
-
-### 3. Responsive reflow 320px → desktop
-expected: All three sections reflow cleanly from 320px mobile (steps/blocks stack, image/text order sensible) up to desktop (steps left→right, feature rows alternate image/text sides) with no overflow or broken spacing.
-
-result: PASS (structural) — steps stack 1-col→3-col, feature rows stack→alternate L/R, no overflow, 0 console errors. Density/whitespace concerns fold into GAP-3.
+### 4. Responsive reflow sanity (320px → desktop)
+expected: Steps stack 1-col on mobile → 3-col on desktop; feature rows stack copy-over-visual on mobile and alternate visual left/right on desktop (md:order flip); the Simulation window + skeleton internals + named-output chips reflow without overflow or layout shift. (Full mobile-first hardening is Phase 5 / FOUND-05 — this is a sanity reflow check.)
+result: [pending]
 
 ## Summary
 
-total: 3
-passed: 1
-issues: 2
-pending: 0
+total: 4
+passed: 0
+issues: 0
+pending: 4
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- GAP-1 (High): Placeholders read as unfinished — redesign as intentional product skeletons (static SVG shape hints), drop the visible "16:10" label. Keep stub lock (no real assets).
-- GAP-2 (High): The Simulation device frame is a ~640px empty void — cap height + fill with score-gauge/audience-cloud/driver-rows skeleton.
-- GAP-3 (Med): Feature-block balance + page density — cap image height, tighten vertical rhythm, reduce section whitespace.
-- GAP-4 (Med): Mobile nav a11y — add Escape-to-close + focus trap + focus restore (code-review WR-03, confirmed live).
-- GAP-5 (Low): Add scroll-margin-top (= sticky header height) to section anchors.
+Prior-cycle gaps (all closed in code, verified GREEN — pending live sign-off):
 
-Full detail + scoped refinements: `03-VERIFICATION.md` → Gaps Summary.
+- GAP-1 (High) → CLOSED: static-SVG product skeletons fill the stubs; "16:10" dev label removed.
+- GAP-2 (High) → CLOSED: Simulation device frame filled (gauge/cloud/driver-rows) + height-capped `max-h-[460px]`; void gone.
+- GAP-3 (Med) → CLOSED: feature rows top-aligned + wider-shorter (`aspect-[16/9]` `max-h-[300px]`) in BrowserChrome; denser page + row rhythm.
+- GAP-4 (Med) → CLOSED: mobile-nav Escape-close + focus trap + focus restore + scroll-lock save/restore (5 a11y unit tests GREEN).
+- GAP-5 (Low) → CLOSED: `scroll-mt-20` on all 6 section anchors.
+- WR-01 → CLOSED: hero noun "Numen reading" → "Numen Simulation".
+- WR-02/WR-03 (code-review) → CLOSED: footer column headings h2→h3; placeholder video autoplay; (WR-01 focus-restore-race deferred — same-page anchors restore correctly).
+
+New gaps from this live re-review: [none yet — record here if the live checks surface issues, then `/gsd-plan-phase 3 --gaps`]
+
+Full detail: `03-VERIFICATION.md` → Human Verification Required.
