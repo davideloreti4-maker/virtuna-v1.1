@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout levels v7 (clean)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px 22px 20px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:4px;line-height:1.5;max-width:380px;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--fg2);white-space:nowrap;}
+  .badge b{color:var(--fg);}
+
+  /* clean meter row */
+  .meters{display:flex;justify-content:space-between;gap:18px;margin-top:30px;}
+  .m{flex:1;display:flex;flex-direction:column;align-items:center;}
+  .m .reach{font-size:12px;font-weight:600;color:var(--fg2);margin-bottom:9px;}
+  .tube{position:relative;width:100%;max-width:78px;height:132px;border-radius:11px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);overflow:hidden;}
+  .fill{position:absolute;left:0;right:0;bottom:0;border-radius:0 0 10px 10px;}
+  .fill.ok{background:rgba(95,191,115,.26);}
+  .fill.cap{background:rgba(217,119,87,.28);}
+  /* the single, quiet push line */
+  .line{position:absolute;left:-9px;right:-9px;border-top:1px dashed rgba(236,231,222,.22);}
+  .m .pct{margin-top:10px;font-size:15px;font-weight:700;}
+  .m .pct.cap{color:var(--coral);}
+  .m .tag{margin-top:3px;font-size:11px;color:var(--fg3);}
+  .m .tag.cap{color:rgba(217,119,87,.75);}
+  .m.locked .tube{border-style:dashed;opacity:.6;}
+  .m.locked .reach,.m.locked .pct{color:var(--fg3);}
+
+  .foot{margin-top:22px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.5;}
+  .foot b{color:var(--fg);font-weight:600;}
+
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v7 — clean.</b> Stripped to the data, the way Linear / Whoop would: four batches the video can reach, each a tube
+    it fills with the viewers who keep watching. One quiet line = enough to get pushed to the next batch. It rises until a fill can't
+    reach the line — that's the cap.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How far it gets pushed</div>
+            <div class="s">Each batch is bigger. The fill is who keeps watching; the line is enough to get pushed wider.</div>
+          </div>
+          <div class="badge">Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <div class="meters">
+          <!-- 200 -->
+          <div class="m">
+            <div class="reach tabnum">200</div>
+            <div class="tube">
+              <div class="fill ok" style="height:78%"></div>
+              <div class="line" style="bottom:55%"></div>
+            </div>
+            <div class="pct tabnum">78%</div>
+            <div class="tag">your core</div>
+          </div>
+          <!-- 1K -->
+          <div class="m">
+            <div class="reach tabnum">1K</div>
+            <div class="tube">
+              <div class="fill ok" style="height:58%"></div>
+              <div class="line" style="bottom:55%"></div>
+            </div>
+            <div class="pct tabnum">58%</div>
+            <div class="tag">wider crowd</div>
+          </div>
+          <!-- 10K -->
+          <div class="m">
+            <div class="reach tabnum">10K</div>
+            <div class="tube">
+              <div class="fill cap" style="height:33%"></div>
+              <div class="line" style="bottom:55%"></div>
+            </div>
+            <div class="pct cap tabnum">33%</div>
+            <div class="tag cap">caps here</div>
+          </div>
+          <!-- 100K -->
+          <div class="m locked">
+            <div class="reach tabnum">100K</div>
+            <div class="tube"></div>
+            <div class="pct tabnum">—</div>
+            <div class="tag">viral</div>
+          </div>
+        </div>
+
+        <p class="foot">Clears the line through <b>~1,000</b>, then the mass batch falls short. Lift the <b>0:17 drop</b> and it clears, breaking wider.</p>
+      </div>
+    </div>
+
+    <p class="note"><b>v7 = clean pass.</b> Removed the funnel lines, the video node, inline arrows, the "17% short" float and the labelled
+      dashed line — just four tubes, one quiet threshold, one accent for the cap, and a single sentence. Open: 4 batches (this) or 3? show
+      the % numbers or let the fills speak? line fixed (this) or rising per batch? keep the "your core / wider / mass" tags or drop for pure reach?</p>
+  </div>
+</body>
+</html>

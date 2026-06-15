@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout levels v10</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px 22px 18px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:4px;line-height:1.5;max-width:420px;}
+  .head .s b{color:var(--fg2);font-weight:600;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--fg2);white-space:nowrap;}
+  .badge b{color:var(--fg);}
+
+  /* bottom-aligned growing tubes; reach label above each */
+  .tubes{display:flex;justify-content:space-between;gap:22px;align-items:flex-end;margin-top:26px;}
+  .m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+  .m .reach{font-size:12.5px;font-weight:700;color:var(--fg);margin-bottom:8px;}
+  .m.locked .reach{color:var(--fg2);}
+  .tube{position:relative;width:100%;max-width:80px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);overflow:hidden;}
+  .fill{position:absolute;left:0;right:0;bottom:0;}
+  .fill.ok{background:rgba(95,191,115,.24);}
+  .fill.cap{background:rgba(217,119,87,.26);}
+  .tick{position:absolute;left:-7px;right:-7px;border-top:1px dashed rgba(236,231,222,.20);}
+
+  /* under-bar labels, aligned rows */
+  .xrow{display:flex;justify-content:space-between;gap:22px;margin-top:12px;}
+  .x{flex:1;text-align:center;}
+  .x .pct{font-size:15px;font-weight:700;color:var(--fg);}
+  .x .pct.cap{color:var(--coral);}
+  .x .stage{font-size:11px;color:var(--fg3);margin-top:3px;}
+
+  .foot{margin-top:20px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.5;}
+  .foot b{color:var(--fg);font-weight:600;}
+
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v10.</b> Reach above the bars, % under them, subtitles are Stage 1 / 2 / 3 / Viral, no lock, and the 100K bar is
+    filled too (the viral batch holds even less). The fill is still <b>the share who keep watching</b>; clear the dashed line and it's
+    pushed to the next stage.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How far it gets pushed</div>
+            <div class="s">Each stage shows it to a bigger batch. The fill is <b>the share who keep watching</b> — clear the line and it's pushed to the next stage.</div>
+          </div>
+          <div class="badge">Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <div class="tubes">
+          <div class="m">
+            <div class="reach tabnum">200</div>
+            <div class="tube" style="height:82px"><div class="fill ok" style="height:78%"></div><div class="tick" style="bottom:55%"></div></div>
+          </div>
+          <div class="m">
+            <div class="reach tabnum">1,000</div>
+            <div class="tube" style="height:114px"><div class="fill ok" style="height:58%"></div><div class="tick" style="bottom:55%"></div></div>
+          </div>
+          <div class="m">
+            <div class="reach tabnum">10,000</div>
+            <div class="tube" style="height:146px"><div class="fill cap" style="height:33%"></div><div class="tick" style="bottom:55%"></div></div>
+          </div>
+          <div class="m">
+            <div class="reach tabnum">100K+</div>
+            <div class="tube" style="height:182px"><div class="fill cap" style="height:18%"></div><div class="tick" style="bottom:55%"></div></div>
+          </div>
+        </div>
+
+        <div class="xrow">
+          <div class="x"><div class="pct tabnum">78%</div><div class="stage">Stage 1</div></div>
+          <div class="x"><div class="pct tabnum">58%</div><div class="stage">Stage 2</div></div>
+          <div class="x"><div class="pct cap tabnum">33%</div><div class="stage">Stage 3</div></div>
+          <div class="x"><div class="pct cap tabnum">18%</div><div class="stage">Viral</div></div>
+        </div>
+
+        <p class="foot">It clears the line through Stage 2 (<b>~1,000</b>), then drops below it at Stage 3. Lift the <b>0:17 drop</b> and it pushes into the bigger stages.</p>
+      </div>
+    </div>
+
+    <p class="note"><b>v10 layout:</b> reach above · % below · Stage 1–3 + Viral subtitles · all four bars filled (78→58→33→18, declining
+      as the batch grows + cools) · green above the line, coral below = where it caps. Open: keep the dashed line/ticks or drop for max-clean?
+      colour the cleared %s green or leave neutral (this)? mark Stage 2 as the "you are here" cap?</p>
+  </div>
+</body>
+</html>

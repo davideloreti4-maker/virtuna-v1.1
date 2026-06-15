@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading hero — v4 (scorecard)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --surface2:#232220; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .serif{font-family:'Newsreader',ui-serif,Georgia,serif;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:560px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:560px;}
+  .lede b{color:var(--fg)}
+
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;}
+
+  /* ── hero scorecard ── */
+  .hero{padding:22px 22px 0;}
+  .heroTop{display:flex;align-items:center;gap:22px;padding-bottom:22px;}
+  .poster{position:relative;width:88px;min-width:88px;aspect-ratio:9/16;border-radius:12px;overflow:hidden;border:1px solid var(--border);
+    background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:32px;height:32px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .poster .time{position:absolute;left:6px;bottom:6px;font-size:10px;color:var(--fg2);background:rgba(0,0,0,.42);padding:1px 5px;border-radius:5px;}
+  .gaugeWrap{flex:1;display:flex;justify-content:center;}
+  .gauge{position:relative;width:132px;height:132px;}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;}
+  .gauge .ctr b{font-size:42px;font-weight:600;line-height:1;}
+  .gauge .ctr small{margin-top:4px;font-size:14px;font-weight:600;}
+  .band.mid{color:var(--amber)} .band.strong{color:var(--green)} .band.weak{color:var(--red)}
+
+  /* full-width stat strip — fills the card, no dead zone */
+  .strip{display:flex;border-top:1px solid var(--border);}
+  .strip .s{flex:1;padding:15px 8px 17px;text-align:center;border-left:1px solid var(--border);}
+  .strip .s:first-child{border-left:none;}
+  .strip .s .v{font-size:19px;font-weight:600;line-height:1;}
+  .strip .s .v.amber{color:var(--amber)}
+  .strip .s .k{margin-top:5px;font-size:11px;color:var(--fg3);}
+
+  /* ── driver rows ── */
+  .rows .row{display:flex;align-items:center;gap:14px;padding:15px 20px;border-top:1px solid var(--border);cursor:pointer;}
+  .rows .row:first-child{border-top:none;}
+  .rows .row:hover{background:rgba(255,255,255,.02);}
+  .row .name{flex:1;font-size:15px;font-weight:500;}
+  .row .name .sub{display:block;font-size:11px;color:var(--amber);font-weight:600;margin-top:3px;}
+  .right{display:flex;align-items:center;gap:13px;}
+  .track{width:132px;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .fill{height:100%;border-radius:999px;}
+  .fill.n{background:linear-gradient(90deg,rgba(236,231,222,.20),rgba(236,231,222,.42));}
+  .fill.weak{background:var(--amber);}
+  .val{font-size:16px;font-weight:600;width:30px;text-align:right;}
+  .val.amber{color:var(--amber);}
+  .chev{color:var(--fg3);font-size:17px;width:10px;text-align:center;}
+  .desc{font-size:14px;color:var(--fg2);}
+
+  .composer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;color:var(--fg3);font-size:15px;margin-top:24px;}
+  .composer .send{margin-left:auto;width:32px;height:32px;border-radius:9px;background:var(--coral);display:flex;align-items:center;justify-content:center;}
+
+  .note{margin:50px auto 0;max-width:560px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+
+  @media (max-width:480px){
+    .heroTop{flex-direction:column;gap:16px;}
+    .poster{width:78px;}
+  }
+</style>
+</head>
+<body>
+  <p class="lede"><b>v4 — scorecard concept.</b> Gauge is now the unambiguous focal point; the video anchors left; and a
+    <b>full-width 3-stat strip</b> fills the bottom of the card — no dead right-zone, and the drop/watch numbers can’t wrap badly on
+    mobile. Driver rows tidied into a right-aligned bar + value cluster.</p>
+
+  <div class="col">
+    <!-- THE READ -->
+    <div class="section">
+      <p class="lbl">The read</p>
+      <div class="card hero">
+        <div class="heroTop">
+          <div class="poster">
+            <div class="play"><span><svg width="11" height="11" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div>
+            <div class="time">0:28</div>
+          </div>
+          <div class="gaugeWrap">
+            <div class="gauge">
+              <svg width="132" height="132" viewBox="0 0 132 132" style="transform:rotate(135deg)">
+                <circle cx="66" cy="66" r="59" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round" stroke-dasharray="278 371"/>
+                <circle cx="66" cy="66" r="59" fill="none" stroke="#e0b341" stroke-width="9" stroke-linecap="round" stroke-dasharray="167 371"/>
+              </svg>
+              <div class="ctr"><b class="tabnum">60</b><small class="band mid">Mid</small></div>
+            </div>
+          </div>
+        </div>
+        <div class="strip">
+          <div class="s"><div class="v tabnum">54%</div><div class="k">Watch-through</div></div>
+          <div class="s"><div class="v tabnum amber">0:08</div><div class="k">Biggest drop</div></div>
+          <div class="s"><div class="v tabnum">Top 38%</div><div class="k">In your niche</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORE DRIVERS -->
+    <div class="section">
+      <p class="lbl">Score drivers</p>
+      <div class="card rows">
+        <div class="row">
+          <span class="name">Hook</span>
+          <span class="right"><span class="track"><span class="fill n" style="width:85%"></span></span><span class="val">85</span><span class="chev">›</span></span>
+        </div>
+        <div class="row">
+          <span class="name">Retention<span class="sub">⚠ drops at 0:08</span></span>
+          <span class="right"><span class="track"><span class="fill weak" style="width:50%"></span></span><span class="val amber">50</span><span class="chev">›</span></span>
+        </div>
+        <div class="row">
+          <span class="name">Shareability</span>
+          <span class="right"><span class="track"><span class="fill n" style="width:85%"></span></span><span class="val">85</span><span class="chev">›</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIENCE & CONTEXT -->
+    <div class="section">
+      <p class="lbl">Audience &amp; context</p>
+      <div class="card rows">
+        <div class="row">
+          <span class="name">Audience</span>
+          <span class="right"><span class="desc">10 segments</span><span class="chev">›</span></span>
+        </div>
+        <div class="row">
+          <span class="name">Niche rank</span>
+          <span class="right"><span class="desc">Top 38%</span><span class="chev">›</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div>
+
+    <p class="note"><b>Concept:</b> a gauge-led scorecard (Whoop) — the read is one balanced card: video + dial on top, a stat strip
+      filling the base. Drivers and context are quiet, consistent lists below. Narrower 560px column kills the sprawl. Color only where
+      it means “fix this”.</p>
+  </div>
+</body>
+</html>

@@ -962,6 +962,11 @@ export async function POST(request: Request) {
           const pipelineResult = await runPredictionPipeline(validated, {
             requestId,
             bypassCache,
+            // Thread the row id so the pipeline can fire-and-forget filmstrip
+            // keyframe extraction at wave_0_complete (pipeline.ts gates the
+            // trigger on opts.analysisId — without this it was ALWAYS undefined,
+            // so keyframes were never extracted for ANY analysis).
+            analysisId,
             onStageEvent: (event: StageEvent) => {
               send("stage", event);
             },

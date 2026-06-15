@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout levels v9</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px 22px 18px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:4px;line-height:1.5;max-width:420px;}
+  .head .s b{color:var(--fg2);font-weight:600;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--fg2);white-space:nowrap;}
+  .badge b{color:var(--fg);}
+
+  .tubes{display:flex;justify-content:space-between;gap:22px;align-items:flex-end;margin-top:30px;height:182px;}
+  .m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .tube{position:relative;width:100%;max-width:80px;border-radius:12px;border:1px solid var(--border);
+    background:rgba(255,255,255,.02);overflow:hidden;}
+  .fill{position:absolute;left:0;right:0;bottom:0;}
+  .fill.ok{background:rgba(95,191,115,.24);}
+  .fill.cap{background:rgba(217,119,87,.26);}
+  .pct{position:absolute;left:0;right:0;text-align:center;font-size:14px;font-weight:700;color:var(--fg);}
+  .pct.cap{color:var(--coral);}
+  .tick{position:absolute;left:-7px;right:-7px;border-top:1px dashed rgba(236,231,222,.22);}
+  .m.locked .tube{border-style:dashed;opacity:.5;}
+  .m.locked .lock{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--fg3);font-size:13px;}
+
+  .xrow{display:flex;justify-content:space-between;gap:22px;margin-top:11px;}
+  .x{flex:1;text-align:center;}
+  .x .reach{font-size:12.5px;font-weight:600;color:var(--fg);}
+  .x.locked .reach{color:var(--fg3);}
+  .x .st{font-size:10.5px;color:var(--fg3);margin-top:2px;}
+  .x .st.cap{color:var(--coral);}
+
+  .foot{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.5;}
+  .foot b{color:var(--fg);font-weight:600;}
+
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v9 — v7, fixed.</b> Tubes now grow <b>small → big</b> (the batch keeps getting larger), the last is the
+    100K+ viral ceiling, and the label problem is solved: a one-line definition up top says the fill is <b>the share who keep watching</b>,
+    and the tidy batch sizes sit under each — no more vague tags.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How far it gets pushed</div>
+            <div class="s">TikTok pushes it to a bigger batch while it performs. Each tube fills with <b>the share who keep watching</b> — clear the line and it's pushed wider.</div>
+          </div>
+          <div class="badge">Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <div class="tubes">
+          <!-- 200 (smallest) -->
+          <div class="m">
+            <div class="tube" style="height:84px">
+              <div class="fill ok" style="height:78%"></div>
+              <div class="tick" style="bottom:55%"></div>
+              <div class="pct" style="bottom:78%;transform:translateY(125%)">78%</div>
+            </div>
+          </div>
+          <!-- 1K -->
+          <div class="m">
+            <div class="tube" style="height:116px">
+              <div class="fill ok" style="height:58%"></div>
+              <div class="tick" style="bottom:55%"></div>
+              <div class="pct" style="bottom:58%;transform:translateY(125%)">58%</div>
+            </div>
+          </div>
+          <!-- 10K (caps) -->
+          <div class="m">
+            <div class="tube" style="height:148px">
+              <div class="fill cap" style="height:33%"></div>
+              <div class="tick" style="bottom:55%"></div>
+              <div class="pct cap" style="bottom:33%;transform:translateY(125%)">33%</div>
+            </div>
+          </div>
+          <!-- 100K+ viral (biggest, locked) -->
+          <div class="m locked">
+            <div class="tube" style="height:182px"><div class="lock">🔒</div></div>
+          </div>
+        </div>
+
+        <div class="xrow">
+          <div class="x"><div class="reach tabnum">200</div><div class="st">first push</div></div>
+          <div class="x"><div class="reach tabnum">1,000</div><div class="st">pushed wider</div></div>
+          <div class="x"><div class="reach tabnum">10,000</div><div class="st cap">caps here</div></div>
+          <div class="x locked"><div class="reach tabnum">100K+</div><div class="st">viral</div></div>
+        </div>
+
+        <p class="foot">It keeps enough watching through <b>~1,000</b>, then the 10K batch falls below the line. Lift the <b>0:17 drop</b> and it clears, pushing wider.</p>
+      </div>
+    </div>
+
+    <p class="note"><b>v9 changes:</b> bars grow small→big to 100K+ viral; the % is defined once ("share who keep watching") so every number
+      reads right; the confusing audience tags are gone — under each tube is just the batch size + a plain status (first push / pushed wider /
+      caps here / viral). Open: keep the small status line under each, or only mark the cap? lock icon on viral or leave it empty?</p>
+  </div>
+</body>
+</html>

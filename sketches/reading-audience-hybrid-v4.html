@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout hybrid v4 (B visual + C logic)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px 16px 16px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.5;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    background:rgba(95,191,115,.10);border:1px solid rgba(95,191,115,.32);font-size:11.5px;font-weight:600;color:var(--fg);white-space:nowrap;}
+  .badge .dot{width:7px;height:7px;border-radius:999px;background:var(--green);}
+  .badge b{color:var(--green);}
+  svg.viz{display:block;width:100%;height:auto;margin-top:14px;}
+  .barNote{display:flex;align-items:center;gap:8px;margin-top:8px;padding:9px 11px;border-radius:10px;background:var(--chip);border:1px solid var(--border);font-size:11.5px;color:var(--fg2);line-height:1.45;}
+  .barNote .mk{flex:none;width:14px;height:0;border-top:1.5px dashed var(--fg2);}
+  .barNote b{color:var(--fg);}
+  .takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding-top:13px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.45;}
+  .takeaway .d{width:7px;height:7px;border-radius:999px;background:var(--coral);margin-top:5px;flex:none;}
+  .takeaway b{color:var(--fg);font-weight:600;}
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v4 — hybrid (B's view + C's logic).</b> The video reaches <b>widening</b> cold-FYP audiences — niche-matched first,
+    then the mass. Each must hold above the <b>promotion bar</b> to get pushed wider. It keeps scaling until an audience drops under the
+    bar — that's the wall, and how far it breaks out.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How wide it holds</div>
+            <div class="s">Pushed to a wider, colder crowd each time it clears the bar.</div>
+          </div>
+          <div class="badge"><span class="dot"></span>Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <svg class="viz" viewBox="0 0 640 226" role="img" aria-label="How wide it holds vs the promotion bar">
+          <!-- promotion bar threshold -->
+          <line x1="40" y1="118" x2="612" y2="118" stroke="rgba(236,231,222,.34)" stroke-width="1.3" stroke-dasharray="5 4"/>
+          <text x="612" y="110" text-anchor="end" fill="var(--fg3)" font-size="10">promotion bar · 50%</text>
+          <!-- baseline -->
+          <line x1="40" y1="186" x2="612" y2="186" stroke="rgba(236,231,222,.10)" stroke-width="1"/>
+
+          <!-- Bar 1: Your niche — 78%, holds (height grows from baseline 186 up) -->
+          <rect x="72" y="76" width="92" height="110" rx="7" fill="rgba(95,191,115,.16)" stroke="rgba(95,191,115,.34)"/>
+          <text x="118" y="66" text-anchor="middle" fill="var(--green)" font-size="15" font-weight="700">78%</text>
+          <text x="118" y="204" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Your niche</text>
+          <text x="118" y="218" text-anchor="middle" fill="var(--fg3)" font-size="10">~200 · holds</text>
+
+          <!-- Bar 2: Adjacent — 58%, just holds -->
+          <rect x="246" y="104" width="108" height="82" rx="7" fill="rgba(95,191,115,.13)" stroke="rgba(95,191,115,.28)"/>
+          <text x="300" y="94" text-anchor="middle" fill="var(--fg)" font-size="15" font-weight="700">58%</text>
+          <text x="300" y="204" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Adjacent</text>
+          <text x="300" y="218" text-anchor="middle" fill="var(--fg3)" font-size="10">~1,000 · just clears</text>
+
+          <!-- Bar 3: Mass FYP — 33%, below the bar (the wall) -->
+          <rect x="436" y="140" width="126" height="46" rx="7" fill="rgba(217,119,87,.14)" stroke="rgba(217,119,87,.40)"/>
+          <text x="499" y="130" text-anchor="middle" fill="var(--coral)" font-size="15" font-weight="700">33%</text>
+          <text x="499" y="204" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Mass FYP</text>
+          <text x="499" y="218" text-anchor="middle" fill="rgba(217,119,87,.75)" font-size="10">~10k · 17pts under</text>
+          <!-- the gap to the bar (the lever) -->
+          <line x1="499" y1="140" x2="499" y2="118" stroke="var(--coral)" stroke-width="1.3" stroke-dasharray="2 2"/>
+
+          <!-- widening arrow -->
+          <text x="40" y="16" fill="var(--fg3)" font-size="10">audience widens, gets colder →</text>
+        </svg>
+
+        <div class="barNote"><span class="mk"></span><span><b>The dashed line is the promotion bar.</b> Hold above it and the algorithm pushes you to a wider, colder crowd. You break out as far as you stay above it.</span></div>
+
+        <div class="takeaway"><span class="d"></span><span>It holds your niche + the adjacent crowd to <b>~1,000</b>. The mass FYP sits <b>17 pts under the bar</b> — lift the 0:17 drop and it breaks wider.</span></div>
+      </div>
+    </div>
+
+    <p class="note"><b>The hybrid:</b> B's widening-audience bars (fast to read, intuitive "how broad is my appeal") + C's promotion-bar
+      cutoff (the honest "why it caps"). No flawed per-signal sequencing. One number per audience width vs one line; the gap on the failing
+      bar is the lever. Open: 3 widths or 4 (add "Viral / everyone")? bars (this) or the funnel from B? quantify the gap as "17pts" or as a reach ("would 3× your views")?</p>
+  </div>
+</body>
+</html>

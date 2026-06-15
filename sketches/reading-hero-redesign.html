@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — hero + layout directions (sketch)</title>
+<style>
+  /* Flat-warm tokens — copied 1:1 from globals.css (Frame A / THEME-06) */
+  :root{
+    --bg:#262624; --sidebar:#1a1a18; --surface:#1e1d1b; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --coral-soft:rgba(217,119,87,.16);
+    --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+    --neutral:rgba(236,231,222,.30);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--fg);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;
+    letter-spacing:.2px; -webkit-font-smoothing:antialiased;
+    padding:40px 24px 120px;
+  }
+  .serif{font-family:'Newsreader',ui-serif,Georgia,serif;}
+  .wrap{max-width:880px;margin:0 auto;}
+  .dir-label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 4px;}
+  .dir-title{font-size:20px;font-weight:600;margin:0 0 6px;}
+  .dir-note{font-size:13px;color:var(--fg3);margin:0 0 20px;max-width:62ch;line-height:1.5;}
+  .col{max-width:680px;margin:0 auto;}
+  .sep{height:1px;background:var(--border);margin:56px 0;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+
+  /* shared bits */
+  .poster{position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--border);
+    background:
+      radial-gradient(120% 80% at 30% 20%, #3a3733, #232220 70%),
+      linear-gradient(180deg,#34322e,#201f1d);}
+  .poster .lab{position:absolute;left:10px;bottom:8px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:42px;height:42px;border-radius:999px;background:rgba(0,0,0,.35);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .play svg{margin-left:2px}
+
+  .band{font-weight:600;}
+  .band.mid{color:var(--amber)} .band.strong{color:var(--green)} .band.weak{color:var(--red)}
+
+  .lever{display:flex;flex-direction:column;gap:6px;}
+  .lever .top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+  .lever .name{font-size:13px;color:var(--fg2);}
+  .lever .val{font-size:13px;font-weight:600;color:var(--fg);}
+  .lever .val .u{font-size:11px;color:var(--fg3);font-weight:400;}
+  .track{height:5px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .fill{height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(236,231,222,.22),rgba(236,231,222,.40));}
+  .fill.weak{background:var(--amber);}
+  .warn{color:var(--amber);font-size:12px;font-weight:600;}
+
+  /* arc gauge */
+  .gauge{position:relative;width:128px;height:128px;}
+  .gauge .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge .num b{font-size:40px;font-weight:600;line-height:1;}
+  .gauge .num small{margin-top:4px;font-size:15px;font-weight:600;}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;}
+  .chip{background:var(--chip);border:1px solid var(--border);border-radius:12px;}
+
+  /* layout context (panels + chat) */
+  .row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-top:1px solid var(--border);}
+  .row:first-child{border-top:none}
+  .row .l{font-size:14px;color:var(--fg2);font-weight:500}
+  .row .r{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600}
+  .caret{color:var(--fg3)}
+  .mini-track{width:120px;height:4px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden}
+  .composer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:12px 14px;color:var(--fg3);font-size:15px;}
+  .composer .send{margin-left:auto;width:32px;height:32px;border-radius:9px;background:var(--coral);display:flex;align-items:center;justify-content:center;}
+  .seglabel{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--fg3);margin:0 0 10px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="dir-note" style="max-width:none;color:var(--fg2);margin-bottom:36px">
+    <b style="color:var(--fg)">Reading hero — 3 directions.</b> All flat-warm, matte, no glow. Real data: score <b>60 · Mid</b>,
+    Hook <b>85</b> / Retention <b>⚠ 50 @ 0:08</b> / Share <b>85</b>, <b>54%</b> watch. The weak persona-dot-cloud is gone in every
+    direction — replaced by signal that earns its space. Pick one (or mix) and I'll build it + carry the language into the panels.
+  </p>
+
+  <!-- ─────────────────────────────────────────────── A -->
+  <p class="dir-label">Direction A</p>
+  <h2 class="dir-title">Poster instrument — the video IS the hero</h2>
+  <p class="dir-note">Now that keyframes load, the real first frame anchors the card. Score + the three levers sit beside it as one
+    dense, glanceable instrument. You see <i>what</i> the video is and <i>how it performs</i> in one look. The weakest lever is the
+    only colored thing.</p>
+  <div class="col">
+    <div class="card" style="display:flex;gap:20px;padding:18px;">
+      <div class="poster" style="width:124px;min-width:124px;aspect-ratio:9/16;">
+        <div class="play"><span><svg width="14" height="14" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div>
+        <div class="lab">0:28</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:14px;min-width:0;">
+        <div style="display:flex;align-items:baseline;gap:12px;">
+          <span class="serif tabnum" style="font-size:52px;font-weight:600;line-height:.9;">60</span>
+          <span class="band mid" style="font-size:18px;">Mid</span>
+          <span style="margin-left:auto;font-size:13px;color:var(--fg2);" class="tabnum"><b style="color:var(--fg)">54%</b> watch</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:11px;">
+          <div class="lever"><div class="top"><span class="name">Hook</span><span class="val">85<span class="u"> /100</span></span></div><div class="track"><div class="fill" style="width:85%"></div></div></div>
+          <div class="lever"><div class="top"><span class="name">Retention <span class="warn">⚠ 0:08</span></span><span class="val" style="color:var(--amber)">50<span class="u"> /100</span></span></div><div class="track"><div class="fill weak" style="width:50%"></div></div></div>
+          <div class="lever"><div class="top"><span class="name">Shareability</span><span class="val">85<span class="u"> /100</span></span></div><div class="track"><div class="fill" style="width:85%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <!-- layout context -->
+    <p class="seglabel" style="margin-top:26px">Tap any lever to drill in</p>
+    <div class="card" style="overflow:hidden">
+      <div class="row"><span class="l">Score distribution</span><span class="r"><span>vs niche</span><span class="caret">›</span></span></div>
+      <div class="row"><span class="l">Audience · 10 segments</span><span class="r"><span class="caret">›</span></span></div>
+      <div class="row"><span class="l">Retention · where they leave</span><span class="r"><span class="warn">⚠ 0:08</span><span class="caret">›</span></span></div>
+    </div>
+    <div style="margin-top:22px;"><div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- ─────────────────────────────────────────────── B -->
+  <p class="dir-label">Direction B</p>
+  <h2 class="dir-title">Headline score + signal tiles — a dashboard read</h2>
+  <p class="dir-note">Score-forward and centered. Below it, a tight row of the numbers that actually matter — watch-through, the weakest
+    lever (called out), shareability — as matte tiles. Outcome-oriented and scannable. Poster demoted to a small chip.</p>
+  <div class="col" style="text-align:center;">
+    <div style="display:inline-flex;align-items:center;gap:14px;margin-bottom:4px;">
+      <div class="poster" style="width:38px;height:60px;border-radius:8px;"></div>
+      <span class="serif tabnum" style="font-size:76px;font-weight:600;line-height:.85;">60</span>
+    </div>
+    <div class="band mid" style="font-size:18px;margin-bottom:24px;">Mid · solid hook, loses them early</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:left;">
+      <div class="chip" style="padding:14px 16px;">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px;">Watch-through</div>
+        <div class="tabnum" style="font-size:28px;font-weight:600;">54<span style="font-size:14px;color:var(--fg3)">%</span></div>
+      </div>
+      <div class="chip" style="padding:14px 16px;border-color:rgba(224,179,65,.4);">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px;">Weakest · fix first</div>
+        <div class="tabnum" style="font-size:28px;font-weight:600;color:var(--amber)">Retention</div>
+        <div style="font-size:12px;color:var(--fg3);margin-top:2px;">drops at 0:08</div>
+      </div>
+      <div class="chip" style="padding:14px 16px;">
+        <div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-bottom:8px;">Shareability</div>
+        <div class="tabnum" style="font-size:28px;font-weight:600;">85</div>
+      </div>
+    </div>
+    <!-- layout context -->
+    <div class="card" style="overflow:hidden;margin-top:24px;text-align:left">
+      <div class="row"><span class="l">Hook</span><span class="r"><span>85</span><span class="caret">›</span></span></div>
+      <div class="row"><span class="l">Retention</span><span class="r"><span class="warn">⚠ 50</span><span class="caret">›</span></span></div>
+      <div class="row"><span class="l">Shareability</span><span class="r"><span>85</span><span class="caret">›</span></span></div>
+    </div>
+    <div style="margin-top:22px;text-align:left;"><div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div></div>
+  </div>
+
+  <div class="sep"></div>
+
+  <!-- ─────────────────────────────────────────────── C -->
+  <p class="dir-label">Direction C</p>
+  <h2 class="dir-title">Refined gauge + driver headline — keep the dial, make it speak</h2>
+  <p class="dir-note">Keeps your arc gauge (you chose it in P2) but pairs it with a one-line factual driver headline (not verdict prose —
+    just the shape) and the lever bars. Audience becomes an honest watch-through ladder, not a random dot-cloud.</p>
+  <div class="col">
+    <div style="display:flex;gap:24px;align-items:center;">
+      <div class="gauge">
+        <svg width="128" height="128" viewBox="0 0 128 128" style="transform:rotate(135deg)">
+          <circle cx="64" cy="64" r="58" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8" stroke-linecap="round" stroke-dasharray="273 365"/>
+          <circle cx="64" cy="64" r="58" fill="none" stroke="#e0b341" stroke-width="8" stroke-linecap="round" stroke-dasharray="164 365"/>
+        </svg>
+        <div class="num"><b class="tabnum">60</b><small class="band mid">Mid</small></div>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <p class="serif" style="font-size:21px;line-height:1.3;margin:0 0 14px;">Strong hook — but they leave at <span style="color:var(--amber)">0:08</span>.</p>
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div class="lever"><div class="top"><span class="name">Hook</span><span class="val">85</span></div><div class="track"><div class="fill" style="width:85%"></div></div></div>
+          <div class="lever"><div class="top"><span class="name">Retention</span><span class="val" style="color:var(--amber)">50</span></div><div class="track"><div class="fill weak" style="width:50%"></div></div></div>
+          <div class="lever"><div class="top"><span class="name">Shareability</span><span class="val">85</span></div><div class="track"><div class="fill" style="width:85%"></div></div></div>
+        </div>
+      </div>
+    </div>
+    <!-- honest audience ladder instead of dot-cloud -->
+    <p class="seglabel" style="margin-top:26px">Who watches — who drops first</p>
+    <div style="display:flex;flex-direction:column;gap:9px;">
+      <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:90px;color:var(--fg2)">Loyal fans</span><div class="track" style="flex:1"><div class="fill" style="width:93%"></div></div><span class="tabnum" style="width:34px;text-align:right;font-weight:600">93%</span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:90px;color:var(--fg2)">New viewers</span><div class="track" style="flex:1"><div class="fill" style="width:59%"></div></div><span class="tabnum" style="width:34px;text-align:right;font-weight:600">59%</span></div>
+      <div style="display:flex;align-items:center;gap:12px;font-size:13px;"><span style="width:90px;color:var(--coral)">Your niche</span><div class="track" style="flex:1"><div class="fill" style="width:51%;background:var(--coral)"></div></div><span class="tabnum" style="width:34px;text-align:right;font-weight:600;color:var(--coral)">51%</span></div>
+    </div>
+    <div style="margin-top:24px;"><div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div></div>
+  </div>
+</div>
+</body>
+</html>

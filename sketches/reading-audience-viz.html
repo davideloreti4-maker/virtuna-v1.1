@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — audience constellation</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:600px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:600px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;}
+
+  /* hero (v6, compact for context) */
+  .hero{display:flex;align-items:center;justify-content:center;gap:24px;padding:22px;}
+  .heroTop{display:flex;align-items:center;gap:18px;}
+  .poster{position:relative;width:78px;min-width:78px;aspect-ratio:9/16;border-radius:11px;overflow:hidden;border:1px solid var(--border);background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:28px;height:28px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .poster .time{position:absolute;left:6px;bottom:6px;font-size:10px;color:var(--fg2);background:rgba(0,0,0,.42);padding:1px 5px;border-radius:5px;}
+  .gauge{position:relative;width:116px;height:116px;flex:none;}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:5px;}
+  .gauge .ctr b{font-size:38px;font-weight:600;line-height:1;}
+  .gauge .ctr small{margin-top:3px;font-size:13px;font-weight:600;color:var(--amber);}
+  .strip{display:flex;flex-direction:column;gap:13px;padding-left:22px;border-left:1px solid var(--border);}
+  .strip .s .v{font-size:19px;font-weight:600;line-height:1;}
+  .strip .s .v.amber{color:var(--amber)}
+  .strip .s .k{margin-top:4px;font-size:11px;color:var(--fg3);}
+
+  /* audience constellation card */
+  .aud{padding:18px 18px 16px;}
+  .aud .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;}
+  .aud .head .t{font-size:15px;font-weight:600;}
+  .aud .head .n{font-size:12px;color:var(--fg3);}
+  canvas{display:block;width:100%;height:230px;}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:6px;font-size:12px;color:var(--fg3);}
+  .legend .k{display:inline-flex;align-items:center;gap:7px;}
+  .legend .dot{width:8px;height:8px;border-radius:999px;}
+  .legend .dot.coral{background:var(--coral)}
+  .legend .dot.cream{background:rgba(236,231,222,.7)}
+  .legend b{color:var(--fg2);font-weight:600}
+
+  .note{margin:48px auto 0;max-width:600px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>Audience constellation.</b> Not a random dot-cloud — every position <i>means</i> something:
+    <b>size = reach</b>, <b>distance from center = retention</b> (loyal core in the middle, the cohorts you’re losing drift to the
+    edge), <b>coral = drops first</b>. Connected as a living network. The story reads itself: a bright tight core fraying coral at the rim.</p>
+
+  <div class="col">
+    <!-- context: the read -->
+    <div class="section">
+      <p class="lbl">The read</p>
+      <div class="card hero">
+        <div class="heroTop">
+          <div class="poster"><div class="play"><span><svg width="10" height="10" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div><div class="time">0:28</div></div>
+          <div class="gauge">
+            <svg width="116" height="116" viewBox="0 0 116 116" style="transform:rotate(135deg)">
+              <circle cx="58" cy="58" r="51" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round" stroke-dasharray="240 320"/>
+              <circle cx="58" cy="58" r="51" fill="none" stroke="#e0b341" stroke-width="9" stroke-linecap="round" stroke-dasharray="144 320"/>
+            </svg>
+            <div class="ctr"><b class="tabnum">60</b><small>Mid</small></div>
+          </div>
+        </div>
+        <div class="strip">
+          <div class="s"><div class="v tabnum">54%</div><div class="k">Watch-through</div></div>
+          <div class="s"><div class="v tabnum amber">0:08</div><div class="k">Biggest drop</div></div>
+          <div class="s"><div class="v tabnum">Top 38%</div><div class="k">Niche rank</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- THE WOW: audience constellation -->
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card aud">
+        <div class="head"><span class="t">10 segments simulated</span><span class="n">tap to explore →</span></div>
+        <canvas id="aud"></canvas>
+        <div class="legend">
+          <span class="k"><span class="dot cream"></span>stays — closer in = watches longer</span>
+          <span class="k"><span class="dot coral"></span><b>Your niche</b> drops first, at 0:08</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="note"><b>Why it’s useful, not decoration:</b> distance encodes retention and color encodes who you’re losing — so the
+      shape itself is the insight. It animates (gentle drift + a slow turn) for the wow, stays matte (no glow), and taps through to the
+      full audience breakdown. If you like it, this can sit as its own card under the read, or fold into the hero’s right side.</p>
+  </div>
+
+<script>
+  const C = document.getElementById('aud');
+  const ctx = C.getContext('2d');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // illustrative personas (matches the screenshots): w = watch-through, reach = size, drop = leaves first
+  const personas = [
+    {w:.93, reach:1.00, drop:false},
+    {w:.84, reach:.70, drop:false},
+    {w:.79, reach:.62, drop:false},
+    {w:.59, reach:.54, drop:false},
+    {w:.55, reach:.50, drop:false},
+    {w:.51, reach:.88, drop:true },
+    {w:.38, reach:.46, drop:false},
+    {w:.35, reach:.42, drop:false},
+    {w:.24, reach:.40, drop:false},
+    {w:.18, reach:.64, drop:true },
+  ];
+  const GA = Math.PI * (3 - Math.sqrt(5));
+  personas.forEach((p,i)=>{ p.ang = i*GA; p.phase = i*1.7; });
+
+  function resize(){
+    const r = C.getBoundingClientRect();
+    C.width = Math.max(1, r.width*DPR);
+    C.height = Math.max(1, r.height*DPR);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  function frame(t){
+    const w=C.width, h=C.height, cx=w/2, cy=h/2;
+    const maxR = w/2 - 34*DPR;
+    const minR = 12*DPR;
+    const vsquash = 0.46;
+    ctx.clearRect(0,0,w,h);
+
+    // faint guide rings — communicate the radial meaning without shouting
+    ctx.strokeStyle = 'rgba(236,231,222,0.035)';
+    ctx.lineWidth = DPR;
+    for(let k=1;k<=3;k++){ ctx.beginPath(); ctx.ellipse(cx,cy, maxR*k/3, maxR*k/3*vsquash, 0, 0, Math.PI*2); ctx.stroke(); }
+
+    const pts = personas.map((p)=>{
+      const rad = minR + (1-p.w)*(maxR-minR);
+      const a = p.ang + (reduced?0:t*0.00005);
+      const bob = reduced?0:Math.sin(t*0.0009 + p.phase)*4*DPR;
+      return { x: cx + Math.cos(a)*(rad+bob), y: cy + Math.sin(a)*(rad+bob)*vsquash, p, r:(4.5 + p.reach*9)*DPR };
+    });
+
+    // proximity edges → the "society" web
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.hypot(dx,dy), thr=135*DPR;
+      if(d<thr){ ctx.strokeStyle='rgba(236,231,222,'+(0.16*(1-d/thr)).toFixed(3)+')'; ctx.lineWidth=DPR; ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke(); }
+    }
+    // nodes
+    pts.forEach(({x,y,p,r})=>{
+      ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle = p.drop ? 'rgba(217,119,87,0.95)' : 'rgba(236,231,222,'+(0.40 + p.w*0.45).toFixed(2)+')';
+      ctx.fill();
+    });
+
+    if(!reduced) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>
