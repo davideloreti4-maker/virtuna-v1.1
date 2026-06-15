@@ -1,10 +1,11 @@
 ---
 phase: 03-story-showcase
 verified: 2026-06-15T14:05:00Z
-status: human_needed
+status: passed
 score: 4/4 must-haves verified
 overrides_applied: 0
-human_uat_result: pending_re_review
+human_uat_result: passed
+human_uat_signoff: "Davide approved the live re-review at localhost:3000 on 2026-06-15 — all 4 live checks pass; craft clears the taste bar."
 re_verification:
   previous_status: gaps_found
   previous_score: 4/4
@@ -177,6 +178,8 @@ This is a visual marketing phase, AND the original gaps were found at a LIVE Pla
 
 ### Gaps Summary
 
+**✅ ALL GAPS RESOLVED — phase PASSED (live craft sign-off 2026-06-15).** The four live UAT checks were run by Davide at `localhost:3000` and all PASS; the craft clears the taste bar. Nothing outstanding. (The GAP-/WR- entries below are retained as a closure record — none remain open.)
+
 **Automated layer: FULL PASS — all 5 prior gaps closed in code.** Every gap-closure truth (12/12) and every ROADMAP success criterion (4/4) is observably true in the codebase:
 
 - **GAP-1 (placeholders read unfinished + "16:10" label):** static-SVG product skeletons now fill every stub; the dev ratio label is removed from `Placeholder` (no-CLS lock intact).
@@ -189,9 +192,9 @@ This is a visual marketing phase, AND the original gaps were found at a LIVE Pla
 
 Full suite GREEN (71 + 23 spot-checks), `/` builds `○` static, no anti-patterns, STUB LOCK + noun lock honored.
 
-**Why status is `human_needed`, not `passed`:** The gaps that put this phase into `gaps_found` last round were SUBJECTIVE-CRAFT gaps discovered at a live human review — not code defects. The code-level remedies are all in place and verified, but whether the new intentional-skeleton vocabulary actually *clears the taste bar* (the exact failure mode of Phase 2's fully-green-but-rejected hero) can only be judged with human eyes in a browser. Per the verification contract, an automated craft PASS must not be fabricated. The four live checks above (craft, mobile a11y feel, anchor landing, reflow) are the remaining gate. Engine stays frozen; marketing-surface only.
+**Craft gate (resolved):** The gaps that put this phase into `gaps_found` last round were SUBJECTIVE-CRAFT gaps discovered at a live human review — not code defects. The code-level remedies were all verified, and the remaining question (does the intentional-skeleton vocabulary *clear the taste bar* — the exact failure mode of Phase 2's fully-green-but-rejected hero?) was settled by the human gate: **Davide ran the live UAT at `/` on 2026-06-15 and APPROVED.** Engine stayed frozen; marketing-surface only.
 
-**Next:** Run the live UAT at `/`. If the craft clears → phase passes. If craft issues remain → `/gsd-plan-phase 3 --gaps` for another refinement round.
+**Outcome:** Phase 3 PASSED. → Phase 4 Proof & Conversion.
 
 ---
 

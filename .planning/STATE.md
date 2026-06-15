@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: "03-05 (final gap plan) DONE — applied the 03-04 product-skeleton primitives to all three story sections (Simulation frame filled + height-capped GAP-2; how-it-works steps + feature blocks show intentional skeletons GAP-1; feature rows top-aligned wider-shorter + denser rhythm GAP-3 component-level); IN-01 + WR-04 fixed; story suite 30/30 GREEN, all sections pure RSC, / stays ○ static. Phase 03 gap-closure complete (18/18 plans)"
-stopped_at: Completed 03-05-PLAN.md
-last_updated: "2026-06-15T11:31:30.000Z"
+status: ready_to_plan
+stopped_at: Phase 03 complete (9/9) — ready to discuss Phase 4
+last_updated: 2026-06-15T11:56:49.160Z
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 18
   completed_plans: 18
-  percent: 100
+  percent: 60
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE.md
 
 **Core value:** A refined, premium marketing landing that makes a creator instantly *get* Numen — "know if it'll pop before you post" — and click "Try it free."
-**Current focus:** Phase 03 — story-showcase
+**Current focus:** Phase 4 — proof & conversion
 
 ## Current Position
 
-Phase: 03 (story-showcase) — GAP CLOSURE COMPLETE
-Plan: 4 base done + all 5 gap plans (03-04, 03-05, 03-06, 03-07, 03-08) DONE
-Status: 03-05 (final gap plan) DONE — applied the 03-04 product-skeleton primitives to all three story sections: Simulation frame filled + height-capped (GAP-2), how-it-works steps + feature blocks show intentional skeletons not empty boxes (GAP-1), feature rows top-aligned wider-shorter + denser rhythm (GAP-3 component-level); IN-01 docblock + WR-04 brittle queries fixed; story suite 30/30 GREEN, all sections pure RSC, / stays ○ static
+Phase: 4
+Plan: Not started
+Status: Ready to plan
 Last activity: 2026-06-15
 
 Progress: [██████████] 100%
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 5
+- Total plans completed: 14
 - Average duration: —
 - Total execution time: —
 
@@ -45,6 +45,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
+| 03 | 9 | - | - |
 
 **Recent Trend:**
 

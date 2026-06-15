@@ -1,41 +1,42 @@
 ---
-status: partial
+status: resolved
 phase: 03-story-showcase
 source: [03-VERIFICATION.md]
 started: 2026-06-15T09:29:29Z
-updated: 2026-06-15T14:10:00Z
+updated: 2026-06-15T14:30:00Z
 re_review: true
-prior_cycle: "diagnosed 5 gaps (GAP-1..5) + WR-01/02/03 — all closed in code by 03-04..03-08; re-verification 4/4 criteria + 12/12 truths GREEN; awaiting live craft sign-off"
+prior_cycle: "diagnosed 5 gaps (GAP-1..5) + WR-01/02/03 — all closed in code by 03-04..03-08; re-verification 4/4 criteria + 12/12 truths GREEN; live craft sign-off APPROVED"
+resolution: "Davide ran the live re-review at localhost:3000 2026-06-15 and APPROVED — craft clears the taste bar; phase passes."
 ---
 
 ## Current Test
 
-[awaiting human live re-review — gap-closure code-verified GREEN, craft sign-off pending]
+[complete — live re-review APPROVED 2026-06-15; all 4 checks pass]
 
 ## Tests
 
 ### 1. Live craft re-review at `/` (≈1440px) — the gate the gaps came from
 expected: Open `/` (npm run dev) and scroll the story body — How it works → The Simulation → Features. The now-filled skeleton slots (3 step visuals; the device-framed Simulation window: gauge 87/"Strong" → 18-dot audience cloud + "68% watch-through" → Hook/Retention("drops at 0:07")/Shareability bars; the 4 framed feature visuals) read as "this is the real product, screenshot pending" — an intentional product skeleton vocabulary, NOT unfinished/broken boxes. The Simulation frame reads as a compact product window (no ~640px dead void). Body reads premium/calm/flat-warm at comfortable density. Clears the taste bar five prior attempts + the Phase-2 hero missed.
-result: [pending]
+result: passed (live re-review 2026-06-15 — Davide approved)
 
 ### 2. Mobile-nav a11y live keyboard check (≤375px)
 expected: Open the hamburger panel, then: (a) press Escape → panel closes and focus returns to the hamburger trigger; (b) reopen + Tab past the last item → focus wraps to the first and never escapes the panel; (c) from a mid-scroll position, open then close → page scroll/overflow restored to its prior value (not clobbered/jumped). No keyboard trap with scroll locked. (Unit tests 5/5 GREEN; this confirms the lived runtime feel.)
-result: [pending]
+result: passed (live re-review 2026-06-15 — Davide approved)
 
 ### 3. Anchor-scroll + section-offset live check (GAP-5)
 expected: Click each of the 5 header nav links AND the 5 footer Product links (How it works · The Simulation · Features · Pricing · FAQ). Each smooth-scrolls to its section and the heading clears the 65px sticky header by a comfortable, consistent offset (scroll-mt-20 = 80px) — no heading tucked under the bar. "Features" lands between The Simulation and Pricing.
-result: [pending]
+result: passed (live re-review 2026-06-15 — Davide approved)
 
 ### 4. Responsive reflow sanity (320px → desktop)
 expected: Steps stack 1-col on mobile → 3-col on desktop; feature rows stack copy-over-visual on mobile and alternate visual left/right on desktop (md:order flip); the Simulation window + skeleton internals + named-output chips reflow without overflow or layout shift. (Full mobile-first hardening is Phase 5 / FOUND-05 — this is a sanity reflow check.)
-result: [pending]
+result: passed (live re-review 2026-06-15 — Davide approved)
 
 ## Summary
 
 total: 4
-passed: 0
+passed: 4
 issues: 0
-pending: 4
+pending: 0
 skipped: 0
 blocked: 0
 
