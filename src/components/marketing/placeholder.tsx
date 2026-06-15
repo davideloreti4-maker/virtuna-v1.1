@@ -129,6 +129,8 @@ const Placeholder = React.forwardRef<HTMLDivElement, PlaceholderProps>(
             <video
               src={src}
               className="h-full w-full object-cover"
+              autoPlay
+              loop
               muted
               playsInline
               aria-label={label}

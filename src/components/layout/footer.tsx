@@ -67,7 +67,7 @@ export function Footer({ className }: FooterProps) {
 
           {/* 2 — Product anchors (mirror the header nav) */}
           <nav aria-label="Footer product links" className="flex flex-col gap-3">
-            <h2 className="text-sm font-semibold text-foreground">Product</h2>
+            <h3 className="text-sm font-semibold text-foreground">Product</h3>
             <ul className="flex flex-col gap-2">
               {NAV_LINKS.map((link) => (
                 <li key={link.href}>
@@ -85,7 +85,7 @@ export function Footer({ className }: FooterProps) {
           {/* 3 — Legal + social placeholders */}
           <div className="flex flex-col gap-6">
             <nav aria-label="Footer legal links" className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-foreground">Legal</h2>
+              <h3 className="text-sm font-semibold text-foreground">Legal</h3>
               <ul className="flex flex-col gap-2">
                 {LEGAL_LINKS.map((link) => (
                   <li key={link.label}>
@@ -101,7 +101,7 @@ export function Footer({ className }: FooterProps) {
             </nav>
 
             <nav aria-label="Footer social links" className="flex flex-col gap-3">
-              <h2 className="text-sm font-semibold text-foreground">Social</h2>
+              <h3 className="text-sm font-semibold text-foreground">Social</h3>
               <ul className="flex flex-col gap-2">
                 {SOCIAL_LINKS.map((link) => (
                   <li key={link.label}>
