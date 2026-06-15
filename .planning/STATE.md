@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-00-PLAN.md (Wave-0 Nyquist RED scaffold)
-last_updated: "2026-06-15T17:36:25.684Z"
+stopped_at: Completed 04-01-PLAN.md (social-proof strip + testimonials RSC)
+last_updated: "2026-06-15T17:40:00.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 04 (proof-conversion) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-06-15
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 03 P08 | ~6min | 1 task tasks | 2 files (gap-closure) files |
 | Phase 03 P05 | ~10min | 4 tasks | 7 files (gap-closure) |
 | Phase 04 P00 | 4min | 2 tasks | 6 files |
+| Phase 04 P01 | ~5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,8 @@ Recent decisions affecting current work:
 - [Phase 03-05]: 03-05: how-it-works steps + feature blocks now show intentional 03-04 product skeletons (GAP-1) in data-step-visual / data-feature-visual aspect-stable wrappers (skeletons carry no data-variant); feature rows top-align (items-start) at a wider-shorter aspect-[16/9] max-h-[300px] framed in BrowserChrome + denser gap-12 md:gap-16 row rhythm (GAP-3 component-level)
 - [Phase 03-05]: 03-05: WR-04 closed — the filled frame now also renders watch-through/Hook/Retention/drop/Shareability, so the simulation-showcase output assertions are scoped to the outputs <dl> via within(dl)+getAllByText; <h2> 'The Simulation' kept as the sole rendered /simulat/i node + a GAP-2 structural gate added (>=1 arc circle + >=6 circles + driver labels)
 - [Phase ?]: 04-00: data-testid anchors (testimonial-handle, testimonial-metric, cta-close-line, pricing-bullet) are the Wave-1 integration contract; stable ids (social-proof, testimonials, data-section=final-cta) are the 04-05 contract
+- [Phase 04-01]: SocialProofStrip: marquee aria-hidden wrapper at container level — logo wall decorative, trust stat carries accessible meaning; 6 logo slots for denser visual rhythm
+- [Phase 04-01]: TestimonialCard: article+blockquote semantics + data-testid=testimonial-metric/handle; zero import from ui/testimonial-card (cold-brand avoided); fictional placeholder testimonials (D-21/T-04-01-01 accept)
 
 ### Pending Todos
 
@@ -154,6 +157,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T17:36:25.681Z
-Stopped at: Completed 04-00-PLAN.md (Wave-0 Nyquist RED scaffold)
+Last session: 2026-06-15T17:40:00.000Z
+Stopped at: Completed 04-01-PLAN.md (social-proof strip + testimonials RSC)
 Resume file: None

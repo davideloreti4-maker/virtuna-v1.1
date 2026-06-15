@@ -160,7 +160,7 @@ Plans:
 
 **Wave 1** *(blocked on Wave 0; file-disjoint, parallel)*
 
-- [ ] 04-01-PLAN.md (wave 1) — social-proof strip (peer-count stat + reduced-motion-gated logo marquee) + bespoke flat-warm testimonials 3-card grid (PROOF-01, PROOF-02)
+- [x] 04-01-PLAN.md (wave 1) — social-proof strip (peer-count stat + reduced-motion-gated logo marquee) + bespoke flat-warm testimonials 3-card grid (PROOF-01, PROOF-02)
 - [ ] 04-02-PLAN.md (wave 1) — pricing teaser: bespoke flat-warm Starter + Pro cards (Pro "Most popular", placeholder $/mo + trial, both CTAs → SIGNUP_URL, no checkout machinery) (CONVERT-01)
 - [ ] 04-03-PLAN.md (wave 1) — FAQ: RSC wrapper + Radix single-open accordion client island, 6 objection-busting Q&A, cold tokens restyled flat-warm (CONVERT-03)
 - [ ] 04-04-PLAN.md (wave 1) — final full-width CTA band: serif close-line + "Try it free" CTA + risk-reducer microcopy + muted ScoreGaugeSkeleton echo (CONVERT-02)
