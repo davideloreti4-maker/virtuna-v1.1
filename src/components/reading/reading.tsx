@@ -6,16 +6,28 @@ import type {
   ApolloDimension,
   HeatmapPayload,
   HookDecomposition,
+  GeminiAudioSignals,
+  CtaSegmentResult,
 } from '@/lib/engine/types';
+import type { EmotionArcPoint } from '@/lib/engine/qwen/schemas';
 import { usePermalinkAnalysis } from '@/hooks/queries/use-permalink-analysis';
 import {
   buildPersonaNodes,
   buildSegmentGroups,
   worstBadGroupKey,
   averageWatchThrough,
-  formatTime,
+  // Retention composed-cluster derives (PURE, store-free — the curve recipe
+  // traced from AudienceNode L122–131 minus the client-weight recompute branch).
+  toRetentionCurve,
+  normalizeCurve,
+  findBiggestDrop,
+  totalDuration,
+  cohortDropFrame,
+  type SlotKey,
+  type CohortDropFrame,
 } from '@/components/board/audience/audience-derive';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 // Phase-3 transplanted LEAF visuals (NEVER a *Node/*Frame/*Hero — those drag
 // useBoardStore back, breaking the reading cluster's store-free invariant). Props
 // are re-derived here from the already-authorized `data`.
@@ -24,6 +36,10 @@ import { confidenceRange, deriveBehavioralTiles } from '@/components/board/verdi
 import { useComparisons } from '@/components/board/verdict/use-comparisons';
 import { PersonaGraph } from '@/components/board/_kit/PersonaGraph';
 import { StatTileRow, type StatTileData } from '@/components/board/_kit/StatTile';
+import { RetentionChart } from '@/components/board/audience/RetentionChart';
+import { SegmentTable } from '@/components/board/audience/SegmentTable';
+import { CraftFilmstrip } from '@/components/board/content-analysis/CraftFilmstrip';
+import { buildCells, audioMixCaption } from '@/components/board/content-analysis/content-analysis-derive';
 
 import { ThumbnailStrip } from './thumbnail-strip';
 import { AntiViralityHeader } from './anti-virality-header';
@@ -91,6 +107,31 @@ function readApollo(data: PredictionResult): PredictionResult['apollo_reasoning'
   const v = (data as { variants?: { apollo?: PredictionResult['apollo_reasoning'] } }).variants
     ?.apollo;
   return v ?? data.apollo_reasoning ?? null;
+}
+
+/** Whitelisted dual-read for the CraftFilmstrip's craft signals (audio + cta).
+ *  On the LIVE SSE PredictionResult they sit at the top level; the persisted
+ *  permalink row nests them under variants.craft (mirrors ContentAnalysisFrame
+ *  L79–99 — reading variants.craft alone left these blank on a fresh board, and
+ *  reading top-level alone leaves them blank on reload). emotion_arc is top-level
+ *  on both shapes today (RESEARCH Open-Q1 / A2). All three degrade cleanly when
+ *  absent — CraftFilmstrip renders a flat audio band + neutral cells, never throws. */
+type CraftVariants = {
+  variants?: { craft?: { audio_signals?: GeminiAudioSignals | null; cta_segment?: CtaSegmentResult | null } | null } | null;
+};
+function readCraftSignals(data: PredictionResult): {
+  arc: EmotionArcPoint[];
+  audio: GeminiAudioSignals | null;
+  ctaPresent: boolean;
+} {
+  const craft = (data as CraftVariants).variants?.craft ?? null;
+  const audio = craft?.audio_signals ?? data.audio_signals ?? null;
+  const cta = craft?.cta_segment ?? data.cta_segment ?? null;
+  return {
+    arc: data.emotion_arc ?? [],
+    audio,
+    ctaPresent: cta?.cta_present ?? false,
+  };
 }
 
 /** Hero-owned watch% (READ-04). Container-computed so it survives the empty-
@@ -227,12 +268,7 @@ function PanelContent({
     case 'hook':
       return <HookPanel hook={data.hook_decomposition ?? null} dims={dims} />;
     case 'retention':
-      return (
-        <RetentionPanel
-          heatmap={data.heatmap ?? null}
-          dropIndices={data.dropoff_segment_indices}
-        />
-      );
+      return <RetentionPanel data={data} />;
     case 'shareability':
       return (
         <ShareabilityPanel
@@ -339,36 +375,110 @@ function HookPanel({
   );
 }
 
-function RetentionPanel({
-  heatmap,
-  dropIndices,
-}: {
-  heatmap: HeatmapPayload | null;
-  dropIndices: number[] | undefined;
-}) {
+/**
+ * RetentionPanel (D-03/D-04/D-06) — the SIGNATURE drill-down: the composed "watch
+ * journey" on ONE aligned, scrollable timeline. Top-to-bottom:
+ *   1. RetentionChart  — the survival curve + its built-in niche/ghost overlay +
+ *      coral drop mark + the time-aligned keyframe strip (attention across time).
+ *   2. CraftFilmstrip  — the energy-graded keyframe cells (what's on screen across
+ *      the SAME timeline) + the audio activity band.
+ *   3. SegmentTable    — the who-leaves cohort breakdown + per-cohort drop frames.
+ * The relationship IS the point: "you lose them at 0:08 → here's the frame + the
+ * cohort at 0:08." All three consume the SAME heatmap.segments + the SAME filmstrips
+ * map, so the timeline aligns by construction (D-06).
+ *
+ * Store-free: the curve recipe is traced from AudienceNode L122–131 MINUS the
+ * client-weight recompute branch (the board-only override UI). Filmstrips come from
+ * usePermalinkFilmstrips() — a separate cached query keyed by the route id, NOT a
+ * second analysis subscription (RESEARCH § Mount Mechanics). NEVER imports a
+ * *Node/*Frame (Pitfall 1).
+ *
+ * Units (Pitfall 2 — the 0:08-vs-0:00 trap): `total` is SECONDS (totalDuration →
+ * last segment t_end); the drop time the charts render is `seg.t_start` (SECONDS).
+ * The charts format internally via audience-derive.formatTime / formatTimeSec — we
+ * pass SECONDS values only, never a ms field.
+ *
+ * D-13 guard FIRST (Pitfall 5): empty curve AND no segments → PanelEmpty (never an
+ * empty SVG). Per-block degradation below the guard: the filmstrip self-gates to
+ * neutral cells on no-keyframes; SegmentTable hides zero-count cohorts. No throw on
+ * null heatmap / null curve / apollo-null.
+ *
+ * READ-10: reads ONLY the whitelisted derived inputs (curve from weighted_curve,
+ * segments, emotion_arc, audio_signals, cta_segment, persona groups) — the raw
+ * PredictionResult is never spread into JSX.
+ */
+function RetentionPanel({ data }: { data: PredictionResult }) {
+  // Keyframe map — store-free cached query (reads the route id internally).
+  const filmstrips = usePermalinkFilmstrips();
+
+  const heatmap = data.heatmap ?? null;
   const segments = heatmap?.segments ?? [];
-  // Drop segments as a plain text list (where attention falls across the video).
-  const drops = (dropIndices ?? [])
-    .map((i) => segments[i])
-    .filter((s): s is NonNullable<typeof s> => Boolean(s));
-  const list = drops.length > 0 ? drops : segments;
-  if (list.length === 0) return <PanelEmpty />;
+
+  // Survival curve (the recipe, store-free). raw weighted_curve → normalized →
+  // monotonic survival; the biggest drop is found on the re-normalized survival.
+  // An empty weighted_curve ([]) is treated as no-curve (→ null), not a 0-length
+  // SVG path. (toRetentionCurve([]) === [] otherwise leaks past the guard.)
+  const raw = heatmap?.weighted_curve ?? null;
+  const curve = raw && raw.length > 0 ? toRetentionCurve(normalizeCurve(raw)) : null;
+  const drop = curve ? findBiggestDrop(normalizeCurve(curve)) : null;
+  const total = totalDuration(heatmap?.segments, 30); // SECONDS
+
+  // D-13 honesty gate FIRST (Pitfall 5): the composed "watch journey" is a
+  // timeline — with no segments there is no timeline to align the curve/filmstrip/
+  // table to, and with no curve there is no attention story. Either missing →
+  // PanelEmpty (the calm copy), NEVER an empty SVG / empty table / fabricated 0.
+  // This is what degrades makeEmptySegmentsResult (segments:[]) AND
+  // makeEmptyHeatmapResult (heatmap:null → segments:[], curve:null).
+  if (segments.length === 0 || curve == null) return <PanelEmpty />;
+
+  // Flat niche-completion fallback (0–1) for the ghost line when no niche personas
+  // exist; the >1.5 heuristic distinguishes a 0–100 value from a 0–1 fraction.
+  const ncp = heatmap?.niche_completion_pct;
+  const nicheCompletionPct =
+    ncp != null ? (ncp > 1.5 ? ncp / 100 : ncp) : null;
+
+  // CraftFilmstrip inputs — arc/audio/cta via the whitelisted dual-read (A2: arc/
+  // audio MAY be flat on a reloaded upload if they land under variants; degrades
+  // to a flat audio band + neutral cells, never a throw — flagged for 03-06 UAT).
+  const { arc, audio, ctaPresent } = readCraftSignals(data);
+  const cells = buildCells(segments, filmstrips, arc, total);
+
+  // SegmentTable inputs — the who-leaves cohorts + per-cohort drop frames.
+  const groups = buildSegmentGroups(heatmap, data.persona_simulation_results);
+  const badKey = worstBadGroupKey(groups);
+  const slotKeys: SlotKey[] = ['fyp', 'niche', 'loyalist', 'cross_niche'];
+  const cohortFrames: Partial<Record<SlotKey, CohortDropFrame>> = {};
+  for (const key of slotKeys) {
+    const frame = cohortDropFrame(heatmap, key, filmstrips);
+    if (frame) cohortFrames[key] = frame;
+  }
+
+  // ONE aligned timeline, scrollable in the DrillSheet (its content is already
+  // overflow-y-auto). gap-6 (24px) between the three DISTINCT visuals (D-06 rhythm).
+  // testid is the cluster's own (the native `panel-retention` list is retired —
+  // the 03-05 test asserts that testid is GONE once the rich charts mount).
   return (
-    <ul data-testid="panel-retention" className="flex flex-col gap-1 pt-2">
-      {list.map((seg) => (
-        <li
-          key={seg.idx}
-          className="flex items-center justify-between gap-3 py-1 text-[13px]"
-        >
-          <span className="tabular-nums text-foreground-muted">
-            {formatTime(seg.t_start)}
-          </span>
-          <span className="flex-1 truncate text-foreground-secondary">
-            {seg.label || `Segment ${seg.idx + 1}`}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <div data-testid="panel-retention-cluster" className="flex flex-col gap-6 pt-2">
+      <RetentionChart
+        curve={curve}
+        heatmap={heatmap}
+        drop={drop}
+        totalDurationSec={total}
+        filmstrips={filmstrips}
+        nicheCompletionPct={nicheCompletionPct}
+        isLoading={false}
+      />
+      <CraftFilmstrip
+        cells={cells}
+        durationSec={total}
+        arc={arc}
+        audio={audio}
+        audioCaption={audio ? audioMixCaption(audio) : ''}
+        ctaPresent={ctaPresent}
+        isLoading={false}
+      />
+      <SegmentTable groups={groups} badKey={badKey} cohortFrames={cohortFrames} isLoading={false} />
+    </div>
   );
 }
 

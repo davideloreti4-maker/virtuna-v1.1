@@ -101,6 +101,13 @@ vi.mock('@/components/board/verdict/use-comparisons', () => ({
     data: { history: [], niche: { median: 58, p75: 74, count: 120, histogram: [2, 4, 8, 14, 22, 26, 18, 12, 8, 6] } },
   }),
 }));
+// The retention composed cluster (03-05) runs a panel-local usePermalinkFilmstrips()
+// (useQuery). Mock it so opening the retention drill panel needs no QueryClientProvider.
+// A real signed URL here is the richest filmstrip surface for the READ-10 sweep — and
+// a URL string is NOT a cut/jargon field (the sweep asserts no banned sentinels leak).
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({ 0: 'https://example.test/frame-0.jpg', 2: 'https://example.test/frame-2.jpg' }),
+}));
 
 import { Reading } from '../reading';
 

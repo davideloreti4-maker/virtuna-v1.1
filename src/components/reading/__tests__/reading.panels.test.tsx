@@ -9,6 +9,7 @@ import {
   makeApolloNullResult,
   makeEmptyPersonasResult,
   makeEmptySegmentsResult,
+  makeEmptyHeatmapResult,
   makeNoBehavioralResult,
 } from './fixtures/reading-fixture';
 
@@ -22,6 +23,17 @@ let mockComparisons: { history: number[]; niche: null | { median: number; p75: n
 };
 vi.mock('@/components/board/verdict/use-comparisons', () => ({
   useComparisons: () => ({ data: mockComparisons }),
+}));
+
+// The retention composed cluster (03-05) reads its keyframe map from a panel-local
+// usePermalinkFilmstrips() (lazy useQuery → fetch /api/analyze/{id}/filmstrips).
+// Mock it so the cluster mounts without a QueryClientProvider and no real network is
+// hit. `{}` (no frames) is the realistic test default — the heatmap segments exist
+// (so the curve + cohorts render), the filmstrip self-gates to neutral cells with no
+// keyframes (the graceful, no-grey-cell path). Mirrors the useComparisons mock above.
+let mockFilmstrips: Record<number, string> = {};
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => mockFilmstrips,
 }));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,6 +70,7 @@ import { Reading } from '../reading';
 beforeEach(() => {
   mockState = { id: 'sim-1', data: makeReadingResult(), isLoading: false };
   mockComparisons = { history: [], niche: null };
+  mockFilmstrips = {};
 });
 
 /** Calm degradation copy every transplanted visual falls to (02-UI-SPEC / D-13). */
@@ -111,17 +124,24 @@ describe('drill-down: hook panel (READ-09)', () => {
 // retention panel — tap the Retention driver row → DrillSheet("Retention")
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: retention panel (READ-09)', () => {
-  it('renders on real data without throwing — segment list mounts', async () => {
+  it('renders on real data without throwing — the composed watch-journey cluster mounts', async () => {
+    // 03-05 swap: the P2 native drop-list (panel-retention) is retired; the
+    // Retention row now opens the composed cluster (curve + filmstrip + table).
     const user = userEvent.setup();
     render(<Reading />);
 
     await user.click(screen.getByTestId('driver-row-retention'));
     const dialog = await screen.findByRole('dialog', { name: 'Retention' });
-    expect(within(dialog).getByTestId('panel-retention')).toBeInTheDocument();
+    // All three rich visuals mount on ONE aligned timeline; the native list is gone.
+    expect(within(dialog).getByTestId('retention-chart')).toBeInTheDocument();
+    expect(within(dialog).getByTestId('craft-filmstrip')).toBeInTheDocument();
+    expect(within(dialog).getByTestId('segment-table')).toBeInTheDocument();
+    expect(within(dialog).queryByTestId('panel-retention')).not.toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on empty segments (no throw, no empty SVG shell)', async () => {
-    // segments:[] and no drop indices → no curve / no rows → PanelEmpty.
+    // makeEmptySegmentsResult → heatmap.segments:[] → no timeline to align the
+    // composed cluster to → PanelEmpty (the Pitfall-5 guard), never an empty SVG.
     mockState = {
       id: 'sim-1',
       data: makeEmptySegmentsResult({ dropoff_segment_indices: undefined }),
@@ -133,16 +153,56 @@ describe('drill-down: retention panel (READ-09)', () => {
     await user.click(screen.getByTestId('driver-row-retention'));
     const dialog = await screen.findByRole('dialog', { name: 'Retention' });
     expect(within(dialog).getByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
+    expect(within(dialog).queryByTestId('retention-chart')).not.toBeInTheDocument();
+  });
+
+  it('degrades to PanelEmpty on a null heatmap (no throw)', async () => {
+    // makeEmptyHeatmapResult → heatmap:null → segments:[] + curve:null → PanelEmpty.
+    mockState = {
+      id: 'sim-1',
+      data: makeEmptyHeatmapResult({ dropoff_segment_indices: undefined }),
+      isLoading: false,
+    };
+    const user = userEvent.setup();
+    expect(() => render(<Reading />)).not.toThrow();
+
+    await user.click(screen.getByTestId('driver-row-retention'));
+    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
+    expect(within(dialog).getByText(PANEL_EMPTY_COPY)).toBeInTheDocument();
+    expect(within(dialog).queryByTestId('retention-chart')).not.toBeInTheDocument();
+  });
+
+  // ── Rich-visual mounts (03-05 swaps the native list for the composed
+  //    "watch journey" cluster: RetentionChart + CraftFilmstrip + SegmentTable). ──
+  it('mounts RetentionChart (curve + niche/ghost overlay) on real data', async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByTestId('driver-row-retention'));
+    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
+    // The composed cluster replaces the native segment list with the rich chart.
+    expect(within(dialog).getByTestId('retention-chart')).toBeInTheDocument();
     expect(within(dialog).queryByTestId('panel-retention')).not.toBeInTheDocument();
   });
 
-  // ── Rich-visual mounts (03-04/03-05 swap the native list for the composed
-  //    "watch journey" cluster). Activate these when the charts are wired. ──
-  it.todo(
-    'retention panel mounts RetentionChart (curve + niche/ghost overlay) on real data (wired in 03-04/03-05)',
-  );
-  it.todo('retention panel mounts CraftFilmstrip timeline-paired with the curve (D-04, 03-04/03-05)');
-  it.todo('retention panel mounts SegmentTable (drop-segment breakdown) (03-04/03-05)');
+  it('mounts CraftFilmstrip timeline-paired with the curve (D-04)', async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByTestId('driver-row-retention'));
+    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
+    // The filmstrip consumes the SAME segments + filmstrips map → aligned timeline.
+    expect(within(dialog).getByTestId('craft-filmstrip')).toBeInTheDocument();
+  });
+
+  it('mounts SegmentTable (who-leaves cohort breakdown)', async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    await user.click(screen.getByTestId('driver-row-retention'));
+    const dialog = await screen.findByRole('dialog', { name: 'Retention' });
+    expect(within(dialog).getByTestId('segment-table')).toBeInTheDocument();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
