@@ -98,7 +98,7 @@ Plans:
 
 ### Phase 3: Story & Showcase
 
-**Goal**: Tell the product story through placeholder frames — a three-step "how it works", a "the reading" showcase of the output, and three to four feature deep-dive blocks that each pair a benefit with a placeholder visual.
+**Goal**: Tell the product story through placeholder frames — a three-step "how it works", a "the reading"/Simulation showcase of the output, and three to four feature deep-dive blocks that each pair a benefit with a placeholder visual.
 **Depends on**: Phase 1
 **Requirements**: STORY-01, STORY-02, STORY-03
 **Success Criteria** (what must be TRUE):
@@ -108,7 +108,7 @@ Plans:
   3. Three to four feature deep-dive blocks each pair a clear benefit with a placeholder visual
   4. Every product visual in these sections is a labelled placeholder slot from the Phase 1 system, swappable later with no layout shift
 
-**Plans**: 4 plans (4 waves)
+**Plans**: 4 base plans (4 waves) + 5 gap-closure plans (2 waves) — live UAT 2026-06-15 found visual-craft + a11y gaps; refinements keep the STUB LOCK (no real assets) and the "Simulation" noun.
 **UI hint**: yes
 
 Plans:
@@ -117,6 +117,19 @@ Plans:
 - [x] 03-01-PLAN.md (wave 1) — "How it works" three-step section filling #how-it-works (STORY-01)
 - [x] 03-02-PLAN.md (wave 2) — "The Simulation" output showcase filling #the-simulation (STORY-02)
 - [x] 03-03-PLAN.md (wave 3) — feature deep-dive blocks + new #features section + "Features" nav anchor (header + footer) + BLOCKING static-build gate (STORY-03)
+
+**Gap closure** *(from 03-VERIFICATION.md live UAT — `gap_closure: true`)*
+
+**Wave 1** *(file-disjoint, parallel)*
+
+- [ ] 03-04-PLAN.md (wave 1) — static-SVG product-skeleton primitives (score-gauge / audience-cloud / driver-rows / device-chrome) + remove the "16:10" dev label from the marketing Placeholder (GAP-1 primitives, IN-04)
+- [ ] 03-06-PLAN.md (wave 1) — page rhythm: tighter section padding (GAP-3 page-level) + `scroll-margin-top` anchors (GAP-5) + refreshed docblock (IN-02)
+- [ ] 03-07-PLAN.md (wave 1) — mobile-nav a11y: Escape-close + focus trap + focus restore (GAP-4 / WR-03) + scroll-lock save/restore (WR-02) + shared `src/lib/nav.ts` constant (IN-03)
+- [ ] 03-08-PLAN.md (wave 1) — hero noun lock: "Numen reading" → "Numen Simulation" + test assertion (WR-01)
+
+**Wave 2** *(blocked on 03-04)*
+
+- [ ] 03-05-PLAN.md (wave 2, depends 03-04) — apply skeletons + craft polish to the 3 story sections: fill the Simulation device frame (GAP-2), step skeletons (GAP-1), feature-block balance (GAP-3 component-level) + docblock (IN-01) + de-brittle tests (WR-04)
 
 ### Phase 4: Proof & Conversion
 
@@ -172,6 +185,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
-| 3. Story & Showcase | 4/4 | Complete   | 2026-06-15 |
+| 3. Story & Showcase | 4/4 base · 0/5 gap-closure | Gaps found (UAT) | 2026-06-15 |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
