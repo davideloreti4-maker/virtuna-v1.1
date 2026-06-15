@@ -1,5 +1,9 @@
 import { FadeInUp } from "@/components/motion";
-import { Placeholder } from "@/components/marketing/placeholder";
+import {
+  ScoreGaugeSkeleton,
+  AudienceCloudSkeleton,
+  DriverRowsSkeleton,
+} from "@/components/marketing/story/skeletons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -16,20 +20,24 @@ import { cn } from "@/lib/utils";
  *   1. Sans `<h2>` reading EXACTLY "The Simulation" (LOCKED — matches the
  *      `#the-simulation` anchor; the Newsreader serif stays precious to the
  *      hero, D-C) + a one-line cream-secondary subhead.
- *   2. ONE prominent flat-warm device-framed <Placeholder> depicting the SHAPE
+ *   2. ONE prominent flat-warm device-framed product visual depicting the SHAPE
  *      of a Numen Simulation — the browser-window chrome reused from the hero
  *      (overflow-hidden window + slim bar with 3 dots + a numen.app pill + the
- *      layered DARK drop shadow + the faint warm "seat"). The nested Placeholder
- *      gets `rounded-none border-0` so the frame owns the chrome. Swappable for
- *      a real desktop screenshot later via the one `src` prop (FOUND-03).
+ *      layered DARK drop shadow + the faint warm "seat"). The window body is
+ *      filled with the 03-04 product-skeleton primitives, top-to-bottom:
+ *      ScoreGaugeSkeleton (the hero number) → AudienceCloudSkeleton (with its
+ *      "watch-through" caption) beside DriverRowsSkeleton (Hook · Retention ·
+ *      Shareability). The body is height-capped so the frame reads as a compact
+ *      product window, not a ~640px empty void (GAP-2). The skeletons are static
+ *      SVG set-dressing, swappable for a real desktop screenshot later (FOUND-03).
  *   3. The THREE named outputs surfaced as labelled text chips beneath:
- *      Audience simulation · Watch-through % · Hook · Retention (where viewers
+ *      Audience reaction · Watch-through % · Hook · Retention (where viewers
  *      drop) · Shareability.
  *
  * NO real product component is imported — none of the retired product UI trees
  * (the board, the reading view, the viral results), and no engine or data hook.
  * The canonical IA was a SHAPE reference read during research, never an import
- * (anti-pattern guard / D-D). The frame is a labelled Placeholder, no live read.
+ * (anti-pattern guard / D-D). The skeletons are pure static set-dressing.
  *
  * Coral (`text-accent`) is kept precious (A6) — not used here. Reference
  * semantic tokens only; no hardcoded hex (except the hero's explicit, commented
@@ -108,26 +116,33 @@ export function SimulationShowcase({ className }: { className?: string }) {
             {/* spacer keeps the address pill optically centered vs the dots */}
             <span className="w-[42px]" aria-hidden="true" />
           </div>
-          {/* window body — the Simulation screenshot slot (swappable via `src`).
-              rounded-none + border-0 so the frame owns the chrome (hero pattern,
-              hero.tsx line 133). The label deliberately avoids "Simulat*": the
-              LOCKED <h2>"The Simulation" must be the single /simulat/i text node
-              the 03-00 test resolves, so the stand-in caption reads "Your
-              prediction" (mirrors how-it-works step 3). */}
-          <Placeholder
-            variant="image"
-            aspect="16/10"
-            label="Your prediction"
-            className="rounded-none border-0 bg-surface"
-          />
+          {/* window body — filled with the 03-04 product-skeleton primitives so
+              it reads as the SHAPE of a Numen Simulation (gauge → cloud+watch% →
+              driver rows), not an empty void. HEIGHT-CAPPED (max-h, GAP-2) so the
+              frame is a compact product window, not a ~640px empty rectangle. The
+              skeletons carry no "Simulat*" text — the LOCKED <h2>"The Simulation"
+              stays the single /simulat/i text node the 03-00 test resolves. */}
+          <div className="grid max-h-[460px] gap-6 overflow-hidden bg-surface p-6 md:p-8">
+            {/* hero number — full-width on top */}
+            <div className="flex justify-center">
+              <ScoreGaugeSkeleton />
+            </div>
+            {/* cloud + driver rows two-up on md, stacked on mobile */}
+            <div className="grid gap-6 md:grid-cols-2 md:items-start">
+              <AudienceCloudSkeleton />
+              <DriverRowsSkeleton />
+            </div>
+          </div>
         </div>
       </FadeInUp>
 
       {/* 3 — the three named outputs as labelled chips beneath the frame. Stacks
           on mobile, 3-up on desktop (responsive by construction, Pitfall 6 — no
           fixed pixel widths). Cream-secondary labels + cream-muted details; no
-          coral (A6). The stable tokens the 03-00 test asserts — audience+simulat,
-          watch-through %, Hook, Retention + drop, Shareability — all appear. */}
+          coral (A6). The stable tokens the 03-00 test asserts — audience, Hook,
+          Retention + drop, Shareability — appear here AND in the filled-frame
+          skeleton above, so the showcase test queries those tokens with
+          getAllByText/within(dl) (WR-04), not strict single-match getByText. */}
       <dl className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
         {NAMED_OUTPUTS.map((o) => (
           <div
