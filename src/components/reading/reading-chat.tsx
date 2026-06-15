@@ -102,6 +102,19 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
     [submit],
   );
 
+  // Seed a quick-prompt INTO the composer (P5 behavior, kept over fire-immediately):
+  // the user can edit before sending, and the chips stay available for every turn.
+  const seedPrompt = useCallback((prompt: string) => {
+    setValue(prompt);
+    requestAnimationFrame(() => {
+      const ta = taRef.current;
+      if (!ta) return;
+      ta.focus();
+      // Drop the caret at the end so editing continues naturally.
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    });
+  }, []);
+
   return (
     <section data-testid="reading-chat" className="flex flex-col gap-5">
       {/* divider into the conversation */}
@@ -130,21 +143,20 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
         </div>
       )}
 
-      {/* seed prompt chips — only before the first turn */}
-      {!hasThread && (
-        <div className="flex flex-wrap gap-2" data-testid="reading-chat-seeds">
-          {SEED_PROMPTS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => send(p)}
-              className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* seed prompt chips — seed the composer (editable) and stay available for
+          every turn, so a quick prompt is always a tap away. */}
+      <div className="flex flex-wrap gap-2" data-testid="reading-chat-seeds">
+        {SEED_PROMPTS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => seedPrompt(p)}
+            className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+          >
+            {p}
+          </button>
+        ))}
+      </div>
 
       {/* scroll anchor — keeps the latest turn visible above the fixed composer */}
       <div ref={endRef} aria-hidden className="h-0" />

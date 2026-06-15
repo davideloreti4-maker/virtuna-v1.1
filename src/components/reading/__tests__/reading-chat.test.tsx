@@ -29,16 +29,19 @@ beforeEach(() => {
 });
 
 describe('ReadingChat — persistent follow-up thread (A3)', () => {
-  it('empty thread: shows seed chips + a disabled send, and a seed click sends it', async () => {
+  it('empty thread: shows seed chips, and a seed click SEEDS the composer (editable, not auto-sent)', async () => {
     const user = userEvent.setup();
     render(<ReadingChat analysisId="sim-1" />);
 
     // Composer is always present (the whole point: it never disappears).
-    expect(screen.getByRole('textbox', { name: /ask about this simulation/i })).toBeInTheDocument();
+    const box = screen.getByRole('textbox', { name: /ask about this simulation/i });
+    expect(box).toBeInTheDocument();
 
     const seeds = screen.getByTestId('reading-chat-seeds');
     await user.click(within(seeds).getByText('Why do viewers drop off?'));
-    expect(send).toHaveBeenCalledWith('Why do viewers drop off?');
+    // P5 behavior kept: the chip populates the composer for editing, it does NOT fire.
+    expect((box as HTMLTextAreaElement).value).toBe('Why do viewers drop off?');
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('typing then Enter sends the message and clears the field', async () => {
@@ -70,8 +73,8 @@ describe('ReadingChat — persistent follow-up thread (A3)', () => {
     expect(within(thread).getByText(/Because the hook is weak\./)).toBeInTheDocument();
     // The machine directive must never render as visible text.
     expect(within(thread).queryByText(/FRAME:Audience/)).not.toBeInTheDocument();
-    // Seed chips are gone once a thread exists.
-    expect(screen.queryByTestId('reading-chat-seeds')).not.toBeInTheDocument();
+    // Seed chips PERSIST after the first turn (a quick prompt stays a tap away).
+    expect(screen.getByTestId('reading-chat-seeds')).toBeInTheDocument();
   });
 
   it('while streaming, the composer offers Stop instead of Send', () => {
