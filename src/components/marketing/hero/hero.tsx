@@ -84,43 +84,50 @@ export function Hero({ className }: HeroProps) {
         </a>
       </div>
 
-      {/* 4 — Hero showcase (PROTOTYPE composition): the product, shown.
-          desktop window = Numen's READING (the output) · phone in front = the
-          TikTok you paste (the input). Reads left→right as paste → prediction.
-          Both surfaces are swappable <Placeholder> slots (FOUND-03); the device
-          chrome is flat-warm set-dressing. The canvas "crowd→score" moment is
-          retired pending re-plan. */}
-      <div className="relative mt-4 w-full max-w-4xl pb-12 sm:pb-16">
-        {/* Desktop window — the reading (output) */}
-        <div className="overflow-hidden rounded-2xl border border-border shadow-float">
-          {/* window chrome */}
-          <div className="flex items-center gap-2 border-b border-border bg-surface px-4 py-3">
-            <span className="flex gap-2" aria-hidden="true">
-              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
-              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
-              <span className="h-3 w-3 rounded-full bg-foreground-muted/30" />
-            </span>
-            <span className="mx-auto rounded-md bg-background px-4 py-1 text-xs text-foreground-muted">
-              numen.app
-            </span>
+      {/* 4 — Hero showcase: the product, shown. desktop window = Numen's
+          READING (the output) · phone in front = the TikTok you paste (the
+          input). Reads left→right as paste → prediction. Both screens are
+          swappable <Placeholder> slots (FOUND-03) — real desktop/mobile
+          screenshots or video drop in via the one `src` prop later; the device
+          chrome + depth here is the permanent set-dressing. */}
+      <div className="relative mt-6 w-full max-w-5xl pb-10 sm:pb-14">
+        {/* Desktop window — the reading (output). Sits inset from the left so
+            the phone has room to overlap the lower-right without crowding. */}
+        <div className="mr-auto w-[88%] sm:w-[84%]">
+          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-[0_30px_60px_-18px_rgba(0,0,0,0.65),0_10px_22px_-10px_rgba(0,0,0,0.45)]">
+            {/* window chrome — slim browser bar */}
+            <div className="flex items-center border-b border-border bg-surface px-4 py-2.5">
+              <span className="flex gap-2" aria-hidden="true">
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
+                <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/25" />
+              </span>
+              <span className="mx-auto rounded-md bg-background px-4 py-1 font-mono text-[11px] tracking-wide text-foreground-muted">
+                numen.app
+              </span>
+              {/* spacer keeps the address pill optically centered vs the dots */}
+              <span className="w-[42px]" aria-hidden="true" />
+            </div>
+            {/* window body — desktop reading screenshot slot */}
+            <Placeholder
+              variant="image"
+              aspect="16/10"
+              label="Numen reading"
+              className="rounded-none border-0 bg-background-elevated"
+            />
           </div>
-          {/* window body — reading placeholder */}
-          <Placeholder
-            variant="image"
-            aspect="16/9"
-            label="Numen reading"
-            className="rounded-none border-0"
-          />
         </div>
 
-        {/* Phone — your TikTok (input), in front of the window's lower-left */}
-        <div className="absolute bottom-0 left-0 w-[22%] min-w-[108px] sm:left-4">
-          <div className="overflow-hidden rounded-[1.75rem] border-[6px] border-background-elevated bg-background-elevated shadow-float">
+        {/* Phone — your TikTok (input), in front of the window's lower-right.
+            Sibling of the window (not a child) so it overflows cleanly; its own
+            deeper shadow reads as "in front". */}
+        <div className="absolute bottom-0 right-0 w-[19%] min-w-[112px] sm:right-2">
+          <div className="overflow-hidden rounded-[2rem] border-[5px] border-background-elevated bg-background-elevated shadow-[0_22px_44px_-12px_rgba(0,0,0,0.8)]">
             <Placeholder
               variant="video"
               aspect="9/16"
               label="Your TikTok"
-              className="rounded-[1.3rem] border-0"
+              className="rounded-[1.55rem] border-0"
             />
           </div>
         </div>
