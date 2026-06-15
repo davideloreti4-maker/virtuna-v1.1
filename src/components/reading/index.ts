@@ -4,6 +4,9 @@
 // reuse without reaching into individual files.
 
 export { Reading } from './reading';
+export { ReadingThread } from './reading-thread';
+export { FollowUpThread } from './follow-up-thread';
+export { FollowUpProvider, useFollowUp } from './follow-up-context';
 
 export { ScoreGauge } from './score-gauge';
 export { PersonaCloud } from './persona-cloud';

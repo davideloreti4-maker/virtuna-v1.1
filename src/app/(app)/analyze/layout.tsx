@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { Reading } from '@/components/reading';
+import { ReadingThread } from '@/components/reading';
 
 /**
  * Shared layout for /analyze and /analyze/[id].
@@ -20,14 +20,19 @@ import { Reading } from '@/components/reading';
  * Phase-1 AppShell composer-centered shell (from (app)/layout.tsx) owns the
  * screen. With an id, the Reading composes its vertical thread inside the
  * AppShell 760px column.
+ *
+ * PHASE 5 — the mount is now <ReadingThread>, which wraps <Reading> with the
+ * follow-up tail + the bottom-pinned composer (shared chat state). The thread/
+ * composer appear only once the Simulation is complete; before that ReadingThread
+ * renders just the Reading (its skeleton/states), unchanged.
  */
 export default function AnalyzeLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={null}>
-      <Reading />
+      <ReadingThread />
       {/* `children` from page.tsx / [id]/page.tsx are metadata-only server shells
           (both return null). Kept here only to satisfy Next.js's layout/page
-          contract; all UI lives in <Reading>. */}
+          contract; all UI lives in <ReadingThread>. */}
       <div className="sr-only">{children}</div>
     </Suspense>
   );

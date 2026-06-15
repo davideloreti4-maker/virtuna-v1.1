@@ -38,6 +38,7 @@ import { createClient } from "@/lib/supabase/client";
 // server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import { useFollowUp } from "@/components/reading/follow-up-context";
 
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
@@ -61,10 +62,21 @@ export function Composer({ className }: ComposerProps) {
 
   const stream = useAnalysisStream();
 
+  // Phase 5: inside a Simulation thread (pinned + a FollowUpProvider present) the
+  // composer becomes the follow-up CHAT input — text goes to "Ask the expert",
+  // NOT a new analysis. On /home (no provider) it stays the analysis composer.
+  const followUp = useFollowUp();
+  const isFollowUp = layout === "pinned" && followUp != null;
+
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Input binds to the shared draft in follow-up mode (so chips can seed it),
+  // to local url state otherwise.
+  const inputValue = isFollowUp ? followUp!.draft : url;
+  const onInputChange = isFollowUp ? followUp!.setDraft : setUrl;
 
   // URL validity: empty is "neutral" (no error, just disabled); non-empty +
   // non-TikTok shows the D-21 reject; a valid TikTok URL enables submit.
@@ -76,7 +88,10 @@ export function Composer({ className }: ComposerProps) {
   // Submit is enabled when there's a valid TikTok URL OR a staged upload, and
   // we're not mid-submit. (Upload validity is enforced by VideoUpload itself —
   // it only calls onFileSelect for an accepted MP4/MOV/WebM under 200MB.)
-  const canSubmit = (isValidTikTok || file !== null) && !submitting;
+  // In follow-up mode: any non-empty draft, not while a response streams.
+  const canSubmit = isFollowUp
+    ? followUp!.draft.trim().length > 0 && !followUp!.isStreaming
+    : (isValidTikTok || file !== null) && !submitting;
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -106,6 +121,12 @@ export function Composer({ className }: ComposerProps) {
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths (no text mode, no intent).
   const handleSubmit = useCallback(async () => {
+    // Phase 5 follow-up: send the draft to "Ask the expert"; no nav, no analysis.
+    if (isFollowUp) {
+      followUp!.send(followUp!.draft);
+      return;
+    }
+
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
       setSubmitting(true);
@@ -165,7 +186,7 @@ export function Composer({ className }: ComposerProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [file, isValidTikTok, trimmedUrl, stream]);
+  }, [file, isValidTikTok, trimmedUrl, stream, isFollowUp, followUp]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,42 +218,47 @@ export function Composer({ className }: ComposerProps) {
       >
         {/* Upload drop zone — VideoUpload (bare) is always mounted (so its file
             input is part of the composer); the + control reveals/hides it. A
-            staged file forces it visible so the preview never hides. */}
-        <div
-          className={cn(
-            "overflow-hidden",
-            showUpload || file
-              ? "mb-2 border-b border-white/[0.06] pb-2"
-              : "hidden",
-          )}
-        >
-          <VideoUpload bare file={file} onFileSelect={setFile} />
-        </div>
-
-        <div className="flex items-end gap-2">
-          {/* + upload toggle (D-22). ≥44px hit area on touch. */}
-          <button
-            type="button"
-            aria-label="Upload a video"
-            aria-expanded={showUpload}
-            onClick={() => setShowUpload((v) => !v)}
+            staged file forces it visible so the preview never hides. Hidden in
+            follow-up mode (text-only follow-up for v1 — D-tools deferred). */}
+        {!isFollowUp && (
+          <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-              "text-foreground-muted transition-colors hover:bg-white/[0.05] hover:text-foreground",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "pointer-coarse:h-11 pointer-coarse:w-11",
-              showUpload && "bg-white/[0.06] text-foreground",
+              "overflow-hidden",
+              showUpload || file
+                ? "mb-2 border-b border-white/[0.06] pb-2"
+                : "hidden",
             )}
           >
-            <Plus className="h-4 w-4" />
-          </button>
+            <VideoUpload bare file={file} onFileSelect={setFile} />
+          </div>
+        )}
 
-          {/* URL / future-follow-up input. Coral only on the focus ring. */}
+        <div className="flex items-end gap-2">
+          {/* + upload toggle (D-22). ≥44px hit area on touch. Analysis-mode only. */}
+          {!isFollowUp && (
+            <button
+              type="button"
+              aria-label="Upload a video"
+              aria-expanded={showUpload}
+              onClick={() => setShowUpload((v) => !v)}
+              className={cn(
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+                "text-foreground-muted transition-colors hover:bg-white/[0.05] hover:text-foreground",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "pointer-coarse:h-11 pointer-coarse:w-11",
+                showUpload && "bg-white/[0.06] text-foreground",
+              )}
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+
+          {/* URL (analysis) / follow-up (chat) input. Coral only on the focus ring. */}
           <input
             type="text"
-            inputMode="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            inputMode={isFollowUp ? "text" : "url"}
+            value={inputValue}
+            onChange={(e) => onInputChange(e.target.value)}
             placeholder={hasSimulation ? PLACEHOLDER_ACTIVE : PLACEHOLDER_EMPTY}
             aria-label={hasSimulation ? "Ask about this simulation" : "Paste a TikTok link"}
             aria-invalid={showUrlError || undefined}
@@ -247,9 +273,9 @@ export function Composer({ className }: ComposerProps) {
             type="submit"
             variant="primary"
             size="sm"
-            aria-label="Simulate"
+            aria-label={isFollowUp ? "Send" : "Simulate"}
             disabled={!canSubmit}
-            loading={submitting}
+            loading={isFollowUp ? followUp!.isStreaming : submitting}
             className="shrink-0 rounded-lg"
           >
             <ArrowUp className="h-4 w-4" />
@@ -258,7 +284,7 @@ export function Composer({ className }: ComposerProps) {
       </div>
 
       {/* Errors — non-TikTok URL (D-21). Upload-type errors are surfaced by VideoUpload. */}
-      {showUrlError && (
+      {!isFollowUp && showUrlError && (
         <p className="mt-2 px-1 text-sm text-error" role="alert">
           {ERROR_NON_TIKTOK}
         </p>
