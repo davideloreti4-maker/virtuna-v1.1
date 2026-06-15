@@ -163,7 +163,7 @@ Plans:
 - [x] 04-01-PLAN.md (wave 1) — social-proof strip (peer-count stat + reduced-motion-gated logo marquee) + bespoke flat-warm testimonials 3-card grid (PROOF-01, PROOF-02)
 - [x] 04-02-PLAN.md (wave 1) — pricing teaser: bespoke flat-warm Starter + Pro cards (Pro "Most popular", placeholder $/mo + trial, both CTAs → SIGNUP_URL, no checkout machinery) (CONVERT-01)
 - [x] 04-03-PLAN.md (wave 1) — FAQ: RSC wrapper + Radix single-open accordion client island, 6 objection-busting Q&A, cold tokens restyled flat-warm (CONVERT-03)
-- [ ] 04-04-PLAN.md (wave 1) — final full-width CTA band: serif close-line + "Try it free" CTA + risk-reducer microcopy + muted ScoreGaugeSkeleton echo (CONVERT-02)
+- [x] 04-04-PLAN.md (wave 1) — final full-width CTA band: serif close-line + "Try it free" CTA + risk-reducer microcopy + muted ScoreGaugeSkeleton echo (CONVERT-02)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -200,5 +200,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
-| 4. Proof & Conversion | 1/6 | In Progress|  |
+| 4. Proof & Conversion | 5/6 | In Progress|  |
 | 5. Quality Hardening | 0/3 | Not started | - |

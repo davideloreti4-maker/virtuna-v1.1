@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md (FAQ accordion + RSC wrapper — CONVERT-03 GREEN)
+stopped_at: Completed 04-04-PLAN.md (FinalCtaBand — CONVERT-02 GREEN)
 last_updated: "2026-06-15T18:30:00.000Z"
 last_activity: 2026-06-15
 progress:
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 04 (proof-conversion) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-06-15
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 04 P01 | ~5min | 2 tasks | 3 files |
 | Phase 04 P02 | ~6min | 2 tasks | 2 files |
 | Phase 04 P03 | ~5min | 2 tasks | 2 files |
+| Phase 04 P04 | ~4min | 1 task | 1 file |
 
 ## Accumulated Context
 
@@ -140,6 +141,7 @@ Recent decisions affecting current work:
 - [Phase 04-02]: PricingTeaser: 2-up TIERS grid, Pro highlighted via border-accent/25+ring-1 ring-accent/20 (token-legal, no glow); CONVERT-01 5/5 GREEN
 - [Phase 04-03]: FaqAccordion: "use client" Radix single-open accordion (type="single" collapsible), 6 objection Q&As; cold-brand tokens overridden at call site only (border-border/bg-surface-elevated/text-foreground/text-foreground-secondary); ui/accordion.tsx primitive untouched; CONVERT-03 2/2 GREEN
 - [Phase 04-03]: Faq RSC: pure RSC wrapper (no "use client") → / stays ○ static; sans-serif h2 heading + cream-secondary subhead; lone client leaf = FaqAccordion
+- [Phase 04-04]: FinalCtaBand: pure RSC full-bleed band; Newsreader serif close-line (data-testid=cta-close-line, D-13); Button asChild→SIGNUP_URL coral CTA + D-20 microcopy; ScoreGaugeSkeleton echo (opacity-70 scale-75, D-14); legal warm-seat radial (cream rgba 0.07); CONVERT-02 3/3 GREEN
 
 ### Pending Todos
 
@@ -163,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T18:30:00.000Z
-Stopped at: Completed 04-03-PLAN.md (FAQ accordion + RSC wrapper — CONVERT-03 GREEN)
+Last session: 2026-06-15T18:50:00.000Z
+Stopped at: Completed 04-04-PLAN.md (FinalCtaBand — CONVERT-02 GREEN)
 Resume file: None
