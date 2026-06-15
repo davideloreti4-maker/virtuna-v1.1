@@ -246,10 +246,12 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile overlay backdrop */}
+      {/* Mobile overlay backdrop — mobile ONLY (md:hidden). On desktop the sidebar
+          is a persistent push panel, so no scrim darkens the content and clicking
+          the main view never closes it. */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50"
+          className="fixed inset-0 z-[calc(var(--z-sidebar)-1)] bg-black/50 md:hidden"
           onClick={close}
           aria-hidden="true"
         />
@@ -263,7 +265,10 @@ export function Sidebar() {
           "bg-background-elevated border border-white/[0.06]",
           effectiveCollapsed ? "w-[60px]" : "w-[220px]",
           !reducedMotion && "transition-[transform,width] duration-150 ease-[var(--ease-out-cubic)]",
-          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)]",
+          // Mobile: slide-in driven by isOpen. Desktop (md:): ALWAYS visible
+          // (md:translate-x-0 overrides the hidden transform) — persistent, never
+          // slid off-canvas. ⌘\ / the header button collapse it to a rail instead.
+          isOpen ? "translate-x-0" : "-translate-x-[calc(100%+12px)] md:translate-x-0",
         )}
         aria-label="App navigation"
       >
@@ -282,8 +287,10 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={close}
-            aria-label="Close sidebar"
+            // Desktop: collapse to the icon rail (mirrors ⌘\). Mobile: close the
+            // drawer. Never hide the persistent desktop panel into a dead gap.
+            onClick={isMobile ? close : toggleCollapsed}
+            aria-label={isMobile ? "Close sidebar" : "Collapse sidebar"}
             className="flex text-foreground-muted hover:text-foreground p-1.5 -mr-1"
           >
             <Icon icon={SidebarSimple} size={20} />
@@ -525,9 +532,12 @@ export function SidebarHamburger() {
       aria-label="Open sidebar"
       className={cn(
         "fixed left-4 top-4 z-[var(--z-sidebar)]",
-        "h-[34px] w-[34px] flex items-center justify-center rounded-[10px]",
+        "h-[34px] w-[34px] items-center justify-center rounded-[10px]",
         // flat-warm matte: solid charcoal + hairline + soft float shadow (no glass, no blur)
         "bg-background-elevated border border-white/[0.06] shadow-float",
+        // Mobile only — the desktop sidebar is always present, so the hamburger
+        // never appears ≥md regardless of isOpen.
+        "md:hidden",
         isOpen ? "hidden" : "flex",
       )}
     >

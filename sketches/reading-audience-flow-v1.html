@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — audience breakout flow v1</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px 18px 18px;}
+
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.5;}
+
+  /* breakout badge */
+  .badge{display:inline-flex;align-items:center;gap:7px;margin-top:14px;padding:6px 11px;border-radius:999px;
+    background:rgba(95,191,115,.10);border:1px solid rgba(95,191,115,.32);font-size:12px;font-weight:600;color:var(--fg);}
+  .badge .dot{width:7px;height:7px;border-radius:999px;background:var(--green);}
+  .badge b{color:var(--green);}
+
+  /* ── the sideways flow ── */
+  .flow{display:flex;align-items:stretch;gap:0;margin-top:18px;}
+
+  .source{flex:none;width:62px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;}
+  .poster{position:relative;width:54px;aspect-ratio:9/16;border-radius:9px;overflow:hidden;border:1px solid var(--border2);
+    background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:22px;height:22px;border-radius:999px;background:rgba(0,0,0,.34);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .source .sc{font-size:11px;color:var(--fg3);}
+  .source .sc b{color:var(--fg);font-size:13px;}
+
+  .conn{flex:none;align-self:center;display:flex;align-items:center;}
+  .conn svg{display:block;}
+
+  .stage{flex:1;min-width:0;border-radius:14px;border:1px solid var(--border);background:var(--chip);padding:12px 11px 11px;
+    display:flex;flex-direction:column;align-items:center;text-align:center;}
+  .stage.stalled{opacity:.5;border-style:dashed;background:transparent;}
+  .stage .count{font-size:18px;font-weight:700;line-height:1;}
+  .stage .tier{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);margin-top:4px;}
+
+  /* viewer cluster — grows per stage; bright = stayed, faint = left */
+  .cluster{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:11px 0 9px;max-width:96px;}
+  .cluster i{width:6px;height:6px;border-radius:999px;display:block;}
+  .cluster i.stay{background:var(--fg);}
+  .cluster i.stay.warm{background:var(--green);}
+  .cluster i.left{background:rgba(236,231,222,.14);}
+  .cluster i.left.cold{background:var(--coral);opacity:.5;}
+
+  .stage .who{font-size:12px;font-weight:600;color:var(--fg);}
+  .stage .pct{font-size:12px;color:var(--fg2);margin-top:2px;}
+  .stage .pct b{color:var(--fg);}
+  .stage .stat{margin-top:9px;font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;gap:4px;}
+  .stat.ok{color:var(--green);} .stat.no{color:var(--fg3);}
+
+  .takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.45;}
+  .takeaway .d{width:7px;height:7px;border-radius:999px;background:var(--coral);margin-top:5px;flex:none;}
+  .takeaway b{color:var(--fg);font-weight:600;}
+  .disc{margin-top:10px;font-size:10.5px;color:var(--fg3);}
+
+  @media (max-width:560px){
+    .flow{flex-direction:column;align-items:stretch;}
+    .source{flex-direction:row;width:auto;justify-content:flex-start;gap:11px;padding-bottom:4px;}
+    .conn{align-self:center;transform:rotate(90deg);height:22px;}
+    .stage{align-items:flex-start;text-align:left;}
+    .cluster{margin:9px 0;max-width:none;}
+  }
+
+  .note{margin:48px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>Audience as a breakout flow.</b> Your video flows out of the thumbnail through TikTok's audience tiers — a small
+    warm test pool first, then progressively larger + <i>colder</i> crowds. Each wave shows how the simulated audience reacted, and
+    the flow visibly <b>stalls at the tier it can't break past</b>. Glance value: "how far does this go, and where do I lose them?"</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div class="t">How far it breaks out</div>
+          <div class="s">Simulated through TikTok's audience tiers — warm fans first, cold strangers at the top.</div>
+        </div>
+
+        <div class="badge"><span class="dot"></span>Breaks out to <b>~1,000 viewers</b> · stalls before going viral</div>
+
+        <div class="flow">
+          <!-- source: the video -->
+          <div class="source">
+            <div class="poster"><div class="play"><span><svg width="8" height="8" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div></div>
+            <div class="sc"><b>62</b><br>score</div>
+          </div>
+
+          <div class="conn"><svg width="22" height="20"><defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="rgba(236,231,222,.10)"/><stop offset="1" stop-color="rgba(236,231,222,.34)"/></linearGradient></defs><line x1="0" y1="10" x2="16" y2="10" stroke="url(#g1)" stroke-width="2.5"/><path d="M14 6l6 4-6 4z" fill="rgba(236,231,222,.34)"/></svg></div>
+
+          <!-- stage 1 -->
+          <div class="stage">
+            <div class="count tabnum">200</div>
+            <div class="tier">Test pool</div>
+            <div class="cluster">
+              <i class="stay warm"></i><i class="stay warm"></i><i class="stay warm"></i><i class="stay warm"></i><i class="stay warm"></i><i class="left"></i>
+            </div>
+            <div class="who">Your fans</div>
+            <div class="pct"><b>94%</b> stay</div>
+            <div class="stat ok">✓ passed</div>
+          </div>
+
+          <div class="conn"><svg width="22" height="20"><line x1="0" y1="10" x2="16" y2="10" stroke="rgba(95,191,115,.5)" stroke-width="3"/><path d="M14 5l7 5-7 5z" fill="rgba(95,191,115,.6)"/></svg></div>
+
+          <!-- stage 2 (breakout point) -->
+          <div class="stage">
+            <div class="count tabnum">1,000</div>
+            <div class="tier">Warm reach</div>
+            <div class="cluster">
+              <i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="left"></i><i class="left"></i><i class="left"></i><i class="left"></i><i class="left"></i>
+            </div>
+            <div class="who">Your niche</div>
+            <div class="pct"><b>61%</b> stay</div>
+            <div class="stat ok">✓ passed</div>
+          </div>
+
+          <div class="conn"><svg width="22" height="20"><line x1="0" y1="10" x2="15" y2="10" stroke="rgba(217,119,87,.45)" stroke-width="2.5" stroke-dasharray="3 3"/><path d="M14 6l6 4-6 4z" fill="rgba(217,119,87,.45)"/></svg></div>
+
+          <!-- stage 3 (stalled) -->
+          <div class="stage stalled">
+            <div class="count tabnum">10,000</div>
+            <div class="tier">Breakout</div>
+            <div class="cluster">
+              <i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="stay"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i><i class="left cold"></i>
+            </div>
+            <div class="who">Cold FYP</div>
+            <div class="pct"><b>38%</b> stay</div>
+            <div class="stat no">✗ stalls here</div>
+          </div>
+        </div>
+
+        <div class="takeaway"><span class="d"></span><span>Your warm audience stays, but <b>cold viewers drop at 0:17</b> — that's the tier your video can't break past yet.</span></div>
+        <div class="disc">Simulated reach tiers (TikTok promotes in waves) — directional, not a view forecast. Per-wave reaction is from your audience simulation.</div>
+      </div>
+    </div>
+
+    <p class="note"><b>The idea:</b> reframe the audience sim around the question creators actually ask — <i>will this break out, how far, and where do I lose them?</i>
+      As reach scales the crowd gets colder (fans → niche → cold FYP), so each tier maps to a cohort we already simulate; the flow stalls at the
+      tier whose retention can't clear the bar. The full per-cohort breakdown still lives one tap deeper. Tell me: dot-clusters vs a single retention ring per
+      stage? show 3 tiers always, or only up to where it breaks? tune the tier labels/counts?</p>
+  </div>
+</body>
+</html>

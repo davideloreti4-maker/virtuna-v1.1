@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — audience orbit (labeled)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .col{max-width:600px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:600px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;}
+
+  .aud{padding:18px 18px 16px;}
+  .aud .head{margin-bottom:2px;}
+  .aud .head .t{font-size:16px;font-weight:600;}
+  .aud .head .s{font-size:12px;color:var(--fg3);margin-top:2px;}
+  svg.orbit{display:block;width:100%;height:auto;}
+
+  .nLabel{font-size:12.5px;font-weight:600;fill:var(--fg);}
+  .nStat{font-size:11px;fill:var(--fg3);}
+  .nLabel.coral{fill:var(--coral);}
+  .axisHint{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;fill:var(--fg3);}
+  .coreLbl{font-size:10px;letter-spacing:.06em;text-transform:uppercase;fill:var(--fg3);}
+
+  @keyframes pulse{0%,100%{opacity:.5;r:26}50%{opacity:0;r:34}}
+  .pulse{animation:pulse 2.6s ease-in-out infinite;}
+
+  .takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.45;}
+  .takeaway .d{width:7px;height:7px;border-radius:999px;background:var(--coral);margin-top:5px;flex:none;}
+  .takeaway b{color:var(--fg);font-weight:600;}
+
+  .note{margin:48px auto 0;max-width:600px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>Audience orbit — now it reads.</b> The video sits at the center; your audience archetypes orbit it by
+    <b>how long they stay</b> (close = watches to the end, far = bounces). Size = reach, coral = leaves first. Labelled, so you
+    actually learn <i>who</i> stays and who you’re losing — in one look.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card aud">
+        <div class="head">
+          <div class="t">Who stays, who leaves</div>
+          <div class="s">4 archetypes across 10 simulated segments · sized by reach</div>
+        </div>
+
+        <svg class="orbit" viewBox="0 0 600 300" role="img" aria-label="Audience orbit">
+          <!-- faint retention rings -->
+          <g fill="none" stroke="rgba(236,231,222,0.05)">
+            <ellipse cx="290" cy="150" rx="92" ry="58"/>
+            <ellipse cx="290" cy="150" rx="158" ry="98"/>
+            <ellipse cx="290" cy="150" rx="220" ry="135"/>
+          </g>
+          <!-- radial meaning -->
+          <text class="axisHint" x="290" y="28" text-anchor="middle">watches to the end</text>
+          <text class="axisHint" x="566" y="284" text-anchor="end">leaves early</text>
+
+          <!-- spokes -->
+          <g stroke="rgba(236,231,222,0.10)" stroke-width="1">
+            <line x1="290" y1="150" x2="226" y2="96"/>
+            <line x1="290" y1="150" x2="186" y2="206"/>
+            <line x1="290" y1="150" x2="404" y2="102"/>
+            <line x1="290" y1="150" x2="436" y2="212"/>
+          </g>
+
+          <!-- center: the video -->
+          <circle cx="290" cy="150" r="22" fill="#2a2926" stroke="rgba(255,255,255,.10)"/>
+          <path d="M285 142 l11 8 -11 8 z" fill="#ece7de"/>
+          <text class="coreLbl" x="290" y="192" text-anchor="middle">your video</text>
+
+          <!-- Loyal fans (close, big) -->
+          <circle cx="226" cy="96" r="22" fill="rgba(236,231,222,0.85)"/>
+          <text class="nLabel" x="198" y="92" text-anchor="end">Loyal fans</text>
+          <text class="nStat"  x="198" y="108" text-anchor="end">93% · loops it</text>
+
+          <!-- New viewers (mid) -->
+          <circle cx="186" cy="206" r="17" fill="rgba(236,231,222,0.6)"/>
+          <text class="nLabel" x="160" y="202" text-anchor="end">New viewers</text>
+          <text class="nStat"  x="160" y="218" text-anchor="end">53% · drops midway</text>
+
+          <!-- Cross-niche (mid) -->
+          <circle cx="404" cy="102" r="15" fill="rgba(236,231,222,0.6)"/>
+          <text class="nLabel" x="426" y="98">Cross-niche</text>
+          <text class="nStat"  x="426" y="114">55% · fades late</text>
+
+          <!-- Your niche (far, coral, drops first) -->
+          <circle class="pulse" cx="436" cy="212" r="26" fill="none" stroke="var(--coral)" stroke-width="1.5"/>
+          <circle cx="436" cy="212" r="20" fill="rgba(217,119,87,0.95)"/>
+          <text class="nLabel coral" x="462" y="208">Your niche</text>
+          <text class="nStat"  x="462" y="224">leaves at 0:08</text>
+        </svg>
+
+        <div class="takeaway"><span class="d"></span><span><b>Your niche bounces first — at 0:08</b>, while loyal fans loop it to the end. Win them back and the score moves most.</span></div>
+      </div>
+    </div>
+
+    <p class="note"><b>The shift:</b> a labelled orbit with the video at its core gives the graph an obvious subject and reading
+      (close = stays, coral = leaving), plus a one-line takeaway — so it delivers value in the first glance, not just motion. The full
+      10-segment breakdown still lives one tap deeper. Tune the takeaway tone / which archetypes show, and I’ll lock it.</p>
+  </div>
+</body>
+</html>

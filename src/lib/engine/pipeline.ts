@@ -110,6 +110,15 @@ export interface PipelineResult {
   // Undefined/empty when text mode or tiktok_url mode (no video segments).
   segments?: SegmentGrid[];
 
+  // reading-ux 2026-06-15 (S1 tiktok-half) — Supabase Storage path of a KEPT video,
+  // surfaced so the route can persist it on the analysis_results row (the retention
+  // scrubber needs a playable source on permalink reload). Set ONLY for tiktok_url runs
+  // that re-hosted into an owner-prefixed path AND succeeded (opts.userId present). Null
+  // for video_upload (route persists validated.video_storage_path directly), text mode,
+  // and any tiktok_url run whose re-host failed or had no userId (those temp objects are
+  // dropped — see dropRehostTemp). Read by route.buildInsertRow's tiktok branch.
+  video_storage_path?: string | null;
+
   // Pipeline metadata
   requestId: string;
   timings: StageTiming[];
@@ -147,6 +156,15 @@ export interface PipelineOptions {
    * When absent: filmstrip trigger is skipped.
    */
   analysisId?: string;
+  /**
+   * reading-ux 2026-06-15 (S1 tiktok-half): owner user id. When present for a
+   * tiktok_url run, the re-hosted mp4 is written to an owner-prefixed path
+   * (`${userId}/tiktok-${requestId}.mp4`) that `/api/videos/sign` accepts, and is
+   * KEPT on success (surfaced via PipelineResult.video_storage_path) so the retention
+   * scrubber can replay it on permalink reload. When absent, the re-host falls back to
+   * the legacy `remix-temp/${requestId}.mp4` derive-and-drop path (deleted unconditionally).
+   */
+  userId?: string;
 }
 
 // =====================================================
@@ -414,6 +432,11 @@ export async function runPredictionPipeline(
   //   buildInsertRow (route.ts:450-455) keeps video_storage_path null for tiktok_url.
   // -------------------------------------------------------
   let rehostPath: string | null = null;
+  // reading-ux 2026-06-15 (S1 tiktok-half): the re-host path we KEEP + surface to the row
+  // (set only after a full re-host success when an owner userId is available). Stays null
+  // for the legacy derive-and-drop path so dropRehostTemp still cleans it up.
+  let persistedVideoPath: string | null = null;
+  const ownerId = opts?.userId;
   if (validated.input_mode === "tiktok_url" && validated.tiktok_url) {
     try {
       // Step 1: Resolve URL via ApifyScrapingProvider.resolveVideoUrl (Plan 02 impl).
@@ -433,9 +456,15 @@ export async function runPredictionPipeline(
       }
       const mp4Bytes = await fetchResp.arrayBuffer();
 
-      // Step 3: Re-host bytes to the videos bucket at a temp path.
-      // The path uses the requestId so concurrent requests never collide.
-      rehostPath = `remix-temp/${requestId}.mp4`;
+      // Step 3: Re-host bytes to the videos bucket.
+      // The path uses the requestId so concurrent requests never collide. reading-ux S1
+      // (2026-06-15): when an owner userId is present, write under an owner-prefixed path so
+      // `/api/videos/sign` (which enforces `path.split('/')[0] === user.id`) can mint a
+      // playable URL on permalink reload, and KEEP it on success (set persistedVideoPath
+      // below). Without a userId, fall back to the legacy remix-temp derive-and-drop path.
+      rehostPath = ownerId
+        ? `${ownerId}/tiktok-${requestId}.mp4`
+        : `remix-temp/${requestId}.mp4`;
       const { error: uploadError } = await supabase
         .storage
         .from("videos")
@@ -460,6 +489,12 @@ export async function runPredictionPipeline(
       // Step 5: Assign to signedVideoUrl — the same variable the gate at line 520 reads.
       // No rename: signedVideoUrl is read at 520/522/542/545/559; assigning here is minimal-diff.
       signedVideoUrl = signedData.signedUrl;
+
+      // reading-ux S1 (2026-06-15): re-host fully succeeded (upload + signed URL). When an
+      // owner userId is present the object lives at an owner-prefixed, signable path — KEEP it
+      // and surface it to the row so the retention scrubber replays it on reload. Without a
+      // userId persistedVideoPath stays null → dropRehostTemp deletes the legacy temp object.
+      if (ownerId) persistedVideoPath = rehostPath;
     } catch (error) {
       // On IngestError or any re-host failure: push a warning and leave signedVideoUrl null
       // (graceful — the existing text branch fires; pipeline does NOT crash).
@@ -484,6 +519,12 @@ export async function runPredictionPipeline(
   // (owned uploads only — route.ts). Remix derive-and-drop boundary (T-01-07 / pitfall C4 / T-04-01).
   const dropRehostTemp = () => {
     if (rehostPath === null) return;
+    // reading-ux S1 (2026-06-15): KEEP a fully re-hosted, owner-prefixed object on success —
+    // it is surfaced via PipelineResult.video_storage_path and persisted on the row for the
+    // retention scrubber. Only orphans (legacy remix-temp path, or a re-host that uploaded but
+    // never reached signed-URL success → persistedVideoPath null) are dropped here. This runs in
+    // the post-pipeline finally, so by then persistedVideoPath reflects the final keep/drop decision.
+    if (rehostPath === persistedVideoPath) return;
     const pathToDelete = rehostPath;
     // Fire-and-forget + .catch() so a delete failure never crashes the pipeline.
     void supabase
@@ -823,6 +864,9 @@ export async function runPredictionPipeline(
     pass2Outcome,    // Always null — 10-pass deleted (Phase 4 Plan 05).
     foldOutcome,     // Phase 4 Plan 05 — sole audience-sim; null in text/tiktok_url mode.
     segments: omniSegments, // SegmentGrid[] for aggregator.assembleHeatmapPayload
+    // reading-ux S1 (2026-06-15): KEPT tiktok re-host path (null unless an owner userId was
+    // provided and the re-host fully succeeded). Route persists it for tiktok_url rows.
+    video_storage_path: persistedVideoPath,
     requestId,
     timings,
     total_duration_ms,

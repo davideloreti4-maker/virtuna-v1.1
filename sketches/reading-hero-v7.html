@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading hero — v7 (audience folded in, option A)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:600px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:600px;}
+  .lede b{color:var(--fg)}
+
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;}
+
+  /* ── hero top: poster + gauge + stats (unchanged v6) ── */
+  .hero{padding:24px;}
+  .heroRow{display:flex;align-items:center;justify-content:center;gap:24px;}
+  .heroTop{display:flex;align-items:center;gap:20px;}
+  .poster{position:relative;width:78px;min-width:78px;aspect-ratio:9/16;border-radius:12px;overflow:hidden;border:1px solid var(--border);
+    background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:28px;height:28px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .poster .time{position:absolute;left:6px;bottom:6px;font-size:10px;color:var(--fg2);background:rgba(0,0,0,.42);padding:1px 5px;border-radius:5px;}
+  .gauge{position:relative;width:120px;height:120px;flex:none;}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:5px;}
+  .gauge .ctr b{font-size:40px;font-weight:600;line-height:1;}
+  .gauge .ctr small{margin-top:3px;font-size:13px;font-weight:600;}
+  .band.mid{color:var(--amber)} .band.strong{color:var(--green)} .band.weak{color:var(--red)}
+  .strip{display:flex;flex-direction:column;gap:14px;padding-left:22px;border-left:1px solid var(--border);}
+  .strip .s .v{font-size:19px;font-weight:600;line-height:1;}
+  .strip .s .v.amber{color:var(--amber)}
+  .strip .s .k{margin-top:4px;font-size:11px;color:var(--fg3);}
+
+  /* divider between the read and the folded-in audience overview */
+  .hr{border-top:1px solid var(--border);margin:22px -24px 0;}
+
+  /* folded audience overview — quiet label + info icon (explanation behind it) */
+  .aud{margin-top:20px;}
+  .aud .h{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .aud .h .lhs{display:flex;align-items:center;gap:7px;}
+  .aud .h .t{font-size:13px;font-weight:600;color:var(--fg2);}
+  .aud .h .badge{font-size:11.5px;font-weight:600;color:var(--fg3);}
+
+  .info{position:relative;display:inline-flex;width:15px;height:15px;border-radius:999px;border:1px solid var(--border2);
+    color:var(--fg3);font-size:10px;font-weight:800;align-items:center;justify-content:center;cursor:help;}
+  .info .tip{display:none;position:absolute;left:-8px;top:23px;width:236px;background:var(--chip);border:1px solid var(--border2);
+    border-radius:10px;padding:9px 11px;font-size:11.5px;color:var(--fg2);line-height:1.5;box-shadow:0 10px 26px rgba(0,0,0,.45);z-index:6;}
+  .info .tip b{color:var(--fg);}
+  .info:hover .tip,.info.show .tip{display:block;}
+
+  /* tubes + the grey "audience scaling" envelope behind them */
+  .tubeswrap{position:relative;margin-top:16px;}
+  .reachsvg{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+  .tubes{position:relative;z-index:1;display:flex;align-items:flex-end;justify-content:space-between;gap:20px;height:188px;}
+  .m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;}
+  .m .views{margin-bottom:8px;}
+  .tube{position:relative;width:100%;max-width:62px;border-radius:11px;border:1px solid var(--border);background:#211f1d;overflow:hidden;}
+  .tube .fill{position:absolute;left:0;right:0;bottom:0;}
+  .tube .fill.ok{background:rgba(95,191,115,.26);}
+  .tube .fill.cap{background:rgba(217,119,87,.28);}
+  .tube .tick{position:absolute;left:-6px;right:-6px;border-top:1px dashed rgba(236,231,222,.22);bottom:55%;}
+
+  /* eye-marked view count */
+  .views{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--fg);}
+  .views.dim{color:var(--fg2);}
+  .views svg{opacity:.7;}
+
+  .xrow{display:flex;justify-content:space-between;gap:20px;margin-top:11px;}
+  .x{flex:1;text-align:center;}
+  .x .pct{font-size:15px;font-weight:700;color:var(--fg);}
+  .x .pct.cap{color:var(--coral);}
+  .x .stage{font-size:10.5px;color:var(--fg3);margin-top:2px;}
+
+  .foot{margin-top:16px;padding-top:13px;border-top:1px solid var(--border);font-size:12.5px;color:var(--fg2);line-height:1.5;}
+  .foot b{color:var(--fg);font-weight:600;}
+  .foot .c{color:var(--coral);font-weight:600;}
+
+  .note{margin:44px auto 0;max-width:600px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v7 · option A (refined²).</b> Explanation folded behind an <b>info "!"</b> by the title (hover/tap → shown open here).
+    Dotted connectors + a faint grey rising field between the bars show the batch <b>scaling up</b> each stage.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">The read</p>
+      <div class="card hero">
+        <div class="heroRow">
+          <div class="heroTop">
+            <div class="poster"><div class="play"><span><svg width="10" height="10" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div><div class="time">0:29</div></div>
+            <div class="gauge">
+              <svg width="120" height="120" viewBox="0 0 120 120" style="transform:rotate(135deg)">
+                <circle cx="60" cy="60" r="53" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="9" stroke-linecap="round" stroke-dasharray="250 333"/>
+                <circle cx="60" cy="60" r="53" fill="none" stroke="#e0b341" stroke-width="9" stroke-linecap="round" stroke-dasharray="155 333"/>
+              </svg>
+              <div class="ctr"><b class="tabnum">62</b><small class="band mid">Mid</small></div>
+            </div>
+          </div>
+          <div class="strip">
+            <div class="s"><div class="v tabnum">65%</div><div class="k">Watch-through</div></div>
+            <div class="s"><div class="v tabnum amber">0:17</div><div class="k">Biggest drop</div></div>
+            <div class="s"><div class="v tabnum">20%</div><div class="k">Finish rate</div></div>
+          </div>
+        </div>
+
+        <div class="hr"></div>
+        <div class="aud">
+          <div class="h">
+            <span class="lhs">
+              <span class="t">How far it gets pushed</span>
+              <span class="info">!
+                <span class="tip">Each bar = <b>the % who keep watching</b> as the video is shown to a bigger batch of viewers. Clear the dashed line and it's pushed to the next batch.</span>
+              </span>
+            </span>
+            <span class="badge">breaks out to ~10,000</span>
+          </div>
+
+          <div class="tubeswrap">
+            <!-- viewBox matches the real ~552×188 tube row → near-uniform scale so the
+                 dotted line stays crisp. Connectors run pillar-edge → pillar-edge (gaps
+                 only). The last gap, into the capped Viral pillar, turns coral = where
+                 the breakout stops. -->
+            <svg class="reachsvg" viewBox="0 0 560 188" preserveAspectRatio="none">
+              <!-- grey rising wedges between the breaking-out (green) pillars -->
+              <polygon points="92.5,188 92.5,124 173.5,92 173.5,188" fill="rgba(236,231,222,0.03)"/>
+              <polygon points="235.5,188 235.5,92 316.5,60 316.5,188" fill="rgba(236,231,222,0.03)"/>
+              <!-- the wedge into the red pillar is coral = the breakout stalls here -->
+              <polygon points="378.5,188 378.5,60 459.5,28 459.5,188" fill="rgba(217,119,87,0.07)"/>
+
+              <!-- clean round-dot connectors, pillar to pillar -->
+              <polyline points="92.5,124 173.5,92" fill="none" stroke="rgba(236,231,222,0.42)" stroke-width="1.6" stroke-dasharray="0.5 7" stroke-linecap="round"/>
+              <polyline points="235.5,92 316.5,60" fill="none" stroke="rgba(236,231,222,0.42)" stroke-width="1.6" stroke-dasharray="0.5 7" stroke-linecap="round"/>
+              <polyline points="378.5,60 459.5,28" fill="none" stroke="rgba(217,119,87,0.6)" stroke-width="1.6" stroke-dasharray="0.5 7" stroke-linecap="round"/>
+            </svg>
+            <div class="tubes">
+              <div class="m"><span class="views"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>200</span>
+                <div class="tube" style="height:64px"><div class="fill ok" style="height:100%"></div><div class="tick"></div></div></div>
+              <div class="m"><span class="views"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>1,000</span>
+                <div class="tube" style="height:96px"><div class="fill ok" style="height:81%"></div><div class="tick"></div></div></div>
+              <div class="m"><span class="views"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>10,000</span>
+                <div class="tube" style="height:128px"><div class="fill ok" style="height:62%"></div><div class="tick"></div></div></div>
+              <div class="m"><span class="views dim"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>100K+</span>
+                <div class="tube" style="height:160px"><div class="fill cap" style="height:43%"></div><div class="tick"></div></div></div>
+            </div>
+          </div>
+
+          <div class="xrow">
+            <div class="x"><div class="pct tabnum">100%</div><div class="stage">Stage 1</div></div>
+            <div class="x"><div class="pct tabnum">81%</div><div class="stage">Stage 2</div></div>
+            <div class="x"><div class="pct tabnum">62%</div><div class="stage">Stage 3</div></div>
+            <div class="x"><div class="pct tabnum cap">43%</div><div class="stage">Viral</div></div>
+          </div>
+
+          <p class="foot">It keeps enough viewers watching to reach <b>10,000 views</b> — then the <span class="c">0:17</span> drop loses too many and it stalls before viral.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="note"><b>Info "!":</b> the % explanation now lives behind the icon by the title (shown open here; real build = hover on desktop / tap on mobile).
+      <b>Scaling field:</b> the grey rising area + dotted line between the bars show the batch getting bigger each stage (200 → 100K+).
+      Tubes stay bottom-aligned. Tune the grey/dash strength if too subtle or too loud.</p>
+  </div>
+</body>
+</html>

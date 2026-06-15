@@ -19,7 +19,31 @@ let mockState: { id: string | null; data: PredictionResult | null; isLoading: bo
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
+
+// ThumbnailStrip reads usePermalinkFilmstrips() eagerly (top of tree) → mock so the
+// container mounts without a QueryClientProvider. ReadingChat's useExpertChat is
+// mocked inert so the degraded-state tests hit no network.
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({}),
+}));
+vi.mock('@/hooks/queries/use-expert-chat', () => ({
+  useExpertChat: () => ({
+    messages: [],
+    streamingText: '',
+    isStreaming: false,
+    error: null,
+    send: () => {},
+    stop: () => {},
+    clearMessages: () => {},
+    loadHistory: async () => {},
+  }),
+}));
+// The container reads the niche cohort (useComparisons) before the D-13 gates;
+// mock it inert so even the degraded/error paths mount without a QueryClientProvider.
+vi.mock('@/components/board/verdict/use-comparisons', () => ({
+  useComparisons: () => ({ data: undefined }),
+}));
 
 import { Reading } from '../reading';
 
@@ -35,8 +59,8 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
     // The dedicated "couldn't analyze" state.
     expect(screen.getByText(/We couldn.t analyze this video/i)).toBeInTheDocument();
 
-    // The gauge (a role="button" "Score N of 100" — D-02 tap target) is NOT rendered.
-    expect(screen.queryByRole('button', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
+    // The gauge (a role="img" "Score N of 100") is NOT rendered.
+    expect(screen.queryByRole('img', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
 
     // The literal "0" does not appear in the score region (no gauge, no "0%").
     expect(container.querySelector('[data-testid="reading-hero"]')).toBeNull();
@@ -49,8 +73,8 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
 
     expect(screen.getByTestId('reading-partial')).toHaveTextContent(/Partial read/i);
     // Hero + rows still render (the partial flag annotates; it does not gate).
-    expect(screen.getByRole('button', { name: /Score \d+ of 100/ })).toBeInTheDocument();
-    expect(screen.getByTestId('driver-rows')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score \d+ of 100/ })).toBeInTheDocument();
+    expect(screen.getByTestId('reading-accordion')).toBeInTheDocument();
   });
 
   it('apollo_reasoning null → gauge + gate still resolve from overall_score; rows/deeper degrade (no throw, no fabricated 0)', () => {
@@ -62,10 +86,10 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
     expect(() => render(<Reading />)).not.toThrow();
 
     // Hero gauge still resolves from overall_score (never null).
-    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
 
     // DriverRows degrades to the "Not available" labels — never a fabricated 0.
-    const rows = screen.getByTestId('driver-rows');
+    const rows = screen.getByTestId('reading-accordion');
     expect(rows).toBeInTheDocument();
     expect(rows.textContent ?? '').toMatch(/Not available/);
     expect(rows.textContent ?? '').not.toMatch(/\b0\b/);
@@ -122,7 +146,7 @@ describe('Reading container — in-flight (still processing) gate', () => {
     // NOT the failure copy, NOT the real thread, NOT a fabricated 0 gauge.
     expect(screen.queryByText(/We couldn.t analyze this video/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('reading')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /Score \d+ of 100/ })).not.toBeInTheDocument();
     expect(container.querySelector('[data-testid="reading-hero"]')).toBeNull();
   });
 
@@ -178,7 +202,7 @@ describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watc
     render(<Reading />);
 
     // The gauge still resolves from overall_score — this is a real, scored read.
-    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
 
     // The watch% caption is OMITTED — no testid, no "% watch" text, no "0".
     expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
@@ -197,17 +221,18 @@ describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watc
     };
     render(<Reading />);
 
-    expect(screen.getByRole('button', { name: /Score 64 of 100/ })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /Score 64 of 100/ })).toBeInTheDocument();
     expect(screen.queryByTestId('reading-watch')).not.toBeInTheDocument();
     const hero = screen.getByTestId('reading-hero');
     expect(hero.textContent ?? '').not.toMatch(/% watch/i);
     expect(hero.textContent ?? '').not.toMatch(/0%/);
   });
 
-  it('still renders "% watch" on a healthy read (the guard is not vacuous)', () => {
+  it('still renders the watch-through stat on a healthy read (the guard is not vacuous)', () => {
     mockState = { id: 'sim-1', data: makeReadingResult(), isLoading: false };
     render(<Reading />);
-    // The healthy fixture has personas → a real, non-null watch% caption renders.
-    expect(screen.getByTestId('reading-watch')).toHaveTextContent(/% watch/i);
+    // The healthy fixture has personas → a real, non-null watch% stat renders in the
+    // hero scorecard ("54%" value beside its "Watch-through" label).
+    expect(screen.getByTestId('reading-watch')).toHaveTextContent(/^\d+%$/);
   });
 });

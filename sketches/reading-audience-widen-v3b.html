@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout B: widening reach</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px 16px 16px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.5;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    background:rgba(95,191,115,.10);border:1px solid rgba(95,191,115,.32);font-size:11.5px;font-weight:600;color:var(--fg);white-space:nowrap;}
+  .badge .dot{width:7px;height:7px;border-radius:999px;background:var(--green);}
+  .badge b{color:var(--green);}
+  svg.viz{display:block;width:100%;height:auto;margin-top:16px;}
+  .takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:14px;padding-top:13px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.45;}
+  .takeaway .d{width:7px;height:7px;border-radius:999px;background:var(--coral);margin-top:5px;flex:none;}
+  .takeaway b{color:var(--fg);font-weight:600;}
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>Approach B — how wide it holds.</b> Every batch is cold FYP, but each one is <b>bigger and broader</b>: the algo
+    starts with strangers matched to your niche, then widens to the mass. Retention drops as it leaves your core appeal — breakout =
+    how wide an audience it can still hold.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How wide it holds</div>
+            <div class="s">Cold FYP, widening each batch — niche-matched first, then the mass.</div>
+          </div>
+          <div class="badge"><span class="dot"></span>Holds to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <svg class="viz" viewBox="0 0 640 232" role="img" aria-label="Widening reach">
+          <defs><radialGradient id="poster" cx="35%" cy="25%" r="90%"><stop offset="0" stop-color="#3a3733"/><stop offset="0.72" stop-color="#221f1d"/></radialGradient></defs>
+
+          <!-- funnel guide lines (widening) -->
+          <path d="M70,116 L150,150 M70,116 L150,82" stroke="rgba(236,231,222,.10)" stroke-width="1"/>
+          <path d="M214,150 L300,178 M214,82 L300,54" stroke="rgba(236,231,222,.10)" stroke-width="1"/>
+          <path d="M364,178 L470,206 M364,54 L470,26" stroke="rgba(217,119,87,.18)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- video -->
+          <rect x="24" y="92" width="44" height="50" rx="8" fill="url(#poster)" stroke="rgba(255,255,255,.10)"/>
+          <circle cx="46" cy="116" r="9" fill="rgba(0,0,0,.34)" stroke="rgba(255,255,255,.12)"/>
+          <path d="M43,112 l6,4 -6,4 z" fill="#ece7de"/>
+          <text x="46" y="158" text-anchor="middle" fill="var(--fg)" font-size="11" font-weight="700">62</text>
+
+          <!-- Band 1: Your niche (narrow, holds) -->
+          <rect x="150" y="82" width="64" height="68" rx="9" fill="rgba(95,191,115,.16)" stroke="rgba(95,191,115,.34)"/>
+          <text x="182" y="74" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Your niche</text>
+          <text x="182" y="112" text-anchor="middle" fill="var(--green)" font-size="15" font-weight="700">78%</text>
+          <text x="182" y="128" text-anchor="middle" fill="var(--fg3)" font-size="10">stay · 200</text>
+
+          <!-- Band 2: Adjacent (wider, holds) -->
+          <rect x="300" y="54" width="64" height="124" rx="9" fill="rgba(95,191,115,.13)" stroke="rgba(95,191,115,.28)"/>
+          <text x="332" y="46" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Adjacent</text>
+          <text x="332" y="120" text-anchor="middle" fill="var(--fg)" font-size="15" font-weight="700">58%</text>
+          <text x="332" y="136" text-anchor="middle" fill="var(--fg3)" font-size="10">stay · 1,000</text>
+
+          <!-- Band 3: Mass FYP (widest, loses them) -->
+          <g opacity="0.55">
+            <rect x="470" y="26" width="64" height="180" rx="9" fill="rgba(217,119,87,.12)" stroke="rgba(217,119,87,.30)" stroke-dasharray="4 4"/>
+            <text x="502" y="18" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Mass FYP</text>
+            <text x="502" y="120" text-anchor="middle" fill="var(--coral)" font-size="15" font-weight="700">33%</text>
+            <text x="502" y="136" text-anchor="middle" fill="var(--fg3)" font-size="10">stay · 10k</text>
+          </g>
+
+          <!-- "wall" marker between band 2 and 3 -->
+          <line x1="417" y1="20" x2="417" y2="212" stroke="rgba(217,119,87,.30)" stroke-width="1" stroke-dasharray="3 4"/>
+          <text x="417" y="226" text-anchor="middle" fill="rgba(217,119,87,.7)" font-size="9.5">the wall</text>
+        </svg>
+
+        <div class="takeaway"><span class="d"></span><span>It holds your niche + the adjacent crowd to <b>~1,000</b>, but the <b>mass FYP doesn't stay</b> — your appeal doesn't stretch that wide yet.</span></div>
+      </div>
+    </div>
+
+    <p class="note"><b>Approach B (widening reach).</b> Reads as "how broad is your appeal" — bars grow as reach widens, retention drops
+      as it leaves your niche, and there's a clear "wall" where the mass won't hold. Strength: intuitive breadth story. Weakness: less
+      diagnostic than the gates — it shows THAT the wide crowd bounces, not which signal to fix.</p>
+  </div>
+</body>
+</html>

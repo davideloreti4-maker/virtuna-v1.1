@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout funnel v5 (B refined)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px 16px 16px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:3px;line-height:1.5;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+    background:rgba(95,191,115,.10);border:1px solid rgba(95,191,115,.32);font-size:11.5px;font-weight:600;color:var(--fg);white-space:nowrap;}
+  .badge .dot{width:7px;height:7px;border-radius:999px;background:var(--green);}
+  .badge b{color:var(--green);}
+  svg.viz{display:block;width:100%;height:auto;margin-top:14px;}
+  .takeaway{display:flex;gap:9px;align-items:flex-start;margin-top:12px;padding-top:13px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.45;}
+  .takeaway .d{width:7px;height:7px;border-radius:999px;background:var(--coral);margin-top:5px;flex:none;}
+  .takeaway b{color:var(--fg);font-weight:600;}
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v5 — B's funnel, kept.</b> Same fast-read visual you liked: the video reaching a <b>widening, colder</b> crowd.
+    I just folded the logic in — TikTok keeps pushing you wider until a crowd won't hold, and that cut-off is <b>the wall</b>. The failing
+    band carries the lever.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How wide it holds</div>
+            <div class="s">Pushed to a wider, colder crowd each batch — until one won't stay.</div>
+          </div>
+          <div class="badge"><span class="dot"></span>Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <svg class="viz" viewBox="0 0 640 236" role="img" aria-label="How wide your video holds">
+          <defs><radialGradient id="poster" cx="35%" cy="25%" r="90%"><stop offset="0" stop-color="#3a3733"/><stop offset="0.72" stop-color="#221f1d"/></radialGradient></defs>
+
+          <!-- funnel guides (widening) -->
+          <path d="M70,118 L150,89 M70,118 L150,155" stroke="rgba(236,231,222,.10)" stroke-width="1"/>
+          <path d="M220,89 L300,63 M220,155 L300,181" stroke="rgba(236,231,222,.10)" stroke-width="1"/>
+          <path d="M380,63 L470,34 M380,181 L470,210" stroke="rgba(217,119,87,.16)" stroke-width="1" stroke-dasharray="3 3"/>
+
+          <!-- video -->
+          <rect x="22" y="96" width="46" height="50" rx="8" fill="url(#poster)" stroke="rgba(255,255,255,.10)"/>
+          <circle cx="45" cy="121" r="9" fill="rgba(0,0,0,.34)" stroke="rgba(255,255,255,.12)"/>
+          <path d="M42,117 l6,4 -6,4 z" fill="#ece7de"/>
+          <text x="45" y="162" text-anchor="middle" fill="var(--fg)" font-size="11" font-weight="700">62</text>
+
+          <!-- Band 1: Your niche -->
+          <rect x="150" y="89" width="70" height="66" rx="9" fill="rgba(95,191,115,.16)" stroke="rgba(95,191,115,.34)"/>
+          <text x="185" y="81" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Your niche</text>
+          <text x="185" y="126" text-anchor="middle" fill="var(--green)" font-size="16" font-weight="700">78%</text>
+          <text x="185" y="171" text-anchor="middle" fill="var(--fg3)" font-size="10">~200 · holds</text>
+
+          <!-- Band 2: Adjacent -->
+          <rect x="300" y="63" width="80" height="118" rx="9" fill="rgba(95,191,115,.13)" stroke="rgba(95,191,115,.28)"/>
+          <text x="340" y="55" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Adjacent</text>
+          <text x="340" y="128" text-anchor="middle" fill="var(--fg)" font-size="16" font-weight="700">58%</text>
+          <text x="340" y="197" text-anchor="middle" fill="var(--fg3)" font-size="10">~1,000 · just holds</text>
+
+          <!-- the wall -->
+          <line x1="425" y1="28" x2="425" y2="206" stroke="rgba(217,119,87,.45)" stroke-width="1.3" stroke-dasharray="3 4"/>
+          <text x="425" y="222" text-anchor="middle" fill="rgba(217,119,87,.8)" font-size="10" font-weight="600">the wall</text>
+
+          <!-- Band 3: Mass FYP (past the wall) -->
+          <g opacity="0.6">
+            <rect x="470" y="34" width="92" height="176" rx="9" fill="rgba(217,119,87,.12)" stroke="rgba(217,119,87,.32)" stroke-dasharray="4 4"/>
+            <text x="516" y="26" text-anchor="middle" fill="var(--fg)" font-size="12" font-weight="600">Mass FYP</text>
+            <text x="516" y="128" text-anchor="middle" fill="var(--coral)" font-size="16" font-weight="700">33%</text>
+            <text x="516" y="226" text-anchor="middle" fill="rgba(217,119,87,.75)" font-size="10">~10k · drops at 0:17</text>
+          </g>
+        </svg>
+
+        <div class="takeaway"><span class="d"></span><span>Your appeal holds the niche + adjacent crowd to <b>~1,000</b>. The <b>mass FYP doesn't stay</b> (drops at 0:17) — close that and it breaks past the wall.</span></div>
+      </div>
+    </div>
+
+    <p class="note"><b>v5 = B's funnel, refined.</b> Kept the fast-read widening visual, made the cut-off explicit as "the wall" (that's C's
+      promotion-bar, drawn natively instead of a chart axis), and put the lever on the failing band. Open: tune band heights/spacing? add
+      a 4th "Viral" band ghosted past the wall? show "the wall" as a thicker barrier? swap "drops at 0:17" for "17% short"?</p>
+  </div>
+</body>
+</html>

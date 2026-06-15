@@ -5,15 +5,18 @@ import type { PredictionResult } from '@/lib/engine/types';
 /**
  * Resolve a *playable* video source for the Audience retention scrubber.
  *
- * Real video is surfaced for UPLOADED videos only (the product decision): a
- * tiktok_url analysis stores no inline-playable mp4, and text mode has no video.
+ * Real video is surfaced for BOTH uploaded videos AND tiktok_url analyses
+ * (reading-ux S1 2026-06-15, Option A): uploads persist the owner's file, and
+ * tiktok_url runs re-host the real mp4 into an owner-prefixed Storage path that
+ * `/api/videos/sign` can mint a URL for. Text mode has no video.
  *
  * Precedence:
  *   1. `pendingObjectUrl` — the locally selected file's blob URL, present on a
  *      fresh run (zero network, frame-accurate). Wins when set.
  *   2. A short-lived signed URL from `/api/videos/sign` when the persisted row
- *      is `input_mode === 'video_upload'` with a `video_storage_path` (permalink
- *      reload by the owner). 404 → `missing` (deleted by retention / never up).
+ *      is `input_mode === 'video_upload'` OR `'tiktok_url'` with a
+ *      `video_storage_path` (permalink reload by the owner). 404 → `missing`
+ *      (deleted by the 30-day retention cron / re-host failed / never up).
  *   3. Otherwise none — the caller falls back to the static curve.
  */
 export type VideoSourceStatus = 'idle' | 'loading' | 'ready' | 'missing';
@@ -34,8 +37,11 @@ export function useUploadedVideoSource(
   pendingObjectUrl: string | null,
 ): UploadedVideoSource {
   const carrier = result as (PredictionResult & VideoCarrier) | null;
+  // reading-ux S1 (2026-06-15): both video_upload and tiktok_url persist an
+  // owner-prefixed, signable video_storage_path. Either mode resolves a real source.
   const path =
-    carrier?.input_mode === 'video_upload' && carrier.video_storage_path
+    (carrier?.input_mode === 'video_upload' || carrier?.input_mode === 'tiktok_url') &&
+    carrier.video_storage_path
       ? carrier.video_storage_path
       : null;
 

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading hero — v2 (gauge + clean list)</title>
+<style>
+  :root{
+    --bg:#262624; --sidebar:#1a1a18; --surface:#1e1d1b; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 24px 120px;}
+  .serif{font-family:'Newsreader',ui-serif,Georgia,serif;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .wrap{max-width:760px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 0 34px;}
+  .lede b{color:var(--fg)}
+  .col{max-width:600px;margin:0 auto;}
+  .seglabel{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--fg3);}
+
+  /* ── hero ── */
+  .hero{display:flex;gap:22px;align-items:stretch;}
+  .poster{position:relative;width:104px;min-width:104px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;border:1px solid var(--border);
+    background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:38px;height:38px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .poster .time{position:absolute;left:8px;bottom:7px;font-size:10px;color:var(--fg2);background:rgba(0,0,0,.35);padding:1px 5px;border-radius:5px;}
+  .heroright{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;min-width:0;}
+  .scorerow{display:flex;align-items:center;gap:18px;}
+  .gauge{position:relative;width:118px;height:118px;flex:none;}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge .ctr b{font-size:38px;font-weight:600;line-height:1;}
+  .gauge .ctr small{margin-top:3px;font-size:14px;font-weight:600;}
+  .band.mid{color:var(--amber)} .band.strong{color:var(--green)} .band.weak{color:var(--red)}
+  .stats{display:flex;flex-direction:column;gap:9px;}
+  .stat .k{font-size:11px;letter-spacing:.04em;color:var(--fg3);}
+  .stat .v{font-size:20px;font-weight:600;line-height:1.1;}
+  .driver{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--fg2);}
+  .driver .dot{width:6px;height:6px;border-radius:999px;background:var(--amber);}
+
+  /* ── unified list ── */
+  .list{margin-top:34px;}
+  .grp{display:flex;flex-direction:column;}
+  .item{display:flex;align-items:center;gap:14px;padding:15px 6px;border-top:1px solid var(--border);cursor:pointer;}
+  .item:hover{background:rgba(255,255,255,.018);}
+  .grp:first-child .item:first-child{border-top:none;}
+  .item .name{font-size:15px;color:var(--fg);font-weight:500;width:118px;min-width:118px;}
+  .item .name .warn{display:block;font-size:11px;color:var(--amber);font-weight:600;margin-top:2px;}
+  .track{flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .fill{height:100%;border-radius:999px;background:linear-gradient(90deg,rgba(236,231,222,.20),rgba(236,231,222,.40));}
+  .fill.weak{background:var(--amber);}
+  .fill.strong{background:linear-gradient(90deg,rgba(95,191,115,.5),rgba(95,191,115,.8));}
+  .item .val{font-size:15px;font-weight:600;width:42px;text-align:right;}
+  .item .val.amber{color:var(--amber)}
+  .item .desc{flex:1;text-align:right;font-size:14px;color:var(--fg2);}
+  .item .chev{color:var(--fg3);font-size:18px;width:14px;text-align:center;}
+  .divlabel{padding:18px 6px 8px;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--fg3);}
+
+  .composer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;color:var(--fg3);font-size:15px;margin-top:30px;}
+  .composer .send{margin-left:auto;width:32px;height:32px;border-radius:9px;background:var(--coral);display:flex;align-items:center;justify-content:center;}
+
+  .note{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.6;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="lede"><b>Direction A — refined.</b> Gauge is back as the anchor (Whoop ring); the video sits beside it as the subject.
+    The three levers moved out of the cramped header into <b>one clean, unified list</b> — bar lives <i>between</i> name and value so there's
+    no dead gap, weakest is the only colored row. The confusing "Score distribution / vs niche" rows are regrouped with consistent grammar.</p>
+
+  <div class="col">
+    <!-- HERO -->
+    <div class="hero">
+      <div class="poster">
+        <div class="play"><span><svg width="13" height="13" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div>
+        <div class="time">0:28</div>
+      </div>
+      <div class="heroright">
+        <div class="scorerow">
+          <div class="gauge">
+            <svg width="118" height="118" viewBox="0 0 118 118" style="transform:rotate(135deg)">
+              <circle cx="59" cy="59" r="53" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8" stroke-linecap="round" stroke-dasharray="250 333"/>
+              <circle cx="59" cy="59" r="53" fill="none" stroke="#e0b341" stroke-width="8" stroke-linecap="round" stroke-dasharray="150 333"/>
+            </svg>
+            <div class="ctr"><b class="tabnum">60</b><small class="band mid">Mid</small></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><div class="k">Watch-through</div><div class="v tabnum">54%</div></div>
+            <div class="driver"><span class="dot"></span>loses them at <b style="color:var(--fg);margin-left:2px">0:08</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UNIFIED LIST -->
+    <div class="list">
+      <div class="grp">
+        <div class="item">
+          <span class="name">Hook</span>
+          <span class="track"><span class="fill strong" style="width:85%"></span></span>
+          <span class="val">85</span><span class="chev">›</span>
+        </div>
+        <div class="item">
+          <span class="name">Retention<span class="warn">⚠ drops at 0:08</span></span>
+          <span class="track"><span class="fill weak" style="width:50%"></span></span>
+          <span class="val amber">50</span><span class="chev">›</span>
+        </div>
+        <div class="item">
+          <span class="name">Shareability</span>
+          <span class="track"><span class="fill strong" style="width:85%"></span></span>
+          <span class="val">85</span><span class="chev">›</span>
+        </div>
+      </div>
+
+      <div class="divlabel">Go deeper</div>
+      <div class="grp">
+        <div class="item">
+          <span class="name" style="width:auto">Audience</span>
+          <span class="desc">10 segments · niche drops first</span><span class="chev">›</span>
+        </div>
+        <div class="item">
+          <span class="name" style="width:auto">Niche rank</span>
+          <span class="desc">top 38% in your niche</span><span class="chev">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div>
+
+    <p class="note">
+      <b>Why this reads cleaner:</b> &nbsp;• Gauge = the single dominant object (Whoop). &nbsp;• Video = the subject beside it, not a thumbnail-strip.
+      &nbsp;• Levers are one consistent list with the bar inline → no name···value dead-gap (Linear).
+      &nbsp;• Only the weakest lever carries color; everything else is calm cream-on-charcoal (Raycast matte).
+      &nbsp;• "Go deeper" separates the score <i>drivers</i> from <i>context</i> (audience, niche) so the list isn't a confusing mixed bag.
+    </p>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading hero — v3 (contained sections)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --surface2:#232220; --chip:#2f2e2b;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341; --red:#d96a4a;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 24px 100px;}
+  .serif{font-family:'Newsreader',ui-serif,Georgia,serif;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:600px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 0 30px;max-width:600px;margin-left:auto;margin-right:auto;}
+  .lede b{color:var(--fg)}
+
+  /* section scaffolding — the fix: clear labelled, contained groups */
+  .section{margin-top:26px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 10px 4px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;}
+
+  /* ── hero card ── */
+  .hero{display:flex;gap:20px;padding:20px;align-items:center;}
+  .poster{position:relative;width:96px;min-width:96px;aspect-ratio:9/16;border-radius:12px;overflow:hidden;border:1px solid var(--border);
+    background:radial-gradient(120% 80% at 35% 25%,#3a3733,#221f1d 72%);}
+  .poster .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .poster .play span{width:34px;height:34px;border-radius:999px;background:rgba(0,0,0,.32);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;}
+  .poster .time{position:absolute;left:7px;bottom:6px;font-size:10px;color:var(--fg2);background:rgba(0,0,0,.4);padding:1px 5px;border-radius:5px;}
+  .gauge{position:relative;width:112px;height:112px;flex:none;}
+  .gauge .ctr{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .gauge .ctr b{font-size:36px;font-weight:600;line-height:1;}
+  .gauge .ctr small{margin-top:3px;font-size:13px;font-weight:600;}
+  .band.mid{color:var(--amber)} .band.strong{color:var(--green)} .band.weak{color:var(--red)}
+  .herostats{flex:1;display:flex;flex-direction:column;gap:12px;border-left:1px solid var(--border);padding-left:20px;align-self:stretch;justify-content:center;}
+  .herostats .k{font-size:11px;color:var(--fg3);margin-bottom:3px;}
+  .herostats .v{font-size:22px;font-weight:600;line-height:1;}
+  .herostats .drop{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--fg2);}
+  .herostats .drop .ic{color:var(--amber);}
+  .herostats .drop b{color:var(--fg)}
+
+  /* ── driver rows ── */
+  .rows .row{display:flex;align-items:center;gap:16px;padding:14px 18px;border-top:1px solid var(--border);cursor:pointer;}
+  .rows .row:first-child{border-top:none;}
+  .rows .row:hover{background:rgba(255,255,255,.02);}
+  .row .name{font-size:15px;font-weight:500;width:104px;min-width:104px;}
+  .row .name .sub{display:block;font-size:11px;color:var(--amber);font-weight:600;margin-top:3px;}
+  .track{flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;}
+  .fill{height:100%;border-radius:999px;}
+  .fill.n{background:linear-gradient(90deg,rgba(236,231,222,.22),rgba(236,231,222,.42));}
+  .fill.weak{background:var(--amber);}
+  .row .val{font-size:16px;font-weight:600;width:34px;text-align:right;}
+  .row .val.amber{color:var(--amber);}
+  .row .chev{color:var(--fg3);font-size:17px;width:12px;text-align:center;}
+  .row .desc{flex:1;text-align:right;font-size:14px;color:var(--fg2);}
+
+  .composer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:13px 14px;color:var(--fg3);font-size:15px;margin-top:26px;}
+  .composer .send{margin-left:auto;width:32px;height:32px;border-radius:9px;background:var(--coral);display:flex;align-items:center;justify-content:center;}
+
+  .note{margin:54px auto 0;max-width:600px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v3 — contained sections.</b> The floaty hairline rows are gone. Three clear, labelled, contained groups —
+    <b>The read</b> (video + score), <b>Score drivers</b>, <b>Audience &amp; context</b> — with one consistent rhythm. The first view now
+    answers “what am I looking at” in one beat: your video, its score, the one problem.</p>
+
+  <div class="col">
+    <!-- SECTION 1 — THE READ -->
+    <div class="section">
+      <p class="lbl">The read</p>
+      <div class="card hero">
+        <div class="poster">
+          <div class="play"><span><svg width="12" height="12" viewBox="0 0 14 14" fill="#ece7de"><path d="M3 2l9 5-9 5z"/></svg></span></div>
+          <div class="time">0:28</div>
+        </div>
+        <div class="gauge">
+          <svg width="112" height="112" viewBox="0 0 112 112" style="transform:rotate(135deg)">
+            <circle cx="56" cy="56" r="50" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8" stroke-linecap="round" stroke-dasharray="236 314"/>
+            <circle cx="56" cy="56" r="50" fill="none" stroke="#e0b341" stroke-width="8" stroke-linecap="round" stroke-dasharray="141 314"/>
+          </svg>
+          <div class="ctr"><b class="tabnum">60</b><small class="band mid">Mid</small></div>
+        </div>
+        <div class="herostats">
+          <div><div class="k">Watch-through</div><div class="v tabnum">54%</div></div>
+          <div class="drop"><span class="ic"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6v3M8 11h.01M8 2l6 11H2z" stroke-linecap="round" stroke-linejoin="round"/></svg></span>loses them at <b>0:08</b></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2 — SCORE DRIVERS -->
+    <div class="section">
+      <p class="lbl">Score drivers</p>
+      <div class="card rows">
+        <div class="row">
+          <span class="name">Hook</span>
+          <span class="track"><span class="fill n" style="width:85%"></span></span>
+          <span class="val">85</span><span class="chev">›</span>
+        </div>
+        <div class="row">
+          <span class="name">Retention<span class="sub">⚠ drops at 0:08</span></span>
+          <span class="track"><span class="fill weak" style="width:50%"></span></span>
+          <span class="val amber">50</span><span class="chev">›</span>
+        </div>
+        <div class="row">
+          <span class="name">Shareability</span>
+          <span class="track"><span class="fill n" style="width:85%"></span></span>
+          <span class="val">85</span><span class="chev">›</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 3 — AUDIENCE & CONTEXT -->
+    <div class="section">
+      <p class="lbl">Audience &amp; context</p>
+      <div class="card rows">
+        <div class="row">
+          <span class="name" style="width:auto">Audience</span>
+          <span class="desc">10 segments · niche drops first</span><span class="chev">›</span>
+        </div>
+        <div class="row">
+          <span class="name" style="width:auto">Niche rank</span>
+          <span class="desc">top 38% in your niche</span><span class="chev">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="composer">Ask about this simulation…<span class="send"><svg width="15" height="15" viewBox="0 0 14 14" fill="none" stroke="#1a0f0a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 11V3M3 7l4-4 4 4"/></svg></span></div>
+
+    <p class="note"><b>The change:</b> every block is now a contained card under a quiet section label, on one vertical rhythm
+      (26px between sections, 14px rows). Eye lands on <b>The read</b> first (video + 60 + the one drop), then <b>drivers</b>, then
+      <b>context</b> — instead of a wall of floating rows. Color only on the weak lever. Tighten anything that still feels off and I'll lock it.</p>
+  </div>
+</body>
+</html>

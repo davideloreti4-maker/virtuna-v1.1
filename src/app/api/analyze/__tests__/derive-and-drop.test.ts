@@ -1,29 +1,26 @@
 /**
- * Derive-and-drop assertions for Plan 03 (INGEST-01 hard gate).
+ * Re-host persistence + orphan-cleanup assertions for the tiktok_url Omni branch.
  *
  * Strategy: Option B (Supabase re-host) was chosen per spike §8 for security
- * (token non-leakage to DashScope). Tests assert:
+ * (token non-leakage to DashScope). reading-ux S1 (2026-06-15, Option A) UPDATED the
+ * derive-and-drop policy: a tiktok_url re-host is now KEPT on success when an owner
+ * `userId` is supplied (the retention scrubber needs a playable source on permalink
+ * reload). Only orphans are dropped. Tests assert:
  *
- *   1. tiktok_url analysis row has video_storage_path === null (buildInsertRow rule).
- *      The rule at route.ts:450-455 is "video_upload && retentionOptedIn only" — this
- *      test asserts it does NOT change for tiktok_url. ASSERT ONLY — do NOT alter route.ts.
+ *   1. KEEP-ON-SUCCESS (with userId): the re-host lands at an owner-prefixed, signable
+ *      path (`${userId}/tiktok-...`), the pipeline surfaces it via
+ *      PipelineResult.video_storage_path, and storage.remove is NOT called (object kept).
  *
- *   2. Re-host temp path is deleted via storage.remove regardless of
- *      storage_retention_opted_in (proves the cleanup does NOT consult the owned-upload
- *      retention flag). Separate from cleanupUploadedStorage (route.ts:40-61).
+ *   2. ORPHAN-DROP (no userId): without an owner id the legacy remix-temp path is used,
+ *      persistedVideoPath stays null, and storage.remove IS called (derive-and-drop) so
+ *      no non-owned, non-signable object lingers. video_storage_path is null.
  *
- *   3. Pass-through variant: since Option B is always used (no pass-through),
- *      this test verifies that the storage.upload IS called (re-host happened) and
- *      storage.remove IS also called (derive-and-drop happened), confirming no lingering
- *      object stays in the bucket past the request.
+ *   3. RE-HOST → SURFACE cycle (with userId): storage.upload is called at the
+ *      owner-prefixed path AND that exact path is returned as video_storage_path (the
+ *      route persists it). storage.remove is NOT called on this success path.
  *
  * Tests here exercise the pipeline layer directly (not the route handler), using the
  * same mock patterns as pipeline.test.ts and tiktok-url-branch.test.ts.
- *
- * Plan 03-02 additions (C4 — decode route cleanup):
- *   DD-04: decode branch (mode:'remix') always calls resolveAndRehost's cleanup()
- *          even when runDecode returns null.
- *   DD-05: decode branch never sets video_storage_path on the INSERT row.
  */
 
 // =====================================================
@@ -342,77 +339,75 @@ describe("Derive-and-drop assertions (Plan 03 INGEST-01)", () => {
   });
 
   /**
-   * Assertion 1 (Plan 03 must_have):
-   * The pipeline does NOT return a video_storage_path for tiktok_url runs.
-   * The temp re-host object lives only during the request (derive-and-drop).
-   *
-   * This verifies the pipeline result does not expose the temp path.
-   * The route's buildInsertRow rule (route.ts:450-455) then produces null in the DB row —
-   * the existing route.test.ts assertions cover that layer. Here we confirm the pipeline
-   * itself does not return any path that would let the route persist a non-owned object.
-   *
-   * Note: pipeline.ts does not include a video_storage_path field in PipelineResult —
-   * it is a route-level concern. This test confirms no field named rehostPath or
-   * video_storage_path appears in the final result, and the result is a full pipeline
-   * success (non-null geminiResult.analysis.video_signals).
+   * Assertion 1 (reading-ux S1 — keep-on-success):
+   * With an owner userId, a successful tiktok_url re-host is KEPT and surfaced via
+   * PipelineResult.video_storage_path at an owner-prefixed (signable) path. The temp
+   * object is NOT removed — the route persists the path so the scrubber replays on reload.
    */
-  it("DD-01: tiktok_url pipeline result carries no video_storage_path field", async () => {
-    const result = await runPredictionPipeline(tiktokInput);
+  it("DD-01: tiktok_url + userId surfaces an owner-prefixed video_storage_path and keeps the object", async () => {
+    const result = await runPredictionPipeline(tiktokInput, { userId: "user-dd" });
 
-    // Pipeline completes successfully
+    // Pipeline completes successfully (real Omni signal, not null text branch)
     expect(result).not.toBeNull();
-    // video_signals populated (real Omni signal, not null text branch)
     expect(result.geminiResult.analysis.video_signals).not.toBeNull();
-    // PipelineResult has no video_storage_path — tiktok_url exposes nothing to the route
-    expect(result).not.toHaveProperty("video_storage_path");
-    expect(result).not.toHaveProperty("rehostPath");
+    // Surfaced path is owner-prefixed (so /api/videos/sign's owner check passes) and signable
+    expect(result.video_storage_path).toBe("user-dd/tiktok-dd-test-req.mp4");
+    // KEEP-ON-SUCCESS: the re-host object is NOT dropped
+    expect(mockStorageRemove).not.toHaveBeenCalled();
   });
 
   /**
-   * Assertion 2 (Plan 03 must_have — derive-and-drop):
-   * storage.remove is called exactly once (the rehostPath cleanup), unconditionally.
-   *
-   * "Independent of storage_retention_opted_in" is by design: the pipeline does NOT
-   * receive retentionOptedIn as a parameter — it is a route.ts variable that is NEVER
-   * threaded into PipelineOptions. Therefore the pipeline's cleanup path has no access
-   * to the retention flag and cannot consult it. The remove fires on every tiktok_url run.
-   *
-   * This test verifies: remove is called, and the path matches the one that was uploaded.
+   * Assertion 2 (reading-ux S1 — orphan drop):
+   * Without an owner userId the legacy remix-temp path is used and the object is dropped
+   * (derive-and-drop) — it is not owner-signable, so nothing should reference it. The
+   * pipeline surfaces a null video_storage_path. This is the back-compat / safety path.
    */
-  it("DD-02: re-host temp path is removed unconditionally (no retention-flag gate possible)", async () => {
-    await runPredictionPipeline(tiktokInput);
+  it("DD-02: tiktok_url without userId drops the legacy remix-temp object (orphan cleanup)", async () => {
+    const result = await runPredictionPipeline(tiktokInput);
 
-    // Exactly one remove call
+    // No owner → nothing persistable
+    expect(result.video_storage_path).toBeNull();
+    // Exactly one remove call, targeting the remix-temp object (not any owned path)
     expect(mockStorageRemove).toHaveBeenCalledTimes(1);
     const [paths] = mockStorageRemove.mock.calls[0] as [string[]];
     expect(paths.length).toBe(1);
-    // The removed path must be the remix-temp object (not any owned-upload path)
     expect(paths[0]).toContain("remix-temp");
-    // Verify the remove is NOT gated: the pipeline has no retentionOptedIn parameter,
-    // so it structurally cannot skip the cleanup based on user retention preference.
-    // (If pipeline.ts ever adds a retentionOptedIn guard to the remove call, this test
-    // will still pass — but the code review should catch the regression.)
   });
 
   /**
-   * Assertion 3 (Plan 03 must_have — re-host → delete cycle):
-   * storage.upload IS called (Option B re-host) AND storage.remove IS called
-   * (derive-and-drop) in the same pipeline run. This confirms no lingering object
-   * stays in the bucket: what is uploaded is also deleted.
+   * Assertion 3 (reading-ux S1 — re-host → surface cycle):
+   * With a userId, storage.upload re-hosts the mp4 at the owner-prefixed path AND that exact
+   * path is returned as video_storage_path. storage.remove is NOT called (success keep).
    */
-  it("DD-03: storage.upload called (re-host) and storage.remove called (drop) — zero lingering objects", async () => {
-    await runPredictionPipeline(tiktokInput);
+  it("DD-03: re-host upload path with userId is surfaced as video_storage_path and kept", async () => {
+    const result = await runPredictionPipeline(tiktokInput, { userId: "user-dd" });
 
-    // Upload happened (re-host to videos bucket)
+    // Upload happened at the owner-prefixed path
     expect(mockStorageUpload).toHaveBeenCalledTimes(1);
     const [uploadPath,, uploadOpts] = mockStorageUpload.mock.calls[0] as [string, unknown, { contentType: string }];
-    expect(uploadPath).toContain("remix-temp");
+    expect(uploadPath).toBe("user-dd/tiktok-dd-test-req.mp4");
     expect(uploadOpts.contentType).toBe("video/mp4");
 
-    // Remove also happened (derive-and-drop)
+    // The uploaded path is exactly what the pipeline surfaces — the route persists it
+    expect(result.video_storage_path).toBe(uploadPath);
+    // Not dropped on the success path
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Assertion 4 (reading-ux S1 — failure still cleans up):
+   * If the re-host signed-URL step fails AFTER upload (with a userId), persistedVideoPath
+   * never gets set, so video_storage_path is null and the orphaned upload is dropped.
+   */
+  it("DD-04: re-host signed-URL failure with userId drops the orphan and surfaces null", async () => {
+    mockCreateSignedUrl.mockResolvedValueOnce({ data: null, error: { message: "sign failed" } });
+    const result = await runPredictionPipeline(tiktokInput, { userId: "user-dd" });
+
+    // Re-host did not fully succeed → nothing surfaced
+    expect(result.video_storage_path).toBeNull();
+    // The orphaned upload (owner-prefixed path) is cleaned up
     expect(mockStorageRemove).toHaveBeenCalledTimes(1);
-    const [removePaths] = mockStorageRemove.mock.calls[0] as [string[]];
-    // Same path was uploaded and then deleted
-    expect(removePaths[0]).toBe(uploadPath);
+    const [paths] = mockStorageRemove.mock.calls[0] as [string[]];
+    expect(paths[0]).toBe("user-dd/tiktok-dd-test-req.mp4");
   });
 });

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reading — breakout levels v8 (labelled clean)</title>
+<style>
+  :root{
+    --bg:#262624; --surface:#1e1d1b; --chip:#2a2926;
+    --fg:#ece7de; --fg2:#c2bdb4; --fg3:#8a857c;
+    --coral:#d97757; --green:#5fbf73; --amber:#e0b341;
+    --border:rgba(255,255,255,.06); --border2:rgba(255,255,255,.1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--fg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;letter-spacing:.2px;-webkit-font-smoothing:antialiased;padding:40px 20px 100px;}
+  .tabnum{font-variant-numeric:tabular-nums;}
+  .col{max-width:640px;margin:0 auto;}
+  .lede{font-size:13px;color:var(--fg2);line-height:1.55;margin:0 auto 28px;max-width:640px;}
+  .lede b{color:var(--fg)}
+  .section{margin-top:24px;}
+  .section > .lbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--fg3);margin:0 0 11px 2px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px 22px 18px;}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .head .t{font-size:16px;font-weight:600;}
+  .head .s{font-size:12px;color:var(--fg3);margin-top:4px;line-height:1.5;max-width:400px;}
+  .badge{flex:none;display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:999px;
+    background:rgba(255,255,255,.03);border:1px solid var(--border);font-size:12px;font-weight:600;color:var(--fg2);white-space:nowrap;}
+  .badge b{color:var(--fg);}
+
+  /* chart */
+  .chart{margin-top:26px;display:grid;grid-template-columns:auto 1fr;gap:10px;}
+  .yaxis{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;
+    height:150px;padding-bottom:1px;font-size:9.5px;color:var(--fg3);}
+  .ylabel{font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--fg3);writing-mode:vertical-rl;transform:rotate(180deg);align-self:center;margin-right:2px;}
+  .plot{position:relative;}
+  .tubes{display:flex;justify-content:space-between;gap:20px;height:150px;align-items:flex-end;}
+  .m{flex:1;height:100%;position:relative;display:flex;flex-direction:column;justify-content:flex-end;}
+  .tube{position:relative;width:100%;max-width:84px;margin:0 auto;height:100%;border-radius:12px;
+    border:1px solid var(--border);background:rgba(255,255,255,.02);overflow:hidden;}
+  .fill{position:absolute;left:0;right:0;bottom:0;}
+  .fill.ok{background:rgba(95,191,115,.24);}
+  .fill.cap{background:rgba(217,119,87,.26);}
+  .pctIn{position:absolute;left:0;right:0;text-align:center;font-size:14px;font-weight:700;color:var(--fg);}
+  .pctIn.cap{color:var(--coral);}
+  .m.locked .tube{border-style:dashed;opacity:.55;}
+  /* push line spans the plot once */
+  .pushline{position:absolute;left:0;right:0;border-top:1px dashed rgba(236,231,222,.24);}
+  .pushtag{position:absolute;right:0;font-size:9px;color:var(--fg3);background:var(--surface);padding:0 5px;transform:translateY(-50%);}
+  /* x axis */
+  .xaxis{display:flex;justify-content:space-between;gap:20px;margin-top:9px;}
+  .xa{flex:1;text-align:center;}
+  .xa .reach{font-size:12.5px;font-weight:600;color:var(--fg);}
+  .xa.locked .reach{color:var(--fg3);}
+  .xa .cap{font-size:10px;color:var(--coral);margin-top:2px;}
+  .xcap{font-size:10px;color:var(--fg3);text-align:center;margin-top:7px;letter-spacing:.04em;}
+
+  .foot{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--fg2);line-height:1.5;}
+  .foot b{color:var(--fg);font-weight:600;}
+
+  .note{margin:46px auto 0;max-width:640px;padding-top:18px;border-top:1px solid var(--border);font-size:12px;color:var(--fg3);line-height:1.65;}
+  .note b{color:var(--fg2)}
+</style>
+</head>
+<body>
+  <p class="lede"><b>v8 — labelled like a real chart.</b> Same clean tubes, but now the axes say what everything is: the bars are
+    <b>% of each batch who keep watching</b> (y), the batches grow along the bottom (x), and the dashed line is the watch-rate <b>needed
+    to get pushed to the next batch</b>. No more mystery %s or vague tags.</p>
+
+  <div class="col">
+    <div class="section">
+      <p class="lbl">Your audience</p>
+      <div class="card">
+        <div class="head">
+          <div>
+            <div class="t">How far it gets pushed</div>
+            <div class="s">TikTok shows it in bigger batches — but only while enough viewers keep watching.</div>
+          </div>
+          <div class="badge">Breaks out to&nbsp;<b>~1,000</b></div>
+        </div>
+
+        <div class="chart">
+          <div style="display:flex;gap:8px;">
+            <div class="ylabel">keep watching</div>
+            <div class="yaxis"><span>100%</span><span>50%</span><span>0%</span></div>
+          </div>
+          <div class="plot">
+            <div class="tubes">
+              <div class="m"><div class="tube"><div class="fill ok" style="height:78%"></div><div class="pctIn" style="bottom:78%;transform:translateY(120%)">78%</div></div></div>
+              <div class="m"><div class="tube"><div class="fill ok" style="height:58%"></div><div class="pctIn" style="bottom:58%;transform:translateY(120%)">58%</div></div></div>
+              <div class="m"><div class="tube"><div class="fill cap" style="height:33%"></div><div class="pctIn cap" style="bottom:33%;transform:translateY(120%)">33%</div></div></div>
+              <div class="m locked"><div class="tube"></div></div>
+            </div>
+            <!-- one push line across the plot, at 55% -->
+            <div class="pushline" style="bottom:55%"></div>
+            <div class="pushtag" style="bottom:55%">needed to get pushed</div>
+          </div>
+        </div>
+
+        <div class="chart" style="margin-top:0;">
+          <div></div>
+          <div>
+            <div class="xaxis">
+              <div class="xa"><div class="reach tabnum">200</div></div>
+              <div class="xa"><div class="reach tabnum">1K</div></div>
+              <div class="xa"><div class="reach tabnum">10K</div><div class="cap">caps here</div></div>
+              <div class="xa locked"><div class="reach tabnum">100K</div></div>
+            </div>
+            <div class="xcap">viewers reached →</div>
+          </div>
+        </div>
+
+        <p class="foot">It stays above the line through <b>~1,000</b>, then drops below at the 10K batch. Lift the <b>0:17 drop</b> and it clears, breaking wider.</p>
+      </div>
+    </div>
+
+    <p class="note"><b>v8 = clarity pass.</b> Added quiet axis labels — y: "% keep watching", x: "viewers reached" — and labelled the
+      dashed line "needed to get pushed". Dropped the your-core/wider/mass tags entirely. The %s now read unambiguously. Open: keep "100K /
+      viral" 4th tube? "caps here" tag or let the coral + below-the-line speak? rising line per batch?</p>
+  </div>
+</body>
+</html>
