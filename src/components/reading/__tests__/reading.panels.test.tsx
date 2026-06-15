@@ -35,6 +35,13 @@ vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
   usePermalinkFilmstrips: () => mockFilmstrips,
 }));
 
+// The retention scrubber (003-A) resolves a playable video via useUploadedVideoSource
+// (fetch /api/videos/sign). Mock it so the panel renders deterministically with no
+// network — null src exercises the keyframe-flipbook path (curve + cohorts still mount).
+vi.mock('@/components/board/audience/use-uploaded-video-source', () => ({
+  useUploadedVideoSource: () => ({ src: null, status: 'idle' }),
+}));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Drill-down panels (UX rework 2026-06-15) — every panel now expands INLINE inside
 // the ReadingAccordion (the DrillSheet is retired). The interaction is uniform: tap
@@ -55,7 +62,7 @@ let mockState: { id: string | null; data: PredictionResult | null; isLoading: bo
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 
 import { Reading } from '../reading';
 import { renderPanel } from '../reading-panels';
@@ -144,19 +151,18 @@ describe('drill-down: hook panel (READ-09)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// retention panel — tap the Retention row → inline composed "watch journey" cluster
+// retention panel — tap the Retention row → the linked watch-journey scrubber (003-A)
 // ─────────────────────────────────────────────────────────────────────────────
 describe('drill-down: retention panel (READ-09)', () => {
-  it('renders on real data without throwing — the composed watch-journey cluster mounts', async () => {
+  it('renders on real data without throwing — the linked scrubber cluster mounts', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
     await user.click(screen.getByTestId('row-trigger-retention'));
-    // All three rich visuals mount on ONE aligned timeline; the native list is gone.
-    expect(await screen.findByTestId('retention-chart')).toBeInTheDocument();
-    expect(screen.getByTestId('craft-filmstrip')).toBeInTheDocument();
-    expect(screen.getByTestId('segment-table')).toBeInTheDocument();
-    expect(screen.queryByTestId('panel-retention')).not.toBeInTheDocument();
+    // The signature scrubber: ONE playhead over the curve + slider + who-leaves cohorts.
+    expect(await screen.findByTestId('retention-scrubber-cluster')).toBeInTheDocument();
+    expect(screen.getByTestId('retention-chart')).toBeInTheDocument();
+    expect(screen.getByTestId('retention-scrubber-slider')).toBeInTheDocument();
   });
 
   it('degrades to PanelEmpty on empty segments (no throw, no empty SVG shell)', async () => {
@@ -198,20 +204,22 @@ describe('drill-down: retention panel (READ-09)', () => {
     expect(screen.queryByTestId('panel-retention')).not.toBeInTheDocument();
   });
 
-  it('mounts CraftFilmstrip timeline-paired with the curve (D-04)', async () => {
+  it('drives a live "leaving now" readout off the playhead (the scrubber signature)', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
     await user.click(screen.getByTestId('row-trigger-retention'));
-    expect(await screen.findByTestId('craft-filmstrip')).toBeInTheDocument();
+    // The live readout starts at "everyone watching" (playhead at 0).
+    const leaving = await screen.findByTestId('retention-scrubber-leaving');
+    expect(leaving.textContent ?? '').toMatch(/everyone watching/i);
   });
 
-  it('mounts SegmentTable (who-leaves cohort breakdown)', async () => {
+  it('mounts the linked who-leaves cohort list driven by the same playhead', async () => {
     const user = userEvent.setup();
     render(<Reading />);
 
     await user.click(screen.getByTestId('row-trigger-retention'));
-    expect(await screen.findByTestId('segment-table')).toBeInTheDocument();
+    expect(await screen.findByTestId('retention-scrubber-cohorts')).toBeInTheDocument();
   });
 });
 
@@ -297,35 +305,44 @@ describe('drill-down: shareability panel (READ-09)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// audience panel — the deep-dive (graph + ranked list) is DEFERRED out of the
-// accordion (the orbit under the hero is the overview now), but the panel itself
-// still works — render it directly so its coverage survives until step-2 re-wires it.
+// audience panel — REVIVED into the accordion (S3): the "Audience" row drills the
+// persona deep-dive (demoted graph + ranked "who watches / who drops first" list).
+// The hero folds the breakout OVERVIEW; this row is the per-segment detail.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('drill-down: audience panel (READ-09, deferred from the accordion)', () => {
-  it('renders on real data without throwing — the demoted graph + ranked list mount', () => {
-    render(<>{renderPanel('personas', makeReadingResult(), undefined, 'sim-1')}</>);
+describe('drill-down: audience panel (READ-09)', () => {
+  it('opens the persona deep-dive inline when the Audience row is tapped', async () => {
+    const user = userEvent.setup();
+    render(<Reading />);
+
+    expect(screen.queryByTestId('panel-personas-list')).not.toBeInTheDocument();
+    await user.click(screen.getByTestId('row-trigger-personas'));
     // List-led: the ranked persona list IS the content; the graph is a demoted header.
-    expect(screen.getByTestId('panel-personas-list')).toBeInTheDocument();
+    expect(await screen.findByTestId('panel-personas-list')).toBeInTheDocument();
     expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
-    // The native P2 list is gone.
-    expect(screen.queryByTestId('panel-personas')).not.toBeInTheDocument();
   });
 
-  it('empty personas → no audience surface at all (the orbit overview omits on the empty cohort)', () => {
+  it('renders on real data without throwing — the demoted graph + ranked list mount', () => {
+    render(<>{renderPanel('personas', makeReadingResult(), undefined, 'sim-1')}</>);
+    expect(screen.getByTestId('panel-personas-list')).toBeInTheDocument();
+    expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
+  });
+
+  it('empty personas → the Audience row is present but DISABLED (no empty drill, no fabricated shell)', async () => {
     // personas:[] → buildAudienceNodes returns [] → the breakout overview omits
-    // itself (no fabricated empty shell), and the deferred deep-dive row is absent.
+    // itself AND the deep-dive row is disabled (honest: never an empty drill).
     mockState = {
       id: 'sim-1',
       data: makeEmptyPersonasResult(),
       isLoading: false,
     };
-    const { container } = render(<Reading />);
+    const user = userEvent.setup();
+    render(<Reading />);
 
-    expect(
-      container.querySelector('svg[aria-label="Audience watch-through by persona"]'),
-    ).toBeNull();
     expect(screen.queryByTestId('audience-breakout')).toBeNull();
-    expect(screen.queryByTestId('row-trigger-personas')).not.toBeInTheDocument();
+    const trigger = screen.getByTestId('row-trigger-personas');
+    expect(trigger).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByTestId('panel-personas-list')).not.toBeInTheDocument();
   });
 });
 

@@ -19,4 +19,5 @@ export { RewriteItem } from './rewrite-item';
 export { DeeperRead } from './deeper-read';
 export { ReadingChat } from './reading-chat';
 export { DrillSheet } from './drill-sheet';
-export { PanelShell, LegendKey, PanelSection } from './panel-shell';
+export { RetentionScrubber } from './retention-scrubber';
+export { PanelShell, LegendKey, PanelSection, PanelEmpty } from './panel-shell';

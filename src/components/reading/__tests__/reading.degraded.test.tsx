@@ -19,7 +19,7 @@ let mockState: { id: string | null; data: PredictionResult | null; isLoading: bo
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 
 // ThumbnailStrip reads usePermalinkFilmstrips() eagerly (top of tree) → mock so the
 // container mounts without a QueryClientProvider. ReadingChat's useExpertChat is

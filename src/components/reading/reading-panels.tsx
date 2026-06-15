@@ -4,35 +4,26 @@ import type {
   PredictionResult,
   ApolloDimension,
   HookDecomposition,
-  GeminiAudioSignals,
-  CtaSegmentResult,
 } from '@/lib/engine/types';
-import type { EmotionArcPoint } from '@/lib/engine/qwen/schemas';
 import {
   buildPersonaNodes,
   buildSegmentGroups,
   worstBadGroupKey,
-  toRetentionCurve,
-  normalizeCurve,
-  findBiggestDrop,
-  totalDuration,
-  cohortDropFrame,
-  type SlotKey,
-  type CohortDropFrame,
 } from '@/components/board/audience/audience-derive';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { ScoreDistribution } from '@/components/board/verdict/ScoreDistribution';
 import { confidenceRange, deriveBehavioralTiles } from '@/components/board/verdict/verdict-derive';
 import { useComparisons } from '@/components/board/verdict/use-comparisons';
 import { PersonaGraph, type PersonaNode } from '@/components/board/_kit/PersonaGraph';
 import { StatTileRow, type StatTileData } from '@/components/board/_kit/StatTile';
-import { RetentionChart } from '@/components/board/audience/RetentionChart';
-import { SegmentTable } from '@/components/board/audience/SegmentTable';
-import { CraftFilmstrip } from '@/components/board/content-analysis/CraftFilmstrip';
-import { buildCells, audioMixCaption } from '@/components/board/content-analysis/content-analysis-derive';
 
-import { PanelShell, LegendKey, PanelSection } from './panel-shell';
+import { PanelShell, LegendKey, PanelEmpty } from './panel-shell';
+import { RetentionScrubber } from './retention-scrubber';
+
+// Re-exported for back-compat: PanelEmpty now lives in panel-shell (so the
+// retention scrubber can import it without a cycle), but existing imports of
+// `{ PanelEmpty } from './reading-panels'` keep working.
+export { PanelEmpty };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading drill-down panels (UX rework 2026-06-15) — every panel now expands
@@ -54,32 +45,6 @@ function clamp01(v: number): number {
   return Math.max(0, Math.min(1, v));
 }
 
-/** Whitelisted dual-read for the CraftFilmstrip's craft signals (audio + cta).
- *  LIVE SSE puts them top-level; the persisted permalink row nests them under
- *  variants.craft (mirrors ContentAnalysisFrame). All degrade cleanly when absent. */
-type CraftVariants = {
-  variants?: {
-    craft?: {
-      audio_signals?: GeminiAudioSignals | null;
-      cta_segment?: CtaSegmentResult | null;
-    } | null;
-  } | null;
-};
-function readCraftSignals(data: PredictionResult): {
-  arc: EmotionArcPoint[];
-  audio: GeminiAudioSignals | null;
-  ctaPresent: boolean;
-} {
-  const craft = (data as CraftVariants).variants?.craft ?? null;
-  const audio = craft?.audio_signals ?? data.audio_signals ?? null;
-  const cta = craft?.cta_segment ?? data.cta_segment ?? null;
-  return {
-    arc: data.emotion_arc ?? [],
-    audio,
-    ctaPresent: cta?.cta_present ?? false,
-  };
-}
-
 /** Render the body for a drill panel (already allow-list-validated by the caller). */
 export function renderPanel(
   panel: PanelId,
@@ -91,7 +56,10 @@ export function renderPanel(
     case 'hook':
       return <HookPanel hook={data.hook_decomposition ?? null} dims={dims} />;
     case 'retention':
-      return <RetentionPanel data={data} />;
+      // The signature linked watch-journey (sketch 003-A): one playhead drives the
+      // frame + curve + on-screen cell + who-leaves cohort. Replaces the former
+      // static 3-section RetentionPanel.
+      return <RetentionScrubber data={data} />;
     case 'shareability':
       return (
         <ShareabilityPanel data={data} dim={dims?.find((d) => d.name === 'share_pull')} />
@@ -194,81 +162,6 @@ function HookPanel({
             </div>
           );
         })}
-      </div>
-    </PanelShell>
-  );
-}
-
-// ── Retention ─────────────────────────────────────────────────────────────────
-
-/** RetentionPanel (D-03/D-04/D-06) — the SIGNATURE drill-down: the composed "watch
- *  journey" on ONE aligned timeline. Now each of the three visuals carries a caps
- *  section label so the relationship reads at a glance:
- *    Watch curve (survival + niche ghost + drop) · On screen (frames + audio) ·
- *    Who leaves (cohort breakdown + drop frames).
- *  All three consume the SAME heatmap.segments + filmstrips map → aligned by
- *  construction (D-06). Store-free; NEVER imports a *Node/*Frame. */
-function RetentionPanel({ data }: { data: PredictionResult }) {
-  const filmstrips = usePermalinkFilmstrips();
-
-  const heatmap = data.heatmap ?? null;
-  const segments = heatmap?.segments ?? [];
-
-  const raw = heatmap?.weighted_curve ?? null;
-  const curve = raw && raw.length > 0 ? toRetentionCurve(normalizeCurve(raw)) : null;
-  const drop = curve ? findBiggestDrop(normalizeCurve(curve)) : null;
-  const total = totalDuration(heatmap?.segments, 30); // SECONDS
-
-  // D-13 honesty gate FIRST: no timeline (no segments) or no attention story (no
-  // curve) → PanelEmpty, never an empty SVG / table / fabricated 0.
-  if (segments.length === 0 || curve == null) return <PanelEmpty />;
-
-  const ncp = heatmap?.niche_completion_pct;
-  const nicheCompletionPct = ncp != null ? (ncp > 1.5 ? ncp / 100 : ncp) : null;
-
-  const { arc, audio, ctaPresent } = readCraftSignals(data);
-  const cells = buildCells(segments, filmstrips, arc, total);
-
-  const groups = buildSegmentGroups(heatmap, data.persona_simulation_results);
-  const badKey = worstBadGroupKey(groups);
-  const slotKeys: SlotKey[] = ['fyp', 'niche', 'loyalist', 'cross_niche'];
-  const cohortFrames: Partial<Record<SlotKey, CohortDropFrame>> = {};
-  for (const key of slotKeys) {
-    const frame = cohortDropFrame(heatmap, key, filmstrips);
-    if (frame) cohortFrames[key] = frame;
-  }
-
-  return (
-    <PanelShell
-      subtitle="Where viewers leave — and what's on screen when they do."
-      legend={<LegendKey tone="accent">biggest drop</LegendKey>}
-    >
-      <div data-testid="panel-retention-cluster" className="flex flex-col gap-6">
-        <PanelSection label="Watch curve">
-          <RetentionChart
-            curve={curve}
-            heatmap={heatmap}
-            drop={drop}
-            totalDurationSec={total}
-            filmstrips={filmstrips}
-            nicheCompletionPct={nicheCompletionPct}
-            isLoading={false}
-          />
-        </PanelSection>
-        <PanelSection label="On screen">
-          <CraftFilmstrip
-            cells={cells}
-            durationSec={total}
-            arc={arc}
-            audio={audio}
-            audioCaption={audio ? audioMixCaption(audio) : ''}
-            ctaPresent={ctaPresent}
-            isLoading={false}
-          />
-        </PanelSection>
-        <PanelSection label="Who leaves">
-          <SegmentTable groups={groups} badKey={badKey} cohortFrames={cohortFrames} isLoading={false} />
-        </PanelSection>
       </div>
     </PanelShell>
   );
@@ -407,8 +300,4 @@ function DimensionPanel({ dim }: { dim: ApolloDimension | undefined }) {
       <p className="text-[13px] text-foreground-secondary">{dim.evidence}</p>
     </div>
   );
-}
-
-export function PanelEmpty() {
-  return <p className="pt-2 text-[13px] text-foreground-muted">Not available for this read.</p>;
 }

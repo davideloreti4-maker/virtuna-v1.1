@@ -91,7 +91,7 @@ let mockState: { id: string | null; data: PredictionResult | null; isLoading: bo
 vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
   usePermalinkAnalysis: () => mockState,
 }));
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 // The score panel (D-02) runs a panel-local useComparisons(id) (useQuery). Mock it
 // so no QueryClientProvider is needed and the niche cohort is deterministic — a real
 // cohort here renders ScoreDistribution's field histogram (the richest score surface
@@ -107,6 +107,11 @@ vi.mock('@/components/board/verdict/use-comparisons', () => ({
 // a URL string is NOT a cut/jargon field (the sweep asserts no banned sentinels leak).
 vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
   usePermalinkFilmstrips: () => ({ 0: 'https://example.test/frame-0.jpg', 2: 'https://example.test/frame-2.jpg' }),
+}));
+// The retention scrubber resolves a video via useUploadedVideoSource (fetch). Mock
+// it so the drill sweep needs no network; a signed URL is not a cut/jargon field.
+vi.mock('@/components/board/audience/use-uploaded-video-source', () => ({
+  useUploadedVideoSource: () => ({ src: 'https://example.test/clip.mp4', status: 'ready' }),
 }));
 
 import { Reading } from '../reading';
@@ -153,14 +158,14 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
     const { container } = render(<Reading />);
 
     // Expand each drill panel in turn (inline accordion — Hook, Retention,
-    // Shareability, Niche rank). The expanded panel is the richest raw-data surface,
-    // so sweep the whole thread with each one open. (The audience deep-dive drill is
-    // deferred to step 2; its panel is swept directly in reading.panels.test.tsx.)
+    // Shareability, Audience, Niche rank). The expanded panel is the richest raw-data
+    // surface, so sweep the whole thread with each one open.
     const panels: Array<[string, string]> = [
       ['row-trigger-score', 'score-distribution'],
       ['row-trigger-hook', 'panel-hook'],
-      ['row-trigger-retention', 'panel-retention-cluster'],
+      ['row-trigger-retention', 'retention-scrubber-cluster'],
       ['row-trigger-shareability', 'panel-shareability'],
+      ['row-trigger-personas', 'panel-personas-list'],
     ];
     for (const [trigger, content] of panels) {
       await user.click(screen.getByTestId(trigger));

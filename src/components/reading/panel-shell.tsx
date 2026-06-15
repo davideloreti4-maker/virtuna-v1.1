@@ -69,3 +69,10 @@ export function PanelSection({ label, children }: { label: string; children: Rea
     </section>
   );
 }
+
+/** Calm per-block degrade (D-13): never an empty SVG / table / fabricated 0. Lives
+ *  here (the shell layer) so any panel — including the retention scrubber — can use
+ *  it without a circular import back through reading-panels. */
+export function PanelEmpty() {
+  return <p className="pt-2 text-[13px] text-foreground-muted">Not available for this read.</p>;
+}

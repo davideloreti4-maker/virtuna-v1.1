@@ -165,7 +165,7 @@ export function Reading() {
   })();
 
   return (
-    <div data-testid="reading" className="mx-auto flex w-full max-w-[600px] flex-col gap-6 px-4 py-8">
+    <div data-testid="reading" className="mx-auto flex w-full max-w-[600px] flex-col gap-6 px-4 pt-8 pb-36">
       {/* The read — scorecard (poster + gauge + 3 stats) with the audience overview
           ("How far it gets pushed") folded in under the gauge. (The detailed
           10-segment deep-dive returns in the step-2 panel redesign.) */}

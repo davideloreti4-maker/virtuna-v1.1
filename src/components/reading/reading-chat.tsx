@@ -6,6 +6,16 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { cn } from '@/lib/utils';
 import { useExpertChat, type ChatMessage } from '@/hooks/queries/use-expert-chat';
+import { useSidebarStore } from '@/stores/sidebar-store';
+import { useIsMobileHydrated } from '@/hooks/useIsMobile';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+
+// Sidebar geometry — kept in sync with AppShell so the fixed composer aligns to the
+// content column (and never sits under the persistent desktop sidebar).
+const SIDEBAR_EXPANDED = 220;
+const SIDEBAR_RAIL = 60;
+const SIDEBAR_INSET = 12;
+const CONTENT_GUTTER = 12;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ReadingChat — the persistent follow-up thread on /analyze/[id] (A3 UX fix).
@@ -47,8 +57,24 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
   });
   const [value, setValue] = useState('');
   const taRef = useRef<HTMLTextAreaElement | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
+
+  // Match AppShell's content offset so the fixed composer aligns to the column.
+  const { isCollapsed } = useSidebarStore();
+  const { isMobile, hydrated } = useIsMobileHydrated();
+  const reducedMotion = usePrefersReducedMotion();
+  const treatAsMobile = hydrated && isMobile;
+  const leftOffset = treatAsMobile
+    ? 0
+    : SIDEBAR_INSET + (isCollapsed ? SIDEBAR_RAIL : SIDEBAR_EXPANDED) + CONTENT_GUTTER;
 
   const hasThread = messages.length > 0 || isStreaming || !!error;
+
+  // Keep the latest turn in view above the pinned composer.
+  useEffect(() => {
+    if (!hasThread) return;
+    endRef.current?.scrollIntoView({ block: 'end', behavior: reducedMotion ? 'auto' : 'smooth' });
+  }, [messages.length, streamingText, hasThread, reducedMotion]);
 
   // Auto-grow the textarea up to a ceiling, then scroll internally.
   useEffect(() => {
@@ -120,51 +146,66 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
         </div>
       )}
 
-      {/* ── composer — sticky-pinned to the viewport bottom, never disappears ── */}
-      <div className="sticky bottom-0 z-10 -mx-4 px-4 pb-4 pt-3">
-        {/* fade so column content scrolls cleanly under the pinned composer */}
+      {/* scroll anchor — keeps the latest turn visible above the fixed composer */}
+      <div ref={endRef} aria-hidden className="h-0" />
+
+      {/* ── composer — FIXED to the viewport bottom, aligned to the content column,
+          always visible (never scrolls away). Offset matches AppShell's sidebar gutter. ── */}
+      <div
+        data-testid="reading-chat-composer"
+        className="fixed bottom-0 right-0 z-20"
+        style={{
+          left: `${leftOffset}px`,
+          transition: reducedMotion ? undefined : 'left 150ms var(--ease-out-cubic)',
+        }}
+      >
+        {/* fade so column content dissolves cleanly as it scrolls under the composer */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 -top-6 h-6"
+          className="pointer-events-none h-8"
           style={{ background: 'linear-gradient(to top, var(--color-background), transparent)' }}
         />
-        <div className="rounded-2xl border border-white/[0.06] bg-surface-elevated p-2.5 shadow-float">
-          <div className="flex items-end gap-2">
-            <textarea
-              ref={taRef}
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={onKeyDown}
-              rows={1}
-              placeholder="Ask about this simulation…"
-              aria-label="Ask about this simulation"
-              className="min-h-[24px] max-h-[140px] min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-base leading-relaxed text-foreground placeholder:text-foreground-muted focus:outline-none"
-            />
-            {isStreaming ? (
-              <button
-                type="button"
-                onClick={stop}
-                aria-label="Stop"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-              >
-                <Square className="h-3.5 w-3.5 fill-current" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={submit}
-                disabled={value.trim().length === 0}
-                aria-label="Send"
-                className={cn(
-                  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
-                  value.trim().length > 0
-                    ? 'bg-accent text-accent-foreground hover:bg-accent/90'
-                    : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-foreground-muted/50',
+        <div className="bg-background px-4 pb-4">
+          <div className="mx-auto max-w-[600px]">
+            <div className="rounded-2xl border border-white/[0.06] bg-surface-elevated p-2.5 shadow-float">
+              <div className="flex items-end gap-2">
+                <textarea
+                  ref={taRef}
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  onKeyDown={onKeyDown}
+                  rows={1}
+                  placeholder="Ask about this simulation…"
+                  aria-label="Ask about this simulation"
+                  className="min-h-[24px] max-h-[140px] min-w-0 flex-1 resize-none bg-transparent px-1 py-1.5 text-base leading-relaxed text-foreground placeholder:text-foreground-muted focus:outline-none"
+                />
+                {isStreaming ? (
+                  <button
+                    type="button"
+                    onClick={stop}
+                    aria-label="Stop"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                  >
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={submit}
+                    disabled={value.trim().length === 0}
+                    aria-label="Send"
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
+                      value.trim().length > 0
+                        ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                        : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-foreground-muted/50',
+                    )}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
                 )}
-              >
-                <ArrowUp className="h-4 w-4" />
-              </button>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

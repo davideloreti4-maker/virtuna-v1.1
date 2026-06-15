@@ -20,7 +20,7 @@ vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
 }));
 
 // Keep the DrillSheet's side switch deterministic (desktop = right).
-vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false }));
+vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 
 // ThumbnailStrip now reads its keyframe map from usePermalinkFilmstrips() (lazy
 // useQuery) so the hero poster renders on permalink reload. It's eager (top of the
@@ -174,12 +174,12 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows the audience overview (breakout) directly under the hero — no deep-dive drill row yet', () => {
+  it('shows the audience overview (breakout) under the hero AND the revived deep-dive drill row', () => {
     render(<Reading />);
-    // The breakout cascade is the audience overview; the 10-segment deep-dive drill
-    // row is deferred to the step-2 panel redesign, so it is NOT mounted in the accordion.
+    // The hero folds in the breakout cascade (audience OVERVIEW); the persona deep-dive
+    // is now also revived as the "Audience" accordion row (S3 2026-06-15).
     expect(screen.getByTestId('audience-breakout')).toBeInTheDocument();
-    expect(screen.queryByTestId('row-trigger-personas')).not.toBeInTheDocument();
+    expect(screen.getByTestId('row-trigger-personas')).toBeInTheDocument();
   });
 
   it('has no a11y violations in the healthy state', async () => {

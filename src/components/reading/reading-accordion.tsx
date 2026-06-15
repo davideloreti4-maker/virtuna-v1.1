@@ -11,7 +11,7 @@ import {
 import { formatTime } from '@/components/board/audience/audience-derive';
 import { bandTone, type ScoreTone } from '@/components/board/verdict/verdict-derive';
 import { cn } from '@/lib/utils';
-import { renderPanel, type PanelId } from './reading-panels';
+import { renderPanel, buildAudienceNodes, type PanelId } from './reading-panels';
 import { ReadingSection } from './reading-section';
 
 // ReadingAccordion (redesign 2026-06-15, hero-v6 system) — the drill-downs, now
@@ -183,9 +183,13 @@ function LeverItem({ row, children }: { row: LeverRow; children: ReactNode }) {
 // ── Audience & context ───────────────────────────────────────────────────────
 
 export function AudienceContextSection({ data, dims, id, nicheRank }: ReadingAccordionProps) {
-  // The audience DEEP-DIVE (the 10-segment "who leaves" list) is deferred to the
-  // step-2 panel redesign — the orbit under the hero is the audience overview for
-  // now. This section keeps only the niche-rank / score-distribution context.
+  // Two context rows, both expand-in-place:
+  //   Audience   → the persona DEEP-DIVE (ranked "who watches / who drops first"
+  //                list + demoted graph). The hero already folds the breakout
+  //                OVERVIEW; this is the per-segment detail. Disabled (honest, no
+  //                empty drill) when there are no personas.
+  //   Niche rank → where the score sits in the niche distribution (panel 'score').
+  const audienceCount = buildAudienceNodes(data).length;
   return (
     <ReadingSection label="Audience & context">
       <AccordionRoot
@@ -194,6 +198,14 @@ export function AudienceContextSection({ data, dims, id, nicheRank }: ReadingAcc
         className="space-y-0"
         data-testid="reading-audience-context"
       >
+        <ContextItem
+          panel="personas"
+          label="Audience"
+          desc={audienceCount > 0 ? `${audienceCount} segments` : 'Not available'}
+          disabled={audienceCount === 0}
+        >
+          {renderPanel('personas', data, dims, id)}
+        </ContextItem>
         <ContextItem panel="score" label="Niche rank" desc={nicheRank ?? 'vs your niche'}>
           {renderPanel('score', data, dims, id)}
         </ContextItem>
@@ -206,16 +218,21 @@ function ContextItem({
   panel,
   label,
   desc,
+  disabled,
   children,
 }: {
   panel: PanelId;
   label: string;
   desc: string;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
-    <AccordionItem value={panel} data-testid={`row-${panel}`} className={ITEM_CLASS}>
-      <AccordionTrigger data-testid={`row-trigger-${panel}`} className={TRIGGER_CLASS}>
+    <AccordionItem value={panel} disabled={disabled} data-testid={`row-${panel}`} className={ITEM_CLASS}>
+      <AccordionTrigger
+        data-testid={`row-trigger-${panel}`}
+        className={cn(TRIGGER_CLASS, disabled && 'cursor-default hover:bg-transparent [&>svg]:opacity-0')}
+      >
         <span className="flex flex-1 items-center justify-between gap-3 pr-2">
           <span className="text-[15px] font-medium text-foreground">{label}</span>
           <span data-testid={`row-value-${panel}`} className="text-[14px] text-foreground-secondary">
