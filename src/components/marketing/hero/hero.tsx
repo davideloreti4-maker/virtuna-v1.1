@@ -2,8 +2,11 @@ import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Placeholder } from "@/components/marketing/placeholder";
 import { SIGNUP_URL } from "@/lib/routes";
+
+import { HERO_SCORE } from "./hero-constants";
+import { ComposedStill } from "./composed-still";
+import { SignatureMomentClient } from "./signature-moment-client";
 
 interface HeroProps {
   className?: string;
@@ -14,10 +17,11 @@ interface HeroProps {
  * D-06..D-12, UI-SPEC §Composition).
  *
  * A pure Server Component (no client directive) so `/` stays statically
- * prerendered. The animated "crowd → score" client island + its lazy
- * boundary land in 02-02/02-03 — they MUST NOT live here (Next.js 16
- * forbids lazy ssr-disabled imports inside a Server Component; RESEARCH
- * Pitfall 1). This file only composes the static markup.
+ * prerendered. Hero renders the `"use client"` <SignatureMomentClient/>
+ * boundary as a CHILD — the `dynamic(ssr:false)` call lives inside THAT
+ * module, never here (Next.js 16 forbids lazy ssr-disabled imports inside a
+ * Server Component; RESEARCH Pitfall 1 / Pattern 1). This file only composes
+ * static markup + mounts the SSR floor and the client island.
  *
  * Centered vertical stack (D-06), top → bottom:
  *  1. serif voice H1 — "Know if it'll pop before you post" (verbatim D-09),
@@ -84,29 +88,30 @@ export function Hero({ className }: HeroProps) {
 
       {/* 4 — The contained flat-warm STAGE (D-07): the arena the signature
           "crowd → score" moment coalesces within. Dimension-locked via an
-          inline aspect-ratio so the later canvas/still mount with no CLS
-          (Pitfall 3). Tone-step surface + hairline 6% border + 12px radius —
-          flat-matte (no glass/shine/glow).
+          inline aspect-ratio so the canvas/still mount with no CLS (Pitfall 3).
+          Tone-step surface + hairline 6% border + 12px radius — flat-matte
+          (no glass/shine/glow). `relative` so the client island overlays the
+          still in the SAME box.
 
-          02-03/02-02 SEAM: this plan renders a single labelled phone
-          Placeholder as visible scaffolding. 02-03 replaces the stage
-          interior with <ComposedStill> (SSR floor) + <SignatureMomentClient>
-          (the client lazy boundary) inside THIS same dimension-locked box.
-          Do not add the client island here — Hero stays an RSC. */}
+          Two layers, stacked in this one dimension-locked box (D-15/D-16):
+           • <ComposedStill> — the RSC universal floor (phone + settled dots +
+             clean coral arc ring + final score). Paints pre-hydration, zero JS;
+             it is also the reduced-motion / mobile / at-rest frame.
+           • <SignatureMomentClient> — the "use client" boundary. On desktop +
+             motion-OK it lazy-mounts the canvas (its `dynamic(ssr:false)` lives
+             inside that module) ABSOLUTELY OVER the still and plays once; under
+             reduced-motion / mobile / low-GPU it renders nothing and the still
+             stands. The phone now lives INSIDE ComposedStill. Hero stays an RSC. */}
       <div
         className={cn(
-          "mt-2 flex w-full items-center justify-center overflow-hidden",
+          "relative mt-2 flex w-full items-center justify-center overflow-hidden",
           "rounded-[--radius-lg] border border-border bg-surface",
           "p-6 md:p-8"
         )}
         style={{ aspectRatio: "16 / 10" }}
       >
-        <Placeholder
-          variant="video"
-          aspect="9/16"
-          label="Your TikTok"
-          className="h-full w-auto max-w-[220px]"
-        />
+        <ComposedStill score={HERO_SCORE} />
+        <SignatureMomentClient score={HERO_SCORE} />
       </div>
     </div>
   );
