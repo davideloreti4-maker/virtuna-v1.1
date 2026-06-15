@@ -1,5 +1,11 @@
+import * as React from "react";
+
 import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
-import { Placeholder } from "@/components/marketing/placeholder";
+import {
+  ScoreGaugeSkeleton,
+  AudienceCloudSkeleton,
+  PhoneChrome,
+} from "@/components/marketing/story/skeletons";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,9 +23,17 @@ import { cn } from "@/lib/utils";
  *   2. The audience reacts (a synthetic audience simulates the reaction)
  *   3. Get your Simulation
  *
- * Each step pairs a small mono numeral + a labelled, aspect-locked <Placeholder>
- * product visual (swappable later via `src`, no layout shift) + a sans title +
- * one Inter line of copy.
+ * Each step pairs a small mono numeral + a section-appropriate static product
+ * skeleton (03-04) inside an aspect-stable wrapper (no layout shift) + a sans
+ * title + one Inter line of copy. The three step visuals hint the loop's shape:
+ *   1. Paste a TikTok link   → a PhoneChrome with a faux URL-input row
+ *   2. The audience reacts   → AudienceCloudSkeleton
+ *   3. Get your Simulation   → ScoreGaugeSkeleton (the prediction shape)
+ *
+ * Each visual wrapper carries `data-step-visual` (the stable count hook the
+ * 03-00 test uses to gate "exactly 3 step visuals", since the skeleton
+ * primitives carry no `data-variant`) and an `aspect-[16/10]` box so mount
+ * introduces no layout shift.
  *
  * Noun discipline (D-A): the product noun is "Simulation" (verb "simulates").
  * The retired product noun is never used as a user-facing label here.
@@ -34,11 +48,8 @@ interface Step {
   ordinal: string;
   title: string;
   body: string;
-  slot: {
-    variant: "image";
-    aspect: string;
-    label: string;
-  };
+  /** The section-appropriate static product skeleton for this step. */
+  visual: React.ReactNode;
 }
 
 const STEPS: readonly Step[] = [
@@ -47,21 +58,30 @@ const STEPS: readonly Step[] = [
     ordinal: "01",
     title: "Paste a TikTok link",
     body: "Drop any TikTok URL — no upload, no waiting.",
-    slot: { variant: "image", aspect: "16/10", label: "Paste a link" },
+    // a small phone bezel with a faux URL-input row hinting the pasted link
+    visual: (
+      <PhoneChrome className="mx-auto h-full w-1/2 max-w-[120px]">
+        <div className="flex h-full flex-col gap-2 p-3">
+          <div className="h-6 rounded-md border border-border bg-surface" />
+          <div className="h-2 w-3/4 rounded-full bg-foreground-muted/20" />
+          <div className="h-2 w-1/2 rounded-full bg-foreground-muted/15" />
+        </div>
+      </PhoneChrome>
+    ),
   },
   {
     n: "2",
     ordinal: "02",
     title: "The audience reacts",
     body: "A synthetic audience watches your video and reacts, frame by frame.",
-    slot: { variant: "image", aspect: "16/10", label: "Audience reacting" },
+    visual: <AudienceCloudSkeleton className="w-full px-2" />,
   },
   {
     n: "3",
     ordinal: "03",
     title: "Get your Simulation",
     body: "A score, watch-through %, and where viewers drop — before you post.",
-    slot: { variant: "image", aspect: "16/10", label: "Your prediction" },
+    visual: <ScoreGaugeSkeleton />,
   },
 ] as const;
 
@@ -81,8 +101,15 @@ export function HowItWorks({ className }: { className?: string }) {
               {s.ordinal}
             </span>
 
-            {/* the swappable product visual — labelled + aspect-locked (no-CLS) */}
-            <Placeholder {...s.slot} />
+            {/* the static product skeleton in an aspect-stable box (no-CLS).
+                `data-step-visual` is the stable count hook the 03-00 test gates
+                "exactly 3 step visuals" on (skeletons carry no data-variant). */}
+            <div
+              data-step-visual
+              className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[--radius-lg] border border-border bg-surface-elevated p-4"
+            >
+              {s.visual}
+            </div>
 
             {/* step title — sans, cream */}
             <h3 className="text-lg font-semibold text-foreground">{s.title}</h3>
