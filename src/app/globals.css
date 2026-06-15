@@ -313,6 +313,31 @@
   animation: skeleton-breathe 1.2s ease-in-out infinite;
 }
 
+/* Phase-4 stage-reveal (REVEAL-01/02): a calm fade-up for each Reading block as
+ * the thread settles. Blocks stagger via an inline animation-delay. Soft + short
+ * (no flashy transitions) per the calm-motion taste bar. */
+@keyframes reading-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reading-reveal {
+  animation: reading-reveal 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Respect reduced-motion: no slide/fade, blocks simply appear at rest. */
+@media (prefers-reduced-motion: reduce) {
+  .reading-reveal {
+    animation: none;
+  }
+}
+
 /* ============================================
  * BASE STYLES
  * ============================================ */

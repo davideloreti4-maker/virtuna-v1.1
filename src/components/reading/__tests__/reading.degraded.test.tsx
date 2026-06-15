@@ -91,7 +91,7 @@ describe('Reading container — D-13 honesty gate (degraded states)', () => {
   it('isLoading → a calm loading state (not an error, not a fabricated read)', () => {
     mockState = { id: 'sim-1', data: null, isLoading: true };
     render(<Reading />);
-    expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('reading-skeleton')).toBeInTheDocument();
   });
 });
 
@@ -118,7 +118,7 @@ describe('Reading container — in-flight (still processing) gate', () => {
     mockState = { id: 'sim-1', data: makeInFlight({ processing: true }), isLoading: false };
     const { container } = render(<Reading />);
 
-    expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('reading-skeleton')).toBeInTheDocument();
     // NOT the failure copy, NOT the real thread, NOT a fabricated 0 gauge.
     expect(screen.queryByText(/We couldn.t analyze this video/i)).not.toBeInTheDocument();
     expect(screen.queryByTestId('reading')).not.toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('Reading container — in-flight (still processing) gate', () => {
     // discriminator still resolves to the live state.
     mockState = { id: 'sim-1', data: makeInFlight(), isLoading: false };
     render(<Reading />);
-    expect(screen.getByTestId('reading-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('reading-skeleton')).toBeInTheDocument();
   });
 
   it('a genuinely failed read (analysis_unavailable, NOT processing) still shows CouldNotAnalyze', () => {
@@ -139,14 +139,14 @@ describe('Reading container — in-flight (still processing) gate', () => {
     mockState = { id: 'sim-1', data: makeUnavailableResult(), isLoading: false };
     render(<Reading />);
     expect(screen.getByText(/We couldn.t analyze this video/i)).toBeInTheDocument();
-    expect(screen.queryByTestId('reading-loading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading-skeleton')).not.toBeInTheDocument();
   });
 
   it('a completed read (real score) renders the thread, not the live state (guard not vacuous)', () => {
     mockState = { id: 'sim-1', data: makeReadingResult({ overall_score: 64 }), isLoading: false };
     render(<Reading />);
     expect(screen.getByTestId('reading')).toBeInTheDocument();
-    expect(screen.queryByTestId('reading-loading')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading-skeleton')).not.toBeInTheDocument();
   });
 });
 

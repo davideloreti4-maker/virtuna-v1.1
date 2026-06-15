@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type {
   PredictionResult,
   ApolloDimension,
@@ -49,6 +49,7 @@ import { DriverRows } from './driver-rows';
 import { FixFirstList } from './fix-first-list';
 import { DeeperRead } from './deeper-read';
 import { DrillSheet } from './drill-sheet';
+import { ReadingSkeleton } from './reading-skeleton';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reading — the container that makes the thread real on /analyze/[id] (02-05).
@@ -156,12 +157,19 @@ function heroWatchPct(heatmap: HeatmapPayload | null | undefined): number | null
 export function Reading() {
   const { id, data, isLoading } = usePermalinkAnalysis();
   const [panel, setPanel] = useState<PanelId | null>(null);
+  // Phase-4 (REVEAL-01/02): true once we've shown the in-flight skeleton, so the
+  // settled thread cascades in (the live build) — but a cold permalink reload of
+  // an already-complete Reading just appears at rest (no gratuitous animation).
+  const sawSkeleton = useRef(false);
 
   // ── D-13 honesty gate, FIRST (before any block composes) ───────────────────
   // No id → the no-id /analyze route: stay inert so the Phase-1 composer shell
   // owns the screen (the layout mounts this above the page; nothing to read yet).
   if (!id && !data) return null;
-  if (isLoading) return <ReadingLoading />;
+  if (isLoading) {
+    sawSkeleton.current = true;
+    return <ReadingSkeleton id={id} />;
+  }
   // id present but the fetch returned nothing → a real load failure (permalink).
   if (!data) return <ReadingError />;
 
@@ -178,9 +186,17 @@ export function Reading() {
     (data as { processing?: boolean }).processing ??
     (data.overall_score == null &&
       (data as { engine_version?: string | null }).engine_version === 'pending');
-  if (processing) return <ReadingLoading />;
+  if (processing) {
+    sawSkeleton.current = true;
+    return <ReadingSkeleton id={id} />;
+  }
 
   if (data.analysis_unavailable) return <CouldNotAnalyze />;
+
+  // Phase-4: cascade the core blocks in only after a live wait (REVEAL-01).
+  // CSS `.reading-reveal` is reduced-motion-gated; the per-block delay staggers
+  // hero → rows → Fix First so the thread reads as building, then settles.
+  const revealClass = sawSkeleton.current ? 'reading-reveal' : undefined;
 
   const watch = heroWatchPct(data.heatmap);
   const dims: ApolloDimension[] | null | undefined = apollo?.dimensions;
@@ -222,7 +238,8 @@ export function Reading() {
               NOT a useIsMobile switch (the gauge + cloud both render either way). */}
       <section
         data-testid="reading-hero"
-        className="flex flex-col items-center gap-6 md:flex-row md:items-center md:gap-10"
+        className={`flex flex-col items-center gap-6 md:flex-row md:items-center md:gap-10${revealClass ? ` ${revealClass}` : ''}`}
+        style={revealClass ? { animationDelay: '0ms' } : undefined}
       >
         <div className="flex flex-col items-center gap-2">
           {/* D-02: the hero gauge taps open the new `score` drill-down. */}
@@ -254,15 +271,19 @@ export function Reading() {
       </section>
 
       {/* 4 — the three always-visible levers (tap → DrillSheet) */}
-      <DriverRows dimensions={dims} dropT={dropT} onRowTap={setPanel} />
+      <div className={revealClass} style={revealClass ? { animationDelay: '80ms' } : undefined}>
+        <DriverRows dimensions={dims} dropT={dropT} onRowTap={setPanel} />
+      </div>
 
       {/* 5 — actionable fixes + copyable hook rewrites */}
-      <FixFirstList
-        fixes={data.counterfactuals?.suggestions}
-        rewrites={apollo?.rewrites}
-        score={data.overall_score}
-        weakestLever={weakestLever}
-      />
+      <div className={revealClass} style={revealClass ? { animationDelay: '160ms' } : undefined}>
+        <FixFirstList
+          fixes={data.counterfactuals?.suggestions}
+          rewrites={apollo?.rewrites}
+          score={data.overall_score}
+          weakestLever={weakestLever}
+        />
+      </div>
 
       {/* 6 — light inline expand of the remaining 3 dimensions */}
       <DeeperRead dimensions={dims} />
@@ -591,17 +612,6 @@ function PanelEmpty() {
 // D-13 states — never present a fabricated 0 as a real score; never a blank.
 // Calm, plain copy (no prose verdict, D-15). Copy strings from 02-UI-SPEC.
 // ─────────────────────────────────────────────────────────────────────────────
-
-function ReadingLoading() {
-  return (
-    <div
-      data-testid="reading-loading"
-      className="mx-auto flex w-full max-w-[760px] flex-col items-center gap-2 px-4 py-16 text-center"
-    >
-      <p className="text-sm text-foreground-muted">Reading your simulation…</p>
-    </div>
-  );
-}
 
 function CouldNotAnalyze() {
   return (
