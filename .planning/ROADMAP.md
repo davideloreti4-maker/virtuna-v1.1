@@ -24,7 +24,7 @@ every product visual is a labelled, swappable placeholder slot, not a shipped as
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation & Shell** - `/` mount, dark brand tokens, the placeholder-slot system, motion/reduced-motion wiring, and header + footer chrome (completed 2026-06-14)
-- [ ] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature "crowd → score" audience-simulation centerpiece (with a static fallback)
+- [x] **Phase 2: Hero & Signature Moment** - The hero headline + CTA and the signature centerpiece — pivoted from a canvas "crowd → score" animation to a **product-shot showcase** (desktop reading window + phone TikTok, swappable Placeholder slots) after live craft review (completed 2026-06-15)
 - [ ] **Phase 3: Story & Showcase** - How-it-works, "the reading" product showcase, and feature deep-dive blocks (placeholder frames)
 - [ ] **Phase 4: Proof & Conversion** - Social-proof strip, testimonials, pricing teaser, final CTA band, and an accessible FAQ
 - [ ] **Phase 5: Quality Hardening** - Final responsive, performance, and accessibility pass across the whole page
@@ -90,11 +90,11 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [x] 02-03-PLAN.md (wave 2) — `ComposedStill` (SSR/reduced-motion/mobile floor: phone + static dots + clean coral SVG ring + score) + `hero-constants` + the `"use client"` `SignatureMomentClient` boundary (the ssr:false landmine fix + gating); wire into the Hero stage (HERO-03 still-side, HERO-04)
+- [x] 02-03-PLAN.md (wave 2) — ~~`ComposedStill` + `hero-constants` + the `"use client"` `SignatureMomentClient` ssr:false boundary~~ **SUPERSEDED** by the 02-02 pivot; these components were built then deleted when the canvas moment was retired (HERO-04 now satisfied by the fully-static product-shot hero). See 02-02-SUMMARY.
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-02-PLAN.md (wave 3) — the bespoke canvas-2D "crowd → score" moment (settle → coral reaction → coalesce into the ring → count-up → slow drift); converges on ComposedStill; BLOCKING human-verify craft checkpoint (HERO-03)
+- [x] 02-02-PLAN.md (wave 3) — ~~bespoke canvas-2D "crowd → score" moment~~ **PIVOTED**: the canvas was built (`7fc9ec77`) then REJECTED at the blocking human craft-verify (read as a tech-demo). Replaced with a **product-shot showcase** — flat-warm desktop reading window + phone TikTok, both swappable Placeholder slots (HERO-03 reinterpreted as "the product, shown" · HERO-04 satisfied: fully static, no-CLS). See 02-02-SUMMARY.
 
 ### Phase 3: Story & Showcase
 
@@ -170,7 +170,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
-| 2. Hero & Signature Moment | 3/4 | In Progress|  |
+| 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 0/3 | Not started | - |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |

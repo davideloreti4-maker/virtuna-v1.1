@@ -58,6 +58,16 @@ completed: 2026-06-15
 
 # Phase 2 Plan 03: ComposedStill SSR Floor + ssr:false Client Boundary Summary
 
+> ⚠️ **SUPERSEDED (2026-06-15).** This plan's artifacts — `composed-still.tsx`,
+> `hero-constants.ts`, `signature-moment-client.tsx` (the `ssr:false` boundary) —
+> were built to support the bespoke canvas "crowd → score" moment. That moment
+> was **rejected at the 02-02 human craft-verify** and the hero **pivoted to a
+> product-shot showcase** (desktop reading window + phone). All of this plan's
+> components were consequently **deleted**; the record below is historical.
+> See `02-02-SUMMARY.md` for the pivot. The ONLY HERO-04 idea that carried over
+> is "static, no-CLS, accessible by default" — now satisfied trivially because
+> the new hero is fully static (no animation, no client island).
+
 **Built the keystone of Phase 2 — `ComposedStill`, the pure-RSC universal floor (phone + deterministic settled dot field + clean re-derived coral SVG arc ring + honest static score, role=img/aria-label, aspect-locked) that serves SSR pre-hydration == reduced-motion == mobile == at-rest (D-15/HERO-04) — plus `hero-constants.ts` (the token-derived score/geometry/timing/palette SSOT) and `SignatureMomentClient`, the `"use client"` boundary that holds the ONLY `dynamic(ssr:false)` call (THE landmine fix) and gates the canvas off under reduced-motion/mobile/low-tier. Wired both into the 02-01 stage; Hero stays a pure RSC, `/` stays statically prerendered, and all 4 hero suites are GREEN (15/15).**
 
 ## Performance

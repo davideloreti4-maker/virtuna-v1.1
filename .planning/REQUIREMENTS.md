@@ -29,8 +29,8 @@ Requirements for the initial landing release. Each maps to a roadmap phase.
 
 - [x] **HERO-01**: The hero presents a hybrid-voice headline + subcopy communicating "know if it'll pop before you post"
 - [x] **HERO-02**: The hero's primary "Try it free" CTA routes to the existing app signup
-- [ ] **HERO-03**: The hero centerpiece is the signature "crowd → score" moment — a synthetic audience reacts to a video and resolves into a virality score
-- [ ] **HERO-04**: The signature moment has a reduced-motion / lazy fallback (static composed frame) so it never blocks first paint or breaks accessibility
+- [x] **HERO-03**: The hero centerpiece is the signature product-shot showcase — a desktop window showing Numen's reading (the output) with the TikTok you paste in front (the input), reading paste → prediction. _(Revised P2 2026-06-15: the original canvas "crowd → score" animation was built then rejected at live craft review; replaced with showing the product itself — see 02-02-SUMMARY.)_
+- [x] **HERO-04**: The hero centerpiece never blocks first paint or breaks accessibility — satisfied by construction: it is fully static (pure RSC, no client JS/animation) with aspect-locked swappable Placeholder slots (no CLS). _(Revised P2: no animation ⇒ no reduced-motion/lazy fallback needed.)_
 
 ### Social Proof (PROOF)
 
@@ -93,8 +93,8 @@ Which phases cover which requirements. Populated during roadmap creation.
 | NAV-03 | Phase 1 | Complete |
 | HERO-01 | Phase 2 | Complete |
 | HERO-02 | Phase 2 | Complete |
-| HERO-03 | Phase 2 | Pending |
-| HERO-04 | Phase 2 | Pending |
+| HERO-03 | Phase 2 | Complete (revised — product-shot showcase) |
+| HERO-04 | Phase 2 | Complete (static by construction) |
 | PROOF-01 | Phase 4 | Pending |
 | PROOF-02 | Phase 4 | Pending |
 | STORY-01 | Phase 3 | Pending |
