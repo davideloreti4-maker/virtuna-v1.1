@@ -1,0 +1,86 @@
+"use client";
+
+import {
+  AccordionRoot,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
+import { cn } from "@/lib/utils";
+
+/**
+ * FaqAccordion — CONVERT-03 client island.
+ *
+ * The LONE Phase-4 client component: Radix requires React context so the
+ * accordion must be `"use client"`. Everything above (Faq RSC wrapper,
+ * section heading, page.tsx) stays RSC → / stays statically prerendered.
+ *
+ * - type="single" collapsible: one panel open at a time, close-all allowed (D-16).
+ * - 6 objection-busting Q&A entries (D-15).
+ * - Cold-brand Radix tokens overridden via className at the call site (RESEARCH
+ *   option A — never modify the shared ui/accordion.tsx primitive):
+ *     border-border           replaces border-white/[0.06]
+ *     bg-surface-elevated/50  replaces bg-background-elevated/50
+ *     text-foreground         replaces text-white
+ *     text-foreground/80      replaces text-white/80
+ *     text-foreground-secondary replaces text-gray-400
+ * - No dangerouslySetInnerHTML (T-04-03-01 — React escapes strings natively).
+ * - No coral (keep accent precious — only CTA uses it).
+ */
+
+interface FaqItem {
+  q: string;
+  a: string;
+}
+
+const FAQ_ITEMS: readonly FaqItem[] = [
+  {
+    q: "How does it actually know if my video will perform?",
+    a: "Numen runs a synthetic audience — thousands of simulated viewer profiles built from real engagement patterns. Each profile watches your video frame-by-frame and reacts the way real TikTok audiences do. The result is your predicted score, watch-through %, and the exact second viewers are most likely to drop. It's not a guess — it's a simulation.",
+  },
+  {
+    q: "Does it work for platforms other than TikTok?",
+    a: "Right now Numen is TikTok-first. The simulation model is trained on TikTok-specific engagement patterns — scroll behavior, hook windows, watch-through benchmarks. Instagram Reels and YouTube Shorts are on the roadmap. For TikTok creators, you get the most accurate predictions available.",
+  },
+  {
+    q: "What if my niche is small or unusual?",
+    a: "Numen performs well across niches because it models viewer behavior rather than content categories. Whether you make finance content, dark comedy, or niche hobby videos, the audience simulation adapts to what viewers in your category actually respond to — short hooks, longer storytelling, rapid cuts, or slow builds.",
+  },
+  {
+    q: "Does Numen store or share my videos?",
+    a: "No. Numen analyzes your TikTok link — the video lives on TikTok's servers, not ours. We never upload or retain your content. Your analysis results are private to your account and are never shared or sold.",
+  },
+  {
+    q: "Is it free to try?",
+    a: "Yes. You can run your first Simulation free — no credit card required. The free tier lets you experience the full prediction output so you can judge accuracy on your own content before deciding. Paid plans unlock higher usage, deeper breakdowns, and retention heatmaps.",
+  },
+  {
+    q: "How long does a Simulation take?",
+    a: "Most Simulations complete in under 90 seconds. You paste a TikTok link, the synthetic audience runs, and you get a full prediction report — score, watch-through %, hook strength, and drop-point — before you would have posted and waited 48 hours for real data.",
+  },
+] as const;
+
+export function FaqAccordion({ className }: { className?: string }) {
+  return (
+    <AccordionRoot
+      type="single"
+      collapsible
+      className={cn(className)}
+    >
+      {FAQ_ITEMS.map((item) => (
+        <AccordionItem
+          key={item.q}
+          value={item.q}
+          className="border-border bg-surface-elevated/50"
+        >
+          <AccordionTrigger className="text-foreground hover:text-foreground/80">
+            {item.q}
+          </AccordionTrigger>
+          <AccordionContent className="text-foreground-secondary">
+            {item.a}
+          </AccordionContent>
+        </AccordionItem>
+      ))}
+    </AccordionRoot>
+  );
+}
