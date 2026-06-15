@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Header, Footer } from "@/components/layout";
-import { Hero, MotionConfigShell } from "@/components/marketing";
+import { Hero, HowItWorks, MotionConfigShell } from "@/components/marketing";
 
 export const metadata: Metadata = {
   title: "Numen — Know if it'll pop before you post",
@@ -35,15 +35,12 @@ export default function HomePage() {
           <Hero />
         </section>
 
-        {/* How it works */}
-        <section
-          id="how-it-works"
-          className="border-t border-border px-6 py-20"
-        >
+        {/* How it works — STORY-01. The section owns the LOCKED rhythm
+            (id/border/padding/measure); <HowItWorks/> renders its own real
+            cream heading + the 3-step body (D-E / Pitfall 3). */}
+        <section id="how-it-works" className="border-t border-border px-6 py-20">
           <div className="mx-auto max-w-5xl">
-            <h2 className="text-3xl font-semibold text-foreground-muted">
-              How it works
-            </h2>
+            <HowItWorks />
           </div>
         </section>
 

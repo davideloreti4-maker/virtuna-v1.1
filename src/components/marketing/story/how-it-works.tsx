@@ -1,4 +1,4 @@
-import { StaggerReveal } from "@/components/motion";
+import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
 import { Placeholder } from "@/components/marketing/placeholder";
 import { cn } from "@/lib/utils";
 
@@ -8,8 +8,11 @@ import { cn } from "@/lib/utils";
  *
  * A PURE Server Component (no client directive of any kind) so `/` stays
  * statically prerendered — only the `StaggerReveal` entrance is a client leaf,
- * imported as an island. Explains the loop in three calm beats, mirroring the
- * hero subcopy:
+ * imported as an island. (We use the named `StaggerRevealItem` export rather
+ * than the `StaggerReveal.Item` static prop: a client component's static
+ * properties do not survive the RSC→client boundary at prerender, so the
+ * static-prop form yields `undefined` and crashes `next build` on `/`.)
+ * Explains the loop in three calm beats, mirroring the hero subcopy:
  *   1. Paste a TikTok link
  *   2. The audience simulates
  *   3. Get your Simulation
@@ -72,7 +75,7 @@ export function HowItWorks({ className }: { className?: string }) {
           motion is the StaggerReveal entrance (client leaf, self-gates reduce). */}
       <StaggerReveal className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-3">
         {STEPS.map((s) => (
-          <StaggerReveal.Item key={s.n} className="flex flex-col gap-4">
+          <StaggerRevealItem key={s.n} className="flex flex-col gap-4">
             {/* mono ordinal marker — cream-muted, encodes step order */}
             <span className="font-mono text-sm text-foreground-muted">
               {s.ordinal}
@@ -86,7 +89,7 @@ export function HowItWorks({ className }: { className?: string }) {
 
             {/* one Inter line of copy — cream-secondary */}
             <p className="text-base text-foreground-secondary">{s.body}</p>
-          </StaggerReveal.Item>
+          </StaggerRevealItem>
         ))}
       </StaggerReveal>
     </div>
