@@ -115,7 +115,7 @@ Plans:
 
 - [x] 03-00-PLAN.md (wave 0) — Nyquist test scaffold: 3 RED story test files (how-it-works / simulation-showcase / feature-blocks) + extend footer anchor test with #features (STORY-01, STORY-02, STORY-03)
 - [x] 03-01-PLAN.md (wave 1) — "How it works" three-step section filling #how-it-works (STORY-01)
-- [ ] 03-02-PLAN.md (wave 2) — "The Simulation" output showcase filling #the-simulation (STORY-02)
+- [x] 03-02-PLAN.md (wave 2) — "The Simulation" output showcase filling #the-simulation (STORY-02)
 - [ ] 03-03-PLAN.md (wave 3) — feature deep-dive blocks + new #features section + "Features" nav anchor (header + footer) + BLOCKING static-build gate (STORY-03)
 
 ### Phase 4: Proof & Conversion
@@ -172,6 +172,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
-| 3. Story & Showcase | 2/4 | In Progress|  |
+| 3. Story & Showcase | 3/4 | In Progress|  |
 | 4. Proof & Conversion | 0/5 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |

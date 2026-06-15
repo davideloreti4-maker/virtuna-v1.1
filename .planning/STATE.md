@@ -4,13 +4,13 @@ milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: executing
 stopped_at: Phase 2 UI-SPEC approved
-last_updated: "2026-06-15T09:04:31.030Z"
+last_updated: "2026-06-15T09:12:50.322Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 40
 ---
 
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 03 (story-showcase) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-15
 
-Progress: [█████████░] 85%
+Progress: [█████████░] 92%
 
 ## Performance Metrics
 
@@ -63,6 +63,7 @@ Progress: [█████████░] 85%
 | Phase 02 P02 | ~session | canvas→pivot | product-shot showcase (−5 files) |
 | Phase 03 P00 | 1min | 2 tasks | 4 files |
 | Phase 03 P01 | 18min | 2 tasks | 3 files |
+| Phase 03 P02 | ~12min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 03-01: HowItWorks is a pure RSC; StaggerReveal entrance is the only client island; / stays statically prerendered
 - [Phase ?]: 03-01: use the named StaggerRevealItem export in RSCs — StaggerReveal.Item static prop is undefined across the RSC to client prerender boundary (next build crash on /)
 - [Phase ?]: 03-01: single canonical product-noun node ('Get your Simulation' title) satisfies the gate getByText(/simulat.../); step 2 = 'The audience reacts', step-3 label = 'Your prediction'
+- [Phase ?]: 03-02: SimulationShowcase RSC built (STORY-02) — flat-warm device-framed Placeholder (hero browser-window chrome reused, not imported) names all 5 outputs; #the-simulation stub filled in place; 7/7 STORY-02 gate GREEN, / stays static
+- [Phase ?]: 03-02: copy↔test token discipline — LOCKED <h2>'The Simulation' is the sole /simulat/i node; Placeholder label='Your prediction', output-1 label='Audience reaction' so 03-00 single-match getByText queries resolve unambiguously
 
 ### Pending Todos
 
@@ -126,6 +129,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T09:04:11.244Z
+Last session: 2026-06-15T09:12:33.868Z
 Stopped at: Phase 2 UI-SPEC approved
 Resume file: None
