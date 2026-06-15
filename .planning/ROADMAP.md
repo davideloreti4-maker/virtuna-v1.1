@@ -144,16 +144,30 @@ Plans:
   4. A final full-width CTA band ("Try it free") sits before the footer
   5. An FAQ section answers common creator questions in a keyboard-accessible accordion
 
-**Plans**: TBD
+**Plans**: 6 plans (3 waves)
 **UI hint**: yes
+
+> Build order = wave order. The five section COMPONENTS are built file-disjoint in Wave 1
+> (subdirs `proof/ pricing/ faq/ cta/`); a single Wave-2 integration plan owns the lone
+> `page.tsx` edit (page.tsx write-contention — never two plans editing it in one wave). The
+> CTA band is full-bleed (breaks `max-w-5xl`, D-12); the FAQ is the lone client island.
 
 Plans:
 
-- [ ] 04-01: TBD — social-proof strip (avatars + logo wall placeholders) (PROOF-01)
-- [ ] 04-02: TBD — testimonials quote cards (PROOF-02)
-- [ ] 04-03: TBD — pricing teaser (Starter/Pro + "Try it free" CTAs) (CONVERT-01)
-- [ ] 04-04: TBD — final full-width CTA band before footer (CONVERT-02)
-- [ ] 04-05: TBD — accessible FAQ accordion (CONVERT-03)
+**Wave 0**
+
+- [ ] 04-00-PLAN.md (wave 0) — Nyquist RED scaffold: 5 section test files + page-order/NAV-lock cross test (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
+
+**Wave 1** *(blocked on Wave 0; file-disjoint, parallel)*
+
+- [ ] 04-01-PLAN.md (wave 1) — social-proof strip (peer-count stat + reduced-motion-gated logo marquee) + bespoke flat-warm testimonials 3-card grid (PROOF-01, PROOF-02)
+- [ ] 04-02-PLAN.md (wave 1) — pricing teaser: bespoke flat-warm Starter + Pro cards (Pro "Most popular", placeholder $/mo + trial, both CTAs → SIGNUP_URL, no checkout machinery) (CONVERT-01)
+- [ ] 04-03-PLAN.md (wave 1) — FAQ: RSC wrapper + Radix single-open accordion client island, 6 objection-busting Q&A, cold tokens restyled flat-warm (CONVERT-03)
+- [ ] 04-04-PLAN.md (wave 1) — final full-width CTA band: serif close-line + "Try it free" CTA + risk-reducer microcopy + muted ScoreGaugeSkeleton echo (CONVERT-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-05-PLAN.md (wave 2) — integration: extend the marketing barrel + wire all 5 sections into `page.tsx` in the D-18 order (strip under #hero, testimonials after #features, fill #pricing/#faq, band before footer) + static-build gate (○ /) + NAV unchanged (PROOF-01, PROOF-02, CONVERT-01, CONVERT-02, CONVERT-03)
 
 ### Phase 5: Quality Hardening
 
@@ -186,5 +200,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Foundation & Shell | 5/5 | Complete   | 2026-06-14 |
 | 2. Hero & Signature Moment | 4/4 | Complete   | 2026-06-15 |
 | 3. Story & Showcase | 9/9 | Complete   | 2026-06-15 |
-| 4. Proof & Conversion | 0/5 | Not started | - |
+| 4. Proof & Conversion | 0/6 | Not started | - |
 | 5. Quality Hardening | 0/3 | Not started | - |
