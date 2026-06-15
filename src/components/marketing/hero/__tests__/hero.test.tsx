@@ -6,15 +6,17 @@ import { Hero } from "../hero";
 import { SIGNUP_URL } from "@/lib/routes";
 
 /**
- * Phase 2 Wave-0 Nyquist scaffold — HERO-01 + HERO-02.
+ * Phase 2 Nyquist gate — HERO-01..04 on the RSC <Hero>.
  *
- * RED-by-design: `../hero` does not exist yet (built in 02-01). This file
- * encodes the acceptance criteria as executable assertions so the
- * implementation task has a concrete <automated> gate to turn GREEN.
+ * HERO-01/02 = the headline/subcopy/CTA cluster. HERO-03/04 = the product-shot
+ * showcase (desktop reading window + phone TikTok, both swappable Placeholder
+ * slots) that REPLACED the retired canvas "crowd → score" moment after live
+ * craft review. The old composed-still / signature-moment-client / hero-constants
+ * suites were removed with their components.
  *
  * Resilience rule (02-00-PLAN <action>): the H1 is matched VERBATIM (D-09
- * LOCKED), but subcopy / scroll-cue are matched by stable tokens so copy
- * tightening within D-11/D-12 intent does not break the gate.
+ * LOCKED), but subcopy / scroll-cue / slot labels are matched by stable tokens
+ * so copy tightening within intent does not break the gate.
  */
 describe("<Hero />", () => {
   describe("HERO-01 — hybrid-voice headline + subcopy", () => {
@@ -62,6 +64,30 @@ describe("<Hero />", () => {
       // D-12: subtle "See how it works ↓" scroll-cue → existing anchor.
       const scrollCue = screen.getByRole("link", { name: /how it works/i });
       expect(scrollCue.getAttribute("href")).toBe("#how-it-works");
+    });
+  });
+
+  describe("HERO-03/04 — product-shot showcase (output + input)", () => {
+    it("renders the desktop reading slot (the OUTPUT)", () => {
+      render(<Hero />);
+
+      // Swappable Placeholder slot — real desktop screenshot/video swaps in
+      // via `src` later; the labelled stand-in proves the slot is wired now.
+      expect(screen.getByText(/numen reading/i)).toBeTruthy();
+    });
+
+    it("renders the phone TikTok slot (the INPUT)", () => {
+      render(<Hero />);
+
+      // The phone in front = the TikTok you paste. Swappable mobile slot.
+      expect(screen.getByText(/your tiktok/i)).toBeTruthy();
+    });
+
+    it("frames the reading in a labelled browser window", () => {
+      render(<Hero />);
+
+      // Browser chrome address pill — signals "the product" at a glance.
+      expect(screen.getByText(/numen\.app/i)).toBeTruthy();
     });
   });
 });
