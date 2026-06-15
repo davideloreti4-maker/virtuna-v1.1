@@ -58,13 +58,6 @@ const DEFAULT_ASPECT: Record<PlaceholderVariant, string> = {
   logo: "3/1",
 };
 
-/**
- * Render a CSS aspect-ratio string (`16/9`) as a human dimension hint (`16:9`).
- */
-function formatDimensionHint(aspect: string): string {
-  return aspect.trim().replace(/\s*\/\s*/, ":");
-}
-
 export interface PlaceholderProps
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "children">,
     VariantProps<typeof placeholderVariants> {
@@ -97,7 +90,7 @@ export interface PlaceholderProps
  *
  * @example
  * ```tsx
- * // Labelled stand-in (no asset yet) — reserves a 16:9 box
+ * // Labelled stand-in (no asset yet) — reserves a 16/9 box
  * <Placeholder variant="image" aspect="16/9" label="Hero demo" />
  *
  * // One-prop swap to the real screenshot — same reserved box, no shift
@@ -112,6 +105,9 @@ const Placeholder = React.forwardRef<HTMLDivElement, PlaceholderProps>(
     { className, variant = "image", aspect, label, src, breathe = false, style, ...props },
     ref
   ) => {
+    // IN-04 NOT applied: CVA's VariantProps types `variant` as `... | null`, so
+    // the `= "image"` destructure default (which only covers `undefined`) is not
+    // enough — keep the `?? "image"` fallback to also coerce an explicit null.
     const resolvedVariant: PlaceholderVariant = variant ?? "image";
     const resolvedAspect = aspect ?? DEFAULT_ASPECT[resolvedVariant];
     const Icon = VARIANT_ICON[resolvedVariant];
@@ -169,9 +165,6 @@ const Placeholder = React.forwardRef<HTMLDivElement, PlaceholderProps>(
             {label && resolvedVariant !== "logo" && (
               <span className="text-sm text-foreground-muted">{label}</span>
             )}
-            <span className="font-mono text-xs text-foreground-muted opacity-60">
-              {formatDimensionHint(resolvedAspect)}
-            </span>
           </>
         )}
       </div>
