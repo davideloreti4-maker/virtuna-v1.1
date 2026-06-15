@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
 status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-06-15T12:10:31.223Z"
+stopped_at: Phase 4 planned (6 plans, plan-checker PASS)
+last_updated: "2026-06-15T16:00:00.000Z"
 last_activity: 2026-06-15
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 18
+  total_plans: 24
   completed_plans: 18
   percent: 60
 ---
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 ## Current Position
 
 Phase: 4
-Plan: Not started
-Status: Ready to plan
+Plan: 6 plans created (04-00..04-05, 3 waves) — plan-checker PASS, 0 blockers
+Status: Ready to execute (`/gsd-execute-phase 4`)
 Last activity: 2026-06-15
 
 Progress: [██████████] 100%
@@ -152,6 +152,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-15T12:10:31.217Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-proof-conversion/04-CONTEXT.md
+Last session: 2026-06-15T16:00:00.000Z
+Stopped at: Phase 4 planned (6 plans, plan-checker PASS — ready to execute)
+Resume file: .planning/phases/04-proof-conversion/04-00-PLAN.md (or `/gsd-execute-phase 4`)

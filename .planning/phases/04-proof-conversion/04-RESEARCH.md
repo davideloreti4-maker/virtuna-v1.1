@@ -591,22 +591,22 @@ Brief — the design direction is already locked in CONTEXT; these confirm struc
 
 **Note:** No assumption here is a locked decision in disguise — D-01..D-21 are the locked decisions and are honored verbatim. The above are discretion-area choices flagged for executor freedom.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does a `page.test.tsx` (or `header.test.tsx`) exist to extend for the D-18 order + D-19 NAV-unchanged assertions?**
    - What we know: `footer.test.tsx` exists (Phase 3 extended it for `#features`); section components have their own `__tests__/`.
    - What's unclear: whether a page-level order test exists.
-   - Recommendation: Wave 0 checks; if absent, add a small `page`-level test asserting the 5 new/filled sections render in D-18 order and `NAV_LINKS.length === 5`.
+   - **RESOLVED:** none exists → 04-00 Task 2 creates a fresh `page-order.test.tsx` asserting the 5 new/filled sections render in D-18 order and `NAV_LINKS.length === 5`.
 
 2. **Restyle the shared `ui/accordion.tsx` in place, or override at the FAQ call site?**
    - What we know: the primitive is cold-brand; `cn()`/tailwind-merge supports call-site overrides.
    - What's unclear: whether any legacy (non-marketing) route still renders the cold accordion and would regress if defaults change.
-   - Recommendation: **call-site className overrides (option A)** — surgical, no shared-primitive risk. (A3.)
+   - **RESOLVED:** **call-site className overrides (option A)** — surgical, no shared-primitive risk; locked into 04-03. (A3.)
 
 3. **CTA-band "faint warm radial" exact intensity.**
    - What we know: must stay flat-matte-legal (no glow/glass); Claude's discretion (D — band radial intensity).
    - What's unclear: the precise opacity that reads "warm seat" without reading "glow".
-   - Recommendation: start very subtle (low-opacity warm-charcoal radial tint), gate at live UAT (the band is the closing moment; human eyes decide). Coral stays on the CTA only.
+   - **RESOLVED:** Claude's-discretion + live-UAT gate — start very subtle (low-opacity warm-charcoal radial tint, the verbatim flat-matte-legal radial from `simulation-showcase.tsx`), human eyes decide at the closing moment. Coral stays on the CTA only.
 
 ## Sources
 
