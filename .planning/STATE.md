@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: landing-v2
 milestone_name: Refined Marketing Site
-status: planning
-stopped_at: Phase 2 context gathered
-last_updated: "2026-06-14T19:50:14.976Z"
-last_activity: 2026-06-14
+status: executing
+stopped_at: Phase 2 UI-SPEC approved
+last_updated: "2026-06-15T00:02:31.374Z"
+last_activity: 2026-06-15 -- Phase 2 planning complete
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 5
+  total_plans: 9
   completed_plans: 5
   percent: 20
 ---
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md (updated 2026-06-14) · Milestone: .planning/MILESTONE
 
 Phase: 2
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-06-14
+Status: Ready to execute
+Last activity: 2026-06-15 -- Phase 2 planning complete
 
 Progress: [██████████] 100%
 
@@ -101,6 +101,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-06-14T19:50:14.966Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-hero-signature-moment/02-CONTEXT.md
+Last session: 2026-06-14T23:10:06.623Z
+Stopped at: Phase 2 UI-SPEC approved
+Resume file: .planning/phases/02-hero-signature-moment/02-UI-SPEC.md
