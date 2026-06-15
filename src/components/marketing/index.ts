@@ -5,3 +5,5 @@ export { MotionConfigShell } from "./motion-config";
 export type { MotionConfigShellProps } from "./motion-config";
 
 export { Hero } from "./hero";
+
+export { HowItWorks } from "./story/how-it-works";
