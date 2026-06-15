@@ -8,3 +8,4 @@ export { Hero } from "./hero";
 
 export { HowItWorks } from "./story/how-it-works";
 export { SimulationShowcase } from "./story/simulation-showcase";
+export { FeatureBlocks } from "./story/feature-blocks";
