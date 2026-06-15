@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
@@ -30,19 +30,82 @@ interface HeaderProps {
  */
 export function Header({ className }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the panel has actually been opened, so we only restore focus
+  // on a genuine open→closed transition (never steal focus on initial mount).
+  const wasOpenRef = useRef(false);
 
   const closeMenu = () => setMobileMenuOpen(false);
 
-  // Lock body scroll while the mobile panel is open; always restore on close/unmount.
+  // WR-02 — lock body scroll while the mobile panel is open, saving and
+  // restoring the PRIOR overflow value (do not clobber a pre-existing lock to "").
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileMenuOpen]);
+
+  // GAP-4 / WR-03 — accessible disclosure while the panel is open:
+  //  - Escape closes the panel
+  //  - focus moves into the panel on open (first focusable)
+  //  - Tab / Shift+Tab cycle focus within the panel's focusables (focus trap)
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const getFocusables = () =>
+      Array.from(
+        panel.querySelectorAll<HTMLElement>("a[href], button")
+      ).filter((el) => !el.hasAttribute("disabled"));
+
+    // Move focus into the panel on open.
+    getFocusables()[0]?.focus();
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMobileMenuOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const focusables = getFocusables();
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (!first || !last) return;
+      const active = document.activeElement;
+
+      if (e.shiftKey) {
+        if (active === first || !panel.contains(active)) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (active === last || !panel.contains(active)) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileMenuOpen]);
+
+  // GAP-4 / WR-03 — restore focus to the trigger on a genuine open→closed
+  // transition (Escape, link tap, or toggle). Never steals focus on mount.
   useEffect(() => {
     if (mobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+      wasOpenRef.current = true;
+    } else if (wasOpenRef.current) {
+      wasOpenRef.current = false;
+      triggerRef.current?.focus();
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
   }, [mobileMenuOpen]);
 
   return (
@@ -96,6 +159,7 @@ export function Header({ className }: HeaderProps) {
 
         {/* Mobile menu trigger (NAV-03). Tap target ≥44px. */}
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setMobileMenuOpen((open) => !open)}
           aria-expanded={mobileMenuOpen}
@@ -115,6 +179,7 @@ export function Header({ className }: HeaderProps) {
           --shadow-float (it floats). Closes on tap of any link. */}
       {mobileMenuOpen && (
         <div
+          ref={panelRef}
           id="mobile-nav-panel"
           data-testid="mobile-nav-panel"
           className="border-t border-border bg-background-elevated shadow-float md:hidden"
