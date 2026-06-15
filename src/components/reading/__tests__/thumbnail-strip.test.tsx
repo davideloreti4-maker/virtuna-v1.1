@@ -1,11 +1,19 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 import type { HeatmapPayload } from '@/lib/engine/types';
 
 import { ThumbnailStrip } from '../thumbnail-strip';
 import { makeReadingResult } from './fixtures/reading-fixture';
+
+// ThumbnailStrip now reads usePermalinkFilmstrips() (lazy useQuery) for the keyframe
+// map. Mock it to {} (no frames) so these tests still exercise the keyframe_uri
+// FALLBACK path and mount without a QueryClientProvider. The permalink-frame-priority
+// path is covered by the panel/no-cut-data suites that mock real frames.
+vi.mock('@/hooks/queries/use-permalink-filmstrips', () => ({
+  usePermalinkFilmstrips: () => ({}),
+}));
 
 const SIGNED_URL =
   'https://storage.example.com/keyframes/abc123.jpg?token=signed-secret&exp=999';

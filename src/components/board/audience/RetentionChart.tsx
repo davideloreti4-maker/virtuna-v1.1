@@ -54,7 +54,15 @@ export function RetentionChart({
 
   const { survivalPath, areaPath } = useMemo(() => {
     if (normalized.length === 0) return { survivalPath: '', areaPath: '' };
-    const pts = normalized.map((v, i) => ({ x: xForIndex(segments, i, pointCount, total), y: yForValue(v) }));
+    const base = normalized.map((v, i) => ({ x: xForIndex(segments, i, pointCount, total), y: yForValue(v) }));
+    // Always carry the curve to the END of the video: points map to each segment's
+    // t_start, so the last sample lands at the last segment's start — short of the
+    // right edge. Append a flat endpoint at VB_W holding the last value (matches
+    // retentionAt, which holds the final sample flat past the last point). Without
+    // this the line + the scrub track disagreed: the playhead could ride past where
+    // the curve stopped.
+    const last = base[base.length - 1]!;
+    const pts = last.x < VB_W - 0.5 ? [...base, { x: VB_W, y: last.y }] : base;
     const line = smoothPath(pts);
     // Close the line down to the floor and back to fill the survival area below
     // it (TikTok watch-time style gradient fill).
@@ -67,7 +75,11 @@ export function RetentionChart({
   const ghostPath = useMemo(() => {
     const ghost = nicheGhostCurve(heatmap);
     if (ghost && ghost.length > 0) {
-      const pts = ghost.map((v, i) => ({ x: xForIndex(segments, i, pointCount, total), y: yForValue(v) }));
+      const base = ghost.map((v, i) => ({ x: xForIndex(segments, i, pointCount, total), y: yForValue(v) }));
+      // Carry the niche ghost to the end too (flat hold), so it doesn't stop short
+      // of the survival line.
+      const last = base[base.length - 1]!;
+      const pts = last.x < VB_W - 0.5 ? [...base, { x: VB_W, y: last.y }] : base;
       return smoothPath(pts);
     }
     if (nicheCompletionPct != null && pointCount > 0) {

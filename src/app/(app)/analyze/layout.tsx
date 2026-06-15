@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { ReadingThread } from '@/components/reading';
+import { Reading } from '@/components/reading';
 
 /**
  * Shared layout for /analyze and /analyze/[id].
@@ -12,27 +12,22 @@ import { ReadingThread } from '@/components/reading';
  * composer just streamed — no remount flash.
  *
  * The Konva canvas (camera / pan-zoom / 8-frame stage) is retired here, but the
- * legacy visual components live on as Phase-3 drill-down sources (NOT deleted),
- * and the /analyze route files stay reachable (dormant, not removed) per the
- * milestone constraint.
+ * legacy visual components live on as drill-down sources (NOT deleted), and the
+ * /analyze route files stay reachable (dormant, not removed).
  *
  * With no route id (/analyze), the Reading is inert — it renders nothing and the
  * Phase-1 AppShell composer-centered shell (from (app)/layout.tsx) owns the
  * screen. With an id, the Reading composes its vertical thread inside the
- * AppShell 760px column.
- *
- * PHASE 5 — the mount is now <ReadingThread>, which wraps <Reading> with the
- * follow-up tail + the bottom-pinned composer (shared chat state). The thread/
- * composer appear only once the Simulation is complete; before that ReadingThread
- * renders just the Reading (its skeleton/states), unchanged.
+ * AppShell 760px column — including the persistent follow-up chat (ReadingChat),
+ * which mounts at the bottom of the thread with its own viewport-pinned composer.
  */
 export default function AnalyzeLayout({ children }: { children: React.ReactNode }) {
   return (
     <Suspense fallback={null}>
-      <ReadingThread />
+      <Reading />
       {/* `children` from page.tsx / [id]/page.tsx are metadata-only server shells
           (both return null). Kept here only to satisfy Next.js's layout/page
-          contract; all UI lives in <ReadingThread>. */}
+          contract; all UI lives in <Reading>. */}
       <div className="sr-only">{children}</div>
     </Suspense>
   );
