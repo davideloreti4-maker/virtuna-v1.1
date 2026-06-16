@@ -1,49 +1,57 @@
-# Milestone: Landing v2 — Refined Marketing Site
+# MILESTONE — v6.0 Numen Studio
 
-**Branch:** `milestone/landing-v2`
-**Worktree:** `~/virtuna-landing-v2/`
-**Started:** 2026-06-14
-**Forks from:** `main` @e07dbd6d
-
-> Immutable worktree identity. Scope all planning operations to this milestone.
+> Immutable worktree identity. Created 2026-06-16. Do not edit after creation
+> (per `~/.claude/rules/gsd-worktree.md`).
 
 ## Identity
 
-A **refined, from-scratch marketing landing page** for **Numen** (TikTok virality
-intelligence). This is the **marketing surface only** — not the product app. Built
-to the bar set by Linear, Raycast, sandcastles.ai, and OpusClip: premium, dark,
-minimal, motion-rich but tasteful.
+| Field | Value |
+|-------|-------|
+| Version | **v6.0** |
+| Name | **Numen Studio** |
+| Branch | `milestone/numen-tools` |
+| Worktree | `~/virtuna-numen-tools/` |
+| Base | `main` @ `4ede5205` (v5.0 Numen Rework + Landing v2 landed) |
+| Launched | 2026-06-16, from trunk `~/virtuna-v1.1/` via `/gsd-new-milestone` |
+| Discuss input | `.planning/NUMEN-TOOLS-VISION.md` (EXPLORATORY — walk through every section, not a locked brief) |
 
-## Why from scratch
+## Goal
 
-Five prior landing attempts were all judged **not good enough** and are abandoned
-(reference only, do **not** revive their code):
-`milestone/landing`, `milestone/landing-page`, `milestone/landing-page-redesign`,
-`milestone/landing-linear-clone`, `milestone/numen-landing`.
+Open Numen past "analyze a recorded video" into a creator **studio**: generation
+tools where the differentiator is that **every output is tested on a synthetic
+audience (SIM-1) before the creator acts on it**, plus general open chat with no
+prior video. Generation is the surface; **SIM-1-on-everything is the moat.**
 
-## Source of truth
+## v1 Scope (locked at launch — 2026-06-16)
 
-- **Vision (input brief):** `.planning/LANDING-VISION.md`
-- **Requirements:** `.planning/REQUIREMENTS.md` (created by `/gsd-new-milestone`)
-- **Roadmap:** `.planning/ROADMAP.md` (created by `/gsd-new-milestone`)
+**IN:** de-risk spikes (SIM-1 Flash text-fidelity, Knowledge-Core generative
+rebuild, Remix-reuse scout) → foundation (thread-model generalization:
+nullable `reading_id` + `type`; SIM-1 Flash text-mode engine path; open chat /
+composer as universal door) → generation-grade **Knowledge-Core rebuild** (THE
+value, the long pole) → the **Ideas → Hooks** moat chain (generate + inline
+SIM-1 Flash scoring + self-judge) landing on **Test** (= the existing Reading).
 
-## Hard constraints / scope
+**DEFERRED to v6.1:** **Scripts** and **Remix** tools (Remix is NOT greenfield —
+revive `milestone/viral-remix` prior art when it lands).
 
-- **Marketing surface only.** No engine, no app logic, no Supabase product flows
-  beyond a waitlist/CTA. Engine + board untouched (they live on `main`).
-- **All platform/product visuals are PLACEHOLDERS** — sized, labelled stand-ins for
-  screenshots/videos/demos the human swaps in later. Build the slots, not the assets.
-- **Component/motion libs permitted** (executor discretion, within the taste bar):
-  shadcn/ui, Radix, Magic UI, Aceternity UI, motion (Framer Motion).
-- **Visual North Star:** refined > flashy. Linear/Raycast restraint + considered motion.
-- Numen brand carries over from `main`: coral accent (#FF7F50), Inter, dark
-  (#07080a) Raycast aesthetic, "Stele" logo + "Numen" wordmark.
+**OUT (per vision §3):** in-thread monetization, brand-profile entity, RAG over
+creator history, desktop dense-instrument.
 
-## Models (this worktree)
+## Hard Constraints
 
-- **All GSD agents → `claude-opus-4-8`** (quality profile, see `config.json`).
-- **`cc` main session → Opus 4.8 (1M) @ max effort** (see `.claude/settings.local.json`).
+- **SIM-1 Max scoring path FROZEN at ENGINE_VERSION 3.19.0.** No changes to how a
+  recorded video is scored. New engine work is **additive only**: SIM-1 Flash
+  text-mode (personas reacting to text, no video) + generation calls.
+- **Qwen-only** pipeline (no Gemini/DeepSeek).
+- **Reuse the numen-rework Reading block renderers** — rich UI via a FIXED
+  typed-renderer library, **NOT** model-generated UI (craft trap), **NOT** plain
+  text (throws away the moat).
+- **Flat-warm visual system** (THEME-06, locked in v5.0) is the design SSOT.
+- **Spike-gated:** SIM-1 Flash text-fidelity must pass before the inline-scoring
+  + self-judge architecture is committed.
 
-## Phase numbering
+## Spawned-agent rule (CWD caveat)
 
-Milestone-scoped, restarts at **Phase 1** (per project convention).
+Agents inherit the **trunk** CWD (`~/virtuna-v1.1/`), not this worktree — give
+them **absolute paths** under `~/virtuna-numen-tools/` for all reads/writes and
+let the orchestrator handle git. (See memory: worktree-base-contamination.)
