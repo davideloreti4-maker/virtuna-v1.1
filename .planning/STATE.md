@@ -7,7 +7,7 @@ stopped_at: Defining requirements
 last_updated: "2026-06-16T00:00:00.000Z"
 last_activity: 2026-06-16 -- Milestone v6.0 Numen Studio started (worktree milestone/numen-tools)
 progress:
-  total_phases: 6
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -36,19 +36,18 @@ Last activity: 2026-06-16 — Milestone v6.0 Numen Studio started
 - **Qwen-only** pipeline (no Gemini/DeepSeek).
 - **Rich tool output via the fixed numen-rework typed-renderer library** — NOT model-generated UI (craft trap), NOT plain text (loses the moat).
 - **Flat-warm visual system (THEME-06, v5.0)** is the design SSOT.
-- **Spike-gated:** SIM-1 Flash text-fidelity must pass before the inline-scoring + self-judge architecture is committed.
+- **Inline-scoring committed (no spike gate):** text-only Flash predicts relative pull (owner-confirmed); the winning persona framing is calibrated inside ENGINE-01. KC general-use rebuild is committed unconditionally.
 - **Scripts + Remix deferred to v6.1** (Remix revives `milestone/viral-remix` prior art — scout before any rebuild).
 
 ## Phases
 
 | # | Phase | Requirements | Status |
 |---|-------|--------------|--------|
-| 1 | Spike Gate | SPIKE-01, SPIKE-02 | Not started |
-| 2 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Not started |
-| 3 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Not started |
-| 4 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Not started |
-| 5 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Not started |
-| 6 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
+| 1 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Not started |
+| 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Not started |
+| 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Not started |
+| 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Not started |
+| 5 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
 
 ## Accumulated Context
 
@@ -61,6 +60,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - v6.0: Engine OPEN; SIM-1 Max video-scoring protected by a regression gate (suite green + same-video score-identity; `ENGINE_VERSION` bump on deliberate scoring change) — the v5.0 "frozen" rule was a presentation-milestone scope device, retired for this engine-touching milestone.
 - v6.0: Knowledge-Core ground-up generative rebuild is the foundation (THE value, the long pole).
 - v6.0: Launched in a dedicated worktree (`milestone/numen-tools`) off main; trunk stays on main.
+- v6.0 (2026-06-16): Spike-gate phase removed — both de-risk bets resolved by owner experience (text-only Flash works; KC rebuild committed general-use). 6 phases → 5; SPIKE-01/02 dropped; ENGINE-02/IDEAS-02/HOOKS-02 unconditional.
 
 ### Pending Todos
 
@@ -70,8 +70,8 @@ None yet.
 
 ### Blockers/Concerns
 
-- **Spike gate (pre-build):** SIM-1 Flash text-fidelity — does a text-only fold predict pull well enough? Gates the inline-scoring + self-judge architecture. Cheap fold smoke first; test 2-3 framings (don't conclude RED from one naive prompt). The winning framing becomes the spec for every inline score.
-- **Long pole:** generation-grade Knowledge-Core rebuild is a content/curation workstream first — de-risk with a small authored slice + eval early.
+- **Spike gate dropped (2026-06-16):** owner resolved both de-risk bets from experience — text-only Flash predicts relative pull (improves with the right data/context/framing); KC goes general-use unconditionally. Residual work relocated: winning-framing discovery → ENGINE-01; authored KC slice → GROUND-01. Phases renumbered 6→5.
+- **Long pole:** generation-grade Knowledge-Core rebuild is a content/curation workstream first — author + eval the slices early (Phase 2 can run parallel to Phase 1).
 - **Pre-existing main hygiene debt:** v5.0 Numen Rework + Landing v2 shipped to main but were never archived to `.planning/milestones/`; main's `.planning/` is mixed. Recommend a `/gsd-complete-milestone` pass on `main` (does not block this milestone).
 
 ## Deferred Items

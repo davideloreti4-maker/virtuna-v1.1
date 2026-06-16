@@ -15,20 +15,22 @@ reuses its typed-block renderers.
 
 ## v1 Requirements
 
-### SPIKE — De-risk gates (Phase 1, GO/NO-GO)
-
-- [ ] **SPIKE-01**: SIM-1 Flash text-fidelity validated — a text-only fold predicts *relative* pull on known-outcome content (Spearman ranking correlation + score separation + same-input stability), tested across 2–3 persona framings; the winning framing is documented as the inline-scoring spec. **GO/NO-GO gate — a weak result re-scopes ENGINE-02 / IDEAS-02 / HOOKS-02 (the inline-scoring premise).**
-- [ ] **SPIKE-02**: Knowledge-Core generative-craft slice validated — a small authored KC slice (for Hooks) beats the scoring-core baseline on an eval set (blind comparison / SIM-1 self-judge delta), proving the generative-rebuild approach before the full GROUND-01 effort.
+> **Spike gate dropped (2026-06-16).** The two de-risk bets are resolved by owner
+> domain experience, not a gate phase: (1) text-only SIM-1 Flash predicts relative
+> pull and improves with the right data/context/framing — the winning framing is
+> discovered *inside* ENGINE-01, not as a precondition; (2) the Knowledge-Core moves
+> to a general-use generative core unconditionally (no "validate then maybe rebuild").
+> ENGINE-02 / IDEAS-02 / HOOKS-02 are therefore unconditional.
 
 ### ENGINE — SIM-1 text-mode + self-judge
 
-- [ ] **ENGINE-01**: SIM-1 Flash text-mode — the 10 archetypes react to *text* input (no video), returning per-persona reactions + an aggregate pull score, with mode-specific framing (Hook = "scrolling, first 2s, do you stop?"; Idea = "in your niche, would this make you stop/share?").
-- [ ] **ENGINE-02**: SIM-1 self-judge quality gate — generations are Flash-scored and weak outputs regenerate/filter before the user sees them; regeneration is **bounded** (cost). *(conditional on SPIKE-01)*
+- [ ] **ENGINE-01**: SIM-1 Flash text-mode — the 10 archetypes react to *text* input (no video), returning per-persona reactions + an aggregate pull score, with mode-specific framing (Hook = "scrolling, first 2s, do you stop?"; Idea = "in your niche, would this make you stop/share?"). The winning persona framing (right data + context + minimal grounding for text discrimination) is calibrated here and documented as the inline-scoring spec.
+- [ ] **ENGINE-02**: SIM-1 self-judge quality gate — generations are Flash-scored and weak outputs regenerate/filter before the user sees them; regeneration is **bounded** (cost).
 - [ ] **ENGINE-03**: Honest Flash/Max framing — Flash surfaced as *concept ceiling* ("worth shooting?"), Max as *realized result*; never a fabricated score, never a view-count promise Flash can't back.
 
 ### GROUND — Knowledge-Core generative rebuild (THE value, the long pole)
 
-- [ ] **GROUND-01**: Knowledge-Core restructured for generation — a shared generative base + per-mode slices (Ideas, Hooks, chat), authored fresh; **not** retrofitted from the scoring core or the stale `training-data.json`. Content/curation workstream first, code second.
+- [ ] **GROUND-01**: Knowledge-Core restructured for generation — a **committed** ground-up rebuild into a general-use generative core (shared generative base + per-mode slices: Ideas, Hooks, chat), authored fresh; **not** retrofitted from the scoring core or the stale `training-data.json`. Content/curation workstream first, code second.
 - [ ] **GROUND-02**: Per-mode grounding assembly — each tool assembles a tight curated context slice (niche + relevant craft frame + the specific input), not the whole profile/KC (avoids signal dilution).
 - [ ] **GROUND-03**: Grounding legible in UI — outputs surface *why* they were made ("because your audience is 18–25 gym beginners and your last 3 myth-busting videos overperformed").
 
@@ -45,13 +47,13 @@ reuses its typed-block renderers.
 ### IDEAS — funnel-top generator
 
 - [ ] **IDEAS-01**: Generate ideas — idea cards (title · angle · *why it fits you*) from the creator profile (Auto) or a seeded topic/angle.
-- [ ] **IDEAS-02**: Inline Flash viability hint — each card shows a SIM-1 Flash viability score; **content-first, score streams in** (never blocks content render). *(conditional on SPIKE-01)*
+- [ ] **IDEAS-02**: Inline Flash viability hint — each card shows a SIM-1 Flash viability score; **content-first, score streams in** (never blocks content render).
 - [ ] **IDEAS-03**: Chain to Hooks — "Develop this →" carries an idea into Hooks.
 
 ### HOOKS — flagship moat demo
 
 - [ ] **HOOKS-01**: Generate hooks — N hook cards from an idea or a topic, each tagged with the archetype it grabs.
-- [ ] **HOOKS-02**: Flash pull-score ranking — hook cards ranked by a SIM-1 Flash pull-score ("who'll actually stop scrolling," first-2s framing). *(conditional on SPIKE-01)*
+- [ ] **HOOKS-02**: Flash pull-score ranking — hook cards ranked by a SIM-1 Flash pull-score ("who'll actually stop scrolling," first-2s framing).
 - [ ] **HOOKS-03**: Chain to Test — "Test full →" carries a hook into Test (the full Reading).
 
 ### PROFILE — grounding source (v1: reuse existing)
@@ -100,26 +102,24 @@ reuses its typed-block renderers.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SPIKE-01 | Phase 1 | Pending |
-| SPIKE-02 | Phase 1 | Pending |
-| ENGINE-01 | Phase 2 | Pending |
-| THREAD-01 | Phase 2 | Pending |
-| THREAD-02 | Phase 2 | Pending |
-| THREAD-04 | Phase 2 | Pending |
-| THREAD-06 | Phase 2 | Pending |
-| THREAD-07 | Phase 2 | Pending |
-| ENGINE-03 | Phase 2 | Pending |
-| GROUND-01 | Phase 3 | Pending |
-| GROUND-02 | Phase 3 | Pending |
-| IDEAS-01 | Phase 4 | Pending |
-| IDEAS-02 | Phase 4 | Pending |
-| IDEAS-03 | Phase 4 | Pending |
-| ENGINE-02 | Phase 4 | Pending |
-| GROUND-03 | Phase 4 | Pending |
-| PROFILE-01 | Phase 4 | Pending |
-| THREAD-05 | Phase 4 | Pending |
-| HOOKS-01 | Phase 5 | Pending |
-| HOOKS-02 | Phase 5 | Pending |
-| HOOKS-03 | Phase 5 | Pending |
-| THREAD-03 | Phase 6 | Pending |
-| TEST-01 | Phase 6 | Pending |
+| ENGINE-01 | Phase 1 | Pending |
+| THREAD-01 | Phase 1 | Pending |
+| THREAD-02 | Phase 1 | Pending |
+| THREAD-04 | Phase 1 | Pending |
+| THREAD-06 | Phase 1 | Pending |
+| THREAD-07 | Phase 1 | Pending |
+| ENGINE-03 | Phase 1 | Pending |
+| GROUND-01 | Phase 2 | Pending |
+| GROUND-02 | Phase 2 | Pending |
+| IDEAS-01 | Phase 3 | Pending |
+| IDEAS-02 | Phase 3 | Pending |
+| IDEAS-03 | Phase 3 | Pending |
+| ENGINE-02 | Phase 3 | Pending |
+| GROUND-03 | Phase 3 | Pending |
+| PROFILE-01 | Phase 3 | Pending |
+| THREAD-05 | Phase 3 | Pending |
+| HOOKS-01 | Phase 4 | Pending |
+| HOOKS-02 | Phase 4 | Pending |
+| HOOKS-03 | Phase 4 | Pending |
+| THREAD-03 | Phase 5 | Pending |
+| TEST-01 | Phase 5 | Pending |
