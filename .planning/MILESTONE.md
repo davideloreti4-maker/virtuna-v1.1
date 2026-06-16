@@ -39,9 +39,13 @@ creator history, desktop dense-instrument.
 
 ## Hard Constraints
 
-- **SIM-1 Max scoring path FROZEN at ENGINE_VERSION 3.19.0.** No changes to how a
-  recorded video is scored. New engine work is **additive only**: SIM-1 Flash
-  text-mode (personas reacting to text, no video) + generation calls.
+- **Engine OPEN for v6.0; validated behavior PROTECTED (not frozen).** Text-mode,
+  generation, Knowledge-Core, and fold refactors are all permitted. Guardrail: keep
+  the engine test suite green, preserve same-video score-identity / determinism on
+  the SIM-1 Max (video) path, and bump `ENGINE_VERSION` on any *deliberate* change to
+  video-scoring output. No silent regressions. *(Revised during launch 2026-06-16 —
+  v5.0's "engine frozen" rule was a presentation-milestone scope device; v6.0 does
+  additive engine work, so freeze → regression gate.)*
 - **Qwen-only** pipeline (no Gemini/DeepSeek).
 - **Reuse the numen-rework Reading block renderers** — rich UI via a FIXED
   typed-renderer library, **NOT** model-generated UI (craft trap), **NOT** plain

@@ -32,7 +32,7 @@ Last activity: 2026-06-16 — Milestone v6.0 Numen Studio started
 
 ## Hard Constraints (this milestone)
 
-- **SIM-1 Max scoring path FROZEN at ENGINE_VERSION 3.19.0.** No changes to recorded-video scoring. New engine work is **additive only**: SIM-1 Flash text-mode (personas reacting to text, no video) + generation calls.
+- **Engine OPEN for v6.0; validated behavior PROTECTED by a regression gate (not frozen).** Text-mode, generation, KC, and fold refactors permitted. Keep the engine suite green, preserve same-video score-identity/determinism on the SIM-1 Max (video) path, and bump `ENGINE_VERSION` on any deliberate change to video-scoring output. No silent regressions.
 - **Qwen-only** pipeline (no Gemini/DeepSeek).
 - **Rich tool output via the fixed numen-rework typed-renderer library** — NOT model-generated UI (craft trap), NOT plain text (loses the moat).
 - **Flat-warm visual system (THEME-06, v5.0)** is the design SSOT.
@@ -53,7 +53,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 
 - v6.0: Open Numen into a creator studio — generation tools + SIM-1-on-everything as the moat.
 - v6.0: v1 scope = Foundation + Ideas→Hooks moat chain + open chat; Scripts + Remix deferred to v6.1.
-- v6.0: SIM-1 Max scoring frozen 3.19.0; new engine work additive (Flash text-mode + generation).
+- v6.0: Engine OPEN; SIM-1 Max video-scoring protected by a regression gate (suite green + same-video score-identity; `ENGINE_VERSION` bump on deliberate scoring change) — the v5.0 "frozen" rule was a presentation-milestone scope device, retired for this engine-touching milestone.
 - v6.0: Knowledge-Core ground-up generative rebuild is the foundation (THE value, the long pole).
 - v6.0: Launched in a dedicated worktree (`milestone/numen-tools`) off main; trunk stays on main.
 
