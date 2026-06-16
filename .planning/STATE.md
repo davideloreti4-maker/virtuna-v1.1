@@ -7,7 +7,7 @@ stopped_at: Defining requirements
 last_updated: "2026-06-16T00:00:00.000Z"
 last_activity: 2026-06-16 -- Milestone v6.0 Numen Studio started (worktree milestone/numen-tools)
 progress:
-  total_phases: 0
+  total_phases: 6
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -43,7 +43,12 @@ Last activity: 2026-06-16 — Milestone v6.0 Numen Studio started
 
 | # | Phase | Requirements | Status |
 |---|-------|--------------|--------|
-| — | (roadmap not yet created) | — | — |
+| 1 | Spike Gate | SPIKE-01, SPIKE-02 | Not started |
+| 2 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Not started |
+| 3 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Not started |
+| 4 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Not started |
+| 5 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Not started |
+| 6 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
 
 ## Accumulated Context
 

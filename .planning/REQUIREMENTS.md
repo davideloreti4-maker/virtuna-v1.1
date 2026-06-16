@@ -100,4 +100,26 @@ reuses its typed-block renderers.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| *(filled by the roadmap)* | — | — |
+| SPIKE-01 | Phase 1 | Pending |
+| SPIKE-02 | Phase 1 | Pending |
+| ENGINE-01 | Phase 2 | Pending |
+| THREAD-01 | Phase 2 | Pending |
+| THREAD-02 | Phase 2 | Pending |
+| THREAD-04 | Phase 2 | Pending |
+| THREAD-06 | Phase 2 | Pending |
+| THREAD-07 | Phase 2 | Pending |
+| ENGINE-03 | Phase 2 | Pending |
+| GROUND-01 | Phase 3 | Pending |
+| GROUND-02 | Phase 3 | Pending |
+| IDEAS-01 | Phase 4 | Pending |
+| IDEAS-02 | Phase 4 | Pending |
+| IDEAS-03 | Phase 4 | Pending |
+| ENGINE-02 | Phase 4 | Pending |
+| GROUND-03 | Phase 4 | Pending |
+| PROFILE-01 | Phase 4 | Pending |
+| THREAD-05 | Phase 4 | Pending |
+| HOOKS-01 | Phase 5 | Pending |
+| HOOKS-02 | Phase 5 | Pending |
+| HOOKS-03 | Phase 5 | Pending |
+| THREAD-03 | Phase 6 | Pending |
+| TEST-01 | Phase 6 | Pending |
