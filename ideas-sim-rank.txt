@@ -1,0 +1,49 @@
+IDEAS · generate → simulate → rank   (2026-06-17T15:24:51.600Z)
+Generate: qwen3.7-plus   SIM: SIM-1 Flash per-idea
+Prompt: "Give me 5 ideas for a personal finance creator on TikTok who wants to go viral this week. I help 25-35 year-olds invest their first $1000."
+══════════════════════════════════════════════════════════════════════
+
+#1  —  SIM 6/10 STOP  (Mixed)
+If you have $1,000 to invest right now, splitting it into five different stocks is the exact reason you’ll panic-sell by month three.
+
+Shoot this as a green-screen walkthrough showing a brokerage app cluttered with five red fractional shares next to a single green index fund position. The open loop holds because it names a specific, common action before revealing the psychological cost, keeping viewers watching to find out why their instinct to "diversify early" is actually a trap.
+
+  ↳ why some scrolled: lurker: "The hook feels too loud for me—I’ll just keep scrolling past another finance hot take." · sharer: "Not something I’d DM to anyone—it’s too niche for my group chat and doesn’t scream ‘you need to see this.’"
+
+──────────────────────────────────────────────────────────────────────
+
+#2  —  SIM 6/10 STOP  (Mixed)
+Putting your first $1,000 in a high-yield savings account is a psychological trap if your actual goal is to start investing.
+
+Film this walk-and-talk, cutting to a screenshot of a HYSA balance next to a Treasury Direct screen. This breaks the universal "HYSA is always best" prediction; the resolution—that extreme liquidity makes the money feel like spending cash rather than capital—lands as obvious in hindsight, which spikes engagement through prediction error.
+
+  ↳ why some scrolled: saver: "I bookmark actionable checklists, not psychological theories about why I shouldn’t save. Not enough specifics for me." · lurker: "The loud contrarian hook feels exhausting; I’d rather watch something calm that doesn’t demand I pick a side."
+
+──────────────────────────────────────────────────────────────────────
+
+#3  —  SIM 6/10 STOP  (Mixed)
+I’m splitting my next $1,000 investment in half to prove why "set it and forget it" is a lie for beginners.
+
+Structure this as a screen-record diary: Day 1 setup, Day 15 check-in, Day 30 results, comparing an auto-investing portfolio against a manual brokerage account. Anticipation drives the watch-time here; the viewer stays to verify whether the manual account triggers the behavioral mistakes they suspect it will, making the payoff about their own investing habits.
+
+  ↳ why some scrolled: saver: "I’d rather bookmark a direct checklist or app recommendation than wait thirty days for a diary experiment to play out." · tough_crowd: "First three seconds were just talking heads and spreadsheets—my thumb didn’t even hesitate before swiping away."
+
+──────────────────────────────────────────────────────────────────────
+
+#4  —  SIM 6/10 STOP  (Mixed)
+If you’re investing your first $1,000 and paying a robo-advisor to do it for you, you’re paying a premium to remain financially illiterate.
+
+Shoot this direct-to-camera with a slightly aggressive, confident tone, pointing to a graphic comparing a 0.25% management fee on a $1,000 portfolio versus the zero fee of buying a single ETF. Taking a hard stance against a popular beginner tool splits the room, forcing viewers with pre-formed opinions on platforms like Wealthfront or Betterment to jump into the comments to defend their choice.
+
+  ↳ why some scrolled: lurker: "Too loud and demanding for my feed; I’d rather watch a calm breakdown of index funds without the attitude." · tough_crowd: "Standard finance bro hook, zero novelty in the first second. I’m already past before the graphic loads."
+
+──────────────────────────────────────────────────────────────────────
+
+#5  —  SIM 5/10 STOP  (Mixed)
+Nobody warns you about investing buyer’s remorse—that exact second your bank drops $1,000 and your brain screams you just set money on fire.
+
+Capture this as a close-up, intimate talking head with low lighting and a text overlay mimicking the bank notification. Self-identification does the heavy lifting; naming the exact emotional friction of the transaction makes the 25-to-35-year-old viewer feel the video was commissioned specifically for their anxiety, bypassing the BS detector by focusing on the feeling rather than the math.
+
+  ↳ why some scrolled: saver: "No steps, no strategy, just vibes. I’m scrolling past until I find something I can actually use later." · tough_crowd: "Emotional fluff with zero payoff. If you don’t give me a concrete tip or shock me in two seconds, I’m gone."
+
+──────────────────────────────────────────────────────────────────────
