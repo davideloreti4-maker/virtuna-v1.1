@@ -54,11 +54,23 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
   3. The rebuilt KC measurably outperforms the scoring-core baseline on a generative eval (blind comparison / SIM-1 self-judge delta), confirming generative craft over generic competence. *(D-12 relaxes this to an owner-blind rank vs raw-LLM + current-KC; no statistical eval artifact — see Plan 04.)*
 
 **Plans**: 5 plans
+**Wave 1**
+
 - [ ] 02-01-PLAN.md — Thin code spine: corpus dirs + D-04 template skeletons + scripted regen compiler + KC_GEN_VERSION
 - [ ] 02-02-PLAN.md — Live-tier grounding assembler (GROUND-02): per-mode field-map, by-role profile, cold-start, fence, hard cap
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 02-03-PLAN.md — Author BASE + Ideas pilot slice to full depth (owner-curated) + recompile
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 02-04-PLAN.md — D-12 thin owner-blind gate on the Ideas pilot (gates replication)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 02-05-PLAN.md — Replicate proven shape: Hooks slice (full) + thin chat stance-slice + recompile
+
 **UI hint**: no
 
 ### Phase 3: Ideas Tool
