@@ -1,12 +1,12 @@
 KC BLIND GATE — ARM-TO-LABEL DECODE KEY
 DO NOT READ UNTIL YOU HAVE RANKED ALL OUTPUTS
-Generated: 2026-06-17T13:46:52.670Z
+Generated: 2026-06-17T14:55:02.012Z
 ══════════════════════════════════════════════════════════════
 
 Prompt 1: "Give me 5 ideas for a personal finance creator on TikTok who..."
   Output 1 → raw-LLM
-  Output 2 → new-KC
-  Output 3 → current-KC
+  Output 2 → current-KC
+  Output 3 → new-KC
 
 ══════════════════════════════════════════════════════════════
 GATE PASS CONDITION (D-13):
