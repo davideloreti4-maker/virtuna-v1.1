@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-02-PLAN.md (PROFILE_ROLE_MAP + live-tier assembler)
-last_updated: "2026-06-17T14:20:02.375Z"
-last_activity: 2026-06-17 -- Phase 02 execution started
+stopped_at: Phase 02 COMPLETE — verified 3/3 must-haves (GROUND-01, GROUND-02)
+last_updated: "2026-06-17T19:35:00.000Z"
+last_activity: 2026-06-17 -- Phase 02 complete (KC generative rebuild verified)
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 20
+  completed_plans: 9
+  percent: 40
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 02 (knowledge-core-generative-rebuild) — EXECUTING
-Plan: 5 of 5 (02-05 in progress; 02-01..02-04 complete)
-Status: 02-05 PARKED at Task 2 — owner red-line of hooks.md + chat.md pending
-Last activity: 2026-06-17 (session 2) -- KC iteration: BASE mode-router, ideas-as-concept fix, idea-SIM gate reframe, SIM niche-blind audit (lever #10). See phase RESUME-HERE.md
+Phase: 02 (knowledge-core-generative-rebuild) — COMPLETE ✓ (verified 3/3 must-haves)
+Plan: 5 of 5 complete (02-01..02-05 all have SUMMARY.md)
+Status: Phase 02 verified PASSED. KC generative core authored + curated (D-10) + byte-stable compiled; live-tier assembler (GROUND-02) with injection-fence overflow fix (CR-01/CR-02). Next: Phase 03 (Ideas Tool).
+Last activity: 2026-06-17 (session 3) -- finished 02-05 (owner-curated hooks+chat, multi-modal hooks correction, scaffolding-leak fix); code review (2 Criticals fixed); phase verified PASSED.
 
 ## Hard Constraints (this milestone)
 
@@ -43,8 +43,8 @@ Last activity: 2026-06-17 (session 2) -- KC iteration: BASE mode-router, ideas-a
 
 | # | Phase | Requirements | Status |
 |---|-------|--------------|--------|
-| 1 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Not started |
-| 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Not started |
+| 1 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Complete ✓ |
+| 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Complete ✓ |
 | 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Not started |
 | 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Not started |
 | 5 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
@@ -93,8 +93,9 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17 (session 2)
-Stopped at: 02-05 Task 2 parked (owner red-line of hooks.md + chat.md); 02-01..02-04 done. Session 2 also: KC mode-router + ideas-as-concept + idea-SIM gate reframe (committed cae58ab5), SIM niche-blind audit → lever #10.
+Last session: 2026-06-17 (session 3)
+Stopped at: Phase 02 COMPLETE + verified PASSED. Session 3: owner-curated hooks.md + chat.md (D-10) — scaffolding-leak fix (private archetype slugs) + Hook Reasoning Scaffold + multi-modal hooks correction (spoken/visual/caption/edit/audio); recompiled byte-stable; code review found + fixed 2 Criticals in assembler.ts (injection-fence overflow CR-01/CR-02, +3 regression tests); verifier PASSED 3/3.
+Next: Phase 03 — Ideas Tool (the moat chain begins). Backlog for Phase 3: .planning/research/kc-improvement-levers.md (SIM niche-blind = lever #10) + REVIEW.md WR/INFO notes (kc-gate.ts dev-script polish).
 Resume file: .planning/phases/02-knowledge-core-generative-rebuild/RESUME-HERE.md
 
 ## Performance Metrics

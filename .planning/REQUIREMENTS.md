@@ -30,8 +30,8 @@ reuses its typed-block renderers.
 
 ### GROUND — Knowledge-Core generative rebuild (THE value, the long pole)
 
-- [ ] **GROUND-01**: Knowledge-Core restructured for generation — a **committed** ground-up rebuild into a general-use generative core (shared generative base + per-mode slices: Ideas, Hooks, chat), authored fresh; **not** retrofitted from the scoring core or the stale `training-data.json`. Content/curation workstream first, code second.
-- [ ] **GROUND-02**: Per-mode grounding assembly — each tool assembles a tight curated context slice (niche + relevant craft frame + the specific input), not the whole profile/KC (avoids signal dilution).
+- [x] **GROUND-01**: Knowledge-Core restructured for generation — a **committed** ground-up rebuild into a general-use generative core (shared generative base + per-mode slices: Ideas, Hooks, chat), authored fresh; **not** retrofitted from the scoring core or the stale `training-data.json`. Content/curation workstream first, code second.
+- [x] **GROUND-02**: Per-mode grounding assembly — each tool assembles a tight curated context slice (niche + relevant craft frame + the specific input), not the whole profile/KC (avoids signal dilution).
 - [ ] **GROUND-03**: Grounding legible in UI — outputs surface *why* they were made ("because your audience is 18–25 gym beginners and your last 3 myth-busting videos overperformed").
 
 ### THREAD — model generalization, runner, rendering, chat
@@ -109,8 +109,8 @@ reuses its typed-block renderers.
 | THREAD-06 | Phase 1 | Complete |
 | THREAD-07 | Phase 1 | Complete |
 | ENGINE-03 | Phase 1 | Complete |
-| GROUND-01 | Phase 2 | Pending |
-| GROUND-02 | Phase 2 | Pending |
+| GROUND-01 | Phase 2 | Complete |
+| GROUND-02 | Phase 2 | Complete |
 | IDEAS-01 | Phase 3 | Pending |
 | IDEAS-02 | Phase 3 | Pending |
 | IDEAS-03 | Phase 3 | Pending |
