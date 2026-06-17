@@ -125,6 +125,38 @@ function fenceUserContent(label: string, content: string): string {
   return `${label}:\n<<<USER_CONTENT>>>\n${clean}\n<<<END_USER_CONTENT>>>`;
 }
 
+/**
+ * Rebuild fenced user sections so their JOINED length fits `budget`, truncating INNER
+ * content only — the <<<USER_CONTENT>>> / <<<END_USER_CONTENT>>> sentinels are ALWAYS
+ * emitted intact (never chopped by a length cap). This is the overflow-path guarantee
+ * that keeps the injection fence unbreakable even when the user request alone exceeds
+ * BUNDLE_CHAR_CAP (the bug class CR-01/CR-02 fixed: a blind substring on the assembled
+ * result could truncate the closing sentinel and silently void the fence).
+ *
+ * Sections are processed in priority order (first = highest priority, gets budget first).
+ * A section with no room left for even an empty fence is dropped, along with all that follow.
+ */
+function fenceSectionsWithinBudget(
+  sections: { label: string; content: string }[],
+  budget: number,
+): string[] {
+  const out: string[] = [];
+  let used = 0;
+  for (const { label, content } of sections) {
+    const sep = out.length > 0 ? 2 : 0; // "\n\n" join between sections
+    const clean = stripUserContentSentinels(content);
+    const open = `${label}:\n<<<USER_CONTENT>>>\n`;
+    const close = `\n<<<END_USER_CONTENT>>>`;
+    const avail = budget - used - sep - open.length - close.length;
+    if (avail <= 0) break; // no room for even an empty fence → drop this and the rest
+    const inner = clean.slice(0, Math.min(clean.length, avail));
+    const fenced = `${open}${inner}${close}`;
+    out.push(fenced);
+    used += sep + fenced.length;
+  }
+  return out;
+}
+
 // ─── Cold-start detection ─────────────────────────────────────────────────────
 
 /**
@@ -206,53 +238,55 @@ export function assembleBundle(
     }
   }
 
-  // 3. Build fenced user-input sections (always included — user request is the primary signal)
+  // 3. Build fenced user-input sections (always included — user request is the primary signal).
   const fencedSections: string[] = [];
   fencedSections.push(fenceUserContent("Creator ask", ask));
   if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
   if (anchor) fencedSections.push(fenceUserContent("Chain anchor", anchor));
 
-  // 4. Enforce BUNDLE_CHAR_CAP
-  //    Strategy: user-request sections always fit (they are the primary signal).
-  //    Profile roles drop from the tail (lowest priority) when the budget is exceeded.
-
-  const fencedText = fencedSections.join("\n\n");
+  // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
+  //    Precedence: the fenced user request is primary; profile grounding yields first.
+  //    (a) Drop whole profile roles from the tail (never mid-field) until the bundle fits.
+  //    (b) If the fenced content alone still overflows, rebuild the fenced sections within
+  //        the remaining budget — truncating INNER text only, sentinels always intact —
+  //        with `ask` allocated budget first. A final substring on the assembled result
+  //        (the old behaviour) is never used: it could chop a closing sentinel and void
+  //        the injection fence (CR-01/CR-02).
   const header = `## Live Grounding Bundle\nMode: ${mode} | Platform: ${platform}\n\n`;
   const profileHeader = `### Creator Profile\n`;
+  const JOIN = "\n\n";
 
-  // Reserve space for header + fenced sections
-  const reservedChars = header.length + fencedText.length + profileHeader.length + 4; // +4 for separators
-  const profileBudget = BUNDLE_CHAR_CAP - reservedChars;
+  const buildResult = (profileBody: string, fenced: string[]): string => {
+    const blocks: string[] = [header];
+    if (profileBody.length > 0) blocks.push(profileHeader + profileBody);
+    blocks.push("---", fenced.join(JOIN));
+    return blocks.join(JOIN);
+  };
 
-  // Drop lowest-priority roles from the tail to fit within budget
-  let profileSection = profileLines.join("\n");
-  if (profileSection.length > profileBudget && profileBudget > 0) {
-    const keptLines: string[] = [];
-    let used = 0;
-    for (const line of profileLines) {
-      const lineLen = line.length + 1; // +1 for newline
-      if (used + lineLen <= profileBudget) {
-        keptLines.push(line);
-        used += lineLen;
-      }
-      // Once budget exhausted: drop remaining lines (lower priority roles)
-    }
-    profileSection = keptLines.join("\n");
+  // 4a. Drop lowest-priority profile roles from the tail until the bundle fits
+  //     (down to an empty profile section). Whole-line drops only — never mid-field.
+  const keptProfile = [...profileLines];
+  while (
+    keptProfile.length > 0 &&
+    buildResult(keptProfile.join("\n"), fencedSections).length > BUNDLE_CHAR_CAP
+  ) {
+    keptProfile.pop();
   }
+  let profileSection = keptProfile.join("\n");
 
-  // 5. Assemble final user message
-  const parts: string[] = [
-    header,
-    profileHeader + profileSection,
-    "---",
-    fencedText,
-  ];
-
-  const result = parts.join("\n\n");
-
-  // Final safety cap — if fenced text alone exceeds cap, hard-truncate at word boundary
+  // 4b. If the fenced user content alone still overflows (even with no profile),
+  //     rebuild the fenced sections within the remaining budget. `ask` first.
+  let result = buildResult(profileSection, fencedSections);
   if (result.length > BUNDLE_CHAR_CAP) {
-    return result.substring(0, BUNDLE_CHAR_CAP);
+    profileSection = ""; // user request takes precedence over grounding
+    const shell = buildResult(profileSection, []); // structure with an empty fenced block
+    const fencedBudget = Math.max(0, BUNDLE_CHAR_CAP - shell.length);
+    const rawSections: { label: string; content: string }[] = [
+      { label: "Creator ask", content: ask },
+    ];
+    if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
+    if (anchor) rawSections.push({ label: "Chain anchor", content: anchor });
+    result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
   }
 
   return result;

@@ -288,6 +288,57 @@ describe("injection fence", () => {
   });
 });
 
+// ─── 6b. Injection fence — overflow integrity (CR-01 / CR-02 regression) ───────
+//
+// When the fenced user content exceeds BUNDLE_CHAR_CAP, the assembler must shrink
+// INNER content — never chop the assembled tail — so every <<<USER_CONTENT>>> keeps
+// its matching <<<END_USER_CONTENT>>>. A dangling open sentinel would void the fence.
+
+describe("injection fence — overflow integrity (CR-01/CR-02)", () => {
+  const countOccurrences = (s: string, sub: string): number => s.split(sub).length - 1;
+
+  it("ask far exceeding the cap keeps fences balanced and stays within cap", () => {
+    const hugeAsk = "z".repeat(BUNDLE_CHAR_CAP * 2);
+    const result = assembleBundle(
+      { ask: hugeAsk, platform: "tiktok", mode: "idea" },
+      FULL_PROFILE,
+    );
+    expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    const opens = countOccurrences(result, "<<<USER_CONTENT>>>");
+    const closes = countOccurrences(result, "<<<END_USER_CONTENT>>>");
+    expect(opens).toBe(closes);
+    expect(opens).toBeGreaterThan(0); // ask is still fenced, not dropped
+  });
+
+  it("huge ask + overrides + anchor never leaves a dangling open sentinel", () => {
+    const big = (c: string): string => c.repeat(BUNDLE_CHAR_CAP);
+    const result = assembleBundle(
+      { ask: big("a"), platform: "tiktok", mode: "idea", overrides: big("b"), anchor: big("c") },
+      FULL_PROFILE,
+    );
+    expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(countOccurrences(result, "<<<USER_CONTENT>>>")).toBe(
+      countOccurrences(result, "<<<END_USER_CONTENT>>>"),
+    );
+    // The last fence marker must be a CLOSE, never a dangling open.
+    expect(result.lastIndexOf("<<<END_USER_CONTENT>>>")).toBeGreaterThan(
+      result.lastIndexOf("<<<USER_CONTENT>>>"),
+    );
+  });
+
+  it("the ask fence closing sentinel survives a near-cap ask (CR-01 regression)", () => {
+    const result = assembleBundle(
+      { ask: "x".repeat(BUNDLE_CHAR_CAP - 50), platform: "tiktok", mode: "idea" },
+      FULL_PROFILE,
+    );
+    expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(result).toContain("<<<END_USER_CONTENT>>>");
+    expect(countOccurrences(result, "<<<USER_CONTENT>>>")).toBe(
+      countOccurrences(result, "<<<END_USER_CONTENT>>>"),
+    );
+  });
+});
+
 // ─── 7. Wins/flops honesty spine ─────────────────────────────────────────────
 
 describe("wins/flops honesty spine", () => {
