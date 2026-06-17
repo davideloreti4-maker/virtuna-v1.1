@@ -1,7 +1,9 @@
 {
   "model_profile": "balanced",
   "model_profile_overrides": {
-    "claude": { "haiku": "claude-sonnet-4-6" }
+    "claude": {
+      "haiku": "claude-sonnet-4-6"
+    }
   },
   "model_overrides": {
     "gsd-planner": "claude-opus-4-8",
@@ -41,7 +43,11 @@
   },
   "effort": {
     "default": "high",
-    "routing_tier_defaults": { "light": "high", "standard": "high", "heavy": "high" }
+    "routing_tier_defaults": {
+      "light": "high",
+      "standard": "high",
+      "heavy": "high"
+    }
   },
   "mode": "interactive",
   "parallelization": true,

@@ -141,3 +141,12 @@ None — migration applied to live DB by orchestrator. No additional env vars or
 ---
 *Phase: 01-engine-thread-foundation*
 *Completed: 2026-06-17*
+
+## Self-Check: PASSED
+
+- FOUND: `.planning/phases/01-engine-thread-foundation/01-02-SUMMARY.md`
+- FOUND: commit `193363e3` (Task 1 — migration)
+- FOUND: commit `c2ea284f` (Task 2 — helpers + tests)
+- FOUND: commit `ae98b748` (Task 3 — apply + regen)
+- FOUND: commit `94683523` (Task 3 reconciliation — derive types from DB)
+- FOUND: commit `b7ee3abd` (docs — plan metadata)
