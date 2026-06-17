@@ -34,3 +34,22 @@ Levers 1-3 are the real differentiators; they are pipeline/data work, NOT corpus
 
 ## Immediate implication for the 02-04 re-gate
 Re-run the gate **WITH a realistic profile + 1-2 real exemplars**, not cold-start. The cold-start number is misleadingly pessimistic — it measures the corpus floor, not the product's true delta (corpus + grounding). See `RESUME-HERE.md`.
+
+## ⭐ The product loop that IS the moat: generate → simulate → rank (don't lose this)
+Captured 2026-06-17 (owner flag). The KC is only the GENERATE half. The product's actual moat is
+**generate → simulate against the user's SIM audience → rank + why** ("foresight, not generation").
+
+- **Layer distinction:** the 02-04 blind gate validates the *generator* (owner-judged, one-time). The
+  SIM loop validates the *output* (SIM-1, every Read, user-facing). Complementary, not substitutes.
+  Keep SIM scores OUT of the blind owner gate (they anchor the rank) — but the SIM loop is the
+  product feature and must be built.
+- **Correction:** SIM-1 Flash **text-mode** exists (`src/lib/engine/flash/run-flash-text-mode.ts`,
+  Phase 1 ENGINE-01/03) — the synthetic audience CAN react to text. Earlier "SIM-on-text is
+  incoherent" was wrong; the only valid reason it was cut from the gate is anchoring.
+- **Altitude nuance (design around this):** SIM-1 reacts to a *content piece* (hook/script/post).
+  A raw idea CONCEPT is upstream — nothing to react to yet. So the loop is: ideas → pick → render
+  hook → **SIM-rank** → why. The simulate→rank step bites at the **hook/script** stage (02-05 /
+  the "Chat & Test" slice), with ideas feeding it. Don't bolt raw-concept SIM-scoring onto the Ideas tool.
+- **Implication:** add a lever #9 — **SIM-rank verification loop** (generate→render→simulate→rank+why),
+  the centerpiece of the Ideas/Test product, downstream of this corpus phase. This is THE moat per
+  the brand spine; levers 1-8 make the generator good, #9 is the foresight product.

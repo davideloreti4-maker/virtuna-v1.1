@@ -42,3 +42,10 @@ Then open `kc-gate-BLIND.txt`, rank best→worst, decode `kc-gate-KEY.txt`.
 - Memory: `[[kc-corpus-authoring]]` (method + quality bar + state).
 - Config: USE_WORKTREES=false (sequential on main tree), executor=sonnet, verifier=opus, branch `milestone/numen-tools`, no branching.
 - Throwaway gate outputs `kc-gate-BLIND.txt` / `kc-gate-KEY.txt` are gitignored/transient — regenerate, don't trust stale ones.
+
+## ⭐ Product-loop reminder (owner flag, don't lose)
+The KC is only GENERATE. The moat = **generate → simulate against the SIM audience → rank + why**.
+That SIM verification loop is a downstream PRODUCT feature (Ideas/Test tool, "Chat & Test" slice),
+NOT the 02-04 corpus gate (which validates the generator by owner taste). SIM-1 Flash text-mode
+exists (Phase 1) and is the verifier. Altitude: SIM reacts to CONTENT (hook/script) — render an
+idea into its hook before SIM-ranking. Full note: `.planning/research/kc-improvement-levers.md` (§ "the product loop that IS the moat").
