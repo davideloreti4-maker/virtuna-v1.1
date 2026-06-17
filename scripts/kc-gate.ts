@@ -223,37 +223,33 @@ async function generateThreeArms(
 ): Promise<ArmOutput[]> {
   const log = (msg: string) => console.log(`  [kc-gate] ${msg}`);
 
-  // ── ARM A: new-KC ──────────────────────────────────────────────────────────
-  log("generating arm A (new-KC)...");
   const newKCUserMessage = assembleBundle(
     { ask: prompt, platform: "tiktok", mode: "idea" },
     null, // null = cold-start / platform baseline (no profile in gate context)
   );
-  const newKCContent = await callQwen(KC_IDEAS_SYSTEM_PROMPT, newKCUserMessage);
 
-  // ── ARM B: current-KC ──────────────────────────────────────────────────────
-  log("generating arm B (current-KC)...");
-  const currentKCContent = await callQwen(
-    APOLLO_SYSTEM_PROMPT,
-    buildCurrentKCUserMessage(prompt),
-  );
+  // Generate all 3 arms IN PARALLEL — they are independent calls. Sequential
+  // generation of 3 slow qwen3.7-plus reasoning calls (+ a ~7.4k-token KC system
+  // prompt on arms A/B) blew past the per-call timeout / wrapper wall. Parallel
+  // wall time ≈ slowest single arm, not the sum.
+  log("generating arms A (new-KC), B (current-KC), C (raw-LLM) in parallel...");
+  const [newKCContent, currentKCContent, rawLLMContent] = await Promise.all([
+    callQwen(KC_IDEAS_SYSTEM_PROMPT, newKCUserMessage),
+    callQwen(APOLLO_SYSTEM_PROMPT, buildCurrentKCUserMessage(prompt)),
+    callQwen(null, buildRawLLMUserMessage(prompt)),
+  ]);
 
-  // ── ARM C: raw-LLM ────────────────────────────────────────────────────────
-  log("generating arm C (raw-LLM, no KC)...");
-  const rawLLMContent = await callQwen(null, buildRawLLMUserMessage(prompt));
-
-  // ── Optional Flash sanity delta ───────────────────────────────────────────
   const arms: ArmOutput[] = [
     { label: "new-KC",     content: newKCContent },
     { label: "current-KC", content: currentKCContent },
     { label: "raw-LLM",   content: rawLLMContent },
   ];
 
+  // ── Optional Flash SIM sanity (parallel across arms) ──────────────────────
   if (!skipFlash) {
-    log("running Flash sanity delta on all 3 arms (sanity only — not the gate)...");
-    for (const arm of arms) {
-      arm.flashSanity = await getFlashSanity(arm.content);
-    }
+    log("running Flash SIM on all 3 arms in parallel (sanity only — not the gate)...");
+    const sims = await Promise.all(arms.map((arm) => getFlashSanity(arm.content)));
+    arms.forEach((arm, i) => { arm.flashSanity = sims[i]; });
   }
 
   return arms;
