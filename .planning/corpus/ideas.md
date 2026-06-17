@@ -94,6 +94,12 @@ retention then a sharp drop when the claim fails to substantiate, and over time 
 audience to skip at the title. Guard: can the creator substantiate the counter-claim with a
 specific example, data point, or personal outcome? If not, this is the wrong vehicle.
 
+**Responsibility guard (BASE: provocation, not recklessness):** a contrarian idea that only "works"
+because it advises something genuinely harmful to the audience (reckless money moves, unsafe
+shortcuts) is not a clever take — it is a liability. Generate the defensible version of the
+contrarian angle, or flag the risk; never hand the creator a spicy idea whose substance would
+hurt their viewers if acted on.
+
 ### C. The Documented Experiment ("I Ran the Test")
 
 **Mechanism:** Prediction & Anticipation — the viewer is handed a pending result and stays to verify
@@ -157,27 +163,29 @@ interesting to the creator, mapped to no viewer desire. Even in personality-driv
 ideas map a personal story or experiment to a specific viewer transformation.
 
 
-## Idea Output Schema
+## Idea Reasoning Scaffold → Clean Deliverable
 
-Emit each idea as a filled structure, not a paragraph. This is the deconstruction shape — it makes
-the angle and its grounding inspectable, and forces the Actionability Contract to be met explicitly.
+This schema is how you *think through* each idea privately — NOT the format you ship (see BASE,
+"Output Discipline — Scaffolding Is Private"). Reason across these fields internally to force the
+Actionability Contract to be met; then deliver a clean, creator-facing idea.
 
+Reason internally across:
 - **Topic** — the narrow, 3-to-5-word subject framing inside the creator's niche.
 - **Idea Seed** — one line: what the video is actually about + the promise it makes the viewer.
-- **Angle** — the specific, non-obvious take (the "take" leg). State it directly. For a
-  Counter-Intuitive idea this takes the form *common belief → contrarian reality*; for a teardown,
-  experiment, or audience-mirror it is the specific finding, hypothesis, or named friction. **Not
-  every idea must challenge a belief** — do not force a contrarian frame onto an idea whose pull is
-  a documented result or a precisely-named desire.
-- **Format** — the container the idea lives in, named only when its pull depends on it (teardown,
-  experiment, A-vs-B, tier-list…); leave open when incidental.
-- **Mechanism** — which named BASE principle the idea fires, and why (Actionability Component 1).
-- **Fit** — the specific thing about *this* creator that makes the idea land (Component 2); flag
-  cold-start honestly when the profile is thin.
-- **Substance** — the evidence, first-hand experience, or example that earns the angle. Flag when
-  the idea needs the creator's own take/result to land (Component 3).
+- **Angle** — the specific, non-obvious take (the "take" leg). For a Counter-Intuitive idea this is
+  *common belief → contrarian reality*; for a teardown, experiment, or audience-mirror it is the
+  specific finding, hypothesis, or named friction. **Not every idea must challenge a belief** — do
+  not force a contrarian frame onto an idea whose pull is a documented result or a named desire.
+- **Format** — the container, named only when its pull depends on it; leave open when incidental.
+- **Mechanism** — which named BASE principle the idea fires (Actionability Component 1).
+- **Fit** — the specific thing about *this* creator that makes it land (Component 2); flag cold-start.
+- **Substance** — the evidence/experience/example that earns the angle (Component 3).
 
-The schema is archetype-agnostic: the Angle field adapts to the archetype rather than imposing one.
+**Then SHIP, per idea:** the concrete concept (subject + angle, ready for a production brief) + a
+short suggested hook + one plain-language line on why it works (mechanism named in human terms).
+NO field labels, NO `[ARCHETYPE]`/`[MECHANISM]` tags, NO meta-commentary about archetypes, the
+diversity rule, or how many you derived. If a constraint matters (e.g. an idea needs the creator's
+own result to land), say it as a plain aside, not a schema dump. The scaffold stays under the hood.
 
 
 ## Actionability Contract
