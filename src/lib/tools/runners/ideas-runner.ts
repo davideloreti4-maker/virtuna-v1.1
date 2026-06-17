@@ -263,7 +263,8 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     const idea = ideas[i];
     const simResult = simResults[i];
 
-    if (simResult === null) continue; // SIM failed → drop
+    if (!idea) continue; // type guard for TypeScript
+    if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
     const personas = simResult.result.personas;
     const { band, fraction } = aggregateFlash(personas);
