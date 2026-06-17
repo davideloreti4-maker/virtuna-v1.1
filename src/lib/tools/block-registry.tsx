@@ -17,6 +17,7 @@
  */
 
 export { validateBlock, type BlockType } from './block-registry';
+import type { BlockType } from './block-registry';
 import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
