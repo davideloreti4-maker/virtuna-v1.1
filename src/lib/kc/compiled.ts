@@ -167,6 +167,20 @@ distance from understanding to action (small action, meaningful result). The sav
 self that this is worth executing later — vague inspiration is not saved; a concrete, reusable move is.
 
 
+## Content Sits on a Funnel
+
+Every piece of content serves a stage, and the stages are not interchangeable. Awareness content
+(top of funnel) wins reach and views; consideration content (middle) builds followers and trust;
+conversion content (bottom) turns attention into leads or sales. A common failure is over-indexing
+on one stage — usually chasing viral top-of-funnel reach — and wondering why reach never converts.
+
+Strong output is a *balanced portfolio*, not a single bet. A useful working ratio: roughly the
+majority of output on proven, market-validated patterns, a meaningful minority iterating on the
+creator's own past wins, and a small slice of genuine experiments. Naming which stage a piece
+serves — and whether the mix is balanced — is itself craft judgment, applicable whether you are
+scoring an existing video, generating ideas, or advising in chat.
+
+
 ## Anti-Generic Guardrails
 
 These are structural prohibitions, not aspirational descriptions. Each one names the failure
@@ -404,6 +418,29 @@ interesting to the creator, mapped to no viewer desire. Even in personality-driv
 ideas map a personal story or experiment to a specific viewer transformation.
 
 
+## Idea Output Schema
+
+Emit each idea as a filled structure, not a paragraph. This is the deconstruction shape — it makes
+the angle and its grounding inspectable, and forces the Actionability Contract to be met explicitly.
+
+- **Topic** — the narrow, 3-to-5-word subject framing inside the creator's niche.
+- **Idea Seed** — one line: what the video is actually about + the promise it makes the viewer.
+- **Angle** — the specific, non-obvious take (the "take" leg). State it directly. For a
+  Counter-Intuitive idea this takes the form *common belief → contrarian reality*; for a teardown,
+  experiment, or audience-mirror it is the specific finding, hypothesis, or named friction. **Not
+  every idea must challenge a belief** — do not force a contrarian frame onto an idea whose pull is
+  a documented result or a precisely-named desire.
+- **Format** — the container the idea lives in, named only when its pull depends on it (teardown,
+  experiment, A-vs-B, tier-list…); leave open when incidental.
+- **Mechanism** — which named BASE principle the idea fires, and why (Actionability Component 1).
+- **Fit** — the specific thing about *this* creator that makes the idea land (Component 2); flag
+  cold-start honestly when the profile is thin.
+- **Substance** — the evidence, first-hand experience, or example that earns the angle. Flag when
+  the idea needs the creator's own take/result to land (Component 3).
+
+The schema is archetype-agnostic: the Angle field adapts to the archetype rather than imposing one.
+
+
 ## Actionability Contract
 
 Every idea item generated in this mode MUST satisfy all three components below.
@@ -430,15 +467,23 @@ needs the creator's first-hand take to land, say so explicitly.
 
 **INTRA-BATCH DIVERSITY RULE (structural, not optional)**
 
-When generating N idea items in one response, each item MUST fire a DIFFERENT named mechanism. No
-two items in the same batch may share the same archetype/mechanism tag.
+When generating N idea items in one response, each item MUST use a DIFFERENT archetype — and thus a
+distinct *dominant* mechanism. (Archetypes share secondary mechanisms — both the Teardown and the
+Audience-Desire Mirror lean on Stakes — so tag by archetype, identified by its dominant mechanism,
+not by every mechanism it touches.)
 
-Each item carries its mechanism tag explicitly (e.g. "[MECHANISM: Open Loop]"). Duplicate tags are
-a visible quality failure. Review the tag list before finalising the batch and regenerate any item
-that creates a duplicate, replacing it with one that fires a distinct mechanism.
+Each item carries its archetype tag explicitly (e.g. "[ARCHETYPE: Counter-Intuitive Outcome]").
+Duplicate tags are a visible quality failure. Review the tag list before finalising the batch and
+regenerate any item that creates a duplicate, replacing it with one of a distinct archetype.
 
 Acceptable batch of 4: Named-Finding Teardown · Counter-Intuitive Outcome · Documented Experiment ·
 Audience-Desire Mirror. Not acceptable: Teardown x3 · Audience-Desire Mirror x1.
+
+Diversify on two further axes where the batch size allows. **Funnel stage:** do not cluster every
+idea at viral top-of-funnel reach — span awareness, consideration, and conversion (see BASE,
+"Content Sits on a Funnel"). **Risk tier:** weight the batch toward proven, market-validated
+patterns, with a meaningful minority iterating on the creator's own wins and a small slice of
+genuine experiments — rather than all-safe or all-experimental.
 
 ---
 
