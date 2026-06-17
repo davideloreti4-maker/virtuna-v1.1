@@ -1,11 +1,11 @@
 ---
 gsd_state_version: 1.0
 milestone: v6.0
-milestone_name: Numen Studio
-status: planning
-stopped_at: Defining requirements
-last_updated: "2026-06-16T00:00:00.000Z"
-last_activity: 2026-06-16 -- Milestone v6.0 Numen Studio started (worktree milestone/numen-tools)
+milestone_name: milestone
+status: Defining requirements
+stopped_at: Phase 1 context gathered
+last_updated: "2026-06-17T06:46:27.086Z"
+last_activity: 2026-06-16 — Milestone v6.0 Numen Studio started
 progress:
   total_phases: 5
   completed_phases: 0
@@ -80,6 +80,6 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-16
-Stopped at: Milestone v6.0 launched; PROJECT.md + STATE.md + MILESTONE.md written; defining requirements next.
-Resume file: .planning/NUMEN-TOOLS-VISION.md
+Last session: 2026-06-17T06:46:27.080Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-engine-thread-foundation/01-CONTEXT.md
