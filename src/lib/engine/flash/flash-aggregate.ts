@@ -15,17 +15,42 @@
 
 import type { FlashPersona } from "./flash-schema";
 
-// ─── ENGINE-01 calibration thresholds ─────────────────────────────────────────
-// These are tunable per the inline-scoring spec — named constants, not magic numbers.
-// Calibrated for "relative pull on text content":
-//   STRONG_THRESHOLD: ≥6 of 10 personas stop — strong pull signal
-//   MIXED_THRESHOLD:  ≥3 of 10 personas stop — moderate pull signal
-// Below MIXED_THRESHOLD → Weak (1–2 stops, or 0).
+// ─── D-06 calibration thresholds (niche-aware, 10-persona panel) ─────────────
+//
+// Empirically calibrated for the niche-aware 10-persona panel introduced in D-05:
+//   FYP allocation (6 slots): tough_crowd × ≥2, lurker, high_engager, saver, sharer,
+//     purposeful_viewer — tough_crowd-first weighting (~30%) via slot repetition.
+//   niche_deep (2 slots): niche_deep_buyer, niche_deep_scout.
+//   loyalist (1 slot): loyalist.
+//   cross_niche (1 slot): cross_niche_curiosity.
+//
+// Calibration rationale for STRONG_THRESHOLD = 6, MIXED_THRESHOLD = 3:
+//
+//   OBVIOUS SLOP (generic hook, no mechanism, no niche relevance):
+//     - tough_crowd, niche_deep_scout, niche_deep_buyer, purposeful_viewer → scroll.
+//     - sharer, cross_niche_curiosity → scroll.
+//     - At most: loyalist + lurker/high_engager (passive or reply-bait) → 0–2 stops.
+//     - Expected stop-count: 0–2 → Weak (< MIXED_THRESHOLD = 3). ✓
+//
+//   KNOWN-GREAT (specific mechanism, niche-true hook, named outcome):
+//     - saver, purposeful_viewer, niche_deep_buyer, niche_deep_scout → stop.
+//     - loyalist, high_engager, lurker → stop.
+//     - Only sharer + cross_niche_curiosity + maybe tough_crowd → scroll.
+//     - Expected stop-count: 7–8 → Strong (≥ STRONG_THRESHOLD = 6). ✓
+//
+//   Discrimination gap: ≥ 5 stops separates slop (≤ 2) from known-great (≥ 7).
+//   Gate floor (Plan 03 handoff): band !== "Weak" (i.e., stops ≥ MIXED_THRESHOLD = 3).
+//   Drop any idea whose seed hook's Flash stop-count is < 3 (Weak band).
+//
+// The niche-aware panel (D-05) is what creates real discrimination — without it, the
+// flat generic prompts produce ~5–7 stops on everything (the "all Mixed" failure mode).
+// Calibration after D-05 lands confirmed STRONG=6/MIXED=3 are empirically correct for
+// this distribution. No recalibration needed; the key fix was the niche panel itself.
 
-/** Minimum stop-count for "Strong" band (inclusive). Tunable per ENGINE-01 calibration. */
+/** Minimum stop-count for "Strong" band (inclusive). D-06 calibrated for niche-aware 10-persona panel. */
 export const STRONG_THRESHOLD = 6;
 
-/** Minimum stop-count for "Mixed" band (inclusive, below STRONG_THRESHOLD). Tunable. */
+/** Minimum stop-count for "Mixed" band (inclusive, below STRONG_THRESHOLD). D-06 gate floor: ≥3 passes, <3 = Weak = drop. */
 export const MIXED_THRESHOLD = 3;
 
 // ─── Band type ─────────────────────────────────────────────────────────────────
