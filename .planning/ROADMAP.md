@@ -86,7 +86,20 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
   4. "Develop this →" carries a chosen idea into Hooks via the in-thread chain-CTA mechanism.
   5. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved (Ideas adds Flash + self-judge calls; no silent regression of the protected path).
 
-**Plans**: TBD
+**Plans**: 4 plans
+**Wave 1** *(parallel — disjoint files)*
+
+- [ ] 03-01-PLAN.md — Niche-instantiate the text SIM (D-05) + recalibrate thresholds + slop-vs-strong test (D-06), text-path-only, regression-gated (D-07) [ENGINE-02]
+- [ ] 03-02-PLAN.md — idea-card typed block (D-10) + grounding-line extractor (D-09) + KC_GEN_VERSION stamp helper [IDEAS-01, GROUND-03, PROFILE-01]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-03-PLAN.md — Ideas API route: over-generate→niche-SIM gate→3 cards, open thread, content-first stream, anchor seam, KC_GEN_VERSION stamp [IDEAS-01/02, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-04-PLAN.md — Live Idea chip + platform chip + Auto/seeded routing + Ideas thread view (content-first render) + "Develop this →" chain CTA + UAT [IDEAS-01/02/03, GROUND-03, PROFILE-01, THREAD-05]
+
 **UI hint**: yes
 
 ### Phase 4: Hooks Tool
@@ -128,6 +141,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 |-------|----------------|--------|-----------|
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
-| 3. Ideas Tool | 0/TBD | Not started | - |
+| 3. Ideas Tool | 0/4 | Planned | - |
 | 4. Hooks Tool | 0/TBD | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
