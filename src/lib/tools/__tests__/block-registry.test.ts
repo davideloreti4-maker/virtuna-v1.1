@@ -1,0 +1,80 @@
+/**
+ * Task 1 TDD — RED: block-registry + blocks.ts behaviour contract.
+ *
+ * Covers the six validateBlock cases from the plan spec plus the
+ * assertBlocksInRegistry throw case.
+ */
+
+import { describe, it, expect } from "vitest";
+import { validateBlock, assertBlocksInRegistry, BLOCK_REGISTRY } from "../block-registry";
+import type { BlockType } from "../block-registry";
+
+describe("BLOCK_REGISTRY", () => {
+  it("exports the three required keys", () => {
+    expect(Object.keys(BLOCK_REGISTRY)).toEqual(
+      expect.arrayContaining(["markdown", "band", "personas"]),
+    );
+  });
+});
+
+describe("validateBlock", () => {
+  it("returns ok:true for a valid markdown block", () => {
+    const result = validateBlock({ type: "markdown", props: { text: "hi" } });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.block).toMatchObject({ type: "markdown", props: { text: "hi" } });
+    }
+  });
+
+  it("returns ok:true for a valid band block", () => {
+    const result = validateBlock({
+      type: "band",
+      props: { band: "Strong", fraction: "6/10 stop", model: "sim1-flash" },
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it("returns ok:false for an unknown type", () => {
+    const result = validateBlock({ type: "nope", props: {} });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns ok:false for invalid band props (unknown band value, missing fields)", () => {
+    const result = validateBlock({ type: "band", props: { band: "Amazing" } });
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns ok:false for null", () => {
+    const result = validateBlock(null);
+    expect(result.ok).toBe(false);
+  });
+
+  it("returns ok:false for empty object", () => {
+    const result = validateBlock({});
+    expect(result.ok).toBe(false);
+  });
+
+  it("never throws — even on completely unexpected input", () => {
+    expect(() => validateBlock(undefined)).not.toThrow();
+    expect(() => validateBlock(42)).not.toThrow();
+    expect(() => validateBlock("string")).not.toThrow();
+  });
+});
+
+describe("assertBlocksInRegistry", () => {
+  it("does not throw when all block types are in the allowed subset", () => {
+    const blocks = [
+      { type: "markdown" as BlockType, props: { text: "hello" } },
+      { type: "band" as BlockType, props: { band: "Mixed", fraction: "4/10 stop", model: "sim1-flash" } },
+    ];
+    expect(() => assertBlocksInRegistry(blocks, ["markdown", "band", "personas"])).not.toThrow();
+  });
+
+  it("throws when a block type is outside the allowed subset", () => {
+    const blocks = [
+      { type: "band" as BlockType, props: { band: "Weak", fraction: "2/10 stop", model: "sim1-max" } },
+    ];
+    // Only markdown is allowed — band is outside the subset
+    expect(() => assertBlocksInRegistry(blocks, ["markdown"])).toThrow();
+  });
+});
