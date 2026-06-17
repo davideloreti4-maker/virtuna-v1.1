@@ -26,7 +26,7 @@ Blind ran 1 prompt × 3 arms on **qwen3.7-plus** (new-KC vs current-KC vs raw-LL
 ```bash
 npx tsx scripts/kc-gate.ts --prompts "Give me 5 ideas for a personal finance creator on TikTok who helps 25-35 year-olds invest their first \$1000. I want to break out of generic money-tip content." --no-flash
 ```
-(Flash sanity intentionally OFF — omni-flash is the video model; scoring idea-text through it is incoherent and would anchor the blind rank.)
+(Flash sanity OFF for the *blind gate* only — a SIM score next to each output anchors the owner's rank. NOTE: SIM-1 Flash *text-mode* CAN score text and IS the product's verifier — keeping it out is a gate-integrity choice, not a capability limit. See the product-loop reminder below.)
 
 Then open `kc-gate-BLIND.txt`, rank best→worst, decode `kc-gate-KEY.txt`.
 **Watch for:** (a) new-KC now ships CLEAN (no `[ARCHETYPE]`/schema-label/meta-note leak); (b) the reckless-advice idea now flags risk or is replaced with a defensible version; (c) substance still strong; (d) ideas now push PAST the obvious-for-niche tropes and carry a non-fakeable concrete (new BASE Prohibition 6 + Test B).
