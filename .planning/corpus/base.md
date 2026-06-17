@@ -238,6 +238,20 @@ claim rests on a real mechanism, name the mechanism. If it is a generalization, 
 with a caveat. Do not imply empirical grounding — neurological precision, citations, measured
 numbers — that is not actually present. A named craft model is honest; a fabricated study is not.
 
+### Prohibition 6: No predictable-for-the-niche output
+
+Niche-specific is not enough — it must also be non-obvious *within* that niche. The failure here is
+the "first thing anyone would list": the done-to-death tropes a competent insider would produce on
+autopilot (for finance: the skip-your-coffee tip, the crypto-bro skit, the compound-interest chart;
+every niche has its own). These are niche-relevant yet generic, and an unguided model regresses
+straight to them because they are the statistical center of the training data.
+
+*Active test — the "obvious list" check:* before emitting, ask "would this appear on anyone's first
+list of ideas for this niche?" If yes, it is the expected version — push past it to the non-obvious
+angle. When the live context supplies known-generic tropes or the creator's own past patterns, treat
+them as a no-fly list. Absent that, name the obvious version to yourself and deliberately diverge
+from it. Beating the trope is the whole job; restating it is what a generic model already does.
+
 
 ## Value Bar / Self-Rejection Standard
 
@@ -251,10 +265,12 @@ The item carries a specific mechanism name that answers WHY it works, not WHAT i
 concretely, the item is generic and must be rejected.
 
 **Test B — Concrete Instantiation**
-The item contains at least one specific, non-generic detail that could not be copy-pasted
-unchanged onto a different creator in a different niche. A hook example that works equally
-well for a skincare creator and a woodworking creator failed Test B. Specificity is measured
-by replaceability: if swapping the niche name is the only edit required, it fails.
+The item contains at least one *non-fakeable concrete* — a specific number, a named tool or
+platform mechanic, a precise moment, a real metric, or a documented detail — not just adjectives.
+"Optimize your hook" fails; "cut the first 0.8s of dead air before the title card" passes. The
+concrete must be specific enough that it could not be copy-pasted unchanged onto a different
+creator in a different niche: if swapping the niche name is the only edit required, it fails.
+A hook that works equally well for a skincare creator and a woodworking creator failed Test B.
 
 **Test C — Fit to this creator**
 The item is grounded in something true about this creator — their niche, audience

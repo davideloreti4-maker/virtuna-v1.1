@@ -29,7 +29,9 @@ npx tsx scripts/kc-gate.ts --prompts "Give me 5 ideas for a personal finance cre
 (Flash sanity intentionally OFF — omni-flash is the video model; scoring idea-text through it is incoherent and would anchor the blind rank.)
 
 Then open `kc-gate-BLIND.txt`, rank best→worst, decode `kc-gate-KEY.txt`.
-**Watch for:** (a) new-KC now ships CLEAN (no `[ARCHETYPE]`/schema-label/meta-note leak); (b) the reckless-advice idea now flags risk or is replaced with a defensible version; (c) substance still strong.
+**Watch for:** (a) new-KC now ships CLEAN (no `[ARCHETYPE]`/schema-label/meta-note leak); (b) the reckless-advice idea now flags risk or is replaced with a defensible version; (c) substance still strong; (d) ideas now push PAST the obvious-for-niche tropes and carry a non-fakeable concrete (new BASE Prohibition 6 + Test B).
+
+**Better re-gate (recommended):** cold-start under-sells the KC. If feasible, re-run WITH a realistic creator profile + 1-2 real exemplars to measure the product's true delta, not the corpus floor. See `.planning/research/kc-improvement-levers.md` (the cold-start caveat + the 8 levers to beat raw LLM "by a lot"; two free ones — anti-slop + specificity — already shipped in BASE).
 
 - **Gate PASS** = new-KC clearly best on substance AND presentation → mark 02-04 done, write SUMMARY, advance to **02-05** (replicate clean shape to hooks/chat; lean on parked hook taxonomy + format ontology in `.planning/research/`).
 - **Still failing** = note which dimension, loop back to `ideas.md`/BASE, re-gate.
