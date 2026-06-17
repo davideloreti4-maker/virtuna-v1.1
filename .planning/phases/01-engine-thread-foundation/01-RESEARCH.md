@@ -480,19 +480,16 @@ export const FlashResultSchema = z.object({
 | A4 | `messages.role` includes a `'tool'`/assistant value for tool outputs | Code Examples (schema) | LOW — exact role vocabulary is Claude's discretion; `analysis_chats` uses `user|assistant`. |
 | A5 | Reusing `ScoreGauge`/`PersonaCloud` directly satisfies D-01/D-02 without new renderers | Don't Hand-Roll / Pitfall #1 | MEDIUM — `PersonaCloud` consumes `HeatmapPayload`/`PersonaSimulationResult` (video-shaped), not the `{verdict, quote}` Flash shape. A thin adapter or a Flash-specific persona-expand renderer may be needed. **Planner should scope an adapter, not assume drop-in.** |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Which concrete model is "SIM-1 Flash" for text-mode?**
-   - What we know: the chip→model mapping is `Test→Max, Ideas/Hooks→Flash` (D-09); the repo exposes `QWEN_FAST_MODEL=qwen3.6-flash`, `QWEN_OMNI_MODEL=qwen3.5-omni-flash`, `QWEN_REASONING_MODEL=qwen3.7-plus`.
-   - What's unclear: whether text-discrimination quality needs the plus reasoner or a flash tier suffices (ENGINE-01's "winning framing" calibration answers this).
-   - Recommendation: leave the model behind a `FLASH_MODEL` env (mirroring `FOLD_MODEL`), default to a flash tier, and calibrate inside the phase. Flag for owner confirmation (A2).
+> All three resolved during plan-phase (2026-06-17). Implementations exist in the plans; resolutions inlined below.
 
-2. **Does the Flash persona output reuse `PersonaCloud` or need a Flash-specific expand renderer?**
-   - What we know: D-01 says reactions live behind a tap/expand "reuses `persona-cloud`"; but `PersonaCloud` is shaped for video heatmaps.
-   - What's unclear: whether an adapter from `{archetype, verdict, quote}` → `PersonaCloud` props is clean, or a new minimal persona-list renderer reads better for D-03's quotes.
-   - Recommendation: plan a thin adapter first; fall back to a small Flash persona-expand renderer if the quote display doesn't fit the cloud. (A5)
+1. **Which concrete model is "SIM-1 Flash" for text-mode?** — **RESOLVED:** seam deferred-by-design. Plan 03 Task 2 implements a `FLASH_MODEL` env (mirroring `FOLD_MODEL`), defaulting to a flash tier (`QWEN_FAST_MODEL`); the concrete model is calibrated inside ENGINE-01's "winning framing" pass. Owner confirmation happens during in-phase calibration, not as a pre-plan gate (A2).
+   - Context: chip→model mapping is `Test→Max, Ideas/Hooks→Flash` (D-09); repo exposes `QWEN_FAST_MODEL=qwen3.6-flash`, `QWEN_OMNI_MODEL=qwen3.5-omni-flash`, `QWEN_REASONING_MODEL=qwen3.7-plus`.
 
-3. **Streaming vs whole for Flash in P1** — resolved for P1 (return whole; A3), but the seam should not preclude the IDEAS-02 "content-first, score-streams" pattern in Phase 3. Recommendation: the tool-runner contract should allow a future `stream: boolean`, unused in P1.
+2. **Does the Flash persona output reuse `PersonaCloud` or need a Flash-specific expand renderer?** — **RESOLVED:** Plan 01 Task 2 builds a dedicated `personas-block.tsx` (Flash-specific persona expand reading `{archetype, verdict, quote}`), NOT routed through `PersonaCloud` (which consumes video-shaped `HeatmapPayload`). The recommended "thin adapter first, fall back to a new renderer" collapsed straight to the new renderer because the quote shape (D-03) doesn't fit the cloud (A5).
+
+3. **Streaming vs whole for Flash in P1** — **RESOLVED:** return whole for P1 (A3). The tool-runner contract reserves an unused `stream?: boolean` (Plan 01 Task 3) so the IDEAS-02 "content-first, score-streams" pattern slots into Phase 3 without a contract change.
 
 ## Environment Availability
 
