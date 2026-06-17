@@ -175,12 +175,13 @@ async function callQwen(
 async function getFlashSanity(content: string): Promise<string> {
   try {
     const { result } = await runFlashTextMode(content, "idea");
-    // aggregateFlash is optional complexity — extract band directly from result
-    const verdicts: Array<{ verdict: string }> = Object.values(result);
-    const greenCount = verdicts.filter((v) => v.verdict === "green").length;
-    const total = verdicts.length;
-    const fraction = total > 0 ? `${greenCount}/${total}` : "N/A";
-    return `Flash sanity (sanity only — not the gate): ${fraction} personas → green`;
+    // FlashResult.personas = 10 × { archetype, verdict: "stop"|"scroll", quote }.
+    // "stop" = persona stopped scrolling = the positive pull signal (D-03 band math).
+    const personas = result.personas;
+    const stopCount = personas.filter((p) => p.verdict === "stop").length;
+    const total = personas.length;
+    const fraction = total > 0 ? `${stopCount}/${total}` : "N/A";
+    return `Flash SIM (sanity only — not the gate): ${fraction} personas → STOP (stopped scrolling)`;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return `Flash sanity: skipped — ${msg}`;
