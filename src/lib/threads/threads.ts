@@ -15,24 +15,18 @@
  * - The UNIQUE partial index on reading_id makes concurrent first-opens collide
  *   on the constraint rather than race; ignoreDuplicates handles the collision.
  *
- * NOTE: threads/messages Row types will appear after Task 3 regenerates
- * database.types.ts from the live DB. Until then the return types are manually
- * matched to the migration schema shape.
+ * Row types derive from the regenerated database.types.ts (Task 3).
+ * reading_id is `string | null` — analysis_results.id is `text` on the live DB
+ * (not uuid as Pitfall #3 assumed), so the FK resolves to a text/string column.
  */
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/database.types";
 
-// ─── Shape (mirrors migration schema; replaced by generated types after Task 3) ─
+// ─── Row type derived from the regenerated database types (Task 3) ────────────
 
-export interface ThreadRow {
-  id: string;
-  user_id: string;
-  type: "grounded" | "open";
-  reading_id: string | null;
-  created_at: string;
-  updated_at: string;
-}
+export type ThreadRow = Database["public"]["Tables"]["threads"]["Row"];
 
 // ─── createGroundedThreadLazy ──────────────────────────────────────────────────
 /**
@@ -74,7 +68,7 @@ export async function createGroundedThreadLazy(
     );
   }
 
-  return data as ThreadRow;
+  return data;
 }
 
 // ─── getThread ────────────────────────────────────────────────────────────────
@@ -95,7 +89,7 @@ export async function getThread(id: string): Promise<ThreadRow | null> {
     throw new Error(`getThread: failed for id=${id}: ${error.message}`);
   }
 
-  return (data as ThreadRow | null) ?? null;
+  return data ?? null;
 }
 
 // ─── getOpenThread ────────────────────────────────────────────────────────────
@@ -120,5 +114,5 @@ export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
     throw new Error(`getOpenThread: failed for userId=${userId}: ${error.message}`);
   }
 
-  return (data as ThreadRow | null) ?? null;
+  return data ?? null;
 }

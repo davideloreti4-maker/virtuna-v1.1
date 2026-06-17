@@ -18,13 +18,15 @@
  *   D-14 / "no model-generated UI": blocks outside the registry cannot persist.
  * - user_id is NEVER read from a request body in these helpers.
  *
- * NOTE: messages Row types will appear after Task 3 regenerates database.types.ts.
+ * Row types derive from the regenerated database.types.ts (Task 3).
+ * messages.body is `Json` in the generated type (jsonb column); role is `string`.
  */
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { createClient } from "@/lib/supabase/server";
 import { validateBlock } from "@/lib/tools/block-registry";
 import type { BlockType } from "@/lib/tools/block-registry";
+import type { Database, Json } from "@/types/database.types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,14 +45,8 @@ export interface UnsupportedBlock {
 /** A single hydrated block — either valid or an unsupported placeholder. */
 export type HydratedBlock = ValidBlock | UnsupportedBlock;
 
-/** Raw message row shape (mirrors migration schema; replaced by generated types after Task 3). */
-export interface MessageRow {
-  id: string;
-  thread_id: string;
-  role: "user" | "assistant" | "tool";
-  body: unknown[];
-  created_at: string;
-}
+/** Raw message row — derived from the regenerated database.types.ts. */
+export type MessageRow = Database["public"]["Tables"]["messages"]["Row"];
 
 /** A message with its blocks already re-validated on rehydration. */
 export interface HydratedMessage {
@@ -96,7 +92,8 @@ export async function insertMessage(
     .insert({
       thread_id: threadId,
       role,
-      body: blocks,
+      // blocks is validated unknown[] at the boundary; cast to Json[] for the typed insert.
+      body: blocks as Json[],
     })
     .select("*")
     .single();
@@ -107,7 +104,7 @@ export async function insertMessage(
     );
   }
 
-  return data as MessageRow;
+  return data;
 }
 
 // ─── loadMessages ────────────────────────────────────────────────────────────
@@ -136,14 +133,15 @@ export async function loadMessages(threadId: string): Promise<HydratedMessage[]>
     throw new Error(`loadMessages: failed for thread_id=${threadId}: ${error.message}`);
   }
 
-  const rows = (data ?? []) as MessageRow[];
+  const rows = data ?? [];
 
   return rows.map((row) => ({
     id: row.id,
     thread_id: row.thread_id,
-    role: row.role,
+    // role is `string` in the generated type; narrow to the known union.
+    role: row.role as "user" | "assistant" | "tool",
     created_at: row.created_at,
-    blocks: (row.body ?? []).map((raw): HydratedBlock => {
+    blocks: (Array.isArray(row.body) ? row.body : []).map((raw): HydratedBlock => {
       // Re-validate each block on rehydration (D-14 + Pitfall #4).
       const result = validateBlock(raw);
       if (result.ok) {
