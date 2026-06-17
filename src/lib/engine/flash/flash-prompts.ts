@@ -127,6 +127,99 @@ TYPE RULES (STRICT):
 // Build once at module load — byte-stable across every call (D-17 cache prefix).
 export const STABLE_FLASH_SYSTEM_PROMPT: string = buildSystemPrompt();
 
+// ─── Niche panel type (D-05, Plan 03-01) ─────────────────────────────────────
+
+export interface NichePanel {
+  niche: string | null;
+  contentType: ContentTypeSlug | null;
+}
+
+// ─── Niche-aware system prompt builder (D-05, Plan 03-01) ────────────────────
+// Folds selectPersonaSlots output into ONE Flash system prompt's archetype block.
+// Same prompt skeleton (task framing, Output Schema, TYPE RULES, Critical Divergence Requirement)
+// — only the archetype-definition block differs: niche-instantiated persona text + triggers.
+//
+// Per D-05 and RESEARCH §"two persona engines": ONE multi-persona call, NOT N calls.
+// Repetition of duplicate-archetype slots (FYP rotation + loyalist etc.) ENCODES the
+// ~30% FYP/tough_crowd weighting by frequency, exactly mirroring how the video path does it.
+//
+// Byte-stability guarantee: selectPersonaSlots is deterministic for identical {niche × contentType}
+// inputs (no Math.random / Date.now / per-call salting). Same panel → same prompt string.
+// Different niches → different prompts (per-niche cache prefix, stable per creator session).
+//
+// NEVER interpolate per-request data (ask text, framing question) into the system prompt.
+// Volatile data lives in the user message via buildFlashUserContent (cache discipline D-17).
+
+/**
+ * Build a niche-instantiated Flash system prompt (D-05).
+ *
+ * @param panel  { niche: string | null, contentType: ContentTypeSlug | null }
+ *   - niche: null → returns STABLE_FLASH_SYSTEM_PROMPT (generic back-compat, same as no panel)
+ *   - niche: <slug> → archetype block built from selectPersonaSlots(contentType, niche);
+ *     each slot contributes its niche_instantiation + scroll_past_triggers + stop_triggers.
+ *     Duplicate-archetype slots (the allocation weighting) appear as repeated entries.
+ */
+export function buildNicheAwareSystemPrompt(panel: NichePanel): string {
+  if (panel.niche === null) {
+    return STABLE_FLASH_SYSTEM_PROMPT;
+  }
+
+  const slots: PersonaSlot[] = selectPersonaSlots(panel.contentType, panel.niche);
+
+  // Build the archetype block from niche-instantiated slots.
+  // Each slot: ### {archetype} + niche_instantiation text + scroll_past_triggers + stop_triggers.
+  // Duplicate-archetype slots appear as separate entries — repetition encodes the weighting.
+  const archetypeBlock = slots
+    .map(
+      (s) =>
+        `### ${s.archetype}\n${s.niche_instantiation}\n\n` +
+        `Scrolls past when: ${s.scroll_past_triggers.join(", ")}.\n` +
+        `Stops for: ${s.stop_triggers.join(", ")}.`,
+    )
+    .join("\n\n");
+
+  return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
+
+Your task: for each of the 10 archetypes defined below, produce:
+- A verdict: "stop" (would stop and engage) or "scroll" (would scroll past)
+- A one-line first-person voice quote (max 160 characters) capturing WHY — the audience texture the creator needs to hear
+
+## Archetype Definitions (feed ALL 10 — verdicts MUST diverge based on their profiles)
+
+${archetypeBlock}
+
+## Critical Divergence Requirement
+
+These 10 archetypes have FUNDAMENTALLY different tolerances. Near-identical verdicts across all archetypes is a FAILURE — tough_crowd is the hardest to stop; loyalist is the easiest.
+
+## Output Schema
+
+Return ONLY a JSON object matching this EXACT shape:
+
+{
+  "personas": [
+    {
+      "archetype": "tough_crowd",
+      "verdict": "scroll",
+      "quote": "The hook was weak, I'm not stopping for this."
+    },
+    {
+      "archetype": "loyalist",
+      "verdict": "stop",
+      "quote": "I'd watch anything from this creator."
+    }
+    // ... exactly 10 entries total, one per archetype above, IN THE SAME ORDER ...
+  ]
+}
+
+TYPE RULES (STRICT):
+- "verdict" MUST be exactly "stop" or "scroll" — no other values, no null, no mixed case
+- "quote" MUST be a non-empty string, max 160 characters, first-person voice
+- "archetype" MUST match the archetype slug exactly
+- EXACTLY 10 persona entries — one per archetype listed above
+- Output strict JSON only — no markdown, no code fences, no explanatory text`;
+}
+
 // ─── Volatile per-request user content builder ───────────────────────────────
 // `framing` swaps ONLY the persona question + band verbiage — NOT the personas (D-04).
 // Persona data comes from persona-registry.ts ARCHETYPE_DEFINITIONS (D-05).

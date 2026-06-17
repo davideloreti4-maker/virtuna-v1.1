@@ -28,11 +28,15 @@ import type { FlashResult } from "./flash-schema";
 import {
   STABLE_FLASH_SYSTEM_PROMPT,
   buildFlashUserContent,
+  buildNicheAwareSystemPrompt,
 } from "./flash-prompts";
-import type { FlashFraming } from "./flash-prompts";
+import type { FlashFraming, NichePanel } from "./flash-prompts";
+import type { ContentTypeSlug } from "../types";
 
-// Re-export FlashFraming so callers can import it from here
-export type { FlashFraming };
+// Re-export FlashFraming and NichePanel so callers can import them from here
+export type { FlashFraming, NichePanel };
+// Re-export ContentTypeSlug for convenience (D-05 callers need it for the panel)
+export type { ContentTypeSlug };
 
 // ─── Model resolution (FLASH_MODEL env seam — Open Q1 / A2) ──────────────────
 // FLASH_MODEL env lets the operator substitute a different flash model for testing.
@@ -70,22 +74,35 @@ export interface FlashRunResult {
  *
  * @param content_text  The creator's text content to react to.
  * @param framing       Mode framing — swaps persona question + band verbiage (D-04).
+ * @param panel         Optional niche panel (D-05, Plan 03-01). When present and panel.niche
+ *                      is non-null, the system prompt is built via buildNicheAwareSystemPrompt,
+ *                      folding selectPersonaSlots output into one niche-instantiated prompt.
+ *                      When absent or panel.niche is null → byte-identical to STABLE_FLASH_SYSTEM_PROMPT
+ *                      (back-compat; existing behavior unchanged).
  * @returns FlashRunResult with parsed FlashResult and any warnings.
  * @throws if the model response fails Zod validation after coercion.
  */
 export async function runFlashTextMode(
   content_text: string,
   framing: FlashFraming,
+  panel?: NichePanel,
 ): Promise<FlashRunResult> {
   const ai = getQwenClient();
   const warnings: string[] = [];
+
+  // Resolve system prompt: niche-aware if a panel with a non-null niche is provided (D-05),
+  // otherwise fall back to the byte-stable generic STABLE_FLASH_SYSTEM_PROMPT (back-compat).
+  const systemPrompt =
+    panel && panel.niche !== null
+      ? buildNicheAwareSystemPrompt(panel)
+      : STABLE_FLASH_SYSTEM_PROMPT;
 
   const callParams = {
     model: FLASH_MODEL,
     messages: [
       {
         role: "system" as const,
-        content: STABLE_FLASH_SYSTEM_PROMPT, // byte-stable cache prefix (D-17)
+        content: systemPrompt, // byte-stable per {niche × contentType} tuple (D-17/D-05)
       },
       {
         role: "user" as const,
