@@ -14,8 +14,8 @@
 /** Generative BASE — domain-general craft intelligence (D-00 north star). */
 export const KC_BASE = `# BASE
 
-<!-- RESEARCH-GROUNDED DRAFT — PENDING OWNER CURATION (D-10). Grounded against the Kallaway craft
-     corpus (see .planning/research/kallaway-craft-extraction.md). Remove this marker when satisfied. -->
+<!-- Owner-curated 2026-06-17 (D-10 passed). Research-grounded: .planning/research/kallaway-craft-extraction.md
+     + sandcastles-structural-insights.md. BASE = general content intelligence shared by ALL modes. -->
 
 <!-- D-00a REVIEWER TEST: if a statement only makes sense for one mode (ideas, hooks, scoring, etc.),
      it belongs in that mode's slice, NOT here. The base is domain-general: every principle must
@@ -261,8 +261,8 @@ because of what is known about this creator, not just labeled with their niche.
 /** Ideas SLICE — points BASE at TikTok/Reels/Shorts idea-concept generation. */
 export const KC_IDEAS_SLICE = `# Ideas Slice
 
-<!-- RESEARCH-GROUNDED DRAFT — PENDING OWNER CURATION (D-10). Grounded against the Kallaway craft
-     corpus (see .planning/research/kallaway-craft-extraction.md). Remove this marker when satisfied. -->
+<!-- Owner-curated 2026-06-17 (D-10 passed). Research-grounded: .planning/research/kallaway-craft-extraction.md
+     + sandcastles-structural-insights.md. Pilot slice — shape replicates to hooks/chat in 02-05. -->
 
 <!-- SLICE: Points the domain-general BASE at the specific job of generating TikTok/Reels/Shorts
      IDEA CONCEPTS (the "what to make" stage — upstream of scripting and hooking).
