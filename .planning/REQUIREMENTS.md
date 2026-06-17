@@ -37,7 +37,7 @@ reuses its typed-block renderers.
 ### THREAD — model generalization, runner, rendering, chat
 
 - [ ] **THREAD-01**: Generalized thread data model — nullable `reading_id` + a `type` discriminator (grounded vs open thread); migration + types.
-- [ ] **THREAD-02**: Composer = universal door — routes input to Test (URL/upload) vs a generator/chat (prompt).
+- [x] **THREAD-02**: Composer = universal door — routes input to Test (URL/upload) vs a generator/chat (prompt).
 - [ ] **THREAD-03**: Open chat thread — profile-grounded general chat with no anchoring Reading (markdown messages). *(sequenced last; only as good as GROUND-01 — gated behind KC quality)*
 - [x] **THREAD-04**: Typed-block rendering — messages render as markdown OR typed blocks via the **fixed** numen-rework renderer library; **no** model-generated UI.
 - [ ] **THREAD-05**: Chain CTAs — outputs carry in-thread chain CTAs ("Develop this →", "Test full →") that move between tools.
@@ -104,7 +104,7 @@ reuses its typed-block renderers.
 |-------------|-------|--------|
 | ENGINE-01 | Phase 1 | Complete |
 | THREAD-01 | Phase 1 | Pending |
-| THREAD-02 | Phase 1 | Pending |
+| THREAD-02 | Phase 1 | Complete |
 | THREAD-04 | Phase 1 | Complete |
 | THREAD-06 | Phase 1 | Complete |
 | THREAD-07 | Phase 1 | Pending |

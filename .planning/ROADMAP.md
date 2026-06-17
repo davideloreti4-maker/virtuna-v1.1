@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine & Thread Foundation | 2/4 | In Progress|  |
+| 1. Engine & Thread Foundation | 3/4 | In Progress|  |
 | 2. Knowledge-Core Generative Rebuild | 0/TBD | Not started | - |
 | 3. Ideas Tool | 0/TBD | Not started | - |
 | 4. Hooks Tool | 0/TBD | Not started | - |
