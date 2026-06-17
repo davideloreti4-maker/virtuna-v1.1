@@ -15,6 +15,7 @@ import {
   MarkdownBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
+  IdeaCardBlockSchema,
 } from "./blocks";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -23,6 +24,7 @@ export const BLOCK_REGISTRY = {
   markdown: { schema: MarkdownBlockSchema as z.ZodType },
   band: { schema: BandBlockSchema as z.ZodType },
   personas: { schema: PersonasBlockSchema as z.ZodType },
+  "idea-card": { schema: IdeaCardBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

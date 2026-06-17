@@ -62,12 +62,48 @@ export const PersonasBlockSchema = z.object({
 
 export type PersonasBlock = z.infer<typeof PersonasBlockSchema>;
 
+// ─── Idea-card block ──────────────────────────────────────────────────────────
+// D-10: schema-validated idea card carrying the concept anatomy + embedded Flash
+// band signal. No model-generated UI — the model emits these props only; the
+// IdeaCardRenderer component owns layout (THREAD-04).
+//
+// Face (always visible, D-08):
+//   title · angle · whyItFits (grounding line, D-09) · scrollQuote (lead, D-04)
+// Expand (tap, D-08):
+//   mechanism · seedHook · topic × take × format
+// Badge (D-11): needsTake flag
+// Secondary chip (D-04): band + fraction + model "sim1-flash"
+
+export const IdeaCardBlockSchema = z.object({
+  type: z.literal("idea-card"),
+  props: z.object({
+    // Concept anatomy (D-08)
+    title: z.string(),
+    angle: z.string(),
+    whyItFits: z.string(),          // grounding line from GROUND-03 extractor (D-09)
+    mechanism: z.string(),          // named mechanism behind the concept
+    seedHook: z.string(),           // the one-line hook the SIM reacted to (D-01)
+    needsTake: z.boolean(),         // D-11: shows "needs your first-hand take" badge when true
+    topic: z.string(),              // Topic×Take×Format breakdown
+    take: z.string(),
+    format: z.string().nullable(),  // nullable — not every idea maps to a specific format
+    // Embedded Flash signal (D-04/D-10)
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string(),           // e.g. "6/10 stop"
+    scrollQuote: z.string(),        // lead per-persona scroll quote (D-04)
+    model: z.literal("sim1-flash"), // provenance tag — always Flash for idea cards
+  }),
+});
+
+export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
   MarkdownBlockSchema,
   BandBlockSchema,
   PersonasBlockSchema,
+  IdeaCardBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
