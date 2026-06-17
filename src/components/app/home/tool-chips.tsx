@@ -5,7 +5,7 @@
  *
  * Four chips: Test · Idea · Hooks · Chat.
  * Chip ids + model labels reuse the ToolRunner union (THREAD-06) as single SSOT.
- * Only "test" is enabled in P1; "idea" / "hooks" / "chat" are disabled ("coming soon").
+ * "test" and "idea" are live; "hooks" / "chat" are disabled ("coming soon") — enabled in P4/P5.
  * Active-model field maps the active chip to its model label (D-09):
  *   test → "SIM-1 Max" (video path, full model)
  *   idea | hooks | chat → "SIM-1 Flash" (text path, fast model)
@@ -40,7 +40,7 @@ interface ChipMeta {
 
 const CHIPS: ChipMeta[] = [
   { id: "test", label: "Test", enabled: true, costSlot: "credit" },
-  { id: "idea", label: "Idea", enabled: false, costSlot: "credit" },
+  { id: "idea", label: "Idea", enabled: true, costSlot: "credit" },
   { id: "hooks", label: "Hooks", enabled: false, costSlot: "credit" },
   { id: "chat", label: "Chat", enabled: false, costSlot: "credit" },
 ];
