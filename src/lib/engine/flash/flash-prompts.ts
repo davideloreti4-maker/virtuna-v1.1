@@ -32,8 +32,9 @@ const FRAMING_QUESTION: Record<FlashFraming, string> = {
     "You are scrolling your TikTok FYP. You see this content in the first 2 seconds. " +
     "Do you STOP and watch, or SCROLL past? Your verdict: stop or scroll.",
   idea:
-    "You encounter this as a content idea in your niche. " +
-    "Would this idea make you stop and engage (stop) or would you scroll past (scroll)? " +
+    "A creator in your niche turned this idea into a video and it just landed on your FYP. " +
+    "Judge the idea's real pull AS THE FINISHED VIDEO it describes — not the wording of the pitch. " +
+    "Would the video this concept describes make you stop and watch (stop), or scroll past (scroll)? " +
     "Your verdict: stop or scroll.",
   chat:
     "This content is presented in a conversational context. " +

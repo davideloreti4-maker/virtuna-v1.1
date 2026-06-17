@@ -53,3 +53,54 @@ Captured 2026-06-17 (owner flag). The KC is only the GENERATE half. The product'
 - **Implication:** add a lever #9 — **SIM-rank verification loop** (generate→render→simulate→rank+why),
   the centerpiece of the Ideas/Test product, downstream of this corpus phase. This is THE moat per
   the brand spine; levers 1-8 make the generator good, #9 is the foresight product.
+
+## SIM audit (2026-06-17) — the text gate is niche-blind (root cause of flat distribution)
+
+Ran the per-idea SIM prototype (`scripts/ideas-sim-rank.ts`) on the 5 new-KC finance ideas →
+**flat 6/6/6/6/5, all "Mixed."** Audit of `flash-prompts.ts` + `persona-registry.ts` found the cause:
+**there are two persona engines and the text SIM uses the weak one.**
+
+| | Video path (Test/Max) | Text Flash (Ideas/Hooks) |
+|---|---|---|
+| Personas | `selectPersonaSlots` → **niche-instantiated** ("fitness saver"), content-type allocated | **generic** (`STABLE_FLASH_SYSTEM_PROMPT`, flat defs) |
+| Weighting | FYP/`tough_crowd` ~30% (realistic) | all 10 equal (too lenient) |
+| Niche input | yes | **none** — `runFlashTextMode(text, framing)` can't receive a niche |
+
+The rich `NICHE_INSTANTIATION` table + FYP weighting **exist** but the text path never calls them.
+Generic judges → generic reactions → everything clusters 5–6. The flatness is NOT "SIM-on-text can't
+discriminate"; it's blindfolded judges + cold-start (null profile). Hopeful, actionable.
+
+**Lever #10 — niche-instantiate the text SIM (top Phase-3 engine task):**
+1. Thread niche/content-type into `runFlashTextMode`; build the panel via `selectPersonaSlots`
+   instead of the flat generic block (gives niche-true personas AND the ~30% FYP/tough_crowd weight
+   for free).
+2. Re-calibrate `STRONG_THRESHOLD`/`MIXED_THRESHOLD` (never empirically set) via a **slop-vs-strong
+   test** — feed obvious garbage vs a known-great idea; if garbage doesn't score clearly lower, the
+   gate can't say "no" and isn't usable yet. This validates the GATE, the thing that matters.
+3. (Optional, honesty-spine-careful) richer than binary stop/scroll: the archetypes are *defined* by
+   distinct save/share/comment signatures but the SIM collapses all to stop/scroll — qualitatively
+   surfacing "stop + would I save/share/comment" maps to real motivators and the 4-outcome model BASE
+   itself calls decisive.
+
+**SIM reframe (owner, 2026-06-17): the SIM is a quality/resonance GATE, not a ranker.** It doesn't
+discriminate finely enough to *order* good ideas (and shouldn't try) — its value is (a) "does this
+clear the slop floor / have a real chance?" and (b) the per-persona "why they scrolled" texture =
+the actionable signal. The user picks which idea to pursue; rank is a soft secondary. This dissolves
+the flat-distribution worry: "all Mixed" is a gate answer, not a failure. Card UX implication: lead
+with a sharp scroll-quote, not the fraction.
+
+**Altitude nuance — UPDATED.** The earlier note ("raw idea concept is upstream, nothing to react to;
+don't bolt concept-SIM onto Ideas") is softened: the new **idea-question reframe** in `flash-prompts.ts`
+("judge the idea AS THE FINISHED VIDEO it describes, not the pitch wording") makes concept-level SIM
+coherent — the persona reacts to the *realized* video, not the text. So per-idea SIM on Ideas IS viable
+**as a gate** (does the concept, if executed, resonate), provided lever #10 lands. It is NOT a fine-grained
+ranker. Hooks/script-stage SIM stays the higher-fidelity step; Ideas-stage SIM is the coarse resonance gate.
+
+## Phase-2 directioning changes DONE (2026-06-17)
+- **BASE mode-router** ("## Modes & Your Current Job"): names TEST/IDEAS/HOOKS/CHAT, "stay in your
+  lane, don't borrow another mode's output shape." Fixes the Apollo-scores-instead-of-generates drift.
+- **Ideas slice boundary**: "the deliverable is the CONCEPT, not the hook" + ship the *substance*
+  (what the video shows/its payoff) — fixes ideas shipping "the trailer, not the film."
+- **Idea-question reframe** in `flash-prompts.ts` (above).
+- Earlier same-day: leak fix (`[ARCHETYPE]` no longer emitted), FORMAT/SHOOT line per idea,
+  de-templated "why it works." All recompiled byte-stable; flash+kc tests green (61/0).
