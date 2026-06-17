@@ -28,9 +28,11 @@ CREATE TABLE IF NOT EXISTS public.threads (
   id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   type        text        NOT NULL CHECK (type IN ('grounded', 'open')),
-  -- reading_id: UUID to match analysis_results.id's true type (Pitfall #3).
+  -- reading_id: TEXT to match analysis_results.id's REAL column type on the
+  -- live DB (text storing UUID-format strings) — same as analysis_chats.analysis_id.
+  -- The plan's Pitfall #3 ("id is uuid") was incorrect; live apply rejected a uuid FK.
   -- Nullable + SET NULL: deleting a Reading nulls the pointer, never errors.
-  reading_id  uuid        NULL REFERENCES public.analysis_results(id) ON DELETE SET NULL,
+  reading_id  text        NULL REFERENCES public.analysis_results(id) ON DELETE SET NULL,
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
@@ -39,7 +41,7 @@ COMMENT ON TABLE public.threads IS
   'Generalized thread wrapper. type=grounded points at a Reading via nullable reading_id; type=open has reading_id null. One thread per user per Reading (UNIQUE partial index).';
 
 COMMENT ON COLUMN public.threads.reading_id IS
-  'UUID FK to analysis_results(id). NULL for open threads. ON DELETE SET NULL so deleting a Reading orphans its thread without erroring. Uniqueness enforced by the partial index below (D-15).';
+  'TEXT FK to analysis_results(id) (text on the live DB). NULL for open threads. ON DELETE SET NULL so deleting a Reading orphans its thread without erroring. Uniqueness enforced by the partial index below (D-15).';
 
 -- ── Indexes ────────────────────────────────────────────────────────────────
 
