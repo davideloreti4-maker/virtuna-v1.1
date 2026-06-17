@@ -10,8 +10,8 @@ progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 9
-  completed_plans: 5
-  percent: 25
+  completed_plans: 6
+  percent: 27
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 02 (knowledge-core-generative-rebuild) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Executing Phase 02
-Last activity: 2026-06-17 -- Phase 02 Plan 01 complete (corpus spine + regen + KC_GEN_VERSION)
+Last activity: 2026-06-17 -- Phase 02 Plan 02 complete (PROFILE_ROLE_MAP + live-tier assembler + 25 tests)
 
 ## Hard Constraints (this milestone)
 
@@ -71,6 +71,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: D-14 double-validation: validateBlock at write boundary AND on rehydration; invalid blocks become UnsupportedBlock sentinel
 - [Phase 02-01]: D-03 compile-time assembly — per-mode system prompts assembled at compile time in regen-kc.ts, not at runtime (resolves RESEARCH Open Q2)
 - [Phase 02-01]: KC_GEN_VERSION stamping deferred to Phase 3 where outputs are first persisted (resolves RESEARCH Open Q1)
+- [Phase 02-02]: A4 resolved — runner knowledgeBundle = static slice-binding; assembleBundle output = per-request volatile user message (never mutate module-level runner const)
+- [Phase 02-02]: BUNDLE_CHAR_CAP=4000 chars placeholder — tune post-authoring after BASE+Ideas slice sizes known (Plan 03 pilot)
+- [Phase 02-02]: Wins/flops v1 = count + "creator-reported, directional" caveat only; no scraped content, no fabricated mechanism (honesty spine)
 
 ### Pending Todos
 
@@ -90,9 +93,9 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T10:02:23Z
-Stopped at: Completed 02-01-PLAN.md (KC code spine)
-Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-02-PLAN.md
+Last session: 2026-06-17T10:11:00Z
+Stopped at: Completed 02-02-PLAN.md (PROFILE_ROLE_MAP + live-tier assembler)
+Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-03-PLAN.md
 
 ## Performance Metrics
 
@@ -103,3 +106,4 @@ Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-02-PLAN.md
 | Phase 01-engine-thread-foundation P04 | 6m | 2 tasks | 4 files |
 | Phase 01-engine-thread-foundation P02 | 35min | 3 tasks | 5 files |
 | Phase 02-knowledge-core-generative-rebuild P01 | 20min | 3 tasks | 7 files |
+| Phase 02-knowledge-core-generative-rebuild P02 | 5min | 2 tasks | 3 files |
