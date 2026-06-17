@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
+status: executing
 stopped_at: Phase 3 context gathered
-last_updated: "2026-06-17T18:18:35.443Z"
-last_activity: 2026-06-17 (session 3) -- finished 02-05 (owner-curated hooks+chat, multi-modal hooks correction, scaffolding-leak fix); code review (2 Criticals fixed); phase verified PASSED.
+last_updated: "2026-06-17T20:01:08.511Z"
+last_activity: 2026-06-17 -- Phase 03 execution started
 progress:
   total_phases: 5
   completed_phases: 2
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 13
+  completed_plans: 10
   percent: 40
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 02 — knowledge-core-generative-rebuild
+**Current focus:** Phase 03 — ideas-tool
 
 ## Current Position
 
-Phase: 02 (knowledge-core-generative-rebuild) — COMPLETE ✓ (verified 3/3 must-haves)
-Plan: 5 of 5 complete (02-01..02-05 all have SUMMARY.md)
-Status: Phase 02 verified PASSED. KC generative core authored + curated (D-10) + byte-stable compiled; live-tier assembler (GROUND-02) with injection-fence overflow fix (CR-01/CR-02). Next: Phase 03 (Ideas Tool).
-Last activity: 2026-06-17 (session 3) -- finished 02-05 (owner-curated hooks+chat, multi-modal hooks correction, scaffolding-leak fix); code review (2 Criticals fixed); phase verified PASSED.
+Phase: 03 (ideas-tool) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-17 -- Phase 03 execution started
 
 ## Hard Constraints (this milestone)
 
@@ -93,7 +93,7 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T18:18:35.435Z
+Last session: 2026-06-17T20:01:08.504Z
 Stopped at: Phase 3 context gathered
 Next: Phase 03 — Ideas Tool (the moat chain begins). Backlog for Phase 3: .planning/research/kc-improvement-levers.md (SIM niche-blind = lever #10) + REVIEW.md WR/INFO notes (kc-gate.ts dev-script polish).
 Resume file: .planning/phases/03-ideas-tool/03-CONTEXT.md
@@ -108,3 +108,4 @@ Resume file: .planning/phases/03-ideas-tool/03-CONTEXT.md
 | Phase 01-engine-thread-foundation P02 | 35min | 3 tasks | 5 files |
 | Phase 02-knowledge-core-generative-rebuild P01 | 20min | 3 tasks | 7 files |
 | Phase 02-knowledge-core-generative-rebuild P02 | 5min | 2 tasks | 3 files |
+| Phase 03-ideas-tool P01 | 45min | 3 tasks | 4 files |

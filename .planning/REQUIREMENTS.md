@@ -25,7 +25,7 @@ reuses its typed-block renderers.
 ### ENGINE — SIM-1 text-mode + self-judge
 
 - [x] **ENGINE-01**: SIM-1 Flash text-mode — the 10 archetypes react to *text* input (no video), returning per-persona reactions + an aggregate pull score, with mode-specific framing (Hook = "scrolling, first 2s, do you stop?"; Idea = "in your niche, would this make you stop/share?"). The winning persona framing (right data + context + minimal grounding for text discrimination) is calibrated here and documented as the inline-scoring spec.
-- [ ] **ENGINE-02**: SIM-1 self-judge quality gate — generations are Flash-scored and weak outputs regenerate/filter before the user sees them; regeneration is **bounded** (cost).
+- [x] **ENGINE-02**: SIM-1 self-judge quality gate — generations are Flash-scored and weak outputs regenerate/filter before the user sees them; regeneration is **bounded** (cost).
 - [x] **ENGINE-03**: Honest Flash/Max framing — Flash surfaced as *concept ceiling* ("worth shooting?"), Max as *realized result*; never a fabricated score, never a view-count promise Flash can't back.
 
 ### GROUND — Knowledge-Core generative rebuild (THE value, the long pole)
@@ -114,7 +114,7 @@ reuses its typed-block renderers.
 | IDEAS-01 | Phase 3 | Pending |
 | IDEAS-02 | Phase 3 | Pending |
 | IDEAS-03 | Phase 3 | Pending |
-| ENGINE-02 | Phase 3 | Pending |
+| ENGINE-02 | Phase 3 | Complete |
 | GROUND-03 | Phase 3 | Pending |
 | PROFILE-01 | Phase 3 | Pending |
 | THREAD-05 | Phase 3 | Pending |
