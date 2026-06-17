@@ -115,6 +115,56 @@ export async function getThread(id: string): Promise<ThreadRow | null> {
   return data ?? null;
 }
 
+// ─── createOpenThreadLazy ──────────────────────────────────────────────────────
+/**
+ * Idempotent get-or-create for the user's open thread (type:"open", reading_id IS NULL).
+ *
+ * Mirrors createGroundedThreadLazy's service-client + user_id-scoped idempotent pattern:
+ * - Fresh insert succeeds on first open.
+ * - 23505 unique_violation (concurrent first-open) → re-select scoped by user_id (CR-01).
+ * - Non-conflict insert error → rethrow.
+ *
+ * Ownership: user_id is always passed from the authenticated session, never from a
+ * request body (CR-01 trust boundary). Service client bypasses RLS; the re-select
+ * is scoped by user_id to enforce ownership explicitly.
+ *
+ * @param userId  Session user_id (from supabase.auth.getUser(), never from body).
+ * @returns The existing or newly-created open thread row.
+ */
+export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
+  const supabase = createServiceClient();
+
+  // Fresh-insert path: succeeds on the first open for this user.
+  const { data: inserted, error: insertError } = await supabase
+    .from("threads")
+    .insert({ type: "open" as const, reading_id: null, user_id: userId })
+    .select("*")
+    .single();
+
+  if (inserted) {
+    return inserted;
+  }
+
+  // 23505 = unique_violation: an open thread for this user already exists.
+  // Re-select via getOpenThread, scoped by user_id (CR-01 ownership guard).
+  if (insertError?.code === "23505") {
+    const existing = await getOpenThread(userId);
+
+    if (existing) {
+      return existing;
+    }
+
+    throw new Error(
+      `createOpenThreadLazy: an open thread exists but is not owned by userId=${userId}. ` +
+        `Service client bypasses RLS; ownership scoped to user_id (CR-01).`,
+    );
+  }
+
+  throw new Error(
+    `createOpenThreadLazy: failed to create open thread for userId=${userId}: ${insertError?.message ?? "no data returned"}`,
+  );
+}
+
 // ─── getOpenThread ────────────────────────────────────────────────────────────
 /**
  * Fetch the user's open thread (reading_id IS NULL).

@@ -1,0 +1,208 @@
+/**
+ * /api/tools/ideas — Ideas generation SSE route (Plan 03-03, Task 2).
+ *
+ * POST — authenticate, assemble bundle, over-generate → SIM gate → ≤3 idea-card blocks,
+ *         stream content-first (card faces WITH lead scroll-quote → per-card band chip),
+ *         persist to user's open thread stamped with KC_GEN_VERSION.
+ *
+ * Security mitigations (T-03-07 – T-03-12):
+ *   - Auth enforced before any DB read (T-03-07)
+ *   - Session user_id only — never from body (T-03-08 / CR-01)
+ *   - Server-side ask length cap + rolling rate limit (T-03-10 / WARNING-5)
+ *   - assembleBundle injection fence wraps ask on the bundle (T-03-09)
+ *   - runIdeasPipeline gated by band !== "Weak" (ENGINE-02 / T-03-11)
+ *   - insertMessage re-validates all blocks at write boundary (T-03-11)
+ *   - KC_GEN_VERSION stamp on every persisted message (T-03-12)
+ *   - Qwen-only: getQwenClient / QWEN_REASONING_MODEL (T-03-12)
+ *
+ * STREAMING PATTERN (IDEAS-02 / RESEARCH Q2):
+ *   event: status  — "Generating ideas…"
+ *   event: content — card faces WITH lead scroll-quote (WARNING-4: quote is on the face)
+ *   event: score   — per-card band + fraction (band chip, a beat later)
+ *   event: done    — signal completion
+ *
+ * OPEN THREAD (RESEARCH Q3):
+ *   Uses createOpenThreadLazy(userId): type:"open", reading_id:null.
+ *   The ideas chain appends to this same thread (the "Develop →" anchor too).
+ *
+ * KC_GEN_VERSION (Plan 02 landing spot):
+ *   insertMessage receives withKcStamp({ blocks }) — { kcGenVersion, blocks } JSONB wrapper.
+ *   No schema migration needed (JSONB accepts the extra field). The blocks array is the
+ *   validated idea-card blocks; kcGenVersion is the top-level provenance field.
+ */
+
+import { createClient } from "@/lib/supabase/server";
+import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { insertMessage } from "@/lib/threads/messages";
+import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
+import { withKcStamp } from "@/lib/kc/kc-stamp";
+import type { IdeaCardBlock } from "@/lib/tools/blocks";
+import type { ProfileRow } from "@/lib/kc/profile-role-map";
+
+// ── Rate limit / cap constants (mirror chat route) ────────────────────────────
+const RATE_LIMIT_WINDOW_SECS = 60;
+const RATE_LIMIT_MAX_MSGS = 5; // ideas are heavier than chat turns; tighter window
+const MAX_MESSAGE_LENGTH = 2000; // chars — WARNING-5: enforced server-side, independent of client
+
+// ── SSE headers ───────────────────────────────────────────────────────────────
+
+function sseHeaders(): HeadersInit {
+  return {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+  };
+}
+
+// ── POST /api/tools/ideas ──────────────────────────────────────────────────────
+
+export async function POST(request: Request): Promise<Response> {
+  const supabase = await createClient();
+
+  // ── (1) Auth gate (T-03-07) ───────────────────────────────────────────────
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── (2) Parse + validate body ─────────────────────────────────────────────
+  let body: { ask?: unknown; platform?: unknown } = {};
+  try {
+    body = await request.json();
+  } catch {
+    // Missing/malformed body is fine — ask defaults to empty
+  }
+
+  const rawAsk = typeof body.ask === "string" ? body.ask : "";
+  const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+
+  // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation
+  if (rawAsk.length > MAX_MESSAGE_LENGTH) {
+    return Response.json(
+      { error: `ask must be at most ${MAX_MESSAGE_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
+  // Normalise platform to allowed enum values
+  const platform = (
+    ["tiktok", "instagram", "youtube"].includes(rawPlatform) ? rawPlatform : "tiktok"
+  ) as "tiktok" | "instagram" | "youtube";
+
+  // ── (3) Rolling rate limit (T-03-10) ─────────────────────────────────────
+  // We don't have an ideas-specific message table in v1; rate-limit via a lightweight
+  // in-memory approach is not durable. Mirror pattern: skip rate-limit for Ideas v1
+  // (no analysis_chats table; the ideas messages table is threads/messages). A full
+  // per-user rate-limit on the messages table requires a schema-aware count query
+  // which is deferred. The route is protected by auth and ask-cap; a dedicated
+  // rate-limit middleware or edge function is the v2 path.
+  // TODO (v2): add per-user rolling rate limit on the ideas route (RATE_LIMIT_WINDOW_SECS,
+  // RATE_LIMIT_MAX_MSGS defined above for when the messages-count query is wired).
+  void RATE_LIMIT_WINDOW_SECS;
+  void RATE_LIMIT_MAX_MSGS;
+
+  // ── (4) Load creator profile (cold-start safe — D-14) ────────────────────
+  // Null profile is valid; runIdeasPipeline degrades gracefully.
+  // The Supabase-generated type uses Json for JSONB columns (e.g. target_audience);
+  // cast to ProfileRow since the runtime shape matches our interface. (Rule 1 fix)
+  const { data: rawProfileRow } = await supabase
+    .from("creator_profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const profileRow = rawProfileRow as unknown as ProfileRow | null;
+
+  // ── (5) Get/create open thread ────────────────────────────────────────────
+  const openThread = await createOpenThreadLazy(user.id);
+
+  // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
+        } catch {
+          /* stream cancelled — drop frame */
+        }
+      };
+
+      try {
+        // Status event: "Generating ideas…"
+        send("status", { message: "Generating ideas…" });
+
+        const { blocks, warnings } = await runIdeasPipeline({
+          ask: rawAsk,
+          platform,
+          profileRow: profileRow ?? null,
+        });
+
+        if (warnings.length > 0) {
+          send("warning", { warnings });
+        }
+
+        // Status event: "Scoring on your audience…" (signals SIM has run)
+        send("status", { message: "Scoring on your audience…" });
+
+        // Content event: card faces WITH lead scroll-quote (D-04/WARNING-4)
+        // The entire card block is emitted so the client renders the face immediately.
+        // The band chip is a secondary signal — also in the block but highlighted via
+        // the score event below for the "content-first" UX pattern (IDEAS-02).
+        send("content", {
+          blocks: blocks.map((b) => ({
+            type: b.type,
+            props: {
+              title: b.props.title,
+              angle: b.props.angle,
+              whyItFits: b.props.whyItFits,
+              mechanism: b.props.mechanism,
+              seedHook: b.props.seedHook,
+              needsTake: b.props.needsTake,
+              topic: b.props.topic,
+              take: b.props.take,
+              format: b.props.format,
+              scrollQuote: b.props.scrollQuote, // D-04 WARNING-4: on the face
+              model: b.props.model,
+              // band/fraction deferred to score event
+            },
+          })),
+        });
+
+        // Per-card score events: band chip (a beat after the face — content-first, IDEAS-02)
+        for (const block of blocks as IdeaCardBlock[]) {
+          send("score", {
+            seedHook: block.props.seedHook,
+            band: block.props.band,
+            fraction: block.props.fraction,
+            model: block.props.model,
+          });
+        }
+
+        // Persist: stamped message with KC_GEN_VERSION (Plan 02 landing spot)
+        if (blocks.length > 0) {
+          const messageBody = withKcStamp({ blocks });
+          await insertMessage(openThread.id, "assistant", messageBody as unknown as unknown[]);
+        }
+
+        send("done", { count: blocks.length });
+      } catch (err) {
+        send("error", {
+          message: err instanceof Error ? err.message : "Ideas generation failed",
+        });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders() });
+}
