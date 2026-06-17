@@ -10,9 +10,13 @@
  * Consumers that need both schema + component in a client context can import
  * BLOCK_COMPONENT_REGISTRY from this file directly (import with '.tsx' extension
  * or via the full path when allowImportingTsExtensions is not set).
+ *
+ * Re-exports validateBlock + BlockType so that message-blocks.tsx can import from
+ * a single '@/lib/tools/block-registry' path and Turbopack resolves consistently
+ * regardless of which file (.ts vs .tsx) wins the module graph walk.
  */
 
-import type { BlockType } from './block-registry';
+export { validateBlock, type BlockType } from './block-registry';
 import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
