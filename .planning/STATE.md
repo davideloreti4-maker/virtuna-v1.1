@@ -10,8 +10,8 @@ progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
-  percent: 40
+  completed_plans: 12
+  percent: 46
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 03 (ideas-tool) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
-Last activity: 2026-06-17 -- Phase 03 execution started
+Last activity: 2026-06-17 -- Phase 03 Plan 03 complete (ideas pipeline route)
 
 ## Hard Constraints (this milestone)
 
@@ -74,6 +74,11 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 02-02]: A4 resolved — runner knowledgeBundle = static slice-binding; assembleBundle output = per-request volatile user message (never mutate module-level runner const)
 - [Phase 02-02]: BUNDLE_CHAR_CAP=4000 chars placeholder — tune post-authoring after BASE+Ideas slice sizes known (Plan 03 pilot)
 - [Phase 02-02]: Wins/flops v1 = count + "creator-reported, directional" caveat only; no scraped content, no fabricated mechanism (honesty spine)
+- [Phase 03-03]: Open Q1 resolved — structured json_object seed-hook extraction (seedHookPath='structured'); no brittle prose delimiter
+- [Phase 03-03]: Open Q2 resolved — parallel Promise.all SIMs + content-first SSE (face+scrollQuote before band chip)
+- [Phase 03-03]: Open Q3 resolved — ideas append to open thread (type:'open', reading_id:null); chain in same thread
+- [Phase 03-03]: /develop PINNED endpoint: POST /api/tools/ideas/develop, payload {ideaId?, anchor, platform} → {threadId, messageId, fencedHooksBundle}
+- [Phase 03-03]: Rate limit deferred to v2 (no ideas message count table; auth+ask-cap are v1 boundary)
 
 ### Pending Todos
 
@@ -93,10 +98,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T20:13:25.718Z
-Stopped at: Phase 3 context gathered
-Next: Phase 03 — Ideas Tool (the moat chain begins). Backlog for Phase 3: .planning/research/kc-improvement-levers.md (SIM niche-blind = lever #10) + REVIEW.md WR/INFO notes (kc-gate.ts dev-script polish).
-Resume file: .planning/phases/03-ideas-tool/03-CONTEXT.md
+Last session: 2026-06-17T22:35:00Z
+Stopped at: Phase 03 Plan 03 complete
+Next: Phase 03 Plan 04 — Hooks Tool (Ideas→Hooks chain)
+Resume file: .planning/phases/03-ideas-tool/03-04-PLAN.md
 
 ## Performance Metrics
 
@@ -110,3 +115,4 @@ Resume file: .planning/phases/03-ideas-tool/03-CONTEXT.md
 | Phase 02-knowledge-core-generative-rebuild P02 | 5min | 2 tasks | 3 files |
 | Phase 03-ideas-tool P01 | 45min | 3 tasks | 4 files |
 | Phase 03-ideas-tool P02 | 40min | 3 tasks | 9 files |
+| Phase 03-ideas-tool P03 | 15min | 2 tasks | 7 files |

@@ -94,7 +94,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 03-03-PLAN.md — Ideas API route: over-generate→niche-SIM gate→3 cards, open thread, content-first stream, anchor seam, KC_GEN_VERSION stamp [IDEAS-01/02, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05]
+- [x] 03-03-PLAN.md — Ideas API route: over-generate→niche-SIM gate→3 cards, open thread, content-first stream, anchor seam, KC_GEN_VERSION stamp [IDEAS-01/02, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -141,6 +141,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 |-------|----------------|--------|-----------|
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
-| 3. Ideas Tool | 2/4 | In Progress|  |
+| 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 0/TBD | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
