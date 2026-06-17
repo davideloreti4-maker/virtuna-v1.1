@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 02 COMPLETE — verified 3/3 must-haves (GROUND-01, GROUND-02)
-last_updated: "2026-06-17T19:35:00.000Z"
-last_activity: 2026-06-17 -- Phase 02 complete (KC generative rebuild verified)
+status: verifying
+stopped_at: Phase 3 context gathered
+last_updated: "2026-06-17T18:18:35.443Z"
+last_activity: 2026-06-17 (session 3) -- finished 02-05 (owner-curated hooks+chat, multi-modal hooks correction, scaffolding-leak fix); code review (2 Criticals fixed); phase verified PASSED.
 progress:
   total_phases: 5
   completed_phases: 2
@@ -93,10 +93,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17 (session 3)
-Stopped at: Phase 02 COMPLETE + verified PASSED. Session 3: owner-curated hooks.md + chat.md (D-10) — scaffolding-leak fix (private archetype slugs) + Hook Reasoning Scaffold + multi-modal hooks correction (spoken/visual/caption/edit/audio); recompiled byte-stable; code review found + fixed 2 Criticals in assembler.ts (injection-fence overflow CR-01/CR-02, +3 regression tests); verifier PASSED 3/3.
+Last session: 2026-06-17T18:18:35.435Z
+Stopped at: Phase 3 context gathered
 Next: Phase 03 — Ideas Tool (the moat chain begins). Backlog for Phase 3: .planning/research/kc-improvement-levers.md (SIM niche-blind = lever #10) + REVIEW.md WR/INFO notes (kc-gate.ts dev-script polish).
-Resume file: .planning/phases/02-knowledge-core-generative-rebuild/RESUME-HERE.md
+Resume file: .planning/phases/03-ideas-tool/03-CONTEXT.md
 
 ## Performance Metrics
 
