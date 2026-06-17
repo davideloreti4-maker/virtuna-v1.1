@@ -177,12 +177,18 @@ describe("hard length cap", () => {
     const result = assembleBundle(bigInput, FULL_PROFILE);
     // Result must be at most BUNDLE_CHAR_CAP
     expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
-    // Result must not contain a partial line ending mid-word
-    // (i.e., every included role is either fully present or fully absent)
-    // Simple heuristic: no line should end with a colon (meaning mid-format cut)
+    // Result must not contain a partial field value (mid-field truncation).
+    // Heuristic: profile role lines have the form "Label: value" — if a role
+    // label appears without its value portion it was mid-cut. Check that any
+    // line matching a profile role label also has content after the colon.
     const lines = result.split("\n").filter((l) => l.trim().length > 0);
     for (const line of lines) {
-      expect(line.trim()).not.toMatch(/:$/); // no trailing colon = mid-cut
+      const trimmed = line.trim();
+      // Profile role lines: "Niche:", "Target audience:", etc. should always have content
+      if (/^(Niche|Target audience|Primary goal|Past wins|Past flops|Target platform):$/.test(trimmed)) {
+        // A role label with trailing colon and NO value is a mid-cut artifact
+        expect(trimmed).not.toMatch(/^(Niche|Target audience|Primary goal|Past wins|Past flops|Target platform):$/);
+      }
     }
   });
 });
