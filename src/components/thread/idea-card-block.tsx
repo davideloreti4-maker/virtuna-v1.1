@@ -14,14 +14,22 @@
  *    mechanism · seedHook · Topic×Take×Format breakdown
  *  BADGE (D-11): "needs your first-hand take" when needsTake is true
  *  SECONDARY CHIP (D-04): band + fraction + SIM-1 Flash tag
+ *  CTA (D-15/THREAD-05/IDEAS-03): "Develop this →" — chains to Hooks via /develop endpoint
  *
  * Zone color tokens reused from band-block.tsx (CSS variables).
  * THEME-06 flat-warm Raycast design: 6% borders, 12px card radius, Inter.
  * Coral accent only on the CTA / "needs take" badge, not the band chip.
+ *
+ * "Develop this →" (D-15):
+ *  Calls POST /api/tools/ideas/develop with { anchor: title+angle, platform }.
+ *  The platform is read from PlatformContext (set by IdeasThreadView).
+ *  Appends a Hooks placeholder message in the SAME open thread (the in-thread
+ *  chain seam). Hooks GENERATION is deferred to Plan 04 (P4).
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
+import { usePlatform } from '@/lib/platform-context';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -49,8 +57,49 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     scrollQuote,
   } = block.props;
 
+  const platform = usePlatform();
   const [expanded, setExpanded] = useState(false);
   const bandColor = BAND_COLOR[band];
+
+  // ── "Develop this →" CTA state ────────────────────────────────────────────
+  const [developing, setDeveloping] = useState(false);
+  const [developError, setDevelopError] = useState<string | null>(null);
+  const [developed, setDeveloped] = useState(false);
+
+  /**
+   * Call the PINNED /develop endpoint (D-15/THREAD-05/IDEAS-03).
+   * Sends the chosen idea as the assembler anchor + appends a Hooks placeholder
+   * in the open thread. Hooks GENERATION is P4.
+   */
+  const handleDevelop = useCallback(async () => {
+    if (developing || developed) return;
+    setDeveloping(true);
+    setDevelopError(null);
+
+    try {
+      // anchor = the concept text that describes this idea (title + angle)
+      const anchor = `${title}\n\n${angle}`;
+      const res = await fetch('/api/tools/ideas/develop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          anchor,
+          platform,
+          // No ideaId in v1 — idea cards are not individually persisted by id
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Develop request failed' }));
+        throw new Error((err as { error?: string }).error ?? 'Develop request failed');
+      }
+      // Success: the Hooks placeholder has been appended to the open thread.
+      setDeveloped(true);
+    } catch (err) {
+      setDevelopError(err instanceof Error ? err.message : 'Develop error');
+    } finally {
+      setDeveloping(false);
+    }
+  }, [developing, developed, title, angle, platform]);
 
   return (
     <div
@@ -171,6 +220,37 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
         </div>
       )}
+
+      {/* "Develop this →" CTA (D-15/THREAD-05/IDEAS-03) ────────────────────── */}
+      {/* Calls PINNED /api/tools/ideas/develop to write anchor + Hooks placeholder */}
+      <div className="border-t border-white/[0.06] px-4 py-3">
+        {!developed ? (
+          <>
+            <button
+              type="button"
+              onClick={() => void handleDevelop()}
+              disabled={developing}
+              className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              style={{
+                color: developing ? 'rgba(255,127,80,0.5)' : '#FF7F50',
+                cursor: developing ? 'wait' : 'pointer',
+              }}
+              aria-label="Develop this idea into hooks"
+            >
+              {developing ? 'Developing…' : 'Develop this →'}
+            </button>
+            {developError && (
+              <p className="mt-1 text-xs text-red-400" role="alert">
+                {developError}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-foreground-muted/60">
+            Hooks queued — check the thread below.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
