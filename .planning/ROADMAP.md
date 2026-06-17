@@ -90,7 +90,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 **Wave 1** *(parallel — disjoint files)*
 
 - [x] 03-01-PLAN.md — Niche-instantiate the text SIM (D-05) + recalibrate thresholds + slop-vs-strong test (D-06), text-path-only, regression-gated (D-07) [ENGINE-02]
-- [ ] 03-02-PLAN.md — idea-card typed block (D-10) + grounding-line extractor (D-09) + KC_GEN_VERSION stamp helper [IDEAS-01, GROUND-03, PROFILE-01]
+- [x] 03-02-PLAN.md — idea-card typed block (D-10) + grounding-line extractor (D-09) + KC_GEN_VERSION stamp helper [IDEAS-01, GROUND-03, PROFILE-01]
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -141,6 +141,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 |-------|----------------|--------|-----------|
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
-| 3. Ideas Tool | 1/4 | In Progress|  |
+| 3. Ideas Tool | 2/4 | In Progress|  |
 | 4. Hooks Tool | 0/TBD | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |

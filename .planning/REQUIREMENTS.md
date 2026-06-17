@@ -32,7 +32,7 @@ reuses its typed-block renderers.
 
 - [x] **GROUND-01**: Knowledge-Core restructured for generation — a **committed** ground-up rebuild into a general-use generative core (shared generative base + per-mode slices: Ideas, Hooks, chat), authored fresh; **not** retrofitted from the scoring core or the stale `training-data.json`. Content/curation workstream first, code second.
 - [x] **GROUND-02**: Per-mode grounding assembly — each tool assembles a tight curated context slice (niche + relevant craft frame + the specific input), not the whole profile/KC (avoids signal dilution).
-- [ ] **GROUND-03**: Grounding legible in UI — outputs surface *why* they were made ("because your audience is 18–25 gym beginners and your last 3 myth-busting videos overperformed").
+- [x] **GROUND-03**: Grounding legible in UI — outputs surface *why* they were made ("because your audience is 18–25 gym beginners and your last 3 myth-busting videos overperformed").
 
 ### THREAD — model generalization, runner, rendering, chat
 
@@ -46,7 +46,7 @@ reuses its typed-block renderers.
 
 ### IDEAS — funnel-top generator
 
-- [ ] **IDEAS-01**: Generate ideas — idea cards (title · angle · *why it fits you*) from the creator profile (Auto) or a seeded topic/angle.
+- [x] **IDEAS-01**: Generate ideas — idea cards (title · angle · *why it fits you*) from the creator profile (Auto) or a seeded topic/angle.
 - [ ] **IDEAS-02**: Inline Flash viability hint — each card shows a SIM-1 Flash viability score; **content-first, score streams in** (never blocks content render).
 - [ ] **IDEAS-03**: Chain to Hooks — "Develop this →" carries an idea into Hooks.
 
@@ -58,7 +58,7 @@ reuses its typed-block renderers.
 
 ### PROFILE — grounding source (v1: reuse existing)
 
-- [ ] **PROFILE-01**: Tools ground on the existing `creator_profiles` (9-card) + cold-start → platform baselines + graceful degradation when the profile is thin. *(compact-onboarding redesign + link-social prefill deferred to v6.1)*
+- [x] **PROFILE-01**: Tools ground on the existing `creator_profiles` (9-card) + cold-start → platform baselines + graceful degradation when the profile is thin. *(compact-onboarding redesign + link-social prefill deferred to v6.1)*
 
 ### TEST — the chain endpoint
 
@@ -111,12 +111,12 @@ reuses its typed-block renderers.
 | ENGINE-03 | Phase 1 | Complete |
 | GROUND-01 | Phase 2 | Complete |
 | GROUND-02 | Phase 2 | Complete |
-| IDEAS-01 | Phase 3 | Pending |
+| IDEAS-01 | Phase 3 | Complete |
 | IDEAS-02 | Phase 3 | Pending |
 | IDEAS-03 | Phase 3 | Pending |
 | ENGINE-02 | Phase 3 | Complete |
-| GROUND-03 | Phase 3 | Pending |
-| PROFILE-01 | Phase 3 | Pending |
+| GROUND-03 | Phase 3 | Complete |
+| PROFILE-01 | Phase 3 | Complete |
 | THREAD-05 | Phase 3 | Pending |
 | HOOKS-01 | Phase 4 | Pending |
 | HOOKS-02 | Phase 4 | Pending |
