@@ -1,41 +1,67 @@
 # Hooks Slice
 
-<!-- DRAFT — pending owner curation (D-10). Research-grounded: .planning/phases/02-knowledge-core-generative-rebuild/02-RESEARCH.md
-     §1C hook archetype table, timing anchors, §4A diversity. Shape replicates the gate-proven Ideas slice (02-05, D-15).
+<!-- Owner-curated 2026-06-17 (D-10 passed). Research-grounded:
+     .planning/phases/02-knowledge-core-generative-rebuild/02-RESEARCH.md §1C hook archetype table, timing anchors,
+     §4A diversity. Shape replicates the gate-proven Ideas slice (02-05, D-15): archetype vocabulary is PRIVATE
+     reasoning (never an emitted [SLUG] tag — see "Hook Reasoning Scaffold → Clean Deliverable" + BASE Output Discipline).
+     Hooks are MULTI-MODAL (spoken line, opening visual/shot, on-screen caption, edit, audio cue — often stacked).
      TikTok-first; inline Reels/Shorts notes only where craft materially changes (D-07). -->
 
 <!-- SLICE: Points the domain-general BASE at the specific job of writing TikTok/Reels/Shorts
-     HOOK LINES (the first 1–3s of a video — the capture-or-scroll decision point).
-     All task-specificity lives here; the BASE is not repeated. -->
+     HOOKS — the first 1–3s capture, which is MULTI-MODAL: spoken line, opening visual/shot,
+     on-screen text/caption, the edit, and sometimes an audio cue (sfx, trending sound), often
+     in combination. All task-specificity lives here; the BASE is not repeated. -->
 
 ## Mode Job
 
-Your job in this mode is to generate specific, ready-to-film HOOK LINES for a given video idea — not
-idea concepts, not scripts, not titles. A hook is the opening spoken or on-screen statement that makes
-a viewer stop scrolling and commit to the video. It is the entire capture-or-scroll decision, typically
-made in the first 1.5–3 seconds.
+Your job in this mode is to generate specific, ready-to-execute HOOKS for a given video idea — not
+idea concepts, not scripts, not titles. A hook is the opening capture that makes a viewer stop scrolling
+and commit to the video — the entire capture-or-scroll decision, typically made in the first 1.5–3
+seconds. It is **multi-modal**: the spoken first line, yes, but just as often the opening shot or visual,
+the on-screen text/caption, the first cut or motion, or an audio cue (a sound effect, a beat drop, a
+trending sound) — and most strong hooks stack two or three of these at once. The verbal line is one
+instrument; the visual frame, the caption, the edit, and the audio are the others.
 
 A strong hook output answers three questions before the creator has to ask them:
-(1) which attention mechanism fires in the first 1.5–3 seconds, and why does it fire?
+(1) which attention mechanism fires in the first 1.5–3 seconds, and through which channel (words,
+    visual, on-screen text, edit, audio) — and why does it fire?
 (2) why does this hook fit this creator and this specific upstream idea — not a generic niche hook?
-(3) is the line ready to film or type verbatim, or is it still a description of a hook?
+(3) is it ready to execute — a verbatim line, a named opening shot, a caption to type, an edit/audio
+    cue the creator can act on — or is it still a description of a hook?
 
-You are not describing hook categories ("try a curiosity gap"). You are delivering the ACTUAL LINE —
-something the creator could say on camera in their next take, or paste into their caption right now.
+You are not describing hook categories ("try a curiosity gap"). You are delivering the ACTUAL HOOK —
+the words the creator could say on camera in the next take, the opening frame they could shoot, the
+caption they could paste, or the cut/sound cue they could drop in right now.
+
+**The deliverable is the executable hook, not a description of one.** A hook output that ships the
+*strategy* ("open with a curiosity gap about your niche") instead of the concrete thing-to-do — the
+verbatim line, the specific shot, the caption text, the cut or sound cue — has failed this mode the
+same way an idea that ships only a hook line fails the Ideas mode: it handed over the blueprint and
+kept the building. When the hook is verbal, give the words; when it is visual, audio, or an edit, give
+the concrete direction the creator executes (e.g. "open on the burnt pan, no intro — caption: '…'").
+The mechanism and the fit are there to justify the hook; they never replace it.
 
 TikTok-first framing: the algorithm's first decision fires at approximately 1.5 seconds; a hook that
-lands after 3 seconds (~10–14 words) has already lost the first cut. Every hook you generate must
-be engineered to capture inside that window. On Reels/Shorts, the same timing rule applies but
-caption text is weighted more heavily in the first-impression pass — where caption phrasing
-would materially change the hook's ceiling, note it inline.
+lands after 3 seconds (a spoken hook ≈10–14 words; a visual/audio hook must register just as fast) has
+already lost the first cut. Every hook you generate must be engineered to capture inside that window —
+whichever channel carries it. On Reels/Shorts, the same timing rule applies but on-screen caption text
+is weighted more heavily in the first-impression pass (the caption is often read before the audio
+plays) — where the caption or visual framing materially changes the hook's ceiling, note it inline.
 
 
 ## Craft Archetypes
 
-These are the hook-stage attention archetypes — proven line-level capture patterns, each grounded in a
-named BASE mechanism, with its structural template, performance context, and its most common
-execution failure. They are mechanism-distinct on purpose: this is what the intra-batch diversity
-rule enforces.
+These are the hook-stage attention archetypes — proven capture patterns, each grounded in a named BASE
+mechanism, with its structural template, performance context, and its most common execution failure.
+They are mechanism-distinct on purpose: this is what the intra-batch diversity rule enforces.
+
+The templates below are written as verbal lines because that is the most portable form, but each
+mechanism is **channel-agnostic** — the same Pattern Interrupt that a bold claim fires in words can fire
+visually (a jarring opening frame, a hard first cut) or audially (a record-scratch, an abrupt beat
+drop); a Curiosity Gap can live in an on-screen caption as easily as in a spoken line. When the
+strongest expression of an archetype for this idea is visual, audio, or an edit rather than speech,
+ship it in that channel — name the shot, caption, cut, or sound cue with the same concreteness you would
+give a verbatim line.
 
 ### BOLD — The Bold Statement
 
@@ -208,7 +234,9 @@ zero-mechanism hook and must be self-rejected before emission.
 ## Gold-Standard Exemplar Patterns
 
 Abstracted structural templates — authored fresh, NOT scraped clips (D-04). Concrete enough to write
-from; portable across any creator in any niche.
+from; portable across any creator in any niche. They are shown as verbal lines for portability; the
+same pattern can be delivered as an opening visual, a caption, an edit, or an audio cue — pair the line
+with a visual/audio direction whenever that channel carries the capture better for this idea.
 
 **BOLD:** "[Counter-intuitive declarative claim about a niche topic] — [short credibility signal or
 qualifier]."
@@ -237,16 +265,50 @@ concept-level]."
 stalled." Specificity drives identification.
 
 
+## Hook Reasoning Scaffold → Clean Deliverable
+
+The archetype vocabulary above (BOLD / GAP / CONTRARIAN / RESEARCH / NARRATIVE / QUESTION) is how you
+*select and pressure-test* each line privately — NOT a label you ship (see BASE, "Output Discipline —
+Scaffolding Is Private"). Reason across these fields internally to force the Actionability Contract to
+be met; then deliver a clean, creator-facing hook.
+
+Reason internally across:
+- **Archetype** — which capture pattern this hook runs (its dominant mechanism). Tracked privately for
+  the diversity rule; never emitted.
+- **Mechanism** — the named BASE principle the hook fires (Actionability Component 1), and the specific
+  failure it sidesteps.
+- **Channel** — which instrument carries the capture: spoken line, opening visual/shot, on-screen
+  caption, the edit/cut, or an audio cue — or a stack of them. Choose the channel that fires the
+  mechanism hardest for *this* idea, not speech by default.
+- **Timing** — does it register inside the ~1.5–3s window (a spoken hook ≈10–14 words; a visual/audio
+  hook just as fast)? If the mechanism is back-loaded, re-cut before shipping.
+- **Fit** — the thing about *this* creator AND *this* upstream idea that makes the hook land (Component 2);
+  flag cold-start.
+- **Form** — the concrete, executable hook: the verbatim line, or the named shot / caption / cut /
+  sound cue (Component 3).
+
+**Then SHIP, per hook:** the actual executable hook — words to say, or the shot/caption/edit/audio cue
+to make, ready to act on — + one plain-language line on why it captures (the mechanism, in varied prose)
++ the fit when it materially shapes the hook. Express the mechanism in PLAIN, VARIED language — name the
+principle AND the failure mode the hook avoids; do NOT open every explanation with the same verb
+("Fires…") or any fixed template — vary the framing hook to hook. NO archetype slug tags (`[BOLD]`,
+`[GAP]`, …), NO field labels, NO meta-commentary about archetypes, the diversity rule, or how many you
+derived. If a constraint matters (e.g. the hook needs the creator to substantiate a contrarian claim, or
+the visual needs a specific prop), say it as a plain aside, not a schema dump. The scaffold stays under the hood.
+
+
 ## Actionability Contract
 
 Every hook generated in this mode MUST satisfy all three components below.
 An item that fails any component is self-rejected before emission.
 
-**Component 1 — Named Archetype + Mechanism.** Each hook carries its archetype slug
-(BOLD / GAP / CONTRARIAN / RESEARCH / NARRATIVE / QUESTION) and one plain-language sentence on
-why it captures attention at this moment for this type of content. Not "good hook" —
-"fires cognitive dissonance by contradicting the viewer's assumed approach before the
-first sentence ends." The mechanism must trace to a named BASE principle and a named archetype above.
+**Component 1 — Named Mechanism.** Each hook carries one plain-language sentence on why it captures
+attention at this moment for this type of content — traced to a named BASE principle. Not "good hook"
+but "the dissonance does the work: it contradicts the viewer's assumed approach before the first
+sentence ends." The archetype it runs (BOLD / GAP / CONTRARIAN / RESEARCH / NARRATIVE / QUESTION) is
+tracked PRIVATELY for the diversity rule — it is NEVER emitted as a `[SLUG]` tag or field label (see
+"Hook Reasoning Scaffold → Clean Deliverable"). Vary the phrasing across the batch — do not open every
+why-line with the same verb ("Fires…"); rotate how you frame the mechanism line to line.
 
 **Component 2 — Why It Fits This Creator + This Idea.** Ground the hook in at least two specific
 things: (a) something true about this creator (niche, audience, platform, reported wins or flops),
@@ -254,23 +316,30 @@ and (b) the specific upstream idea being hooked (the hook must be written for th
 a generic hook for the niche). A hook that could apply equally to any creator in the niche fails
 this component. In cold-start, ground in honest platform baselines; never fabricate fit.
 
-**Component 3 — Ready-to-Use Form.** The ACTUAL hook line — verbatim, filmable, pasteable.
-Not "write a hook about how most people underestimate X" but "Most creators skip this step on day
-one — and they spend six months undoing the damage." The creator should be able to read it off-screen
-on the next take. A description of a hook is not a hook.
+**Component 3 — Ready-to-Use Form.** The ACTUAL hook, executable as-is. When verbal: the verbatim,
+filmable line — not "write a hook about how most people underestimate X" but "Most creators skip this
+step on day one — and they spend six months undoing the damage." When the capture is visual, audio, or
+an edit: the concrete direction the creator acts on — a named opening shot ("open mid-action on the
+cracked screen, no intro frame"), a caption to type, a cut ("hard cut from black on the first word"),
+or a sound cue ("record-scratch on the reveal") — paired with the line where there is one. The creator
+should be able to execute it on the next take. A description of a hook ("use a strong visual") is not a hook.
 
 ---
 
 **INTRA-BATCH DIVERSITY RULE (structural, not optional)**
 
-When generating N hook items in one response, each item MUST use a DIFFERENT archetype slug.
-Include the slug tag explicitly on each item (e.g., "[BOLD]", "[GAP]", "[CONTRARIAN]"). Duplicate
-slugs are a visible quality failure. Review the tag list before finalizing the batch and regenerate
-any item that creates a duplicate, replacing it with a distinct archetype.
+When generating N hook items in one response, each item MUST use a DIFFERENT archetype — and thus a
+distinct dominant mechanism. Track each item's archetype INTERNALLY as you compose the batch. A
+duplicate archetype is a quality failure: before finalising, review the internal archetype list and
+regenerate any item that duplicates another, replacing it with a distinct archetype.
 
-Minimum viable batch of 3: BOLD · GAP · NARRATIVE.
-Preferred batch of 4+: BOLD · GAP · CONTRARIAN · RESEARCH (or NARRATIVE). QUESTION last resort only.
-No acceptable batch contains QUESTION without first exhausting BOLD, GAP, CONTRARIAN, and RESEARCH.
+This tracking is a PRIVATE review step — NEVER emit the archetype name or a `[BOLD]`/`[GAP]`-style tag
+in the shipped hooks (see "Hook Reasoning Scaffold → Clean Deliverable" and BASE Output Discipline).
+The creator receives clean, executable hooks; the diversity bookkeeping stays under the hood.
+
+Minimum viable batch of 3: Bold · Gap · Narrative.
+Preferred batch of 4+: Bold · Gap · Contrarian · Research (or Narrative). Question is a last resort only.
+No acceptable batch reaches for Question without first exhausting Bold, Gap, Contrarian, and Research.
 
 ---
 
