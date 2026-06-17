@@ -36,13 +36,13 @@ reuses its typed-block renderers.
 
 ### THREAD — model generalization, runner, rendering, chat
 
-- [ ] **THREAD-01**: Generalized thread data model — nullable `reading_id` + a `type` discriminator (grounded vs open thread); migration + types.
+- [x] **THREAD-01**: Generalized thread data model — nullable `reading_id` + a `type` discriminator (grounded vs open thread); migration + types.
 - [x] **THREAD-02**: Composer = universal door — routes input to Test (URL/upload) vs a generator/chat (prompt).
 - [ ] **THREAD-03**: Open chat thread — profile-grounded general chat with no anchoring Reading (markdown messages). *(sequenced last; only as good as GROUND-01 — gated behind KC quality)*
 - [x] **THREAD-04**: Typed-block rendering — messages render as markdown OR typed blocks via the **fixed** numen-rework renderer library; **no** model-generated UI.
 - [ ] **THREAD-05**: Chain CTAs — outputs carry in-thread chain CTAs ("Develop this →", "Test full →") that move between tools.
 - [x] **THREAD-06**: Tool-runner abstraction — each tool = `{promptTemplate, knowledgeBundle, outputSchema, renderer}`; structured output → typed renderer, no schema → markdown. Ideas/Hooks/chat run through it so Scripts/Remix slot in later without one-off code.
-- [ ] **THREAD-07**: Message/block persistence — a thread's messages + typed blocks persist and re-hydrate on reload.
+- [x] **THREAD-07**: Message/block persistence — a thread's messages + typed blocks persist and re-hydrate on reload.
 
 ### IDEAS — funnel-top generator
 
@@ -103,11 +103,11 @@ reuses its typed-block renderers.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | ENGINE-01 | Phase 1 | Complete |
-| THREAD-01 | Phase 1 | Pending |
+| THREAD-01 | Phase 1 | Complete |
 | THREAD-02 | Phase 1 | Complete |
 | THREAD-04 | Phase 1 | Complete |
 | THREAD-06 | Phase 1 | Complete |
-| THREAD-07 | Phase 1 | Pending |
+| THREAD-07 | Phase 1 | Complete |
 | ENGINE-03 | Phase 1 | Complete |
 | GROUND-01 | Phase 2 | Pending |
 | GROUND-02 | Phase 2 | Pending |

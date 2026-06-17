@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-06-17T08:03:41.685Z"
+status: verifying
+stopped_at: Completed 01-engine-thread-foundation 01-02-PLAN.md
+last_updated: "2026-06-17T08:28:49.286Z"
 last_activity: 2026-06-17 -- Phase 01 execution started
 progress:
   total_phases: 5
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 20
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 Phase: 01 (engine-thread-foundation) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-17 -- Phase 01 execution started
 
 ## Hard Constraints (this milestone)
@@ -66,6 +66,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: BandBlock: qualitative only (band word + fraction + model tag), no numeric score (D-11 honesty spine)
 - [Phase ?]: Flash aggregate thresholds
 - [Phase ?]: Flash model routing
+- [Phase ?]: reading_id FK is text not uuid — analysis_results.id is text on live DB; plan Pitfall #3 was incorrect; all FK semantics preserved
+- [Phase ?]: ThreadRow/MessageRow derive from Database public Tables post-regen; role narrowed to union at app layer
+- [Phase ?]: D-14 double-validation: validateBlock at write boundary AND on rehydration; invalid blocks become UnsupportedBlock sentinel
 
 ### Pending Todos
 
@@ -85,9 +88,9 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T08:03:41.679Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-engine-thread-foundation/01-CONTEXT.md
+Last session: 2026-06-17T08:28:49.279Z
+Stopped at: Completed 01-engine-thread-foundation 01-02-PLAN.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -96,3 +99,4 @@ Resume file: .planning/phases/01-engine-thread-foundation/01-CONTEXT.md
 | Phase 01-engine-thread-foundation P01 | 17m | 3 tasks | 11 files |
 | Phase 01-engine-thread-foundation P03 | 7m | 3 tasks | 7 files |
 | Phase 01-engine-thread-foundation P04 | 6m | 2 tasks | 4 files |
+| Phase 01-engine-thread-foundation P02 | 35min | 3 tasks | 5 files |

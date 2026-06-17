@@ -18,7 +18,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - Integer phases (1, 2, 3): planned milestone work.
 - Decimal phases (2.1, 2.2): urgent insertions (marked INSERTED).
 
-- [ ] **Phase 1: Engine & Thread Foundation** - SIM-1 Flash text-mode (+ winning-framing calibration) + generalized thread model, tool-runner, typed-block rendering, persistence, universal composer
+- [x] **Phase 1: Engine & Thread Foundation** - SIM-1 Flash text-mode (+ winning-framing calibration) + generalized thread model, tool-runner, typed-block rendering, persistence, universal composer (completed 2026-06-17)
 - [ ] **Phase 2: Knowledge-Core Generative Rebuild** - Ground-up general-use generative KC (shared base + per-mode slices) — THE value, the long pole
 - [ ] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs
 - [ ] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test
@@ -109,7 +109,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine & Thread Foundation | 3/4 | In Progress|  |
+| 1. Engine & Thread Foundation | 4/4 | Complete   | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 0/TBD | Not started | - |
 | 3. Ideas Tool | 0/TBD | Not started | - |
 | 4. Hooks Tool | 0/TBD | Not started | - |
