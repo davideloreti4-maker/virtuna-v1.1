@@ -90,7 +90,7 @@ interface ShuffledPromptResult {
 
 const GATE_MODEL = process.env.GATE_MODEL ?? QWEN_REASONING_MODEL;
 
-const PER_CALL_TIMEOUT_MS = 120_000; // 2 min — ideas generation can be verbose
+const PER_CALL_TIMEOUT_MS = 300_000; // 5 min — qwen3.7-plus reasoning + ~7.4k-token KC system prompt can be slow
 
 /**
  * Default Ideas asks. Realistic representative prompts covering different

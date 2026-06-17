@@ -1,0 +1,229 @@
+KC BLIND GATE — BLIND OUTPUT
+Generated: 2026-06-17T13:46:52.669Z
+==============================
+
+INSTRUCTIONS:
+  Read each prompt's 3 outputs. For each prompt, rank them best → worst.
+  Judge on: specificity, mechanism-backed, shoot-ready, grounded (not generic slop).
+  Do NOT decode the arm labels until you have ranked ALL prompts.
+  Decode file: kc-gate-KEY.txt (read AFTER ranking)
+
+GATE PASS CONDITION (D-13):
+  New-KC must be CLEARLY better than BOTH: (a) raw-LLM-no-KC AND (b) current-KC.
+  Optional Flash sanity numbers are labeled clearly — they are NOT the gate.
+
+══════════════════════════════════════════════════════════════
+
+PROMPT 1:
+"Give me 5 ideas for a personal finance creator on TikTok who helps 25-35 year-olds invest their first $1000. I want to break out of generic money-tip content."
+
+─── OUTPUT 1 ───────────────────────────────────────────────
+Here are 5 TikTok content ideas tailored for a 25-35 demographic looking to invest their first $1,000. These ideas are designed to ditch the boring "skip the daily coffee" advice and instead focus on the psychology, friction, and specific anxieties of investing for the first time in your late 20s/early 30s.
+
+### 1. The "Over-the-Shoulder" UI Walkthrough
+**The Concept:** Generic advice tells people *what* to buy, but ignores the fact that the actual user interface of investing apps is terrifying for beginners. This video removes the friction of the "first click."
+*   **The Hook:** "You have $1,000. You want to invest it. But you’re terrified of clicking the wrong button and losing it all. Let’s do it together, right now."
+*   **The Visual/Format:** Use the Green Screen effect. Put a screen-recording of a popular investing app (like Fidelity, Vanguard, or Robinhood) in the background. Point to the exact buttons. Show them how to link a bank, transfer the $1k, search the ticker (e.g., VOO or VTI), select "Buy," and choose "Market Order." 
+*   **Why it works:** It’s highly actionable. It transitions the viewer from "passive learning" to "active doing" by demystifying the actual mechanics of the apps. 
+
+### 2. The "Market Crash Simulator" (Psychology over Math)
+**The Concept:** The biggest barrier to investing the first $1,000 isn't a lack of money; it's the fear of losing it. Address the emotional side of investing before the mathematical side.
+*   **The Hook:** "What happens to your first $1,000 if the stock market crashes tomorrow? Let’s play a game to see if you’re actually ready to invest."
+*   **The Visual/Format:** A fast-paced, interactive "choose your own adventure" style video. 
+    *   *Scenario:* "It's Tuesday. Your $1,000 is now worth $800. The news is saying the economy is collapsing. What do you do? A) Sell everything to save the $800. B) Do nothing. C) Add another $100." 
+    *   Reveal the right answer (B or C) and explain *why* panic selling ruins the first investment. Show a quick chart of a historical crash (like 2020) and the subsequent recovery.
+*   **Why it works:** It acts as a "stress test" for the viewer. It builds trust because you are preparing them for the emotional reality of investing, not just painting a rosy picture.
+
+### 3. "Roasting" the First $1,000 Mistakes (Skit Format)
+**The Concept:** 25-35 year olds are highly skeptical of "finance bros" and get-rich-quick schemes. Use humor to highlight what *not* to do, positioning yourself as the grounded, realistic voice.
+*   **The Hook:** "3 ways to completely ruin your first $1,000 investment. (Warning: I definitely did number 2)."
+*   **The Visual/Format:** A quick skit where you play 3 different characters. 
+    *   *Character 1 (The Crypto Bro):* Puts it all into a meme coin because a guy on Reddit said so. 
+    *   *Character 2 (The Day Trader):* Tries to trade options, pays $50 in fees, and loses $400 by lunch. (This is where you admit your own past mistake for authenticity).
+    *   *Character 3 (The Perfectionist):* Spends 40 hours researching the "perfect" stock, gets analysis paralysis, and leaves the $1,000 in a checking account losing to inflation.
+    *   *The Pivot:* "Instead, do the boring thing. Buy a broad market index fund and go touch grass."
+*   **Why it works:** Skits perform incredibly well on TikTok. It uses humor to deliver a cautionary tale while subtly pitching your actual, sensible advice at the end.
+
+### 4. The "Tangible Retirement" Translation
+**The Concept:** Telling a 30-year-old that "$1,000 will turn into $10,000 in 30 years" means nothing to them. It's too abstract. Translate the future value of $1,000 into things they actually care about *today*.
+*   **The Hook:** "Think $1,000 isn't enough to invest? Let me translate what that $1,000 actually buys you when you're 65."
+*   **The Visual/Format:** Use physical props or rapid-fire text on screen. 
+    *   "If you invest $1,000 today and never touch it, at a 7-10% return, by retirement it’s worth about $8,000 to $10,000."
+    *   *Visual shift:* "But because of the 4% rule, that means it generates about $350 a year in passive income forever."
+    *   "That is one free round-trip flight to Europe every single year of your retirement. Or 700 cups of coffee. Or 10 years of Netflix. You aren't just investing in 'the market', you are buying your 65-year-old self a free vacation."
+*   **Why it works:** It cures the "it's just $1,000, what's the point?" apathy. It makes the abstract concept of compound interest deeply personal and tangible.
+
+### 5. The "Sleep Well At Night" (SWAN) Split
+**The Concept:** Many 25-35 year olds have high incomes but zero safety net, making them terrified to invest. This video gives them permission to split the $1,000 based on their personal anxiety levels.
+*   **The Hook:** "Should your first $1,000 go into an emergency fund or the stock market? Use the SWAN test to find out."
+*   **The Visual/Format:** You are holding two physical items (e.g., a shield for the emergency fund, and a chart/coin for the stock market). 
+    *   Explain the "SWAN" acronym: **S**leep **W**ell **A**t **N**ight. 
+    *   "If you have $0 in savings, put the $1,000 in a High Yield Savings Account. It’s your SWAN fund. If your car breaks down, you won't panic."
+    *   "If you already have 1 month of expenses saved, put $500 in HYSA and invest $500."
+    *   "If you have 3 months of expenses saved? Invest the whole $1,000."
+*   **Why it works:** Generic advice says "always invest" or "always have a 6-month emergency fund." This offers a nuanced, highly personalized framework that meets 25-35 year olds exactly where they are financially and emotionally. 
+
+**💡 Pro-Tip for the Creator:** For all of these videos, make sure your caption includes a clear Call to Action (CTA) like, *"Comment 'START' and I’ll DM you my free 1-page checklist for investing your first $1k!"* This will drive massive engagement and help you build an email list.
+
+─── OUTPUT 2 ───────────────────────────────────────────────
+Generic money-tip content fails because it targets the demographic (25-35 year-olds) instead of the exact moment of friction (deploying the *first* $1000). The first $1000 is psychologically and mechanically distinct from the first $10,000. It is not about asset allocation; it is about overcoming paralysis, platform friction, and the shame of starting late. 
+
+To break out of the generic feed, every concept below targets the specific mechanics of that exact $1000 threshold. 
+
+*(Note: The system defines four core idea archetypes. To fulfill your request for five distinct items without violating the intra-batch diversity rule, I have derived a fifth archetype directly from the BASE Distribution Mechanisms — specifically the Comments driver — to complete the set.)*
+
+***
+
+### 1. [ARCHETYPE: Named-Finding Teardown]
+- **Topic:** First $1000 platform friction.
+- **Idea Seed:** The exact moment your first $1000 stops working for you because of a hidden fee structure most beginners ignore.
+- **Angle:** Everyone says "put it in an S&P 500 index fund." But for exactly $1000, the expense ratio and fractional share trading mechanics on certain popular apps eat 2-3% of your principal before day one if you use the wrong account type or fractionalize incorrectly. The fix: using a specific zero-fee fractional broker, or buying a single whole share of a broad ETF instead of fractionalizing.
+- **Format:** Teardown (screen recording / green screen over broker fee schedules).
+- **Mechanism:** Open Loop + Stakes. Fires the open loop by naming a specific, concrete cost (principal erosion) before revealing the cause (wrong broker/fractional fee structure). Stakes are raised because the viewer realizes their money is actively leaking.
+- **Fit:** Cold-start baseline. 25-35 year-olds investing their *first* $1000 are highly susceptible to platform friction because they lack the principal to absorb it. A 2% fee on $100,000 is invisible; on $1,000, it is a 20-dollar speedbump that breaks trust.
+- **Substance:** Requires you to pull up the actual fee schedule of a popular app (e.g., Robinhood, Fidelity, or CashApp) vs. a better alternative for small balances, showing the exact math on a $1000 deposit.
+
+### 2. [ARCHETYPE: Counter-Intuitive Outcome]
+- **Topic:** Emergency fund sequencing.
+- **Idea Seed:** Why keeping your first $1000 in a high-yield savings account to "build an emergency fund" is mathematically and psychologically the wrong move for your age bracket.
+- **Angle:** *Common belief:* "Build a 3-6 month emergency fund before investing a dime." *Contrarian reality:* For a 25-35 year-old with their *first* $1000, the opportunity cost of waiting 8 months to save $6000 in a HYSA (earning 4%) while missing 8 months of market compounding (historical 8-10%) — plus the psychological habit-formation loss of delaying the investing muscle — is worse. The $1000 should go straight to the market; the emergency fund should be built *from* future cash flow, not by pausing your investing start.
+- **Format:** Direct-to-camera talking head.
+- **Mechanism:** Pattern Interrupt + Prediction Error. Violates the most sacred rule of personal finance TikTok (the emergency fund first orthodoxy). The break is logical-in-hindsight: at the $1000 level, the behavioral cost of delaying the habit outweighs the 4% HYSA yield. 
+- **Fit:** This demographic is constantly paralyzed by the "emergency fund first" rule preached by traditional finance voices. Breaking it specifically at the *first $1000* threshold makes it a precise, defensible contrarian take rather than reckless advice.
+- **Substance:** You must run the exact math on screen: $1000 in a HYSA at 4% for 1 year vs. $1000 in VOO at 8% for 1 year, plus the behavioral cost of delaying the investing habit. 
+
+### 3. [ARCHETYPE: Documented Experiment]
+- **Topic:** Deployment strategy (Lump Sum vs. DCA).
+- **Idea Seed:** I invested my first $1000 all at once vs. $100 a month for 10 months — here is the exact psychological and financial difference.
+- **Angle:** *Hypothesis:* Dollar Cost Averaging (DCA) is safer and better for beginners. *Test:* Put $1000 in a lump sum on Day 1 vs. $100/mo for 10 months in the exact same ETF. *Outcome:* Financially, lump sum wins ~68% of the time historically. Psychologically, DCA felt better during a dip, but lump sum forced me to actually deploy the capital instead of letting it sit in my checking account "waiting for a dip" for six months.
+- **Format:** Experiment / Case Study.
+- **Mechanism:** Prediction & Anticipation. The viewer holds a competing prediction (DCA is safer/better) and stays to verify the resolution. The dopaminergic high is in the wait to see which method actually won.
+- **Fit:** First-time investors in this age bracket are paralyzed by "timing the market" with their first small pile of cash. This directly addresses their specific hesitation with empirical data rather than theory.
+- **Substance:** You must actually run this test (or simulate it with historical data if you already invested yours, but first-person actual execution with screenshots of the two brokerage accounts is the gold standard for this archetype).
+
+### 4. [ARCHETYPE: Audience-Desire Mirror]
+- **Topic:** The "Am I Late?" anxiety.
+- **Idea Seed:** The exact mental shift you need to make when you realize your friends are already buying houses and you're just now investing your first $1000.
+- **Angle:** The specific friction isn't "I don't know how to buy an ETF." It's the shame of starting late at 28 or 32 while peers hit larger milestones. The resolution: reframing the first $1000 not as "catching up" to their house deposit, but as buying your first "financial employee" that works 24/7. You aren't behind; you just hired your first worker.
+- **Format:** Intimate talking head, low production value, high eye contact.
+- **Mechanism:** Stakes / Transformation Promise routed through self-identification. Maps directly to the hidden emotional friction (shame/comparison) of the 25-35 demographic starting late. The transformation is emotional (relief from shame) rather than tactical.
+- **Fit:** 25-35 is the exact age where peer comparison peaks. Generic "how to invest" content ignores the emotional paralysis this demographic faces when starting with a small amount later than they intended. This makes the video feel personally commissioned.
+- **Substance:** Requires you to speak to the emotional reality of being the "late starter" in their friend group, and provide the specific cognitive reframe (employee vs. catch-up). No charts needed; this is a psychological unlock.
+
+### 5. [ARCHETYPE: Pre-Formed Opinion Trap] *(Derived from BASE Comments Mechanism)*
+- **Topic:** Index funds vs. Asymmetric bets for small capital.
+- **Idea Seed:** Why putting your first $1000 into an S&P 500 index fund is actually a privilege play that keeps you poor in your 20s.
+- **Angle:** *Pre-formed opinion:* "Index funds are the only responsible way to invest." *Provocation:* An 8% return on $1000 is $80 a year. That doesn't change your life. At the $1000 level, you need asymmetric upside (individual stocks, crypto, or investing in a skill/certification) to actually build the *next* $10,000. Index funds are for preserving wealth you already have; your first $1000 is for *generating* wealth.
+- **Format:** Hot take / direct address, fast pacing.
+- **Mechanism:** Comments (provocation / pre-formed opinion). Directly attacks the most sacred cow of personal finance TikTok (the Boglehead/index fund orthodoxy). Violent disagreement from index fund purists + violent agreement from risk-tolerant 20-somethings will drive the comment algorithm. The mechanism relies on taking a hard side in a debate the audience already has pre-formed opinions about.
+- **Fit:** Breaks you out of "generic money tips" by taking a hard, defensible stance that splits the personal finance audience exactly down the middle. It forces the algorithm to categorize you as a distinct voice, not a generic tip-repeater.
+- **Substance:** You must show the math ($80/year vs the effort required to save the next $10k) and name the specific asymmetric vehicles appropriate for a $1000 risk budget. If you cannot defend the math, do not run this idea.
+
+─── OUTPUT 3 ───────────────────────────────────────────────
+Here are 5 content ideas engineered to break the generic finance mold. Each idea targets a specific psychological lever to stop the scroll and hold attention, moving away from vague advice into concrete, mechanism-backed hooks.
+
+### Idea 1: The "Tuesday Off" Proxy
+**The Hook:** 
+Your first $1000 is not about getting rich. It is about buying a Tuesday off in 2045. Here is the exact math.
+
+**The Body & Payoff:** 
+Show the compound interest calculation on screen, but translate the final number into "days of freedom." Explain that $1000 invested at age 25 buys roughly 15 days of not working by retirement. The payoff is the realization that investing is just buying future time, not just buying numbers on a screen. 
+
+**Why It Works:** 
+Generic finance content talks about "retirement" or "wealth," which are too abstract for a 25-year-old to feel. This idea maps the abstract desire (wealth) to a concrete, highly desired proxy (a random Tuesday off). It creates an immediate comprehension trust moment because the viewer instantly understands the baseline.
+
+**Auditable Metadata:**
+```json
+{
+  "lever": "one standard deviation proxy framing (§2.3) + instant value promise (§2.1)",
+  "evidence": "Hook replaces abstract 'getting rich' with concrete 'buying a Tuesday off in 2045'.",
+  "lever_fixed": "desire mapping via proxy (§2.3) to bypass the BS detector triggered by direct wealth claims."
+}
+```
+
+### Idea 2: The 90-Day Panic Shield
+**The Hook:** 
+You do not need a Roth IRA for your first $1000. You need a panic shield. Keep it in cash for 90 days. Here is why.
+
+**The Body & Payoff:** 
+Explain the psychological reality of a first-time investor. If they put their first $1000 into the market and it drops 10% the next week, they will panic sell and quit investing forever. The 90-day cash buffer builds the emotional tolerance required to watch the market dip without flinching. The payoff is a behavioral framework, not just a ticker symbol.
+
+**Why It Works:** 
+The viewer expects the advice to be "open a brokerage account." The hook breaks that expectation immediately. It introduces a head fake that makes logical sense in hindsight. It shifts the focus from the mechanical act of investing to the psychological act of staying invested.
+
+**Auditable Metadata:**
+```json
+{
+  "lever": "head fake / prediction error (§2.2) + contrast/curiosity gap (§2.1)",
+  "evidence": "Hook states 'You do not need a Roth IRA' breaking the expected answer, followed by the novel concept of a 'panic shield'.",
+  "lever_fixed": "vending-machine predictability (§3) by delivering a non-obvious take on the first investment step (§2.5)."
+}
+```
+
+### Idea 3: The Finance Bro Stance
+**The Hook:** 
+Finance bros want you to day trade your first $1000. That is how you stay broke. Do this instead.
+
+**The Body & Payoff:** 
+Call out the specific noise the 25-35 demographic sees on their feed (options trading, crypto meme coins). Position the creator as the anti-hype adult in the room. Deliver a boring, highly effective alternative (like a simple three-fund portfolio or automated weekly transfers). The payoff is the viewer feeling smart for ignoring the loud, get-rich-quick crowd.
+
+**Why It Works:** 
+This relies on identity and stance. By naming a specific enemy (finance bros) and taking a hard, contrarian side, it triggers the viewer's desire to signal their own identity. People share and comment when they violently agree or disagree. It trades raw, neutral reach for high-conversion avatar trust.
+
+**Auditable Metadata:**
+```json
+{
+  "lever": "identity/stance for shares (§2.3) + single subject/single question (§2.1)",
+  "evidence": "Hook names a specific enemy ('Finance bros') and takes a definitive side ('That is how you stay broke').",
+  "lever_fixed": "middle-of-road hedging (§3) by injecting emotional charge and a clear cult-loved/feared subject (§2.3)."
+}
+```
+
+### Idea 4: The Three-Part Cheat Sheet
+**The Hook:** 
+Stop guessing with your first $1000. Use this three part cheat sheet. What to buy, what account to use, and the exact button to click.
+
+**The Body & Payoff:** 
+Use a green screen or text overlays to show the three parts. Part 1: The specific index fund ticker. Part 2: Roth IRA vs Brokerage. Part 3: A screen recording of the actual app interface showing where to click to avoid transaction fees. The CTA is to save the video for payday.
+
+**Why It Works:** 
+This is pure actionability. The distance between watching the video and implementing the advice is reduced to zero. The structural device (a three-part list) creates an open loop that forces the viewer to watch until all three parts are revealed. It is highly saveable, which signals high value to the algorithm.
+
+**Auditable Metadata:**
+```json
+{
+  "lever": "actionability/short distance to implement (§2.4) + mechanism/progress device (§2.2)",
+  "evidence": "Hook promises a 'three part cheat sheet' and lists the exact steps, creating a structural countdown.",
+  "lever_fixed": "abstract/aspirational takeaways (§3) by providing a concrete, do-it-today method (§2.4)."
+}
+```
+
+### Idea 5: The "First Grand" Constraint
+**The Hook:** 
+If I had to invest my first $1000 today, I would not buy index funds. I would split it three ways. Here is how.
+
+**The Body & Payoff:** 
+Frame the advice through a relatable, constraint-free character (the creator starting over). Break the $1000 into three specific buckets (e.g., $500 in an S&P 500 fund, $300 in a high-yield savings account for opportunities, $200 in a skills/course budget). The payoff is a diversified, realistic approach that acknowledges $1000 is a small starting point, not a retirement fund.
+
+**Why It Works:** 
+This uses the desire-based hook template. It paints a dream outcome (investing successfully) through a relatable character with no unfair advantages. The curiosity gap is opened by rejecting the standard advice (index funds) in favor of a specific, novel allocation (splitting it three ways). 
+
+**Auditable Metadata:**
+```json
+{
+  "lever": "desire-based hook / constraint-free character (§2.4) + specificity (§2.1)",
+  "evidence": "Hook uses the 'if-I' template ('If I had to invest...') and rejects the obvious answer ('would not buy index funds') for a specific alternative ('split it three ways').",
+  "lever_fixed": "vague superlatives and generic advice (§3) by injecting concrete numbers and a non-obvious allocation strategy (§2.5)."
+}
+```
+
+***
+
+### Highest-Leverage Fix for the Creator's Current Strategy
+**The Ceiling Capper:** The creator is currently trapped in category-level advice. 
+**The Fix:** Stop making videos about "investing." Start making videos about the specific, painful micro-moments of deploying the first $1000. The highest-leverage change is to apply the **one standard deviation proxy** lever. Never say "build wealth" or "retire early." Those phrases trip the viewer's BS detector. Instead, talk about "buying a Tuesday off," "firing your boss in 15 years," or "never looking at a grocery bill again." Map the big desire to a specific, tangible proxy the 25-year-old viewer can actually visualize.
+
+══════════════════════════════════════════════════════════════
+
+END OF BLIND OUTPUT
+Now rank each prompt's outputs (best → worst) BEFORE opening kc-gate-KEY.txt
