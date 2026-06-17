@@ -24,9 +24,9 @@ reuses its typed-block renderers.
 
 ### ENGINE — SIM-1 text-mode + self-judge
 
-- [ ] **ENGINE-01**: SIM-1 Flash text-mode — the 10 archetypes react to *text* input (no video), returning per-persona reactions + an aggregate pull score, with mode-specific framing (Hook = "scrolling, first 2s, do you stop?"; Idea = "in your niche, would this make you stop/share?"). The winning persona framing (right data + context + minimal grounding for text discrimination) is calibrated here and documented as the inline-scoring spec.
+- [x] **ENGINE-01**: SIM-1 Flash text-mode — the 10 archetypes react to *text* input (no video), returning per-persona reactions + an aggregate pull score, with mode-specific framing (Hook = "scrolling, first 2s, do you stop?"; Idea = "in your niche, would this make you stop/share?"). The winning persona framing (right data + context + minimal grounding for text discrimination) is calibrated here and documented as the inline-scoring spec.
 - [ ] **ENGINE-02**: SIM-1 self-judge quality gate — generations are Flash-scored and weak outputs regenerate/filter before the user sees them; regeneration is **bounded** (cost).
-- [ ] **ENGINE-03**: Honest Flash/Max framing — Flash surfaced as *concept ceiling* ("worth shooting?"), Max as *realized result*; never a fabricated score, never a view-count promise Flash can't back.
+- [x] **ENGINE-03**: Honest Flash/Max framing — Flash surfaced as *concept ceiling* ("worth shooting?"), Max as *realized result*; never a fabricated score, never a view-count promise Flash can't back.
 
 ### GROUND — Knowledge-Core generative rebuild (THE value, the long pole)
 
@@ -102,13 +102,13 @@ reuses its typed-block renderers.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENGINE-01 | Phase 1 | Pending |
+| ENGINE-01 | Phase 1 | Complete |
 | THREAD-01 | Phase 1 | Pending |
 | THREAD-02 | Phase 1 | Pending |
 | THREAD-04 | Phase 1 | Complete |
 | THREAD-06 | Phase 1 | Complete |
 | THREAD-07 | Phase 1 | Pending |
-| ENGINE-03 | Phase 1 | Pending |
+| ENGINE-03 | Phase 1 | Complete |
 | GROUND-01 | Phase 2 | Pending |
 | GROUND-02 | Phase 2 | Pending |
 | IDEAS-01 | Phase 3 | Pending |
