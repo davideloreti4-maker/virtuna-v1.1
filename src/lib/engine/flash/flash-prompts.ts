@@ -6,6 +6,11 @@
  *   Contains ALL 10 ARCHETYPE_DEFINITIONS verbatim + the output schema.
  *   TEXT input only — no video, no segments.
  *   NEVER interpolates Date.now() / Math.random() / request IDs.
+ * - `buildNicheAwareSystemPrompt(panel)` — niche-instantiated system prompt (D-05, Plan 03-01).
+ *   When panel.niche is non-null, folds selectPersonaSlots output into ONE system prompt's
+ *   archetype block. Duplicate-archetype slots encode the FYP/tough_crowd weighting by
+ *   repetition (~30% weighting for free, per D-05). Returns STABLE_FLASH_SYSTEM_PROMPT when
+ *   panel.niche is null (back-compat fallback). Byte-stable per {niche × contentType} tuple.
  * - `buildFlashUserContent(text, framing)` — assembles the volatile user message.
  *   `framing: "hook" | "idea" | "chat"` swaps ONLY the persona QUESTION + band VERBIAGE (D-04).
  *   Persona data comes from persona-registry.ts (D-05 — data-driven, NOT hardcoded).
@@ -14,8 +19,14 @@
  * Isolation: imports ONLY from wave3/persona-registry.ts. No fold/pipeline/aggregator/version.
  */
 
-import { ARCHETYPE_DEFINITIONS, ARCHETYPE_TRIGGERS, ARCHETYPES } from "../wave3/persona-registry";
-import type { Archetype } from "../wave3/persona-registry";
+import {
+  ARCHETYPE_DEFINITIONS,
+  ARCHETYPE_TRIGGERS,
+  ARCHETYPES,
+  selectPersonaSlots,
+} from "../wave3/persona-registry";
+import type { Archetype, PersonaSlot } from "../wave3/persona-registry";
+import type { ContentTypeSlug } from "../types";
 
 // ─── Framing types (D-04) ──────────────────────────────────────────────────────
 // "hook"  → "scrolling feed, first 2s, do you stop or scroll past?"
