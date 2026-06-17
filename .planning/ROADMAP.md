@@ -57,11 +57,11 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 **Wave 1**
 
 - [x] 02-01-PLAN.md — Thin code spine: corpus dirs + D-04 template skeletons + scripted regen compiler + KC_GEN_VERSION
-- [ ] 02-02-PLAN.md — Live-tier grounding assembler (GROUND-02): per-mode field-map, by-role profile, cold-start, fence, hard cap
+- [x] 02-02-PLAN.md — Live-tier grounding assembler (GROUND-02): per-mode field-map, by-role profile, cold-start, fence, hard cap
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 02-03-PLAN.md — Author BASE + Ideas pilot slice to full depth (owner-curated) + recompile
+- [x] 02-03-PLAN.md — Author BASE + Ideas pilot slice to full depth (owner-curated) + recompile
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -127,7 +127,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
-| 2. Knowledge-Core Generative Rebuild | 1/5 | Executing    | - |
+| 2. Knowledge-Core Generative Rebuild | 3/5 | In Progress|  |
 | 3. Ideas Tool | 0/TBD | Not started | - |
 | 4. Hooks Tool | 0/TBD | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
