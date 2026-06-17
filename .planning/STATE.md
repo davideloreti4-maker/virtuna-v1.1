@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-06-17T09:37:33.079Z"
-last_activity: 2026-06-17 -- Phase 02 planning complete
+last_updated: "2026-06-17T09:54:02.814Z"
+last_activity: 2026-06-17 -- Phase 02 execution started
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
-  percent: 20
+  total_plans: 9
+  completed_plans: 5
+  percent: 25
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 01 — engine-thread-foundation
+**Current focus:** Phase 02 — knowledge-core-generative-rebuild
 
 ## Current Position
 
-Phase: 02
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-17 -- Phase 02 planning complete
+Phase: 02 (knowledge-core-generative-rebuild) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 02
+Last activity: 2026-06-17 -- Phase 02 Plan 01 complete (corpus spine + regen + KC_GEN_VERSION)
 
 ## Hard Constraints (this milestone)
 
@@ -69,6 +69,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: reading_id FK is text not uuid — analysis_results.id is text on live DB; plan Pitfall #3 was incorrect; all FK semantics preserved
 - [Phase ?]: ThreadRow/MessageRow derive from Database public Tables post-regen; role narrowed to union at app layer
 - [Phase ?]: D-14 double-validation: validateBlock at write boundary AND on rehydration; invalid blocks become UnsupportedBlock sentinel
+- [Phase 02-01]: D-03 compile-time assembly — per-mode system prompts assembled at compile time in regen-kc.ts, not at runtime (resolves RESEARCH Open Q2)
+- [Phase 02-01]: KC_GEN_VERSION stamping deferred to Phase 3 where outputs are first persisted (resolves RESEARCH Open Q1)
 
 ### Pending Todos
 
@@ -88,9 +90,9 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T09:10:47.850Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-CONTEXT.md
+Last session: 2026-06-17T10:02:23Z
+Stopped at: Completed 02-01-PLAN.md (KC code spine)
+Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-02-PLAN.md
 
 ## Performance Metrics
 
@@ -100,3 +102,4 @@ Resume file: .planning/phases/02-knowledge-core-generative-rebuild/02-CONTEXT.md
 | Phase 01-engine-thread-foundation P03 | 7m | 3 tasks | 7 files |
 | Phase 01-engine-thread-foundation P04 | 6m | 2 tasks | 4 files |
 | Phase 01-engine-thread-foundation P02 | 35min | 3 tasks | 5 files |
+| Phase 02-knowledge-core-generative-rebuild P01 | 20min | 3 tasks | 7 files |
