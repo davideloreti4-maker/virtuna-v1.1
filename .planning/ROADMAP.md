@@ -51,9 +51,14 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
   1. A generation-grade Knowledge-Core exists — authored fresh as a shared generative base + per-mode slices (Ideas, Hooks, chat) — and is NOT retrofitted from the scoring core or the stale `training-data.json`.
   2. Each tool can assemble a tight curated context slice (niche + the relevant craft frame + the specific input) rather than the whole profile/KC, with the per-mode grounding-assembly mechanism in place to avoid signal dilution.
-  3. The rebuilt KC measurably outperforms the scoring-core baseline on a generative eval (blind comparison / SIM-1 self-judge delta), confirming generative craft over generic competence.
+  3. The rebuilt KC measurably outperforms the scoring-core baseline on a generative eval (blind comparison / SIM-1 self-judge delta), confirming generative craft over generic competence. *(D-12 relaxes this to an owner-blind rank vs raw-LLM + current-KC; no statistical eval artifact — see Plan 04.)*
 
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 02-01-PLAN.md — Thin code spine: corpus dirs + D-04 template skeletons + scripted regen compiler + KC_GEN_VERSION
+- [ ] 02-02-PLAN.md — Live-tier grounding assembler (GROUND-02): per-mode field-map, by-role profile, cold-start, fence, hard cap
+- [ ] 02-03-PLAN.md — Author BASE + Ideas pilot slice to full depth (owner-curated) + recompile
+- [ ] 02-04-PLAN.md — D-12 thin owner-blind gate on the Ideas pilot (gates replication)
+- [ ] 02-05-PLAN.md — Replicate proven shape: Hooks slice (full) + thin chat stance-slice + recompile
 **UI hint**: no
 
 ### Phase 3: Ideas Tool
@@ -110,7 +115,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
-| 2. Knowledge-Core Generative Rebuild | 0/TBD | Not started | - |
+| 2. Knowledge-Core Generative Rebuild | 0/5 | Not started | - |
 | 3. Ideas Tool | 0/TBD | Not started | - |
 | 4. Hooks Tool | 0/TBD | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
