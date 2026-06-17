@@ -1,51 +1,38 @@
-# RESUME HERE — Phase 02, mid-02-04 (KC blind gate)
+# RESUME HERE — Phase 02, mid-02-05 (owner curation parked)
 
-**Written:** 2026-06-17 · **Resume cmd:** `/gsd-execute-phase 2` (it discovers incomplete 02-04/02-05 and resumes)
+**Written:** 2026-06-17 (session 2) · **Resume cmd:** `/gsd-execute-phase 2` (discovers incomplete 02-05 and resumes)
 
 ## Where we are
-- **Wave 1 ✅** 02-01 (KC code spine) + 02-02 (live-tier assembler, 25 tests).
-- **Wave 2 ✅** 02-03 (BASE + Ideas pilot) — authored, research-grounded (Kallaway + Sandcastles), owner-curated, byte-stable. Committed.
-- **Wave 3 �◆ 02-04 IN PROGRESS** — blind gate. Gate script built + committed (`9ced6af8`). Ran once (1 prompt). **Result = conditional fail → fixes applied → RE-GATE pending.**
-- **Wave 4 ○** 02-05 (replicate shape to hooks.md + chat.md — still skeletons). BLOCKED until 02-04 passes.
+- **Waves 1–3 ✅** 02-01 (KC code spine) · 02-02 (live-tier assembler, 25 tests) · 02-03 (BASE + Ideas pilot) · **02-04 blind gate PASSED** — all have SUMMARY.md.
+- **Wave 4 ◆ 02-05 IN PROGRESS** — replicate the gate-proven shape to hooks + chat.
+  - **Task 1 ✅** committed `4c583438` — `hooks.md` (full-depth, 5 archetypes) + `chat.md` (thin stance-slice riding BASE) **drafted**.
+  - **Task 2 ⏸ PARKED — owner red-line.** `hooks.md` + `chat.md` await owner curation to taste bar. They still carry `<!-- DRAFT — pending owner curation -->` markers.
+  - **Task 3 ○** recompile all 4 prompts byte-stable + write 02-05 SUMMARY. Blocked on Task 2.
 
-## What happened in the gate (the key finding)
-Blind ran 1 prompt × 3 arms on **qwen3.7-plus** (new-KC vs current-KC vs raw-LLM, shuffled). Owner read all three:
-- **new-KC had the best craft substance** (most specific, contrarian, on-brief) BUT **lost on deliverable** — it dumped its internal scaffolding to the user (`[ARCHETYPE]` tags, `Topic/Angle/Mechanism/Fit/Substance` skeleton, a meta-note narrating its own diversity rule). Read like a strategy memo, not creator output.
-- **raw-LLM** was cleanest-presented but conventional ideas + engagement-bait CTA.
-- One new-KC idea ("index funds keep you poor, make asymmetric bets with your first $1000") was engagement-potent but **financially reckless** — the honesty discipline didn't flag it.
-- Verdict: **the gate did its job** — caught a fixable output-contract flaw BEFORE replicating to hooks/chat.
+## NEXT STEP (do this on resume) — finish 02-05
+1. **Owner curates** `.planning/corpus/hooks.md` + `chat.md` to the taste bar; remove the `<!-- DRAFT -->` markers.
+   - Apply the SAME improvements I made to `ideas.md` this session (see below) where they fit: clean output discipline (no scaffolding leak), ship the deliverable not a schema, register/tonal variety. The BASE router + "Scaffolding Is Private" already apply to all modes automatically — but the hooks/chat slices may need their own deliverable-boundary line like Ideas got.
+2. **Recompile:** `npx tsx scripts/regen-kc.ts` (byte-stable; run after any `.md` edit).
+3. **Verify:** `npx vitest run src/lib/engine/flash src/lib/kc` (was 61/0 green).
+4. **Write `02-05-SUMMARY.md`**, mark plan done, then phase verification/completion (`/gsd-execute-phase 2` will route to the verifier once no incomplete plans remain).
 
-## Fixes applied (committed `7f5dd58f`)
-1. **BASE → "Output Discipline — Scaffolding Is Private":** reason with the apparatus privately, ship a clean deliverable; no tags/labels/§-refs/meta-commentary. (In BASE so hooks+chat inherit.)
-2. **BASE → "Provocation, not recklessness":** comment-driving stances can't depend on advice that harms the audience; flag risk / give the defensible version.
-3. **Ideas slice:** Output Schema reframed as *internal reasoning scaffold → clean deliverable* (ship concept + hook + one plain-language why-it-works line, no scaffolding); responsibility guard added to the Counter-Intuitive archetype.
-4. `kc-gate.ts` per-call timeout 120s→300s (qwen3.7-plus + ~7.4k-token KC prompt is slow; the new-KC arm needs it).
+## What changed THIS session (beyond the 02-05 plan — KC iteration, all committed)
+Committed on `milestone/numen-tools`; latest clean commit `cae58ab5`.
+- **Qwen fallback fix** (`ce690676`): `src/lib/ai/{deepseek,gemini}.ts` now import `QWEN_REASONING_MODEL` (was a divergent `qwen3.6-plus` literal). Video model = `qwen3.5-omni-flash`, reasoning/text = `qwen3.7-plus` — confirmed correct.
+- **kc-gate fixes** (`scripts/kc-gate.ts`): SIM verdict mapping `green`→`stop` (was dead), sequential→parallel arms (was timing out).
+- **Ideas slice craft fixes** + **BASE mode-router** + **idea-question reframe** (`cae58ab5`):
+  - BASE `## Modes & Your Current Job` (TEST/IDEAS/HOOKS/CHAT — stay in lane). Fixes the Apollo-scores-instead-of-generates drift.
+  - Ideas: deliverable is the CONCEPT + substance ("ship the film, not the trailer"); no `[ARCHETYPE]` leak; FORMAT/SHOOT line per idea; de-templated "why it works."
+  - `flash-prompts.ts` idea-framing: judge the idea AS THE FINISHED VIDEO it describes (coherent concept-level gate).
+- **New prototype** `scripts/ideas-sim-rank.ts` — the moat loop (generate → per-idea SIM → rank). Works; output in `ideas-sim-rank.txt`.
 
-## NEXT STEP (do this on resume)
-**Re-run the gate, owner blind-ranks again:**
-```bash
-npx tsx scripts/kc-gate.ts --prompts "Give me 5 ideas for a personal finance creator on TikTok who helps 25-35 year-olds invest their first \$1000. I want to break out of generic money-tip content." --no-flash
-```
-(Flash sanity OFF for the *blind gate* only — a SIM score next to each output anchors the owner's rank. NOTE: SIM-1 Flash *text-mode* CAN score text and IS the product's verifier — keeping it out is a gate-integrity choice, not a capability limit. See the product-loop reminder below.)
-
-Then open `kc-gate-BLIND.txt`, rank best→worst, decode `kc-gate-KEY.txt`.
-**Watch for:** (a) new-KC now ships CLEAN (no `[ARCHETYPE]`/schema-label/meta-note leak); (b) the reckless-advice idea now flags risk or is replaced with a defensible version; (c) substance still strong; (d) ideas now push PAST the obvious-for-niche tropes and carry a non-fakeable concrete (new BASE Prohibition 6 + Test B).
-
-**Better re-gate (recommended):** cold-start under-sells the KC. If feasible, re-run WITH a realistic creator profile + 1-2 real exemplars to measure the product's true delta, not the corpus floor. See `.planning/research/kc-improvement-levers.md` (the cold-start caveat + the 8 levers to beat raw LLM "by a lot"; two free ones — anti-slop + specificity — already shipped in BASE).
-
-- **Gate PASS** = new-KC clearly best on substance AND presentation → mark 02-04 done, write SUMMARY, advance to **02-05** (replicate clean shape to hooks/chat; lean on parked hook taxonomy + format ontology in `.planning/research/`).
-- **Still failing** = note which dimension, loop back to `ideas.md`/BASE, re-gate.
+## ⭐ The key open finding (don't lose) — SIM is niche-blind
+The per-idea SIM gives a **flat 6/6/6/6/5** because the **text Flash path uses generic, niche-blind, equal-weighted personas** while the rich `selectPersonaSlots` + `NICHE_INSTANTIATION` + FYP-weighting engine (in `persona-registry.ts`) sits **unused** on the text path. This is **lever #10** in `.planning/research/kc-improvement-levers.md` — the top Phase-3 engine task. Full audit + the SIM-as-GATE-not-ranker reframe are in that file. **Do NOT try to fix discrimination in the corpus — it's a wiring + threshold-calibration job (Phase 3).**
 
 ## Key references
-- Corpus: `.planning/corpus/base.md` (now ~260 lines), `ideas.md` (~250). Compiler: `scripts/regen-kc.ts` (structure-agnostic, byte-stable). Run after any `.md` edit.
-- Research (also feeds 02-05): `.planning/research/kallaway-craft-extraction.md`, `sandcastles-structural-insights.md`.
-- Memory: `[[kc-corpus-authoring]]` (method + quality bar + state).
+- Corpus: `.planning/corpus/{base,ideas,hooks,chat}.md`. Compiler: `scripts/regen-kc.ts` (byte-stable; run after edits).
+- Backlog (READ THIS for Phase 3): `.planning/research/kc-improvement-levers.md` — 10 levers, SIM audit, the moat loop.
+- Research (feeds hooks/chat curation): `.planning/research/kallaway-craft-extraction.md`, `sandcastles-structural-insights.md`.
+- Memory: `[[kc-corpus-authoring]]`, `[[numen-tools-vision]]`, `[[engine-model-assignment]]`.
 - Config: USE_WORKTREES=false (sequential on main tree), executor=sonnet, verifier=opus, branch `milestone/numen-tools`, no branching.
-- Throwaway gate outputs `kc-gate-BLIND.txt` / `kc-gate-KEY.txt` are gitignored/transient — regenerate, don't trust stale ones.
-
-## ⭐ Product-loop reminder (owner flag, don't lose)
-The KC is only GENERATE. The moat = **generate → simulate against the SIM audience → rank + why**.
-That SIM verification loop is a downstream PRODUCT feature (Ideas/Test tool, "Chat & Test" slice),
-NOT the 02-04 corpus gate (which validates the generator by owner taste). SIM-1 Flash text-mode
-exists (Phase 1) and is the verifier. Altitude: SIM reacts to CONTENT (hook/script) — render an
-idea into its hook before SIM-ranking. Full note: `.planning/research/kc-improvement-levers.md` (§ "the product loop that IS the moat").
+- Transient (gitignored, regenerate — don't trust stale): `kc-gate-BLIND.txt` / `kc-gate-KEY.txt` / `ideas-sim-rank.txt`.
