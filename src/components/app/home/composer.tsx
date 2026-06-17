@@ -32,6 +32,7 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
+import { ToolChips, type ToolId } from "./tool-chips";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -44,6 +45,15 @@ const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
 const ERROR_NON_TIKTOK =
   "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
+
+// Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
+// Idea/Hooks/Chat are disabled in P1 (D-08) so their copy is for future use only.
+const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
+  test: PLACEHOLDER_EMPTY,
+  idea: "Describe an idea to test…",
+  hooks: "Paste a hook to test…",
+  chat: "Ask anything…",
+};
 
 export interface ComposerProps {
   className?: string;
@@ -60,6 +70,12 @@ export function Composer({ className }: ComposerProps) {
   const layout = hasSimulation ? "pinned" : "centered";
 
   const stream = useAnalysisStream();
+
+  // ── Tool chip state (D-06/D-07) ─────────────────────────────────────────────
+  // activeTool drives the placeholder + active-model field (D-09).
+  // Default: "test" — the only live tool in P1 (D-08).
+  // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
+  const [activeTool, setActiveTool] = useState<ToolId>("test");
 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -173,6 +189,12 @@ export function Composer({ className }: ComposerProps) {
     void handleSubmit();
   };
 
+  // Placeholder follows the active chip; in the pinned state the follow-up copy
+  // takes precedence so it's contextually accurate (D-07 / D-24).
+  const activePlaceholder = hasSimulation
+    ? PLACEHOLDER_ACTIVE
+    : PLACEHOLDER_BY_TOOL[activeTool];
+
   return (
     <form
       data-testid="composer"
@@ -195,6 +217,14 @@ export function Composer({ className }: ComposerProps) {
           !reducedMotion && "transition-shadow duration-200",
         )}
       >
+        {/* Tool chip row (D-07/D-08/D-09) — sits above the input row.
+            onSelect updates activeTool; it is NEVER a submit and MUST NOT arm
+            pendingNavRef.current (Pitfall #5 / WR-05). */}
+        <ToolChips
+          activeTool={activeTool}
+          onSelect={setActiveTool}
+          className="mb-2.5"
+        />
         {/* Upload drop zone — VideoUpload (bare) is always mounted (so its file
             input is part of the composer); the + control reveals/hides it. A
             staged file forces it visible so the preview never hides. */}
@@ -233,7 +263,7 @@ export function Composer({ className }: ComposerProps) {
             inputMode="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder={hasSimulation ? PLACEHOLDER_ACTIVE : PLACEHOLDER_EMPTY}
+            placeholder={activePlaceholder}
             aria-label={hasSimulation ? "Ask about this simulation" : "Paste a TikTok link"}
             aria-invalid={showUrlError || undefined}
             className={cn(
