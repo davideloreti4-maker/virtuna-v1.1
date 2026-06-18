@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md (Script Foundation)
-last_updated: "2026-06-18T12:44:27Z"
-last_activity: 2026-06-18 -- Phase 06 Plan 01 complete (script mode + ScriptCardBlockSchema + renderer + KC_SCRIPT_SYSTEM_PROMPT)
+stopped_at: Completed 06-02-PLAN.md (Remix Foundation)
+last_updated: "2026-06-18T12:54:46.394Z"
+last_activity: 2026-06-18 -- Phase 06 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 26
-  completed_plans: 22
-  percent: 73
+  completed_plans: 23
+  percent: 71
 ---
 
 # Project State
@@ -26,8 +26,8 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 06 (script-remix-tools) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 06
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-06-18 -- Phase 06 execution started
 
 ## Hard Constraints (this milestone)
@@ -103,6 +103,11 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 06-01]: ScriptCardBlockSchema band/fraction describe OPENER ONLY (Pitfall 5 honesty spine) — comment enforced on schema
 - [Phase 06-01]: ScriptCardRenderer 'Test full →' CTA stub with onTest? prop — wired in 06-05 (mirrors HookCardRenderer plan-01 pattern)
 - [Phase 06-01]: KC_SCRIPT_SYSTEM_PROMPT assembled at compile time via regen-kc.ts (D-03) — same pattern as hooks/chat
+- [Phase 06-02]: D-05a GREEN confirmed against live code — decode/adapt path never calls runPredictionPipeline/aggregateScores/ENGINE_VERSION; regression gate in 06-05
+- [Phase 06-02]: Route decision D-06/A1 — new SSE route /api/tools/remix/run (not /api/remix/adapt — wrong ownership model for open thread flow)
+- [Phase 06-02]: Cardinality A3 — 1 remix-card per run (concepts[0]); studio one-card aesthetic; 3-concept overgenerate is internal
+- [Phase 06-02]: RemixCardBlockSchema band/fraction describe ADAPTED HOOK scroll-stop ONLY (Pitfall 5 honesty spine)
+- [Phase 06-02]: sourceDecode in RemixCardBlock carries REAL 4-beat decode anatomy (D-05 moat) — NOT a metadata guess
 
 ### Roadmap Evolution
 
@@ -126,7 +131,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T11:55:52.367Z
+Last session: 2026-06-18T12:54:46.387Z
 Stopped at: Phase 6 context gathered
 Next: Phase 06 (Script & Remix Tools — un-deferred from v6.1; run /gsd-discuss-phase 6)
 Resume file: .planning/phases/06-script-remix-tools/06-CONTEXT.md
