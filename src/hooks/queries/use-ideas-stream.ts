@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * useIdeasStream — SSE consumer for POST /api/tools/ideas (Plan 04, Task 2).
+ * useIdeasStream — SSE consumer for POST /api/tools/ideas (Plan 04, Task 2; updated Plan 05-04, Task 3).
  *
  * CRITICAL: uses fetch + res.body.getReader() (NOT EventSource).
  * EventSource is GET-only and cannot POST a body. This matches use-expert-chat.ts
  * (RESEARCH Pattern 3, BLOCKER-1).
  *
- * SSE event contract (from 03-03-SUMMARY.md):
+ * SSE event contract (Plan 05-04 additions in CAPS):
+ *   event: STAGE   { name: string, status: "active"|"done" } — real pipeline stages (STUDIO-01)
  *   event: status  { message: string }       — "Generating ideas…" / "Scoring…"
  *   event: content { blocks: PartialCard[] } — card faces WITH scrollQuote (WARNING-4)
  *     NOTE: content event omits band/fraction — those arrive via score events.
  *   event: score   { seedHook, band, fraction, model } — per-card, fills band chip
+ *   event: FOLLOWUP { text: string } — model-authored follow-up turn (D-03)
  *   event: done    { count: N }
  *   event: error   { message: string }
  *
@@ -28,6 +30,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
+import type { StageState } from '@/components/thread/progress-checklist';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 

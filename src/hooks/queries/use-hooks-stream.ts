@@ -1,16 +1,18 @@
 'use client';
 
 /**
- * useHooksStream — SSE consumer for POST /api/tools/hooks (Plan 04-03, Task 1).
+ * useHooksStream — SSE consumer for POST /api/tools/hooks (Plan 04-03, Task 1; updated Plan 05-04, Task 3).
  *
  * CRITICAL: uses fetch + res.body.getReader() (NOT EventSource).
  * EventSource is GET-only and cannot POST a body (BLOCKER-1 from 03-04).
  *
- * SSE event contract (from 04-02-SUMMARY.md):
+ * SSE event contract (Plan 05-04 additions in CAPS):
+ *   event: STAGE   { name: string, status: "active"|"done" } — real pipeline stages (STUDIO-01)
  *   event: status  { message: string }       — "Generating hooks…" / "Scoring on your audience…"
  *   event: content { blocks: PartialHookCard[] } — card faces WITH scrollQuote (content-first)
  *     NOTE: content event omits band/fraction — those arrive via score events.
  *   event: score   { seedHook, rank, band, fraction, model } — per-card, fills band chip
+ *   event: FOLLOWUP { text: string } — model-authored follow-up turn (D-03)
  *   event: done    { count: N }
  *   event: error   { message: string }
  *
@@ -26,6 +28,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
+import type { StageState } from '@/components/thread/progress-checklist';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -56,9 +59,14 @@ export interface UseHooksStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /** Pipeline stages — populated by SSE stage events (STUDIO-01 / Plan 05-04). Ephemeral: shown during streaming. */
+  stages: StageState[];
+  /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
+  followupText: string | null;
   /**
    * Start the Hooks stream. Call from the composer Hook send.
    * ask: empty string → Auto mode (anchored idea); non-empty → seeded mode (D-09).
+   * Re-expose as the retry entry point for the skill-run error state (W2).
    */
   start: (ask: string, platform: string) => Promise<void>;
   /** Abort the in-flight stream. */
@@ -80,12 +88,17 @@ export function useHooksStream(): UseHooksStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  // Plan 05-04 additions: stage checklist + model follow-up text (STUDIO-01/02)
+  const [stages, setStages] = useState<StageState[]>([]);
+  const [followupText, setFollowupText] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
   // Keep a ref copy of streamingCards so score events can patch without stale closure
   const cardsRef = useRef<PartialHookCard[]>([]);
+  // Ref copy of stages so the upsert can patch without stale closure
+  const stagesRef = useRef<StageState[]>([]);
 
   const reset = useCallback(() => {
     setStreamingCards([]);
@@ -93,7 +106,10 @@ export function useHooksStream(): UseHooksStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setStages([]);
+    setFollowupText(null);
     cardsRef.current = [];
+    stagesRef.current = [];
   }, []);
 
   const stop = useCallback(() => {
@@ -115,7 +131,10 @@ export function useHooksStream(): UseHooksStreamReturn {
     setError(null);
     setIsDone(false);
     setIsStreaming(true);
+    setStages([]);
+    setFollowupText(null);
     cardsRef.current = [];
+    stagesRef.current = [];
 
     try {
       // CRITICAL: fetch + getReader, NOT EventSource (POST needs a body — BLOCKER-1).
@@ -163,7 +182,34 @@ export function useHooksStream(): UseHooksStreamReturn {
             continue; // malformed JSON — skip frame
           }
 
-          if (eventType === 'status') {
+          if (eventType === 'stage') {
+            // Upsert stage by name — preserve order of first appearance (STUDIO-01)
+            const stageName = typeof data.name === 'string' ? data.name : '';
+            const stageStatus = (data.status === 'active' || data.status === 'done')
+              ? data.status as StageState['status']
+              : 'pending';
+            if (stageName) {
+              const existing = stagesRef.current.find((s) => s.name === stageName);
+              let updated: StageState[];
+              if (existing) {
+                // Update status for the matching stage
+                updated = stagesRef.current.map((s) =>
+                  s.name === stageName ? { ...s, status: stageStatus } : s,
+                );
+              } else {
+                // First time we see this stage — append it
+                updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
+              }
+              stagesRef.current = updated;
+              if (isMountedRef.current) setStages([...updated]);
+            }
+
+          } else if (eventType === 'followup') {
+            // Model-authored follow-up turn (D-03)
+            const text = typeof data.text === 'string' ? data.text : null;
+            if (text && isMountedRef.current) setFollowupText(text);
+
+          } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
             if (isMountedRef.current) setStatusMessage(msg);
 
@@ -273,6 +319,8 @@ export function useHooksStream(): UseHooksStreamReturn {
     isStreaming,
     error,
     isDone,
+    stages,
+    followupText,
     start,
     stop,
     reset,
