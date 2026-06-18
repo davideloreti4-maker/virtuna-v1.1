@@ -189,3 +189,41 @@ No new threat surface beyond the plan's threat model:
 - Commit ab8c6597 (GREEN Task 3): FOUND
 - npx vitest run (full suite): 2419 PASS, 0 FAIL
 - npm run build: Compiled successfully
+
+---
+
+## Gap-Closure: One-Open-Thread-Per-User Fix (2026-06-18)
+
+### Root Cause
+
+`createOpenThreadLazy(userId)` relied on a 23505 unique-violation to be
+idempotent, but no unique constraint existed for open threads
+(`type='open', reading_id IS NULL`). The only unique index
+(`threads_reading_id_unique_idx`) only covers grounded threads
+(`reading_id IS NOT NULL`). Result: every tool generation created a NEW open
+thread → ideas, hooks, and /develop messages landed in different threads →
+"Hooks queued — check the thread below" showed nothing. Additionally,
+`getOpenThread` used bare `.maybeSingle()` which throws PGRST116 when >1 row
+matches → GET /api/threads/open returned 500 on reload.
+
+### Changes
+
+**`src/lib/threads/threads.ts` — `getOpenThread` fix (commit 64ba2457)**
+- Replaced `.maybeSingle()` with `.order("created_at", { ascending: true }).limit(1).maybeSingle()`
+- Canonical open thread = oldest. Safe under both pre-migration (duplicates) and post-migration state.
+- Never throws merely because duplicates exist.
+
+**`supabase/migrations/20260618000000_threads_one_open_per_user.sql` (commit 64ba2457)**
+- Step 1: Idempotent CTE consolidation — repoints messages from duplicate open threads to canonical (MIN created_at + id tiebreaker), deletes empty duplicates.
+- Step 2: `CREATE UNIQUE INDEX IF NOT EXISTS threads_open_user_unique_idx ON public.threads (user_id) WHERE type = 'open' AND reading_id IS NULL`
+- Consolidation runs before index creation (index would fail if dupes remain).
+- Migration NOT applied — orchestrator applies via Supabase MCP.
+
+**`src/lib/threads/__tests__/open-thread.test.ts` — regression tests (commit fd45cc47)**
+- `buildChain()` updated to include `order` + `limit` (new query shape).
+- New `describe("getOpenThread")` block: 4 tests — duplicate tolerance (does not throw, returns oldest), null on no thread, real-error throw, CR-01 user_id scope.
+
+### Test Results
+
+- Focused suite (open-thread + threads): 12 PASS, 0 FAIL
+- Full suite: 2423 PASS, 0 FAIL (+4 new regression tests)

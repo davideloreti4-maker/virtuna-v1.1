@@ -46,7 +46,7 @@ Last activity: 2026-06-18 -- Phase 04 execution started
 | 1 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Complete ✓ |
 | 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Complete ✓ |
 | 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Complete ✓ (rehydration → P4) |
-| 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Not started |
+| 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Complete ✓ (gap-closure applied 2026-06-18) |
 | 5 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
 
 ## Accumulated Context
@@ -101,10 +101,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-18T08:09:42.103Z
-Stopped at: Phase 04 Plan 01 complete
-Next: Phase 03 Plan 04 — Hooks Tool (Ideas→Hooks chain)
-Resume file: .planning/phases/04-hooks-tool/04-02-PLAN.md
+Last session: 2026-06-18T12:00:00.000Z
+Stopped at: Phase 04 gap-closure — one-open-thread-per-user fix (post-UAT)
+Next: Phase 05 Open Chat & Test Reframe
+Resume file: .planning/phases/05-open-chat/05-01-PLAN.md (to be created)
 
 ## Performance Metrics
 
@@ -122,3 +122,4 @@ Resume file: .planning/phases/04-hooks-tool/04-02-PLAN.md
 | Phase 04-hooks-tool PP01 | 4min | 2 tasks | 7 files |
 | Phase 04-hooks-tool P02 | 8min | 2 tasks | 6 files |
 | Phase 04-hooks-tool P03 | 30min | 4 tasks | 10 files |
+| Phase 04-hooks-tool P03 gap-closure | 15min | 2 tasks | 3 files (threads.ts, migration, tests) |
