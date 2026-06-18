@@ -235,7 +235,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Wave 1** *(parallel - disjoint files)*
 
 - [x] 07-01-PLAN.md - Audience domain core: types + goal-intent bias table (D-05) + Temperature x Disposition lens (D-02) + resolveAudienceWeights (array-shaped, General->DEFAULT) [AUD-04, AUD-06]
-- [ ] 07-02-PLAN.md - Persistence: `audiences` migration + `threads.active_audience_id` + audience-repo CRUD + virtual General/preset constants + types regen [AUD-01]
+- [x] 07-02-PLAN.md - Persistence: `audiences` migration + `threads.active_audience_id` + audience-repo CRUD + virtual General/preset constants + types regen [AUD-01]
 
 **Wave 2** *(blocked on Wave 1)*
 
