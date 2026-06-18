@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
-stopped_at: "Phase 5 context gathered (re-scoped: Studio Conversation Layer + new P6 Script & Remix)"
-last_updated: "2026-06-18T09:30:33.178Z"
-last_activity: 2026-06-18
+status: executing
+stopped_at: Phase 5 UI-SPEC approved
+last_updated: "2026-06-18T10:12:01.815Z"
+last_activity: 2026-06-18 -- Phase 05 planning complete
 progress:
   total_phases: 6
   completed_phases: 4
@@ -27,8 +27,8 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 Phase: 5
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-18
+Status: Ready to execute
+Last activity: 2026-06-18 -- Phase 05 planning complete
 
 ## Hard Constraints (this milestone)
 
@@ -102,10 +102,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T09:30:33.170Z
-Stopped at: Phase 5 context gathered (re-scoped: Studio Conversation Layer + new P6 Script & Remix)
+Last session: 2026-06-18T09:43:37.017Z
+Stopped at: Phase 5 UI-SPEC approved
 Next: Phase 05 Open Chat & Test Reframe
-Resume file: .planning/phases/05-open-chat-test-reframe/05-CONTEXT.md
+Resume file: .planning/phases/05-open-chat-test-reframe/05-UI-SPEC.md
 
 ## Performance Metrics
 
