@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-06-18T10:12:01.815Z"
-last_activity: 2026-06-18 -- Phase 05 planning complete
+stopped_at: Phase 05 Plan 01 complete
+last_updated: "2026-06-18T10:20:00.000Z"
+last_activity: 2026-06-18 -- 05-01 complete (open-chat backend: runChatPipeline + POST /api/tools/chat)
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 16
+  total_plans: 21
   completed_plans: 16
   percent: 67
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 04 — hooks-tool
+**Current focus:** Phase 05 — open-chat-test-reframe
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 05 planning complete
+Phase: 05 (open-chat-test-reframe) — EXECUTING
+Plan: 2 of 5
+Status: Executing Phase 05
+Last activity: 2026-06-18 -- 05-01 complete (open-chat backend: runChatPipeline + POST /api/tools/chat)
 
 ## Hard Constraints (this milestone)
 
@@ -83,6 +83,10 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: band-tier-rank-comparator
 - [Phase ?]: Test handoff seam: lifted state (handleTestHook) + HookTestContext for MessageBlocks pass-through (mirrors PlatformContext)
 - [Phase ?]: GET /api/threads/open: open-thread rehydration read-back closes P3 persistedBlocks={[]} debt
+- [Phase 05-01]: isColdStart mirrors assembler.ts isProfileThin exactly — single predicate, no divergence; update both in lockstep (D-08)
+- [Phase 05-01]: coldStart computed route-side before stream starts so meta frame leads SSE (Plan 05-03 gates nudge on this)
+- [Phase 05-01]: Callback-based runner (runChatPipeline onToken) rather than async generator — simpler route-driven SSE
+- [Phase 05-01]: MAX_PRIOR_TURNS=20 soft context cap on prior turns in anchor (D-01a)
 
 ### Pending Todos
 
@@ -102,10 +106,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T09:43:37.017Z
-Stopped at: Phase 5 UI-SPEC approved
-Next: Phase 05 Open Chat & Test Reframe
-Resume file: .planning/phases/05-open-chat-test-reframe/05-UI-SPEC.md
+Last session: 2026-06-18T10:20:00.000Z
+Stopped at: Phase 05 Plan 01 complete
+Next: Phase 05 Plan 02 (Test reframe)
+Resume file: .planning/phases/05-open-chat-test-reframe/05-02-PLAN.md
 
 ## Performance Metrics
 
@@ -124,3 +128,4 @@ Resume file: .planning/phases/05-open-chat-test-reframe/05-UI-SPEC.md
 | Phase 04-hooks-tool P02 | 8min | 2 tasks | 6 files |
 | Phase 04-hooks-tool P03 | 30min | 4 tasks | 10 files |
 | Phase 04-hooks-tool P03 gap-closure | 15min | 2 tasks | 3 files (threads.ts, migration, tests) |
+| Phase 05-open-chat-test-reframe P01 | 5min | 2 tasks | 3 files |

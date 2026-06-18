@@ -150,7 +150,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 1** *(parallel — disjoint files)*
 
-- [ ] 05-01-PLAN.md — Open-chat backend: chat-runner + POST /api/tools/chat SSE route (grounded markdown turns persisted to the open thread) [THREAD-03]
+- [x] 05-01-PLAN.md — Open-chat backend: chat-runner + POST /api/tools/chat SSE route (grounded markdown turns persisted to the open thread) [THREAD-03]
 - [ ] 05-02-PLAN.md — Test reframe: Reading hero → "Test · powered by SIM-1 Max" + chip/entry language + carried-brief above upload (presentation only, no ENGINE_VERSION bump) [TEST-01]
 
 **Wave 2** *(blocked on Wave 1; 03 & 04 parallel — disjoint files)*
@@ -189,5 +189,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
-| 5. Studio Conversation Layer | 0/5 | Not started | - |
+| 5. Studio Conversation Layer | 1/5 | In Progress | - |
 | 6. Script & Remix Tools | 0/TBD | Not started | - |
