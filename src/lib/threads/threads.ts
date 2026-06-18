@@ -171,6 +171,14 @@ export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
  * Returns null if none exists yet — callers create one lazily when needed.
  * Uses the service client so it can query by user_id without needing an
  * RLS session (server-side caller passes userId from the session).
+ *
+ * Defensive duplicate tolerance: orders by created_at ASC and takes the
+ * first row (oldest = canonical). Before the threads_open_user_unique_idx
+ * constraint was applied (migration 20260618000000), duplicate open threads
+ * could accumulate. Using .maybeSingle() would throw PGRST116 ("multiple rows
+ * returned") in that state — this query shape is safe under both old and new
+ * DB state. After the migration the index ensures at most one row matches, so
+ * order+limit adds no cost.
  */
 export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
   const supabase = createServiceClient();
@@ -181,6 +189,8 @@ export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
     .eq("user_id", userId)
     .eq("type", "open")
     .is("reading_id", null)
+    .order("created_at", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
