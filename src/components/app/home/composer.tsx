@@ -300,6 +300,62 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     if (activeTool === "chat") {
       const ask = trimmedUrl;
       setUrl(""); // clear input after send
+
+      // ── Plan 05-05: Refine-intent detection (D-04 / D-05) ──────────────────
+      // Before routing to a plain chat turn, check whether the message is a
+      // bounded refine request ("make hook 1 punchier", "tighten idea 2").
+      // detectRefineIntent requires: refine verb + card noun + ordinal — a plain
+      // question ("what should I post?") returns isRefine: false (D-05 no false positive).
+      // CRITICAL: refine fires because the user EXPLICITLY sent a refine message —
+      // this is an explicit send, not an auto-fire (D-05).
+      // On a refine, routes to /api/tools/refine via hooks.startRefine / ideas.startRefine
+      // (see use-hooks-stream.ts / use-ideas-stream.ts for the SSE consumer).
+      const refineIntent = detectRefineIntent(ask);
+      if (refineIntent.isRefine && refineIntent.skill && refineIntent.cardRef !== undefined) {
+        const { skill, cardRef, instruction } = refineIntent;
+
+        // Look up the original card to build the anchor.
+        // We check persisted blocks first (for cards from prior sessions),
+        // then the in-memory streaming blocks (for cards from this session).
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allHookBlocks: any[] = [...persistedHookBlocks, ...hooksBlocks];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allIdeaBlocks: any[] = [...persistedIdeaBlocks, ...ideasBlocks];
+
+        // Build a compact anchor string from the found card (if available).
+        // If the card isn't found by cardRef, fall back to the raw ask as the anchor.
+        let anchor = ask; // fallback
+        if (skill === "hooks") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const foundCard = allHookBlocks.find((b: any) => b?.props?.rank === cardRef);
+          if (foundCard?.props) {
+            const { buildRefineAnchor } = await import("@/lib/tools/refine");
+            anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          }
+          // Route to hooks stream refine path — error surfaces via hooks.error → SkillRunError
+          hooks.reset();
+          // Switch to hooks view so the new card renders in the hooks thread
+          setActiveTool("hooks");
+          await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef });
+        } else {
+          // skill === "idea"
+          // Ideas are 1-based position in the array (not a rank field)
+          const ideaIndex = cardRef - 1;
+          const foundCard = allIdeaBlocks[ideaIndex];
+          if (foundCard?.props) {
+            const { buildRefineAnchor } = await import("@/lib/tools/refine");
+            anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          }
+          // Route to ideas stream refine path — error surfaces via ideas.error → SkillRunError
+          ideas.reset();
+          // Switch to ideas view so the new card renders in the ideas thread
+          setActiveTool("idea");
+          await ideas.startRefine({ skill: "idea", instruction: instruction ?? ask, anchor, cardRef });
+        }
+        return;
+      }
+
+      // ── Plain chat turn (no refine intent detected) ────────────────────────
       chat.reset(); // clear prior error/coldStart for the new turn
       // chat.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await chat.start(ask, platform);
@@ -366,7 +422,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, platform]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -430,7 +487,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
 
       {/* Chat thread view — renders above the composer when the Chat tool is active.
           ChatThreadView owns its own empty state + cold-start nudge + error state.
-          CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05). */}
+          CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05).
+          Plan 05-05: onSuggestChain taps switch the active tool + kick the skill.
+          The CTA tap fires ONLY on onClick — never auto-fires (D-05). */}
       {showChatView && (
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
@@ -441,6 +500,19 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           error={chat.error}
           niche={undefined}
           platform={platform}
+          onSuggestChain={(ctaLabel) => {
+            // Map ctaLabel to a tool switch + skill run on explicit tap (D-05).
+            // "Turn this into hooks →" → switch to hooks, run Auto mode.
+            // "Develop this →" → switch to idea, run Auto mode.
+            // This fires ONLY because the user explicitly tapped — not auto-fire.
+            if (ctaLabel.toLowerCase().includes("hook")) {
+              setActiveTool("hooks");
+              void hooks.start("", platform);
+            } else if (ctaLabel.toLowerCase().includes("idea") || ctaLabel.toLowerCase().includes("develop")) {
+              setActiveTool("idea");
+              void ideas.start("", platform);
+            }
+          }}
         />
       )}
     </>
