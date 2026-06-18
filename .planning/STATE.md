@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: "Phase 4 planned (3 plans, plan-checker PASS). Next: /gsd-execute-phase 4."
-stopped_at: Phase 4 planned
-last_updated: "2026-06-18T07:16:22.839Z"
-last_activity: 2026-06-18 -- Phase 04 (Hooks Tool) planned: 3 plans across 3 waves (skip research + skip UI-SPEC per owner — explicit P3 clone). Plan-checker PASS iteration 1, all D-01..D-11 covered, deferred items excluded. Rehydration debt from P3 folded into 04-03.
+status: executing
+stopped_at: Phase 04 Plan 01 complete
+last_updated: "2026-06-18T07:43:33.368Z"
+last_activity: 2026-06-18 -- Phase 04 execution started
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 16
+  completed_plans: 14
   percent: 60
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 04 — hooks-tool (next)
+**Current focus:** Phase 04 — hooks-tool
 
 ## Current Position
 
-Phase: 04 (hooks-tool) — PLANNED (3 plans, plan-checker PASS)
-Plan: 0 of 3 executed
-Status: Phase 4 planned. Next: /gsd-execute-phase 4.
-Last activity: 2026-06-18 -- Phase 03 UAT passed (steps 2/3/4/6/7); fixed /home hang (dead block-registry.tsx), dev-shim LLM timeout, Qwen json_object 400, persist blocks-not-iterable. Reload-rehydration deferred to P4 (owner).
+Phase: 04 (hooks-tool) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-06-18 -- Phase 04 execution started
 
 ## Hard Constraints (this milestone)
 
@@ -98,10 +98,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-18T07:16:22.835Z
-Stopped at: Phase 4 context gathered
+Last session: 2026-06-18T07:43:33.364Z
+Stopped at: Phase 04 Plan 01 complete
 Next: Phase 03 Plan 04 — Hooks Tool (Ideas→Hooks chain)
-Resume file: .planning/phases/04-hooks-tool/04-CONTEXT.md
+Resume file: .planning/phases/04-hooks-tool/04-02-PLAN.md
 
 ## Performance Metrics
 
@@ -116,3 +116,4 @@ Resume file: .planning/phases/04-hooks-tool/04-CONTEXT.md
 | Phase 03-ideas-tool P01 | 45min | 3 tasks | 4 files |
 | Phase 03-ideas-tool P02 | 40min | 3 tasks | 9 files |
 | Phase 03-ideas-tool P03 | 15min | 2 tasks | 7 files |
+| Phase 04-hooks-tool PP01 | 4min | 2 tasks | 7 files |
