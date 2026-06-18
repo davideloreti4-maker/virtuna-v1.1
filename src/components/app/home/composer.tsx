@@ -123,14 +123,11 @@ export function Composer({ className }: ComposerProps) {
   const [testBrief, setTestBrief] = useState<{ hookLine: string; audienceArchetype: string } | null>(null);
 
   // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
-  // Loaded on mount from GET /api/threads/open. Wired in Task 3; interim = [].
+  // Loaded on mount from GET /api/threads/open.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
-  // Setter refs for Task 3 to wire (exposed via the useEffect below)
-  void setPersistedIdeaBlocks;
-  void setPersistedHookBlocks;
 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -154,6 +151,37 @@ export function Composer({ className }: ComposerProps) {
     : activeTool === "hooks"
       ? !submitting && !hooks.isStreaming
       : (isValidTikTok || file !== null) && !submitting;
+
+  // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
+  // On mount, fetch the user's open-thread messages from GET /api/threads/open
+  // and split into idea-card + hook-card blocks for their respective thread views.
+  // Guard: unauthenticated → 401 → silent (no crash; views render nothing extra).
+  // Does NOT block the composer render (views already no-op when idle).
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPersistedBlocks() {
+      try {
+        const res = await fetch('/api/threads/open');
+        if (!res.ok) return; // 401 or other error — silent (user not logged in yet)
+        const data = await res.json() as {
+          messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+        };
+        if (cancelled) return;
+        const messages = data.messages ?? [];
+        // Flatten all blocks across all messages, split by type
+        const allBlocks = messages.flatMap((m) => m.blocks ?? []);
+        const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
+        const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
+        setPersistedIdeaBlocks(ideaBlocks);
+        setPersistedHookBlocks(hookBlocks);
+      } catch {
+        // Network error or parse error — silent (no crash, views stay idle)
+      }
+    }
+    void loadPersistedBlocks();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty dep set — run once on mount
 
   // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
   // Invoked by HookCardRenderer via HookTestContext when the creator clicks
