@@ -89,16 +89,17 @@ export function AudienceManager({ className }: AudienceManagerProps) {
 
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      {/* Header */}
+      {/* Header — mirrors the competitors page pattern (text-2xl font-medium) */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Your audiences</h1>
+          <h1 className="text-2xl font-medium text-foreground">Your audiences</h1>
           <p className="mt-1 text-sm text-foreground-secondary">
             Who Numen writes and tests for.
           </p>
         </div>
         <Button
           variant="primary"
+          size="sm"
           onClick={() => router.push("/audience/new")}
           className="shrink-0 pointer-coarse:h-11"
         >
