@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: "Phase 3 closed out. Next: Phase 4 (Hooks Tool) — /gsd-discuss-phase 4."
-stopped_at: Phase 4 context gathered
+status: "Phase 4 planned (3 plans, plan-checker PASS). Next: /gsd-execute-phase 4."
+stopped_at: Phase 4 planned
 last_updated: "2026-06-18T07:16:22.839Z"
-last_activity: 2026-06-18 -- Phase 03 UAT passed (steps 2/3/4/6/7); fixed /home hang (dead block-registry.tsx), dev-shim LLM timeout, Qwen json_object 400, persist blocks-not-iterable. Reload-rehydration deferred to P4 (owner).
+last_activity: 2026-06-18 -- Phase 04 (Hooks Tool) planned: 3 plans across 3 waves (skip research + skip UI-SPEC per owner — explicit P3 clone). Plan-checker PASS iteration 1, all D-01..D-11 covered, deferred items excluded. Rehydration debt from P3 folded into 04-03.
 progress:
   total_phases: 5
   completed_phases: 3
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 03 (ideas-tool) — COMPLETE ✓ (UAT passed 2026-06-18)
-Plan: 4 of 4 complete
-Status: Phase 3 closed out. Next: Phase 4 (Hooks Tool) — /gsd-discuss-phase 4.
+Phase: 04 (hooks-tool) — PLANNED (3 plans, plan-checker PASS)
+Plan: 0 of 3 executed
+Status: Phase 4 planned. Next: /gsd-execute-phase 4.
 Last activity: 2026-06-18 -- Phase 03 UAT passed (steps 2/3/4/6/7); fixed /home hang (dead block-registry.tsx), dev-shim LLM timeout, Qwen json_object 400, persist blocks-not-iterable. Reload-rehydration deferred to P4 (owner).
 
 ## Hard Constraints (this milestone)
