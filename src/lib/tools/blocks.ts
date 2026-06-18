@@ -97,6 +97,46 @@ export const IdeaCardBlockSchema = z.object({
 
 export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 
+// ─── Hook-card block ──────────────────────────────────────────────────────────
+// D-11: schema-validated hook card carrying the hook anatomy + embedded Flash
+// band signal. No model-generated UI — the model emits these props only; the
+// HookCardRenderer component owns layout (THREAD-04).
+//
+// Face (always visible, D-11):
+//   hookLine · audienceArchetype (D-03) · scrollQuote (lead, D-02/D-04) · rank badge
+// Expand (tap, D-08):
+//   mechanism · seedHook · channel (optional multi-modal hint)
+// Secondary chip (D-04): band + fraction + model "sim1-flash"
+// CTA (D-05): "Test full →" affordance with onTest seam (wired in Plan 03)
+//
+// D-04: NO craft-archetype field (BOLD/GAP/CONTRARIAN/RESEARCH/NARRATIVE/QUESTION).
+//   The audienceArchetype field is the AUDIENCE persona tag (D-03), not a craft slug.
+//   mechanism is prose reasoning — never a craft slug.
+//
+// channel: multi-modal hint (spoken/visual/caption/edit/audio) per corpus/hooks.md.
+//   nullable — not every hook maps to a specific delivery channel.
+
+export const HookCardBlockSchema = z.object({
+  type: z.literal("hook-card"),
+  props: z.object({
+    // Hook anatomy (D-11)
+    hookLine: z.string(),              // the verbatim/executable hook text
+    audienceArchetype: z.string(),     // D-03 tag from deriveAudienceArchetype (audience persona, NOT craft)
+    mechanism: z.string(),             // named attention mechanism — prose, NEVER a craft slug (D-04)
+    seedHook: z.string(),              // the one-line hook the SIM reacted to (may equal hookLine)
+    rank: z.number().int().positive(), // #1..N rank position (D-01)
+    // Embedded Flash signal (D-02/D-04/D-10)
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string(),              // e.g. "6/10 stop"
+    scrollQuote: z.string(),           // lead per-persona scroll quote (D-02/D-04 texture)
+    model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
+    // Multi-modal hint (corpus/hooks.md) — nullable
+    channel: z.string().nullable(),    // e.g. "spoken", "visual", "caption", "edit", "audio"
+  }),
+});
+
+export type HookCardBlock = z.infer<typeof HookCardBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -104,6 +144,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   BandBlockSchema,
   PersonasBlockSchema,
   IdeaCardBlockSchema,
+  HookCardBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;

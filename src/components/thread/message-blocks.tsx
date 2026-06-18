@@ -15,6 +15,7 @@ import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
 import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
+import { HookCardRenderer } from '@/components/thread/hook-card-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -25,6 +26,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   band: BandBlockRenderer,
   personas: PersonasBlockRenderer,
   "idea-card": IdeaCardRenderer,
+  "hook-card": HookCardRenderer,
 };
 
 export interface MessageBlocksProps {
