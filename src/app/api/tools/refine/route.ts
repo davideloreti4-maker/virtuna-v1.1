@@ -80,6 +80,7 @@ export async function POST(request: Request): Promise<Response> {
     instruction?: unknown;
     anchor?: unknown;
     cardRef?: unknown;
+    platform?: unknown;
   } = {};
   try {
     body = await request.json();
@@ -91,6 +92,8 @@ export async function POST(request: Request): Promise<Response> {
   const rawInstruction = typeof body.instruction === "string" ? body.instruction : "";
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : "";
   const rawCardRef = typeof body.cardRef === "number" ? body.cardRef : undefined;
+  // WR-07: accept platform from the client; default to "tiktok" only if absent.
+  const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
 
   // WR-02: reject cardRef that is present but not a positive integer (>= 1)
   if (rawCardRef !== undefined) {
@@ -170,7 +173,7 @@ export async function POST(request: Request): Promise<Response> {
         if (skill === "hooks") {
           const result = await runHooksPipeline({
             ask: refinedAsk,
-            platform: "tiktok",    // scoped re-run uses tiktok default (instruction drives the content, not platform)
+            platform: rawPlatform, // WR-07: use the client's selected platform (default "tiktok" if not sent)
             profileRow: profileRow ?? null,
             anchor: rawAnchor || undefined,
           });
@@ -178,7 +181,7 @@ export async function POST(request: Request): Promise<Response> {
         } else {
           const result = await runIdeasPipeline({
             ask: refinedAsk,
-            platform: "tiktok",
+            platform: rawPlatform, // WR-07: use the client's selected platform (default "tiktok" if not sent)
             profileRow: profileRow ?? null,
           });
           ideasBlocks = result.blocks;

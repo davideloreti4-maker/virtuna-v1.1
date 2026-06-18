@@ -81,7 +81,7 @@ export interface UseIdeasStreamReturn {
    * surfaces through this hook's error state → the Plan-04 SkillRunError surface.
    * NEVER called on render — only on explicit user send (D-05).
    */
-  startRefine: (body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number }) => Promise<void>;
+  startRefine: (body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number; platform?: string }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -322,7 +322,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
    * NEVER called on render — only on explicit user send (D-05).
    */
   const startRefine = useCallback(async (
-    body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number },
+    body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number; platform?: string },
   ) => {
     abortRef.current?.abort();
     const controller = new AbortController();
