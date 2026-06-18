@@ -37,8 +37,8 @@
  * ## D-09 compliance
  *
  * Spine: [Remix or Idea] → Hooks → Script → Test.
- * placeholder entries for hooks→script, script→test, remix→hooks are pre-registered
- * so P6 fills endpoint + wires the renderer, not this file's structure.
+ * LIVE entries for hooks→script ("/api/tools/script"), script→test (null/context),
+ * and remix→hooks ("/api/tools/ideas/develop") — all wired in 06-05.
  *
  * Pure data + types module — NO React, NO fetch. Tree-shakeable on the client.
  */
@@ -52,8 +52,8 @@
 export type SkillId =
   | "idea"
   | "hooks"
-  | "script"   // Phase 6 — not yet implemented
-  | "remix"    // Phase 6 — not yet implemented
+  | "script"   // Phase 6 — live (06-05)
+  | "remix"    // Phase 6 — live (06-05)
   | "test";
 
 // ─── ChainHandoff interface ───────────────────────────────────────────────────
@@ -118,37 +118,42 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     anchorFrom: "context",
   },
 
-  // ── P6 PLACEHOLDER: Hooks → Script ───────────────────────────────────────────
-  // P6 sets endpoint to the script route once the Script runner is implemented.
-  // anchorFrom "card" — hookLine is the anchor the script develops.
+  // ── P6 LIVE: Hooks → Script ──────────────────────────────────────────────────
+  // "Write script →" on HookCardRenderer POSTs hookLine as anchor to /api/tools/script.
+  // anchorFrom "card" — hookLine is the anchor; the route accepts { anchor, ... }.
+  // Card-POST model: HookCardRenderer builds the fetch directly (mirrors idea→hooks).
+  // PINNED: /api/tools/script accepts { ask?, anchor, platform } (06-03-SUMMARY.md).
   {
     from: "hooks",
     to: "script",
     ctaLabel: "Write script →",
-    endpoint: null,           // P6: set to "/api/tools/script" when implemented
+    endpoint: "/api/tools/script",   // P6 LIVE — set 2026-06-18 (06-05)
     anchorFrom: "card",
   },
 
-  // ── P6 PLACEHOLDER: Script → Test ────────────────────────────────────────────
-  // After a script is generated, "Test full →" carries it into the Test reading.
-  // anchorFrom "context" mirrors the hooks→test pattern.
+  // ── P6 LIVE: Script → Test ────────────────────────────────────────────────────
+  // After a script is generated, "Test full →" carries the script opener into Test.
+  // anchorFrom "context" mirrors the hooks→test pattern (HookTestContext).
+  // ScriptTestContext mediates the handoff — no card-level fetch on click.
   {
     from: "script",
     to: "test",
     ctaLabel: "Test full →",
-    endpoint: null,           // P6: context handoff (same HookTestContext pattern)
+    endpoint: null,           // context handoff — ScriptTestContext mediates (same as hooks→test)
     anchorFrom: "context",
   },
 
-  // ── P6 PLACEHOLDER: Remix → Hooks ────────────────────────────────────────────
-  // Remix is an alternate funnel-top entry; its output feeds the Hooks chain.
-  // Remix decodes a trending/competitor video → generates ideas/hooks from it.
-  // Prior art: src/app/api/remix/adapt/route.ts + milestone/viral-remix worktree.
+  // ── P6 LIVE: Remix → Hooks ───────────────────────────────────────────────────
+  // "Develop into hooks →" on RemixCardRenderer POSTs the adapted hook to /develop.
+  // anchorFrom "card" — the adaptedHook IS the anchor (ideaId omitted, anchor present).
+  // REUSE PATH CONFIRMED: /api/tools/ideas/develop payload { ideaId?, anchor, platform }
+  // accepts ideaId absent + anchor present — matches exactly (03-03-SUMMARY.md PINNED).
+  // Payload contract asserted in chain-handoff.test.ts (payload-contract test).
   {
     from: "remix",
     to: "hooks",
     ctaLabel: "Develop into hooks →",
-    endpoint: null,           // P6: set to "/api/tools/remix/adapt" when implemented
+    endpoint: "/api/tools/ideas/develop",  // P6 LIVE — reuse path confirmed 2026-06-18 (06-05)
     anchorFrom: "card",
   },
 ];

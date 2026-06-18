@@ -23,11 +23,12 @@
 
 import { useState } from 'react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
+import { useOnTestScript } from '@/lib/script-test-context';
 
 export interface ScriptCardRendererProps {
   block: ScriptCardBlock;
   /** Optional: wired by Plan 06-05 to route script→Test handoff.
-   *  When absent, CTA renders as a stub (plan-01 behavior). */
+   *  When absent, reads from ScriptTestContext; falls back to stub if neither present. */
   onTest?: () => void;
 }
 
@@ -46,7 +47,7 @@ const BEAT_LABEL_STYLE: React.CSSProperties = {
   letterSpacing: '0.08em',
 };
 
-export function ScriptCardRenderer({ block, onTest }: ScriptCardRendererProps) {
+export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
   const {
     beats,
     openingBeatSeed,
@@ -54,6 +55,23 @@ export function ScriptCardRenderer({ block, onTest }: ScriptCardRendererProps) {
     fraction,
     scrollQuote,
   } = block.props;
+
+  // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
+  // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
+  const onTestCtx = useOnTestScript();
+
+  // Resolve: explicit prop > context > null (stub)
+  const resolvedOnTest = onTestProp ?? (onTestCtx
+    ? () => {
+        // Build script brief from opener seed + first beat content
+        const openerLine = openingBeatSeed || (beats[0]?.content ?? '');
+        const brief = beats.map((b) => `[${b.label}] ${b.content}`).join(' / ').slice(0, 400);
+        onTestCtx(openerLine, brief);
+      }
+    : undefined);
+
+  // Alias for cleaner JSX below
+  const onTest = resolvedOnTest;
 
   const [expandedBeats, setExpandedBeats] = useState<Set<number>>(new Set([0]));
   const bandColor = BAND_COLOR[band];
