@@ -30,7 +30,25 @@ findings:
   warning: 8
   info: 5
   total: 15
-status: issues_found
+status: partially_resolved
+resolved_at: 2026-06-18T13:30:00Z
+resolved_findings:
+  - CR-01  # fenced instruction + card text in note prompts
+  - CR-02  # idea cardRef resolved from single pool
+  - WR-01  # tied digit to card noun in detectRefineIntent
+  - WR-02  # server cardRef bounds check; client guards unresolved card
+  - WR-04  # fixed score handler over-stamping in use-ideas-stream start()
+  - WR-05  # useEffect unmount cleanup on isMountedRef in all three stream hooks
+  - WR-07  # platform threaded through composer → startRefine → pipeline
+deferred_findings:
+  - WR-03  # deferred — design decision (shared url field for chat vs test)
+  - WR-06  # deferred — design decision (nudge persistence contract)
+  - WR-08  # deferred — maintainability/lint, no present crash
+  - IN-01  # deferred — dead rate-limit constants, noise only
+  - IN-02  # deferred — chatCTA sourcing hack, P6 concern
+  - IN-03  # deferred — stale type cast, not a bug
+  - IN-04  # deferred — key collision, low risk
+  - IN-05  # deferred — stale comment
 ---
 
 # Phase 05: Code Review Report
