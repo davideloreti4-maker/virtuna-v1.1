@@ -27,6 +27,7 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
+  UsersThree,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -226,6 +227,7 @@ export function Sidebar() {
   const { data: profile } = useProfile();
 
   const isOnSettings = pathname.startsWith("/settings");
+  const isOnAudience = pathname.startsWith("/audience");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -328,6 +330,14 @@ export function Sidebar() {
                 isActive={isOnSettings}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/settings")}
+              />
+              {/* Audience Manager — above Simulations, D-04 per-thread pin entry point */}
+              <NavItem
+                icon={UsersThree}
+                label="Audience"
+                isActive={isOnAudience}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/audience")}
               />
               <SidebarAccountSelector isCollapsed={effectiveCollapsed} />
             </div>

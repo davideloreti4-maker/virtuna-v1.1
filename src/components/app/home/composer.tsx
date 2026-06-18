@@ -46,6 +46,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
 import { ToolChips, type ToolId } from "./tool-chips";
 import { PlatformChip, type Platform } from "./platform-chip";
+import { AudienceChip } from "./audience-chip";
 import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
 import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
 import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
@@ -110,6 +111,11 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Default: "tiktok". The user can change per send via the chip.
   // Sent as the first-class platform param to the Ideas route.
   const [platform, setPlatform] = useState<Platform>("tiktok");
+
+  // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
+  // Captured on mount from GET /api/threads/open (returns threadId).
+  // Null before first thread is created (first Ideas/Hooks send creates it).
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
 
   // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
   // Loaded on mount from GET /api/threads/open. Declared before the view gates
@@ -246,9 +252,12 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const res = await fetch('/api/threads/open');
         if (!res.ok) return; // 401 or other error — silent (user not logged in yet)
         const data = await res.json() as {
+          threadId?: string;
           messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
         };
         if (cancelled) return;
+        // Capture thread id for AudienceChip per-thread pin (07-05 / D-04)
+        if (data.threadId) setOpenThreadId(data.threadId);
         const messages = data.messages ?? [];
         // Flatten all blocks across all messages, split by type
         const allBlocks = messages.flatMap((m) => m.blocks ?? []);
@@ -726,6 +735,16 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               <PlatformChip
                 value={platform}
                 onChange={setPlatform}
+                className="ml-1"
+              />
+            )}
+            {/* Audience chip — per-thread pin (07-05 / D-04).
+                Present under the same showPlatformChip gating set.
+                Single collapsed pill: "for {platform} · {name}".
+                General = neutral; calibrated = coral (moat signal). */}
+            {showPlatformChip && (
+              <AudienceChip
+                threadId={openThreadId}
                 className="ml-1"
               />
             )}
