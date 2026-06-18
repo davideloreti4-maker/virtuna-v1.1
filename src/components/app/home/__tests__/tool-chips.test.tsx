@@ -6,10 +6,10 @@
  *  - Clicking "test" fires onSelect("test").
  *  - Clicking "idea" fires onSelect("idea") (live since P3).
  *  - Clicking "hooks" fires onSelect("hooks") (live since P4 — D-09).
- *  - Clicking a disabled chip (chat only) does NOT fire onSelect.
+ *  - Clicking "chat" fires onSelect("chat") (live since P5 — D-05).
  *  - Active-model label reads "SIM-1 Max" when "test" is active.
  *  - Active-model label reads "SIM-1 Flash" when a non-test chip would be active.
- *  - Only Chat remains disabled with "coming soon" affordance (P5).
+ *  - All four chips live; no "coming soon" affordance remains (P5 flipped Chat live).
  *  - Reserved cost slot affordance exists on chips.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -74,13 +74,13 @@ describe('ToolChips — chip row (D-07/D-08)', () => {
     expect(onSelect).toHaveBeenCalledWith('hooks');
   });
 
-  it('does NOT fire onSelect when chat chip is clicked (disabled — P5)', () => {
+  it('fires onSelect("chat") when the Chat chip is clicked (live since P5 — D-05)', () => {
     const onSelect = vi.fn();
     renderChips('test', onSelect);
     const chatBtn = getChipByLabel('Chat');
-    expect(chatBtn).toBeDisabled();
+    expect(chatBtn).not.toBeDisabled();
     fireEvent.click(chatBtn);
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('chat');
   });
 
   it('marks the active chip with aria-pressed="true"', () => {
@@ -89,22 +89,23 @@ describe('ToolChips — chip row (D-07/D-08)', () => {
     expect(testBtn).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('marks only Chat as disabled (Test/Idea/Hooks all live — P5 for Chat)', () => {
+  it('marks all four chips live — none disabled (Chat flipped live in P5)', () => {
     renderChips('test');
-    // Test + Idea live (P1/P3); Hooks live (P4); only Chat disabled (P5)
+    // Test + Idea live (P1/P3); Hooks live (P4); Chat live (P5 — D-05)
+    expect(getChipByLabel('Test')).not.toBeDisabled();
     expect(getChipByLabel('Idea')).not.toBeDisabled();
     expect(getChipByLabel('Hooks')).not.toBeDisabled();
-    expect(getChipByLabel('Chat')).toBeDisabled();
+    expect(getChipByLabel('Chat')).not.toBeDisabled();
   });
 
-  it('carries a "coming soon" sr-only affordance only on Chat (D-08)', () => {
+  it('no longer carries a "coming soon" sr-only affordance (all chips live — P5)', () => {
     const { container } = renderChips('test');
     const srOnlyEls = container.querySelectorAll('.sr-only');
-    // Only Chat remains disabled; exactly 1 "coming soon" span
+    // Chat went live in P5 — no chip remains "coming soon"
     const comingSoonEls = Array.from(srOnlyEls).filter(
       (el) => el.textContent?.toLowerCase().includes('coming soon'),
     );
-    expect(comingSoonEls.length).toBe(1);
+    expect(comingSoonEls.length).toBe(0);
   });
 });
 
