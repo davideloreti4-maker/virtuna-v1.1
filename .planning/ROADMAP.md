@@ -235,7 +235,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: AUD-01 (object + CRUD + persistence), AUD-02 (calibration pipeline), AUD-03 (General default + regression gate), AUD-04 (audience -> react/SIM path), AUD-05 (steer proof in ideas-runner), AUD-06 (goal -> deterministic reweight), AUD-07 (Manager UI + presets + composer chip + per-thread pin), AUD-08 (creator profile slim to name-only, ideas read-path)
 **Depends on:** Phase 6
-**Plans:** 3/6 plans executed
+**Plans:** 4/6 plans executed
 
 **Wave 1** *(parallel - disjoint files)*
 
@@ -248,7 +248,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 07-04-PLAN.md - Wiring: react (audience weights+repaint into Flash, no-op for General) + steer proof (ideas-runner grounds on audience, D-01) [AUD-04, AUD-05, AUD-08]
+- [x] 07-04-PLAN.md - Wiring: react (audience weights+repaint into Flash, no-op for General) + steer proof (ideas-runner grounds on audience, D-01) [AUD-04, AUD-05, AUD-08]
 
 **Wave 4** *(blocked on Wave 3; has human-verify checkpoint)*
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07 Plan 02 complete (audiences migration + CRUD repo + virtual constants)
-last_updated: "2026-06-18T15:45:04.711Z"
-last_activity: 2026-06-18 -- Phase 07 Plan 02 complete (audiences migration + CRUD repo + virtual constants)
+stopped_at: Phase 07 Plan 04 complete (audience wiring — ideas steer+react)
+last_updated: "2026-06-18T17:19:31.026Z"
+last_activity: 2026-06-18 -- Phase 07 execution started
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 60
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — EXECUTING
-Plan: 4 of 6
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 07 Plan 02 complete (audiences migration + CRUD repo + virtual constants)
+Last activity: 2026-06-18 -- Phase 07 execution started
 
 ## Hard Constraints (this milestone)
 
@@ -120,6 +120,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 07-02]: Virtual constants (Open Q2 RESOLVED): General + 2 presets are in-memory constants; absence of active_audience_id = General; no seed migration; regression gate trivially true
 - [Phase 07-02]: Sentinel ids: GENERAL_AUDIENCE.id='general', PRESET_AUDIENCES[0].id='preset-growth' (grow), PRESET_AUDIENCES[1].id='preset-conversion' (sell) — stable, referenced by 07-04 + 07-05
 - [Phase 07-02]: database.types.ts regeneration DEFERRED to 07-05 post-push; (supabase as any) casts hold type surface in interim
+- [Phase ?]: D-17 cache discipline; Pitfall 2 compliance
+- [Phase ?]: undefined = byte-identical no-op (D-17 cache safe, Pitfall 2); stored text = deterministic repaint fold (calibrated audience)
+- [Phase ?]: delegates to buildGroundingLine for General/null (zero behavior change); blast radius confined to ideas-runner (AUD-08, D-01)
 
 ### Roadmap Evolution
 
@@ -143,10 +146,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T15:45:04.708Z
-Stopped at: Phase 07 Plan 02 complete (audiences migration + CRUD repo + virtual constants)
+Last session: 2026-06-18T17:19:31.018Z
+Stopped at: Phase 07 Plan 04 complete (audience wiring — ideas steer+react)
 Next: Phase 07 Plan 03 (calibration pipeline)
-Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-substrate-acr/07-03-PLAN.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -177,3 +180,4 @@ Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-
 | Phase 07-audience-manager P01 | 5min | 2 tasks | 8 files |
 | Phase 07-audience-manager P02 | 6min | 3 tasks | 3 files |
 | Phase 07-audience-manager P03 | 8m | 2 tasks | 7 files |
+| Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P04 | 5m | 2 tasks | 6 files |
