@@ -36,8 +36,14 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
- *   - grounding-line.ts (buildGroundingLine)
+ *   - audience/audience-grounding.ts (buildAudienceGroundingLine) — 07-04 steer (AUD-05/AUD-08)
+ *   - audience/resolve-audience-weights.ts (resolveAudienceWeights) — 07-04 react (AUD-04)
  *   - tools/blocks.ts (IdeaCardBlockSchema, IdeaCardBlock)
+ *
+ * 07-04 BLAST RADIUS (AUD-08): the profile slim-down for grounding is confined HERE only.
+ *   ideas-runner uses buildAudienceGroundingLine (which delegates to buildGroundingLine when
+ *   no audience is active). Other runners still read creator_profiles via the existing path.
+ *   This is the ONE steer proof per D-01 scope. Steer-everywhere = post-P7 refinement run.
  */
 
 import { assembleBundle } from "@/lib/kc/assembler";
@@ -46,8 +52,10 @@ import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
-import { buildGroundingLine } from "@/lib/kc/grounding-line";
+import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import type { Audience } from "@/lib/audience/audience-types";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 
@@ -84,6 +92,14 @@ export interface IdeasPipelineInput {
   ask: string;
   platform: AssemblerInput["platform"];
   profileRow: ProfileRow | null;
+  /**
+   * Active audience for this run (07-04 — steer + react wiring, AUD-04/AUD-05).
+   * null or GENERAL_AUDIENCE.is_general=true → falls back to profile-based grounding
+   * (zero behavior change for General — regression gate preserved).
+   * AUD-08 blast radius: this field is ONLY consumed by ideas-runner in P7;
+   * other runners still use buildGroundingLine(profileRow) unchanged.
+   */
+  audience?: Audience | null;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -229,7 +245,7 @@ function selectLeadScrollQuote(
  * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
  */
 export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<IdeasPipelineResult> {
-  const { ask, platform, profileRow } = input;
+  const { ask, platform, profileRow, audience = null } = input;
   const allWarnings: string[] = [];
 
   // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
@@ -260,9 +276,24 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   const niche = profileRow?.niche_primary ?? null;
   const panel = { niche, contentType: null } as const;
 
+  // ── REACT path (07-04 / AUD-04): resolve audience weights + persona repaint ──
+  // resolveAudienceWeights([]) or audience.is_general → DEFAULT mix (no override).
+  // Calibrated audience → pre-baked persona_weights via analysis_override slot.
+  // The repaint (stored at calibration, not generated per-request — Pitfall 2) is
+  // extracted as a Record<string, string> for buildNicheAwareSystemPrompt.
+  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
+  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+
+  // Extract audience repaint as archetype-slug → description map (undefined for General/no audience).
+  // When undefined → runFlashTextMode omits the arg → byte-identical no-op (regression gate).
+  const audienceRepaint: Record<string, string> | undefined =
+    audience && !audience.is_general && audience.personas && audience.personas.length > 0
+      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
+      : undefined;
+
   const simResults = await Promise.all(
     ideas.map((idea) =>
-      runFlashTextMode(idea.seedHook, "idea", panel).catch((err) => {
+      runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint).catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
         return null; // null = failed SIM → treat as Weak (drop)
@@ -271,7 +302,10 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   );
 
   // ── GATE + TRIM: drop sub-floor, keep up to MAX_SURVIVORS ────────────────
-  const { line: groundingLine } = buildGroundingLine(profileRow, platform);
+  // ── STEER path (07-04 / AUD-05): audience-grounding line replaces buildGroundingLine ──
+  // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (AUD-08
+  // blast-radius gate: only ideas-runner uses audience-grounding in P7).
+  const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
 
   const survivors: IdeaCardBlock[] = [];
 
