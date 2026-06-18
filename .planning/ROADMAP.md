@@ -154,5 +154,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
-| 4. Hooks Tool | 3/3 | Complete   | 2026-06-18 |
+| 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 04 Plan 01 complete
-last_updated: "2026-06-18T08:10:03.506Z"
-last_activity: 2026-06-18 -- Phase 04 execution started
+stopped_at: Phase 04 gap-closure — one-open-thread-per-user fix (post-UAT)
+last_updated: "2026-06-18T08:53:40.542Z"
+last_activity: 2026-06-18
 progress:
   total_phases: 5
   completed_phases: 4
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 04 (hooks-tool) — EXECUTING
-Plan: 3 of 3
+Phase: 5
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-18 -- Phase 04 execution started
+Last activity: 2026-06-18
 
 ## Hard Constraints (this milestone)
 
