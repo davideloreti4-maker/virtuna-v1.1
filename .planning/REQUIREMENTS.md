@@ -53,7 +53,7 @@ reuses its typed-block renderers.
 ### HOOKS — flagship moat demo
 
 - [x] **HOOKS-01**: Generate hooks — N hook cards from an idea or a topic, each tagged with the archetype it grabs.
-- [ ] **HOOKS-02**: Flash pull-score ranking — hook cards ranked by a SIM-1 Flash pull-score ("who'll actually stop scrolling," first-2s framing).
+- [x] **HOOKS-02**: Flash pull-score ranking — hook cards ranked by a SIM-1 Flash pull-score ("who'll actually stop scrolling," first-2s framing).
 - [ ] **HOOKS-03**: Chain to Test — "Test full →" carries a hook into Test (the full Reading).
 
 ### PROFILE — grounding source (v1: reuse existing)
@@ -119,7 +119,7 @@ reuses its typed-block renderers.
 | PROFILE-01 | Phase 3 | Complete |
 | THREAD-05 | Phase 3 | Pending |
 | HOOKS-01 | Phase 4 | Complete |
-| HOOKS-02 | Phase 4 | Pending |
+| HOOKS-02 | Phase 4 | Complete |
 | HOOKS-03 | Phase 4 | Pending |
 | THREAD-03 | Phase 5 | Pending |
 | TEST-01 | Phase 5 | Pending |

@@ -121,7 +121,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 04-02-PLAN.md — Hooks pipeline: over-generate→gate→RANK→top-5 + Hooks SSE route + /develop auto-fire replaces the P3 placeholder (D-01/D-02/D-07/D-08/D-10) [HOOKS-01, HOOKS-02]
+- [x] 04-02-PLAN.md — Hooks pipeline: over-generate→gate→RANK→top-5 + Hooks SSE route + /develop auto-fire replaces the P3 placeholder (D-01/D-02/D-07/D-08/D-10) [HOOKS-01, HOOKS-02]
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -154,5 +154,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
-| 4. Hooks Tool | 1/3 | In Progress|  |
+| 4. Hooks Tool | 2/3 | In Progress|  |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
