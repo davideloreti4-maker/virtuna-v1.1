@@ -54,7 +54,7 @@ reuses its typed-block renderers.
 
 - [x] **HOOKS-01**: Generate hooks — N hook cards from an idea or a topic, each tagged with the archetype it grabs.
 - [x] **HOOKS-02**: Flash pull-score ranking — hook cards ranked by a SIM-1 Flash pull-score ("who'll actually stop scrolling," first-2s framing).
-- [ ] **HOOKS-03**: Chain to Test — "Test full →" carries a hook into Test (the full Reading).
+- [x] **HOOKS-03**: Chain to Test — "Test full →" carries a hook into Test (the full Reading).
 
 ### PROFILE — grounding source (v1: reuse existing)
 
@@ -120,6 +120,6 @@ reuses its typed-block renderers.
 | THREAD-05 | Phase 3 | Pending |
 | HOOKS-01 | Phase 4 | Complete |
 | HOOKS-02 | Phase 4 | Complete |
-| HOOKS-03 | Phase 4 | Pending |
+| HOOKS-03 | Phase 4 | Complete |
 | THREAD-03 | Phase 5 | Pending |
 | TEST-01 | Phase 5 | Pending |

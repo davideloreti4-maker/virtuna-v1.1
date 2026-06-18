@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Phase 04 Plan 01 complete
-last_updated: "2026-06-18T07:55:36.015Z"
+last_updated: "2026-06-18T08:10:03.506Z"
 last_activity: 2026-06-18 -- Phase 04 execution started
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 16
-  completed_plans: 15
-  percent: 60
+  completed_plans: 16
+  percent: 80
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 Phase: 04 (hooks-tool) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-18 -- Phase 04 execution started
 
 ## Hard Constraints (this milestone)
@@ -80,6 +80,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 03-03]: /develop PINNED endpoint: POST /api/tools/ideas/develop, payload {ideaId?, anchor, platform} → {threadId, messageId, fencedHooksBundle}
 - [Phase 03-03]: Rate limit deferred to v2 (no ideas message count table; auth+ask-cap are v1 boundary)
 - [Phase ?]: band-tier-rank-comparator
+- [Phase ?]: Test handoff seam: lifted state (handleTestHook) + HookTestContext for MessageBlocks pass-through (mirrors PlatformContext)
+- [Phase ?]: GET /api/threads/open: open-thread rehydration read-back closes P3 persistedBlocks={[]} debt
 
 ### Pending Todos
 
@@ -99,7 +101,7 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-18T07:55:36.011Z
+Last session: 2026-06-18T08:09:42.103Z
 Stopped at: Phase 04 Plan 01 complete
 Next: Phase 03 Plan 04 — Hooks Tool (Ideas→Hooks chain)
 Resume file: .planning/phases/04-hooks-tool/04-02-PLAN.md
@@ -119,3 +121,4 @@ Resume file: .planning/phases/04-hooks-tool/04-02-PLAN.md
 | Phase 03-ideas-tool P03 | 15min | 2 tasks | 7 files |
 | Phase 04-hooks-tool PP01 | 4min | 2 tasks | 7 files |
 | Phase 04-hooks-tool P02 | 8min | 2 tasks | 6 files |
+| Phase 04-hooks-tool P03 | 30min | 4 tasks | 10 files |

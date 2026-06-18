@@ -21,7 +21,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 1: Engine & Thread Foundation** - SIM-1 Flash text-mode (+ winning-framing calibration) + generalized thread model, tool-runner, typed-block rendering, persistence, universal composer (completed 2026-06-17)
 - [x] **Phase 2: Knowledge-Core Generative Rebuild** - Ground-up general-use generative KC (shared base + per-mode slices) — THE value, the long pole (completed 2026-06-17)
 - [x] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs (completed 2026-06-18; reload-rehydration deferred to P4 per owner)
-- [ ] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test
+- [x] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test (completed 2026-06-18)
 - [ ] **Phase 5: Open Chat & Test Reframe** - Profile-grounded open chat (no anchoring Reading) + the Reading reframed as "Test · powered by SIM-1 Max," the endpoint of every chain
 
 ## Phase Details
@@ -125,7 +125,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 04-03-PLAN.md — Live Hook chip + content-first thread view + "Test full →" handoff (D-05/D-06) + open-thread rehydration (P3 debt) + UAT [HOOKS-01, HOOKS-02, HOOKS-03]
+- [x] 04-03-PLAN.md — Live Hook chip + content-first thread view + "Test full →" handoff (D-05/D-06) + open-thread rehydration (P3 debt) + UAT [HOOKS-01, HOOKS-02, HOOKS-03]
 
 **UI hint**: yes
 
@@ -154,5 +154,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
-| 4. Hooks Tool | 2/3 | In Progress|  |
+| 4. Hooks Tool | 3/3 | Complete   | 2026-06-18 |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
