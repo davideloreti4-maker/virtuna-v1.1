@@ -162,15 +162,15 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(rawOutput).toContain("event: done");
 
     // insertMessage called with "assistant" role + markdown block
-    const insertCalls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls;
-    const assistantCall = insertCalls.find(
-      ([, role]: [string, string]) => role === "assistant",
-    );
+    const insertCalls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [string, string, unknown[], string?]
+    >;
+    const assistantCall = insertCalls.find(([, role]) => role === "assistant");
     expect(assistantCall).toBeDefined();
-    const [, , blocks] = assistantCall as [string, string, unknown[]];
+    const blocks = assistantCall![2] as Array<{ type: string; props: { text: string } }>;
     expect(Array.isArray(blocks)).toBe(true);
-    expect((blocks as unknown[]).length).toBe(1);
-    const block = (blocks as Array<{ type: string; props: { text: string } }>)[0];
+    expect(blocks.length).toBe(1);
+    const block = blocks[0]!;
     expect(block.type).toBe("markdown");
     expect(block.props.text).toBe(fullContent);
   });
