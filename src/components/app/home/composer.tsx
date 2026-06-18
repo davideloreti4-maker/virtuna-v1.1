@@ -339,9 +339,12 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef });
         } else {
           // skill === "idea"
-          // Ideas are 1-based position in the array (not a rank field)
-          const ideaIndex = cardRef - 1;
-          const foundCard = allIdeaBlocks[ideaIndex];
+          // CR-02: resolve from a SINGLE non-merged pool — prefer the in-session
+          // streaming cards (ideasBlocks); fall back to persisted when none streaming.
+          // Concatenating both arrays double-counts cards and shifts ordinals, so
+          // the user's "idea 2" would silently refine the wrong card.
+          const ideaPool = ideasBlocks.length > 0 ? ideasBlocks : persistedIdeaBlocks;
+          const foundCard = ideaPool[cardRef - 1]; // 1-based within a single pool
           if (foundCard?.props) {
             const { buildRefineAnchor } = await import("@/lib/tools/refine");
             anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
