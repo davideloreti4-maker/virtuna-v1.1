@@ -185,7 +185,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 **Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
 
 - [x] 06-02-PLAN.md — Remix foundation: REMIX-01 reuse scout (06-SCOUT.md, D-05a re-confirm) + `remix` assembler mode + `remix-card` typed block [REMIX-01]
-- [ ] 06-03-PLAN.md — Script backend: `runScriptPipeline` (one card, opener-only Flash gate D-01) + `POST /api/tools/script` SSE route [SCRIPT-01]
+- [x] 06-03-PLAN.md — Script backend: `runScriptPipeline` (one card, opener-only Flash gate D-01) + `POST /api/tools/script` SSE route [SCRIPT-01]
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
 | 5. Studio Conversation Layer | 5/5 | Complete    | 2026-06-18 |
-| 6. Script & Remix Tools | 2/5 | In Progress|  |
+| 6. Script & Remix Tools | 3/5 | In Progress|  |
 
 ### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
 
@@ -230,7 +230,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: TBD (formalize in /gsd-discuss-phase 7)
 **Depends on:** Phase 6
-**Plans:** 2/5 plans executed
+**Plans:** 3/5 plans executed
 
 Plans:
 

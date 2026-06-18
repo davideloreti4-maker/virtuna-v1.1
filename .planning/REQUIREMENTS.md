@@ -74,7 +74,7 @@ reuses its typed-block renderers.
 
 ### SCRIPT / REMIX — chain skills (P6, un-deferred from v6.1 2026-06-18)
 
-- [ ] **SCRIPT-01**: Script tool — from a chosen hook/idea → a script card (beats + timing + per-beat retention markers), content-first with a Flash viability beat + self-judge gate, sitting hooks→script→test, landing on "Test full →". (Diagnose mode — paste existing script → line-edits + drop-point — may follow.)
+- [x] **SCRIPT-01**: Script tool — from a chosen hook/idea → a script card (beats + timing + per-beat retention markers), content-first with a Flash viability beat + self-judge gate, sitting hooks→script→test, landing on "Test full →". (Diagnose mode — paste existing script → line-edits + drop-point — may follow.)
 - [x] **REMIX-01**: Remix tool — an alternate funnel-top entry: paste a trending/competitor URL or pick the creator's own winner → decode *why it worked* → generate *their* niche/voice version (new hook + script angle) → Flash score → feed the Hooks/Test chain. **Preceded by a reuse scout** of `milestone/viral-remix` (Ingestion + Remix Mode COMPLETE) + `viral-remix-adapt` + `src/app/api/remix/adapt/` — revive, don't rebuild.
 
 ---
@@ -139,5 +139,5 @@ reuses its typed-block renderers.
 | STUDIO-01 | Phase 5 | Complete (05-04) |
 | STUDIO-02 | Phase 5 | Complete (05-04 follow-up + 05-05 refine) |
 | STUDIO-03 | Phase 5 | Complete (05-04) |
-| SCRIPT-01 | Phase 6 | Pending |
+| SCRIPT-01 | Phase 6 | Complete |
 | REMIX-01 | Phase 6 | Complete |
