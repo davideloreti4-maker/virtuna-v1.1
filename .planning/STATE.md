@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 05 Plan 05 complete — Phase 05 fully complete
-last_updated: "2026-06-18T11:29:30.382Z"
+stopped_at: Phase 6 context gathered
+last_updated: "2026-06-18T11:55:52.370Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 6
+  total_phases: 7
   completed_phases: 5
   total_plans: 21
   completed_plans: 21
-  percent: 83
+  percent: 71
 ---
 
 # Project State
@@ -100,6 +100,10 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 05-05]: Refine path switches activeTool to 'hooks'/'idea' so new card renders in correct thread view
 - [Phase 05-05]: suggestedCTAs from handoffsFor('idea') — idea→hooks is the most immediately relevant chat next step
 
+### Roadmap Evolution
+
+- Phase 7 added (2026-06-18): **Audience Manager** — calibrated audience as shared substrate across all skills (the moat). Designed in discussion; full locked scope in ROADMAP Phase 7 + memory `audience-manager-phase7.md`. Depends on Phase 6. Followed by owner's KC/slice/live-context refinement run.
+
 ### Pending Todos
 
 [From .planning/todos/pending/]
@@ -118,10 +122,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T14:30:00.000Z
-Stopped at: Phase 05 Plan 05 complete — Phase 05 fully complete
+Last session: 2026-06-18T11:55:52.367Z
+Stopped at: Phase 6 context gathered
 Next: Phase 06 (Script & Remix Tools — un-deferred from v6.1; run /gsd-discuss-phase 6)
-Resume file: None — Phase 05 complete; start /gsd-discuss-phase 6 for next phase
+Resume file: .planning/phases/06-script-remix-tools/06-CONTEXT.md
 
 ## Performance Metrics
 
