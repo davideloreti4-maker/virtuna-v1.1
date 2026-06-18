@@ -41,7 +41,7 @@ vi.mock("@/lib/engine/remix/decode", () => ({
 }));
 
 vi.mock("@/lib/engine/remix/decode-types", () => ({
-  decodeResultToAdaptInput: vi.fn((decode: unknown, niche: string) => ({
+  decodeResultToAdaptInput: vi.fn((_decode: unknown, niche: string) => ({
     hook_pattern: "hook pattern body",
     structure: "structure body",
     the_turn: "the turn body",
@@ -290,7 +290,8 @@ describe("runRemixPipeline (runner)", () => {
     });
 
     expect(mockRunFlashTextMode).toHaveBeenCalledTimes(1);
-    const [callContent, callFraming] = mockRunFlashTextMode.mock.calls[0];
+    const flashCall = mockRunFlashTextMode.mock.calls[0] as [string, string, unknown];
+    const [callContent, callFraming] = flashCall;
     // The content passed to Flash must be the adapted hook (concepts[0].hook)
     expect(callContent).toBe(makeAdaptConcepts()[0]!.hook);
     expect(callFraming).toBe("hook");
