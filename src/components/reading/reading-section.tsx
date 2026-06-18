@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { ReactNode, ReactElement } from 'react';
 
 // ReadingSection — the shared "quiet uppercase label over a contained card" unit
 // the redesigned Reading is built from (hero v6 / audience-orbit sketches, LOCKED
@@ -12,6 +12,8 @@ import type { ReactNode } from 'react';
 export interface ReadingSectionProps {
   /** Quiet uppercase section label rendered above the card. */
   label: string;
+  /** Optional inline element rendered after the label (e.g. "powered by SIM-1 Max" tag). */
+  labelSuffix?: ReactElement;
   /** Wrap children in the standard surface card (default). Pass false to render
    *  the children bare under the label. */
   card?: boolean;
@@ -23,11 +25,12 @@ export interface ReadingSectionProps {
 export const READING_CARD =
   'overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)]';
 
-export function ReadingSection({ label, card = true, className, children }: ReadingSectionProps) {
+export function ReadingSection({ label, labelSuffix, card = true, className, children }: ReadingSectionProps) {
   return (
     <section className={className}>
-      <p className="mb-[11px] ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+      <p className="mb-[11px] ml-0.5 flex items-center text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
         {label}
+        {labelSuffix}
       </p>
       {card ? <div className={READING_CARD}>{children}</div> : children}
     </section>
