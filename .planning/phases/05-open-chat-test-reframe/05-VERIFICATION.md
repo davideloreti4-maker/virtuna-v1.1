@@ -1,7 +1,8 @@
 ---
 phase: 05-open-chat-test-reframe
 verified: 2026-06-18T13:22:00Z
-status: human_needed
+status: verified
+human_verified: 2026-06-18T13:46:00Z via 05-UAT.md (Playwright live, @e2e_creator) — 5/6 runtime items confirmed pass, 1 skipped (cold-start nudge needs thin-profile account), 0 issues
 score: 18/18 must-haves verified
 overrides_applied: 0
 human_verification:
