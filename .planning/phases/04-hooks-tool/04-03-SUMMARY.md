@@ -254,3 +254,18 @@ Idea chip, hook-cards under the Hooks chip); the default Test tool shows nothing
 on reload, and in-session "Develop this →" shows "Hooks queued — check the thread
 below" while the new hooks render under the Hooks chip rather than inline. Data is
 fully persisted and viewable; a unified chronological thread view would polish this.
+
+---
+
+## Post-UAT UX Fix — Composer Bottom Pin on /home (commit 35367693)
+
+**Issue:** On /home, a long ideas/hooks thread pushed the composer form off the bottom of the viewport. The `hasSimulation` signal (route `:id` param) only went true on `/analyze/[id]`, so `/home` always used the `centered` layout with a vertically-growing column.
+
+**Fix (layout/markup only — no stream/submit/persistence logic changed):**
+
+- `composer.tsx`: added `hasThread` signal (streaming or persisted idea/hook blocks exist). New `homeThreadMode = hasThread && !hasSimulation` flag. When true: renders a full-height shell (`data-layout="thread"`) with a `flex-1 min-h-0 overflow-y-auto` thread region and a `shrink-0` pinned form row. Added `onThreadChange` callback prop so the parent can react to thread presence.
+- `home-page-layout.tsx` (new client component): manages `hasThread` state. Empty → original `min-h-full justify-center` centered hero. Thread → `h-full flex-col` with composer filling available height.
+- `page.tsx`: delegates to `HomePageLayout` (server → client handoff).
+- `composer-layout.test.tsx`: 5 new assertions for the thread-pin behavior (total 38 tests; full suite 2428/2428 green).
+
+**Preserved:** empty-home centered hero, permalink pinned layout (`data-layout="pinned"`), all stream/submit/persistence paths, `shadow-float` whisper, 760px readable column.
