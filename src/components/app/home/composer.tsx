@@ -440,11 +440,11 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-xs text-foreground-muted/60 mb-0.5">
-                  Shooting this hook — upload your video and SIM-1 Max will score the real thing
+                  Shoot this hook → upload → SIM-1 Max scores the real thing
                 </p>
                 <p
                   className="text-sm font-medium text-foreground leading-snug"
-                  style={{ color: '#FF7F50' }}
+                  style={{ color: 'var(--color-accent)' }}
                 >
                   &ldquo;{testBrief.hookLine}&rdquo;
                 </p>
