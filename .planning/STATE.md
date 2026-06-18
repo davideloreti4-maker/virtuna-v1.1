@@ -4,14 +4,14 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 7 UI-SPEC approved
-last_updated: "2026-06-18T15:11:32.374Z"
-last_activity: 2026-06-18 -- Phase 07 planning complete
+last_updated: "2026-06-18T15:30:00.000Z"
+last_activity: 2026-06-18 -- Phase 07 Plan 01 complete (audience domain core)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 26
-  completed_plans: 26
-  percent: 86
+  total_plans: 32
+  completed_plans: 27
+  percent: 84
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 06 — script-remix-tools
+**Current focus:** Phase 07 — audience-manager-calibrated-audience-as-shared-substrate-acr
 
 ## Current Position
 
-Phase: 07
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 07 planning complete
+Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — EXECUTING
+Plan: 2 of 6
+Status: Executing Phase 07 — Plan 01 complete
+Last activity: 2026-06-18 -- Phase 07 Plan 01 complete (audience domain core)
 
 ## Hard Constraints (this milestone)
 
@@ -114,6 +114,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: remix→hooks reuse path: /api/tools/ideas/develop PINNED contract
 - [Phase ?]: [Phase 06-05]: hooks→script is card-POST model (not context-handoff) — mirrors idea→hooks; context-handoff reserved for script→test null-endpoint seam
 - [Phase ?]: [Phase 06-05]: chain-handoff.test.ts asserts exact endpoint strings + remix→hooks payload contract — drift fails the test
+- [Phase 07-01]: GOAL_INTENT_BIAS locked: grow→new_creator, sell/authority→niche_heavy, nurture→established (D-05, seeded from WEIGHT_PRESETS; [ASSUMED] values tune in refinement)
+- [Phase 07-01]: resolveAudienceWeights accepts Audience[] — array-shaped, multi-select-ready; v1 single-resolution semantics (Pitfall 5 compliant)
+- [Phase 07-01]: General→DEFAULT free by construction: no analysis_override injected for is_general=true; AUD-03 regression gate anchor in persona-weights.test.ts
 
 ### Roadmap Evolution
 
@@ -137,10 +140,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T14:49:24.432Z
-Stopped at: Phase 7 UI-SPEC approved
-Next: Phase 06 Plan 05 (chain plumbing — remix→hooks CTA, chain-handoff wiring)
-Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-substrate-acr/07-UI-SPEC.md
+Last session: 2026-06-18T15:30:00.000Z
+Stopped at: Phase 7 Plan 01 complete (audience domain core)
+Next: Phase 07 Plan 02 (DB migration + Supabase CRUD)
+Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-substrate-acr/07-02-PLAN.md
 
 ## Performance Metrics
 
@@ -168,3 +171,4 @@ Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-
 | Phase 06-script-remix-tools P03 | 6min | 2 tasks | 4 files |
 | Phase 06-script-remix-tools P04 | 7min | 2 tasks | 4 files |
 | Phase 06-script-remix-tools P06-05 | 45min | 4 tasks | 11 files |
+| Phase 07-audience-manager P01 | 5min | 2 tasks | 8 files |
