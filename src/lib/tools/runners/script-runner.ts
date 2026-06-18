@@ -1,0 +1,292 @@
+/**
+ * script-runner.ts — Script pipeline orchestrator (Plan 06-03, Task 1).
+ *
+ * Clones hooks-runner.ts structure with D-02 one-card (not N) and D-01 opener-only gate.
+ *
+ * Pipeline stages:
+ *
+ * 1. GENERATE: assembleBundle(mode:"script", anchor) → user message; system = KC_SCRIPT_SYSTEM_PROMPT.
+ *    Structured json_object generation of ONE script: { beats[{label,content,timing,retentionMarker}], openingBeatSeed }
+ *    openingBeatSeed = the first-2s line fed to the Flash opener gate.
+ *
+ * 2. SELF-JUDGE: bounded gate — drop sub-floor generation rather than fabricate.
+ *    If beats array is empty or malformed, return { blocks: [], warnings }.
+ *
+ * 3. GATE (D-01 — OPENER ONLY): runFlashTextMode(script.openingBeatSeed, "hook", panel)
+ *    → aggregateFlash(personas) → {band, fraction}.
+ *    This scores ONLY the opening hook beat — NEVER the full script (honesty spine / Pitfall 5).
+ *    If the SIM fails, push a warning and drop (mirror hooks null handling).
+ *
+ * 4. BUILD: assemble the script-card block. Validate via ScriptCardBlockSchema.safeParse (D-14).
+ *    On failure push a warning + drop. Return { blocks, warnings } (0 or 1 block).
+ *
+ * D-02 ONE-CARD: Script returns exactly ONE script-card per run (not N candidates).
+ *   This is "ONE-CARD" not "GATE THEN RANK" — the model writes one complete script.
+ *
+ * OPENER-ONLY HONESTY (D-01 / Pitfall 5):
+ *   band/fraction describe the OPENING BEAT only — never fabricated as a full-watch score.
+ *   The renderer must show "opener stops the scroll" copy, never "your script will perform...".
+ *
+ * ISOLATION: imports ONLY from its declared dependency surface.
+ *   - assembler.ts (assembleBundle)
+ *   - compiled.ts (KC_SCRIPT_SYSTEM_PROMPT)
+ *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
+ *   - flash/run-flash-text-mode.ts (runFlashTextMode)
+ *   - flash/flash-aggregate.ts (aggregateFlash)
+ *   - tools/blocks.ts (ScriptCardBlockSchema, ScriptCardBlock)
+ */
+
+import { assembleBundle } from "@/lib/kc/assembler";
+import type { AssemblerInput } from "@/lib/kc/assembler";
+import { KC_SCRIPT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
+import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
+import type { ScriptCardBlock } from "@/lib/tools/blocks";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Generation call timeout (mirrors hooks-runner). */
+const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Output-serialization contract — owned by the runner because the runner owns
+ * `response_format: json_object`. DashScope/Qwen rejects json_object mode with a
+ * 400 ("messages must contain the word 'json'") unless the literal word appears
+ * in the messages (Pitfall 3). Mirrors HOOKS_OUTPUT_CONTRACT pattern.
+ *
+ * D-02: ONE script (beats+timing+retention), no array of scripts.
+ * openingBeatSeed = the first-2s opener hook — fed to the Flash gate (D-01).
+ */
+const SCRIPT_OUTPUT_CONTRACT = `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.`;
+
+// ─── Input type ───────────────────────────────────────────────────────────────
+
+export interface ScriptPipelineInput {
+  ask: string;
+  platform: AssemblerInput["platform"];
+  profileRow: ProfileRow | null;
+  /** Upstream hook anchor — the chosen hookLine carried from Hooks→Script (optional). */
+  anchor?: string;
+}
+
+// ─── Output type ─────────────────────────────────────────────────────────────
+
+export interface ScriptPipelineResult {
+  /** 0 or 1 validated script-card block (D-02 one-card). */
+  blocks: ScriptCardBlock[];
+  /** Warnings from Flash SIM calls or schema validation. */
+  warnings: string[];
+}
+
+// ─── Structured script type ───────────────────────────────────────────────────
+
+interface StructuredBeat {
+  label: string;
+  content: string;
+  timing: string;
+  retentionMarker: string;
+}
+
+interface StructuredScript {
+  beats: StructuredBeat[];
+  openingBeatSeed: string;
+}
+
+// ─── Qwen generation call ─────────────────────────────────────────────────────
+
+/**
+ * Call Qwen in json_object mode to generate ONE structured script.
+ * System = KC_SCRIPT_SYSTEM_PROMPT (byte-stable warm cache prefix).
+ * User = assembleBundle output (volatile per-request).
+ */
+async function generateScriptStructured(userMessage: string): Promise<StructuredScript | null> {
+  const ai = getQwenClient();
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+  let raw: string;
+  try {
+    const res = await ai.chat.completions.create(
+      {
+        model: QWEN_REASONING_MODEL,
+        messages: [
+          { role: "system", content: KC_SCRIPT_SYSTEM_PROMPT + SCRIPT_OUTPUT_CONTRACT },
+          { role: "user", content: userMessage },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0,
+        seed: QWEN_SEED,
+      } as never,
+      { signal: controller.signal },
+    );
+    raw = res.choices[0]?.message?.content ?? "{}";
+  } catch (err) {
+    clearTimeout(timer);
+    const error = err instanceof Error ? err : new Error(String(err));
+    throw new Error(
+      error.name === "AbortError"
+        ? `generateScriptStructured: aborted (timeout ${GENERATE_TIMEOUT_MS}ms)`
+        : `generateScriptStructured: call failed — ${error.message}`,
+    );
+  }
+  clearTimeout(timer);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(
+      `generateScriptStructured: JSON.parse failed on model output: ${raw.slice(0, 200)}`,
+    );
+  }
+
+  const obj = parsed as Record<string, unknown> | null;
+  if (!obj || typeof obj !== "object") return null;
+
+  // Coerce and validate structure
+  const rawBeats = Array.isArray(obj.beats) ? (obj.beats as unknown[]) : [];
+  if (rawBeats.length === 0) return null;
+
+  const beats: StructuredBeat[] = [];
+  for (const rawBeat of rawBeats) {
+    if (!rawBeat || typeof rawBeat !== "object") continue;
+    const b = rawBeat as Record<string, unknown>;
+    if (
+      typeof b.label !== "string" || !b.label ||
+      typeof b.content !== "string" || !b.content ||
+      typeof b.timing !== "string" || !b.timing ||
+      typeof b.retentionMarker !== "string" || !b.retentionMarker
+    ) continue;
+    beats.push({
+      label: b.label,
+      content: b.content,
+      timing: b.timing,
+      retentionMarker: b.retentionMarker,
+    });
+  }
+
+  if (beats.length === 0) return null;
+
+  // openingBeatSeed must be a non-empty string
+  const openingBeatSeed =
+    typeof obj.openingBeatSeed === "string" && obj.openingBeatSeed.trim().length > 0
+      ? obj.openingBeatSeed
+      : beats[0]?.content ?? "";
+
+  if (!openingBeatSeed) return null;
+
+  return { beats, openingBeatSeed };
+}
+
+// ─── Lead scroll-quote selector (mirrors hooks-runner) ────────────────────────
+
+/**
+ * Select the lead scroll-quote from the SIM personas.
+ * D-04: the quote ships ON the card face, never deferred.
+ * Priority: first stop-verdict persona's quote.
+ * Fallback: first persona's quote regardless of verdict.
+ */
+function selectLeadScrollQuote(
+  personas: Array<{ verdict: string; quote: string; archetype: string }>,
+): string {
+  const stopper = personas.find((p) => p.verdict === "stop");
+  if (stopper) return stopper.quote;
+  return personas[0]?.quote ?? "";
+}
+
+// ─── runScriptPipeline ────────────────────────────────────────────────────────
+
+/**
+ * Full Script pipeline: generate ONE script → self-judge → opener-only Flash gate → script-card block.
+ *
+ * Returns 0 or 1 validated script-card block.
+ * Returns 0 blocks if generation sub-floors, SIM fails, or schema validation fails.
+ *
+ * @param input.ask         Creator's ask (defaults to anchor-only mode when empty).
+ * @param input.platform    Target platform.
+ * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
+ * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
+ */
+export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
+  const { ask, platform, profileRow, anchor } = input;
+  const allWarnings: string[] = [];
+
+  // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
+  const userMessage = assembleBundle(
+    {
+      ask: ask || "Write a script for this hook",
+      platform,
+      mode: "script",
+      ...(anchor ? { anchor } : {}),
+    },
+    profileRow,
+  );
+
+  let script: StructuredScript | null;
+  try {
+    script = await generateScriptStructured(userMessage);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    allWarnings.push(`Script generation failed: ${msg}`);
+    return { blocks: [], warnings: allWarnings };
+  }
+
+  // ── SELF-JUDGE: bounded gate — drop sub-floor generation (no regen — cost) ───
+  if (!script || script.beats.length === 0) {
+    allWarnings.push("Script generation sub-floored: beats array empty or malformed — dropped.");
+    return { blocks: [], warnings: allWarnings };
+  }
+
+  // ── GATE (D-01 — OPENER ONLY): Flash on the opening beat seed only ───────────
+  const niche = profileRow?.niche_primary ?? null;
+  const panel = { niche, contentType: null } as const;
+
+  let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
+  try {
+    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);
+    return { blocks: [], warnings: allWarnings };
+  }
+
+  const personas = simResult.result.personas;
+  const { band, fraction } = aggregateFlash(personas);
+
+  // D-04: select lead scrollQuote NOW — ships on the card face
+  const scrollQuote = selectLeadScrollQuote(personas);
+
+  // ── BUILD: assemble script-card block ─────────────────────────────────────────
+  const blockData = {
+    type: "script-card" as const,
+    props: {
+      beats: script.beats,
+      openingBeatSeed: script.openingBeatSeed,
+      band,
+      fraction,
+      scrollQuote,
+      model: "sim1-flash" as const,
+    },
+  };
+
+  // D-14 belt-and-suspenders validation at the runner boundary
+  const validated = ScriptCardBlockSchema.safeParse(blockData);
+  if (!validated.success) {
+    allWarnings.push(
+      `script-card block validation failed — dropped: ${validated.error.message}`,
+    );
+    return { blocks: [], warnings: allWarnings };
+  }
+
+  return { blocks: [validated.data as ScriptCardBlock], warnings: allWarnings };
+}
