@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import type { Audience } from "@/lib/audience/audience-types";
 import {
   listAudiences,
   createAudience,
@@ -102,7 +103,7 @@ export async function POST(req: Request): Promise<Response> {
 
   try {
     // user_id is injected from session inside createAudience (CR-01)
-    const audience = await createAudience(supabase, parsed.data);
+    const audience = await createAudience(supabase, parsed.data as Partial<Audience>);
     return NextResponse.json({ audience }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "create_failed" }, { status: 500 });
