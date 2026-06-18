@@ -176,8 +176,8 @@ describe("POST /api/tools/refine (SSE route)", () => {
     expect(insertCalls.length).toBeGreaterThanOrEqual(2);
 
     // First call: assistant + hook-card block
-    const cardCall = insertCalls.find(
-      ([, role, blocks]: [string, string, unknown[]]) =>
+    const cardCall = (insertCalls as Array<[string, string, unknown[]]>).find(
+      ([, role, blocks]) =>
         role === "assistant" &&
         Array.isArray(blocks) &&
         (blocks as Array<{ type: string }>).some((b) => b.type === "hook-card"),
@@ -185,8 +185,8 @@ describe("POST /api/tools/refine (SSE route)", () => {
     expect(cardCall).toBeDefined();
 
     // Second call: markdown chat-note
-    const noteCall = insertCalls.find(
-      ([, role, blocks]: [string, string, unknown[]]) =>
+    const noteCall = (insertCalls as Array<[string, string, unknown[]]>).find(
+      ([, role, blocks]) =>
         role === "assistant" &&
         Array.isArray(blocks) &&
         (blocks as Array<{ type: string }>).some((b) => b.type === "markdown"),
@@ -251,8 +251,8 @@ describe("POST /api/tools/refine (SSE route)", () => {
 
     // The card persisted via insertMessage carries band from the runner result
     const insertCalls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls;
-    const cardCall = insertCalls.find(
-      ([, role, blocks]: [string, string, unknown[]]) =>
+    const cardCall = (insertCalls as Array<[string, string, unknown[]]>).find(
+      ([, role, blocks]) =>
         role === "assistant" &&
         Array.isArray(blocks) &&
         (blocks as Array<{ type: string }>).some((b) => b.type === "hook-card"),
@@ -304,8 +304,8 @@ describe("POST /api/tools/refine (SSE route)", () => {
 
     // insertMessage must NOT have been called with hook-card blocks (no card persisted)
     const insertCalls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls;
-    const cardCall = insertCalls.find(
-      ([, , blocks]: [string, string, unknown[]]) =>
+    const cardCall = (insertCalls as Array<[string, string, unknown[]]>).find(
+      ([, , blocks]) =>
         Array.isArray(blocks) &&
         (blocks as Array<{ type: string }>).some((b) => b.type === "hook-card"),
     );
