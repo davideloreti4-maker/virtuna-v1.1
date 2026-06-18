@@ -23,7 +23,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs (completed 2026-06-18; reload-rehydration deferred to P4 per owner)
 - [x] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test (completed 2026-06-18)
 - [x] **Phase 5: Studio Conversation Layer** - Make the studio feel like ONE conversation: profile-grounded open chat (no anchoring Reading) + Reading reframed as "Test · powered by SIM-1 Max" + Perplexity-style progress, cards embedded in chat, chat-to-refine (scoped re-run → re-tested card), and the generic skill-to-skill chain plumbing (completed 2026-06-18)
-- [ ] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing
+- [x] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing (completed 2026-06-18)
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
 
@@ -193,7 +193,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 06-05-PLAN.md — Wiring + gate: fill CHAIN_HANDOFFS placeholders + ScriptTestContext + SSE hooks + thread views + composer/chips + UAT + BLOCKING engine regression gate (suite green, ENGINE_VERSION unchanged) [SCRIPT-01, REMIX-01]
+- [x] 06-05-PLAN.md — Wiring + gate: fill CHAIN_HANDOFFS placeholders + ScriptTestContext + SSE hooks + thread views + composer/chips + UAT + BLOCKING engine regression gate (suite green, ENGINE_VERSION unchanged) [SCRIPT-01, REMIX-01]
 
 **UI hint**: yes
 
@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
 | 5. Studio Conversation Layer | 5/5 | Complete    | 2026-06-18 |
-| 6. Script & Remix Tools | 3/5 | In Progress|  |
+| 6. Script & Remix Tools | 5/5 | Complete   | 2026-06-18 |
 
 ### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
 
@@ -230,7 +230,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: TBD (formalize in /gsd-discuss-phase 7)
 **Depends on:** Phase 6
-**Plans:** 3/5 plans executed
+**Plans:** 5/5 plans complete
 
 Plans:
 

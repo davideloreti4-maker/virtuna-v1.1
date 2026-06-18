@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-06-18T13:04:41.924Z"
-last_activity: 2026-06-18 -- Phase 06 execution started
+stopped_at: Completed Phase 06 Plan 05 (wiring + gate — SCRIPT-01/REMIX-01 closed)
+last_updated: "2026-06-18T14:03:54.924Z"
+last_activity: 2026-06-18 -- Phase 06 Plan 04 complete (remix backend)
 progress:
   total_phases: 7
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 26
-  completed_plans: 24
-  percent: 71
+  completed_plans: 26
+  percent: 86
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 06 (script-remix-tools) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-18 -- Phase 06 Plan 04 complete (remix backend)
 
@@ -111,6 +111,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 06-04]: runRemixPipeline revives 5 decode/adapt reuse seams as-is (resolveAndRehost, analyzeVideoWithOmni, omniOutputToStructuralInput, runDecode, decodeResultToAdaptInput, generateAdaptConcepts) — D-05a isolation maintained
 - [Phase 06-04]: cleanup() in finally unconditional — resolve_failed caught before finally scope (cleanup not available yet); decode_failed/adapt_failed caught inside finally scope; T-03-02 satisfied on all paths
 - [Phase 06-04]: POST /api/tools/remix/run: content-first SSE (content event face before score band chip); error event on runRemixPipeline error field; insertMessage persist non-fatal
+- [Phase ?]: remix→hooks reuse path: /api/tools/ideas/develop PINNED contract
+- [Phase ?]: [Phase 06-05]: hooks→script is card-POST model (not context-handoff) — mirrors idea→hooks; context-handoff reserved for script→test null-endpoint seam
+- [Phase ?]: [Phase 06-05]: chain-handoff.test.ts asserts exact endpoint strings + remix→hooks payload contract — drift fails the test
 
 ### Roadmap Evolution
 
@@ -134,10 +137,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T13:14:57Z
-Stopped at: Completed Phase 06 Plan 04 (remix backend — runRemixPipeline + POST /api/tools/remix/run)
+Last session: 2026-06-18T14:03:54.917Z
+Stopped at: Completed Phase 06 Plan 05 (wiring + gate — SCRIPT-01/REMIX-01 closed)
 Next: Phase 06 Plan 05 (chain plumbing — remix→hooks CTA, chain-handoff wiring)
-Resume file: .planning/phases/06-script-remix-tools/06-05-PLAN.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -164,3 +167,4 @@ Resume file: .planning/phases/06-script-remix-tools/06-05-PLAN.md
 | Phase 06-script-remix-tools P01 | 20min | 2 tasks | 8 files |
 | Phase 06-script-remix-tools P03 | 6min | 2 tasks | 4 files |
 | Phase 06-script-remix-tools P04 | 7min | 2 tasks | 4 files |
+| Phase 06-script-remix-tools P06-05 | 45min | 4 tasks | 11 files |
