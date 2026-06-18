@@ -72,13 +72,17 @@ export interface FlashRunResult {
  *   - response_format: json_object
  *   - stripModelOutput → coerceFlashResponse → FlashResultSchema.safeParse
  *
- * @param content_text  The creator's text content to react to.
- * @param framing       Mode framing — swaps persona question + band verbiage (D-04).
- * @param panel         Optional niche panel (D-05, Plan 03-01). When present and panel.niche
- *                      is non-null, the system prompt is built via buildNicheAwareSystemPrompt,
- *                      folding selectPersonaSlots output into one niche-instantiated prompt.
- *                      When absent or panel.niche is null → byte-identical to STABLE_FLASH_SYSTEM_PROMPT
- *                      (back-compat; existing behavior unchanged).
+ * @param content_text    The creator's text content to react to.
+ * @param framing         Mode framing — swaps persona question + band verbiage (D-04).
+ * @param panel           Optional niche panel (D-05, Plan 03-01). When present and panel.niche
+ *                        is non-null, the system prompt is built via buildNicheAwareSystemPrompt,
+ *                        folding selectPersonaSlots output into one niche-instantiated prompt.
+ *                        When absent or panel.niche is null → byte-identical to STABLE_FLASH_SYSTEM_PROMPT
+ *                        (back-compat; existing behavior unchanged).
+ * @param audienceRepaint Optional per-audience archetype description overrides (07-04 / AUD-04).
+ *                        When provided (and panel.niche is non-null), folds the stored per-audience
+ *                        repaint into buildNicheAwareSystemPrompt — deterministic per audience.
+ *                        When absent → byte-identical no-op (General regression gate preserved).
  * @returns FlashRunResult with parsed FlashResult and any warnings.
  * @throws if the model response fails Zod validation after coercion.
  */
@@ -86,15 +90,18 @@ export async function runFlashTextMode(
   content_text: string,
   framing: FlashFraming,
   panel?: NichePanel,
+  audienceRepaint?: Record<string, string>,
 ): Promise<FlashRunResult> {
   const ai = getQwenClient();
   const warnings: string[] = [];
 
   // Resolve system prompt: niche-aware if a panel with a non-null niche is provided (D-05),
   // otherwise fall back to the byte-stable generic STABLE_FLASH_SYSTEM_PROMPT (back-compat).
+  // When audienceRepaint is provided, folds stored per-audience descriptions into the prompt
+  // (07-04 react path, AUD-04). When absent → byte-identical no-op (General safe, D-17).
   const systemPrompt =
     panel && panel.niche !== null
-      ? buildNicheAwareSystemPrompt(panel)
+      ? buildNicheAwareSystemPrompt(panel, audienceRepaint)
       : STABLE_FLASH_SYSTEM_PROMPT;
 
   const callParams = {

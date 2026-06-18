@@ -153,13 +153,26 @@ export interface NichePanel {
 /**
  * Build a niche-instantiated Flash system prompt (D-05).
  *
- * @param panel  { niche: string | null, contentType: ContentTypeSlug | null }
+ * @param panel           { niche: string | null, contentType: ContentTypeSlug | null }
  *   - niche: null → returns STABLE_FLASH_SYSTEM_PROMPT (generic back-compat, same as no panel)
  *   - niche: <slug> → archetype block built from selectPersonaSlots(contentType, niche);
  *     each slot contributes its niche_instantiation + scroll_past_triggers + stop_triggers.
  *     Duplicate-archetype slots (the allocation weighting) appear as repeated entries.
+ * @param audienceRepaint Optional per-audience archetype description overrides (07-04 / AUD-04).
+ *   - When undefined (default) → BYTE-IDENTICAL to the pre-P7 output (regression-critical no-op).
+ *   - When provided → substitutes the stored per-audience description for each slot's
+ *     niche_instantiation, keeping the skeleton (task framing, Output Schema, TYPE RULES) stable.
+ *
+ * PITFALL 2 (07-RESEARCH): the repaint must be the STORED, deterministic text from the
+ * audience row — never generated per-request. Same audience → same prompt string (D-17 cache).
+ *
+ * MUTATION GUARD: ARCHETYPE_DEFINITIONS is never mutated by this function.
+ * The repaint substitutes only the description fragment in the built string, not the source data.
  */
-export function buildNicheAwareSystemPrompt(panel: NichePanel): string {
+export function buildNicheAwareSystemPrompt(
+  panel: NichePanel,
+  audienceRepaint?: Record<string, string>,
+): string {
   if (panel.niche === null) {
     return STABLE_FLASH_SYSTEM_PROMPT;
   }
@@ -167,15 +180,26 @@ export function buildNicheAwareSystemPrompt(panel: NichePanel): string {
   const slots: PersonaSlot[] = selectPersonaSlots(panel.contentType, panel.niche);
 
   // Build the archetype block from niche-instantiated slots.
-  // Each slot: ### {archetype} + niche_instantiation text + scroll_past_triggers + stop_triggers.
+  // Each slot: ### {archetype} + description text + scroll_past_triggers + stop_triggers.
   // Duplicate-archetype slots appear as separate entries — repetition encodes the weighting.
+  //
+  // Audience repaint: when audienceRepaint is provided, substitute the per-audience description
+  // for the slot's niche_instantiation — skeleton (triggers, schema, rules) stays byte-stable.
+  // When undefined → unchanged path, byte-identical to pre-P7 output.
   const archetypeBlock = slots
-    .map(
-      (s) =>
-        `### ${s.archetype}\n${s.niche_instantiation}\n\n` +
+    .map((s) => {
+      // Repaint: use stored audience description if available, else fall back to niche_instantiation.
+      // audienceRepaint[s.archetype] is the deterministic stored text (never per-request LLM output).
+      const descriptionText =
+        audienceRepaint && audienceRepaint[s.archetype] != null
+          ? audienceRepaint[s.archetype]
+          : s.niche_instantiation;
+      return (
+        `### ${s.archetype}\n${descriptionText}\n\n` +
         `Scrolls past when: ${s.scroll_past_triggers.join(", ")}.\n` +
-        `Stops for: ${s.stop_triggers.join(", ")}.`,
-    )
+        `Stops for: ${s.stop_triggers.join(", ")}.`
+      );
+    })
     .join("\n\n");
 
   return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
