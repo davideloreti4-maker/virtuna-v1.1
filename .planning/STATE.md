@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05 Plan 03 complete
-last_updated: "2026-06-18T10:39:00.000Z"
-last_activity: 2026-06-18 -- 05-03 complete (Open-chat frontend: useChatStream, ChatThreadView, live Chat chip, composer chat-send, markdown rehydration)
+stopped_at: Phase 05 Plan 04 complete
+last_updated: "2026-06-18T13:10:00.000Z"
+last_activity: 2026-06-18 -- 05-04 complete (Conversation layer: chain-handoff registry, stage SSE events, ProgressChecklist, model follow-up turn, skill-run error/retry)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 18
-  percent: 73
+  completed_plans: 19
+  percent: 76
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 05 (open-chat-test-reframe) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Executing Phase 05
-Last activity: 2026-06-18 -- 05-03 complete (Open-chat frontend: useChatStream, ChatThreadView, live Chat chip, composer chat-send, markdown rehydration)
+Last activity: 2026-06-18 -- 05-04 complete (Conversation layer: chain-handoff registry, stage SSE events, ProgressChecklist, model follow-up turn, skill-run error/retry)
 
 ## Hard Constraints (this milestone)
 
@@ -91,6 +91,11 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 05-02]: ReadingSection.labelSuffix ReactElement prop added (optional, non-breaking) to support inline tag adjacent to section label
 - [Phase 05-03]: nudgeShown tracked in useChatStream (sticky session-level boolean, not reset by reset()) rather than local ref in ChatThreadView — avoids react-hooks lint errors while preserving D-08 once-per-session gate semantics
 - [Phase 05-03]: showChatView = activeTool === 'chat' unconditionally (ChatThreadView owns its own empty state, unlike HooksThreadView/IdeasThreadView which gate on content existence)
+- [Phase 05-04]: CHAIN_HANDOFFS SSOT in chain-handoff.ts — P6 extends by appending entries, no card-component edits
+- [Phase 05-04]: Coarse stage transitions at route level (before/after single runHooksPipeline await) — real phases ran, D-02 satisfied; finer callbacks require runner refactor (deferred)
+- [Phase 05-04]: Follow-up Qwen generation non-fatal — caught silently so card delivery never blocks on follow-up timeout
+- [Phase 05-04]: ProgressChecklist is ephemeral SSE-driven UI (not a registered block) per D-02 Claude's discretion
+- [Phase 05-04]: Checkmark ✓ uses var(--color-cream-secondary) — never coral per UI-SPEC §Color
 
 ### Pending Todos
 
@@ -110,10 +115,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T10:26:00.000Z
-Stopped at: Phase 05 Plan 03 complete
-Next: Phase 05 Plan 04 (Conversation layer: real-stage SSE progress checklist + model-authored follow-up turn + generic chain-handoff contract)
-Resume file: .planning/phases/05-open-chat-test-reframe/05-04-PLAN.md
+Last session: 2026-06-18T13:10:00.000Z
+Stopped at: Phase 05 Plan 04 complete
+Next: Phase 05 Plan 05 (Core loop: chat-to-refine scoped re-run + refine-intent NL detect + tappable suggested chain CTA)
+Resume file: .planning/phases/05-open-chat-test-reframe/05-05-PLAN.md
 
 ## Performance Metrics
 
@@ -135,3 +140,4 @@ Resume file: .planning/phases/05-open-chat-test-reframe/05-04-PLAN.md
 | Phase 05-open-chat-test-reframe P01 | 5min | 2 tasks | 3 files |
 | Phase 05-open-chat-test-reframe P02 | 3min | 2 tasks | 3 files |
 | Phase 05-open-chat-test-reframe P03 | 10min | 2 tasks | 4 files |
+| Phase 05-open-chat-test-reframe P04 | 18min | 3 tasks | 9 files |

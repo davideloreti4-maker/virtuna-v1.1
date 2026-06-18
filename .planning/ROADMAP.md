@@ -156,7 +156,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 **Wave 2** *(blocked on Wave 1; 03 & 04 parallel — disjoint files)*
 
 - [x] 05-03-PLAN.md — Open-chat frontend: useChatStream + ChatThreadView + live Chat chip + composer chat-send + markdown rehydration + empty state [THREAD-03, STUDIO-03]
-- [ ] 05-04-PLAN.md — Conversation layer: real-stage SSE progress checklist (D-02) + model-authored follow-up turn (D-03) + generic chain-handoff contract (D-09) [STUDIO-01, STUDIO-02, STUDIO-03]
+- [x] 05-04-PLAN.md — Conversation layer: real-stage SSE progress checklist (D-02) + model-authored follow-up turn (D-03) + generic chain-handoff contract (D-09) [STUDIO-01, STUDIO-02, STUDIO-03] (completed 2026-06-18)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -189,5 +189,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
-| 5. Studio Conversation Layer | 3/5 | In Progress | - |
+| 5. Studio Conversation Layer | 4/5 | In Progress | - |
 | 6. Script & Remix Tools | 0/TBD | Not started | - |

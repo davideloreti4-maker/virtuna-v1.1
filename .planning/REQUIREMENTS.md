@@ -68,9 +68,9 @@ reuses its typed-block renderers.
 
 > Makes the studio feel like ONE conversation. All three live in the single open thread per user with full running context. See `phases/05-open-chat-test-reframe/05-CONTEXT.md`.
 
-- [ ] **STUDIO-01**: Progress affordance — when a skill runs, real pipeline stages stream over SSE as Perplexity-style checkmarks (Generating → Self-judge → Simulating your audience → Ranking); no fake timers (honesty spine). Cards then stream content-first.
-- [ ] **STUDIO-02**: Cards embedded in chat + chat-to-refine — skill cards land in-thread followed by a short model-authored follow-up turn; a refine request re-runs the skill scoped to that card → a new, freshly SIM-1-scored card inline (refined output never an untested rewrite).
-- [ ] **STUDIO-03**: Generic skill-to-skill chain plumbing — one anchor-carry handoff so any skill registers as runner + card + CTA; intent routes via chip primary + NL refine-detect + tap-to-launch CTAs (no silent auto-fire). Built so Script/Remix (P6) plug in without one-off code.
+- [x] **STUDIO-01**: Progress affordance — when a skill runs, real pipeline stages stream over SSE as Perplexity-style checkmarks (Generating → Self-judge → Simulating your audience → Ranking); no fake timers (honesty spine). Cards then stream content-first. *(completed 05-04)*
+- [x] **STUDIO-02**: Cards embedded in chat + model-authored follow-up turn after cards (D-03); chat-to-refine (scoped re-run → new SIM-scored card) lands in 05-05. *(progress-checklist + follow-up turn completed 05-04; refine in 05-05)*
+- [x] **STUDIO-03**: Generic skill-to-skill chain plumbing — CHAIN_HANDOFFS registry (chain-handoff.ts) is the SSOT; P6 Script/Remix plug in by appending, no one-off wiring. *(completed 05-04)*
 
 ### SCRIPT / REMIX — chain skills (P6, un-deferred from v6.1 2026-06-18)
 
@@ -136,8 +136,8 @@ reuses its typed-block renderers.
 | HOOKS-03 | Phase 4 | Complete |
 | THREAD-03 | Phase 5 | Pending |
 | TEST-01 | Phase 5 | Complete |
-| STUDIO-01 | Phase 5 | Pending |
-| STUDIO-02 | Phase 5 | Pending |
-| STUDIO-03 | Phase 5 | Pending |
+| STUDIO-01 | Phase 5 | Complete (05-04) |
+| STUDIO-02 | Phase 5 | Partial (follow-up turn 05-04; refine 05-05) |
+| STUDIO-03 | Phase 5 | Complete (05-04) |
 | SCRIPT-01 | Phase 6 | Pending |
 | REMIX-01 | Phase 6 | Pending |
