@@ -228,10 +228,29 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Deferred → post-v1:** multi-select compare (killer feature — retention vs growth side-by-side; object built `audience_id`→`audience_ids[]`-ready), real social OAuth, spread/virality prediction in the Read.
 
-**Requirements**: TBD (formalize in /gsd-discuss-phase 7)
+**Requirements**: AUD-01 (object + CRUD + persistence), AUD-02 (calibration pipeline), AUD-03 (General default + regression gate), AUD-04 (audience -> react/SIM path), AUD-05 (steer proof in ideas-runner), AUD-06 (goal -> deterministic reweight), AUD-07 (Manager UI + presets + composer chip + per-thread pin), AUD-08 (creator profile slim to name-only, ideas read-path)
 **Depends on:** Phase 6
-**Plans:** 5/5 plans complete
+**Plans:** 6 plans
 
-Plans:
+**Wave 1** *(parallel - disjoint files)*
 
-- [ ] TBD (run /gsd-plan-phase 7 to break down)
+- [ ] 07-01-PLAN.md - Audience domain core: types + goal-intent bias table (D-05) + Temperature x Disposition lens (D-02) + resolveAudienceWeights (array-shaped, General->DEFAULT) [AUD-04, AUD-06]
+- [ ] 07-02-PLAN.md - Persistence: `audiences` migration + `threads.active_audience_id` + audience-repo CRUD + virtual General/preset constants + types regen [AUD-01]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 07-03-PLAN.md - Calibration pipeline (scrape->profile->thin-gate->never-fabricate, D-06) + persona repaint + audiences CRUD/calibrate SSE routes [AUD-02, AUD-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 07-04-PLAN.md - Wiring: react (audience weights+repaint into Flash, no-op for General) + steer proof (ideas-runner grounds on audience, D-01) [AUD-04, AUD-05, AUD-08]
+
+**Wave 4** *(blocked on Wave 3; has human-verify checkpoint)*
+
+- [ ] 07-05-PLAN.md - Manager UI + calibration flow (honest fallback) + read-only Audience Profile/persona display (D-03) + composer audience chip + per-thread pin (D-04) [AUD-07]
+
+**Wave 5** *(blocked on Wave 4; BLOCKING gate + human-action push)*
+
+- [ ] 07-06-PLAN.md - `supabase db push` + BLOCKING engine regression gate (ENGINE_VERSION 3.19.0 + General->DEFAULT + full suite green) + UAT [AUD-03]
+
+**UI hint**: yes
