@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 06 (script-remix-tools) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 06 execution started
+Last activity: 2026-06-18 -- Phase 06 Plan 04 complete (remix backend)
 
 ## Hard Constraints (this milestone)
 
@@ -108,6 +108,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 06-02]: Cardinality A3 — 1 remix-card per run (concepts[0]); studio one-card aesthetic; 3-concept overgenerate is internal
 - [Phase 06-02]: RemixCardBlockSchema band/fraction describe ADAPTED HOOK scroll-stop ONLY (Pitfall 5 honesty spine)
 - [Phase 06-02]: sourceDecode in RemixCardBlock carries REAL 4-beat decode anatomy (D-05 moat) — NOT a metadata guess
+- [Phase 06-04]: runRemixPipeline revives 5 decode/adapt reuse seams as-is (resolveAndRehost, analyzeVideoWithOmni, omniOutputToStructuralInput, runDecode, decodeResultToAdaptInput, generateAdaptConcepts) — D-05a isolation maintained
+- [Phase 06-04]: cleanup() in finally unconditional — resolve_failed caught before finally scope (cleanup not available yet); decode_failed/adapt_failed caught inside finally scope; T-03-02 satisfied on all paths
+- [Phase 06-04]: POST /api/tools/remix/run: content-first SSE (content event face before score band chip); error event on runRemixPipeline error field; insertMessage persist non-fatal
 
 ### Roadmap Evolution
 
@@ -131,10 +134,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T13:04:41.916Z
-Stopped at: Phase 6 context gathered
-Next: Phase 06 (Script & Remix Tools — un-deferred from v6.1; run /gsd-discuss-phase 6)
-Resume file: .planning/phases/06-script-remix-tools/06-CONTEXT.md
+Last session: 2026-06-18T13:14:57Z
+Stopped at: Completed Phase 06 Plan 04 (remix backend — runRemixPipeline + POST /api/tools/remix/run)
+Next: Phase 06 Plan 05 (chain plumbing — remix→hooks CTA, chain-handoff wiring)
+Resume file: .planning/phases/06-script-remix-tools/06-05-PLAN.md
 
 ## Performance Metrics
 
@@ -160,3 +163,4 @@ Resume file: .planning/phases/06-script-remix-tools/06-CONTEXT.md
 | Phase 05-open-chat-test-reframe P05 | 28min | 3 tasks | 8 files |
 | Phase 06-script-remix-tools P01 | 20min | 2 tasks | 8 files |
 | Phase 06-script-remix-tools P03 | 6min | 2 tasks | 4 files |
+| Phase 06-script-remix-tools P04 | 7min | 2 tasks | 4 files |

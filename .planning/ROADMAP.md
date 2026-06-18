@@ -189,7 +189,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 06-04-PLAN.md — Remix backend: revive `runRemixPipeline` (resolve→real decode→adapt→opener gate→one remix-card) + `POST /api/tools/remix/run` SSE route (maxDuration=300) [REMIX-01]
+- [x] 06-04-PLAN.md — Remix backend: revive `runRemixPipeline` (resolve→real decode→adapt→opener gate→one remix-card) + `POST /api/tools/remix/run` SSE route (maxDuration=300) [REMIX-01] ✓ 2026-06-18
 
 **Wave 4** *(blocked on Wave 3)*
 
