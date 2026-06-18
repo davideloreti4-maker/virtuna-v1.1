@@ -165,14 +165,16 @@ describe("POST /api/tools/ideas (route)", () => {
     expect(rawOutput).toContain("event: content");
     expect(rawOutput).toContain("event: score");
 
-    // KC_GEN_VERSION stamp persisted via insertMessage
+    // KC_GEN_VERSION stamp persisted via insertMessage: blocks array is the 3rd arg
+    // (canonical body), kcGenVersion the 4th arg (insertMessage stores the wrapper).
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, body] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(threadId).toBe("thread-abc");
     expect(role).toBe("assistant");
-    expect(body).toHaveProperty("kcGenVersion");
-    expect(body).toHaveProperty("blocks");
-    expect((body as { blocks: unknown[] }).blocks).toHaveLength(3);
+    expect(Array.isArray(blocks)).toBe(true);
+    expect(blocks as unknown[]).toHaveLength(3);
+    expect(typeof kcGenVersion).toBe("string");
+    expect(kcGenVersion as string).toMatch(/^gen\./);
   });
 
   it("content event carries lead scrollQuote on the card face (D-04/WARNING-4)", async () => {

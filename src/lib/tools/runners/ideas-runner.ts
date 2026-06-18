@@ -62,6 +62,22 @@ const MAX_SURVIVORS = 3;
 /** Generation call timeout (mirrors flash-runner; ideas generate is heavier). */
 const GENERATE_TIMEOUT_MS = 300_000;
 
+/**
+ * Output-serialization contract — owned by the runner because the runner owns
+ * `response_format: json_object`. DashScope/Qwen rejects json_object mode with a
+ * 400 ("messages must contain the word 'json'") unless the literal word appears
+ * in the messages; the compiled KC prompt is pure craft knowledge and carries no
+ * serialization directive, so the contract lives here. Static (byte-stable) so it
+ * stays part of the warm system-prefix cache. Mirrors the StructuredIdea shape.
+ */
+const IDEAS_OUTPUT_CONTRACT = `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null } ] }
+Return an "ideas" array of distinct idea objects. Every field is required (use "" or null where empty); "seedHook" must be non-empty.`;
+
 // ─── Input type ───────────────────────────────────────────────────────────────
 
 export interface IdeasPipelineInput {
@@ -117,7 +133,7 @@ async function generateIdeasStructured(userMessage: string): Promise<StructuredI
       {
         model: QWEN_REASONING_MODEL,
         messages: [
-          { role: "system", content: KC_IDEAS_SYSTEM_PROMPT },
+          { role: "system", content: KC_IDEAS_SYSTEM_PROMPT + IDEAS_OUTPUT_CONTRACT },
           { role: "user", content: userMessage },
         ],
         response_format: { type: "json_object" },

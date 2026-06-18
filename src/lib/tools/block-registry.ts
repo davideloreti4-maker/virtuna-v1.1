@@ -2,8 +2,8 @@
  * BLOCK_REGISTRY SSOT — server-importable schema half (no client components).
  *
  * Maps blockType → { schema } so the tool-runner and message rehydration share
- * one validation surface (D-14 + THREAD-06).  The component half lives in
- * block-registry.tsx (client companion).
+ * one validation surface (D-14 + THREAD-06).  Renderer components are wired
+ * directly in message-blocks.tsx (no separate component-registry module).
  *
  * Consumers:
  *  - tool-runner.ts: assertBlocksInRegistry at structured-output boundary

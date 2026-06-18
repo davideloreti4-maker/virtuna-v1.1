@@ -24,8 +24,12 @@ try {
       keepAliveTimeout: 1, // close idle sockets ~immediately -> no dead-socket reuse
       keepAliveMaxTimeout: 1,
       connect: { timeout: 15_000 },
-      headersTimeout: 30_000, // fail fast instead of the 5-min default
-      bodyTimeout: 60_000,
+      // LLM calls (Qwen reasoning) buffer the full generation before sending
+      // response headers, so headersTimeout must cover the whole generation
+      // window — a short value kills every model call. Matches the app's own
+      // GENERATE_TIMEOUT_MS (300s); body timeout left generous for SSE streams.
+      headersTimeout: 300_000,
+      bodyTimeout: 600_000,
     }),
   );
   // eslint-disable-next-line no-console

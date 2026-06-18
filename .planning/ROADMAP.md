@@ -20,7 +20,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 - [x] **Phase 1: Engine & Thread Foundation** - SIM-1 Flash text-mode (+ winning-framing calibration) + generalized thread model, tool-runner, typed-block rendering, persistence, universal composer (completed 2026-06-17)
 - [x] **Phase 2: Knowledge-Core Generative Rebuild** - Ground-up general-use generative KC (shared base + per-mode slices) — THE value, the long pole (completed 2026-06-17)
-- [ ] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs
+- [x] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs (completed 2026-06-18; reload-rehydration deferred to P4 per owner)
 - [ ] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test
 - [ ] **Phase 5: Open Chat & Test Reframe** - Profile-grounded open chat (no anchoring Reading) + the Reading reframed as "Test · powered by SIM-1 Max," the endpoint of every chain
 
@@ -98,7 +98,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — Live Idea chip + platform chip + Auto/seeded routing + Ideas thread view (content-first render) + "Develop this →" chain CTA + UAT [IDEAS-01/02/03, GROUND-03, PROFILE-01, THREAD-05]
+- [x] 03-04-PLAN.md — Live Idea chip + platform chip + Auto/seeded routing + Ideas thread view (content-first render) + "Develop this →" chain CTA + UAT [IDEAS-01/02/03, GROUND-03, PROFILE-01, THREAD-05] *(UAT passed 2026-06-18; reload-rehydration deferred to P4 per owner)*
 
 **UI hint**: yes
 

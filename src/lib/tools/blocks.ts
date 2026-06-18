@@ -3,8 +3,8 @@
  *
  * Each block is shaped { type: z.literal(...), props: z.object({...}) }.
  * These schemas are the SSOT consumed by:
- *  - block-registry.ts (schema half, server-importable)
- *  - block-registry.tsx (component half, client)
+ *  - block-registry.ts (schema + validation SSOT, server-importable)
+ *  - message-blocks.tsx (renderer wiring + re-validate on rehydration, D-14)
  *  - tool-runner.ts (assertBlocksInRegistry at the output boundary)
  *  - message-blocks.tsx (re-validate on rehydration, D-14)
  *

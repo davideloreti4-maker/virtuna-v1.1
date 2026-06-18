@@ -74,6 +74,7 @@ export async function insertMessage(
   threadId: string,
   role: "user" | "assistant" | "tool",
   blocks: unknown[],
+  kcGenVersion?: string,
 ): Promise<MessageRow> {
   // Validate all blocks at the write boundary (D-14).
   for (const raw of blocks) {
@@ -87,13 +88,20 @@ export async function insertMessage(
 
   const supabase = createServiceClient();
 
+  // Body is canonically the blocks array. When a KC provenance stamp is supplied
+  // (T-03-12), store the wrapper { kcGenVersion, blocks } instead — loadMessages
+  // unwraps both shapes. The blocks array is the validated payload either way; the
+  // stamp never participates in block validation (it is message-level metadata).
+  const body: Json = kcGenVersion
+    ? ({ kcGenVersion, blocks } as unknown as Json)
+    : (blocks as Json[]);
+
   const { data, error } = await supabase
     .from("messages")
     .insert({
       thread_id: threadId,
       role,
-      // blocks is validated unknown[] at the boundary; cast to Json[] for the typed insert.
-      body: blocks as Json[],
+      body,
     })
     .select("*")
     .single();
@@ -105,6 +113,20 @@ export async function insertMessage(
   }
 
   return data;
+}
+
+// ─── unwrapBody ────────────────────────────────────────────────────────────────
+/**
+ * Normalise a persisted message body to its blocks array. Supports both the bare
+ * `Block[]` shape and the `{ kcGenVersion, blocks: Block[] }` provenance wrapper
+ * (T-03-12). Anything else → [] (no data loss path: caller maps to placeholders).
+ */
+function unwrapBody(body: unknown): unknown[] {
+  if (Array.isArray(body)) return body;
+  if (body && typeof body === "object" && Array.isArray((body as { blocks?: unknown }).blocks)) {
+    return (body as { blocks: unknown[] }).blocks;
+  }
+  return [];
 }
 
 // ─── loadMessages ────────────────────────────────────────────────────────────
@@ -141,7 +163,9 @@ export async function loadMessages(threadId: string): Promise<HydratedMessage[]>
     // role is `string` in the generated type; narrow to the known union.
     role: row.role as "user" | "assistant" | "tool",
     created_at: row.created_at,
-    blocks: (Array.isArray(row.body) ? row.body : []).map((raw): HydratedBlock => {
+    // Body is either the raw blocks array or a { kcGenVersion, blocks } provenance
+    // wrapper (T-03-12). Unwrap both shapes back to the blocks array for rehydration.
+    blocks: unwrapBody(row.body).map((raw): HydratedBlock => {
       // Re-validate each block on rehydration (D-14 + Pitfall #4).
       const result = validateBlock(raw);
       if (result.ok) {

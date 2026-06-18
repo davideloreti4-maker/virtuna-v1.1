@@ -26,16 +26,16 @@
  *   The ideas chain appends to this same thread (the "Develop →" anchor too).
  *
  * KC_GEN_VERSION (Plan 02 landing spot):
- *   insertMessage receives withKcStamp({ blocks }) — { kcGenVersion, blocks } JSONB wrapper.
- *   No schema migration needed (JSONB accepts the extra field). The blocks array is the
- *   validated idea-card blocks; kcGenVersion is the top-level provenance field.
+ *   insertMessage receives the validated blocks array + kcStamp().kcGenVersion. It
+ *   stores the { kcGenVersion, blocks } JSONB wrapper; loadMessages unwraps it back
+ *   to the blocks array on rehydration. No schema migration needed (JSONB column).
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
-import { withKcStamp } from "@/lib/kc/kc-stamp";
+import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -183,10 +183,11 @@ export async function POST(request: Request): Promise<Response> {
           });
         }
 
-        // Persist: stamped message with KC_GEN_VERSION (Plan 02 landing spot)
+        // Persist: blocks array (canonical body) + KC_GEN_VERSION provenance stamp.
+        // insertMessage validates each block and stores the { kcGenVersion, blocks }
+        // wrapper; loadMessages unwraps it back to the array on rehydration (T-03-12).
         if (blocks.length > 0) {
-          const messageBody = withKcStamp({ blocks });
-          await insertMessage(openThread.id, "assistant", messageBody as unknown as unknown[]);
+          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
         }
 
         send("done", { count: blocks.length });
