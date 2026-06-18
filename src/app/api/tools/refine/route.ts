@@ -93,7 +93,13 @@ export async function POST(request: Request): Promise<Response> {
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : "";
   const rawCardRef = typeof body.cardRef === "number" ? body.cardRef : undefined;
   // WR-07: accept platform from the client; default to "tiktok" only if absent.
-  const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+  const VALID_PLATFORMS = ["tiktok", "instagram", "youtube"] as const;
+  type ValidPlatform = typeof VALID_PLATFORMS[number];
+  const rawPlatform: ValidPlatform = (
+    typeof body.platform === "string" && (VALID_PLATFORMS as readonly string[]).includes(body.platform)
+      ? body.platform as ValidPlatform
+      : "tiktok"
+  );
 
   // WR-02: reject cardRef that is present but not a positive integer (>= 1)
   if (rawCardRef !== undefined) {

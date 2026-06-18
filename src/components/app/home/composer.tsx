@@ -315,12 +315,10 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const { skill, cardRef, instruction } = refineIntent;
 
         // Look up the original card to build the anchor.
-        // We check persisted blocks first (for cards from prior sessions),
-        // then the in-memory streaming blocks (for cards from this session).
+        // Hooks: merge persisted + streaming (hooks carry a stable rank field).
+        // Ideas: single pool (CR-02) — see idea branch below.
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allHookBlocks: any[] = [...persistedHookBlocks, ...hooksBlocks];
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const allIdeaBlocks: any[] = [...persistedIdeaBlocks, ...ideasBlocks];
 
         if (skill === "hooks") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
