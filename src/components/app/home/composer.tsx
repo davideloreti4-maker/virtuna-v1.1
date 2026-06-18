@@ -322,16 +322,20 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const allIdeaBlocks: any[] = [...persistedIdeaBlocks, ...ideasBlocks];
 
-        // Build a compact anchor string from the found card (if available).
-        // If the card isn't found by cardRef, fall back to the raw ask as the anchor.
-        let anchor = ask; // fallback
         if (skill === "hooks") {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const foundCard = allHookBlocks.find((b: any) => b?.props?.rank === cardRef);
-          if (foundCard?.props) {
-            const { buildRefineAnchor } = await import("@/lib/tools/refine");
-            anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          // WR-02: only fire refine when the card was actually resolved.
+          // If not found, surface a chat note instead of refining a fallback.
+          if (!foundCard?.props) {
+            await chat.start(
+              `I couldn't find Hook #${cardRef}. Try "make hook 1 punchier" — use the number shown on the card.`,
+              platform,
+            );
+            return;
           }
+          const { buildRefineAnchor } = await import("@/lib/tools/refine");
+          const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
           // Route to hooks stream refine path — error surfaces via hooks.error → SkillRunError
           hooks.reset();
           // Switch to hooks view so the new card renders in the hooks thread
@@ -345,10 +349,16 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           // the user's "idea 2" would silently refine the wrong card.
           const ideaPool = ideasBlocks.length > 0 ? ideasBlocks : persistedIdeaBlocks;
           const foundCard = ideaPool[cardRef - 1]; // 1-based within a single pool
-          if (foundCard?.props) {
-            const { buildRefineAnchor } = await import("@/lib/tools/refine");
-            anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          // WR-02: only fire refine when the card was actually resolved.
+          if (!foundCard?.props) {
+            await chat.start(
+              `I couldn't find Idea #${cardRef}. Try "tighten idea 1" — use the number shown on the card.`,
+              platform,
+            );
+            return;
           }
+          const { buildRefineAnchor } = await import("@/lib/tools/refine");
+          const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
           // Route to ideas stream refine path — error surfaces via ideas.error → SkillRunError
           ideas.reset();
           // Switch to ideas view so the new card renders in the ideas thread

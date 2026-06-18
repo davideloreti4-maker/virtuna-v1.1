@@ -92,6 +92,16 @@ export async function POST(request: Request): Promise<Response> {
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : "";
   const rawCardRef = typeof body.cardRef === "number" ? body.cardRef : undefined;
 
+  // WR-02: reject cardRef that is present but not a positive integer (>= 1)
+  if (rawCardRef !== undefined) {
+    if (!Number.isInteger(rawCardRef) || rawCardRef < 1) {
+      return Response.json(
+        { error: "cardRef must be a positive integer (>= 1)" },
+        { status: 400 },
+      );
+    }
+  }
+
   // Validate skill
   if (rawSkill !== "hooks" && rawSkill !== "idea") {
     return Response.json(
