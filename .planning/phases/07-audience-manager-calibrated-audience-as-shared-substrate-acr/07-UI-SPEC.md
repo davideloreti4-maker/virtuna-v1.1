@@ -1,10 +1,11 @@
 ---
 phase: 7
 slug: audience-manager-calibrated-audience-as-shared-substrate-acr
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-18
+reviewed_at: 2026-06-18
 ---
 
 # Phase 7 — UI Design Contract
