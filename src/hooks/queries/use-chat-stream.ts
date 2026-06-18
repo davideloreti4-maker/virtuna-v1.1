@@ -21,7 +21,7 @@
  * Mirrors use-hooks-stream.ts: mount-guard + abort discipline.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -80,6 +80,17 @@ export function useChatStream(): UseChatStreamReturn {
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+
+  // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
+  // on an unmounted component. Without this the useRef(true) guard is permanently
+  // true and the "can't update state on unmounted component" leak is unguarded.
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   // Keep a ref copy of accumulated text to avoid stale closures during streaming
   const textRef = useRef('');

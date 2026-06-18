@@ -26,7 +26,7 @@
  * (from 04-02's content event). Match 04-01 HookCardBlock prop names exactly.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 
@@ -102,6 +102,17 @@ export function useHooksStream(): UseHooksStreamReturn {
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+
+  // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
+  // on an unmounted component. Without this the useRef(true) guard is permanently
+  // true and the "can't update state on unmounted component" leak is unguarded.
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      abortRef.current?.abort();
+    };
+  }, []);
 
   // Keep a ref copy of streamingCards so score events can patch without stale closure
   const cardsRef = useRef<PartialHookCard[]>([]);
