@@ -180,7 +180,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **Wave 1**
 
-- [ ] 06-01-PLAN.md — Script foundation: `script` assembler mode + authored `script.md` KC slice → `KC_SCRIPT_SYSTEM_PROMPT` + `script-card` typed block (schema/registry/renderer) [SCRIPT-01]
+- [x] 06-01-PLAN.md — Script foundation: `script` assembler mode + authored `script.md` KC slice → `KC_SCRIPT_SYSTEM_PROMPT` + `script-card` typed block (schema/registry/renderer) [SCRIPT-01]
 
 **Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
 

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-06-18T11:55:52.370Z"
-last_activity: 2026-06-18
+status: executing
+stopped_at: Completed 06-01-PLAN.md (Script Foundation)
+last_updated: "2026-06-18T12:44:27Z"
+last_activity: 2026-06-18 -- Phase 06 Plan 01 complete (script mode + ScriptCardBlockSchema + renderer + KC_SCRIPT_SYSTEM_PROMPT)
 progress:
   total_phases: 7
   completed_phases: 5
-  total_plans: 21
-  completed_plans: 21
-  percent: 71
+  total_plans: 26
+  completed_plans: 22
+  percent: 73
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 05 — open-chat-test-reframe
+**Current focus:** Phase 06 — script-remix-tools
 
 ## Current Position
 
-Phase: 6
-Plan: Not started
-Status: Phase 05 complete — ready for Phase 06 (Script & Remix Tools)
-Last activity: 2026-06-18
+Phase: 06 (script-remix-tools) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 06
+Last activity: 2026-06-18 -- Phase 06 execution started
 
 ## Hard Constraints (this milestone)
 
@@ -48,7 +48,7 @@ Last activity: 2026-06-18
 | 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Complete ✓ (rehydration → P4) |
 | 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Complete ✓ (gap-closure applied 2026-06-18) |
 | 5 | Studio Conversation Layer | THREAD-03, TEST-01, THREAD-05, STUDIO-01/02/03 | Context gathered → UI/plan next |
-| 6 | Script & Remix Tools | SCRIPT-01, REMIX-01 | Not started (un-deferred from v6.1) |
+| 6 | Script & Remix Tools | SCRIPT-01, REMIX-01 | Plan 01 complete ✓ (foundation) |
 
 ## Accumulated Context
 
@@ -99,6 +99,10 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 05-05]: startRefine on stream hooks routes refine errors through hooks.error/ideas.error → Plan-04 SkillRunError (zero new error UI)
 - [Phase 05-05]: Refine path switches activeTool to 'hooks'/'idea' so new card renders in correct thread view
 - [Phase 05-05]: suggestedCTAs from handoffsFor('idea') — idea→hooks is the most immediately relevant chat next step
+- [Phase 06-01]: Script mode mirrors Hooks role set: ['niche','audience','platform','wins','flops'] — GROUND-02 anti-dilution
+- [Phase 06-01]: ScriptCardBlockSchema band/fraction describe OPENER ONLY (Pitfall 5 honesty spine) — comment enforced on schema
+- [Phase 06-01]: ScriptCardRenderer 'Test full →' CTA stub with onTest? prop — wired in 06-05 (mirrors HookCardRenderer plan-01 pattern)
+- [Phase 06-01]: KC_SCRIPT_SYSTEM_PROMPT assembled at compile time via regen-kc.ts (D-03) — same pattern as hooks/chat
 
 ### Roadmap Evolution
 
@@ -149,3 +153,4 @@ Resume file: .planning/phases/06-script-remix-tools/06-CONTEXT.md
 | Phase 05-open-chat-test-reframe P03 | 10min | 2 tasks | 4 files |
 | Phase 05-open-chat-test-reframe P04 | 18min | 3 tasks | 9 files |
 | Phase 05-open-chat-test-reframe P05 | 28min | 3 tasks | 8 files |
+| Phase 06-script-remix-tools P01 | 20min | 2 tasks | 8 files |
