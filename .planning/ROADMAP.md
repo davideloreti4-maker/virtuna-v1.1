@@ -161,6 +161,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 05-05-PLAN.md — Core loop: chat-to-refine scoped re-run → new freshly-SIM-scored card inline + chat note (D-04) + refine-intent NL detect + tappable suggested chain CTA (D-05) [STUDIO-02, STUDIO-03, THREAD-05]
+
 **UI hint**: yes
 
 ### Phase 6: Script & Remix Tools
@@ -175,7 +176,25 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
   3. Both skills register through the Phase 5 generic chain plumbing (runner + typed card + chain CTA) with no one-off wiring, and append in the single open thread with the progress/cards-in-chat/refine behavior built in Phase 5.
   4. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved (Script/Remix add Flash + generation calls on the text path; no regression of the protected path).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+**Wave 1**
+
+- [ ] 06-01-PLAN.md — Script foundation: `script` assembler mode + authored `script.md` KC slice → `KC_SCRIPT_SYSTEM_PROMPT` + `script-card` typed block (schema/registry/renderer) [SCRIPT-01]
+
+**Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
+
+- [ ] 06-02-PLAN.md — Remix foundation: REMIX-01 reuse scout (06-SCOUT.md, D-05a re-confirm) + `remix` assembler mode + `remix-card` typed block [REMIX-01]
+- [ ] 06-03-PLAN.md — Script backend: `runScriptPipeline` (one card, opener-only Flash gate D-01) + `POST /api/tools/script` SSE route [SCRIPT-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 06-04-PLAN.md — Remix backend: revive `runRemixPipeline` (resolve→real decode→adapt→opener gate→one remix-card) + `POST /api/tools/remix/run` SSE route (maxDuration=300) [REMIX-01]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 06-05-PLAN.md — Wiring + gate: fill CHAIN_HANDOFFS placeholders + ScriptTestContext + SSE hooks + thread views + composer/chips + UAT + BLOCKING engine regression gate (suite green, ENGINE_VERSION unchanged) [SCRIPT-01, REMIX-01]
+
 **UI hint**: yes
 
 ## Progress
@@ -190,4 +209,28 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
 | 5. Studio Conversation Layer | 5/5 | Complete    | 2026-06-18 |
-| 6. Script & Remix Tools | 0/TBD | Not started | - |
+| 6. Script & Remix Tools | 0/5 | Not started | - |
+
+### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
+
+**Goal:** Connect the dangling wiring — today the engine simulates against 10 hardcoded universal archetypes, blind to the creator's actual audience. Make a calibrated **Audience** the shared substrate every skill (idea/hook/script/test/remix/chat) queries through a 3-position loop (steer → react → refine). This × the skills = the moat.
+
+**Locked scope (full design: memory `audience-manager-phase7.md`):**
+- **Object:** `Audience = { name, type (personal|target), platform, goal (free-set), 10 calibrated personas, calibration data }`. Personal = scrape-anchored (TikTok + IG presets, Apify, **no OAuth v1**); Target = described (custom = all other platforms).
+- **Creator profile slimmed to name only** — niche/voice/content-history become per-audience calibration inputs (per-account anyway).
+- **Persona redesign (algo-grounded):** Temperature (cold/warm/hot — reuses FYP/niche/loyalist weights) × Disposition (scanner/skeptic/collector/connector/converter/lurker). 10 = calibrated distribution; each emits algo signals (hook-pass, completion, rewatch, save, share, comment, follow). **Structure** lands in P7; **values** tuned in post-P7 refinement run.
+- **3-position wiring (all skills):** ① steer (audience grounds Qwen generation — *in P7*, makes GROUND-03 literally true) · ② react (sim → signals + verbatims) · ③ refine (why = regen gradient). Goal reweights scoring (grow→cold-share, sell→converter, authority→skeptic).
+- **Calibration:** scrape/description → structured Audience Profile (repaints 10 personas + sets temperature mix + seeds generation).
+- **UI:** sidebar = Audience Manager CRUD + 3 presets · composer chip = active selection `platform · name`.
+
+**Guardrails:** **General audience** (current universal 10) = default across ALL tools, must reproduce today's scores → regression gate survives. Calibration A/B = opt-in until validated.
+
+**Deferred → post-v1:** multi-select compare (killer feature — retention vs growth side-by-side; object built `audience_id`→`audience_ids[]`-ready), real social OAuth, spread/virality prediction in the Read.
+
+**Requirements**: TBD (formalize in /gsd-discuss-phase 7)
+**Depends on:** Phase 6
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 7 to break down)
