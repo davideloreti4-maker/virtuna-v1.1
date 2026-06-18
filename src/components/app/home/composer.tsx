@@ -74,9 +74,12 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
 
 export interface ComposerProps {
   className?: string;
+  /** Called whenever the thread-content presence changes (ideas or hooks cards exist/disappear).
+   *  Parent (HomePageLayout) uses this to switch between centered and full-height layout. */
+  onThreadChange?: (hasThread: boolean) => void;
 }
 
-export function Composer({ className }: ComposerProps) {
+export function Composer({ className, onThreadChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -124,6 +127,24 @@ export function Composer({ className }: ComposerProps) {
   const showHooksView =
     activeTool === "hooks" &&
     (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
+
+  // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
+  // True when any idea/hook thread content exists to show (streaming or persisted).
+  // Used by page-level layout (HomePageLayout) to switch to the full-height
+  // chat-app layout (thread scrolls above, form pinned at bottom).
+  // Declared AFTER all stream/block/persisted state is live (no TDZ).
+  const hasThread =
+    ideas.isStreaming ||
+    hooks.isStreaming ||
+    ideasBlocks.length > 0 ||
+    hooksBlocks.length > 0 ||
+    persistedIdeaBlocks.length > 0 ||
+    persistedHookBlocks.length > 0;
+
+  // Notify parent whenever thread presence changes (HomePageLayout uses this).
+  useEffect(() => {
+    onThreadChange?.(hasThread);
+  }, [hasThread, onThreadChange]);
 
   // ── Test brief state (Task 2 — D-05/D-06 handoff) ─────────────────────────
   // When "Test full →" is clicked on a hook card, we switch to the Test tool
@@ -327,9 +348,14 @@ export function Composer({ className }: ComposerProps) {
   // Show the platform chip when Idea or Hooks tool is active (D-07)
   const showPlatformChip = activeTool === "idea" || activeTool === "hooks";
 
-  return (
-    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-0", className)}>
+  // Thread mode on /home (no route id): full-height column — thread region
+  // scrolls above the pinned form. This only activates when hasThread is true,
+  // so empty home keeps the existing centered hero layout (no regression).
+  const homeThreadMode = hasThread && !hasSimulation;
 
+  // Shared thread content block (rendered in both mode branches below).
+  const threadContent = (
+    <>
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
           so the "Develop this →" CTA knows the active platform (D-15). */}
@@ -366,13 +392,17 @@ export function Composer({ className }: ComposerProps) {
           {hooks.error}
         </p>
       )}
+    </>
+  );
 
-      <form
-        data-testid="composer"
-        data-layout={layout}
-        onSubmit={onSubmitForm}
-        className="w-full"
-      >
+  // Shared form element (identical markup; referenced by both layout branches).
+  const composerForm = (
+    <form
+      data-testid="composer"
+      data-layout={homeThreadMode ? "thread" : layout}
+      onSubmit={onSubmitForm}
+      className="w-full"
+    >
         <div
           className={cn(
             "rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
@@ -516,6 +546,50 @@ export function Composer({ className }: ComposerProps) {
           </p>
         )}
       </form>
+  );
+
+  // ── Layout branches ────────────────────────────────────────────────────────
+  //
+  // Branch A — Home thread mode (hasThread && !hasSimulation):
+  //   Full-height flex column. Thread region scrolls; form row is shrink-0
+  //   (pinned at the bottom of the column). The parent HomePageLayout provides
+  //   the height context (h-full) so this column fills the main area.
+  //
+  // Branch B — All other states (empty home / permalink):
+  //   Original centered layout. Thread views + form inside one flex-col column,
+  //   grows with content. Permalink pinning is handled by the Reading wrapper.
+  //
+  if (homeThreadMode) {
+    return (
+      <div
+        data-testid="composer-shell"
+        data-layout="thread"
+        className={cn(
+          "flex h-full w-full max-w-[760px] mx-auto flex-col",
+          className,
+        )}
+      >
+        {/* Scrollable thread region — fills all available space above the form */}
+        <div
+          data-testid="composer-thread-region"
+          className="flex-1 min-h-0 overflow-y-auto"
+        >
+          {threadContent}
+        </div>
+
+        {/* Pinned form row — stays at the bottom while thread scrolls above */}
+        <div className="shrink-0 pb-4 pt-2">
+          {composerForm}
+        </div>
+      </div>
+    );
+  }
+
+  // Branch B: centered / permalink layout (unchanged behavior).
+  return (
+    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-0", className)}>
+      {threadContent}
+      {composerForm}
     </div>
   );
 }
