@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 7 context gathered
-last_updated: "2026-06-18T14:41:05.430Z"
+stopped_at: Phase 7 UI-SPEC approved
+last_updated: "2026-06-18T14:49:24.436Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 7
@@ -137,10 +137,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T14:41:05.426Z
-Stopped at: Phase 7 context gathered
+Last session: 2026-06-18T14:49:24.432Z
+Stopped at: Phase 7 UI-SPEC approved
 Next: Phase 06 Plan 05 (chain plumbing — remix→hooks CTA, chain-handoff wiring)
-Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-substrate-acr/07-CONTEXT.md
+Resume file: .planning/phases/07-audience-manager-calibrated-audience-as-shared-substrate-acr/07-UI-SPEC.md
 
 ## Performance Metrics
 
