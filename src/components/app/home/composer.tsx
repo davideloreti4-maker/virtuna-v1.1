@@ -52,6 +52,7 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the

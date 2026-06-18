@@ -69,6 +69,14 @@ export interface UseHooksStreamReturn {
    * Re-expose as the retry entry point for the skill-run error state (W2).
    */
   start: (ask: string, platform: string) => Promise<void>;
+  /**
+   * Start a scoped refine re-run via /api/tools/refine (Plan 05-05 / D-04).
+   * Consumes the refine SSE into the same streaming state as start() so the new
+   * freshly-SIM-scored card renders inline with its own band chip. A failed refine
+   * surfaces through this hook's error state → the Plan-04 SkillRunError surface.
+   * NEVER called on render — only called on an explicit user send (D-05).
+   */
+  startRefine: (body: { skill: 'hooks'; instruction: string; anchor: string; cardRef?: number }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -291,6 +299,161 @@ export function useHooksStream(): UseHooksStreamReturn {
   }, []);
 
   /**
+   * Scoped refine re-run (Plan 05-05 / D-04).
+   * POSTs to /api/tools/refine and consumes the SSE into the same streaming state.
+   * A failed refine sets error → the Plan-04 SkillRunError surface renders for retry.
+   * NEVER called on render — only on explicit user send (D-05).
+   */
+  const startRefine = useCallback(async (
+    body: { skill: 'hooks'; instruction: string; anchor: string; cardRef?: number },
+  ) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setStreamingCards([]);
+    setStatusMessage(null);
+    setError(null);
+    setIsDone(false);
+    setIsStreaming(true);
+    setStages([]);
+    setFollowupText(null);
+    cardsRef.current = [];
+    stagesRef.current = [];
+
+    try {
+      const res = await fetch('/api/tools/refine', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Refine request failed' }));
+        throw new Error((err as { error?: string }).error ?? 'Refine request failed');
+      }
+      if (!res.body) throw new Error('No response body');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const frames = buffer.split('\n\n');
+        buffer = frames.pop() ?? '';
+
+        for (const frame of frames) {
+          const frameLines = frame.split('\n');
+          let eventType = 'message';
+          let dataLine = '';
+          for (const fLine of frameLines) {
+            if (fLine.startsWith('event: ')) eventType = fLine.slice(7).trim();
+            else if (fLine.startsWith('data: ')) dataLine = fLine.slice(6);
+          }
+          if (!dataLine) continue;
+
+          let data: Record<string, unknown>;
+          try {
+            data = JSON.parse(dataLine) as Record<string, unknown>;
+          } catch {
+            continue;
+          }
+
+          if (eventType === 'stage') {
+            const stageName = typeof data.name === 'string' ? data.name : '';
+            const stageStatus = (data.status === 'active' || data.status === 'done')
+              ? data.status as StageState['status']
+              : 'pending';
+            if (stageName) {
+              const existing = stagesRef.current.find((s) => s.name === stageName);
+              let updated: StageState[];
+              if (existing) {
+                updated = stagesRef.current.map((s) =>
+                  s.name === stageName ? { ...s, status: stageStatus } : s,
+                );
+              } else {
+                updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
+              }
+              stagesRef.current = updated;
+              if (isMountedRef.current) setStages([...updated]);
+            }
+          } else if (eventType === 'followup') {
+            const text = typeof data.text === 'string' ? data.text : null;
+            if (text && isMountedRef.current) setFollowupText(text);
+          } else if (eventType === 'content') {
+            const rawBlocks = Array.isArray(data.blocks) ? data.blocks : [];
+            const cards: PartialHookCard[] = rawBlocks
+              .map((b: unknown) => {
+                const block = b as Record<string, unknown>;
+                const props = (block.props ?? {}) as Record<string, unknown>;
+                return {
+                  hookLine: String(props.hookLine ?? ''),
+                  audienceArchetype: String(props.audienceArchetype ?? ''),
+                  mechanism: String(props.mechanism ?? ''),
+                  seedHook: String(props.seedHook ?? ''),
+                  rank: typeof props.rank === 'number' ? props.rank : 0,
+                  scrollQuote: String(props.scrollQuote ?? ''),
+                  channel: props.channel === null ? null : (props.channel ? String(props.channel) : null),
+                  model: 'sim1-flash' as const,
+                  scored: false,
+                };
+              })
+              .filter((c: PartialHookCard) => c.hookLine.length > 0);
+            cardsRef.current = cards;
+            if (isMountedRef.current) setStreamingCards([...cards]);
+          } else if (eventType === 'score') {
+            const scoreSeedHook = typeof data.seedHook === 'string' ? data.seedHook : '';
+            const scoreRank = typeof data.rank === 'number' ? data.rank : -1;
+            const band = (['Strong', 'Mixed', 'Weak'] as const).find((b) => b === data.band) ?? 'Mixed';
+            const fraction = typeof data.fraction === 'string' ? data.fraction : '';
+            const hadMatch = cardsRef.current.some(
+              (c) => c.seedHook === scoreSeedHook || c.rank === scoreRank,
+            );
+            let patched: PartialHookCard[];
+            if (hadMatch) {
+              patched = cardsRef.current.map((c) =>
+                (c.seedHook === scoreSeedHook || c.rank === scoreRank) && !c.scored
+                  ? { ...c, band, fraction, scored: true }
+                  : c,
+              );
+            } else {
+              let applied = false;
+              patched = cardsRef.current.map((c) => {
+                if (!c.scored && !applied) { applied = true; return { ...c, band, fraction, scored: true }; }
+                return c;
+              });
+            }
+            cardsRef.current = patched;
+            if (isMountedRef.current) setStreamingCards([...patched]);
+          } else if (eventType === 'done') {
+            if (isMountedRef.current) {
+              setIsDone(true);
+              setStatusMessage(null);
+            }
+          } else if (eventType === 'error') {
+            const msg = typeof data.message === 'string' ? data.message : 'Refine error';
+            throw new Error(msg);
+          }
+        }
+      }
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') return;
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Refine stream error');
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsStreaming(false);
+      }
+    }
+  }, []);
+
+  /**
    * Convert partial streaming cards to full HookCardBlock shapes.
    * Cards with no band yet use "Mixed" + "–" as interim placeholders.
    * Rendered in RANK order (array is already ranked by the runner — 04-02).
@@ -322,6 +485,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     stages,
     followupText,
     start,
+    startRefine,
     stop,
     reset,
     toBlocks,

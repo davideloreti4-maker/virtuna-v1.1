@@ -74,6 +74,14 @@ export interface UseIdeasStreamReturn {
    * Re-exposed as the retry entry point for the skill-run error state (W2).
    */
   start: (ask: string, platform: string) => Promise<void>;
+  /**
+   * Start a scoped refine re-run via /api/tools/refine (Plan 05-05 / D-04).
+   * Consumes the refine SSE into the same streaming state as start() so the new
+   * freshly-SIM-scored card renders inline with its own band chip. A failed refine
+   * surfaces through this hook's error state → the Plan-04 SkillRunError surface.
+   * NEVER called on render — only on explicit user send (D-05).
+   */
+  startRefine: (body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
