@@ -64,9 +64,14 @@ export interface UseIdeasStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /** Pipeline stages — populated by SSE stage events (STUDIO-01 / Plan 05-04). Ephemeral: shown during streaming. */
+  stages: StageState[];
+  /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
+  followupText: string | null;
   /**
    * Start the Ideas stream. Call from the composer Idea send.
    * ask: empty string → Auto mode; non-empty → seeded mode.
+   * Re-exposed as the retry entry point for the skill-run error state (W2).
    */
   start: (ask: string, platform: string) => Promise<void>;
   /** Abort the in-flight stream. */
@@ -88,12 +93,17 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  // Plan 05-04 additions: stage checklist + model follow-up text (STUDIO-01/02)
+  const [stages, setStages] = useState<StageState[]>([]);
+  const [followupText, setFollowupText] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
   // Keep a ref copy of streamingCards so score events can patch without stale closure
   const cardsRef = useRef<PartialIdeaCard[]>([]);
+  // Ref copy of stages so the upsert can patch without stale closure
+  const stagesRef = useRef<StageState[]>([]);
 
   const reset = useCallback(() => {
     setStreamingCards([]);
@@ -101,7 +111,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setStages([]);
+    setFollowupText(null);
     cardsRef.current = [];
+    stagesRef.current = [];
   }, []);
 
   const stop = useCallback(() => {
@@ -123,7 +136,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setError(null);
     setIsDone(false);
     setIsStreaming(true);
+    setStages([]);
+    setFollowupText(null);
     cardsRef.current = [];
+    stagesRef.current = [];
 
     try {
       // CRITICAL: fetch + getReader, NOT EventSource (POST needs a body — BLOCKER-1).
@@ -171,7 +187,32 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             continue; // malformed JSON — skip frame
           }
 
-          if (eventType === 'status') {
+          if (eventType === 'stage') {
+            // Upsert stage by name — preserve order of first appearance (STUDIO-01)
+            const stageName = typeof data.name === 'string' ? data.name : '';
+            const stageStatus = (data.status === 'active' || data.status === 'done')
+              ? data.status as StageState['status']
+              : 'pending';
+            if (stageName) {
+              const existing = stagesRef.current.find((s) => s.name === stageName);
+              let updated: StageState[];
+              if (existing) {
+                updated = stagesRef.current.map((s) =>
+                  s.name === stageName ? { ...s, status: stageStatus } : s,
+                );
+              } else {
+                updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
+              }
+              stagesRef.current = updated;
+              if (isMountedRef.current) setStages([...updated]);
+            }
+
+          } else if (eventType === 'followup') {
+            // Model-authored follow-up turn (D-03)
+            const text = typeof data.text === 'string' ? data.text : null;
+            if (text && isMountedRef.current) setFollowupText(text);
+
+          } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
             if (isMountedRef.current) setStatusMessage(msg);
 
@@ -281,6 +322,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     isStreaming,
     error,
     isDone,
+    stages,
+    followupText,
     start,
     stop,
     reset,

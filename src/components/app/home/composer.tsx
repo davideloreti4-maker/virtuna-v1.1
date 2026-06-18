@@ -392,39 +392,39 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     <>
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
-          so the "Develop this →" CTA knows the active platform (D-15). */}
+          so the "Develop this →" CTA knows the active platform (D-15).
+          Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showIdeasView && (
         <IdeasThreadView
           persistedBlocks={persistedIdeaBlocks}
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
+          stages={ideas.stages}
+          followupText={ideas.followupText}
           isStreaming={ideas.isStreaming}
+          error={ideas.error}
           platform={platform}
+          onRetry={() => void ideas.start("", platform)}
         />
-      )}
-      {activeTool === "idea" && ideas.error && (
-        <p className="mb-2 px-1 text-sm text-error" role="alert">
-          {ideas.error}
-        </p>
       )}
 
       {/* Hooks thread view — renders above the composer when the Hook tool is active.
           Consumes useHooksStream state; provides PlatformContext + HookTestContext
-          to HookCardRenderer so the "Test full →" CTA can fire the handoff (D-05). */}
+          to HookCardRenderer so the "Test full →" CTA can fire the handoff (D-05).
+          Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
       {showHooksView && (
         <HooksThreadView
           persistedBlocks={persistedHookBlocks}
           streamingBlocks={hooksBlocks}
           statusMessage={hooks.statusMessage}
+          stages={hooks.stages}
+          followupText={hooks.followupText}
           isStreaming={hooks.isStreaming}
+          error={hooks.error}
           platform={platform}
           onTestHook={handleTestHook}
+          onRetry={() => void hooks.start("", platform)}
         />
-      )}
-      {activeTool === "hooks" && hooks.error && (
-        <p className="mb-2 px-1 text-sm text-error" role="alert">
-          {hooks.error}
-        </p>
       )}
 
       {/* Chat thread view — renders above the composer when the Chat tool is active.
