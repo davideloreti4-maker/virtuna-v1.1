@@ -48,6 +48,8 @@ import { ToolChips, type ToolId } from "./tool-chips";
 import { PlatformChip, type Platform } from "./platform-chip";
 import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
 import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
+import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
+import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -62,11 +64,11 @@ const ERROR_NON_TIKTOK =
   "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
 
 // Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
-// Idea is live in P3 (D-12). Hooks/Chat are disabled (D-08) — future use only.
+// Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat disabled (D-08) — P5.
 const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   test: PLACEHOLDER_EMPTY,
   idea: "What idea or topic do you want to test? (or leave empty for Auto)",
-  hooks: "Paste a hook to test…",
+  hooks: "What topic do you want hooks for? (or leave empty for Auto)",
   chat: "Ask anything…",
 };
 
@@ -106,6 +108,30 @@ export function Composer({ className }: ComposerProps) {
     activeTool === "idea" &&
     (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null);
 
+  // ── Hooks stream (Plan 04-03, Task 1 — D-09) ──────────────────────────────
+  // Provides SSE hook-card blocks rendered above the composer in HooksThreadView.
+  // CRITICAL: hooks.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-04-13).
+  const hooks = useHooksStream();
+  const hooksBlocks = hooks.toBlocks();
+  const showHooksView =
+    activeTool === "hooks" &&
+    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null);
+
+  // ── Test brief state (Task 2 — D-05/D-06 handoff) ─────────────────────────
+  // When "Test full →" is clicked on a hook card, we switch to the Test tool
+  // and store the chosen hook as a visible brief above the upload affordance.
+  const [testBrief, setTestBrief] = useState<{ hookLine: string; audienceArchetype: string } | null>(null);
+
+  // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
+  // Loaded on mount from GET /api/threads/open. Wired in Task 3; interim = [].
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
+  // Setter refs for Task 3 to wire (exposed via the useEffect below)
+  void setPersistedIdeaBlocks;
+  void setPersistedHookBlocks;
+
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -121,10 +147,23 @@ export function Composer({ className }: ComposerProps) {
   // Submit is enabled:
   //  - Test tool: valid TikTok URL OR staged upload, not mid-submit.
   //  - Idea tool: always (empty = Auto; typed = seeded). Not mid-submit/streaming.
+  //  - Hooks tool: always (empty = Auto/anchored; typed = seeded — D-09).
   //    VALIDATION: server independently caps ask length (WARNING-5, T-03-15).
   const canSubmit = activeTool === "idea"
     ? !submitting && !ideas.isStreaming
-    : (isValidTikTok || file !== null) && !submitting;
+    : activeTool === "hooks"
+      ? !submitting && !hooks.isStreaming
+      : (isValidTikTok || file !== null) && !submitting;
+
+  // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
+  // Invoked by HookCardRenderer via HookTestContext when the creator clicks
+  // "Test full →". Switches to the Test tool + stores a visible brief above the
+  // upload affordance ("shoot this hook → upload → Max scores the real thing").
+  // CRITICAL: does NOT invoke any model on the hook text (D-05 honesty spine).
+  const handleTestHook = useCallback((hookLine: string, audienceArchetype: string) => {
+    setActiveTool("test");
+    setTestBrief({ hookLine, audienceArchetype });
+  }, []);
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -167,6 +206,18 @@ export function Composer({ className }: ComposerProps) {
       setUrl(""); // clear input after send
       // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await ideas.start(ask, platform);
+      return;
+    }
+
+    // ── Hooks tool path (D-09, Plan 04-03 Task 1) ───────────────────────────
+    // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
+    // Empty ask = Auto/anchored mode; typed ask = seeded mode (D-09).
+    // T-03-13/T-04-13: Hook send NEVER navigates to /analyze.
+    if (activeTool === "hooks") {
+      const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
+      setUrl(""); // clear input after send
+      // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
+      await hooks.start(ask, platform);
       return;
     }
 
@@ -230,7 +281,7 @@ export function Composer({ className }: ComposerProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, platform]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, platform]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,8 +295,8 @@ export function Composer({ className }: ComposerProps) {
     ? PLACEHOLDER_ACTIVE
     : PLACEHOLDER_BY_TOOL[activeTool];
 
-  // Show the platform chip only when the Idea tool is active (D-07)
-  const showPlatformChip = activeTool === "idea";
+  // Show the platform chip when Idea or Hooks tool is active (D-07)
+  const showPlatformChip = activeTool === "idea" || activeTool === "hooks";
 
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-0", className)}>
@@ -255,7 +306,7 @@ export function Composer({ className }: ComposerProps) {
           so the "Develop this →" CTA knows the active platform (D-15). */}
       {showIdeasView && (
         <IdeasThreadView
-          persistedBlocks={[]} // TODO Phase 4+: load from open thread on mount
+          persistedBlocks={persistedIdeaBlocks}
           streamingBlocks={ideasBlocks}
           statusMessage={ideas.statusMessage}
           isStreaming={ideas.isStreaming}
@@ -265,6 +316,25 @@ export function Composer({ className }: ComposerProps) {
       {activeTool === "idea" && ideas.error && (
         <p className="mb-2 px-1 text-sm text-error" role="alert">
           {ideas.error}
+        </p>
+      )}
+
+      {/* Hooks thread view — renders above the composer when the Hook tool is active.
+          Consumes useHooksStream state; provides PlatformContext + HookTestContext
+          to HookCardRenderer so the "Test full →" CTA can fire the handoff (D-05). */}
+      {showHooksView && (
+        <HooksThreadView
+          persistedBlocks={persistedHookBlocks}
+          streamingBlocks={hooksBlocks}
+          statusMessage={hooks.statusMessage}
+          isStreaming={hooks.isStreaming}
+          platform={platform}
+          onTestHook={handleTestHook}
+        />
+      )}
+      {activeTool === "hooks" && hooks.error && (
+        <p className="mb-2 px-1 text-sm text-error" role="alert">
+          {hooks.error}
         </p>
       )}
 
@@ -300,6 +370,40 @@ export function Composer({ className }: ComposerProps) {
             )}
           </div>
 
+          {/* Test brief banner (Task 2 — D-05/D-06 handoff).
+              Shown when "Test full →" was clicked on a hook card; surfaces the
+              chosen hook as the anchored brief. Reminds the creator to shoot + upload
+              the REAL video — SIM-1 Max scores the real thing, not this text (D-05). */}
+          {activeTool === "test" && testBrief && (
+            <div
+              className="mb-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 flex items-start justify-between gap-2"
+              data-testid="test-brief-banner"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-foreground-muted/60 mb-0.5">
+                  Shooting this hook — upload your video and SIM-1 Max will score the real thing
+                </p>
+                <p
+                  className="text-sm font-medium text-foreground leading-snug"
+                  style={{ color: '#FF7F50' }}
+                >
+                  &ldquo;{testBrief.hookLine}&rdquo;
+                </p>
+                {testBrief.audienceArchetype && (
+                  <p className="text-xs text-foreground-muted/50 mt-0.5">{testBrief.audienceArchetype}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss hook brief"
+                onClick={() => setTestBrief(null)}
+                className="shrink-0 text-foreground-muted/40 hover:text-foreground-muted transition-colors text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Upload drop zone — only relevant for the Test tool path.
               VideoUpload (bare) is always mounted (so its file input is part of
               the composer); the + control reveals/hides it. A staged file forces
@@ -317,8 +421,8 @@ export function Composer({ className }: ComposerProps) {
 
           <div className="flex items-end gap-2">
             {/* + upload toggle (D-22). ≥44px hit area on touch.
-                Hidden when Idea tool is active (upload not applicable). */}
-            {activeTool !== "idea" && (
+                Hidden when Idea or Hooks tool is active (upload not applicable). */}
+            {activeTool !== "idea" && activeTool !== "hooks" && (
               <button
                 type="button"
                 aria-label="Upload a video"
@@ -341,16 +445,18 @@ export function Composer({ className }: ComposerProps) {
                 For the Test tool: TikTok URL or upload path. Coral only on focus ring. */}
             <input
               type="text"
-              inputMode={activeTool === "idea" ? "text" : "url"}
+              inputMode={activeTool === "idea" || activeTool === "hooks" ? "text" : "url"}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={activePlaceholder}
               aria-label={
                 activeTool === "idea"
                   ? "Idea topic or angle (leave empty for Auto)"
-                  : hasSimulation
-                    ? "Ask about this simulation"
-                    : "Paste a TikTok link"
+                  : activeTool === "hooks"
+                    ? "Hook topic (leave empty for Auto)"
+                    : hasSimulation
+                      ? "Ask about this simulation"
+                      : "Paste a TikTok link"
               }
               aria-invalid={showUrlError || undefined}
               className={cn(
@@ -364,9 +470,9 @@ export function Composer({ className }: ComposerProps) {
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={activeTool === "idea" ? "Generate ideas" : "Simulate"}
+              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : "Simulate"}
               disabled={!canSubmit}
-              loading={submitting || ideas.isStreaming}
+              loading={submitting || ideas.isStreaming || hooks.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />

@@ -27,10 +27,13 @@
 
 import { useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
+import { useOnTestHook } from '@/lib/hook-test-context';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
-  /** Optional: Plan 03 wires this to the deep-link handoff (D-05). */
+  /** Optional override: Plan 03 wires this to the deep-link handoff (D-05).
+   *  When absent, the callback is read from HookTestContext (provided by HooksThreadView).
+   *  When both are absent, the button renders as a stub (Plan 01 behavior). */
   onTest?: () => void;
 }
 
@@ -40,7 +43,7 @@ const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
   Weak: 'var(--color-error)',
 };
 
-export function HookCardRenderer({ block, onTest }: HookCardRendererProps) {
+export function HookCardRenderer({ block, onTest: onTestProp }: HookCardRendererProps) {
   const {
     hookLine,
     audienceArchetype,
@@ -52,6 +55,13 @@ export function HookCardRenderer({ block, onTest }: HookCardRendererProps) {
     scrollQuote,
     channel,
   } = block.props;
+
+  // Read the handoff callback from context (provided by HooksThreadView).
+  // The prop override takes precedence if explicitly passed.
+  const onTestFromCtx = useOnTestHook();
+  const onTest = onTestProp ?? (onTestFromCtx
+    ? () => onTestFromCtx(hookLine, audienceArchetype)
+    : undefined);
 
   const [expanded, setExpanded] = useState(false);
   const bandColor = BAND_COLOR[band];
