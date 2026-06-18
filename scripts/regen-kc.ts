@@ -39,10 +39,11 @@ const CORPUS = resolve(ROOT, ".planning/corpus");
 const OUT    = resolve(ROOT, "src/lib/kc/compiled.ts");
 
 // ─── Read + escape corpus files ──────────────────────────────────────────────
-const base  = escapeForTemplate(readFileSync(resolve(CORPUS, "base.md"),  "utf-8"));
-const ideas = escapeForTemplate(readFileSync(resolve(CORPUS, "ideas.md"), "utf-8"));
-const hooks = escapeForTemplate(readFileSync(resolve(CORPUS, "hooks.md"), "utf-8"));
-const chat  = escapeForTemplate(readFileSync(resolve(CORPUS, "chat.md"),  "utf-8"));
+const base   = escapeForTemplate(readFileSync(resolve(CORPUS, "base.md"),   "utf-8"));
+const ideas  = escapeForTemplate(readFileSync(resolve(CORPUS, "ideas.md"),  "utf-8"));
+const hooks  = escapeForTemplate(readFileSync(resolve(CORPUS, "hooks.md"),  "utf-8"));
+const chat   = escapeForTemplate(readFileSync(resolve(CORPUS, "chat.md"),   "utf-8"));
+const script = escapeForTemplate(readFileSync(resolve(CORPUS, "script.md"), "utf-8"));
 
 // ─── Generate compiled.ts ────────────────────────────────────────────────────
 // The per-mode system prompts are assembled at COMPILE TIME (D-03, Open Q2):
@@ -74,6 +75,9 @@ export const KC_HOOKS_SLICE = \`${hooks}\`;
 /** Chat SLICE — thin stance-slice for open conversational mode (BASE-heavy; D-14). */
 export const KC_CHAT_SLICE = \`${chat}\`;
 
+/** Script SLICE — points BASE at TikTok/Reels/Shorts beat-structured script generation. */
+export const KC_SCRIPT_SLICE = \`${script}\`;
+
 // ─── Compile-time assembled per-mode system prompts (D-03) ───────────────────
 // Each is a byte-stable system prompt: BASE + separator + SLICE, assembled at
 // compile time so the byte-stable string is fixed in source.
@@ -87,6 +91,9 @@ export const KC_HOOKS_SYSTEM_PROMPT = \`\${KC_BASE}\\n\\n---\\n\\n\${KC_HOOKS_SL
 
 /** Chat system prompt — byte-stable per-mode prefix (base + chat slice). */
 export const KC_CHAT_SYSTEM_PROMPT = \`\${KC_BASE}\\n\\n---\\n\\n\${KC_CHAT_SLICE}\`;
+
+/** Script system prompt — byte-stable per-mode prefix (base + script slice). */
+export const KC_SCRIPT_SYSTEM_PROMPT = \`\${KC_BASE}\\n\\n---\\n\\n\${KC_SCRIPT_SLICE}\`;
 `;
 
 // ─── Write output ─────────────────────────────────────────────────────────────
