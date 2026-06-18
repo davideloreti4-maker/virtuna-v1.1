@@ -1,33 +1,43 @@
 /**
- * /api/tools/ideas/develop — PINNED chain-anchor endpoint (Plan 03-03, Task 2).
+ * /api/tools/ideas/develop — PINNED chain-anchor endpoint (Plan 04-02, Task 2).
  *
- * POST — "Develop this →" seam: the user selects an idea and this endpoint:
+ * POST — "Develop this →" auto-fire seam (D-07): the user selects an idea and this endpoint:
  *   1. Validates auth + caps anchor length server-side (WARNING-5).
- *   2. Fences anchor via assembleBundle ({mode:"hooks", anchor}) for the future Hooks call.
- *   3. Gets/creates the user's open thread (createOpenThreadLazy).
- *   4. Appends a Hooks PLACEHOLDER message to the SAME open thread.
- *   5. Returns { threadId, messageId } so Plan 04's Hooks CTA can continue in-thread.
+ *   2. Fences anchor via assembleBundle ({mode:"hooks", anchor}) for provenance.
+ *   3. Loads creator profile by session user_id (for niche grounding — cold-start safe).
+ *   4. Gets/creates the user's open thread (createOpenThreadLazy).
+ *   5. Runs runHooksPipeline({ ask:"", platform, profileRow, anchor }) — REAL generation (D-07).
+ *   6. Persists the ranked hook-card blocks to the SAME open thread (KC_GEN_VERSION stamped).
+ *   7. Returns { threadId, messageId, fencedHooksBundle, ideaId } — PINNED CONTRACT.
  *
- * The Hooks GENERATION is NOT built here — deferred to Plan 04 (D-15).
- * This endpoint ships the anchor write + in-thread append seam (RESEARCH Pattern 6).
+ * PLACEHOLDER REMOVED (D-07): the P3 markdown placeholder block is GONE. The /develop endpoint
+ * now performs real Hooks generation inline. Plan 03's "Develop this →" CTA continues to
+ * consume the same pinned response shape — messageId now points to the real hooks message.
  *
- * PINNED ENDPOINT CONTRACT (WARNING-1 — recorded in 03-03-SUMMARY.md):
+ * PINNED ENDPOINT CONTRACT (WARNING-1 — recorded in 03-03-SUMMARY.md + 04-02-SUMMARY.md):
  *   POST /api/tools/ideas/develop
  *   Payload: { ideaId?: string, anchor: string, platform: string }
- *   Response: { threadId: string, messageId: string }
+ *   Response: { threadId: string, messageId: string, fencedHooksBundle: string, ideaId: string | null }
+ *   NOTE: messageId now = the hooks message row id (real hook-card blocks, not placeholder).
  *
- * Security mitigations (T-03-07 – T-03-12):
- *   - Auth before any DB read (T-03-07)
- *   - user_id from session only, never body (T-03-08/CR-01)
- *   - anchor length cap server-side (T-03-10/WARNING-5)
- *   - assembleBundle injection fence wraps anchor (T-03-09)
- *   - Placeholder block validated by insertMessage at write boundary (T-03-11)
+ * Security mitigations (T-04-03 – T-04-09, same as hooks/route.ts):
+ *   - Auth before any DB read (T-04-03)
+ *   - user_id from session only, never body (T-04-04/CR-01)
+ *   - anchor length cap server-side (T-04-06/WARNING-5)
+ *   - assembleBundle injection fence wraps anchor (T-04-05)
+ *   - runHooksPipeline gated by band !== "Weak" (HOOKS-02 / T-04-06)
+ *   - insertMessage re-validates all blocks at write boundary (T-04-07)
+ *   - KC_GEN_VERSION stamp on every persisted message (D-10)
+ *   - Qwen-only inside runHooksPipeline (T-04-08)
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { assembleBundle } from "@/lib/kc/assembler";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
+import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
+import { kcStamp } from "@/lib/kc/kc-stamp";
+import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
 // ── Cap constants ─────────────────────────────────────────────────────────────
 // anchor is a full idea concept — allow more chars than a chat turn
@@ -38,7 +48,7 @@ const MAX_ANCHOR_LENGTH = 5000;
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
 
-  // ── (1) Auth gate (T-03-07) ───────────────────────────────────────────────
+  // ── (1) Auth gate (T-04-03) ───────────────────────────────────────────────
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -62,7 +72,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "anchor is required" }, { status: 400 });
   }
 
-  // SERVER-SIDE ANCHOR CAP (WARNING-5): independent of client
+  // SERVER-SIDE ANCHOR CAP (WARNING-5): independent of client (T-04-06)
   if (anchor.length > MAX_ANCHOR_LENGTH) {
     return Response.json(
       { error: `anchor must be at most ${MAX_ANCHOR_LENGTH} characters` },
@@ -74,40 +84,50 @@ export async function POST(request: Request): Promise<Response> {
     ["tiktok", "instagram", "youtube"].includes(rawPlatform) ? rawPlatform : "tiktok"
   ) as "tiktok" | "instagram" | "youtube";
 
-  // ── (3) Fence anchor via assembleBundle for future Hooks call (T-03-09) ──
-  // We assemble the hooks bundle now to prove the injection fence is applied.
-  // Plan 04 will use this fenced bundle as its Qwen user message for generation.
-  // Here we store it as provenance in the placeholder block (not executed yet).
+  // ── (3) Fence anchor via assembleBundle for provenance (T-04-05) ──────────
+  // Assemble the hooks bundle so the injection fence is applied to the anchor.
+  // The fencedHooksBundle is returned in the response for back-compat with Plan 03's
+  // CTA shape (even though generation now happens server-side here).
   const fencedHooksBundle = assembleBundle(
     { ask: "Generate hooks for this idea", platform, mode: "hooks", anchor },
-    null, // Hooks bundle doesn't need profile grounding for the placeholder
+    null, // profile is loaded separately below for the pipeline call
   );
 
-  // ── (4) Get/create open thread ────────────────────────────────────────────
+  // ── (4) Load creator profile (cold-start safe — D-09) ─────────────────────
+  // Load by SESSION user_id (never from request body — T-04-04/CR-01).
+  // Cold-start (no profile) is valid; runHooksPipeline degrades gracefully.
+  const { data: rawProfileRow } = await supabase
+    .from("creator_profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const profileRow = rawProfileRow as unknown as ProfileRow | null;
+
+  // ── (5) Get/create open thread ────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
-  // ── (5) Append Hooks placeholder message to the open thread ───────────────
-  // A typed markdown block: honest P4 affordance, not model-generated markup.
-  // Plan 04 will replace this affordance with generated Hooks cards.
-  const placeholderBlock = {
-    type: "markdown" as const,
-    props: {
-      text:
-        `**Hooks coming in P4** — your idea "${anchor.slice(0, 80)}${anchor.length > 80 ? "…" : ""}" ` +
-        `is queued for hook generation.\n\n` +
-        `_Tap "Generate hooks" when ready to develop ${ideaId ? `idea ${ideaId}` : "this idea"} into ` +
-        `3 audience-tested hook variants._`,
-    },
-  };
+  // ── (6) Run REAL Hooks generation (D-07: placeholder REMOVED) ────────────
+  // anchor is the upstream idea concept; pass it to the runner.
+  // ask = "" (anchor-driven mode — the idea is the primary input).
+  const { blocks } = await runHooksPipeline({
+    ask: "",
+    platform,
+    profileRow: profileRow ?? null,
+    anchor,
+  });
 
-  const msgRow = await insertMessage(openThread.id, "assistant", [placeholderBlock]);
+  // ── (7) Persist hook-card blocks to the open thread (D-10) ──────────────
+  // KC_GEN_VERSION stamp: blocks provenance stamped on this message.
+  // insertMessage re-validates blocks at the write boundary (T-04-07/D-14).
+  const msgRow = await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
 
-  // ── (6) Return thread + message ids for Plan 04's CTA ────────────────────
-  // Also return the fenced bundle so Plan 04 can pass it directly to Hooks generation.
+  // ── (8) Return PINNED response shape ──────────────────────────────────────
+  // Shape preserved from P3 contract (WARNING-1 — Plan 03's CTA depends on this).
+  // messageId now = the real hooks message id (not a placeholder).
+  // fencedHooksBundle kept for back-compat (generation happened server-side).
   return Response.json({
     threadId: openThread.id,
     messageId: msgRow.id,
-    // Plan 04 reads this to avoid re-assembling — the fence is already applied.
     fencedHooksBundle,
     ideaId: ideaId ?? null,
   });

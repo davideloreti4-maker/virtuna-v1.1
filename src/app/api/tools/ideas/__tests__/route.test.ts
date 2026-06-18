@@ -35,6 +35,31 @@ vi.mock("@/lib/tools/runners/ideas-runner", () => ({
   runIdeasPipeline: vi.fn(),
 }));
 
+// /develop route now calls runHooksPipeline (D-07 real generation)
+vi.mock("@/lib/tools/runners/hooks-runner", () => ({
+  runHooksPipeline: vi.fn().mockResolvedValue({
+    blocks: [
+      {
+        type: "hook-card",
+        props: {
+          hookLine: "Test hook line",
+          audienceArchetype: "Stops the skeptic",
+          mechanism: "Test mechanism prose",
+          seedHook: "Test seed",
+          rank: 1,
+          band: "Strong",
+          fraction: "7/10 stop",
+          scrollQuote: "This stopped me",
+          model: "sim1-flash",
+          channel: null,
+        },
+      },
+    ],
+    warnings: [],
+    seedHookPath: "structured",
+  }),
+}));
+
 vi.mock("@/lib/kc/assembler", () => ({
   assembleBundle: vi.fn(() => "mocked bundle"),
 }));
@@ -286,8 +311,14 @@ describe("POST /api/tools/ideas/develop (chain-anchor route)", () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     };
 
+    // The /develop route now loads creator_profiles (real Hooks generation, D-07).
+    // Provide a createClient mock with .from() chain so the profile load succeeds.
     (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
       auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     });
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
     (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
