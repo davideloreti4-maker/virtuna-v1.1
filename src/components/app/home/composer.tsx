@@ -340,7 +340,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           hooks.reset();
           // Switch to hooks view so the new card renders in the hooks thread
           setActiveTool("hooks");
-          await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef });
+          await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef, platform });
         } else {
           // skill === "idea"
           // CR-02: resolve from a SINGLE non-merged pool — prefer the in-session
@@ -363,7 +363,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           ideas.reset();
           // Switch to ideas view so the new card renders in the ideas thread
           setActiveTool("idea");
-          await ideas.startRefine({ skill: "idea", instruction: instruction ?? ask, anchor, cardRef });
+          await ideas.startRefine({ skill: "idea", instruction: instruction ?? ask, anchor, cardRef, platform });
         }
         return;
       }
