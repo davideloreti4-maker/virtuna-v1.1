@@ -50,6 +50,8 @@ import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
 import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
 import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
+import { useChatStream } from "@/hooks/queries/use-chat-stream";
+import { ChatThreadView } from "@/components/thread/chat-thread-view";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -109,6 +111,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
@@ -128,6 +132,15 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     activeTool === "hooks" &&
     (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
 
+  // ── Chat stream (Plan 05-03, Task 2 — D-05/D-08) ─────────────────────────
+  // Provides SSE markdown turns rendered above the composer in ChatThreadView.
+  // CRITICAL: chat.start() NEVER arms pendingNavRef/stream.start — chat send
+  // NEVER navigates to /analyze (D-05, no silent auto-fire).
+  const chat = useChatStream();
+  const chatBlocks = chat.toBlocks();
+  // Chat view always shows when the chat chip is active (it owns its own empty state)
+  const showChatView = activeTool === "chat";
+
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
   // True when any idea/hook thread content exists to show (streaming or persisted).
   // Used by page-level layout (HomePageLayout) to switch to the full-height
@@ -136,10 +149,14 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const hasThread =
     ideas.isStreaming ||
     hooks.isStreaming ||
+    chat.isStreaming ||
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
+    chatBlocks.length > 0 ||
     persistedIdeaBlocks.length > 0 ||
-    persistedHookBlocks.length > 0;
+    persistedHookBlocks.length > 0 ||
+    persistedChatBlocks.length > 0 ||
+    showChatView; // chat view always shown when chip is active (owns empty state)
 
   // Notify parent whenever thread presence changes (HomePageLayout uses this).
   useEffect(() => {
@@ -172,7 +189,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     ? !submitting && !ideas.isStreaming
     : activeTool === "hooks"
       ? !submitting && !hooks.isStreaming
-      : (isValidTikTok || file !== null) && !submitting;
+      : activeTool === "chat"
+        ? !submitting && !chat.isStreaming && trimmedUrl.length > 0
+        : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -194,8 +213,10 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const allBlocks = messages.flatMap((m) => m.blocks ?? []);
         const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
         const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
+        const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
+        setPersistedChatBlocks(markdownBlocks);
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
       }
@@ -271,6 +292,19 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       return;
     }
 
+    // ── Chat tool path (Plan 05-03, D-05) ────────────────────────────────────
+    // CRITICAL: this block MUST NOT set pendingNavRef.current or call stream.start.
+    // Chat send NEVER navigates to /analyze (D-05 — no silent auto-fire).
+    // ask must be non-empty (canSubmit already gates on trimmedUrl.length > 0).
+    if (activeTool === "chat") {
+      const ask = trimmedUrl;
+      setUrl(""); // clear input after send
+      chat.reset(); // clear prior error/coldStart for the new turn
+      // chat.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
+      await chat.start(ask, platform);
+      return;
+    }
+
     // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
@@ -331,7 +365,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, platform]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, platform]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -345,8 +379,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     ? PLACEHOLDER_ACTIVE
     : PLACEHOLDER_BY_TOOL[activeTool];
 
-  // Show the platform chip when Idea or Hooks tool is active (D-07)
-  const showPlatformChip = activeTool === "idea" || activeTool === "hooks";
+  // Show the platform chip when Idea, Hooks, or Chat tool is active (D-07)
+  const showPlatformChip = activeTool === "idea" || activeTool === "hooks" || activeTool === "chat";
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. This only activates when hasThread is true,
@@ -391,6 +425,22 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         <p className="mb-2 px-1 text-sm text-error" role="alert">
           {hooks.error}
         </p>
+      )}
+
+      {/* Chat thread view — renders above the composer when the Chat tool is active.
+          ChatThreadView owns its own empty state + cold-start nudge + error state.
+          CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05). */}
+      {showChatView && (
+        <ChatThreadView
+          persistedBlocks={persistedChatBlocks}
+          streamingBlocks={chatBlocks}
+          isStreaming={chat.isStreaming}
+          coldStart={chat.coldStart}
+          nudgeShown={chat.nudgeShown}
+          error={chat.error}
+          niche={undefined}
+          platform={platform}
+        />
       )}
     </>
   );
@@ -480,8 +530,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
 
           <div className="flex items-end gap-2">
             {/* + upload toggle (D-22). ≥44px hit area on touch.
-                Hidden when Idea or Hooks tool is active (upload not applicable). */}
-            {activeTool !== "idea" && activeTool !== "hooks" && (
+                Hidden when Idea, Hooks, or Chat tool is active (upload not applicable). */}
+            {activeTool !== "idea" && activeTool !== "hooks" && activeTool !== "chat" && (
               <button
                 type="button"
                 aria-label="Upload a video"
@@ -504,7 +554,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                 For the Test tool: TikTok URL or upload path. Coral only on focus ring. */}
             <input
               type="text"
-              inputMode={activeTool === "idea" || activeTool === "hooks" ? "text" : "url"}
+              inputMode={activeTool === "idea" || activeTool === "hooks" || activeTool === "chat" ? "text" : "url"}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={activePlaceholder}
@@ -513,9 +563,11 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                   ? "Idea topic or angle (leave empty for Auto)"
                   : activeTool === "hooks"
                     ? "Hook topic (leave empty for Auto)"
-                    : hasSimulation
-                      ? "Ask about this simulation"
-                      : "Paste a TikTok link"
+                    : activeTool === "chat"
+                      ? "Ask anything about your content"
+                      : hasSimulation
+                        ? "Ask about this simulation"
+                        : "Paste a TikTok link"
               }
               aria-invalid={showUrlError || undefined}
               className={cn(
@@ -529,9 +581,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : "Simulate"}
+              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : "Simulate"}
               disabled={!canSubmit}
-              loading={submitting || ideas.isStreaming || hooks.isStreaming}
+              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />

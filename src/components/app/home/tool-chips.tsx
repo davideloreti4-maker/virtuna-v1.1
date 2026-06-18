@@ -42,7 +42,7 @@ const CHIPS: ChipMeta[] = [
   { id: "test", label: "Test", enabled: true, costSlot: "credit" },
   { id: "idea", label: "Idea", enabled: true, costSlot: "credit" },
   { id: "hooks", label: "Hooks", enabled: true, costSlot: "credit" }, // live P4 (D-09)
-  { id: "chat", label: "Chat", enabled: false, costSlot: "credit" },  // P5
+  { id: "chat", label: "Chat", enabled: true, costSlot: "credit" },   // live P5
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────

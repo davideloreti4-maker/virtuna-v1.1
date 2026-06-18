@@ -37,10 +37,15 @@ export interface UseChatStreamReturn {
   isDone: boolean;
   /**
    * True when the meta frame carried coldStart=true (D-08).
-   * ChatThreadView uses this to gate the one-time cold-start nudge.
-   * Resets to false on reset().
+   * Resets to false on reset() (between sends).
    */
   coldStart: boolean;
+  /**
+   * Sticky session-level flag: true once coldStart was ever true this session.
+   * Used by ChatThreadView to gate the one-time cold-start nudge (D-08).
+   * NOT reset by reset() — persists for the life of the hook instance.
+   */
+  nudgeShown: boolean;
   /**
    * Start the chat stream. Call from the composer chat send.
    * ask: the user's question/message (required — server enforces).
@@ -70,6 +75,8 @@ export function useChatStream(): UseChatStreamReturn {
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const [coldStart, setColdStart] = useState(false);
+  // Sticky session-level flag — set once when coldStart fires, never reset (D-08).
+  const [nudgeShown, setNudgeShown] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -156,7 +163,11 @@ export function useChatStream(): UseChatStreamReturn {
           if (eventType === 'meta') {
             // meta leads the stream — parse coldStart signal (D-08)
             const cs = data.coldStart === true;
-            if (isMountedRef.current) setColdStart(cs);
+            if (isMountedRef.current) {
+              setColdStart(cs);
+              // nudgeShown is sticky — once set, never cleared (session-level gate)
+              if (cs) setNudgeShown(true);
+            }
 
           } else if (eventType === 'token') {
             // Accumulate token deltas into streaming text
@@ -209,6 +220,7 @@ export function useChatStream(): UseChatStreamReturn {
     error,
     isDone,
     coldStart,
+    nudgeShown,
     start,
     stop,
     reset,
