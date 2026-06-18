@@ -235,7 +235,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: AUD-01 (object + CRUD + persistence), AUD-02 (calibration pipeline), AUD-03 (General default + regression gate), AUD-04 (audience -> react/SIM path), AUD-05 (steer proof in ideas-runner), AUD-06 (goal -> deterministic reweight), AUD-07 (Manager UI + presets + composer chip + per-thread pin), AUD-08 (creator profile slim to name-only, ideas read-path)
 **Depends on:** Phase 6
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 **Wave 1** *(parallel - disjoint files)*
 
@@ -252,7 +252,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 4** *(blocked on Wave 3; has human-verify checkpoint)*
 
-- [ ] 07-05-PLAN.md - Manager UI + calibration flow (honest fallback) + read-only Audience Profile/persona display (D-03) + composer audience chip + per-thread pin (D-04) [AUD-07]
+- [x] 07-05-PLAN.md - Manager UI + calibration flow (honest fallback) + read-only Audience Profile/persona display (D-03) + composer audience chip + per-thread pin (D-04) [AUD-07] — shipped inside (app) AppShell; full calibration UAT gated on 07-06 migration push
 
 **Wave 5** *(blocked on Wave 4; BLOCKING gate + human-action push)*
 

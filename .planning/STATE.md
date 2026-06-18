@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07 Plan 04 complete (audience wiring — ideas steer+react)
-last_updated: "2026-06-18T17:19:31.026Z"
-last_activity: 2026-06-18 -- Phase 07 execution started
+stopped_at: Phase 07 Plan 05 complete (audience manager UI + calibration + composer chip)
+last_updated: "2026-06-18T19:50:00.000Z"
+last_activity: 2026-06-18 -- Phase 07 Plan 05 complete
 progress:
   total_phases: 10
   completed_phases: 6
   total_plans: 32
-  completed_plans: 30
-  percent: 60
+  completed_plans: 31
+  percent: 62
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — EXECUTING
-Plan: 2 of 6
-Status: Ready to execute
-Last activity: 2026-06-18 -- Phase 07 execution started
+Plan: 5 of 6 complete (next: 07-06 migration push + UAT)
+Status: Plan 05 complete — audience UI shipped
+Last activity: 2026-06-18 -- Phase 07 Plan 05 complete
 
 ## Hard Constraints (this milestone)
 
@@ -123,6 +123,11 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: D-17 cache discipline; Pitfall 2 compliance
 - [Phase ?]: undefined = byte-identical no-op (D-17 cache safe, Pitfall 2); stored text = deterministic repaint fold (calibrated audience)
 - [Phase ?]: delegates to buildGroundingLine for General/null (zero behavior change); blast radius confined to ideas-runner (AUD-08, D-01)
+- [Phase 07-05]: Audience routes MUST live under src/app/(app)/ route group to inherit AppShell (sidebar, AuthGuard, providers, content offset) — outside it pages render bare with no auth; route group does not change URLs
+- [Phase 07-05]: In-shell pages render a plain content <div> (max-w mx-auto px-4 py-6 sm:p-6) — AppShell owns the page <main>; nesting a second <main> is invalid HTML
+- [Phase 07-05]: PATCH /api/threads/[id] created (no prior threads/[id] route) to persist per-thread audience pin; auth-first + RLS + explicit user_id ownership guard; NULL active_audience_id = General
+- [Phase 07-05]: openThreadId captured from the existing GET /api/threads/open mount fetch (already returns threadId) — no extra request for the composer AudienceChip
+- [Phase 07-05]: Calibration fallback uses --color-warning (never coral, never error) and NEVER fabricates personas (D-06 honesty spine)
 
 ### Roadmap Evolution
 
@@ -146,9 +151,9 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T17:19:31.018Z
-Stopped at: Phase 07 Plan 04 complete (audience wiring — ideas steer+react)
-Next: Phase 07 Plan 03 (calibration pipeline)
+Last session: 2026-06-18T19:50:00.000Z
+Stopped at: Phase 07 Plan 05 complete (audience manager UI + calibration + composer chip)
+Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
 Resume file: None
 
 ## Performance Metrics
@@ -181,3 +186,4 @@ Resume file: None
 | Phase 07-audience-manager P02 | 6min | 3 tasks | 3 files |
 | Phase 07-audience-manager P03 | 8m | 2 tasks | 7 files |
 | Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P04 | 5m | 2 tasks | 6 files |
+| Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P05 | 75m | 2 tasks + checkpoint | 11 files (UI + shell fix) |
