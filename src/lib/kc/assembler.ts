@@ -63,7 +63,7 @@ const platformSchema = z.enum(["tiktok", "instagram", "youtube"]);
 /**
  * Generation modes. Each mode has a declared role set (MODE_ROLES).
  */
-const modeSchema = z.enum(["idea", "hooks", "chat"]);
+const modeSchema = z.enum(["idea", "hooks", "chat", "script"]);
 
 /**
  * Assembler input — the D-05 live-tier input shape.
@@ -98,11 +98,15 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
  * Ideas   — full creator picture (all six roles) to find resonant angles
  * Hooks   — develops a specific idea; goals excluded (idea is the primary input)
  * Chat    — thin; base-heavy (D-14); only niche/audience/platform for context
+ * Script  — mirrors Hooks role set (GROUND-02 anti-dilution — tight niche+craft
+ *            slice, not whole-profile); takes a hook and expands it into a beat
+ *            structure; goals excluded (the hook/idea is the primary input)
  */
 export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
   idea: ["niche", "audience", "goals", "wins", "flops", "platform"],
   hooks: ["niche", "audience", "platform", "wins", "flops"],
   chat: ["niche", "audience", "platform"],
+  script: ["niche", "audience", "platform", "wins", "flops"],
 };
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────

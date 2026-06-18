@@ -137,6 +137,43 @@ export const HookCardBlockSchema = z.object({
 
 export type HookCardBlock = z.infer<typeof HookCardBlockSchema>;
 
+// ─── Script-card block ────────────────────────────────────────────────────────
+// D-02 card anatomy — beat structure (Hook→Setup→Turn→Payoff→CTA) with per-beat
+// timing and retentionMarker (craft reasoning — not a score).
+//
+// Honesty spine (Pitfall 5 — OPENER ONLY):
+//   band/fraction describe the OPENER beat only — NOT the full-watch retention
+//   or a global quality score. The openingBeatSeed is the line fed to the Flash
+//   hook-beat gate (D-01). Per-beat retentionMarker is craft reasoning explaining
+//   WHY that beat holds attention — it is prose, never a numeric score.
+//
+// Fixed typed renderer — model emits validated props only; ScriptCardRenderer owns
+// ALL layout (THREAD-04). ONE script per run (D-02). model literal forces sim1-flash
+// provenance (D-10).
+
+export const ScriptCardBlockSchema = z.object({
+  type: z.literal("script-card"),
+  props: z.object({
+    // Beat structure (Hook → Setup → Turn → Payoff → CTA per D-02)
+    beats: z.array(
+      z.object({
+        label: z.string(),             // beat name (e.g. "Hook", "Setup", "Turn", "Payoff", "CTA")
+        content: z.string(),           // the actual script content for this beat
+        timing: z.string(),            // timing window (e.g. "0–3s", "3–15s")
+        retentionMarker: z.string(),   // craft reasoning: WHY this beat holds attention — NOT a score
+      }),
+    ),
+    openingBeatSeed: z.string(),       // the one-line hook fed to the Flash hook-beat gate (D-01)
+    // Opener-scoped band signal (Pitfall 5 — OPENER ONLY, not full-watch/general retention)
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string(),              // e.g. "7/10 stop" — opener audience fraction only
+    scrollQuote: z.string(),           // lead per-persona scroll quote for the opener (D-04)
+    model: z.literal("sim1-flash"),    // provenance tag — always Flash for script cards (D-10)
+  }),
+});
+
+export type ScriptCardBlock = z.infer<typeof ScriptCardBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -145,6 +182,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   PersonasBlockSchema,
   IdeaCardBlockSchema,
   HookCardBlockSchema,
+  ScriptCardBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
