@@ -49,19 +49,23 @@ Exceptions: none. Touch targets: interactive rows (chips, CTAs, disclosure, refi
 
 ## Typography
 
-Reuse the declared `--text-*` / `--font-*` / `--leading-*` scale. Effective set for Phase 5 surfaces (3–4 sizes, 2 weights in active use — regular 400 + semibold 600; medium 500 only on chips/tags, already established):
+Reuse the declared `--text-*` / `--font-*` / `--leading-*` scale. Phase 5 declares exactly **2 weights**: regular 400 + semibold 600.
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
 | Body / chat turn / card prose | 16px (`--text-base`) | 400 (`--font-regular`) | 1.5 (`--leading-normal`) |
 | Hook/idea line (card face dominant) | 16px (`--text-base`) | 600 (`--font-semibold`) | 1.25 (`--leading-snug`) |
-| Label / chip / progress step / band / timestamp | 12–14px (`--text-xs` / `--text-sm`) | 500 (`--font-medium`) | 1.25 (`--leading-snug`) |
+| Label / chip / progress step / band / timestamp | 12–14px (`--text-xs` / `--text-sm`) | 600 (`--font-semibold`) | 1.25 (`--leading-snug`) |
 | Test hero title ("Test") | 20–24px (`--text-xl`/`--text-2xl`) | 600 (`--font-semibold`) | 1.1–1.25 |
+
+> `--font-medium` (500) is an **inherited THEME-06 system token, not actively varied as a Phase 5 typography choice** — it remains in the system for pre-existing chip/tag surfaces but is not enumerated as a Phase 5 weight declaration. New Phase 5 labels/chips/progress steps render at 600 semibold, keeping the phase contract at 2 weights.
 
 Rules:
 - Chat turns render through `MarkdownBlockRenderer` (`prose prose-invert prose-sm`) — body inherits the 1.5 line-height + cream-primary foreground; do not override per-turn.
 - The model-authored follow-up turn (D-03) is body text, not a card — never bold-styled as a heading.
-- Progress checklist labels are 12–14px medium, muted until the stage completes (then cream-secondary + ✓).
+- Progress checklist labels are 12–14px semibold, muted until the stage completes (then cream-secondary + ✓).
+
+**Primary visual anchor:** the thread column cards (`max-w-[760px] mx-auto` — idea/hook/refined cards + interleaved chat turns) are the focal point of the open thread / home surface; the composer is the secondary persistent focal element pinned at the bottom (the universal entry door). On the Test surface, the score gauge in the reframed hero is the primary anchor.
 
 ---
 
