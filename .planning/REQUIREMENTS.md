@@ -62,7 +62,7 @@ reuses its typed-block renderers.
 
 ### TEST — the chain endpoint
 
-- [ ] **TEST-01**: Test reframe — the existing Reading is reframed as "Test · powered by SIM-1 Max," reachable as the landing point of every chain; the video path is unchanged (regression-gated).
+- [x] **TEST-01**: Test reframe — the existing Reading is reframed as "Test · powered by SIM-1 Max," reachable as the landing point of every chain; the video path is unchanged (regression-gated). *(completed 05-02)*
 
 ### STUDIO — conversation layer (P5, owner expansion 2026-06-18)
 
@@ -135,7 +135,7 @@ reuses its typed-block renderers.
 | HOOKS-02 | Phase 4 | Complete |
 | HOOKS-03 | Phase 4 | Complete |
 | THREAD-03 | Phase 5 | Pending |
-| TEST-01 | Phase 5 | Pending |
+| TEST-01 | Phase 5 | Complete |
 | STUDIO-01 | Phase 5 | Pending |
 | STUDIO-02 | Phase 5 | Pending |
 | STUDIO-03 | Phase 5 | Pending |

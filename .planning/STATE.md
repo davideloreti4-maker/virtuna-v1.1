@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05 Plan 01 complete
-last_updated: "2026-06-18T10:20:00.000Z"
-last_activity: 2026-06-18 -- 05-01 complete (open-chat backend: runChatPipeline + POST /api/tools/chat)
+stopped_at: Phase 05 Plan 02 complete
+last_updated: "2026-06-18T10:26:00.000Z"
+last_activity: 2026-06-18 -- 05-02 complete (Test reframe: Reading hero → "Test · powered by SIM-1 Max", D-06 brief copy, token fix)
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 21
-  completed_plans: 16
-  percent: 67
+  completed_plans: 17
+  percent: 70
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 05 (open-chat-test-reframe) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Executing Phase 05
-Last activity: 2026-06-18 -- 05-01 complete (open-chat backend: runChatPipeline + POST /api/tools/chat)
+Last activity: 2026-06-18 -- 05-02 complete (Test reframe: Reading hero → "Test · powered by SIM-1 Max", D-06 brief copy, token fix)
 
 ## Hard Constraints (this milestone)
 
@@ -87,6 +87,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 05-01]: coldStart computed route-side before stream starts so meta frame leads SSE (Plan 05-03 gates nudge on this)
 - [Phase 05-01]: Callback-based runner (runChatPipeline onToken) rather than async generator — simpler route-driven SSE
 - [Phase 05-01]: MAX_PRIOR_TURNS=20 soft context cap on prior turns in anchor (D-01a)
+- [Phase 05-02]: D-06a bounded rename: hero label "Test" + "powered by SIM-1 Max" tag only; reading_id/routes/ENGINE_VERSION/ScoreGauge unchanged
+- [Phase 05-02]: ReadingSection.labelSuffix ReactElement prop added (optional, non-breaking) to support inline tag adjacent to section label
 
 ### Pending Todos
 
@@ -106,10 +108,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T10:20:00.000Z
-Stopped at: Phase 05 Plan 01 complete
-Next: Phase 05 Plan 02 (Test reframe)
-Resume file: .planning/phases/05-open-chat-test-reframe/05-02-PLAN.md
+Last session: 2026-06-18T10:26:00.000Z
+Stopped at: Phase 05 Plan 02 complete
+Next: Phase 05 Plan 03 (Open-chat frontend: useChatStream + ChatThreadView + live Chat chip)
+Resume file: .planning/phases/05-open-chat-test-reframe/05-03-PLAN.md
 
 ## Performance Metrics
 
@@ -129,3 +131,4 @@ Resume file: .planning/phases/05-open-chat-test-reframe/05-02-PLAN.md
 | Phase 04-hooks-tool P03 | 30min | 4 tasks | 10 files |
 | Phase 04-hooks-tool P03 gap-closure | 15min | 2 tasks | 3 files (threads.ts, migration, tests) |
 | Phase 05-open-chat-test-reframe P01 | 5min | 2 tasks | 3 files |
+| Phase 05-open-chat-test-reframe P02 | 3min | 2 tasks | 3 files |
