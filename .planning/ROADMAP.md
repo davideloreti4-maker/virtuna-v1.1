@@ -24,8 +24,13 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test (completed 2026-06-18)
 - [x] **Phase 5: Studio Conversation Layer** - Make the studio feel like ONE conversation: profile-grounded open chat (no anchoring Reading) + Reading reframed as "Test · powered by SIM-1 Max" + Perplexity-style progress, cards embedded in chat, chat-to-refine (scoped re-run → re-tested card), and the generic skill-to-skill chain plumbing (completed 2026-06-18)
 - [x] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing (completed 2026-06-18)
+- [ ] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)*
+- [ ] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)*
+- [ ] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DRAFT 2026-06-18 — not yet discussed)*
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
+
+> **Phases 8–10 drafted (2026-06-18) — NOT yet discussed.** Competitor audit (Blort, Sandcastles) + MVP-value discussion produced three new phases that extend the moat from "generate + test" into "discover + remix + interrogate + self-optimize." Sequenced *after* Phase 7 (they consume the calibrated Audience object). Details below are a draft shape for a future `/gsd-discuss-phase` pass; requirement IDs are provisional. Source decisions captured in memory `phase8-discover-remix-roadmap.md` (+ `numen-tools-vision.md`).
 
 ## Phase Details
 
@@ -230,7 +235,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: AUD-01 (object + CRUD + persistence), AUD-02 (calibration pipeline), AUD-03 (General default + regression gate), AUD-04 (audience -> react/SIM path), AUD-05 (steer proof in ideas-runner), AUD-06 (goal -> deterministic reweight), AUD-07 (Manager UI + presets + composer chip + per-thread pin), AUD-08 (creator profile slim to name-only, ideas read-path)
 **Depends on:** Phase 6
-**Plans:** 6 plans
+**Plans:** 3/6 plans executed
 
 **Wave 1** *(parallel - disjoint files)*
 
@@ -239,7 +244,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 07-03-PLAN.md - Calibration pipeline (scrape->profile->thin-gate->never-fabricate, D-06) + persona repaint + audiences CRUD/calibrate SSE routes [AUD-02, AUD-01]
+- [x] 07-03-PLAN.md - Calibration pipeline (scrape->profile->thin-gate->never-fabricate, D-06) + persona repaint + audiences CRUD/calibrate SSE routes [AUD-02, AUD-01]
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -252,5 +257,65 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Wave 5** *(blocked on Wave 4; BLOCKING gate + human-action push)*
 
 - [ ] 07-06-PLAN.md - `supabase db push` + BLOCKING engine regression gate (ENGINE_VERSION 3.19.0 + General->DEFAULT + full suite green) + UAT [AUD-03]
+
+---
+
+### Phase 8: Discover & Remix→Read — the competitor/niche moat chain *(DRAFT — not yet discussed)*
+
+**Goal:** Open a new funnel-top that competitors (Blort, Sandcastles) stop short of. **Discover** real outliers (a creator/competitor profile *and* a niche/keyword, via Apify, ranked by **outlier-score** — over-performance vs the source channel's own baseline — plus value metrics) → **Remix** (deconstruct hook/structure/format, regenerate the concept *for the active calibrated audience*) → **Read** (concept Read on the regenerated text **before any filming**). The category is foresight: find out it lands before you shoot. Filming happens *after* the winning Read; an optional finished-video Read (existing Max path) confirms post-shoot.
+
+**Draft scope:**
+
+- **Discover (Outlier Grid):** profile + niche input → Apify pull → grid ranked by outlier-multiplier + value metrics. Parity with Sandcastles' core, but the tile CTA is "Remix → Read", not "rewrite for me."
+- **Audience-steered Remix (closes a slice of P7 steer-debt #1):** the remix/script runner must steer on the *active audience*, not the generic creator profile — otherwise the Read predicts against your audience while the generation targets a generic one (half-moat). This deliberately pulls the steer-everywhere debt forward for the remix+script runner.
+- **Multi-audience Read (pulls forward the post-v1 "killer feature"):** same concept scored against two audiences side-by-side ("wins for growth, bombs for buyers"). Object is already `audience_ids[]`-ready from P7.
+- **Verbatim quote panel:** fan the *already-emitted* per-persona `scrollQuote` + `segment_reactions` into a focus-group quote wall (mostly presentation — data exists).
+- **Who-it's-NOT-for (inverse Read):** name the segment that will scroll/bounce (anti-slop; data in per-persona verdicts).
+- **Comment seeding (idea D):** generate 2–3 audience-calibrated pinned comments for a winning concept (reuses persona voices).
+
+**Reuse vs new:** ~80% is wiring the existing Ideas→Hooks→Test chain + P6 remix-runner + P7 audience object to a new front door. **New build:** Apify scrape layer + outlier-score compute + the grid UI.
+
+**Requirements:** provisional — DISC-* (discover/outlier grid + scrape), REMIX-* (audience-steered remix), READ-* (multi-audience compare, verbatim panel, who-it's-not-for, comment seeding). To be formalized at discuss-phase.
+**Depends on:** Phase 7 (calibrated Audience object + react-path grounding).
+**Plans:** TBD
+**UI hint:** yes
+
+### Phase 9: Living Audience — interactive simulation UX *(DRAFT — not yet discussed)*
+
+**Goal:** Make "tested against YOUR audience" *felt*, not just numeric. Turn the static persona cloud into a living, interrogable audience — the Artificial-Societies node-cloud experience, on top of infra that already exists (`PersonaCloud`, `PersonaGraph` with 200 viewer dots / links / hover cards / pulse, per-persona `segment_reactions`, persona system prompts in `persona-registry.ts`, the P5 chat-runner).
+
+**Draft scope (ladder):**
+
+1. **Reaction replay** — the cloud reacts *as it watches*, segment-by-segment (drives off the existing `segment_reactions` timeline).
+2. **Clickable persona nodes** — tap a dot → that archetype + its verbatim reaction to *this* concept (uses the `onOpen` seam already stubbed in `PersonaCloud` → `PersonaGraph` drill-down).
+3. **Chat-with-persona (flagship cheatcode):** tap → "ask them why" → conversational chat grounded on the persona's `persona-registry` system prompt + its reaction to this concept; it answers in-voice. Reuses the P5 chat-runner.
+4. **Cluster by segment** — group the cloud by the P7 Temperature×Disposition lens (which segment loved/hated it).
+
+**Honesty posture (a feature, not a caveat):** labeled SIM-1, shows the *reasoning* per persona, never fakes a focus group. Legible simulation = the moat's credibility (anti-slop spine).
+
+**Reuse vs new:** the cloud primitives, reaction data, persona prompts, and chat-runner all exist. **New build:** the replay animation, the node→card drill interaction, and the per-persona grounded chat session.
+
+**Requirements:** provisional — LIVE-* (reaction replay, node drill-down, chat-with-persona, segment clustering). To be formalized at discuss-phase.
+**Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.
+**Plans:** TBD
+**UI hint:** yes
+
+### Phase 10: Account Read, Saved Shelf & Recalibration Flywheel *(DRAFT — not yet discussed)*
+
+**Goal:** Turn the studio inward and make the moat *compound over time*. The companion to Discover's "know thy competitor" is "know thyself" — plus the loop that makes the audience object error-correct against reality.
+
+**Draft scope:**
+
+- **Account Read (self-optimize):** scrape the creator's own account history → a standing report: where you stand, your recurring hook/format patterns, drop-points, what's working vs what to fix. Extends P7's personal-scrape (D-06) from audience-*composition* to content-*pattern* analysis. A "Read" on your own account.
+- **Saved shelf (lean):** a flat saved-items shelf for outliers (from Discover), Reads/concepts, and formats. Connective tissue across skills. **Scope guard:** flat shelf, NOT folders/tags/CMS.
+- **Drift → recalibrate (idea B):** scheduled re-scrape of the creator's own account; when audience composition shifts, nudge "your audience changed — recalibrate."
+- **Outcome loop / data flywheel:** log *actual* post outcomes back against the prediction → error-correct the audience object ("we said 7, it hit 9 — your buyers are warmer than modeled"). Closes generate→predict→**post→measure→recalibrate** — the loop no competitor can run without the calibrated object.
+
+**Backlog adjacent (noted, not scoped here):** remix-your-own-winner (idea E — already on v6.1 backlog), generate→critique→regenerate quality loop (backlog lever #3 — the "improve-against-weakest-segment" loop), RAG over creator history.
+
+**Requirements:** provisional — SELF-* (account read), SAVE-* (saved shelf), FLYWHEEL-* (drift + outcome loop). To be formalized at discuss-phase.
+**Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
+**Plans:** TBD
+**UI hint:** yes
 
 **UI hint**: yes
