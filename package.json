@@ -8,7 +8,7 @@
     ]
   },
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=768' next dev --turbopack",
+    "dev": "NODE_OPTIONS='--require ./scripts/dev-fresh-conn.cjs --max-old-space-size=768' next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -83,6 +83,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
+    "undici": "^7.22.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

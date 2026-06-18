@@ -4,7 +4,8 @@
  *
  * Asserts:
  *  - Clicking "test" fires onSelect("test").
- *  - Clicking a disabled chip (idea/hooks/chat) does NOT fire onSelect.
+ *  - Clicking "idea" fires onSelect("idea") (live since P3).
+ *  - Clicking a disabled chip (hooks/chat) does NOT fire onSelect.
  *  - Active-model label reads "SIM-1 Max" when "test" is active.
  *  - Active-model label reads "SIM-1 Flash" when a non-test chip would be active.
  *  - Disabled chips carry aria-disabled + "coming soon" affordance.
@@ -53,14 +54,14 @@ describe('ToolChips — chip row (D-07/D-08)', () => {
     expect(onSelect).toHaveBeenCalledTimes(1);
   });
 
-  it('does NOT fire onSelect when a disabled chip (idea) is clicked', () => {
+  it('fires onSelect("idea") when the Idea chip is clicked (live since P3)', () => {
     const onSelect = vi.fn();
     renderChips('test', onSelect);
-    // Idea chip is disabled — clicking must not fire onSelect
+    // Idea chip went live in Phase 3 (03-04) — clicking must fire onSelect
     const ideaBtn = getChipByLabel('Idea');
-    expect(ideaBtn).toBeDisabled();
+    expect(ideaBtn).not.toBeDisabled();
     fireEvent.click(ideaBtn);
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('idea');
   });
 
   it('does NOT fire onSelect when hooks chip is clicked (disabled)', () => {
@@ -89,8 +90,8 @@ describe('ToolChips — chip row (D-07/D-08)', () => {
 
   it('marks disabled chips with aria-disabled', () => {
     renderChips('test');
-    // All three disabled chips are disabled
-    expect(getChipByLabel('Idea')).toBeDisabled();
+    // Test + Idea are live (P3); Hooks/Chat remain disabled (P4/P5)
+    expect(getChipByLabel('Idea')).not.toBeDisabled();
     expect(getChipByLabel('Hooks')).toBeDisabled();
     expect(getChipByLabel('Chat')).toBeDisabled();
   });
@@ -98,11 +99,11 @@ describe('ToolChips — chip row (D-07/D-08)', () => {
   it('carries a "coming soon" sr-only affordance on disabled chips (D-08)', () => {
     const { container } = renderChips('test');
     const srOnlyEls = container.querySelectorAll('.sr-only');
-    // There are 3 disabled chips, each with a sr-only "coming soon" span
+    // Two disabled chips remain (Hooks/Chat), each with a sr-only "coming soon" span
     const comingSoonEls = Array.from(srOnlyEls).filter(
       (el) => el.textContent?.toLowerCase().includes('coming soon'),
     );
-    expect(comingSoonEls.length).toBe(3);
+    expect(comingSoonEls.length).toBe(2);
   });
 });
 
