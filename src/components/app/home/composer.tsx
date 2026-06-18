@@ -281,6 +281,19 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     setTestBrief({ hookLine, audienceArchetype });
   }, []);
 
+  // ── "Write script →" handoff (Plan 06-05 gap-close — CHAIN_HANDOFFS hooks→script) ──
+  // Invoked by HookCardRenderer via HookWriteScriptContext when the creator clicks
+  // "Write script →". Switches to the Script tool and starts a script run anchored on
+  // the chosen hookLine (streams into ScriptThreadView, mirroring the Script-chip path).
+  // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
+  // CRITICAL: NEVER sets pendingNavRef / calls stream.start — Script never navigates to /analyze.
+  const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
+    setActiveTool("script");
+    script.reset();
+    // ask empty — the carried hookLine anchors the script generation.
+    void script.start("", platform, hookLine);
+  }, [script, platform]);
+
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
   // Carries the script opener line as the test brief (D-07 honesty spine).
@@ -612,6 +625,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           error={hooks.error}
           platform={platform}
           onTestHook={handleTestHook}
+          onWriteScriptHook={handleWriteScript}
           onRetry={() => void hooks.start("", platform)}
         />
       )}

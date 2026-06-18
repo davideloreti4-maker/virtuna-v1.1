@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { HookCardRenderer } from '@/components/thread/hook-card-block';
-import { HookTestContext } from '@/lib/hook-test-context';
+import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 
 const mockBlock: HookCardBlock = {
@@ -116,5 +116,78 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
     );
     // No window.location change (happy-dom doesn't navigate on callbacks)
     expect(window.location.pathname).not.toContain('/analyze');
+  });
+});
+
+describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS hooks→script)', () => {
+  it('calls the HookWriteScriptContext callback with hookLine + audienceArchetype on click', () => {
+    const onWriteScript = vi.fn();
+
+    render(
+      <HookWriteScriptContext.Provider value={onWriteScript}>
+        <HookCardRenderer block={mockBlock} />
+      </HookWriteScriptContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /write a full script from this hook/i }));
+
+    expect(onWriteScript).toHaveBeenCalledTimes(1);
+    expect(onWriteScript).toHaveBeenCalledWith(
+      mockBlock.props.hookLine,
+      mockBlock.props.audienceArchetype,
+    );
+  });
+
+  it('renders the CTA enabled when HookWriteScriptContext provides a callback', () => {
+    render(
+      <HookWriteScriptContext.Provider value={vi.fn()}>
+        <HookCardRenderer block={mockBlock} />
+      </HookWriteScriptContext.Provider>,
+    );
+
+    expect(screen.getByRole('button', { name: /write a full script from this hook/i })).not.toBeDisabled();
+  });
+
+  it('renders the CTA as a stub (disabled) when no context callback is set', () => {
+    render(<HookCardRenderer block={mockBlock} />);
+
+    expect(screen.getByRole('button', { name: /write a full script from this hook/i })).toBeDisabled();
+  });
+
+  it('prop override (onWriteScript) takes precedence over context callback', () => {
+    const contextFn = vi.fn();
+    const propFn = vi.fn();
+
+    render(
+      <HookWriteScriptContext.Provider value={contextFn}>
+        <HookCardRenderer block={mockBlock} onWriteScript={propFn} />
+      </HookWriteScriptContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /write a full script from this hook/i }));
+
+    expect(propFn).toHaveBeenCalledTimes(1);
+    expect(contextFn).not.toHaveBeenCalled();
+  });
+
+  it('Test and Write-script CTAs fire independently', () => {
+    const onTestHook = vi.fn();
+    const onWriteScript = vi.fn();
+
+    render(
+      <HookTestContext.Provider value={onTestHook}>
+        <HookWriteScriptContext.Provider value={onWriteScript}>
+          <HookCardRenderer block={mockBlock} />
+        </HookWriteScriptContext.Provider>
+      </HookTestContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /write a full script from this hook/i }));
+    expect(onWriteScript).toHaveBeenCalledTimes(1);
+    expect(onTestHook).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /test this hook/i }));
+    expect(onTestHook).toHaveBeenCalledTimes(1);
+    expect(onWriteScript).toHaveBeenCalledTimes(1);
   });
 });

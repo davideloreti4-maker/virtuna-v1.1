@@ -27,7 +27,7 @@
 
 import { useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
-import { useOnTestHook } from '@/lib/hook-test-context';
+import { useOnTestHook, useOnWriteScriptHook } from '@/lib/hook-test-context';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -35,6 +35,10 @@ export interface HookCardRendererProps {
    *  When absent, the callback is read from HookTestContext (provided by HooksThreadView).
    *  When both are absent, the button renders as a stub (Plan 01 behavior). */
   onTest?: () => void;
+  /** Optional override for the hooks→script handoff (CHAIN_HANDOFFS hooks→script).
+   *  When absent, the callback is read from HookWriteScriptContext (provided by HooksThreadView).
+   *  When both are absent, the button renders as a stub. */
+  onWriteScript?: () => void;
 }
 
 const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
@@ -43,7 +47,7 @@ const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
   Weak: 'var(--color-error)',
 };
 
-export function HookCardRenderer({ block, onTest: onTestProp }: HookCardRendererProps) {
+export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onWriteScriptProp }: HookCardRendererProps) {
   const {
     hookLine,
     audienceArchetype,
@@ -56,11 +60,17 @@ export function HookCardRenderer({ block, onTest: onTestProp }: HookCardRenderer
     channel,
   } = block.props;
 
-  // Read the handoff callback from context (provided by HooksThreadView).
-  // The prop override takes precedence if explicitly passed.
+  // Read the handoff callbacks from context (provided by HooksThreadView).
+  // The prop overrides take precedence if explicitly passed.
   const onTestFromCtx = useOnTestHook();
   const onTest = onTestProp ?? (onTestFromCtx
     ? () => onTestFromCtx(hookLine, audienceArchetype)
+    : undefined);
+
+  // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →").
+  const onWriteScriptFromCtx = useOnWriteScriptHook();
+  const onWriteScript = onWriteScriptProp ?? (onWriteScriptFromCtx
+    ? () => onWriteScriptFromCtx(hookLine, audienceArchetype)
     : undefined);
 
   const [expanded, setExpanded] = useState(false);
@@ -175,8 +185,26 @@ export function HookCardRenderer({ block, onTest: onTestProp }: HookCardRenderer
         </div>
       )}
 
-      {/* "Test full →" CTA (D-05) — affordance + onTest seam (Plan 03 wires deep-link) */}
-      <div className="border-t border-white/[0.06] px-4 py-3">
+      {/* Chain CTAs (D-05): "Write script →" (hooks→script) + "Test full →" (hooks→test).
+          Both seams read from context (HooksThreadView provides them). */}
+      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
+        {/* "Write script →" — hooks→script chain handoff (CHAIN_HANDOFFS) */}
+        <button
+          type="button"
+          onClick={onWriteScript}
+          disabled={!onWriteScript}
+          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          style={{
+            color: onWriteScript ? '#FF7F50' : 'rgba(255,127,80,0.35)',
+            cursor: onWriteScript ? 'pointer' : 'default',
+          }}
+          aria-label="Write a full script from this hook"
+          title={onWriteScript ? 'Write a full script anchored on this hook' : 'Write script handoff not wired'}
+        >
+          Write script →
+        </button>
+
+        {/* "Test full →" — hooks→test handoff (onTest seam) */}
         <button
           type="button"
           onClick={onTest}

@@ -22,3 +22,21 @@ export const HookTestContext = createContext<OnTestHookFn | null>(null);
 export function useOnTestHook(): OnTestHookFn | null {
   return useContext(HookTestContext);
 }
+
+/**
+ * HookWriteScriptContext — React context for the "Write script →" handoff (hooks→script).
+ *
+ * Mirrors HookTestContext: HookCardRenderer reads this to fire the hooks→script chain
+ * handoff without threading a prop through MessageBlocks. When set (by HooksThreadView),
+ * clicking "Write script →" switches to the Script tool and starts a script run anchored
+ * on the chosen hookLine (CHAIN_HANDOFFS hooks→script — /api/tools/script { anchor }).
+ *
+ * Default: null (CTA renders as a stub — no handler wired).
+ */
+export type OnWriteScriptFn = (hookLine: string, audienceArchetype: string) => void;
+
+export const HookWriteScriptContext = createContext<OnWriteScriptFn | null>(null);
+
+export function useOnWriteScriptHook(): OnWriteScriptFn | null {
+  return useContext(HookWriteScriptContext);
+}

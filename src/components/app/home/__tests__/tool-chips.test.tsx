@@ -139,8 +139,8 @@ describe('ToolChips — reserved cost slot (D-07)', () => {
   it('each chip has a data-cost-slot attribute reserving the credit affordance', () => {
     const { container } = renderChips('test');
     const costSlots = container.querySelectorAll('[data-cost-slot]');
-    // 4 chips × 1 cost slot each
-    expect(costSlots.length).toBe(4);
+    // 6 chips × 1 cost slot each (Test/Idea/Hooks/Chat/Script/Remix — Script + Remix added in 06-05)
+    expect(costSlots.length).toBe(6);
     costSlots.forEach((slot) => {
       expect(slot.getAttribute('data-cost-slot')).toBe('credit');
     });

@@ -33,7 +33,7 @@
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { PlatformContext } from '@/lib/platform-context';
-import { HookTestContext } from '@/lib/hook-test-context';
+import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -58,6 +58,8 @@ export interface HooksThreadViewProps {
   platform: string;
   /** "Test full →" handoff callback — called with the chosen hook's hookLine + audienceArchetype. */
   onTestHook?: (hookLine: string, audienceArchetype: string) => void;
+  /** "Write script →" handoff callback (hooks→script) — called with the chosen hook's hookLine + audienceArchetype. */
+  onWriteScriptHook?: (hookLine: string, audienceArchetype: string) => void;
   /**
    * Retry callback — re-invokes the skill run from the parent.
    * Called only on explicit tap (W2). Never fires on render.
@@ -75,6 +77,7 @@ export function HooksThreadView({
   error,
   platform,
   onTestHook,
+  onWriteScriptHook,
   onRetry,
 }: HooksThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
@@ -102,6 +105,7 @@ export function HooksThreadView({
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <HookTestContext.Provider value={onTestHook ?? null}>
+        <HookWriteScriptContext.Provider value={onWriteScriptHook ?? null}>
         <div className="w-full max-w-[760px] mx-auto flex flex-col gap-6 px-4 py-6">
 
           {/* Progress checklist — replaces the bare status line during streaming (STUDIO-01) */}
@@ -161,6 +165,7 @@ export function HooksThreadView({
             </div>
           )}
         </div>
+        </HookWriteScriptContext.Provider>
       </HookTestContext.Provider>
     </PlatformContext.Provider>
   );
