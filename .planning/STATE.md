@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 05 Plan 04 complete
-last_updated: "2026-06-18T13:10:00.000Z"
-last_activity: 2026-06-18 -- 05-04 complete (Conversation layer: chain-handoff registry, stage SSE events, ProgressChecklist, model follow-up turn, skill-run error/retry)
+stopped_at: Phase 05 Plan 05 complete — Phase 05 COMPLETE
+last_updated: "2026-06-18T14:30:00.000Z"
+last_activity: 2026-06-18 -- 05-05 complete (Core loop: refine-intent NL detect + scoped SIM-scored re-run inline + tappable chain-step CTA)
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 19
-  percent: 76
+  completed_plans: 20
+  percent: 81
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 05 (open-chat-test-reframe) — EXECUTING
-Plan: 5 of 5
-Status: Executing Phase 05
-Last activity: 2026-06-18 -- 05-04 complete (Conversation layer: chain-handoff registry, stage SSE events, ProgressChecklist, model follow-up turn, skill-run error/retry)
+Phase: 05 (open-chat-test-reframe) — COMPLETE
+Plan: 5 of 5 — ALL PLANS COMPLETE
+Status: Phase 05 complete — ready for Phase 06 (Script & Remix Tools)
+Last activity: 2026-06-18 -- 05-05 complete (Core loop: refine-intent NL detect + scoped SIM-scored re-run inline + tappable chain-step CTA)
 
 ## Hard Constraints (this milestone)
 
@@ -96,6 +96,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 05-04]: Follow-up Qwen generation non-fatal — caught silently so card delivery never blocks on follow-up timeout
 - [Phase 05-04]: ProgressChecklist is ephemeral SSE-driven UI (not a registered block) per D-02 Claude's discretion
 - [Phase 05-04]: Checkmark ✓ uses var(--color-cream-secondary) — never coral per UI-SPEC §Color
+- [Phase 05-05]: startRefine on stream hooks routes refine errors through hooks.error/ideas.error → Plan-04 SkillRunError (zero new error UI)
+- [Phase 05-05]: Refine path switches activeTool to 'hooks'/'idea' so new card renders in correct thread view
+- [Phase 05-05]: suggestedCTAs from handoffsFor('idea') — idea→hooks is the most immediately relevant chat next step
 
 ### Pending Todos
 
@@ -115,10 +118,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-18T13:10:00.000Z
-Stopped at: Phase 05 Plan 04 complete
-Next: Phase 05 Plan 05 (Core loop: chat-to-refine scoped re-run + refine-intent NL detect + tappable suggested chain CTA)
-Resume file: .planning/phases/05-open-chat-test-reframe/05-05-PLAN.md
+Last session: 2026-06-18T14:30:00.000Z
+Stopped at: Phase 05 Plan 05 complete — Phase 05 fully complete
+Next: Phase 06 (Script & Remix Tools — un-deferred from v6.1; run /gsd-discuss-phase 6)
+Resume file: None — Phase 05 complete; start /gsd-discuss-phase 6 for next phase
 
 ## Performance Metrics
 
@@ -141,3 +144,4 @@ Resume file: .planning/phases/05-open-chat-test-reframe/05-05-PLAN.md
 | Phase 05-open-chat-test-reframe P02 | 3min | 2 tasks | 3 files |
 | Phase 05-open-chat-test-reframe P03 | 10min | 2 tasks | 4 files |
 | Phase 05-open-chat-test-reframe P04 | 18min | 3 tasks | 9 files |
+| Phase 05-open-chat-test-reframe P05 | 28min | 3 tasks | 8 files |
