@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
 | 5. Studio Conversation Layer | 5/5 | Complete    | 2026-06-18 |
-| 6. Script & Remix Tools | 5/5 | Complete   | 2026-06-18 |
+| 6. Script & Remix Tools | 5/5 | Complete    | 2026-06-18 |
 
 ### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
 
