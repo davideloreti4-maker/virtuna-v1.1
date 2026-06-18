@@ -52,6 +52,10 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { useScriptStream } from "@/hooks/queries/use-script-stream";
+import { ScriptThreadView } from "@/components/thread/script-thread-view";
+import { useRemixStream } from "@/hooks/queries/use-remix-stream";
+import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -67,12 +71,14 @@ const ERROR_NON_TIKTOK =
   "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
 
 // Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
-// Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat disabled (D-08) — P5.
+// Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat — P5. Script/Remix — P6 (06-05).
 const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   test: PLACEHOLDER_EMPTY,
   idea: "What idea or topic do you want to test? (or leave empty for Auto)",
   hooks: "What topic do you want hooks for? (or leave empty for Auto)",
   chat: "Ask anything…",
+  script: "Carry a hook in, or type a topic to script…",
+  remix: "Paste a trending or competitor TikTok URL to remix…",
 };
 
 export interface ComposerProps {
@@ -114,6 +120,10 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedRemixBlocks, setPersistedRemixBlocks] = useState<any[]>([]);
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
@@ -142,6 +152,24 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Chat view always shows when the chat chip is active (it owns its own empty state)
   const showChatView = activeTool === "chat";
 
+  // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
+  // Provides SSE script-card blocks rendered above the composer in ScriptThreadView.
+  // CRITICAL: script.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  const script = useScriptStream();
+  const scriptBlocks = script.toBlocks();
+  const showScriptView =
+    activeTool === "script" &&
+    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null || persistedScriptBlocks.length > 0);
+
+  // ── Remix stream (Plan 06-05 — REMIX-01) ──────────────────────────────────
+  // Provides SSE remix-card blocks rendered above the composer in RemixThreadView.
+  // CRITICAL: remix.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  const remix = useRemixStream();
+  const remixBlocks = remix.toBlocks();
+  const showRemixView =
+    activeTool === "remix" &&
+    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null || persistedRemixBlocks.length > 0);
+
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
   // True when any idea/hook thread content exists to show (streaming or persisted).
   // Used by page-level layout (HomePageLayout) to switch to the full-height
@@ -151,12 +179,18 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     ideas.isStreaming ||
     hooks.isStreaming ||
     chat.isStreaming ||
+    script.isStreaming ||
+    remix.isStreaming ||
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
+    scriptBlocks.length > 0 ||
+    remixBlocks.length > 0 ||
     persistedIdeaBlocks.length > 0 ||
     persistedHookBlocks.length > 0 ||
     persistedChatBlocks.length > 0 ||
+    persistedScriptBlocks.length > 0 ||
+    persistedRemixBlocks.length > 0 ||
     showChatView; // chat view always shown when chip is active (owns empty state)
 
   // Notify parent whenever thread presence changes (HomePageLayout uses this).
@@ -192,7 +226,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       ? !submitting && !hooks.isStreaming
       : activeTool === "chat"
         ? !submitting && !chat.isStreaming && trimmedUrl.length > 0
-        : (isValidTikTok || file !== null) && !submitting;
+        // Script: empty ask allowed when an anchor is carried (hooks→script card-POST seam)
+        : activeTool === "script"
+          ? !submitting && !script.isStreaming
+          // Remix: URL required (canSubmit gates on trimmedUrl.length > 0 per plan spec)
+          : activeTool === "remix"
+            ? !submitting && !remix.isStreaming && trimmedUrl.length > 0
+            : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -215,9 +255,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
         const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
         const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
+        const scriptBlocks = allBlocks.filter((b) => b.type === 'script-card');
+        const remixBlocks = allBlocks.filter((b) => b.type === 'remix-card');
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
         setPersistedChatBlocks(markdownBlocks);
+        setPersistedScriptBlocks(scriptBlocks);
+        setPersistedRemixBlocks(remixBlocks);
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
       }
@@ -236,6 +280,50 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     setActiveTool("test");
     setTestBrief({ hookLine, audienceArchetype });
   }, []);
+
+  // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
+  // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
+  // Carries the script opener line as the test brief (D-07 honesty spine).
+  // CRITICAL: does NOT invoke any model on the script text (D-05 honesty spine).
+  const handleTestScript = useCallback((openingBeatLine: string, _scriptBrief: string) => {
+    setActiveTool("test");
+    // Surface the script opener as the hook brief (matches the visual brief posture)
+    setTestBrief({ hookLine: openingBeatLine, audienceArchetype: "script opener" });
+  }, []);
+
+  // ── Remix → Hooks handoff (Plan 06-05 — REMIX-01) ─────────────────────────
+  // Invoked by RemixCardRenderer via RemixDevelopContext when "Develop into hooks →" is clicked.
+  // Card-POST model: POSTs adaptedHook as anchor to /api/tools/ideas/develop (PINNED endpoint).
+  // After develop completes, reloads the open thread to surface the new hook cards.
+  // CRITICAL: this fires ONLY on explicit tap (D-05 honesty spine).
+  // CRITICAL: NEVER arms pendingNavRef / calls stream.start (T-03-13/T-06-20).
+  const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
+    // Switch to hooks view so the user sees the in-progress state
+    setActiveTool("hooks");
+    hooks.reset();
+    try {
+      // POST the adapted hook as the anchor to the PINNED develop endpoint.
+      // ideaId is absent — PINNED CONTRACT: { ideaId?, anchor, platform } → ideaId optional.
+      const res = await fetch('/api/tools/ideas/develop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anchor: adaptedHook, platform: remixPlatform }),
+      });
+      if (!res.ok) return; // silent — SkillRunError would need a separate state gate here
+      // After develop persists the hook cards, reload the open thread so they appear.
+      const threadRes = await fetch('/api/threads/open');
+      if (!threadRes.ok) return;
+      const data = await threadRes.json() as {
+        messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      const allBlocks = messages.flatMap((m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? []);
+      const newHookBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'hook-card');
+      setPersistedHookBlocks(newHookBlocks);
+    } catch {
+      // Network error — silent (user can retry)
+    }
+  }, [hooks]);
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -373,6 +461,31 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       return;
     }
 
+    // ── Script tool path (Plan 06-05, D-09) ──────────────────────────────────
+    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // Script send NEVER navigates to /analyze.
+    // ask = typed topic or empty; anchor = carried hookLine from hooks→script seam.
+    if (activeTool === "script") {
+      const ask = trimmedUrl; // topic seed or empty (anchor drives the script when carried)
+      setUrl(""); // clear input after send
+      script.reset();
+      // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
+      await script.start(ask, platform);
+      return;
+    }
+
+    // ── Remix tool path (Plan 06-05, REMIX-01) ────────────────────────────────
+    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // Remix send NEVER navigates to /analyze.
+    // URL is required (canSubmit gates on trimmedUrl.length > 0 for remix).
+    if (activeTool === "remix") {
+      const url = trimmedUrl; // trending/competitor TikTok URL (required)
+      setUrl(""); // clear input after send
+      remix.reset();
+      await remix.start(url, platform);
+      return;
+    }
+
     // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
@@ -434,7 +547,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -448,8 +561,15 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     ? PLACEHOLDER_ACTIVE
     : PLACEHOLDER_BY_TOOL[activeTool];
 
-  // Show the platform chip when Idea, Hooks, or Chat tool is active (D-07)
-  const showPlatformChip = activeTool === "idea" || activeTool === "hooks" || activeTool === "chat";
+  // Show the platform chip when Idea, Hooks, Chat, Script, or Remix tool is active (D-07)
+  // Script: platform-relevant (SIM runs on platform persona set).
+  // Remix: include for consistency (URL's platform is the decode target).
+  const showPlatformChip =
+    activeTool === "idea" ||
+    activeTool === "hooks" ||
+    activeTool === "chat" ||
+    activeTool === "script" ||
+    activeTool === "remix";
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. This only activates when hasThread is true,
@@ -493,6 +613,40 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           platform={platform}
           onTestHook={handleTestHook}
           onRetry={() => void hooks.start("", platform)}
+        />
+      )}
+
+      {/* Script thread view — renders above the composer when the Script tool is active.
+          Provides ScriptTestContext so ScriptCardRenderer's "Test full →" can fire.
+          Plan 06-05: script send NEVER navigates; no pendingNavRef (T-06-20). */}
+      {showScriptView && (
+        <ScriptThreadView
+          persistedBlocks={persistedScriptBlocks}
+          streamingBlocks={scriptBlocks}
+          stages={script.stages}
+          followupText={script.followupText}
+          isStreaming={script.isStreaming}
+          error={script.error}
+          platform={platform}
+          onTestScript={handleTestScript}
+          onRetry={() => void script.start("", platform)}
+        />
+      )}
+
+      {/* Remix thread view — renders above the composer when the Remix tool is active.
+          Provides RemixDevelopContext so RemixCardRenderer's "Develop into hooks →" can fire.
+          Plan 06-05: remix send NEVER navigates; no pendingNavRef (T-06-20). */}
+      {showRemixView && (
+        <RemixThreadView
+          persistedBlocks={persistedRemixBlocks}
+          streamingBlocks={remixBlocks}
+          stages={remix.stages}
+          followupText={remix.followupText}
+          isStreaming={remix.isStreaming}
+          error={remix.error}
+          platform={platform}
+          onDevelop={(adaptedHook, remixPlatform) => void handleDevelopRemix(adaptedHook, remixPlatform)}
+          onRetry={() => void remix.start("", platform)}
         />
       )}
 
@@ -615,7 +769,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           <div className="flex items-end gap-2">
             {/* + upload toggle (D-22). ≥44px hit area on touch.
                 Hidden when Idea, Hooks, or Chat tool is active (upload not applicable). */}
-            {activeTool !== "idea" && activeTool !== "hooks" && activeTool !== "chat" && (
+            {activeTool !== "idea" && activeTool !== "hooks" && activeTool !== "chat" && activeTool !== "script" && activeTool !== "remix" && (
               <button
                 type="button"
                 aria-label="Upload a video"
@@ -638,7 +792,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                 For the Test tool: TikTok URL or upload path. Coral only on focus ring. */}
             <input
               type="text"
-              inputMode={activeTool === "idea" || activeTool === "hooks" || activeTool === "chat" ? "text" : "url"}
+              inputMode={activeTool === "idea" || activeTool === "hooks" || activeTool === "chat" || activeTool === "script" ? "text" : "url"}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={activePlaceholder}
@@ -649,9 +803,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                     ? "Hook topic (leave empty for Auto)"
                     : activeTool === "chat"
                       ? "Ask anything about your content"
-                      : hasSimulation
-                        ? "Ask about this simulation"
-                        : "Paste a TikTok link"
+                      : activeTool === "script"
+                        ? "Script topic or leave empty to carry in a hook"
+                        : activeTool === "remix"
+                          ? "Paste a TikTok URL to decode and remix"
+                          : hasSimulation
+                            ? "Ask about this simulation"
+                            : "Paste a TikTok link"
               }
               aria-invalid={showUrlError || undefined}
               className={cn(
@@ -665,9 +823,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : "Simulate"}
+              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : "Simulate"}
               disabled={!canSubmit}
-              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming}
+              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />

@@ -3,12 +3,12 @@
 /**
  * ToolChips — chip row + active-model field + disabled cost slots (D-07/D-08/D-09).
  *
- * Four chips: Test · Idea · Hooks · Chat.
+ * Six chips: Test · Idea · Hooks · Chat · Script · Remix.
  * Chip ids + model labels reuse the ToolRunner union (THREAD-06) as single SSOT.
- * "test", "idea", and "hooks" are live (P1/P3/P4); "chat" is disabled ("coming soon") — enabled in P5.
+ * "test", "idea", "hooks" are live (P1/P3/P4); "chat" enabled P5; "script"/"remix" live P6.
  * Active-model field maps the active chip to its model label (D-09):
  *   test → "SIM-1 Max" (video path, full model)
- *   idea | hooks | chat → "SIM-1 Flash" (text path, fast model)
+ *   idea | hooks | chat | script | remix → "SIM-1 Flash" (text path, fast model)
  *
  * A reserved cost slot affordance is present on each chip (D-07 — live metering deferred).
  * Styling follows Raycast rules: 6% borders, 10% hover, 8px radius, coral only on active
@@ -18,14 +18,18 @@
 import { cn } from "@/lib/utils";
 
 // ─── Chip vocabulary — matches ToolRunner id union (tool-runner.ts) ──────────
-export type ToolId = "test" | "idea" | "hooks" | "chat";
+// P6: "script" and "remix" added (06-05)
+export type ToolId = "test" | "idea" | "hooks" | "chat" | "script" | "remix";
 
 // ─── Model labels (D-09) — same vocabulary as the block model tag (D-10) ─────
+// P6: script + remix use SIM-1 Flash (text/decode path, same as hooks/ideas)
 const MODEL_LABEL: Record<ToolId, string> = {
   test: "SIM-1 Max",
   idea: "SIM-1 Flash",
   hooks: "SIM-1 Flash",
   chat: "SIM-1 Flash",
+  script: "SIM-1 Flash",
+  remix: "SIM-1 Flash",
 };
 
 // ─── Chip metadata ─────────────────────────────────────────────────────────────
@@ -43,6 +47,8 @@ const CHIPS: ChipMeta[] = [
   { id: "idea", label: "Idea", enabled: true, costSlot: "credit" },
   { id: "hooks", label: "Hooks", enabled: true, costSlot: "credit" }, // live P4 (D-09)
   { id: "chat", label: "Chat", enabled: true, costSlot: "credit" },   // live P5
+  { id: "script", label: "Script", enabled: true, costSlot: "credit" }, // live P6 (06-05)
+  { id: "remix", label: "Remix", enabled: true, costSlot: "credit" },   // live P6 (06-05)
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
