@@ -52,6 +52,19 @@ describe("detectRefineIntent", () => {
     const result = detectRefineIntent("give me more ideas about gym content");
     expect(result.isRefine).toBe(false);
   });
+
+  // WR-01: free-floating digit must NOT become cardRef when not adjacent to card noun
+  it("WR-01: 'tighten the top 3 hooks' → isRefine false (digit not tied to card noun)", () => {
+    const result = detectRefineIntent("tighten the top 3 hooks");
+    // '3' is a count modifier, not 'hook 3' — should not extract cardRef=3
+    expect(result.isRefine).toBe(false);
+  });
+
+  it("WR-01: 'make hook 2 punchier' → cardRef=2 (digit is tied to noun)", () => {
+    const result = detectRefineIntent("make hook 2 punchier");
+    expect(result.isRefine).toBe(true);
+    expect(result.cardRef).toBe(2);
+  });
 });
 
 describe("buildRefineAnchor", () => {

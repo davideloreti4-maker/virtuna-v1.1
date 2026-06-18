@@ -142,12 +142,14 @@ export function detectRefineIntent(text: string): RefineIntent {
   }
 
   // ── Step 3: Check for an ordinal/number reference ─────────────────────────
-  // Try numeric digits first: "hook 1", "idea 2", etc.
-  const digitMatch = lower.match(/\b([1-9][0-9]?)\b/);
+  // WR-01: require the digit to be tied to the card noun ("hook 1", "idea 2"),
+  // not just any free-floating digit in the text ("tighten the top 3 hooks"
+  // previously matched cardRef=3 incorrectly via /\b([1-9][0-9]?)\b/).
+  const tiedDigitMatch = lower.match(/\b(?:hook|idea)s?\s*#?\s*([1-9][0-9]?)\b/);
   let cardRef: number | undefined;
 
-  if (digitMatch) {
-    cardRef = parseInt(digitMatch[1]!, 10);
+  if (tiedDigitMatch) {
+    cardRef = parseInt(tiedDigitMatch[1]!, 10);
   } else {
     // Try ordinal words: "the first hook", "second idea", etc.
     for (const [word, num] of Object.entries(ORDINAL_WORDS)) {
