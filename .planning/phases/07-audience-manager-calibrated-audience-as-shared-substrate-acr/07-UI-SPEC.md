@@ -61,22 +61,27 @@ Declared values (multiples of 4 — matches `globals.css` `--spacing-*`):
 
 Exceptions:
 - **44px minimum touch target** for the audience-chip trigger, dropdown/bottom-sheet rows, persona table rows on touch, and all Manager action buttons (`pointer-coarse:h-11`, mirrors composer `+` button). Mobile-first is non-negotiable (v5.0 numen-rework).
-- Sidebar nav rows: `min-h-[34px]` (matches existing `NavItem`); Manager list rows `min-h-[44px]` on touch.
+- Sidebar nav rows: `min-h-[34px]` — **inherited from the existing `NavItem` (`Sidebar.tsx`); this phase reuses it and does not introduce or modify it. 34px is not a 4-multiple — exception acknowledged, not a phase-introduced violation.** Manager list rows `min-h-[44px]` on touch.
 
 ---
 
 ## Typography
 
-Pulled from `globals.css` type scale. Declared roles (3 sizes + 1 display, 2 working weights):
+Pulled from `globals.css` type scale. This phase declares **4 sizes** and **2 weights**:
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
+| Label | 14px (`--text-sm`) | 400 (`--font-regular`) | 1.4 |
 | Body | 16px (`--text-base`) | 400 (`--font-regular`) | 1.5 |
-| Label | 14px (`--text-sm`) | 500 (`--font-medium`) | 1.4 |
 | Heading (section / card title) | 20px (`--text-xl`) | 600 (`--font-semibold`) | 1.25 |
 | Display (Manager page title) | 24px (`--text-2xl`) | 600 (`--font-semibold`) | 1.2 |
 
-Micro-text (allowed, existing pattern): `--text-xs` (12px) for share %, timestamps, chip sub-labels; `10px` uppercase tracked caps for section labels (`SectionLabel`) and chip prefix words ("on" / "for"). Weight stays within 400/500/600 — **no 700** in this phase (700 reserved for hero headings elsewhere).
+**Declared sizes:** 14 / 16 / 20 / 24. **Declared weights:** 400 (regular) + 600 (semibold). No 700 in this phase.
+
+**Inherited (NOT declared/introduced by this phase) — present only on reused, shipped components:**
+- **10px** uppercase tracked caps — inherited from the existing `SectionLabel` (`Sidebar.tsx`) and chip prefix words ("on" / "for"). Reused as-is; this phase introduces no 10px role.
+- **12px** (`--text-xs`) — inherited micro-text on existing `_kit` primitives, chips, and sidebar rows (share %, timestamps, chip sub-labels). Reused as-is.
+- **500 (`--font-medium`)** — inherited label weight on reused components (`NavItem`, chip labels). Not introduced by this phase; new surfaces use 400/600 only.
 
 ---
 
@@ -121,13 +126,13 @@ Render temperature as a `Badge` dot + word, NOT a saturated fill. Disposition (s
 ### 1. Audience Manager (CRUD)
 - **Entry:** new sidebar `NavItem` ("Audience", Phosphor `UsersThree` or `Users`), placed in the Settings group region above "Simulations", collapses to icon + tooltip in the rail (mirror existing `NavItem` collapsed behavior). Routes to `/audience`.
 - **Page shell:** `mx-auto max-w-4xl p-6` flat-warm page. Title 24px/600 "Your audiences". Subtitle 14px muted: "Who Numen writes and tests for."
-- **List:** vertical stack of audience cards (`bg-surface`, `border-white/[0.06]`, `rounded-xl` 12px, hover `bg-white/[0.02]` only — no lift). Each card row: name (16px/500) · `platform · type` sub-label (12px muted) · trailing **General badge** (coral) on the locked default, or a `⋯` menu (edit/delete) on user audiences. The 3 presets (General + growth-leaning + conversion-leaning templates) appear as cards; **General has no delete affordance** (locked default — D-04).
+- **List:** vertical stack of audience cards (`bg-surface`, `border-white/[0.06]`, `rounded-xl` 12px, hover `bg-white/[0.02]` only — no lift). Each card row: name (16px/500) · `platform · type` sub-label (12px muted) · trailing **General badge** (coral) on the locked default, or a `⋯` overflow menu (edit/delete) on user audiences — the `⋯` trigger is icon-only and MUST carry `aria-label="Audience options"`. The 3 presets (General + growth-leaning + conversion-leaning templates) appear as cards; **General has no delete affordance** (locked default — D-04).
 - **Create/Edit:** routes to `/audience/new` and `/audience/[id]` (full page on mobile, not a cramped modal — mobile-first). Fields: name (`Input`, required), type (segmented `personal | target` — `Toggle`-group or 2-chip segment), platform (`Select`: TikTok / Instagram / YouTube / Custom), goal (free-text `Input` label + intent surfacing per §Goal below). **No persona-edit affordances in v1** (D-03).
 - **Delete:** `Dialog` (solid opaque) confirmation. See Copywriting.
 
 ### 2. Calibration flow
-- **Personal path (D-06):** single field "Your @handle" → "Calibrate" primary button → progress state. Progress = `Spinner` + staged status text (reuse the streaming-stages pattern the thread views already render). Honesty spine: while scraping, show honest stage labels ("Reading your followers…"), never fabricated counts.
-- **Target path:** free-text describe textarea → "Calibrate".
+- **Personal path (D-06):** single field "Your @handle" → "Calibrate audience" primary button → progress state. Progress = `Spinner` + staged status text (reuse the streaming-stages pattern the thread views already render). Honesty spine: while scraping, show honest stage labels ("Reading your followers…"), never fabricated counts.
+- **Target path:** free-text describe textarea → "Calibrate audience".
 - **Fallback state (MANDATORY, D-06):** if scrape is empty/thin/fails → render a `--color-warning` inline notice banner (same banner shape as composer test-brief, but warning-toned): heading + body + a "Continue with General" affordance. **Never fabricate** a calibrated audience. The notice is calm, not an error toast.
 - **Success:** transition to the read-only Audience Profile (§3).
 
@@ -154,7 +159,7 @@ Render temperature as a `Badge` dot + word, NOT a saturated fill. Disposition (s
 | Element | Copy |
 |---------|------|
 | Primary CTA (Manager) | **Create audience** |
-| Primary CTA (calibration, personal) | **Calibrate** |
+| Primary CTA (calibration, personal) | **Calibrate audience** |
 | Manager page title / subtitle | "Your audiences" / "Who Numen writes and tests for." |
 | Empty state heading | "No custom audiences yet" |
 | Empty state body | "You're using **General** — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you." (CTA: Create audience) |
@@ -165,7 +170,7 @@ Render temperature as a `Badge` dot + word, NOT a saturated fill. Disposition (s
 | General badge tooltip | "Numen's universal audience — the protected baseline. Can't be edited or deleted." |
 | Composer chip prefix | "for" (e.g. "for TikTok · My audience") |
 | Picker footer | "Manage audiences →" |
-| Destructive confirmation | **Delete audience** — "Delete "{name}"? This removes the calibrated audience and its personas. Threads already generated under it keep their results. This can't be undone." Buttons: "Cancel" (secondary) / "Delete" (destructive). |
+| Destructive confirmation | **Delete audience** — "Delete "{name}"? This removes the calibrated audience and its personas. Threads already generated under it keep their results. This can't be undone." Buttons: "Keep audience" (secondary) / "Delete" (destructive). |
 
 Voice: honesty spine throughout — never imply a calibrated audience exists when it doesn't; never fabricate follower/persona data; the fallback is calm and factual.
 
