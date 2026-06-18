@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sketch 003 · AudienceLens (clean)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080a; --surface:#161718; --elev:#1d1e1f;
+  --border:rgba(255,255,255,0.06); --border-h:rgba(255,255,255,0.1);
+  --text:#ededee; --muted:#8a8b8c; --dim:rgba(255,255,255,0.32); --faint:rgba(255,255,255,0.5);
+  --coral:#FF7F50; --coral-bd:rgba(255,127,80,0.28); --coral-bg:rgba(255,127,80,0.08);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --r-sm:6px; --r-md:8px; --r-lg:12px; --r-xl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--text); font-family:var(--font); letter-spacing:.2px;
+  -webkit-font-smoothing:antialiased;
+  display:flex;flex-direction:column;align-items:center;min-height:100%;padding:30px 16px 70px;
+}
+code{color:var(--coral);font-size:.92em}
+
+.intro{max-width:780px;width:100%;margin-bottom:24px}
+.kicker{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.kicker b{color:var(--coral)}
+.intro h1{font-size:21px;font-weight:600;margin-bottom:8px}
+.intro p{font-size:13px;color:var(--muted);line-height:1.65;max-width:640px}
+.intro p b{color:var(--text);font-weight:500}
+
+.cols{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;justify-content:center;width:100%}
+
+/* ---- phone ---- */
+.phone{
+  width:392px;max-width:100%;height:800px;background:var(--bg);
+  border-radius:44px;border:1px solid var(--border);position:relative;overflow:hidden;
+  box-shadow:0 0 0 9px #0b0c0e,0 30px 80px rgba(0,0,0,.65);display:flex;flex-direction:column;flex:none;
+}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:28px;background:#0b0c0e;border-radius:0 0 16px 16px;z-index:60}
+
+/* ---- appbar + anchor ---- */
+.appbar{padding:42px 20px 14px;display:flex;align-items:center;justify-content:space-between;flex:none}
+.skill{display:flex;align-items:center;gap:10px}
+.skill .ic{width:30px;height:30px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:14px}
+.skill .nm{font-size:15px;font-weight:600;line-height:1.1}
+.skill .sb{font-size:11px;color:var(--dim);margin-top:2px}
+
+.anchor{display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 8px;border-radius:999px;transition:background .15s}
+.anchor:hover{background:var(--surface)}
+.anchor .stack{display:flex}
+.anchor .stack .a{width:22px;height:22px;border-radius:50%;background:var(--elev);border:1.5px solid var(--bg);display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--faint);margin-left:-7px}
+.anchor .stack .a:first-child{margin-left:0}
+.anchor .meta .nm{font-size:12px;font-weight:600;line-height:1.1;display:flex;align-items:center;gap:5px}
+.anchor .meta .nm .live{width:5px;height:5px;border-radius:50%;background:#46d18a}
+.anchor .meta .sb{font-size:9.5px;color:var(--dim);margin-top:1px}
+
+/* ---- feed ---- */
+.feed{flex:1;overflow-y:auto;padding:4px 16px 30px;scrollbar-width:none}
+.feed::-webkit-scrollbar{display:none}
+.vlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin:16px 2px 10px;display:flex;align-items:center;gap:8px}
+.vlabel .tagn{color:var(--coral);background:var(--coral-bg);border:1px solid var(--coral-bd);border-radius:4px;padding:1px 6px;font-size:9px}
+
+/* ===== base card ===== */
+.card{background:transparent;border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;margin-bottom:14px;cursor:pointer;transition:background .15s,border-color .15s}
+.card:hover{background:rgba(255,255,255,.018);border-color:var(--border-h)}
+.card .eyebrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.card .eyebrow .l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.card .hook{font-size:16px;font-weight:600;line-height:1.42;letter-spacing:.1px}
+
+/* shared small avatar stack */
+.astack{display:flex}
+.astack .a{width:24px;height:24px;border-radius:50%;background:var(--elev);border:1.5px solid var(--bg);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--faint);margin-left:-8px;flex:none}
+.astack .a:first-child{margin-left:0}
+.astack .more{width:24px;height:24px;border-radius:50%;background:transparent;border:1.5px solid var(--bg);box-shadow:inset 0 0 0 1px var(--border);display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--muted);margin-left:-8px}
+
+/* hairline meter */
+.meter{height:2px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.meter > i{display:block;height:100%;background:var(--coral);border-radius:2px}
+
+/* metric typography */
+.metric{font-variant-numeric:tabular-nums}
+.metric .big{font-size:15px;font-weight:600;color:var(--text)}
+.metric .lab{font-size:12px;color:var(--muted)}
+.opn{font-size:12px;color:var(--coral);font-weight:600;white-space:nowrap}
+
+/* ---- Variant A: editorial / verbatim-led ---- */
+.vA .quote{font-size:14px;line-height:1.5;color:var(--text);margin:14px 0 12px;font-weight:400}
+.vA .quote .mk{color:var(--dim)}
+.vA .foot{display:flex;align-items:center;justify-content:space-between}
+.vA .who{display:flex;align-items:center;gap:9px}
+.vA .who .txt{font-size:12px;color:var(--muted)}
+.vA .who .txt b{color:var(--text);font-weight:600}
+
+/* ---- Variant B: avatar stack + meter ---- */
+.vB .row{display:flex;align-items:center;justify-content:space-between;margin:15px 0 12px}
+.vB .mwrap{margin:13px 0 0}
+.vB .mhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+
+/* ---- Variant C: quiet data ---- */
+.vC .body{display:flex;align-items:center;gap:18px;margin-top:15px}
+.vC .score{font-size:34px;font-weight:600;line-height:1;letter-spacing:-1px}
+.vC .score s{font-size:15px;color:var(--dim);font-weight:500;text-decoration:none;margin-left:1px}
+.vC .bars{flex:1;display:flex;flex-direction:column;gap:7px}
+.vC .brow{display:flex;align-items:center;gap:9px;font-size:11px;color:var(--muted)}
+.vC .brow .k{width:54px;flex:none}
+.vC .brow .bar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.06);overflow:hidden}
+.vC .brow .bar i{display:block;height:100%;border-radius:3px}
+.vC .brow .v{width:14px;text-align:right;font-variant-numeric:tabular-nums;color:var(--faint)}
+.vC .foot{display:flex;justify-content:flex-end;margin-top:14px}
+
+/* ============ SHEET ============ */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s;z-index:70}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:93%;background:var(--surface);border-top-left-radius:22px;border-top-right-radius:22px;border-top:1px solid var(--border-h);transform:translateY(100%);transition:transform .36s cubic-bezier(.32,.72,0,1);z-index:80;display:flex;flex-direction:column}
+.sheet.open{transform:translateY(0)}
+.grab{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);margin:11px auto 2px;flex:none}
+.ss{overflow-y:auto;padding:10px 20px 18px;scrollbar-width:none}
+.ss::-webkit-scrollbar{display:none}
+
+.shead .l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:7px}
+.shead .hook{font-size:17px;font-weight:600;line-height:1.4;margin-bottom:14px}
+.verdict{display:flex;align-items:center;gap:7px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+.vmeter{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.06);display:flex;overflow:hidden}
+.vmeter i{height:100%}
+.vmeter .pos{background:var(--coral)}
+.vmeter .neu{background:rgba(255,255,255,.22)}
+.verdict .lab{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.verdict .lab b{color:var(--text);font-weight:600}
+
+.sec{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin:22px 0 12px;display:flex;align-items:center;justify-content:space-between}
+.sec .hintx{text-transform:none;letter-spacing:0;color:var(--dim);font-weight:400}
+
+/* ---- timeline replay ---- */
+.replay{padding:2px}
+.tl-top{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+.play{width:36px;height:36px;border-radius:50%;border:1px solid var(--coral-bd);background:var(--coral-bg);color:var(--coral);display:grid;place-items:center;cursor:pointer;flex:none;font-size:12px}
+.play:active{transform:scale(.94)}
+.cap{font-size:13px;color:var(--muted);line-height:1.4;min-height:36px;display:flex;flex-direction:column;justify-content:center}
+.cap b{color:var(--text);font-weight:600}
+.cap .rx{color:var(--coral);font-weight:600}
+.cap .rx.neg{color:var(--faint)}
+
+.timeline{position:relative;height:56px;margin:0 4px}
+.axis{position:absolute;left:0;right:0;top:26px;height:1px;background:rgba(255,255,255,.1)}
+.head{position:absolute;top:8px;bottom:8px;width:1px;background:var(--coral);left:0;opacity:0;transition:opacity .2s}
+.head.on{opacity:1}
+.mark{position:absolute;top:16px;width:20px;height:20px;border-radius:50%;background:var(--elev);border:1px solid var(--border);display:grid;place-items:center;font-size:8.5px;font-weight:600;color:var(--dim);transform:translateX(-50%);transition:transform .3s,color .3s,background .3s,border-color .3s}
+.mark.fired{color:var(--text)}
+.mark.pos{background:var(--coral-bg);border-color:var(--coral-bd);color:var(--coral)}
+.mark.pop{transform:translateX(-50%) scale(1.35)}
+.ticks{position:absolute;left:0;right:0;top:40px;display:flex;justify-content:space-between;font-size:9px;color:var(--dim);font-variant-numeric:tabular-nums}
+
+/* ---- the room: list ---- */
+.room{display:flex;flex-direction:column}
+.prow{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer;transition:padding-left .15s}
+.prow:last-child{border-bottom:none}
+.prow:hover{padding-left:8px}
+.prow .av{width:34px;height:34px;border-radius:50%;background:var(--elev);border:1px solid var(--border);display:grid;place-items:center;font-size:13px;font-weight:600;color:var(--faint);flex:none}
+.prow .info{flex:1;min-width:0}
+.prow .info .n{font-size:13.5px;font-weight:600}
+.prow .info .r{font-size:11px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .rx{font-size:11px;font-weight:600;flex:none;display:flex;align-items:center;gap:6px}
+.prow .rx.pos{color:var(--coral)}
+.prow .rx.neg{color:var(--faint)}
+.prow .rx .chev{color:var(--dim);font-weight:400;transition:transform .2s}
+.prow.open .rx .chev{transform:rotate(90deg)}
+.verb{padding:0 4px 14px 58px;font-size:13px;line-height:1.55;color:var(--text);display:none}
+.verb.show{display:block;animation:fade .25s}
+.verb .q{font-weight:400;margin-bottom:8px}
+.verb .why{font-size:11.5px;color:var(--muted);line-height:1.5}
+.verb .why b{color:var(--coral);font-weight:600}
+.verb .ask{margin-top:10px;font-size:11.5px;color:var(--coral);font-weight:600;cursor:pointer;display:inline-block}
+@keyframes fade{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+
+/* ---- chat ---- */
+.csub{font-size:11.5px;color:var(--dim);margin-bottom:13px;line-height:1.5}
+.csub b{color:var(--muted);font-weight:600}
+.csub .sj{color:var(--faint)}
+.msgs{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.empty{font-size:12px;color:var(--dim);line-height:1.55;padding:14px;text-align:center;border:1px dashed var(--border);border-radius:var(--r-md)}
+.msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg.me{align-self:flex-end;background:var(--elev);border:1px solid var(--border-h);border-bottom-right-radius:4px}
+.msg.them{align-self:flex-start;background:transparent;border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.them .src{display:block;font-size:10px;color:var(--coral);font-weight:600;margin-top:7px;letter-spacing:.3px}
+.think{font-size:12px;color:var(--dim);font-style:italic;padding:2px 4px}
+.sugg{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+.sg{font-size:12px;padding:9px 13px;border-radius:var(--r-md);background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;text-align:left;transition:border-color .15s,color .15s}
+.sg:hover{border-color:var(--coral-bd);color:var(--text)}
+.composer{display:flex;gap:8px;align-items:center;position:sticky;bottom:0;background:var(--surface);padding:8px 0 2px}
+.composer input{flex:1;height:44px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--r-md);padding:0 15px;color:var(--text);font-size:13.5px;font-family:var(--font);outline:none}
+.composer input:focus{border-color:var(--coral-bd)}
+.composer input::placeholder{color:var(--dim)}
+.send{width:44px;height:44px;border-radius:var(--r-md);background:var(--coral);color:#1a0f0a;border:none;cursor:pointer;font-size:17px;flex:none}
+.send:active{transform:scale(.94)}
+
+.note{max-width:780px;font-size:12px;color:var(--dim);line-height:1.7;margin-top:22px;border-top:1px solid var(--border);padding-top:18px;width:100%}
+.note b{color:var(--muted)}
+.note code{color:var(--coral)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="kicker"><b>Sketch 003</b> · AudienceLens — cleaner language</div>
+  <h1>Restraint. Faces, not dots. Words carry the room.</h1>
+  <p>Rethink: the inline card shows only an <b>aggregate signal + one human teaser</b> — per-person detail moves into the drill, where it has room to breathe. Monochrome base, coral for one thing per view. Three inline treatments below — <b>pick the direction</b>, then the drill is shared. Tap any card.</p>
+</div>
+
+<div class="cols">
+<div class="phone">
+  <div class="notch"></div>
+  <div class="appbar">
+    <div class="skill">
+      <div class="ic">🪝</div>
+      <div><div class="nm">Hooks</div><div class="sb">3 hooks · Read complete</div></div>
+    </div>
+    <div class="anchor" id="anchor" title="Your one audience — same entity across every skill">
+      <div class="stack"><span class="a">M</span><span class="a">R</span><span class="a">L</span></div>
+      <div class="meta"><div class="nm"><span class="live"></span>Gen Z Founders</div><div class="sb">10 calibrated · TikTok</div></div>
+    </div>
+  </div>
+
+  <div class="feed" id="feed"></div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet"><div class="grab"></div><div class="ss" id="ss"></div></div>
+</div>
+</div>
+
+<div class="note">
+  <b>What changed from v2 →</b> killed the coral dot-row. Inline now = quiet aggregate + a pulled quote (Variant&nbsp;A), an avatar stack + hairline meter (B), or a calm data block (C). <b>Per-person reactions live only in the drill</b> — replay as a real timeline with avatar marks placed by reaction time, and the room as a readable list you expand. Coral appears once per surface. <b>Tell me which inline treatment, and whether the drill feels premium now.</b>
+</div>
+
+<script>
+const PERSONAS=[
+ {init:'M',name:'Maya',role:'Bootstrapped SaaS · skeptic'},
+ {init:'D',name:'Devon',role:'Agency owner · pragmatist'},
+ {init:'P',name:'Priya',role:'Solo creator · enthusiast'},
+ {init:'J',name:'Jonah',role:'Ex-corporate · cautious'},
+ {init:'L',name:'Lena',role:'Newsletter writer · curator'},
+ {init:'T',name:'Theo',role:'Student founder · lurker'},
+ {init:'A',name:'Ama',role:'D2C founder · doer'},
+ {init:'R',name:'Rio',role:'Creator · trend-native'},
+ {init:'S',name:'Sol',role:'Indie hacker · contrarian'},
+ {init:'N',name:'Nina',role:'Marketer · analytical'},
+];
+const RXLAB={shared:'Shared',saved:'Saved',engaged:'Watched',scrolled:'Scrolled'};
+const POS=r=>r==='shared'||r==='saved';
+const RANK={shared:3,saved:2,engaged:1,scrolled:0};
+
+const HOOKS=[
+ {text:'I quit my $200k job to sell candles. Here’s what nobody tells you.',
+  teaser:{pid:7,q:'This format is printing right now. Sending it to my group chat.'},
+  rx:[
+   ['scrolled',2,'Another quit-my-job hook. I’ve seen this exact opener 40 times this week.','Pattern-matched to an oversaturated format — novelty tanked at the first clause.'],
+   ['engaged',5,'The number pulled me in, but I waited for the actual lesson.','Specificity ($200k) bought attention; held watching for the payoff.'],
+   ['saved',3,'The candles twist is unexpected enough — saved to study the structure.','High-salary vs humble-product contrast created a curiosity gap.'],
+   ['scrolled',1,'Feels like survivorship bait. Where’s the proof it worked?','Cautious disposition rejected an unverifiable flex up front.'],
+   ['saved',4,'Clean setup-payoff promise. The craft is solid even if the topic is tired.','Judged on structure — “nobody tells you” is a strong open loop.'],
+   ['scrolled',2,'Meh.','High-bar lurker; generic format never cleared the threshold.'],
+   ['saved',3,'I want the what-nobody-tells-you part. That’s the tactic.','Open loop promised actionable insight — the doer leaned in.'],
+   ['shared',2,'This format is printing right now. Sending it to my group chat.','Trend-native recognized a currently-viral structure — highest signal.'],
+   ['saved',6,'Love an against-the-grain career move. Saved.','Contrarian rewarded the underdog framing.'],
+   ['engaged',5,'Decent top-of-funnel hook. Curious about retention though.','Treated it as a TOFU asset, withheld full commit.'],
+  ]},
+ {text:'Your first 1,000 followers are a trap. Do this instead.',
+  teaser:{pid:4,q:'Tight. Myth + reversal + promise in nine words. Chef’s kiss.'},
+  rx:[
+   ['saved',2,'Finally a contrarian take with a clear redirect. Saved.','Skeptic rewarded the myth-busting frame over a hype promise.'],
+   ['saved',3,'The “do this instead” makes it actionable. Good.','Pragmatist got the implied takeaway immediately.'],
+   ['engaged',4,'Bit fear-based, but I’m listening.','Engaged, but the “trap” framing slightly cooled the warmth.'],
+   ['saved',3,'Challenges a belief I hold — I want to see if it holds up.','Pulled in by a claim that contradicts conventional advice.'],
+   ['shared',2,'Tight. Myth + reversal + promise in nine words. Chef’s kiss.','Craft-curator scored the economy of the line — top signal.'],
+   ['engaged',6,'Actually paused on this one.','High-bar lurker broke pattern — the contrarian claim earned a watch.'],
+   ['shared',2,'This is the exact mistake I made. Sending to my cohort.','Felt personally called out — relevance drove a share.'],
+   ['saved',3,'Reversal hooks are working. Solid.','Confirmed the format fits current feed behavior.'],
+   ['shared',1,'YES. Everyone worships the follower count. Burn it down.','Contrarian fully aligned — instant share.'],
+   ['saved',4,'Reframes the top of the funnel. I want the mechanism.','Saw a funnel-reframe and saved for the how.'],
+  ]},
+ {text:'How I write hooks (a thread).',
+  teaser:{pid:0,q:'No promise, no tension. Why would I stop?'},
+  rx:[
+   ['scrolled',1,'No promise, no tension. Why would I stop?','Found zero curiosity gap — instant scroll.'],
+   ['scrolled',2,'What’s the payoff? The title does no work.','Needs the takeaway signaled; this defers everything.'],
+   ['engaged',3,'I’d maybe read it because I like the topic.','Carried by topic-interest, not the hook itself.'],
+   ['scrolled',1,'Generic. Pass.','Saw no reason to trust an unspecified thread.'],
+   ['scrolled',2,'The irony of a weak hook on a hooks thread.','Penalized the meta-failure hardest.'],
+   ['scrolled',1,'…','Far below threshold.'],
+   ['engaged',4,'Topic’s relevant to me so I’d skim.','Pulled by utility of subject despite flat framing.'],
+   ['scrolled',2,'No pattern interrupt. Dead on arrival in-feed.','Flagged it as algorithmically weak.'],
+   ['scrolled',2,'Expected a hot take, got a table of contents.','Wanted edge, found none.'],
+   ['engaged',3,'Would A/B this against a stronger variant.','Saw a baseline, not a winner.'],
+  ]},
+];
+function agg(h){const c={shared:0,saved:0,engaged:0,scrolled:0};h.rx.forEach(r=>c[r[0]]++);return c;}
+function pos(h){const c=agg(h);return c.shared+c.saved+c.engaged;} // "kept watching" = non-scroll
+
+/* ---------- render feed: 3 variants ---------- */
+const feed=document.getElementById('feed');
+function avs(ids){return `<div class="astack">${ids.map(i=>`<span class="a">${PERSONAS[i].init}</span>`).join('')}<span class="more">+${10-ids.length}</span></div>`;}
+
+function cardA(h,idx){
+  const t=h.teaser;const keep=pos(h);
+  return `<div class="card vA" data-h="${idx}">
+    <div class="eyebrow"><span class="l">Hook ${idx+1}</span></div>
+    <div class="hook">${h.text}</div>
+    <div class="quote"><span class="mk">“</span>${t.q}<span class="mk">”</span></div>
+    <div class="foot">
+      <div class="who">${avs([t.pid,(t.pid+2)%10,(t.pid+5)%10])}<span class="txt"><b>${PERSONAS[t.pid].name}</b> + ${keep-1} kept watching</span></div>
+      <span class="opn">Open →</span>
+    </div>
+  </div>`;
+}
+function cardB(h,idx){
+  const keep=pos(h);const pct=Math.round(keep/10*100);
+  return `<div class="card vB" data-h="${idx}">
+    <div class="eyebrow"><span class="l">Hook ${idx+1}</span><span class="opn">Open →</span></div>
+    <div class="hook">${h.text}</div>
+    <div class="row">${avs([0,2,4,6,8])}<span class="metric"><span class="big">${keep}</span><span class="lab"> / 10 kept watching</span></span></div>
+    <div class="mwrap"><div class="meter"><i style="width:${pct}%"></i></div></div>
+  </div>`;
+}
+function cardC(h,idx){
+  const c=agg(h);const keep=pos(h);
+  const row=(k,n,coral)=>`<div class="brow"><span class="k">${k}</span><span class="bar"><i style="width:${n/10*100}%;background:${coral?'var(--coral)':'rgba(255,255,255,.28)'}"></i></span><span class="v">${n}</span></div>`;
+  return `<div class="card vC" data-h="${idx}">
+    <div class="eyebrow"><span class="l">Hook ${idx+1}</span></div>
+    <div class="hook">${h.text}</div>
+    <div class="body">
+      <div class="score">${keep}<s>/10</s></div>
+      <div class="bars">
+        ${row('Saved',c.saved+c.shared,true)}
+        ${row('Watched',c.engaged,false)}
+        ${row('Scrolled',c.scrolled,false)}
+      </div>
+    </div>
+    <div class="foot"><span class="opn">Open the room →</span></div>
+  </div>`;
+}
+
+feed.innerHTML =
+  `<div class="vlabel"><span class="tagn">A</span> Editorial · verbatim-led</div>`+cardA(HOOKS[1],1)+
+  `<div class="vlabel"><span class="tagn">B</span> Avatar stack · hairline meter</div>`+cardB(HOOKS[0],0)+
+  `<div class="vlabel"><span class="tagn">C</span> Quiet data</div>`+cardC(HOOKS[2],2);
+
+feed.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>openSheet(+c.dataset.h)));
+
+/* ---------- sheet ---------- */
+const scrim=document.getElementById('scrim'),sheet=document.getElementById('sheet'),ss=document.getElementById('ss');
+let activeHook=null,chatLog=[];
+function openSheet(i){activeHook=i;renderSheet();scrim.classList.add('open');sheet.classList.add('open');}
+function closeSheet(){scrim.classList.remove('open');sheet.classList.remove('open');}
+scrim.addEventListener('click',closeSheet);
+document.getElementById('anchor').addEventListener('click',()=>openSheet(activeHook??1));
+
+function renderSheet(){
+  const h=HOOKS[activeHook],c=agg(h),keep=pos(h);
+  ss.innerHTML=`
+   <div class="shead">
+     <div class="l">Hook ${activeHook+1} · the Read</div>
+     <div class="hook">${h.text}</div>
+     <div class="verdict">
+       <div class="vmeter"><i class="pos" style="width:${(c.shared+c.saved)/10*100}%"></i><i class="neu" style="width:${c.engaged/10*100}%"></i></div>
+       <span class="lab"><b>${keep}</b>/10 kept watching</span>
+     </div>
+   </div>
+
+   <div class="sec">Replay <span class="hintx">how they reacted, 0–15s</span></div>
+   <div class="replay">
+     <div class="tl-top"><button class="play" id="play">▶</button><div class="cap" id="cap">Press play — watch the room react in the order they did.</div></div>
+     <div class="timeline" id="timeline">
+       <div class="axis"></div><div class="head" id="head"></div>
+       ${h.rx.map((r,p)=>`<div class="mark ${POS(r[0])?'pos':''}" data-p="${p}" style="left:${(r[1]/15*100).toFixed(1)}%">${PERSONAS[p].init}</div>`).join('')}
+       <div class="ticks"><span>0s</span><span>5s</span><span>10s</span><span>15s</span></div>
+     </div>
+   </div>
+
+   <div class="sec">The room <span class="hintx">tap to hear them</span></div>
+   <div class="room" id="room">
+     ${[...h.rx.map((r,p)=>({r,p}))].sort((a,b)=>RANK[b.r[0]]-RANK[a.r[0]]).map(({r,p})=>{
+       const P=PERSONAS[p];
+       return `<div class="prow" data-p="${p}">
+         <div class="av">${P.init}</div>
+         <div class="info"><div class="n">${P.name}</div><div class="r">${P.role}</div></div>
+         <div class="rx ${POS(r[0])?'pos':'neg'}">${RXLAB[r[0]]} <span class="chev">›</span></div>
+       </div>
+       <div class="verb" data-vp="${p}">
+         <div class="q">“${r[2]}”</div>
+         <div class="why"><b>Why →</b> ${r[3]}</div>
+         <span class="ask" data-ask="${p}">Ask ${P.name} directly →</span>
+       </div>`;
+     }).join('')}
+   </div>
+
+   <div class="sec">Ask the room</div>
+   <div id="chatwrap"></div>`;
+
+  document.getElementById('play').addEventListener('click',playReplay);
+  ss.querySelectorAll('.prow').forEach(r=>r.addEventListener('click',()=>toggleVerb(+r.dataset.p)));
+  ss.querySelectorAll('.ask').forEach(a=>a.addEventListener('click',e=>{e.stopPropagation();askNode(+a.dataset.ask);}));
+  renderChat();
+  ss.scrollTop=0;
+}
+
+/* replay */
+let timer=null;
+function playReplay(){
+  const h=HOOKS[activeHook],head=document.getElementById('head'),cap=document.getElementById('cap');
+  if(timer)clearInterval(timer);
+  ss.querySelectorAll('.mark').forEach(m=>m.classList.remove('fired','pop'));
+  head.classList.add('on');
+  const ev=h.rx.map((r,p)=>({p,rx:r[0],t:r[1]})).sort((a,b)=>a.t-b.t);
+  const fired=new Set();let t=0;const D=15;
+  cap.innerHTML='<span style="color:var(--dim)">Reacting…</span>';
+  timer=setInterval(()=>{
+    t+=0.2;const pct=Math.min(t/D,1)*100;head.style.left=pct+'%';
+    ev.forEach(e=>{if(!fired.has(e.p)&&t>=e.t){fired.add(e.p);
+      const P=PERSONAS[e.p];const neg=!POS(e.rx);
+      const m=ss.querySelector(`.mark[data-p="${e.p}"]`);
+      if(m){m.classList.add('fired','pop');setTimeout(()=>m.classList.remove('pop'),300);}
+      cap.innerHTML=`<div><b>${P.name}</b> <span class="rx ${neg?'neg':''}">${RXLAB[e.rx].toLowerCase()}</span> <span style="color:var(--dim)">at ${e.t.toFixed(1)}s</span></div><div style="font-size:11.5px;color:var(--dim);margin-top:2px">${P.role}</div>`;
+    }});
+    if(t>=D){clearInterval(timer);head.classList.remove('on');cap.innerHTML='<span style="color:var(--dim)">Replay complete · tap anyone below to hear why.</span>';}
+  },80);
+}
+
+/* room verbatims */
+let openVerb=null;
+function toggleVerb(p){
+  const row=ss.querySelector(`.prow[data-p="${p}"]`),v=ss.querySelector(`.verb[data-vp="${p}"]`);
+  if(openVerb===p){v.classList.remove('show');row.classList.remove('open');openVerb=null;return;}
+  if(openVerb!=null){ss.querySelector(`.verb[data-vp="${openVerb}"]`)?.classList.remove('show');ss.querySelector(`.prow[data-p="${openVerb}"]`)?.classList.remove('open');}
+  v.classList.add('show');row.classList.add('open');openVerb=p;
+}
+function askNode(p){
+  const h=HOOKS[activeHook],P=PERSONAS[p],r=h.rx[p];
+  pushMsg('me',`${P.name}, why did you ${RXLAB[r[0]].toLowerCase()}?`);
+  setTimeout(()=>pushMsg('them',nodeReply(P,r),`${P.name} · in voice`),600);
+  document.getElementById('chatwrap').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function nodeReply(P,r){
+  const m={
+    scrolled:`${r[2]} If you want me to stop, put the tension in the first three words — a number, a contradiction, or a stakes word.`,
+    engaged:`I didn’t bounce, but I didn’t commit. ${r[2]} Land the payoff faster and I’d have saved it.`,
+    saved:`${r[2]} Keep that open loop — don’t resolve it in the caption and I stay hooked.`,
+    shared:`${r[2]} I only share things that make me look smart for finding them. This cleared that bar.`,
+  };return m[r[0]];
+}
+
+/* chat — persists across cards */
+function renderChat(){
+  const h=HOOKS[activeHook];
+  document.getElementById('chatwrap').innerHTML=`
+    <div class="csub">Talking to <b>Gen Z Founders</b> · subject: <span class="sj">“${h.text}”</span></div>
+    <div class="msgs" id="msgs"></div>
+    ${chatLog.length?'':`<div class="sugg" id="sugg">
+      <button class="sg">What would make more of you save this?</button>
+      <button class="sg">Why did the skeptics scroll?</button>
+      <button class="sg">Rewrite it so Maya stops scrolling.</button>
+    </div>`}
+    <div class="composer"><input id="cin" placeholder="Ask your audience…" autocomplete="off"><button class="send" id="snd">↑</button></div>`;
+  document.getElementById('snd').addEventListener('click',send);
+  document.getElementById('cin').addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+  ss.querySelectorAll('#sugg .sg').forEach(s=>s.addEventListener('click',()=>{document.getElementById('cin').value=s.textContent;send();}));
+  paint();
+}
+function paint(){
+  const m=document.getElementById('msgs');if(!m)return;
+  if(!chatLog.length){m.innerHTML=`<div class="empty">No questions yet. This conversation follows your audience — it’ll still be here when you open a different hook.</div>`;return;}
+  m.innerHTML=chatLog.map(x=>x.who==='me'?`<div class="msg me">${x.text}</div>`:`<div class="msg them">${x.text}${x.src?`<span class="src">${x.src}</span>`:''}</div>`).join('');
+  m.scrollTop=m.scrollHeight;
+}
+function pushMsg(who,text,src){chatLog.push({who,text,src});const s=document.getElementById('sugg');if(s)s.remove();paint();}
+function send(){
+  const i=document.getElementById('cin'),q=i.value.trim();if(!q)return;i.value='';pushMsg('me',q);
+  const m=document.getElementById('msgs');const t=document.createElement('div');t.className='think';t.textContent='the room is thinking…';m.appendChild(t);m.scrollTop=9e9;
+  setTimeout(()=>{t.remove();pushMsg('them',roomReply(q),'The room · synthesized')},800);
+}
+function roomReply(q){
+  const h=HOOKS[activeHook],c=agg(h),ql=q.toLowerCase();
+  if(ql.includes('rewrite')||ql.includes('fix')||ql.includes('better'))
+    return `Try front-loading the tension — ${c.scrolled} of us bounced before the payoff. Give us the stakes in the first three words. Want me to generate 3 variants and re-run the Read?`;
+  if(ql.includes('save')||ql.includes('more of you'))
+    return `${c.saved+c.shared} of us saved or shared it. The rest want a concrete number or a named enemy in the first line — specificity tips a watch into a save.`;
+  if(ql.includes('skeptic')||ql.includes('scroll')||ql.includes('maya'))
+    return `The skeptics read the opener as a format they’ve seen too often. Break the pattern in word one and you’d likely convert Maya — she saves contrarian framings.`;
+  return `Across the 10 of us: ${c.shared+c.saved} positive, ${c.scrolled} scrolled. It’s won or lost in the first three words. Ask me to rewrite it and I’ll feed it back through the Read.`;
+}
+</script>
+</body>
+</html>

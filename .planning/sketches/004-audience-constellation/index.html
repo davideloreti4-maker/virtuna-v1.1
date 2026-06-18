@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sketch 004 · Constellation + Reaction Feed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07080a; --surface:#161718; --elev:#1d1e1f;
+  --border:rgba(255,255,255,0.06); --border-h:rgba(255,255,255,0.1);
+  --text:#ededee; --muted:#8a8b8c; --dim:rgba(255,255,255,0.32); --faint:rgba(255,255,255,0.5);
+  --coral:#FF7F50; --coral-bd:rgba(255,127,80,0.30); --coral-bg:rgba(255,127,80,0.08);
+  --font:'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --r-sm:6px; --r-md:8px; --r-lg:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--font);letter-spacing:.2px;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column;align-items:center;min-height:100%;padding:30px 16px 70px}
+code{color:var(--coral);font-size:.92em}
+
+.intro{max-width:760px;width:100%;margin-bottom:22px}
+.kicker{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:8px}
+.kicker b{color:var(--coral)}
+.intro h1{font-size:21px;font-weight:600;margin-bottom:8px}
+.intro p{font-size:13px;color:var(--muted);line-height:1.65;max-width:650px}
+.intro p b{color:var(--text);font-weight:500}
+
+.phone{width:392px;max-width:100%;height:820px;background:var(--bg);border-radius:44px;border:1px solid var(--border);position:relative;overflow:hidden;box-shadow:0 0 0 9px #0b0c0e,0 30px 80px rgba(0,0,0,.65);display:flex;flex-direction:column}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:140px;height:28px;background:#0b0c0e;border-radius:0 0 16px 16px;z-index:60}
+
+.appbar{padding:42px 20px 14px;display:flex;align-items:center;justify-content:space-between;flex:none}
+.skill{display:flex;align-items:center;gap:10px}
+.skill .ic{width:30px;height:30px;border-radius:8px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;font-size:14px}
+.skill .nm{font-size:15px;font-weight:600;line-height:1.1}
+.skill .sb{font-size:11px;color:var(--dim);margin-top:2px}
+.anchor{display:flex;align-items:center;gap:9px;cursor:pointer;padding:6px 8px;border-radius:999px;transition:background .15s}
+.anchor:hover{background:var(--surface)}
+.anchor .stack{display:flex}
+.anchor .stack .a{width:22px;height:22px;border-radius:50%;background:var(--elev);border:1.5px solid var(--bg);display:grid;place-items:center;font-size:9px;font-weight:600;color:var(--faint);margin-left:-7px}
+.anchor .stack .a:first-child{margin-left:0}
+.anchor .meta .nm{font-size:12px;font-weight:600;line-height:1.1;display:flex;align-items:center;gap:5px}
+.anchor .meta .nm .live{width:5px;height:5px;border-radius:50%;background:#46d18a}
+.anchor .meta .sb{font-size:9.5px;color:var(--dim);margin-top:1px}
+
+.feed{flex:1;overflow-y:auto;padding:4px 16px 30px;scrollbar-width:none}
+.feed::-webkit-scrollbar{display:none}
+.vlabel{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin:14px 2px 10px}
+
+.card{background:transparent;border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;margin-bottom:14px;cursor:pointer;transition:background .15s,border-color .15s}
+.card:hover{background:rgba(255,255,255,.018);border-color:var(--border-h)}
+.card .eyebrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:11px}
+.card .eyebrow .l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:600}
+.card .hook{font-size:16px;font-weight:600;line-height:1.42}
+.card .quote{font-size:14px;line-height:1.5;color:var(--text);margin:14px 0 12px}
+.card .quote .mk{color:var(--dim)}
+.card .foot{display:flex;align-items:center;justify-content:space-between}
+.card .who{display:flex;align-items:center;gap:9px}
+.astack{display:flex}
+.astack .a{width:24px;height:24px;border-radius:50%;background:var(--elev);border:1.5px solid var(--bg);display:grid;place-items:center;font-size:10px;font-weight:600;color:var(--faint);margin-left:-8px}
+.astack .a:first-child{margin-left:0}
+.card .who .txt{font-size:12px;color:var(--muted)}
+.card .who .txt b{color:var(--text);font-weight:600}
+.opn{font-size:12px;color:var(--coral);font-weight:600;white-space:nowrap}
+
+/* ===== sheet ===== */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.6);opacity:0;pointer-events:none;transition:opacity .3s;z-index:70}
+.scrim.open{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:94%;background:var(--surface);border-top-left-radius:22px;border-top-right-radius:22px;border-top:1px solid var(--border-h);transform:translateY(100%);transition:transform .36s cubic-bezier(.32,.72,0,1);z-index:80;display:flex;flex-direction:column}
+.sheet.open{transform:translateY(0)}
+.grab{width:36px;height:4px;border-radius:2px;background:rgba(255,255,255,.16);margin:11px auto 4px;flex:none}
+.ss{overflow-y:auto;padding:8px 18px 18px;scrollbar-width:none;flex:1}
+.ss::-webkit-scrollbar{display:none}
+
+.shead .l{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;font-weight:600;margin-bottom:7px}
+.shead .hook{font-size:16px;font-weight:600;line-height:1.4;margin-bottom:14px}
+.verdict{display:flex;align-items:center;gap:9px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.vmeter{flex:1;height:6px;border-radius:3px;background:rgba(255,255,255,.06);display:flex;overflow:hidden}
+.vmeter i{height:100%}.vmeter .pos{background:var(--coral)}.vmeter .neu{background:rgba(255,255,255,.22)}
+.verdict .lab{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.verdict .lab b{color:var(--text);font-weight:600}
+
+/* ===== constellation ===== */
+.stage{position:relative;margin:16px 0 0;border:1px solid var(--border);border-radius:var(--r-lg);background:radial-gradient(120% 90% at 50% 0%,rgba(255,127,80,.04),transparent 60%),var(--bg);overflow:hidden}
+.stage svg{display:block;width:100%;height:auto}
+.edge{stroke:rgba(255,255,255,.06);stroke-width:1;transition:stroke .4s,stroke-width .4s}
+.edge.live{stroke:rgba(255,127,80,.45);stroke-width:1.4}
+.node{cursor:pointer}
+.node circle.bg{fill:var(--elev);stroke:var(--border);stroke-width:1;transition:fill .4s,stroke .4s,r .3s}
+.node text{fill:var(--faint);font-size:11px;font-weight:600;text-anchor:middle;dominant-baseline:central;font-family:var(--font);transition:fill .4s;pointer-events:none}
+.node.pos circle.bg{fill:var(--coral-bg);stroke:var(--coral-bd)}
+.node.pos text{fill:var(--coral)}
+.node.neg circle.bg{fill:var(--elev);stroke:var(--border-h)}
+.node.neg text{fill:var(--dim)}
+.node.sel circle.bg{stroke:#fff;stroke-width:1.5}
+.node circle.pulse{fill:none;stroke:var(--coral);stroke-width:1.5;opacity:0}
+.node.fire circle.pulse{animation:ring .7s ease-out}
+@keyframes ring{0%{r:13px;opacity:.7}100%{r:30px;opacity:0}}
+.dim circle.bg{opacity:.35}.dim text{opacity:.35}
+.stagebar{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-top:1px solid var(--border)}
+.legend{display:flex;gap:12px;font-size:10px;color:var(--dim)}
+.legend i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.legend i.p{background:var(--coral)}.legend i.n{background:var(--elev);box-shadow:inset 0 0 0 1px var(--border-h)}
+.cluster-tag{position:absolute;font-size:9px;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);font-weight:600;pointer-events:none}
+
+/* play controls */
+.play{display:flex;align-items:center;gap:8px;background:var(--coral-bg);border:1px solid var(--coral-bd);color:var(--coral);font-size:12px;font-weight:600;padding:7px 13px;border-radius:999px;cursor:pointer}
+.play:active{transform:scale(.96)}
+.play.playing{background:transparent;color:var(--muted);border-color:var(--border)}
+
+/* ===== reaction feed (persistent) ===== */
+.sec{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:1.2px;font-weight:600;margin:22px 0 10px;display:flex;align-items:center;justify-content:space-between}
+.sec .hintx{text-transform:none;letter-spacing:0;color:var(--dim);font-weight:400}
+.rfeed{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.rfeed .empty{padding:22px 16px;text-align:center;font-size:12px;color:var(--dim);line-height:1.5}
+.fitem{display:flex;align-items:flex-start;gap:11px;padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;opacity:0;transform:translateY(4px);animation:rise .32s forwards;transition:background .15s}
+.fitem:last-child{border-bottom:none}
+.fitem:hover{background:rgba(255,255,255,.02)}
+@keyframes rise{to{opacity:1;transform:none}}
+.fitem .av{width:30px;height:30px;border-radius:50%;background:var(--elev);border:1px solid var(--border);display:grid;place-items:center;font-size:11px;font-weight:600;color:var(--faint);flex:none}
+.fitem.pos .av{background:var(--coral-bg);border-color:var(--coral-bd);color:var(--coral)}
+.fitem .bd{flex:1;min-width:0}
+.fitem .top{display:flex;align-items:baseline;gap:7px;margin-bottom:3px}
+.fitem .top .n{font-size:13px;font-weight:600}
+.fitem .top .rx{font-size:11px;font-weight:600}
+.fitem .top .rx.pos{color:var(--coral)}.fitem .top .rx.neg{color:var(--faint)}
+.fitem .top .t{margin-left:auto;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
+.fitem .q{font-size:12.5px;color:var(--muted);line-height:1.45}
+.fitem .why{font-size:11px;color:var(--dim);line-height:1.45;margin-top:6px;display:none}
+.fitem.exp .why{display:block}
+.fitem .why b{color:var(--coral)}
+.fitem .ask{display:none;margin-top:8px;font-size:11px;color:var(--coral);font-weight:600;cursor:pointer}
+.fitem.exp .ask{display:inline-block}
+
+/* chat */
+.csub{font-size:11.5px;color:var(--dim);margin:0 0 12px;line-height:1.5}
+.csub b{color:var(--muted);font-weight:600}.csub .sj{color:var(--faint)}
+.msgs{display:flex;flex-direction:column;gap:10px;margin-bottom:13px}
+.empty2{font-size:12px;color:var(--dim);line-height:1.55;padding:14px;text-align:center;border:1px dashed var(--border);border-radius:var(--r-md)}
+.msg{max-width:85%;padding:10px 13px;border-radius:14px;font-size:13px;line-height:1.5}
+.msg.me{align-self:flex-end;background:var(--elev);border:1px solid var(--border-h);border-bottom-right-radius:4px}
+.msg.them{align-self:flex-start;background:transparent;border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.them .src{display:block;font-size:10px;color:var(--coral);font-weight:600;margin-top:7px}
+.think{font-size:12px;color:var(--dim);font-style:italic;padding:2px 4px}
+.sugg{display:flex;flex-direction:column;gap:7px;margin-bottom:13px}
+.sg{font-size:12px;padding:9px 13px;border-radius:var(--r-md);background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;text-align:left;transition:border-color .15s,color .15s}
+.sg:hover{border-color:var(--coral-bd);color:var(--text)}
+.composer{display:flex;gap:8px;align-items:center;position:sticky;bottom:0;background:var(--surface);padding:8px 0 2px}
+.composer input{flex:1;height:44px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:var(--r-md);padding:0 15px;color:var(--text);font-size:13.5px;font-family:var(--font);outline:none}
+.composer input:focus{border-color:var(--coral-bd)}
+.composer input::placeholder{color:var(--dim)}
+.send{width:44px;height:44px;border-radius:var(--r-md);background:var(--coral);color:#1a0f0a;border:none;cursor:pointer;font-size:17px;flex:none}
+.send:active{transform:scale(.94)}
+
+.note{max-width:760px;font-size:12px;color:var(--dim);line-height:1.7;margin-top:22px;border-top:1px solid var(--border);padding-top:18px;width:100%}
+.note b{color:var(--muted)}.note code{color:var(--coral)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <div class="kicker"><b>Sketch 004</b> · Constellation + persistent reaction feed</div>
+  <h1>Steal the soul of the cloud, not the swarm.</h1>
+  <p>A <b>constellation of your 10</b> — clustered by disposition, named, edges = <b>affinity</b> (honest, not fake social ties). Press play: the reaction <b>ripples</b> node-to-node <i>and</i> writes to a <b>persistent feed</b> you can scroll, re-read, and tap — no more 1-second flashes. The dense Artificial-Societies swarm is reserved for population-scale tests later, where density is real. Tap the card.</p>
+</div>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="appbar">
+    <div class="skill"><div class="ic">🪝</div><div><div class="nm">Hooks</div><div class="sb">3 hooks · Read complete</div></div></div>
+    <div class="anchor" id="anchor">
+      <div class="stack"><span class="a">M</span><span class="a">R</span><span class="a">L</span></div>
+      <div class="meta"><div class="nm"><span class="live"></span>Gen Z Founders</div><div class="sb">10 calibrated · TikTok</div></div>
+    </div>
+  </div>
+
+  <div class="feed" id="feed"></div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet"><div class="grab"></div><div class="ss" id="ss"></div></div>
+</div>
+
+<div class="note">
+  <b>What to judge —</b> (1) Does the constellation read as <i>your 10 people</i>, not a sparse graph? (clustered + named is the fix for "10 nodes look sad"). (2) Does the <b>ripple + feed</b> together actually let you <i>follow</i> the reactions? (3) Honest edges = affinity/similarity — acceptable, or cut edges until we model real propagation? (4) Constellation as the hero, with the feed as the readable record — right balance vs the plain list in 003?
+</div>
+
+<script>
+const P=[
+ {init:'M',name:'Maya',role:'Bootstrapped SaaS · skeptic',cl:'critical'},
+ {init:'D',name:'Devon',role:'Agency owner · pragmatist',cl:'analytical'},
+ {init:'P',name:'Priya',role:'Solo creator · enthusiast',cl:'receptive'},
+ {init:'J',name:'Jonah',role:'Ex-corporate · cautious',cl:'critical'},
+ {init:'L',name:'Lena',role:'Newsletter writer · curator',cl:'analytical'},
+ {init:'T',name:'Theo',role:'Student founder · lurker',cl:'critical'},
+ {init:'A',name:'Ama',role:'D2C founder · doer',cl:'receptive'},
+ {init:'R',name:'Rio',role:'Creator · trend-native',cl:'receptive'},
+ {init:'S',name:'Sol',role:'Indie hacker · contrarian',cl:'receptive'},
+ {init:'N',name:'Nina',role:'Marketer · analytical',cl:'analytical'},
+];
+// constellation coords in a 360x250 viewbox, grouped by cluster
+const XY=[ [175,205],[290,95],[80,72],[245,195],[315,150],[210,165],[58,125],[122,108],[82,158],[268,128] ];
+// affinity edges (intra-cluster + a few honest bridges)
+const EDGES=[[2,6],[2,7],[6,7],[7,8],[6,8],[0,3],[3,5],[0,5],[1,4],[1,9],[4,9],[9,5],[7,9],[5,8]];
+const CLUSTERS=[{t:'Receptive',x:'7%',y:'18%'},{t:'Critical',x:'46%',y:'88%'},{t:'Analytical',x:'80%',y:'30%'}];
+
+const RXLAB={shared:'Shared',saved:'Saved',engaged:'Watched',scrolled:'Scrolled'};
+const POS=r=>r==='shared'||r==='saved';
+const RANK={shared:3,saved:2,engaged:1,scrolled:0};
+const HOOKS=[
+ {text:'I quit my $200k job to sell candles. Here’s what nobody tells you.',teaser:{pid:7,q:'This format is printing right now. Sending it to my group chat.'},
+  rx:[['scrolled',2,'Another quit-my-job hook. I’ve seen this opener 40 times this week.','Pattern-matched to an oversaturated format.'],['engaged',5,'The number pulled me in, but I waited for the lesson.','Specificity bought attention; held for the payoff.'],['saved',3,'The candles twist is unexpected — saved to study it.','High-salary vs humble-product gap = curiosity.'],['scrolled',1,'Survivorship bait. Where’s the proof?','Rejected an unverifiable flex up front.'],['saved',4,'Clean setup-payoff. Craft is solid even if topic is tired.','“Nobody tells you” is a strong open loop.'],['scrolled',2,'Meh.','Generic format never cleared the bar.'],['saved',3,'I want the what-nobody-tells-you part. That’s the tactic.','Open loop promised actionable insight.'],['shared',2,'This format is printing right now. Sending it to my group chat.','Recognized a currently-viral structure.'],['saved',6,'Love an against-the-grain career move.','Rewarded the underdog framing.'],['engaged',5,'Decent TOFU hook. Curious about retention.','Withheld full commit.']]},
+ {text:'Your first 1,000 followers are a trap. Do this instead.',teaser:{pid:4,q:'Tight. Myth + reversal + promise in nine words. Chef’s kiss.'},
+  rx:[['saved',2,'Finally a contrarian take with a clear redirect.','Rewarded the myth-busting frame.'],['saved',3,'The “do this instead” makes it actionable.','Got the implied takeaway instantly.'],['engaged',4,'Bit fear-based, but I’m listening.','“Trap” framing slightly cooled the warmth.'],['saved',3,'Challenges a belief I hold — want to see if it holds.','Pulled in by a counter-conventional claim.'],['shared',2,'Tight. Myth + reversal + promise in nine words. Chef’s kiss.','Scored the economy of the line.'],['engaged',6,'Actually paused on this one.','Contrarian claim earned a watch.'],['shared',2,'This is the exact mistake I made. Sending to my cohort.','Felt personally called out.'],['saved',3,'Reversal hooks are working. Solid.','Fits current feed behavior.'],['shared',1,'YES. Everyone worships the follower count. Burn it down.','Fully aligned — instant share.'],['saved',4,'Reframes the funnel top. I want the mechanism.','Saved for the how.']]},
+ {text:'How I write hooks (a thread).',teaser:{pid:0,q:'No promise, no tension. Why would I stop?'},
+  rx:[['scrolled',1,'No promise, no tension. Why would I stop?','Zero curiosity gap.'],['scrolled',2,'What’s the payoff? Title does no work.','Defers everything.'],['engaged',3,'Maybe, because I like the topic.','Carried by topic, not the hook.'],['scrolled',1,'Generic. Pass.','No reason to trust it.'],['scrolled',2,'The irony of a weak hook on a hooks thread.','Penalized the meta-failure.'],['scrolled',1,'…','Below threshold.'],['engaged',4,'Topic’s relevant so I’d skim.','Pulled by utility of subject.'],['scrolled',2,'No pattern interrupt. Dead in-feed.','Algorithmically weak.'],['scrolled',2,'Expected a hot take, got a contents page.','Found no edge.'],['engaged',3,'Would A/B vs a stronger variant.','A baseline, not a winner.']]},
+];
+function agg(h){const c={shared:0,saved:0,engaged:0,scrolled:0};h.rx.forEach(r=>c[r[0]]++);return c;}
+function keep(h){const c=agg(h);return c.shared+c.saved+c.engaged;}
+
+/* feed cards (inline = editorial, settled) */
+const feed=document.getElementById('feed');
+feed.innerHTML=`<div class="vlabel">Hook candidates · graded by your audience</div>`+HOOKS.map((h,i)=>{
+  const t=h.teaser;
+  return `<div class="card" data-h="${i}">
+    <div class="eyebrow"><span class="l">Hook ${i+1}</span></div>
+    <div class="hook">${h.text}</div>
+    <div class="quote"><span class="mk">“</span>${t.q}<span class="mk">”</span></div>
+    <div class="foot"><div class="who">
+      <div class="astack"><span class="a">${P[t.pid].init}</span><span class="a">${P[(t.pid+2)%10].init}</span><span class="a">${P[(t.pid+5)%10].init}</span></div>
+      <span class="txt"><b>${P[t.pid].name}</b> + ${keep(h)-1} kept watching</span></div>
+      <span class="opn">Open the room →</span></div>
+  </div>`;
+}).join('');
+feed.querySelectorAll('.card').forEach(c=>c.addEventListener('click',()=>openSheet(+c.dataset.h)));
+
+/* sheet */
+const scrim=document.getElementById('scrim'),sheet=document.getElementById('sheet'),ss=document.getElementById('ss');
+let activeHook=null,chatLog=[],selNode=null,fedSet=new Set();
+function openSheet(i){activeHook=i;selNode=null;fedSet=new Set();renderSheet();scrim.classList.add('open');sheet.classList.add('open');}
+function closeSheet(){scrim.classList.remove('open');sheet.classList.remove('open');if(timer)clearInterval(timer);}
+scrim.addEventListener('click',closeSheet);
+document.getElementById('anchor').addEventListener('click',()=>openSheet(activeHook??1));
+
+function renderSheet(){
+  const h=HOOKS[activeHook],c=agg(h);
+  const nodes=P.map((p,i)=>{
+    const r=h.rx[i],cls=POS(r[0])?'pos':(r[0]==='scrolled'?'neg':'');
+    const[x,y]=XY[i];
+    return `<g class="node ${cls}" data-i="${i}" transform="translate(${x},${y})">
+      <circle class="pulse" r="13"></circle>
+      <circle class="bg" r="13"></circle>
+      <text>${p.init}</text></g>`;
+  }).join('');
+  const edges=EDGES.map(([a,b])=>{const[x1,y1]=XY[a],[x2,y2]=XY[b];return `<line class="edge" data-a="${a}" data-b="${b}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`;}).join('');
+  ss.innerHTML=`
+   <div class="shead">
+     <div class="l">Hook ${activeHook+1} · the Read</div>
+     <div class="hook">${h.text}</div>
+     <div class="verdict">
+       <div class="vmeter"><i class="pos" style="width:${(c.shared+c.saved)/10*100}%"></i><i class="neu" style="width:${c.engaged/10*100}%"></i></div>
+       <span class="lab"><b>${keep(h)}</b>/10 kept watching</span>
+     </div>
+   </div>
+
+   <div class="stage">
+     ${CLUSTERS.map(cl=>`<span class="cluster-tag" style="left:${cl.x};top:${cl.y}">${cl.t}</span>`).join('')}
+     <svg viewBox="0 0 360 250" id="svg"><g id="edges">${edges}</g><g id="nodes">${nodes}</g></svg>
+     <div class="stagebar">
+       <div class="legend"><span><i class="p"></i>kept watching</span><span><i class="n"></i>scrolled</span></div>
+       <button class="play" id="play">▶ Replay reactions</button>
+     </div>
+   </div>
+
+   <div class="sec">Reaction feed <span class="hintx" id="feedhint">plays as they reacted · tap any to expand</span></div>
+   <div class="rfeed" id="rfeed"><div class="empty">Press <b style="color:var(--muted)">Replay</b> to watch the room react in order — each one lands here and stays.</div></div>
+
+   <div class="sec">Ask the room</div>
+   <div id="chatwrap"></div>`;
+
+  document.getElementById('play').addEventListener('click',playReplay);
+  ss.querySelectorAll('.node').forEach(n=>n.addEventListener('click',()=>{revealOne(+n.dataset.i,true);}));
+  renderChat();ss.scrollTop=0;
+}
+
+function neighbors(i){const s=new Set();EDGES.forEach(([a,b])=>{if(a===i)s.add(b);if(b===i)s.add(a);});return s;}
+function fireNode(i,ripple){
+  const g=ss.querySelector(`.node[data-i="${i}"]`);if(!g)return;
+  g.classList.add('fire');setTimeout(()=>g.classList.remove('fire'),700);
+  if(ripple){const nb=neighbors(i);ss.querySelectorAll('.edge').forEach(e=>{const a=+e.dataset.a,b=+e.dataset.b;if((a===i&&fedSet.has(b))||(b===i&&fedSet.has(a))){e.classList.add('live');setTimeout(()=>e.classList.remove('live'),900);}});}
+}
+function addFeed(i){
+  if(fedSet.has(i))return;fedSet.add(i);
+  const h=HOOKS[activeHook],r=h.rx[i],p=P[i];const rf=document.getElementById('rfeed');
+  if(rf.querySelector('.empty'))rf.innerHTML='';
+  const el=document.createElement('div');
+  el.className='fitem '+(POS(r[0])?'pos':'');el.dataset.i=i;
+  el.innerHTML=`<div class="av">${p.init}</div><div class="bd">
+    <div class="top"><span class="n">${p.name}</span><span class="rx ${POS(r[0])?'pos':'neg'}">${RXLAB[r[0]]}</span><span class="t">${r[1].toFixed(1)}s</span></div>
+    <div class="q">“${r[2]}”</div>
+    <div class="why"><b>Why →</b> ${r[3]}</div>
+    <span class="ask">Ask ${p.name} directly →</span></div>`;
+  el.addEventListener('click',()=>{el.classList.toggle('exp');selectNode(i);});
+  el.querySelector('.ask').addEventListener('click',e=>{e.stopPropagation();askNode(i);});
+  rf.appendChild(el);
+}
+function selectNode(i){selNode=i;ss.querySelectorAll('.node').forEach(n=>n.classList.toggle('sel',+n.dataset.i===i));}
+function revealOne(i,scroll){ // tap node directly
+  addFeed(i);fireNode(i,false);selectNode(i);
+  const el=ss.querySelector(`.fitem[data-i="${i}"]`);if(el){el.classList.add('exp');if(scroll)el.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+
+let timer=null;
+function playReplay(){
+  const h=HOOKS[activeHook],btn=document.getElementById('play');
+  if(timer)clearInterval(timer);
+  document.getElementById('rfeed').innerHTML='';fedSet=new Set();
+  ss.querySelectorAll('.node').forEach(n=>n.classList.add('dim'));
+  btn.classList.add('playing');btn.textContent='● Reacting…';
+  const ev=h.rx.map((r,i)=>({i,t:r[1]})).sort((a,b)=>a.t-b.t);
+  let t=0,k=0;const D=15;
+  timer=setInterval(()=>{
+    t+=0.2;
+    while(k<ev.length&&t>=ev[k].t){const i=ev[k].i;ss.querySelector(`.node[data-i="${i}"]`)?.classList.remove('dim');fireNode(i,true);addFeed(i);k++;}
+    if(t>=D){clearInterval(timer);btn.classList.remove('playing');btn.textContent='↻ Replay reactions';ss.querySelectorAll('.node').forEach(n=>n.classList.remove('dim'));}
+  },80);
+}
+
+function askNode(i){const h=HOOKS[activeHook],p=P[i],r=h.rx[i];
+  pushMsg('me',`${p.name}, why did you ${RXLAB[r[0]].toLowerCase()}?`);
+  setTimeout(()=>pushMsg('them',nodeReply(p,r),`${p.name} · in voice`),600);
+  document.getElementById('chatwrap').scrollIntoView({behavior:'smooth',block:'center'});}
+function nodeReply(p,r){const m={
+  scrolled:`${r[2]} Put the tension in the first three words — a number, a contradiction, a stakes word.`,
+  engaged:`I didn’t bounce, but I didn’t commit. ${r[2]} Land the payoff faster and I’d save it.`,
+  saved:`${r[2]} Keep that open loop — don’t resolve it in the caption and I stay.`,
+  shared:`${r[2]} I share things that make me look smart for finding them. This cleared that bar.`};return m[r[0]];}
+
+function renderChat(){const h=HOOKS[activeHook];
+  document.getElementById('chatwrap').innerHTML=`
+    <div class="csub">Talking to <b>Gen Z Founders</b> · subject: <span class="sj">“${h.text}”</span></div>
+    <div class="msgs" id="msgs"></div>
+    ${chatLog.length?'':`<div class="sugg" id="sugg">
+      <button class="sg">What would make more of you save this?</button>
+      <button class="sg">Why did the skeptics scroll?</button>
+      <button class="sg">Rewrite it so Maya stops scrolling.</button></div>`}
+    <div class="composer"><input id="cin" placeholder="Ask your audience…" autocomplete="off"><button class="send" id="snd">↑</button></div>`;
+  document.getElementById('snd').addEventListener('click',send);
+  document.getElementById('cin').addEventListener('keydown',e=>{if(e.key==='Enter')send();});
+  ss.querySelectorAll('#sugg .sg').forEach(s=>s.addEventListener('click',()=>{document.getElementById('cin').value=s.textContent;send();}));
+  paint();}
+function paint(){const m=document.getElementById('msgs');if(!m)return;
+  if(!chatLog.length){m.innerHTML=`<div class="empty2">No questions yet. This conversation follows your audience — still here when you open a different hook.</div>`;return;}
+  m.innerHTML=chatLog.map(x=>x.who==='me'?`<div class="msg me">${x.text}</div>`:`<div class="msg them">${x.text}${x.src?`<span class="src">${x.src}</span>`:''}</div>`).join('');m.scrollTop=m.scrollHeight;}
+function pushMsg(w,t,s){chatLog.push({who:w,text:t,src:s});const su=document.getElementById('sugg');if(su)su.remove();paint();}
+function send(){const i=document.getElementById('cin'),q=i.value.trim();if(!q)return;i.value='';pushMsg('me',q);
+  const m=document.getElementById('msgs'),t=document.createElement('div');t.className='think';t.textContent='the room is thinking…';m.appendChild(t);m.scrollTop=9e9;
+  setTimeout(()=>{t.remove();pushMsg('them',roomReply(q),'The room · synthesized')},800);}
+function roomReply(q){const h=HOOKS[activeHook],c=agg(h),ql=q.toLowerCase();
+  if(ql.includes('rewrite')||ql.includes('fix'))return `Front-load the tension — ${c.scrolled} of us bounced before the payoff. Stakes in the first three words. Want 3 variants re-run through the Read?`;
+  if(ql.includes('save')||ql.includes('more of you'))return `${c.saved+c.shared} of us saved or shared it. The rest want a concrete number or a named enemy in line one.`;
+  if(ql.includes('skeptic')||ql.includes('scroll')||ql.includes('maya'))return `The skeptics read the opener as a tired format. Break the pattern in word one and you’d likely convert Maya.`;
+  return `Across the 10: ${c.shared+c.saved} positive, ${c.scrolled} scrolled. Won or lost in the first three words. Ask me to rewrite and I’ll re-run the Read.`;}
+</script>
+</body>
+</html>
