@@ -28,13 +28,15 @@
  * Coral accent on "Borrowed:" chip + "Develop into hooks →" CTA only.
  */
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
+import { useOnDevelopRemix } from '@/lib/remix-develop-context';
+import { PlatformContext } from '@/lib/platform-context';
 
 export interface RemixCardRendererProps {
   block: RemixCardBlock;
   /** Optional: wired by Plan 06-05 to trigger remix→hooks chain handoff (anchorFrom:'card').
-   *  When absent, CTA renders as a stub. */
+   *  When absent, reads from RemixDevelopContext; falls back to stub if neither present. */
   onDevelop?: () => void;
 }
 
@@ -53,7 +55,7 @@ const SUB_LABEL_STYLE: React.CSSProperties = {
   letterSpacing: '0.07em',
 };
 
-export function RemixCardRenderer({ block, onDevelop }: RemixCardRendererProps) {
+export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCardRendererProps) {
   const {
     adaptedHook,
     angle,
@@ -64,6 +66,22 @@ export function RemixCardRenderer({ block, onDevelop }: RemixCardRendererProps) 
     fraction,
     scrollQuote,
   } = block.props;
+
+  // Read RemixDevelopContext — enables RemixThreadView to provide the handler without
+  // prop-drilling through MessageBlocks (mirrors ScriptCardRenderer + ScriptTestContext).
+  const onDevelopCtx = useOnDevelopRemix();
+
+  // Read PlatformContext so the card can include the correct platform in the anchor POST.
+  const platform = useContext(PlatformContext) ?? 'tiktok';
+
+  // Resolve: explicit prop > context (bound with card's adaptedHook + live platform) > null (stub)
+  const onDevelop = onDevelopProp ?? (onDevelopCtx
+    ? () => {
+        // The card POSTs the adaptedHook as the anchor to the develop endpoint.
+        // Platform comes from PlatformContext set by RemixThreadView.
+        onDevelopCtx(adaptedHook, platform);
+      }
+    : undefined);
 
   const [expanded, setExpanded] = useState(false);
   const bandColor = BAND_COLOR[band];
