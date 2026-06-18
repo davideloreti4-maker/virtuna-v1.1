@@ -1,5 +1,5 @@
 /**
- * Phase 7 Plan 03 — calibration.ts + persona-repaint.ts (TDD RED phase).
+ * Phase 7 Plan 03 — calibration.ts + persona-repaint.ts (TDD GREEN phase).
  *
  * Tests:
  *  1. thin-data → general fallback (no CalibratedPersona fabricated)
@@ -7,24 +7,14 @@
  *  3. success path → personas.length === 10 + persona_weights === biasForGoalIntent(goalIntent)
  *  4. determinism: same input → byte-identical repaint output (Pitfall 2)
  *  5. thin gate is on getFollowerTier(null) AND videos < THIN_MIN_VIDEOS (both required)
+ *
+ * Provider injected via the optional _provider parameter — avoids module-mock constructor issues.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+import type { ProfileData, VideoData } from "@/lib/scraping/types";
 
-// ─── Mock ApifyScrapingProvider ───────────────────────────────────────────────
-
-// Mock before importing calibration (which imports ApifyScrapingProvider internally)
-const mockScrapeProfile = vi.fn();
-const mockScrapeVideos = vi.fn();
-
-vi.mock("@/lib/scraping/apify-provider", () => ({
-  ApifyScrapingProvider: vi.fn().mockImplementation(() => ({
-    scrapeProfile: mockScrapeProfile,
-    scrapeVideos: mockScrapeVideos,
-  })),
-}));
-
-// ─── Imports (after mocks) ────────────────────────────────────────────────────
+// ─── Imports ──────────────────────────────────────────────────────────────────
 
 import {
   calibrateFromScrape,
@@ -33,7 +23,18 @@ import {
 } from "../calibration";
 import { repaintPersonas } from "../persona-repaint";
 import { biasForGoalIntent } from "../goal-intent";
-import type { ProfileData, VideoData } from "@/lib/scraping/types";
+
+// ─── Mock provider factory ────────────────────────────────────────────────────
+
+function makeMockProvider(
+  profileFn: () => Promise<ProfileData>,
+  videosFn: () => Promise<VideoData[]>,
+) {
+  return {
+    scrapeProfile: vi.fn(profileFn),
+    scrapeVideos: vi.fn(videosFn),
+  };
+}
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ function makeVideos(count: number): VideoData[] {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("THIN_MIN_VIDEOS", () => {
-  it("should be a positive integer (default: 10)", () => {
+  it("should be a positive integer", () => {
     expect(typeof THIN_MIN_VIDEOS).toBe("number");
     expect(THIN_MIN_VIDEOS).toBeGreaterThan(0);
     expect(Number.isInteger(THIN_MIN_VIDEOS)).toBe(true);
@@ -78,21 +79,16 @@ describe("THIN_MIN_VIDEOS", () => {
 });
 
 describe("calibrateFromScrape — thin-data fallback (honesty spine D-06)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns { fallback: 'general', reason: 'thin' } when followerCount is 0 AND videos < THIN_MIN_VIDEOS", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(0)); // followerCount 0 → getFollowerTier returns null
-    mockScrapeVideos.mockResolvedValue(makeVideos(THIN_MIN_VIDEOS - 1)); // below threshold
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(0)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS - 1)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     expect(result).toHaveProperty("fallback", "general");
     expect(result).toHaveProperty("reason", "thin");
@@ -100,56 +96,66 @@ describe("calibrateFromScrape — thin-data fallback (honesty spine D-06)", () =
     expect(result).not.toHaveProperty("audience");
   });
 
-  it("returns { fallback: 'general', reason: 'thin' } when followerCount is null AND videos < THIN_MIN_VIDEOS", async () => {
-    mockScrapeProfile.mockResolvedValue({ ...makeProfile(0), followerCount: null as unknown as number });
-    mockScrapeVideos.mockResolvedValue([]);
+  it("returns { fallback: 'general', reason: 'thin' } when followerCount is null AND videos is empty", async () => {
+    const provider = makeMockProvider(
+      () => Promise.resolve({ ...makeProfile(0), followerCount: null as unknown as number }),
+      () => Promise.resolve([]),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     expect(result).toHaveProperty("fallback", "general");
     expect(result).not.toHaveProperty("audience");
   });
 
-  it("does NOT fall back to thin when followerCount > 0 (tier resolves)", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(50_000)); // micro tier → not null
-    mockScrapeVideos.mockResolvedValue(makeVideos(THIN_MIN_VIDEOS)); // at threshold
+  it("does NOT fall back to thin when followerCount > 0 (tier resolves) AND videos >= THIN_MIN_VIDEOS", async () => {
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     // Should be success path, not fallback
+    expect(result).not.toHaveProperty("fallback");
+    expect(result).toHaveProperty("audience");
+  });
+
+  it("does NOT fall back to thin when followerCount > 0 even if videos < THIN_MIN_VIDEOS", async () => {
+    // Both conditions must be true; having a follower count means tier !== null
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS - 1)), // below threshold
+    );
+
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
+
+    // followerCount > 0 → tier !== null → thin gate does NOT fire
     expect(result).not.toHaveProperty("fallback");
     expect(result).toHaveProperty("audience");
   });
 });
 
 describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns { error: 'scrape_failed' } when scrapeProfile throws", async () => {
-    mockScrapeProfile.mockRejectedValue(new Error("Network timeout"));
-    mockScrapeVideos.mockResolvedValue(makeVideos(20));
+    const provider = makeMockProvider(
+      () => Promise.reject(new Error("Network timeout")),
+      () => Promise.resolve(makeVideos(20)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     expect(result).toHaveProperty("error", "scrape_failed");
     expect(result).not.toHaveProperty("fallback");
@@ -157,16 +163,15 @@ describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
   });
 
   it("returns { error: 'scrape_failed' } when scrapeVideos throws", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(50_000));
-    mockScrapeVideos.mockRejectedValue(new Error("Actor failed"));
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.reject(new Error("Actor failed")),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     expect(result).toHaveProperty("error", "scrape_failed");
     expect(result).not.toHaveProperty("fallback");
@@ -174,116 +179,93 @@ describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
 });
 
 describe("calibrateFromScrape — success path", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("returns { audience } with exactly 10 CalibratedPersona entries", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(50_000));
-    mockScrapeVideos.mockResolvedValue(makeVideos(THIN_MIN_VIDEOS));
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
     expect(result).toHaveProperty("audience");
     const { audience } = result as { audience: { personas: unknown[] } };
     expect(audience.personas).toHaveLength(10);
   });
 
-  it("bakes goal-intent bias into persona_weights once (Pitfall 2: no per-run nondeterminism)", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(50_000));
-    mockScrapeVideos.mockResolvedValue(makeVideos(THIN_MIN_VIDEOS));
+  it("bakes goal-intent bias into persona_weights once (nurture intent)", async () => {
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "nurture",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "nurture", name: "My Audience" },
+      provider,
+    );
 
-    const { audience } = result as { audience: { persona_weights: Record<string, number> } };
+    const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
     const expectedWeights = biasForGoalIntent("nurture");
     expect(audience.persona_weights).toEqual(expectedWeights);
   });
 
   it("bakes 'grow' goal-intent bias correctly", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(50_000));
-    mockScrapeVideos.mockResolvedValue(makeVideos(THIN_MIN_VIDEOS));
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(50_000)),
+      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
-    const { audience } = result as { audience: { persona_weights: Record<string, number> } };
+    const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
     const expectedWeights = biasForGoalIntent("grow");
     expect(audience.persona_weights).toEqual(expectedWeights);
   });
 
   it("does NOT generate personas on the thin fallback path (zero fabrication)", async () => {
-    mockScrapeProfile.mockResolvedValue(makeProfile(0));
-    mockScrapeVideos.mockResolvedValue([]);
+    const provider = makeMockProvider(
+      () => Promise.resolve(makeProfile(0)),
+      () => Promise.resolve([]),
+    );
 
-    const result = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const result = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider,
+    );
 
-    // The fallback path must NOT return an audience with personas
-    if ("audience" in result && result.audience) {
-      // If we somehow got an audience, it must have 0 personas
-      expect((result.audience as { personas: unknown[] }).personas).toHaveLength(0);
-    } else {
-      // Expected: fallback path, no audience key
-      expect(result).toHaveProperty("fallback");
-    }
+    // Expected: fallback path, no audience key
+    expect(result).toHaveProperty("fallback");
+    expect(result).not.toHaveProperty("audience");
   });
 });
 
 describe("calibrateFromScrape — determinism (Pitfall 2)", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
   it("produces byte-identical repaint for identical input (no Date.now/Math.random)", async () => {
     const profile = makeProfile(50_000);
     const videos = makeVideos(THIN_MIN_VIDEOS);
 
-    mockScrapeProfile.mockResolvedValue(profile);
-    mockScrapeVideos.mockResolvedValue(videos);
+    const provider1 = makeMockProvider(
+      () => Promise.resolve(profile),
+      () => Promise.resolve(videos),
+    );
+    const result1 = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider1,
+    );
 
-    const result1 = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
-
-    // Reset mocks but return identical data
-    vi.clearAllMocks();
-    mockScrapeProfile.mockResolvedValue(profile);
-    mockScrapeVideos.mockResolvedValue(videos);
-
-    const result2 = await calibrateFromScrape({
-      handle: "testcreator",
-      type: "personal",
-      platform: "tiktok",
-      goalIntent: "grow",
-      name: "My Audience",
-    });
+    const provider2 = makeMockProvider(
+      () => Promise.resolve(profile),
+      () => Promise.resolve(videos),
+    );
+    const result2 = await calibrateFromScrape(
+      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
+      provider2,
+    );
 
     // Both must succeed
     expect(result1).toHaveProperty("audience");
@@ -301,12 +283,7 @@ describe("calibrateFromScrape — determinism (Pitfall 2)", () => {
 
 describe("deriveAudienceProfile", () => {
   it("returns temperature_mix with cold/warm/hot keys summing to 1.0", () => {
-    const profile = makeProfile(50_000);
-    const videos = makeVideos(15);
-
-    const result = deriveAudienceProfile(profile, videos);
-
-    expect(result).toHaveProperty("temperature_mix");
+    const result = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
     const { cold, warm, hot } = result.temperature_mix;
     expect(cold + warm + hot).toBeCloseTo(1.0, 5);
   });
@@ -330,20 +307,16 @@ describe("deriveAudienceProfile", () => {
 
 describe("repaintPersonas", () => {
   it("returns exactly 10 CalibratedPersona entries", () => {
-    const profile = makeProfile(50_000);
-    const videos = makeVideos(15);
+    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
     const weights = biasForGoalIntent("grow");
-    const audienceProfile = deriveAudienceProfile(profile, videos);
 
     const personas = repaintPersonas({ audienceProfile, goalIntent: "grow", weights });
     expect(personas).toHaveLength(10);
   });
 
   it("each persona has archetype, repaint, temperature, disposition, share", () => {
-    const profile = makeProfile(50_000);
-    const videos = makeVideos(15);
+    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
     const weights = biasForGoalIntent("sell");
-    const audienceProfile = deriveAudienceProfile(profile, videos);
 
     const personas = repaintPersonas({ audienceProfile, goalIntent: "sell", weights });
     for (const p of personas) {
@@ -359,10 +332,8 @@ describe("repaintPersonas", () => {
   });
 
   it("persona shares sum to approximately 1.0", () => {
-    const profile = makeProfile(50_000);
-    const videos = makeVideos(15);
+    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
     const weights = biasForGoalIntent("grow");
-    const audienceProfile = deriveAudienceProfile(profile, videos);
 
     const personas = repaintPersonas({ audienceProfile, goalIntent: "grow", weights });
     const totalShare = personas.reduce((sum, p) => sum + p.share, 0);
