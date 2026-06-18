@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 3 complete (UAT passed)
-last_updated: "2026-06-18T00:00:00.000Z"
-last_activity: 2026-06-18 -- Phase 03 complete; UAT passed, 4 bugs fixed, rehydration deferred to P4
+status: "Phase 3 closed out. Next: Phase 4 (Hooks Tool) — /gsd-discuss-phase 4."
+stopped_at: Phase 4 context gathered
+last_updated: "2026-06-18T07:16:22.839Z"
+last_activity: 2026-06-18 -- Phase 03 UAT passed (steps 2/3/4/6/7); fixed /home hang (dead block-registry.tsx), dev-shim LLM timeout, Qwen json_object 400, persist blocks-not-iterable. Reload-rehydration deferred to P4 (owner).
 progress:
   total_phases: 5
   completed_phases: 3
@@ -98,10 +98,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-17T22:35:00Z
-Stopped at: Phase 03 Plan 03 complete
+Last session: 2026-06-18T07:16:22.835Z
+Stopped at: Phase 4 context gathered
 Next: Phase 03 Plan 04 — Hooks Tool (Ideas→Hooks chain)
-Resume file: .planning/phases/03-ideas-tool/03-04-PLAN.md
+Resume file: .planning/phases/04-hooks-tool/04-CONTEXT.md
 
 ## Performance Metrics
 
