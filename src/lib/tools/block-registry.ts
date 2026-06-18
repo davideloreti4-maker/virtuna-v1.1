@@ -18,6 +18,7 @@ import {
   IdeaCardBlockSchema,
   HookCardBlockSchema,
   ScriptCardBlockSchema,
+  RemixCardBlockSchema,
 } from "./blocks";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -29,6 +30,7 @@ export const BLOCK_REGISTRY = {
   "idea-card": { schema: IdeaCardBlockSchema as z.ZodType },
   "hook-card": { schema: HookCardBlockSchema as z.ZodType },
   "script-card": { schema: ScriptCardBlockSchema as z.ZodType },
+  "remix-card": { schema: RemixCardBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

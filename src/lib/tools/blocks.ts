@@ -174,6 +174,50 @@ export const ScriptCardBlockSchema = z.object({
 
 export type ScriptCardBlock = z.infer<typeof ScriptCardBlockSchema>;
 
+// ─── Remix-card block ─────────────────────────────────────────────────────────
+// Maps the decode→adapt anatomy into a typed thread card.
+//
+// Honesty spine (Pitfall 5 — OPENER ONLY):
+//   band/fraction describe the ADAPTED HOOK scroll-stop only — NOT full-video
+//   retention or a global quality score of the original video.
+//
+// sourceDecode carries the REAL structural decode output (D-05, the moat):
+//   hookPattern / structure / theTurn / emotionalBeat are the four fixed beats
+//   from the Decode engine (decode-types.ts BeatId order: hook_pattern,
+//   structure_pacing, the_turn, emotional_beat). These are surfaced in the
+//   card's expand section so the creator understands WHY the original worked.
+//
+// Fixed typed renderer — model emits validated props only; RemixCardRenderer owns
+// ALL layout (THREAD-04). model literal forces sim1-flash provenance (D-10).
+
+export const RemixCardBlockSchema = z.object({
+  type: z.literal("remix-card"),
+  props: z.object({
+    // Adapt output — the niche-adapted concept anatomy (AdaptConcept UI mapping D-09)
+    adaptedHook: z.string().min(1),    // bold adapted headline (AdaptConcept.hook)
+    angle: z.string().min(1),          // structural angle borrowed (muted sub-row)
+    whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
+    formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
+
+    // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
+    // Shown on expand: WHY the original video worked structurally
+    sourceDecode: z.object({
+      hookPattern: z.string().min(1),  // hook_pattern beat body
+      structure: z.string().min(1),    // structure_pacing beat body
+      theTurn: z.string().min(1),      // the_turn beat body
+      emotionalBeat: z.string().min(1),// emotional_beat beat body
+    }),
+
+    // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
+    band: z.enum(["Strong", "Mixed", "Weak"]),
+    fraction: z.string().min(1),       // e.g. "7/10 stop" — adapted hook audience fraction only
+    scrollQuote: z.string().min(1),    // lead per-persona scroll quote for the adapted hook
+    model: z.literal("sim1-flash"),    // provenance tag — always Flash for remix cards (D-10)
+  }),
+});
+
+export type RemixCardBlock = z.infer<typeof RemixCardBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -183,6 +227,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   IdeaCardBlockSchema,
   HookCardBlockSchema,
   ScriptCardBlockSchema,
+  RemixCardBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
