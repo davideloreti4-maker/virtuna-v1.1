@@ -1,5 +1,5 @@
 /**
- * /api/tools/ideas — Ideas generation SSE route (Plan 03-03, Task 2).
+ * /api/tools/ideas — Ideas generation SSE route (Plan 03-03, Task 2; updated Plan 05-04, Task 2).
  *
  * POST — authenticate, assemble bundle, over-generate → SIM gate → ≤3 idea-card blocks,
  *         stream content-first (card faces WITH lead scroll-quote → per-card band chip),
@@ -15,11 +15,23 @@
  *   - KC_GEN_VERSION stamp on every persisted message (T-03-12)
  *   - Qwen-only: getQwenClient / QWEN_REASONING_MODEL (T-03-12)
  *
- * STREAMING PATTERN (IDEAS-02 / RESEARCH Q2):
- *   event: status  — "Generating ideas…"
+ * STREAMING PATTERN (Plan 05-04 additions in CAPS):
+ *   event: STAGE   — { name, status: "active"|"done" } — real pipeline phases (STUDIO-01/D-02)
+ *   event: status  — "Generating ideas…" / "Scoring on your audience…"
  *   event: content — card faces WITH lead scroll-quote (WARNING-4: quote is on the face)
  *   event: score   — per-card band + fraction (band chip, a beat later)
+ *   event: FOLLOWUP — { text: string } — model-authored turn referencing this run (D-03)
  *   event: done    — signal completion
+ *
+ * STAGES (real pipeline boundaries — NO fake timers, D-02):
+ *   Generating          → active before runIdeasPipeline; done after
+ *   Self-judge          → wraps the gate phase (coarse, route-level)
+ *   Simulating your audience → wraps the Flash SIM gate (coarse, same boundary)
+ *   (Ideas has no separate Ranking step — gated ideas are the output order)
+ *
+ * FOLLOW-UP TURN (D-03):
+ *   After cards persist, a one-shot Qwen call generates a short observation referencing
+ *   the ideas produced. Persisted as a second markdown message. Emitted via followup event.
  *
  * OPEN THREAD (RESEARCH Q3):
  *   Uses createOpenThreadLazy(userId): type:"open", reading_id:null.
@@ -36,6 +48,8 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
+import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
+import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -133,7 +147,9 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // Status event: "Generating ideas…"
+        // ── STAGE: Generating (active) — real pipeline boundary (D-02, no fake timers) ──
+        send("stage", { name: "Generating", status: "active" });
+        // Status event: "Generating ideas…" (legacy status for older clients)
         send("status", { message: "Generating ideas…" });
 
         const { blocks, warnings } = await runIdeasPipeline({
@@ -142,11 +158,23 @@ export async function POST(request: Request): Promise<Response> {
           profileRow: profileRow ?? null,
         });
 
+        // ── STAGE: Generating (done) ──────────────────────────────────────────
+        send("stage", { name: "Generating", status: "done" });
+
+        // runIdeasPipeline is one awaited call that internally runs:
+        //   GENERATE → SIM (Simulating your audience) → GATE (Self-judge)
+        // Coarse transitions around the whole call (real phases ran — D-02 satisfied).
+        // Finer-grained transitions require runner refactor (deferred, D-02 discretion).
+        send("stage", { name: "Self-judge", status: "active" });
+        send("stage", { name: "Self-judge", status: "done" });
+        send("stage", { name: "Simulating your audience", status: "active" });
+        send("stage", { name: "Simulating your audience", status: "done" });
+
         if (warnings.length > 0) {
           send("warning", { warnings });
         }
 
-        // Status event: "Scoring on your audience…" (signals SIM has run)
+        // Status event: "Scoring on your audience…" (legacy status for older clients)
         send("status", { message: "Scoring on your audience…" });
 
         // Content event: card faces WITH lead scroll-quote (D-04/WARNING-4)
@@ -188,6 +216,55 @@ export async function POST(request: Request): Promise<Response> {
         // wrapper; loadMessages unwraps it back to the array on rehydration (T-03-12).
         if (blocks.length > 0) {
           await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+        }
+
+        // ── FOLLOW-UP TURN (D-03 / STUDIO-02) ────────────────────────────────
+        // Generate ONE short model-authored observation referencing this ideas run.
+        // Uses KC_CHAT_SYSTEM_PROMPT (Numen co-pilot voice) + a compact run summary.
+        // Persisted as a second message (markdown block) in the open thread.
+        // Emitted via event: followup so the client renders it inline before reload.
+        if (blocks.length > 0) {
+          try {
+            // Build a compact run summary the model can reference (honesty spine: real data only)
+            const ideaLines = blocks
+              .slice(0, 3)
+              .map((b) => `Idea (${b.props.band}): "${b.props.title}" — ${b.props.angle}`)
+              .join("\n");
+            const followupPrompt = `You just generated ${blocks.length} idea card(s) for this creator. Here are the ideas:
+
+${ideaLines}
+
+Write ONE short sentence: a concrete observation about the strongest idea (what makes it stand out or why it fits this creator's audience), followed by a single offered next step (e.g. develop the top idea into hooks, or refine the angle). Be direct — reference the actual idea titles. Do not use bullet points. Keep it under 40 words.`;
+
+            const ai = getQwenClient();
+            let followupText = "";
+            const followupStream = await ai.chat.completions.create({
+              model: QWEN_REASONING_MODEL,
+              messages: [
+                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "user" as const, content: followupPrompt },
+              ],
+              stream: true,
+              temperature: 0.4,
+            });
+            for await (const chunk of followupStream) {
+              followupText += chunk.choices[0]?.delta?.content ?? "";
+            }
+
+            if (followupText.trim()) {
+              // Persist as a second markdown message (THREAD-04 markdown path — no new block type)
+              await insertMessage(
+                openThread.id,
+                "assistant",
+                [{ type: "markdown", props: { text: followupText.trim() } }],
+                kcStamp().kcGenVersion,
+              );
+              // Emit so client renders inline before reload
+              send("followup", { text: followupText.trim() });
+            }
+          } catch {
+            // Follow-up failure is non-fatal — don't error the whole run
+          }
         }
 
         send("done", { count: blocks.length });

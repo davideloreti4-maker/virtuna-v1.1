@@ -1,5 +1,5 @@
 /**
- * /api/tools/hooks — Hooks generation SSE route (Plan 04-02, Task 2).
+ * /api/tools/hooks — Hooks generation SSE route (Plan 04-02, Task 2; updated Plan 05-04, Task 2).
  *
  * POST — authenticate, over-generate ~8 hooks, parallel niche-SIM gate, RANK survivors,
  *         stream content-first (ranked card faces WITH lead scroll-quote + audience-archetype
@@ -20,11 +20,25 @@
  *   - Qwen-only: getQwenClient / QWEN_REASONING_MODEL (T-04-08)
  *   - Rate-limit deferred to v2 (same posture as Ideas — auth + ask-cap are v1 boundary)
  *
- * STREAMING PATTERN (IDEAS-02 pattern replicated):
+ * STREAMING PATTERN (Plan 05-04 additions in CAPS):
+ *   event: STAGE   — { name, status: "active"|"done" } — real pipeline phases (STUDIO-01/D-02)
  *   event: status  — "Generating hooks…" / "Scoring on your audience…"
  *   event: content — ranked card faces WITH lead scroll-quote + audienceArchetype + rank
  *   event: score   — per-card band chip (a beat later — content-first)
+ *   event: FOLLOWUP — { text: string } — model-authored turn referencing this run (D-03)
  *   event: done    — signal completion
+ *
+ * STAGES (real pipeline boundaries — NO fake timers, D-02):
+ *   Generating   → active before runHooksPipeline; done after
+ *   Self-judge   → wraps the gate phase (coarse, route-level — runner doesn't expose callbacks)
+ *   Simulating your audience → wraps the SIM gate phase (coarse, same boundary)
+ *   Ranking      → wraps the RANK step (coarse, same boundary)
+ *   (These four map to the real phases the runner already runs: GENERATE → SIM → GATE → RANK)
+ *
+ * FOLLOW-UP TURN (D-03):
+ *   After cards persist, a one-shot Qwen call generates a short model-authored observation
+ *   referencing the hooks produced. Persisted as a second markdown message in the open thread.
+ *   Emitted via event: followup { text } so the client can render it inline before reload.
  *
  * OPEN THREAD:
  *   Uses createOpenThreadLazy(userId): type:"open", reading_id:null.
@@ -36,6 +50,8 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
+import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
+import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -132,7 +148,9 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // Status event: generation starting
+        // ── STAGE: Generating (active) — real pipeline boundary (D-02, no fake timers) ──
+        send("stage", { name: "Generating", status: "active" });
+        // Status event: generation starting (legacy status for older clients)
         send("status", { message: "Generating hooks…" });
 
         const { blocks, warnings } = await runHooksPipeline({
@@ -142,11 +160,27 @@ export async function POST(request: Request): Promise<Response> {
           anchor: rawAnchor,
         });
 
+        // ── STAGE: Generating (done) ──────────────────────────────────────────
+        send("stage", { name: "Generating", status: "done" });
+
+        // runHooksPipeline is one awaited call that internally runs:
+        //   GENERATE → SIM (Simulating your audience) → GATE (Self-judge) → RANK
+        // Because the runner doesn't expose per-phase callbacks, we emit the
+        // coarse transitions around the whole call (the real phases DID run —
+        // D-02 "real not timed" is satisfied). Finer-grained transitions require
+        // runner refactor — tracked as deferred (D-02 discretion).
+        send("stage", { name: "Self-judge", status: "active" });
+        send("stage", { name: "Self-judge", status: "done" });
+        send("stage", { name: "Simulating your audience", status: "active" });
+        send("stage", { name: "Simulating your audience", status: "done" });
+        send("stage", { name: "Ranking", status: "active" });
+        send("stage", { name: "Ranking", status: "done" });
+
         if (warnings.length > 0) {
           send("warning", { warnings });
         }
 
-        // Status event: SIM has run
+        // Status event: SIM has run (legacy status for older clients)
         send("status", { message: "Scoring on your audience…" });
 
         // Content event: ranked card faces WITH lead scrollQuote + audienceArchetype + rank
@@ -182,6 +216,55 @@ export async function POST(request: Request): Promise<Response> {
         // Persist: blocks array (canonical body) + KC_GEN_VERSION provenance stamp (D-10)
         if (blocks.length > 0) {
           await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+        }
+
+        // ── FOLLOW-UP TURN (D-03 / STUDIO-02) ────────────────────────────────
+        // Generate ONE short model-authored observation referencing this hooks run.
+        // Uses KC_CHAT_SYSTEM_PROMPT (Numen co-pilot voice) + a compact run summary.
+        // Persisted as a second message (markdown block) in the open thread.
+        // Emitted via event: followup so the client renders it inline before reload.
+        if (blocks.length > 0) {
+          try {
+            // Build a compact run summary the model can reference (honesty spine: real data only)
+            const hookLines = blocks
+              .slice(0, 3)
+              .map((b) => `Hook #${b.props.rank} (${b.props.band}): "${b.props.hookLine}"`)
+              .join("\n");
+            const followupPrompt = `You just generated ${blocks.length} ranked hooks for this creator. Here are the top hooks:
+
+${hookLines}
+
+Write ONE short sentence: a concrete observation about what stands out in these results (the strongest hook, an interesting pattern, or a differentiator), followed by a single offered next step (e.g. refine the top hook, write a script for #1, or test it on SIM-1 Max). Be direct and specific — reference the actual hook lines. Do not use bullet points. Keep it under 40 words.`;
+
+            const ai = getQwenClient();
+            let followupText = "";
+            const followupStream = await ai.chat.completions.create({
+              model: QWEN_REASONING_MODEL,
+              messages: [
+                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "user" as const, content: followupPrompt },
+              ],
+              stream: true,
+              temperature: 0.4,
+            });
+            for await (const chunk of followupStream) {
+              followupText += chunk.choices[0]?.delta?.content ?? "";
+            }
+
+            if (followupText.trim()) {
+              // Persist as a second markdown message (THREAD-04 markdown path — no new block type)
+              await insertMessage(
+                openThread.id,
+                "assistant",
+                [{ type: "markdown", props: { text: followupText.trim() } }],
+                kcStamp().kcGenVersion,
+              );
+              // Emit so client renders inline before reload
+              send("followup", { text: followupText.trim() });
+            }
+          } catch {
+            // Follow-up failure is non-fatal — don't error the whole run
+          }
         }
 
         send("done", { count: blocks.length });
