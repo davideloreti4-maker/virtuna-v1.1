@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 04 gap-closure — one-open-thread-per-user fix (post-UAT)
-last_updated: "2026-06-18T08:53:40.542Z"
+stopped_at: "Phase 5 context gathered (re-scoped: Studio Conversation Layer + new P6 Script & Remix)"
+last_updated: "2026-06-18T09:30:33.178Z"
 last_activity: 2026-06-18
 progress:
   total_phases: 5
@@ -101,10 +101,10 @@ Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in
 
 ## Session Continuity
 
-Last session: 2026-06-18T12:00:00.000Z
-Stopped at: Phase 04 gap-closure — one-open-thread-per-user fix (post-UAT)
+Last session: 2026-06-18T09:30:33.170Z
+Stopped at: Phase 5 context gathered (re-scoped: Studio Conversation Layer + new P6 Script & Remix)
 Next: Phase 05 Open Chat & Test Reframe
-Resume file: .planning/phases/05-open-chat/05-01-PLAN.md (to be created)
+Resume file: .planning/phases/05-open-chat-test-reframe/05-CONTEXT.md
 
 ## Performance Metrics
 
