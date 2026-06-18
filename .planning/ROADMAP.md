@@ -146,7 +146,21 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
   5. The existing Reading is reframed as "Test · powered by SIM-1 Max" (hero + entry language) and is the landing point of every chain CTA, with the carried hook/idea shown as a visible brief above the upload; one generic anchor-carry handoff is built so Script/Remix (P6) register as runner+card+CTA without new plumbing.
   6. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved — open chat + the Test reframe are text-path / presentation changes, not scoring changes (no `ENGINE_VERSION` bump unless a deliberate scoring change is made).
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+**Wave 1** *(parallel — disjoint files)*
+
+- [ ] 05-01-PLAN.md — Open-chat backend: chat-runner + POST /api/tools/chat SSE route (grounded markdown turns persisted to the open thread) [THREAD-03]
+- [ ] 05-02-PLAN.md — Test reframe: Reading hero → "Test · powered by SIM-1 Max" + chip/entry language + carried-brief above upload (presentation only, no ENGINE_VERSION bump) [TEST-01]
+
+**Wave 2** *(blocked on Wave 1; 03 & 04 parallel — disjoint files)*
+
+- [ ] 05-03-PLAN.md — Open-chat frontend: useChatStream + ChatThreadView + live Chat chip + composer chat-send + markdown rehydration + empty state [THREAD-03, STUDIO-03]
+- [ ] 05-04-PLAN.md — Conversation layer: real-stage SSE progress checklist (D-02) + model-authored follow-up turn (D-03) + generic chain-handoff contract (D-09) [STUDIO-01, STUDIO-02, STUDIO-03]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-05-PLAN.md — Core loop: chat-to-refine scoped re-run → new freshly-SIM-scored card inline + chat note (D-04) + refine-intent NL detect + tappable suggested chain CTA (D-05) [STUDIO-02, STUDIO-03, THREAD-05]
 **UI hint**: yes
 
 ### Phase 6: Script & Remix Tools
@@ -175,5 +189,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
-| 5. Studio Conversation Layer | 0/TBD | Not started | - |
+| 5. Studio Conversation Layer | 0/5 | Not started | - |
 | 6. Script & Remix Tools | 0/TBD | Not started | - |
