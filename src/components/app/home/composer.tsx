@@ -99,6 +99,14 @@ export function Composer({ className }: ComposerProps) {
   // Sent as the first-class platform param to the Ideas route.
   const [platform, setPlatform] = useState<Platform>("tiktok");
 
+  // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
+  // Loaded on mount from GET /api/threads/open. Declared before the view gates
+  // below so showIdeasView/showHooksView can include them (no TDZ reference).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
+
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
   // CRITICAL: ideas.start() NEVER arms pendingNavRef/stream.start (T-03-13).
@@ -106,7 +114,7 @@ export function Composer({ className }: ComposerProps) {
   const ideasBlocks = ideas.toBlocks();
   const showIdeasView =
     activeTool === "idea" &&
-    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null);
+    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null || persistedIdeaBlocks.length > 0);
 
   // ── Hooks stream (Plan 04-03, Task 1 — D-09) ──────────────────────────────
   // Provides SSE hook-card blocks rendered above the composer in HooksThreadView.
@@ -115,19 +123,12 @@ export function Composer({ className }: ComposerProps) {
   const hooksBlocks = hooks.toBlocks();
   const showHooksView =
     activeTool === "hooks" &&
-    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null);
+    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
 
   // ── Test brief state (Task 2 — D-05/D-06 handoff) ─────────────────────────
   // When "Test full →" is clicked on a hook card, we switch to the Test tool
   // and store the chosen hook as a visible brief above the upload affordance.
   const [testBrief, setTestBrief] = useState<{ hookLine: string; audienceArchetype: string } | null>(null);
-
-  // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
-  // Loaded on mount from GET /api/threads/open.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
