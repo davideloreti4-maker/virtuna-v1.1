@@ -14,7 +14,7 @@
  *  - deleteAudience calls .delete().eq('id', ...) correctly
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Audience } from "../audience-types";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
@@ -120,20 +120,20 @@ describe("PRESET_AUDIENCES — exactly 2 virtual preset constants", () => {
 
   it("first preset (growth-leaning) uses biasForGoalIntent('grow') weights", () => {
     // growth-leaning preset should have goal_intent='grow'
-    const growPreset = PRESET_AUDIENCES[0];
+    const growPreset = PRESET_AUDIENCES[0]!;
     expect(growPreset.goal_intent).toBe("grow");
   });
 
   it("second preset (conversion-leaning) uses biasForGoalIntent('sell') weights", () => {
     // conversion-leaning preset should have goal_intent='sell'
-    const sellPreset = PRESET_AUDIENCES[1];
+    const sellPreset = PRESET_AUDIENCES[1]!;
     expect(sellPreset.goal_intent).toBe("sell");
   });
 
   it("growth preset persona_weights match biasForGoalIntent('grow')", async () => {
     const { biasForGoalIntent } = await import("../goal-intent");
     const growBias = biasForGoalIntent("grow");
-    const growPreset = PRESET_AUDIENCES[0];
+    const growPreset = PRESET_AUDIENCES[0]!;
     expect(growPreset.persona_weights.fyp).toBeCloseTo(growBias.fyp, 4);
     expect(growPreset.persona_weights.niche).toBeCloseTo(growBias.niche, 4);
     expect(growPreset.persona_weights.loyalist).toBeCloseTo(growBias.loyalist, 4);
@@ -143,7 +143,7 @@ describe("PRESET_AUDIENCES — exactly 2 virtual preset constants", () => {
   it("conversion preset persona_weights match biasForGoalIntent('sell')", async () => {
     const { biasForGoalIntent } = await import("../goal-intent");
     const sellBias = biasForGoalIntent("sell");
-    const sellPreset = PRESET_AUDIENCES[1];
+    const sellPreset = PRESET_AUDIENCES[1]!;
     expect(sellPreset.persona_weights.fyp).toBeCloseTo(sellBias.fyp, 4);
     expect(sellPreset.persona_weights.niche).toBeCloseTo(sellBias.niche, 4);
     expect(sellPreset.persona_weights.loyalist).toBeCloseTo(sellBias.loyalist, 4);
@@ -179,10 +179,10 @@ describe("listAudiences — virtual-first ordering", () => {
 
     const result = await listAudiences(sb as unknown as Parameters<typeof listAudiences>[0]);
 
-    expect(result[0].id).toBe("general"); // GENERAL first
-    expect(result[1].id).toBe(PRESET_AUDIENCES[0].id); // growth preset second
-    expect(result[2].id).toBe(PRESET_AUDIENCES[1].id); // conversion preset third
-    expect(result[3].id).toBe("db-row-id"); // DB row last
+    expect(result[0]!.id).toBe("general"); // GENERAL first
+    expect(result[1]!.id).toBe(PRESET_AUDIENCES[0]!.id); // growth preset second
+    expect(result[2]!.id).toBe(PRESET_AUDIENCES[1]!.id); // conversion preset third
+    expect(result[3]!.id).toBe("db-row-id"); // DB row last
     expect(result).toHaveLength(4);
   });
 
@@ -192,7 +192,7 @@ describe("listAudiences — virtual-first ordering", () => {
 
     const result = await listAudiences(sb as unknown as Parameters<typeof listAudiences>[0]);
     expect(result).toHaveLength(3); // GENERAL + 2 presets
-    expect(result[0].id).toBe("general");
+    expect(result[0]!.id).toBe("general");
   });
 
   it("queries from 'audiences' table", async () => {
@@ -221,7 +221,7 @@ describe("getAudience — virtual constant short-circuit", () => {
 
   it("getAudience(preset-id) returns the preset constant without a DB query", async () => {
     const sb = makeSupabaseMock();
-    const presetId = PRESET_AUDIENCES[0].id;
+    const presetId = PRESET_AUDIENCES[0]!.id;
 
     const result = await getAudience(
       sb as unknown as Parameters<typeof getAudience>[0],
@@ -314,9 +314,10 @@ describe("createAudience — never trusts user_id from input", () => {
     await createAudience(sb as unknown as Parameters<typeof createAudience>[0], input as Audience);
 
     // Check that the insert call used session user_id (test-user-id), NOT attacker id
-    const insertCall = sb._chain.insert.mock.calls[0][0];
-    expect(insertCall.user_id).toBe("test-user-id");
-    expect(insertCall.user_id).not.toBe("ATTACKER-ID");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const insertCall = (sb._chain.insert.mock.calls[0] as any[])[0] as Record<string, unknown>;
+    expect(insertCall["user_id"]).toBe("test-user-id");
+    expect(insertCall["user_id"]).not.toBe("ATTACKER-ID");
   });
 
   it("calls .from('audiences')", async () => {
@@ -387,8 +388,9 @@ describe("updateAudience — never trusts user_id from input", () => {
     );
 
     // update payload must NOT include user_id from input
-    const updateCall = sb._chain.update.mock.calls[0][0];
-    expect(updateCall.user_id).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updateCall = (sb._chain.update.mock.calls[0] as any[])[0] as Record<string, unknown>;
+    expect(updateCall["user_id"]).toBeUndefined();
 
     // Must target by id
     expect(sb._chain.eq).toHaveBeenCalledWith("id", "existing-id");
