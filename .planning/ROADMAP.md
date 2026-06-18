@@ -22,7 +22,10 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 2: Knowledge-Core Generative Rebuild** - Ground-up general-use generative KC (shared base + per-mode slices) — THE value, the long pole (completed 2026-06-17)
 - [x] **Phase 3: Ideas Tool** - Funnel-top idea generation grounded on the profile + KC, with a streaming Flash viability hint, self-judge gate, and chain CTAs (completed 2026-06-18; reload-rehydration deferred to P4 per owner)
 - [x] **Phase 4: Hooks Tool** - Flagship moat demo: N ranked hook cards with a SIM-1 Flash pull-score, chaining into Test (completed 2026-06-18)
-- [ ] **Phase 5: Open Chat & Test Reframe** - Profile-grounded open chat (no anchoring Reading) + the Reading reframed as "Test · powered by SIM-1 Max," the endpoint of every chain
+- [ ] **Phase 5: Studio Conversation Layer** - Make the studio feel like ONE conversation: profile-grounded open chat (no anchoring Reading) + Reading reframed as "Test · powered by SIM-1 Max" + Perplexity-style progress, cards embedded in chat, chat-to-refine (scoped re-run → re-tested card), and the generic skill-to-skill chain plumbing
+- [ ] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing
+
+> **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
 
 ## Phase Details
 
@@ -129,17 +132,34 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 **UI hint**: yes
 
-### Phase 5: Open Chat & Test Reframe
+### Phase 5: Studio Conversation Layer
 
-**Goal**: Close the studio — a profile-grounded open chat thread with no anchoring Reading (sequenced last, only as good as the rebuilt KC) and the existing Reading reframed as "Test · powered by SIM-1 Max," reachable as the landing point of every chain.
-**Depends on**: Phase 2 (open chat is gated behind KC quality — it is only as good as GROUND-01) and Phase 1 (thread model + composer + renderers). Test reframe consumes the chain CTAs landed in Phases 3-4.
-**Requirements**: THREAD-03, TEST-01
+**Goal**: Close the studio by making **idea → hooks → (script) → test feel like ONE flowing conversation** — open chat + the Test reframe **plus** the integrative conversation layer (Perplexity-style progress, cards embedded in chat, chat-to-refine, and the generic skill-to-skill chain plumbing) — all in a single shared open thread per user. (Re-scoped 2026-06-18 from "Open Chat & Test Reframe"; full decisions in `05-CONTEXT.md`.)
+**Depends on**: Phase 2 (open chat is gated behind KC quality — only as good as GROUND-01) and Phase 1 (thread model + composer + renderers + tool-runner). Consumes the chain CTAs + `testBrief` carry-in landed in Phases 3-4. On the critical path for Phase 6 (Script/Remix plug into the chain plumbing built here).
+**Requirements**: THREAD-03, TEST-01, THREAD-05, STUDIO-01, STUDIO-02, STUDIO-03
 **Success Criteria** (what must be TRUE):
 
-  1. A creator can hold a profile-grounded general chat in an open thread with no anchoring Reading (markdown messages), persisting and re-hydrating like any thread.
-  2. The open chat's answers reflect the rebuilt KC's grounding (sequenced after the KC rebuild on purpose) rather than generic chatbot output.
-  3. The existing Reading is reframed as "Test · powered by SIM-1 Max" and is the landing point reached by every chain CTA ("Test full →"); the video/upload path is unchanged.
-  4. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved — the Test reframe is a presentation/wiring change, not a scoring change (no `ENGINE_VERSION` bump unless a deliberate scoring change is made).
+  1. A creator can hold a profile-grounded general chat in the single open thread with no anchoring Reading (markdown messages), persisting and re-hydrating like any thread; grounding is a tight per-turn slice (`assembleBundle({mode:"chat"})` + the chat stance-slice), and answers reflect the rebuilt KC rather than generic chatbot output (cold-start degrades to platform baselines).
+  2. Open chat, all skill cards (idea/hook/…), and refine-chat live in the SAME open thread with full running context — every skill run and chat turn reads the whole prior thread, so "chat about this output" and the idea→hooks→test flow carry context end-to-end.
+  3. When a skill runs, real pipeline stages stream over SSE as Perplexity-style checkmarks (Generating → Self-judge → Simulating your audience → Ranking — no fake timers); cards then stream in content-first, followed by a short model-authored follow-up chat turn that references the run.
+  4. A chat refine request ("make hook 1 punchier") re-runs the relevant skill scoped to that card → a NEW, freshly SIM-1-scored card inline (refined output is never an untested rewrite); a skill only runs on an explicit chip send or a tapped chain CTA — never a silent auto-fire.
+  5. The existing Reading is reframed as "Test · powered by SIM-1 Max" (hero + entry language) and is the landing point of every chain CTA, with the carried hook/idea shown as a visible brief above the upload; one generic anchor-carry handoff is built so Script/Remix (P6) register as runner+card+CTA without new plumbing.
+  6. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved — open chat + the Test reframe are text-path / presentation changes, not scoring changes (no `ENGINE_VERSION` bump unless a deliberate scoring change is made).
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 6: Script & Remix Tools
+
+**Goal**: Add the two remaining studio skills (un-deferred from v6.1, combined): **Script** (from a chosen hook/idea → beats + timing + per-beat retention markers, sitting hooks→script→test) and **Remix** (an alternate funnel-top entry: paste a trending/competitor URL or pick the creator's own winner → decode why it worked → generate *their* version → feed the chain). Both run the same Qwen pipeline as Test, are SIM-1-tested like every output, and plug into the generic chain plumbing built in Phase 5.
+**Depends on**: Phase 5 (the generic skill-to-skill chain plumbing, progress-affordance, cards-in-chat, and refine patterns) and Phase 2 (KC slices — author Script/Remix slices, replicating the proven Ideas/Hooks shape). **Reuse scout first** — prior art exists: `src/app/api/analyze/[id]/script/route.ts`, `src/app/api/remix/adapt/route.ts`, and the `milestone/viral-remix` worktree (revive, don't rebuild).
+**Requirements**: SCRIPT-01, REMIX-01
+**Success Criteria** (what must be TRUE):
+
+  1. A creator carries a chosen hook into Script and gets a script card (beats + timing + per-beat retention markers), content-first with a SIM-1 Flash viability beat, gated by the self-judge — landing on "Test full →" like every chain output.
+  2. A creator starts from Remix (trending/competitor URL or own winner) and gets *their* niche/voice version (new hook + script angle) that feeds the same Hooks/Test chain — built on a reuse scout of the `viral-remix` prior art, not a from-scratch rebuild.
+  3. Both skills register through the Phase 5 generic chain plumbing (runner + typed card + chain CTA) with no one-off wiring, and append in the single open thread with the progress/cards-in-chat/refine behavior built in Phase 5.
+  4. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved (Script/Remix add Flash + generation calls on the text path; no regression of the protected path).
 
 **Plans**: TBD
 **UI hint**: yes
@@ -147,7 +167,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in parallel with Phase 1 as a content workstream).
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may begin in parallel with Phase 1 as a content workstream; Phase 6 depends on Phase 5's chain plumbing).
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -155,4 +175,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
 | 4. Hooks Tool | 3/3 | Complete    | 2026-06-18 |
-| 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
+| 5. Studio Conversation Layer | 0/TBD | Not started | - |
+| 6. Script & Remix Tools | 0/TBD | Not started | - |

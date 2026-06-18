@@ -7,11 +7,11 @@ stopped_at: "Phase 5 context gathered (re-scoped: Studio Conversation Layer + ne
 last_updated: "2026-06-18T09:30:33.178Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 5
+  total_phases: 6
   completed_phases: 4
   total_plans: 16
   completed_plans: 16
-  percent: 80
+  percent: 67
 ---
 
 # Project State
@@ -37,7 +37,7 @@ Last activity: 2026-06-18
 - **Rich tool output via the fixed numen-rework typed-renderer library** — NOT model-generated UI (craft trap), NOT plain text (loses the moat).
 - **Flat-warm visual system (THEME-06, v5.0)** is the design SSOT.
 - **Inline-scoring committed (no spike gate):** text-only Flash predicts relative pull (owner-confirmed); the winning persona framing is calibrated inside ENGINE-01. KC general-use rebuild is committed unconditionally.
-- **Scripts + Remix deferred to v6.1** (Remix revives `milestone/viral-remix` prior art — scout before any rebuild).
+- **Scripts + Remix un-deferred into v6.0 Phase 6 (2026-06-18)** — combined into one phase (SCRIPT-01/REMIX-01); both run the same Qwen pipeline as Test and plug into P5's chain plumbing. Remix revives `milestone/viral-remix` + `src/app/api/remix/adapt/` prior art — **scout before any rebuild**. (Was deferred to v6.1; owner re-scoped during P5 discuss — see `phases/05-open-chat-test-reframe/05-CONTEXT.md` D-00.)
 
 ## Phases
 
@@ -47,7 +47,8 @@ Last activity: 2026-06-18
 | 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Complete ✓ |
 | 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Complete ✓ (rehydration → P4) |
 | 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Complete ✓ (gap-closure applied 2026-06-18) |
-| 5 | Open Chat & Test Reframe | THREAD-03, TEST-01 | Not started |
+| 5 | Studio Conversation Layer | THREAD-03, TEST-01, THREAD-05, STUDIO-01/02/03 | Context gathered → UI/plan next |
+| 6 | Script & Remix Tools | SCRIPT-01, REMIX-01 | Not started (un-deferred from v6.1) |
 
 ## Accumulated Context
 
@@ -97,7 +98,7 @@ None yet.
 
 ## Deferred Items
 
-Deferred to v6.1+: Scripts tool, Remix tool (revive `milestone/viral-remix`), in-thread monetization, brand-profile entity, RAG over creator history, desktop dense-instrument.
+Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creator history, desktop dense-instrument, compact-onboarding redesign + link-social prefill, Script Diagnose mode + script/concept text pre-flight. *(Scripts + Remix tools moved INTO v6.0 Phase 6 on 2026-06-18 — no longer deferred.)*
 
 ## Session Continuity
 

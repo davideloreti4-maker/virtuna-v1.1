@@ -64,6 +64,19 @@ reuses its typed-block renderers.
 
 - [ ] **TEST-01**: Test reframe — the existing Reading is reframed as "Test · powered by SIM-1 Max," reachable as the landing point of every chain; the video path is unchanged (regression-gated).
 
+### STUDIO — conversation layer (P5, owner expansion 2026-06-18)
+
+> Makes the studio feel like ONE conversation. All three live in the single open thread per user with full running context. See `phases/05-open-chat-test-reframe/05-CONTEXT.md`.
+
+- [ ] **STUDIO-01**: Progress affordance — when a skill runs, real pipeline stages stream over SSE as Perplexity-style checkmarks (Generating → Self-judge → Simulating your audience → Ranking); no fake timers (honesty spine). Cards then stream content-first.
+- [ ] **STUDIO-02**: Cards embedded in chat + chat-to-refine — skill cards land in-thread followed by a short model-authored follow-up turn; a refine request re-runs the skill scoped to that card → a new, freshly SIM-1-scored card inline (refined output never an untested rewrite).
+- [ ] **STUDIO-03**: Generic skill-to-skill chain plumbing — one anchor-carry handoff so any skill registers as runner + card + CTA; intent routes via chip primary + NL refine-detect + tap-to-launch CTAs (no silent auto-fire). Built so Script/Remix (P6) plug in without one-off code.
+
+### SCRIPT / REMIX — chain skills (P6, un-deferred from v6.1 2026-06-18)
+
+- [ ] **SCRIPT-01**: Script tool — from a chosen hook/idea → a script card (beats + timing + per-beat retention markers), content-first with a Flash viability beat + self-judge gate, sitting hooks→script→test, landing on "Test full →". (Diagnose mode — paste existing script → line-edits + drop-point — may follow.)
+- [ ] **REMIX-01**: Remix tool — an alternate funnel-top entry: paste a trending/competitor URL or pick the creator's own winner → decode *why it worked* → generate *their* niche/voice version (new hook + script angle) → Flash score → feed the Hooks/Test chain. **Preceded by a reuse scout** of `milestone/viral-remix` (Ingestion + Remix Mode COMPLETE) + `viral-remix-adapt` + `src/app/api/remix/adapt/` — revive, don't rebuild.
+
 ---
 
 ## Cross-cutting constraints
@@ -79,9 +92,9 @@ reuses its typed-block renderers.
 
 ## Future Requirements (v6.1+)
 
-- [ ] **SCRIPTS tool** — Write (from a hook/idea: beats + timing + per-beat retention markers) · Diagnose (paste existing script → line-edits + drop-point).
-- [ ] **REMIX tool** — paste viral URL → decode *why it worked* → generate *your* version (niche/voice, new hook + script) → Flash score → Test. **Preceded by a reuse scout** of `milestone/viral-remix` (Ingestion + Remix Mode COMPLETE) + `viral-remix-adapt` — revive, don't rebuild.
-- [ ] **Test concept/script text pre-flight mode** — lands with Scripts.
+> **Scripts + Remix un-deferred to v6.0 Phase 6 (2026-06-18)** — see SCRIPT-01 / REMIX-01 above.
+
+- [ ] **Test concept/script text pre-flight mode** — may land with Script (P6) or later.
 - [ ] **Compact onboarding redesign** (shorten the 9-card) + **link-social → Apify metadata prefill** (PROFILE tier C).
 - [ ] **RAG over the creator's own scraped history / exemplar selection** — deferred until usage accumulates.
 - [ ] **In-thread monetization**; **brand-profile entity** (brands as a separate buyer).
@@ -123,3 +136,8 @@ reuses its typed-block renderers.
 | HOOKS-03 | Phase 4 | Complete |
 | THREAD-03 | Phase 5 | Pending |
 | TEST-01 | Phase 5 | Pending |
+| STUDIO-01 | Phase 5 | Pending |
+| STUDIO-02 | Phase 5 | Pending |
+| STUDIO-03 | Phase 5 | Pending |
+| SCRIPT-01 | Phase 6 | Pending |
+| REMIX-01 | Phase 6 | Pending |
