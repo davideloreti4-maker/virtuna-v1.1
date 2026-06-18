@@ -38,7 +38,7 @@ reuses its typed-block renderers.
 
 - [x] **THREAD-01**: Generalized thread data model — nullable `reading_id` + a `type` discriminator (grounded vs open thread); migration + types.
 - [x] **THREAD-02**: Composer = universal door — routes input to Test (URL/upload) vs a generator/chat (prompt).
-- [ ] **THREAD-03**: Open chat thread — profile-grounded general chat with no anchoring Reading (markdown messages). *(sequenced last; only as good as GROUND-01 — gated behind KC quality)*
+- [x] **THREAD-03**: Open chat thread — profile-grounded general chat with no anchoring Reading (markdown messages). *(sequenced last; only as good as GROUND-01 — gated behind KC quality)*
 - [x] **THREAD-04**: Typed-block rendering — messages render as markdown OR typed blocks via the **fixed** numen-rework renderer library; **no** model-generated UI.
 - [x] **THREAD-05**: Chain CTAs — outputs carry in-thread chain CTAs ("Develop this →", "Test full →") that move between tools.
 - [x] **THREAD-06**: Tool-runner abstraction — each tool = `{promptTemplate, knowledgeBundle, outputSchema, renderer}`; structured output → typed renderer, no schema → markdown. Ideas/Hooks/chat run through it so Scripts/Remix slot in later without one-off code.
@@ -134,7 +134,7 @@ reuses its typed-block renderers.
 | HOOKS-01 | Phase 4 | Complete |
 | HOOKS-02 | Phase 4 | Complete |
 | HOOKS-03 | Phase 4 | Complete |
-| THREAD-03 | Phase 5 | Pending |
+| THREAD-03 | Phase 5 | Complete |
 | TEST-01 | Phase 5 | Complete |
 | STUDIO-01 | Phase 5 | Complete (05-04) |
 | STUDIO-02 | Phase 5 | Complete (05-04 follow-up + 05-05 refine) |
