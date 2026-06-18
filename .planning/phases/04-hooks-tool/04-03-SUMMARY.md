@@ -227,3 +227,30 @@ matches → GET /api/threads/open returned 500 on reload.
 
 - Focused suite (open-thread + threads): 12 PASS, 0 FAIL
 - Full suite: 2423 PASS, 0 FAIL (+4 new regression tests)
+
+### Follow-on: rehydration render gate (commit 1d21d531)
+
+The dedup migration + `getOpenThread` fix restored the rehydration fetch (`GET
+/api/threads/open` → 200 with all consolidated messages), but a third defect
+surfaced in live UAT: `showIdeasView`/`showHooksView` in `composer.tsx` gated
+the thread views ONLY on live-stream activity (`isStreaming`/streaming blocks/
+error), so persisted blocks fetched on mount never mounted their view.
+
+- `src/components/app/home/composer.tsx`: added `persistedIdeaBlocks.length > 0`
+  / `persistedHookBlocks.length > 0` to the respective view gates; hoisted the
+  `persisted*Blocks` `useState` above the gates (TDZ-safe).
+- Live re-verify: after reload, Idea chip renders all persisted idea-cards and
+  Hooks chip renders all persisted hook-cards (incl. /develop output). No data loss.
+
+### Live UAT outcome (orchestrator-run, @e2e_creator)
+
+7/7 steps pass after fixes. Steps 1,2,3,5,7 passed first run; Steps 4 (develop
+persistence) + 6 (reload rehydration) were fixed by the migration + getOpenThread
++ composer-gate changes above.
+
+**Known UX nuance (non-blocking, follow-up candidate):** rehydration splits the
+single chronological open thread into two tool-gated views (idea-cards under the
+Idea chip, hook-cards under the Hooks chip); the default Test tool shows nothing
+on reload, and in-session "Develop this →" shows "Hooks queued — check the thread
+below" while the new hooks render under the Hooks chip rather than inline. Data is
+fully persisted and viewable; a unified chronological thread view would polish this.
