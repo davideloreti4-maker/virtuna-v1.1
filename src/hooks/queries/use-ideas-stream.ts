@@ -253,19 +253,24 @@ export function useIdeasStream(): UseIdeasStreamReturn {
 
           } else if (eventType === 'score') {
             // score event: patch the matching card (match by seedHook)
+            // WR-04: mirror the correct logic from startRefine and use-hooks-stream.
+            // The previous code used `|| !c.scored` in the hadMatch branch, which
+            // stamped one band onto ALL unscored cards when there was a seedHook match.
             const scoreSeedHook = typeof data.seedHook === 'string' ? data.seedHook : '';
             const band = (['Strong', 'Mixed', 'Weak'] as const).find((b) => b === data.band) ?? 'Mixed';
             const fraction = typeof data.fraction === 'string' ? data.fraction : '';
 
-            const updated = cardsRef.current.map((c) =>
-              c.seedHook === scoreSeedHook || !c.scored
-                ? { ...c, band, fraction, scored: true }
-                : c,
-            );
-            // Apply to the FIRST unscored card if seedHook doesn't match (order fallback)
             const hadMatch = cardsRef.current.some((c) => c.seedHook === scoreSeedHook);
-            let patched = updated;
-            if (!hadMatch) {
+            let patched: PartialIdeaCard[];
+            if (hadMatch) {
+              // Only patch the specific matching card that hasn't been scored yet
+              patched = cardsRef.current.map((c) =>
+                c.seedHook === scoreSeedHook && !c.scored
+                  ? { ...c, band, fraction, scored: true }
+                  : c,
+              );
+            } else {
+              // No seedHook match — apply to first unscored card (order fallback)
               let applied = false;
               patched = cardsRef.current.map((c) => {
                 if (!c.scored && !applied) { applied = true; return { ...c, band, fraction, scored: true }; }
