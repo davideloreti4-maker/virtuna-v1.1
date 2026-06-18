@@ -114,7 +114,19 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
   3. "Test full →" carries a chosen hook into Test (the full Reading), completing the Ideas → Hooks → Test spine.
   4. The engine suite stays green and the SIM-1 Max video path's same-video score-identity is preserved (Hooks adds Flash pull-scoring; no silent regression of the protected path).
 
-**Plans**: TBD
+**Plans**: 3 plans
+**Wave 1** *(parallel — disjoint files)*
+
+- [ ] 04-01-PLAN.md — hook-card typed block (D-11) + audience-archetype tag extractor (D-03/D-04) [HOOKS-01]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 04-02-PLAN.md — Hooks pipeline: over-generate→gate→RANK→top-5 + Hooks SSE route + /develop auto-fire replaces the P3 placeholder (D-01/D-02/D-07/D-08/D-10) [HOOKS-01, HOOKS-02]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 04-03-PLAN.md — Live Hook chip + content-first thread view + "Test full →" handoff (D-05/D-06) + open-thread rehydration (P3 debt) + UAT [HOOKS-01, HOOKS-02, HOOKS-03]
+
 **UI hint**: yes
 
 ### Phase 5: Open Chat & Test Reframe
@@ -142,5 +154,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 (Phase 2 may begin in
 | 1. Engine & Thread Foundation | 4/4 | Complete    | 2026-06-17 |
 | 2. Knowledge-Core Generative Rebuild | 5/5 | Complete   | 2026-06-17 |
 | 3. Ideas Tool | 3/4 | In Progress|  |
-| 4. Hooks Tool | 0/TBD | Not started | - |
+| 4. Hooks Tool | 0/3 | Not started | - |
 | 5. Open Chat & Test Reframe | 0/TBD | Not started | - |
