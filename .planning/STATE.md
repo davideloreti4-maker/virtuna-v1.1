@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 1–10 COMPLETE. **Expansion 11–16 ADDED 2026-06-19** (owner: fold into v6.0, don't spin a new milestone; corrected to the authoritative Sandcastles shape — added Explore-as-skill / Library-IA / Proactive-ambient, which earlier draft missed) — not yet discussed.
-Plan: none active. Next = `/gsd-discuss-phase 11` (or 14 first — see sequencing note).
+Plan: none active. **RECOMMENDED NEXT-ACTION ORDER (2026-06-19):** (1) **UX-01** composer/skill-selector redesign decision via `/gsd-sketch` (sketch 001 exists, winner:null) — do BEFORE P11 since every expansion phase adds a skill and the chip row already breaks; (2) wire the **FLYWHEEL-02 predicted-pin** quick-fix (unblocks the dormant recalibration loop — small, standalone); (3) `/gsd-discuss-phase 14` (KC Grounding) BEFORE P11 — levers #1/#2 (RAG + profile grounding) underpin P11 Explore; (4) then 11 → 12 → 13 → 15 → 16; (5) **HARDEN-01 + INFRA-01** (rate-limiting, R2 video storage, Supabase tier) before public/paid traffic.
 Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans executed + verified; live UAT was the last gate). Expansion Phases 11–16 scoped + requirements enumerated (EXPLORE/IA/LIB/AUD-EDIT/AMBIENT/PROACTIVE/KCQ/INTENT/REACT/BLOCK/OFFER/ADCREATIVE/COMMERCE/HARDEN) in REQUIREMENTS.md + ROADMAP.md. ⚠️ Sequencing: P14 levers #1/#2 (RAG + profile grounding) underpin P11 Explore — resolve precede-or-parallel in roadmap; P13 ambient EXTENDS P9's shipped reaction primitive (don't duplicate).
 Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 
