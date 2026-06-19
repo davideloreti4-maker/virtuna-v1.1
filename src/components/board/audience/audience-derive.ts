@@ -525,8 +525,11 @@ export function buildFlatPersonaNodes(reactions: FlatPersonaReaction[]): Persona
   });
 }
 
-/** Best-effort archetype → slot mapping for the flat clusterer (prefix heuristic). */
-function archetypeToSlot(archetype: string): SlotKey {
+/** Best-effort archetype → slot mapping for the flat clusterer (prefix heuristic).
+ *  Exported so the flat cloud (AudienceLens) can decide coral toning by the SAME slot
+ *  identity the cluster table uses, rather than re-running the <40% rule per single node
+ *  (which painted a different "worst cluster" member than ClusterView — WR-02). */
+export function archetypeToSlot(archetype: string): SlotKey {
   const a = archetype.toLowerCase();
   if (a.includes('loyal')) return 'loyalist';
   if (a.includes('cross')) return 'cross_niche';

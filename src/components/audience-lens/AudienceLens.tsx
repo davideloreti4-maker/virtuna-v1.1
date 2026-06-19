@@ -171,10 +171,13 @@ export function AudienceLens({
       const flatNodes = buildFlatPersonaNodes(flatPersonas!);
       const { groups: g, worstKey: w } = clusterFlatNodes(flatNodes);
       // Paint the worst cluster's nodes coral in the cloud (mirror the table — the one
-      // coral cluster). clusterFlatNodes folds nodes by slot identically, so a node is
-      // in the worst cluster iff its single-node fold lands on the worst slot key.
+      // coral cluster). WR-02: membership is decided by SLOT IDENTITY — a node is in the
+      // worst cluster iff its archetype maps to the worst slot key. The previous approach
+      // re-ran the <40%-stop rule on a single-node fold, which (for a single node) yields
+      // 100% or 0% and so never tripped the <40% threshold — so a stop-verdict node in the
+      // worst cluster was left un-toned while ClusterView painted the whole cluster coral.
       const toned = flatNodes.map((n) => {
-        const slotKey = clusterFlatNodes([n]).groups.find((gr) => gr.count > 0)?.key ?? null;
+        const slotKey = n.archetype ? archetypeToSlot(n.archetype) : 'fyp';
         return w != null && slotKey === w ? { ...n, tone: 'accent' as const } : n;
       });
       return { nodes: toned, groups: g, worstKey: w };
