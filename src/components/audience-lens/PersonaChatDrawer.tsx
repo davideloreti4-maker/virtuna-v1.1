@@ -53,6 +53,10 @@ export function PersonaChatDrawer({
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ask, setAsk] = useState('');
+  // The last question we attempted to send. Preserved across a failed send so "Retry →"
+  // can re-ask it (CR-02): the composer is cleared on send, so without this the retry
+  // handler would call send() with an empty ask and silently early-return.
+  const [lastQuestion, setLastQuestion] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const archetype = target?.archetype ?? null;
@@ -64,6 +68,7 @@ export function PersonaChatDrawer({
     setTurns([]);
     setStreaming('');
     setError(null);
+    setLastQuestion('');
     (async () => {
       try {
         const res = await fetch(
@@ -87,74 +92,96 @@ export function PersonaChatDrawer({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [turns, streaming]);
 
-  const send = useCallback(async () => {
-    if (!target || isStreaming) return;
-    const question = ask.trim();
-    if (question.length === 0) return;
+  // `override` is supplied by "Retry →" to re-ask the last failed question (CR-02). On a
+  // fresh send (no override) we read the composer, clear it, and append the optimistic user
+  // turn; on a retry we reuse the preserved question and do NOT clear the composer or append
+  // a SECOND user turn (the first attempt already pushed it into `turns`).
+  const send = useCallback(
+    async (override?: string) => {
+      if (!target || isStreaming) return;
+      const isRetry = override != null;
+      const question = (override ?? ask).trim();
+      if (question.length === 0) return;
 
-    setError(null);
-    setAsk('');
-    setTurns((prev) => [...prev, { role: 'user', text: question }]);
-    setIsStreaming(true);
-    setStreaming('');
+      setLastQuestion(question);
+      setError(null);
+      if (!isRetry) {
+        setAsk('');
+        // Append the optimistic user turn ONLY on a fresh send; the retry re-uses the turn
+        // already in `turns` from the failed first attempt (avoids a duplicate user bubble).
+        setTurns((prev) => [...prev, { role: 'user', text: question }]);
+      }
+      setIsStreaming(true);
+      setStreaming('');
 
-    let acc = '';
-    try {
-      const res = await fetch('/api/tools/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ask: question,
-          platform,
-          personaGrounding: {
-            archetype: target.archetype,
-            reactionToConcept: target.reactionToConcept,
-            conceptText,
-          },
-        }),
-      });
-      if (!res.ok || !res.body) throw new Error('request failed');
+      let acc = '';
+      try {
+        const res = await fetch('/api/tools/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ask: question,
+            platform,
+            personaGrounding: {
+              archetype: target.archetype,
+              reactionToConcept: target.reactionToConcept,
+              conceptText,
+            },
+          }),
+        });
+        if (!res.ok || !res.body) throw new Error('request failed');
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let streamErr: string | null = null;
-      let done = false;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let streamErr: string | null = null;
+        let done = false;
 
-      // Parse the SSE frames (event: token|done|error \n data: {…}).
-      while (!done) {
-        const { value, done: streamDone } = await reader.read();
-        done = streamDone;
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const frames = buffer.split('\n\n');
-        buffer = frames.pop() ?? '';
-        for (const frame of frames) {
-          const eventLine = frame.split('\n').find((l) => l.startsWith('event:'));
-          const dataLine = frame.split('\n').find((l) => l.startsWith('data:'));
-          if (!eventLine || !dataLine) continue;
-          const event = eventLine.slice('event:'.length).trim();
-          const payload = JSON.parse(dataLine.slice('data:'.length).trim());
-          if (event === 'token' && typeof payload.delta === 'string') {
-            acc += payload.delta;
-            setStreaming(acc);
-          } else if (event === 'error') {
-            streamErr = typeof payload.message === 'string' ? payload.message : 'stream error';
+        // Parse the SSE frames (event: token|done|error \n data: {…}).
+        while (!done) {
+          const { value, done: streamDone } = await reader.read();
+          done = streamDone;
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() ?? '';
+          for (const frame of frames) {
+            // Defensive per-frame parse (WR-03): SSE permits MULTI-LINE `data:` fields and a
+            // network chunk can split a frame mid-JSON. Concatenate all `data:` lines, and
+            // never let one garbled/keepalive frame throw out of the read loop (which would
+            // discard the rest of an otherwise-recoverable stream). Skip on any parse failure.
+            try {
+              const lines = frame.split('\n');
+              const eventLine = lines.find((l) => l.startsWith('event:'));
+              const dataLines = lines.filter((l) => l.startsWith('data:'));
+              if (!eventLine || dataLines.length === 0) continue;
+              const event = eventLine.slice('event:'.length).trim();
+              const payload = JSON.parse(dataLines.map((l) => l.slice('data:'.length).trim()).join('\n'));
+              if (event === 'token' && typeof payload.delta === 'string') {
+                acc += payload.delta;
+                setStreaming(acc);
+              } else if (event === 'error') {
+                streamErr = typeof payload.message === 'string' ? payload.message : 'stream error';
+              }
+            } catch {
+              continue;
+            }
           }
         }
-      }
-      if (streamErr) throw new Error(streamErr);
+        if (streamErr) throw new Error(streamErr);
 
-      // Commit the streamed answer as a persisted turn (route already persisted server-side).
-      setTurns((prev) => [...prev, { role: 'assistant', text: acc }]);
-      setStreaming('');
-    } catch {
-      setError(PERSONA_CHAT_ERROR);
-      setStreaming('');
-    } finally {
-      setIsStreaming(false);
-    }
-  }, [ask, target, conceptText, platform, isStreaming]);
+        // Commit the streamed answer as a persisted turn (route already persisted server-side).
+        setTurns((prev) => [...prev, { role: 'assistant', text: acc }]);
+        setStreaming('');
+      } catch {
+        setError(PERSONA_CHAT_ERROR);
+        setStreaming('');
+      } finally {
+        setIsStreaming(false);
+      }
+    },
+    [ask, target, conceptText, platform, isStreaming],
+  );
 
   const open = target !== null;
 
@@ -201,8 +228,9 @@ export function PersonaChatDrawer({
               </p>
               <button
                 type="button"
-                onClick={() => void send()}
-                className="mt-1 self-start text-[14px] font-medium transition-colors"
+                onClick={() => void send(lastQuestion)}
+                disabled={isStreaming || lastQuestion.trim().length === 0}
+                className="mt-1 self-start text-[14px] font-medium transition-colors disabled:opacity-40"
                 style={{ color: 'var(--color-cream-secondary)' }}
               >
                 Retry →
