@@ -35,6 +35,7 @@ import {
   worstBadGroupKey,
   buildFlatPersonaNodes,
   clusterFlatNodes,
+  archetypeToSlot,
   type FlatPersonaReaction,
   type SegmentGroup,
   type SlotKey,
