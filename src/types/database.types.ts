@@ -398,6 +398,69 @@ export type Database = {
           },
         ]
       }
+      audiences: {
+        Row: {
+          calibration: Json | null
+          created_at: string
+          cross_niche: number
+          fyp: number
+          goal_intent: string | null
+          goal_label: string | null
+          id: string
+          is_general: boolean
+          is_preset: boolean
+          loyalist: number
+          name: string
+          niche: number
+          personas: Json
+          platform: string
+          profile: Json | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calibration?: Json | null
+          created_at?: string
+          cross_niche?: number
+          fyp?: number
+          goal_intent?: string | null
+          goal_label?: string | null
+          id?: string
+          is_general?: boolean
+          is_preset?: boolean
+          loyalist?: number
+          name: string
+          niche?: number
+          personas?: Json
+          platform: string
+          profile?: Json | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calibration?: Json | null
+          created_at?: string
+          cross_niche?: number
+          fyp?: number
+          goal_intent?: string | null
+          goal_label?: string | null
+          id?: string
+          is_general?: boolean
+          is_preset?: boolean
+          loyalist?: number
+          name?: string
+          niche?: number
+          personas?: Json
+          platform?: string
+          profile?: Json | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       benchmark_results: {
         Row: {
           corpus_version: string
@@ -1501,6 +1564,7 @@ export type Database = {
       }
       threads: {
         Row: {
+          active_audience_id: string | null
           created_at: string
           id: string
           reading_id: string | null
@@ -1509,6 +1573,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_audience_id?: string | null
           created_at?: string
           id?: string
           reading_id?: string | null
@@ -1517,6 +1582,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_audience_id?: string | null
           created_at?: string
           id?: string
           reading_id?: string | null
@@ -1525,6 +1591,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "threads_active_audience_id_fkey"
+            columns: ["active_audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "threads_reading_id_fkey"
             columns: ["reading_id"]
@@ -2164,3 +2237,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+
