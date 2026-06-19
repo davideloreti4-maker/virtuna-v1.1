@@ -1,7 +1,8 @@
 # Phase 10 — Wave-0 Apify Single-URL Metric Spike (10-02 Task 1)
 
 **Run:** 2026-06-19
-**Actor:** `clockworks/tiktok-scraper` (the single-URL `VIDEO_ACTOR`, NOT apidojo `DISCOVER_VIDEO_ACTOR`)
+**Probe actor:** `clockworks/tiktok-scraper` (initial probe). **IMPLEMENTED actor:** `apidojo/tiktok-scraper-api`
+Single Post Query tier — see "PROVIDER CORRECTION — FINAL" below. (Probe magnitudes still valid; provider changed.)
 **Mode:** `{ postURLs: [<url>], resultsPerPage: 1, shouldDownloadVideos: false }`
 **Probe:** throwaway `apify-client` one-shot via `npx tsx` (NOT app code; script deleted after run).
 **Probe URL:** `https://www.tiktok.com/@tiktok/video/7106594312292453675` (known long-lived public TikTok post)
@@ -82,44 +83,48 @@ second answers "was the content good for them?". The split is the mechanical bas
 ## ✅ OWNER SIGN-OFF (2026-06-19) — APPROVED
 
 > **"approved"** — both items confirmed:
-> 1. **Metric shape:** APPROVED. Single-URL scrape returns full public metrics incl. saves (`collectCount`).
->    Remap `playCount→views, diggCount→likes, shareCount→shares, commentCount→comments, collectCount→saves`.
->    Task 2 extends the single-URL call to return `VideoData` (path (c)). ✅
+> 1. **Metric shape:** APPROVED. Single-URL scrape returns full public metrics incl. saves.
+>    **Provider corrected (see FINAL section below):** implemented against `apidojo/tiktok-scraper-api`
+>    (Single Post Query tier), remapping the apidojo shape `views/likes/comments/shares/bookmarks→saves`
+>    via `remapApidojoVideo`. (The earlier clockworks `playCount→views … collectCount→saves` plan was
+>    superseded once the separate single-post apidojo actor was found.) ✅
 > 2. **A1 split:** APPROVED AS-WRITTEN — calibration = `{collector, connector, converter}`,
 >    craft = `{scanner, lurker, skeptic}`. Plan 01's `reconcile.ts` `[ASSUMED] A1` marker is now
 >    owner-confirmed and REMOVED (the split is locked). ✅
 
 ---
 
-## ⚠️ PROVIDER CORRECTION + RESOLUTION (recorded at owner request, 2026-06-19)
+## ⚠️ PROVIDER CORRECTION — FINAL (web-verified, 2026-06-19)
 
-The owner's checkpoint resolution flagged that **clockworks is the OLD/legacy provider; apidojo is the
-CURRENT provider**, and instructed building `scrapeSinglePostMetrics` against **apidojo** — scouting
-`src/lib/scraping/` to mirror the apidojo pattern, and adapting the remap if apidojo's field names differ.
+> **Supersedes an earlier interim conclusion in this section.** The interim note concluded single-URL must
+> stay on clockworks because *"apidojo forbids single-post URLs."* That was true only of the **all-in-one**
+> apidojo actor (`apidojo/tiktok-scraper`). Further research found a SEPARATE apidojo actor that DOES
+> support single-post capture. The corrected, implemented finding is below.
 
-**Scout finding — apidojo CANNOT serve single-URL capture (documented constraint, not a choice):**
+**The two apidojo actors are different:**
 
-- `src/lib/scraping/apify-provider.ts` lines 19-26 + `10-RESEARCH.md` §Pitfall 2 both state, verbatim:
-  > *"Pitfall 2: `apidojo/tiktok-scraper` FORBIDS single-post URLs (requires ≥10 posts/query). …
-  >  the single-URL `postURLs:[url]` path MUST stay on clockworks. Do NOT repoint this to a DISCOVER_* slug."*
-- apidojo's two actors (`DISCOVER_PROFILE_ACTOR`, `DISCOVER_VIDEO_ACTOR`) take a `profiles:[handle]` /
-  search input and return **≥10 posts** — they have **no single posted-URL mode**. A single `postURLs:[url]`
-  against apidojo yields `not_found`/`empty_dataset` (RESEARCH Pitfall 2 "Warning signs").
+| Actor | Single-post? | Use |
+|-------|-------------|-----|
+| `apidojo/tiktok-scraper` (all-in-one) | ❌ No — requires ≥10 posts/query (the original Pitfall 2 actor) | Discover multi-post (`scrapeVideos`/`scrapeProfile`) |
+| `apidojo/tiktok-scraper-api` (**separate**) | ✅ Yes — "Single Post Query" tier ($0.003 flat), `startUrls:[url]` → exactly 1 video, NO 10-post min | **Single-URL outcome capture (`scrapeSinglePostMetrics`)** |
 
-**Resolution (honors owner intent + the code-validated constraint):**
+`apidojo/tiktok-scraper-api` single-post output carries the full public metric block in the apidojo field
+shape (`views/likes/comments/shares/bookmarks`) — the SAME shape the Discover apidojo actors return.
 
-- **The owner's "apidojo is current" is correct for the MULTI-post path** — the Account-Read scrape
-  (own account, ≥30 posts) in Plans 03+ DOES use apidojo `scrapeVideos`/`scrapeProfile`. That is where
-  "current provider" applies.
-- **Single posted-URL capture (`scrapeSinglePostMetrics(url)`) stays on clockworks `VIDEO_ACTOR`** — the
-  only actor that accepts one `postURLs:[url]`. This matches the spike (run on clockworks, full metrics
-  incl. `collectCount` confirmed) and the existing `resolveVideoUrl` single-URL path it mirrors.
-- **Field remap = clockworks shape, NOT apidojo:** `playCount→views, diggCount→likes, shareCount→shares,
-  commentCount→comments, collectCount→saves`. The existing `apifyVideoSchema` (competitor.ts) already
-  carries exactly these clockworks fields. The apidojo remap (`remapApidojoVideo`, fields
-  `views/likes/comments/shares/bookmarks`) is the WRONG schema for a clockworks item — reusing it would
-  silently ZERO every metric (the exact bug `apidojo-remap.test.ts` guards). So `scrapeSinglePostMetrics`
-  uses the clockworks `apifyVideoSchema`, never `apidojoVideoSchema`.
+**Implemented resolution (single source = apidojo; clockworks retired for single-URL metrics):**
 
-**Net:** apidojo confirmed as the current provider for multi-post; single-URL is a documented exception
-that must remain on clockworks. Tracked as a SUMMARY deviation (Rule 3 — surfaced, not silently overridden).
+- `scrapeSinglePostMetrics(url)` calls `apidojo/tiktok-scraper-api` with `{ startUrls: [url], resultsPerPage: 1 }`.
+- Remap via the existing apidojo `apidojoVideoSchema` / `remapApidojoVideo` (`bookmarks→saves,
+  views→views, likes→likes, comments→comments, shares→shares`) — NOT clockworks `apifyVideoSchema`.
+  Reusing the wrong schema would silently ZERO every metric (the bug `apidojo-remap.test.ts` guards;
+  test extended with single-post cases).
+- SSRF guard (`isAllowedPostUrl`, HTTPS + TikTok host) retained on the pasted URL.
+- **clockworks now serves ONLY `resolveVideoUrl`** (Remix mp4 download — it needs the downloadable KV
+  media the metrics-only apidojo actor does not return). Single-URL METRIC capture no longer touches
+  clockworks. Both providers are NOT wired for single-URL: `apidojo/tiktok-scraper-api` is the single source.
+
+**Plan-07 UAT verification (live token required):** confirm the live INPUT field is `startUrls` (vs
+`postURLs`/`profiles`) and the saves field is `bookmarks` on this actor's dataset version; adapt the
+remap if the live shape differs. The original probe magnitudes above
+(`views 563,600 / saves 58,618`) remain valid as the EXPECTED numbers for the probe URL — only the
+provider/field-names changed.
