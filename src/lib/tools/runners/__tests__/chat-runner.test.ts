@@ -36,10 +36,10 @@ vi.mock("@/lib/engine/qwen/client", () => ({
 
 // ─── Mock assembleBundle — record its input, return a deterministic string ─────
 
-const assembleBundleMock = vi.fn(() => "MOCK_ASSEMBLED_BUNDLE");
+const assembleBundleMock = vi.fn((_input: unknown, _profile: unknown) => "MOCK_ASSEMBLED_BUNDLE");
 
 vi.mock("@/lib/kc/assembler", () => ({
-  assembleBundle: (...args: unknown[]) => assembleBundleMock(...args),
+  assembleBundle: (input: unknown, profile: unknown) => assembleBundleMock(input, profile),
 }));
 
 // ─── Mock audience grounding (General-only path; no calibrated steer) ──────────

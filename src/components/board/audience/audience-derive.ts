@@ -475,6 +475,9 @@ export function buildPersonaNodes(
       // video surface the only real per-persona reaction text is `segment_reasons`
       // (sparse inflection-point notes) — pick the first one, never fabricated.
       quote: firstSegmentReason(p.segment_reasons),
+      // The registry archetype enum (when the heatmap persona carries one) — powers the
+      // "Ask them why →" persona chat grounding (P9 / D-03). Undefined when unknown.
+      archetype: p.archetype ?? undefined,
     };
   });
 }

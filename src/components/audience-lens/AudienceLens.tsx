@@ -26,7 +26,7 @@
  * for the worst cluster + the Rewrite CTA + the inherited Read lever ONLY.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { HeatmapPayload, PersonaSimulationResult } from '@/lib/engine/types';
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import {
@@ -38,6 +38,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
 import { ReplayController } from './ReplayController';
 import { useLensScale, type LensScale } from './use-lens-scale';
+import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 
 export interface AudienceLensProps {
   /** The opened Read's heatmap (carries the per-persona attention timeline). */
@@ -48,6 +49,14 @@ export interface AudienceLensProps {
   readBlock?: MultiAudienceReadBlock | null;
   /** Honors the user's OS motion preference (gates all replay/cascade motion). */
   reducedMotion?: boolean;
+  /**
+   * The concept text this Read reacted to — grounds the "Ask them why →" persona chat (D-03).
+   * Optional/additive: when absent the drawer is omitted (no concept to chat about), so existing
+   * call sites stay byte-identical.
+   */
+  conceptText?: string;
+  /** Platform for the persona chat grounding (defaults tiktok). */
+  platform?: 'tiktok' | 'instagram' | 'youtube';
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -67,10 +76,14 @@ export function AudienceLens({
   simResults,
   readBlock,
   reducedMotion = false,
+  conceptText,
+  platform = 'tiktok',
   open,
   onOpenChange,
 }: AudienceLensProps) {
   const [scale, setScale] = useLensScale();
+  // The persona currently being asked "why" (null = drawer closed). One at a time (D-03).
+  const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
 
   // The same nodes PersonaCloud derives — buildPersonaNodes returns [] when there
   // are no heatmap personas, which is the degraded-signal omit path.
@@ -105,11 +118,42 @@ export function AudienceLens({
         <div className="px-5 pb-6 pt-4">
           {scale === 'panel' ? (
             hasReaction ? (
-              <ReplayController
-                nodes={nodes}
-                heatmap={heatmap}
-                reducedMotion={reducedMotion}
-              />
+              <>
+                <ReplayController
+                  nodes={nodes}
+                  heatmap={heatmap}
+                  reducedMotion={reducedMotion}
+                />
+                {/* Per-persona "Ask them why →" — opens the in-context chat drawer scoped to
+                    this Read, one persona at a time (D-03). Only where we have a concept to
+                    chat about + an archetype to ground on. */}
+                {conceptText && (
+                  <ul className="mt-4 flex flex-col gap-1">
+                    {nodes
+                      .filter((n) => Boolean(n.archetype))
+                      .map((n) => (
+                        <li key={n.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setChatTarget({
+                                archetype: n.archetype!,
+                                reactionToConcept: {
+                                  verdict: n.watchThrough >= 0.5 ? 'stop' : 'scroll',
+                                  quote: n.quote ?? '',
+                                },
+                              })
+                            }
+                            className="flex w-full items-center justify-between rounded-[8px] px-2 py-1.5 text-left text-[13px] text-foreground transition-colors hover:bg-[var(--color-hover)]"
+                          >
+                            <span>{n.label}</span>
+                            <span className="text-foreground-muted">Ask them why →</span>
+                          </button>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </>
             ) : (
               <EmptyReaction />
             )
@@ -118,6 +162,17 @@ export function AudienceLens({
           )}
         </div>
       </SheetContent>
+
+      {/* The in-context chat-with-persona drawer (P9 / LIVE-03, D-03). Mounted only when a
+          concept is available to ground the in-voice answer; one persona at a time. */}
+      {conceptText && (
+        <PersonaChatDrawer
+          target={chatTarget}
+          conceptText={conceptText}
+          platform={platform}
+          onClose={() => setChatTarget(null)}
+        />
+      )}
     </Sheet>
   );
 }

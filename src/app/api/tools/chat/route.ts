@@ -34,8 +34,44 @@ import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { ARCHETYPES, type Archetype } from "@/lib/engine/wave3/persona-registry";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+
+/** Server-side persona-grounding shape — mirrors ChatPipelineInput.personaGrounding. */
+type PersonaGrounding = {
+  archetype: Archetype;
+  reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
+  conceptText: string;
+};
+
+/** Server-side cap on the persona concept/quote anchors (WARNING-5 — no new boundary). */
+const PERSONA_TEXT_CAP = 2000;
+
+/**
+ * Validate + length-cap the optional personaGrounding from the request body. Returns null
+ * when absent or malformed (the route then runs the byte-identical open-chat path). archetype
+ * MUST be a known registry enum; verdict MUST be stop|scroll; concept/quote are capped.
+ */
+function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
+  if (!raw || typeof raw !== "object") return null;
+  const g = raw as Record<string, unknown>;
+  const archetype = g.archetype;
+  if (typeof archetype !== "string" || !ARCHETYPES.includes(archetype as Archetype)) return null;
+  const reaction = g.reactionToConcept;
+  if (!reaction || typeof reaction !== "object") return null;
+  const r = reaction as Record<string, unknown>;
+  const verdict = r.verdict;
+  if (verdict !== "stop" && verdict !== "scroll") return null;
+  const quote = typeof r.quote === "string" ? r.quote.slice(0, PERSONA_TEXT_CAP) : "";
+  const conceptText = typeof g.conceptText === "string" ? g.conceptText.slice(0, PERSONA_TEXT_CAP) : "";
+  if (conceptText.length === 0) return null;
+  return {
+    archetype: archetype as Archetype,
+    reactionToConcept: { verdict, quote },
+    conceptText,
+  };
+}
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -59,6 +95,45 @@ function sseHeaders(): HeadersInit {
   };
 }
 
+// ── GET /api/tools/chat?archetype=… ─────────────────────────────────────────────
+// Sub-thread rehydration (P9 / D-03): returns the prior persona-chat-turn turns for
+// the given archetype in the user's open thread, so the drawer re-appears on reopen.
+// Auth-gated; archetype validated against the registry enum. No body, read-only.
+
+export async function GET(request: Request): Promise<Response> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const archetype = url.searchParams.get("archetype");
+  if (!archetype || !ARCHETYPES.includes(archetype as Archetype)) {
+    return Response.json({ error: "valid archetype is required" }, { status: 400 });
+  }
+
+  const openThread = await createOpenThreadLazy(user.id);
+  const hydratedMessages = await loadMessages(openThread.id);
+  const turns = hydratedMessages.flatMap((msg) =>
+    msg.blocks
+      .filter(
+        (b): b is { type: "persona-chat-turn"; props: { archetype: string; role: "user" | "assistant"; text: string } } =>
+          b.type === "persona-chat-turn" &&
+          (b as { props: { archetype?: unknown } }).props.archetype === archetype,
+      )
+      .map((b) => ({
+        role: (b as { props: { role: "user" | "assistant" } }).props.role,
+        text: (b as { props: { text: string } }).props.text,
+      })),
+  );
+
+  return Response.json({ turns });
+}
+
 // ── POST /api/tools/chat ──────────────────────────────────────────────────────
 
 export async function POST(request: Request): Promise<Response> {
@@ -77,7 +152,7 @@ export async function POST(request: Request): Promise<Response> {
   if (guard) return guard;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown } = {};
+  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -86,6 +161,11 @@ export async function POST(request: Request): Promise<Response> {
 
   const rawAsk = typeof body.ask === "string" ? body.ask.trim() : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+
+  // ── (2b) Parse optional personaGrounding (P9 / LIVE-03, D-03) ────────────────
+  // The "Ask them why →" chat-with-persona drawer POSTs this. Validated + length-capped
+  // server-side (WARNING-5 — independent of the client). archetype must be a known enum.
+  const personaGrounding = parsePersonaGrounding(body.personaGrounding);
 
   if (rawAsk.length === 0) {
     return Response.json({ error: "message is required" }, { status: 400 });
@@ -136,28 +216,46 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // ── (6) Load prior turns for context anchor (D-01 full running context, D-01a soft cap) ──
+  // Open chat → prior `markdown` turns. Persona-grounded chat (P9 / D-03) → prior
+  // `persona-chat-turn` turns SCOPED to this archetype (the sub-thread). Either way the
+  // running context rides assembleBundle's fenced anchor.
   const hydratedMessages = await loadMessages(openThread.id);
-  const priorTurns = hydratedMessages
-    .flatMap((msg) =>
-      msg.blocks
-        .filter(
-          (b): b is { type: "markdown"; props: { text: string } } =>
-            b.type === "markdown" && typeof (b as { props: { text?: unknown } }).props.text === "string",
+  const priorTurns = personaGrounding
+    ? hydratedMessages
+        .flatMap((msg) =>
+          msg.blocks
+            .filter(
+              (b): b is { type: "persona-chat-turn"; props: { archetype: string; role: "user" | "assistant"; text: string } } =>
+                b.type === "persona-chat-turn" &&
+                (b as { props: { archetype?: unknown } }).props.archetype === personaGrounding.archetype,
+            )
+            .map((b) => ({
+              role: (b as { props: { role: "user" | "assistant" } }).props.role,
+              text: (b as { props: { text: string } }).props.text,
+            })),
         )
-        .map((b) => ({
-          role: msg.role as "user" | "assistant",
-          text: (b as { type: "markdown"; props: { text: string } }).props.text,
-        })),
-    )
-    .slice(-MAX_PRIOR_TURNS);
+        .slice(-MAX_PRIOR_TURNS)
+    : hydratedMessages
+        .flatMap((msg) =>
+          msg.blocks
+            .filter(
+              (b): b is { type: "markdown"; props: { text: string } } =>
+                b.type === "markdown" && typeof (b as { props: { text?: unknown } }).props.text === "string",
+            )
+            .map((b) => ({
+              role: msg.role as "user" | "assistant",
+              text: (b as { type: "markdown"; props: { text: string } }).props.text,
+            })),
+        )
+        .slice(-MAX_PRIOR_TURNS);
 
   // ── (7) Persist the USER turn first (mirrors grounded-chat route ordering) ──
-  await insertMessage(
-    openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: rawAsk } }],
-    kcStamp().kcGenVersion,
-  );
+  // Persona-grounded → persist as a `persona-chat-turn` block (the sub-thread, D-03);
+  // open chat → the existing `markdown` block. Both round-trip loadMessages validation.
+  const userBlock = personaGrounding
+    ? { type: "persona-chat-turn", props: { archetype: personaGrounding.archetype, role: "user", text: rawAsk } }
+    : { type: "markdown", props: { text: rawAsk } };
+  await insertMessage(openThread.id, "user", [userBlock], kcStamp().kcGenVersion);
 
   // ── (8) SSE stream: emit meta → run pipeline → emit tokens → persist assistant turn ──
   const encoder = new TextEncoder();
@@ -178,19 +276,28 @@ export async function POST(request: Request): Promise<Response> {
         // meta frame LEADS the stream — Plan 05-03 gates the one-time nudge on this (D-08)
         send("meta", { coldStart });
 
-        // Run the pipeline — tokens are emitted via callback as they arrive
+        // Run the pipeline — tokens are emitted via callback as they arrive.
+        // personaGrounding (when present) makes the answer in-voice (D-03); absent → open chat.
         const { fullContent } = await runChatPipeline(
-          { ask: rawAsk, platform, profileRow, priorTurns, audience: activeAudience },
+          {
+            ask: rawAsk,
+            platform,
+            profileRow,
+            priorTurns,
+            audience: activeAudience,
+            ...(personaGrounding ? { personaGrounding } : {}),
+          },
           (delta: string) => send("token", { delta }),
         );
 
-        // Persist assistant turn (markdown block)
-        await insertMessage(
-          openThread.id,
-          "assistant",
-          [{ type: "markdown", props: { text: fullContent } }],
-          kcStamp().kcGenVersion,
-        );
+        // Persist assistant turn — persona-chat-turn (sub-thread, D-03) or markdown (open chat).
+        const assistantBlock = personaGrounding
+          ? {
+              type: "persona-chat-turn",
+              props: { archetype: personaGrounding.archetype, role: "assistant", text: fullContent },
+            }
+          : { type: "markdown", props: { text: fullContent } };
+        await insertMessage(openThread.id, "assistant", [assistantBlock], kcStamp().kcGenVersion);
 
         send("done", {});
       } catch (err) {

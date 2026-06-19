@@ -30,6 +30,12 @@ export interface PersonaNode {
   tone?: 'accent' | 'default';
   /** Verbatim reaction to THIS concept — surfaced in the detail card (LIVE-02). */
   quote?: string;
+  /**
+   * The persona-registry archetype enum (e.g. "tough_crowd") backing this node, when known.
+   * Powers the "Ask them why →" persona chat grounding (P9 / D-03). Additive + default-undefined
+   * — existing call sites stay byte-identical.
+   */
+  archetype?: string;
 }
 
 export interface PersonaGraphProps {
