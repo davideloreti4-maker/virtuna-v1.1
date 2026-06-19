@@ -118,6 +118,10 @@ const SCALE_OPTIONS: ReadonlyArray<{ value: LensScale; label: string }> = [
 const EMPTY_HEADING = 'No audience reaction yet.';
 const EMPTY_BODY = 'Run this concept against your audience to see how the room reacts.';
 
+/** Population cascade: fraction of dots revealed per tick, and the calm tick period (ms). */
+const CASCADE_STEP = 0.06;
+const CASCADE_TICK_MS = 40;
+
 export function AudienceLens({
   heatmap,
   simResults,
@@ -444,19 +448,25 @@ function PopulationRegion({
   // Advance the single batched cascade timeline. Reduced motion never auto-advances
   // (the static swarm + sr-only mirror cover that path). The tick terminates by
   // settling to null (all dots present) once progress passes 1.
+  //
+  // WR-04: depend on the `cascading` BOOLEAN (not the advancing `progress`), so the
+  // interval is created ONCE when the cascade starts and cleared once when it ends —
+  // previously listing `progress` recreated a fresh setInterval on every tick (timing
+  // jitter + defeats the purpose of setInterval). All state moves via the functional
+  // updater, so the effect never needs to read `progress` directly.
   useEffect(() => {
-    if (progress === null || reducedMotion) return;
+    if (!cascading || reducedMotion) return;
     cascadeTimer.current = setInterval(() => {
       setProgress((p) => {
         if (p === null) return null;
-        const next = p + 0.06;
+        const next = p + CASCADE_STEP;
         return next >= 1 ? null : next;
       });
-    }, 40);
+    }, CASCADE_TICK_MS);
     return () => {
       if (cascadeTimer.current) clearInterval(cascadeTimer.current);
     };
-  }, [progress, reducedMotion]);
+  }, [cascading, reducedMotion]);
 
   return (
     <div className="flex flex-col gap-3">

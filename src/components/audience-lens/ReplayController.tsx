@@ -94,19 +94,27 @@ export function ReplayController({ nodes, heatmap, reducedMotion = false }: Repl
   // Advance the cascade reveal one node at a time. Reduced motion never auto-advances
   // (the static cloud + sr-only mirror cover that path). The tick itself terminates by
   // setting `revealed` back to null once every node has been lit (all nodes present).
+  //
+  // WR-04: depend on the `cascading` BOOLEAN (not the advancing `revealed` counter), so the
+  // interval is created ONCE when the cascade starts and cleared once when it ends —
+  // previously listing `revealed` recreated a fresh setInterval on every tick (timing jitter
+  // + defeats setInterval). The terminal bound is read off a ref so the running tick always
+  // sees the current node count without re-subscribing the effect each frame.
+  const revealLenRef = useRef(reveal.length);
+  revealLenRef.current = reveal.length;
   useEffect(() => {
-    if (revealed === null || reducedMotion) return;
+    if (!cascading || reducedMotion) return;
     cascadeTimer.current = setInterval(() => {
       setRevealed((r) => {
         if (r === null) return null;
         const next = r + 1;
-        return next > reveal.length ? null : next;
+        return next > revealLenRef.current ? null : next;
       });
     }, CASCADE_MS);
     return () => {
       if (cascadeTimer.current) clearInterval(cascadeTimer.current);
     };
-  }, [revealed, reducedMotion, reveal.length]);
+  }, [cascading, reducedMotion]);
 
   // The per-node attention vector for the currently-replayed segment. Undefined when
   // not replaying → PersonaGraph falls back to aggregate watch-through.
