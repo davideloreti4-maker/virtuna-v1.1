@@ -155,12 +155,12 @@ reuses its typed-block renderers.
 
 ### KCQ — KC Grounding & Quality-Loop (P14, the durable moat — `kc-improvement-levers.md`)
 
-- [ ] **KCQ-01**: Live-profile grounding (#2) — gate must test *with* real profile + exemplars, not cold-start.
+- [x] **KCQ-01**: Live-profile grounding (#2) — gate must test *with* real profile + exemplars, not cold-start.
 - [ ] **KCQ-02**: Generate→critique→regenerate (#3) — best-of-N w/ rubric, replacing the current one-pass gate.
 - [ ] **KCQ-03**: Real-exemplar RAG (#1) — inject 2–3 actual recent niche high-performers; pgvector cols exist unused. Includes the **N2 cited-research pass** (topical-fact research pre-script).
 - [ ] **KCQ-04**: "Will this flop?" adversarial pass (#6) — predict each item's failure mode for *this* audience.
-- [ ] **KCQ-05**: SIM-rank verification loop (#9) — generate→render→simulate→rank+why; the foresight centerpiece (formalize/extend the existing Flash gate).
-- [ ] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
+- [x] **KCQ-05**: SIM-rank verification loop (#9) — generate→render→simulate→rank+why; the foresight centerpiece (formalize/extend the existing Flash gate).
+- [x] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
 - [ ] **KCQ-07**: Runtime trope-injection + specificity auto-reject (#4/#5) — corpus floor done in P2; runtime enforcement here.
 - [ ] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
 - [ ] **KCQ-09**: Field-level legibility — surface *which* profile/audience/KC field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness). *(Surfaces via P12 IA where relevant.)*

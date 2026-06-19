@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 14 context gathered
-last_updated: "2026-06-19T21:55:28.970Z"
-last_activity: 2026-06-19 -- Phases 11–15 folded into v6.0
+status: executing
+stopped_at: Completed 14-01-PLAN.md
+last_updated: "2026-06-19T22:32:41.404Z"
+last_activity: 2026-06-19 -- Phase 14 execution started
 progress:
   total_phases: 16
   completed_phases: 10
-  total_plans: 50
-  completed_plans: 51
+  total_plans: 54
+  completed_plans: 52
   percent: 63
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Expansion Phases 11–16 — Sandcastles parity (11 Explore, 12 Library & Acts/State IA, 13 Proactive Numen / ambient audience), KC quality-loop (14), Commerce (15 Marketing Intent, 16 Commerce Skills). Each needs a `/gsd-discuss-phase` pass. Authoritative Sandcastles shape: `research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE`. See `.planning/NEXT-MILESTONE-VISION.md`.
+**Current focus:** Phase 14 — kc-grounding-quality-loop-expansion-the-durable-moat-not-yet
 
 ## Current Position
 
-Phase: 1–10 COMPLETE. **Expansion 11–16 ADDED 2026-06-19** (owner: fold into v6.0, don't spin a new milestone; corrected to the authoritative Sandcastles shape — added Explore-as-skill / Library-IA / Proactive-ambient, which earlier draft missed) — not yet discussed.
-Plan: none active. **RECOMMENDED NEXT-ACTION ORDER (2026-06-19):** (1) **UX-01** composer/skill-selector redesign decision via `/gsd-sketch` (sketch 001 exists, winner:null) — do BEFORE P11 since every expansion phase adds a skill and the chip row already breaks; (2) wire the **FLYWHEEL-02 predicted-pin** quick-fix (unblocks the dormant recalibration loop — small, standalone); (3) `/gsd-discuss-phase 14` (KC Grounding) BEFORE P11 — levers #1/#2 (RAG + profile grounding) underpin P11 Explore; (4) then 11 → 12 → 13 → 15 → 16; (5) **HARDEN-01 + INFRA-01** (rate-limiting, R2 video storage, Supabase tier) before public/paid traffic.
-Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans executed + verified; live UAT was the last gate). Expansion Phases 11–16 scoped + requirements enumerated (EXPLORE/IA/LIB/AUD-EDIT/AMBIENT/PROACTIVE/KCQ/INTENT/REACT/BLOCK/OFFER/ADCREATIVE/COMMERCE/HARDEN) in REQUIREMENTS.md + ROADMAP.md. ⚠️ Sequencing: P14 levers #1/#2 (RAG + profile grounding) underpin P11 Explore — resolve precede-or-parallel in roadmap; P13 ambient EXTENDS P9's shipped reaction primitive (don't duplicate).
-Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
+Phase: 14 (kc-grounding-quality-loop-expansion-the-durable-moat-not-yet) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-19 -- Phase 14 execution started
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -161,6 +161,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 10 / 10-06]: Proposal identity = the gate-passing CALIBRATION disposition string (no separate proposal rows); confirm/decline transition the contributing reconciliation rows' proposal_state → a declined proposal's rows are excluded from the next gate pass (no re-nag). propose.ts isRecalibratableAudience refuses General/preset on BOTH read (null) and write (throw); confirm writes ONLY persona_weights via updateAudience. General-unchanged regression anchor green.
 - [Phase 10 / 10-06]: Drift cron uses createServiceClient (no session) + reads user_id off the audience row → inserts outcome_signatures source='drift_scrape' + reconciliations DIRECTLY (the session-deriving repos call getUser() and can't run in cron). Same reconcile/gate/propose path as outcome capture (D-01). vercel.json drift cron '0 5 * * 1' [ASSUMED A4].
 - [Phase 10 / 10-06]: DEFERRED — drift composition-shift sensitivity is engine-side: deriveAudienceProfile derives dispositions profile-agnostically (from goal-intent bias, not scraped composition), so hasShift rarely fires until calibration derives real composition from scraped signals. Drift PATH complete + correct; making the shift detectable is a calibration-math change (Plan 07+ / owner calibration refinement).
+- [Phase ?]: [Phase 14 / 14-01]: resolveNicheKey lives at the RUNNER layer (D-02/Pitfall 2) — free-text/sub-slug niche_primary normalized to a top-level NICHE_INSTANTIATION key before the SIM panel; selectPersonaSlots + NICHE_INSTANTIATION bytes untouched, no ENGINE_VERSION bump (still 3.19.0)
+- [Phase ?]: [Phase 14 / 14-01]: KCQ-05 gate floor = band !== Weak (stops >= MIXED_THRESHOLD); thresholds held STRONG=6/MIXED=3 with drift gate; LIVE recalibration deferred (no DASHSCOPE_API_KEY in exec env)
 
 ### Roadmap Evolution
 
@@ -185,10 +187,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T21:55:28.962Z
-Stopped at: Phase 14 context gathered
+Last session: 2026-06-19T22:32:41.396Z
+Stopped at: Completed 14-01-PLAN.md
 Next: Phase 10 Plan 07 (DB push + database.types.ts regen + remove (supabase as any) casts + live UAT — BLOCKING)
-Resume file: .planning/phases/14-kc-grounding-quality-loop-expansion-the-durable-moat-not-yet/14-CONTEXT.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -237,3 +239,4 @@ Resume file: .planning/phases/14-kc-grounding-quality-loop-expansion-the-durable
 | Phase 10 P04 | 25min | 3 tasks | 12 files |
 | Phase 10 P05 | 6 | 3 tasks | 7 files |
 | Phase 10 P06 | 7min | 3 tasks (1 TDD) | 8 files |
+| Phase 14-kc-grounding-quality-loop P01 | 14min | 2 tasks | 7 files |
