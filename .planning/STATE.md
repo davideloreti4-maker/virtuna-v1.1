@@ -68,7 +68,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: Flash aggregate thresholds
 - [Phase ?]: Flash model routing
 - [Phase 10 / 10-02]: A1 calibration/craft split OWNER-CONFIRMED — calibration={collector,connector,converter}, craft={scanner,lurker,skeptic}; [ASSUMED] markers removed from reconcile.ts.
-- [Phase 10 / 10-02]: Single-URL outcome scrape stays on clockworks VIDEO_ACTOR; apidojo (the current provider) forbids single-post URLs (Pitfall 2) and is used only for the multi-post Account-Read path.
+- [Phase 10 / 10-02]: Single-URL outcome scrape = apidojo/tiktok-scraper-api Single Post Query tier (startUrls:[url]) — the SEPARATE single-post-capable apidojo actor (not the all-in-one apidojo/tiktok-scraper, which forbids single posts). clockworks retired for single-URL metrics, kept only for Remix mp4 resolution. Plan-07 UAT: verify live startUrls/bookmarks fields.
 - [Phase 10 / 10-02]: 3 sibling tables (outcome_signatures, reconciliations, saved_items) added; the contested `outcomes` table untouched (Pitfall 1). DB push deferred to Plan 07.
 - [Phase ?]: reading_id FK is text not uuid — analysis_results.id is text on live DB; plan Pitfall #3 was incorrect; all FK semantics preserved
 - [Phase ?]: ThreadRow/MessageRow derive from Database public Tables post-regen; role narrowed to union at app layer
