@@ -19,10 +19,20 @@ import { IngestError } from "./types";
 const DISCOVER_PROFILE_ACTOR = "apidojo/tiktok-profile-scraper";
 const DISCOVER_VIDEO_ACTOR = "apidojo/tiktok-scraper";
 
+// ── Single-post METRICS actor (Phase 10) — apidojo single-post tier ──────────
+// apidojo/tiktok-scraper-api is a DISTINCT actor from apidojo/tiktok-scraper (the
+// all-in-one Discover actor, which forbids single posts / requires ≥10 posts/query).
+// tiktok-scraper-api exposes a "Single Post Query" tier: startUrls:[<post url>] returns
+// exactly ONE video with the full public metric block (views/likes/comments/shares/
+// bookmarks). Output shape matches the apidojo Discover actor → remap via apidojoVideoSchema
+// (NOT clockworks apifyVideoSchema). We standardize single-URL metric capture on apidojo.
+const SINGLE_POST_METRICS_ACTOR = "apidojo/tiktok-scraper-api";
+
 // ── Remix rehost actor — LEFT on the single-URL-capable clockworks actor ──────
-// Pitfall 2: apidojo/tiktok-scraper FORBIDS single-post URLs (requires ≥10 posts/query).
 // resolveVideoUrl passes one `postURLs:[url]` + `shouldDownloadVideos:true` for the
-// Remix rehost — it MUST stay on clockworks. Do NOT repoint this to a DISCOVER_* slug.
+// Remix rehost — it needs the downloadable KV mp4 that clockworks resolves, which the
+// metrics-only apidojo actor does NOT return. The Remix media-resolution path stays on
+// clockworks; only the Phase-10 METRICS capture moved to apidojo (above).
 const VIDEO_ACTOR = "clockworks/tiktok-scraper";
 
 /**
@@ -130,44 +140,6 @@ export function remapApidojoVideo(item: unknown): VideoData | null {
     hashtags: v.hashtags.map((h) => (typeof h === "string" ? h : h.name)),
     durationSeconds: v.video?.duration ?? 0,
     // Guard an unparseable date string → fall back to now (never NaN postedAt).
-    postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
-  };
-}
-
-/**
- * Remap one CLOCKWORKS tiktok-scraper item onto VideoData (single-URL metrics path).
- *
- * Clockworks field names DIFFER from apidojo (Pitfall 1) — clockworks returns
- * `playCount/diggCount/shareCount/commentCount/collectCount` (spike-confirmed
- * 2026-06-19), apidojo returns `views/likes/comments/shares/bookmarks`. This MUST
- * use the clockworks `apifyVideoSchema`, NEVER `apidojoVideoSchema` — reusing the
- * apidojo schema on a clockworks item silently zeros every metric (the exact bug
- * `apidojo-remap.test.ts` guards). Remap per spike sign-off:
- *   playCount→views, diggCount→likes, shareCount→shares, commentCount→comments,
- *   collectCount→saves.
- * Returns null when the item fails to parse (caller degrades honestly).
- */
-export function remapClockworksVideo(item: unknown): VideoData | null {
-  const result = apifyVideoSchema.safeParse(item);
-  if (!result.success) {
-    console.warn(`[scraping] clockworks video validation failed:`, result.error.issues);
-    return null;
-  }
-
-  const v = result.data;
-  const postedAt = v.createTime ? new Date(v.createTime * 1000) : new Date();
-
-  return {
-    platformVideoId: v.id,
-    videoUrl: v.webVideoUrl ?? "",
-    caption: v.text,
-    views: v.playCount,
-    likes: v.diggCount,
-    comments: v.commentCount,
-    shares: v.shareCount,
-    saves: v.collectCount, // clockworks `collectCount` is the save metric (public on TikTok)
-    hashtags: v.hashtags.map((h) => h.name),
-    durationSeconds: v.videoMeta?.duration ?? 0,
     postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
   };
 }
@@ -304,11 +276,11 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   /**
    * Scrape PUBLIC METRICS for ONE posted TikTok URL (outcome capture, FLYWHEEL-01).
    *
-   * Mirrors resolveVideoUrl's single-URL clockworks call but with
-   * shouldDownloadVideos:false (metrics only — no KV media fetch). Spike-confirmed
-   * (2026-06-19) that clockworks single-URL returns the full public metric block
-   * INCLUDING saves (collectCount). Remaps via the clockworks `apifyVideoSchema`
-   * (NOT apidojo — Pitfall 1).
+   * Single source = apidojo's `tiktok-scraper-api` "Single Post Query" tier: one
+   * `startUrls:[url]` returns exactly ONE video with the full public metric block
+   * (views/likes/comments/shares/bookmarks) and NO ≥10-post minimum. Remaps via the
+   * apidojo `apidojoVideoSchema` (bookmarks→saves) through `remapApidojoVideo` — the
+   * SAME schema the Discover apidojo actors use (Pitfall 1: never the clockworks schema).
    *
    * SSRF (T-10-05): the pasted URL is untrusted input — guarded by isAllowedPostUrl
    * (HTTPS + TikTok host) before reaching the actor.
@@ -316,6 +288,11 @@ export class ApifyScrapingProvider implements ScrapingProvider {
    * Returns null for a deleted/private/404 post or an unparseable item (caller
    * degrades honestly — never zero-fills). Throws IngestError on actor failure /
    * empty dataset / a rejected input URL.
+   *
+   * NOTE (Plan 07 UAT): the apidojo single-post INPUT field is `startUrls` per the
+   * actor's Single Post Query tier; verify the live field name + the saves field
+   * (`bookmarks`) at the Plan-07 push/UAT gate against a real token, and adjust the
+   * remap if apidojo names saves differently in this actor's dataset version.
    */
   async scrapeSinglePostMetrics(url: string): Promise<VideoData | null> {
     // SSRF guard on the untrusted paste-URL input (T-10-05) BEFORE the actor call.
@@ -325,8 +302,9 @@ export class ApifyScrapingProvider implements ScrapingProvider {
 
     let run: { defaultDatasetId: string };
     try {
-      run = await this.client.actor(VIDEO_ACTOR).call(
-        { postURLs: [url], resultsPerPage: 1, shouldDownloadVideos: false },
+      run = await this.client.actor(SINGLE_POST_METRICS_ACTOR).call(
+        // Single Post Query tier: one startUrls entry → exactly one video, no min.
+        { startUrls: [url], resultsPerPage: 1 },
         { waitSecs: 180 },
       );
     } catch (cause) {
@@ -349,6 +327,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       return null;
     }
 
-    return remapClockworksVideo(item);
+    // apidojo output shape → VideoData (bookmarks→saves). Returns null if unparseable.
+    return remapApidojoVideo(item);
   }
 }

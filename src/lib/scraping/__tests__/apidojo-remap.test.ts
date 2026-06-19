@@ -127,3 +127,63 @@ describe("remapApidojoProfile", () => {
     expect(p.verified).toBe(true);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 10: single-post METRICS remap (scrapeSinglePostMetrics).
+// The single-URL outcome-capture path runs apidojo's `tiktok-scraper-api`
+// Single Post Query tier — its output shape is the SAME apidojo block
+// (views/likes/comments/shares/bookmarks) that the Discover actors return, so it
+// remaps through `remapApidojoVideo`, NOT the clockworks apifyVideoSchema (Pitfall 1).
+// These tests pin that single-post output → VideoData mapping for the flywheel.
+// ─────────────────────────────────────────────────────────────────────────────
+describe("remapApidojoVideo — single-post metrics (apidojo tiktok-scraper-api)", () => {
+  // A single-post-query dataset item (one video; same apidojo field shape).
+  function singlePostItem(overrides: Record<string, unknown> = {}) {
+    return {
+      id: 7_500_123, // single-post tier may return id as a NUMBER (kept in safe-int range)
+      webVideoUrl: "https://www.tiktok.com/@creator/video/7500000000000000001",
+      title: "outcome capture probe",
+      uploadedAt: "2026-06-18T09:00:00.000Z",
+      views: 563_600,
+      likes: 98_700,
+      comments: 1_334,
+      shares: 127,
+      bookmarks: 58_618, // apidojo saves field (collectCount equivalent)
+      hashtags: ["fyp"],
+      video: { duration: 31 },
+      ...overrides,
+    };
+  }
+
+  it("maps single-post apidojo metrics onto VideoData with saves from bookmarks", () => {
+    const v = remapApidojoVideo(singlePostItem());
+    expect(v).not.toBeNull();
+    expect(v!.views).toBe(563_600);
+    expect(v!.likes).toBe(98_700);
+    expect(v!.comments).toBe(1_334);
+    expect(v!.shares).toBe(127);
+    // bookmarks → saves is the flywheel collector signal (public on TikTok).
+    expect(v!.saves).toBe(58_618);
+    expect(v!.saves).not.toBe(0);
+  });
+
+  it("coerces a numeric single-post id to a string platformVideoId", () => {
+    const v = remapApidojoVideo(singlePostItem());
+    expect(v!.platformVideoId).toBe("7500123");
+    expect(typeof v!.platformVideoId).toBe("string");
+  });
+
+  it("GUARD: a clockworks-shaped single item zeros through the apidojo schema (Pitfall 1)", () => {
+    // If scrapeSinglePostMetrics ever regressed to the clockworks shape but kept the
+    // apidojo remap, every metric would silently zero — this pins that failure mode.
+    const clockworksShape = {
+      id: "888",
+      playCount: 563_600,
+      diggCount: 98_700,
+      collectCount: 58_618,
+    };
+    const v = remapApidojoVideo(clockworksShape);
+    expect(v!.views).toBe(0);
+    expect(v!.saves).toBe(0);
+  });
+});
