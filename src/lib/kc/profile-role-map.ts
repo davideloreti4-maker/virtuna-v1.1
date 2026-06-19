@@ -5,7 +5,7 @@
  * When the v6.1 profile redesign changes column names or shapes, ONLY THIS FILE
  * needs to update — every consumer references by semantic ROLE, not by column.
  *
- * Six roles (GROUND-02 / RESEARCH 3C):
+ * Seven roles (GROUND-02 / RESEARCH 3C + N1 voice sample):
  *   niche      — niche_primary + niche_sub
  *   audience   — target_audience JSON (age_range, gender_skew, geo, language)
  *   goals      — primary_goal + creator_stage
@@ -29,7 +29,7 @@
  * Adding a new role here + a formatter is the ONLY change needed when a new
  * profile concept is introduced.
  */
-export type Role = "niche" | "audience" | "goals" | "wins" | "flops" | "platform";
+export type Role = "niche" | "audience" | "goals" | "wins" | "flops" | "platform" | "voice";
 
 /**
  * Narrow profile row type — only the columns the role-map reads.
@@ -50,6 +50,7 @@ export interface ProfileRow {
   past_wins?: Array<{ url: string }> | null;
   past_flops?: Array<{ url: string }> | null;
   target_platforms?: string[] | null;
+  writing_voice_sample?: string | null;
 }
 
 // ─── Role formatters ──────────────────────────────────────────────────────────
@@ -134,6 +135,30 @@ function formatPlatform(row: ProfileRow): string | null {
   return `Target platform: ${row.target_platforms[0]}`;
 }
 
+
+/**
+ * Format voice: wraps the creator's verbatim writing sample in an injection
+ * fence with an instruction header that explicitly restricts emulation to
+ * STYLE/rhythm/tone — never content or claims (honesty-spine aligned, D-04).
+ *
+ * Returns null when writing_voice_sample is absent or blank (graceful cold-start).
+ * The fence uses the same <<<USER_CONTENT>>> sentinels as all other user-supplied
+ * content in the assembler (GROUND-02 injection-guard parity).
+ *
+ * The instruction header is OUTSIDE the fence (assembler-controlled, trusted)
+ * so the LLM sees it as a system directive, not user-supplied text.
+ */
+function formatVoice(row: ProfileRow): string | null {
+  const sample = row.writing_voice_sample?.trim();
+  if (!sample) return null;
+  return [
+    "Writing voice — emulate the STYLE, rhythm, and tone only; do NOT reuse specific content or claims:",
+    "<<<USER_CONTENT>>>",
+    sample,
+    "<<<END_USER_CONTENT>>>",
+  ].join("\n");
+}
+
 // ─── PROFILE_ROLE_MAP ─────────────────────────────────────────────────────────
 
 /**
@@ -152,4 +177,5 @@ export const PROFILE_ROLE_MAP: Record<Role, (row: ProfileRow) => string | null> 
   wins: formatWins,
   flops: formatFlops,
   platform: formatPlatform,
+  voice: formatVoice,
 };
