@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: "Phase 07 closed. UAT skipped (owner directive); protected-path proof passed automatically. Next: Phase 08 (Discover & Remix→Read) — DRAFT, needs /gsd-discuss-phase 8"
-stopped_at: Phase 8 context gathered
-last_updated: "2026-06-19T07:20:17.233Z"
+stopped_at: Phase 8 UI-SPEC approved
+last_updated: "2026-06-19T07:25:52.702Z"
 last_activity: 2026-06-19 -- Phase 07 Plan 06 complete — Phase 07 closed
 progress:
   total_phases: 10
@@ -151,10 +151,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T07:20:17.225Z
-Stopped at: Phase 8 context gathered
+Last session: 2026-06-19T07:25:52.694Z
+Stopped at: Phase 8 UI-SPEC approved
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
-Resume file: .planning/phases/08-discover-remix-read-the-competitor-niche-moat-chain-draft-no/08-CONTEXT.md
+Resume file: .planning/phases/08-discover-remix-read-the-competitor-niche-moat-chain-draft-no/08-UI-SPEC.md
 
 ## Performance Metrics
 
