@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 10-06-PLAN.md
-last_updated: "2026-06-19T17:11:00.000Z"
-last_activity: 2026-06-19 -- Phase 10 Plan 06 complete
+status: in_progress
+stopped_at: Phases 1–10 complete; expansion Phases 11–15 added (not yet discussed)
+last_updated: "2026-06-19T18:00:00.000Z"
+last_activity: 2026-06-19 -- Phases 11–15 folded into v6.0 (Sandcastles + Commerce + KC-quality tracks)
 progress:
-  total_phases: 10
-  completed_phases: 9
+  total_phases: 15
+  completed_phases: 10
   total_plans: 51
-  completed_plans: 50
-  percent: 92
+  completed_plans: 51
+  percent: 67
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 10 — account-read-saved-shelf-recalibration-flywheel
+**Current focus:** Expansion Phases 11–15 — Sandcastles parity (11 Living Research Feed, 12 Persona+/Workspace), KC quality-loop (13), Commerce (14 Marketing Intent, 15 Commerce Skills). Each needs a `/gsd-discuss-phase` pass. See `.planning/NEXT-MILESTONE-VISION.md`.
 
 ## Current Position
 
-Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING (all 7 plans built; awaiting live UAT)
-Plan: 7 of 7 — code complete
-Status: All 7 plans executed + verified (16/17 truths; status human_needed). Plan 07 Task 1 (live DB push of 3 additive migrations to qyxvxleheckijapurisj + types regen + casts removed) DONE via Supabase MCP; outcomes table untouched. Task 2 BLOCKING engine regression gate PASSED (suite 2823 green, ENGINE_VERSION 3.19.0 unchanged, General-unchanged anchor green). Task 3 = 8 live-UAT scenarios PENDING → run /gsd-verify-work 10 (needs APIFY_TOKEN + CRON_SECRET; 10-UAT.md persisted). All phase-10 requirement checkboxes [x].
-Last activity: 2026-06-19 -- Phase 10 executed + verified; live UAT pending
+Phase: 1–10 COMPLETE. **Expansion 11–15 ADDED 2026-06-19** (owner: fold into v6.0, don't spin a new milestone) — not yet discussed.
+Plan: none active. Next = `/gsd-discuss-phase 11` (or 13 first — see sequencing note).
+Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans executed + verified; live UAT was the last gate). Expansion Phases 11–15 scoped + requirements enumerated (FEED/WORK/KCQ/INTENT/REACT/BLOCK/OFFER/ADCREATIVE/COMMERCE/HARDEN) in REQUIREMENTS.md + ROADMAP.md. ⚠️ Sequencing: P13 levers #1/#2 (RAG + profile grounding) underpin P11 — resolve precede-or-parallel in roadmap before discussing P11.
+Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
-`pinPredictedSignature()` is built/exported/unit-tested and the capture route reads the pinned row, but **no SIM runner calls it** (`runFlashRunner` returns without pinning). The capture→reconcile loop is therefore dormant in the live flow until the seam is wired into each runner's post-SIM point (+ a runner-level test). Owner accepted as a follow-up (not a P10 blocker) — wire it next; until then UAT scenario 2 (reconcile log) cannot fire end-to-end. See 10-VERIFICATION.md warnings + 10-UAT.md Gaps.
+`pinPredictedSignature()` is built/exported/unit-tested and the capture route reads the pinned row, but **no SIM runner calls it** (`runFlashRunner` returns without pinning). The capture→reconcile loop stays dormant in the live flow until the seam is wired into each runner's post-SIM point (+ a runner-level test). Wire it next; naturally belongs with **KCQ-05 (SIM-rank verification loop, P13)**. Until then the reconcile log can't fire end-to-end. See 10-VERIFICATION.md + 10-UAT.md Gaps.
 
 ## Hard Constraints (this milestone)
 
@@ -49,9 +49,19 @@ Last activity: 2026-06-19 -- Phase 10 executed + verified; live UAT pending
 | 1 | Engine & Thread Foundation | ENGINE-01, ENGINE-03, THREAD-01, THREAD-02, THREAD-04, THREAD-06, THREAD-07 | Complete ✓ |
 | 2 | Knowledge-Core Generative Rebuild | GROUND-01, GROUND-02 | Complete ✓ |
 | 3 | Ideas Tool | IDEAS-01, IDEAS-02, IDEAS-03, ENGINE-02, GROUND-03, PROFILE-01, THREAD-05 | Complete ✓ (rehydration → P4) |
-| 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Complete ✓ (gap-closure applied 2026-06-18) |
-| 5 | Studio Conversation Layer | THREAD-03, TEST-01, THREAD-05, STUDIO-01/02/03 | Context gathered → UI/plan next |
-| 6 | Script & Remix Tools | SCRIPT-01, REMIX-01 | Plan 01 complete ✓ (foundation) |
+| 4 | Hooks Tool | HOOKS-01, HOOKS-02, HOOKS-03 | Complete ✓ |
+| 5 | Studio Conversation Layer | THREAD-03, TEST-01, THREAD-05, STUDIO-01/02/03 | Complete ✓ |
+| 6 | Script & Remix Tools | SCRIPT-01, REMIX-01 | Complete ✓ |
+| 7 | Audience Manager | AUD-01..08 | Complete ✓ |
+| 8 | Discover & Remix→Read | DISC-*, REMIX/AUD-STEER, READ-* | Complete ✓ |
+| 9 | Living Audience | LIVE-01..07 | Complete ✓ |
+| 10 | Account Read, Saved Shelf & Flywheel | SELF-*, SAVE-*, FLYWHEEL-* | Complete ✓ |
+| 11 | Living Research Feed | FEED-01..05 | Planned (expansion) — not discussed |
+| 12 | Creator-Persona+ & Workspace | WORK-01..06 | Planned (expansion) — not discussed |
+| 13 | KC Grounding & Quality-Loop | KCQ-01..08 | Planned (expansion) — not discussed |
+| 14 | Marketing Intent (mode-switch) | INTENT-01, REACT-01, BLOCK-01 | Planned (expansion) — not discussed |
+| 15 | Commerce Skills | OFFER-01, ADCREATIVE-01, COMMERCE-01 | Planned (expansion) — not discussed |
+| — | Pre-launch hardening gate | HARDEN-01 | Planned — before public traffic |
 
 ## Accumulated Context
 

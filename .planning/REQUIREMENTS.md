@@ -115,6 +115,57 @@ reuses its typed-block renderers.
 
 ---
 
+## Expansion Phases 11–15 (added 2026-06-19 — owner folded the Sandcastles + Commerce + KC-quality tracks into v6.0; NOT yet discussed)
+
+> Full scope + debt→phase map: `.planning/NEXT-MILESTONE-VISION.md`. All inherit the cross-cutting constraints below. Requirement IDs firm; each phase still needs a `/gsd-discuss-phase` pass.
+
+### FEED — Living Research Feed (P11)
+
+- [ ] **FEED-01**: Persistent watchlist — profiles + niches/keywords the creator tracks, surviving sessions.
+- [ ] **FEED-02**: Auto-explore agents — scheduled discovery that refreshes the feed (reuses P8 apidojo Discover; adds persistence).
+- [ ] **FEED-03**: Audience-relative outlier scoring — outliers scored *relative to the active calibrated audience*, not just the source channel's baseline.
+- [ ] **FEED-04**: Inline Read per node — every outlier node offers a Read in-place; tile CTA "Remix → Read" (our chain, never "rewrite for me").
+- [ ] **FEED-05**: Comment seeding — deferred from P8 D-04; lands here.
+
+### WORK — Creator-Persona+ & Workspace (P12)
+
+- [ ] **WORK-01**: Field-level legibility — surface *which* profile/audience field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness).
+- [ ] **WORK-02**: Projects/Collections — a grouping VIEW layered over the P10 flat `saved_items` store; **NOT** a second store (no double-build).
+- [ ] **WORK-03**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in).
+- [ ] **WORK-04**: Persona editing (P7 deferred, pulled in).
+- [ ] **WORK-05**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
+- [ ] **WORK-06**: Link-social → Apify metadata prefill (PROFILE tier-C).
+- *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; this phase surfaces/extends it, does NOT rebuild.)*
+
+### KCQ — KC Grounding & Quality-Loop (P13, the durable moat — `kc-improvement-levers.md`)
+
+- [ ] **KCQ-01**: Live-profile grounding (#2) — gate must test *with* real profile + exemplars, not cold-start.
+- [ ] **KCQ-02**: Generate→critique→regenerate (#3) — best-of-N w/ rubric, replacing the current one-pass gate.
+- [ ] **KCQ-03**: Real-exemplar RAG (#1) — inject 2–3 actual recent niche high-performers; pgvector cols exist unused. Includes the **N2 cited-research pass** (topical-fact research pre-script).
+- [ ] **KCQ-04**: "Will this flop?" adversarial pass (#6) — predict each item's failure mode for *this* audience.
+- [ ] **KCQ-05**: SIM-rank verification loop (#9) — generate→render→simulate→rank+why; the foresight centerpiece (formalize/extend the existing Flash gate).
+- [ ] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
+- [ ] **KCQ-07**: Runtime trope-injection + specificity auto-reject (#4/#5) — corpus floor done in P2; runtime enforcement here.
+- [ ] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
+
+### INTENT / REACT / BLOCK — Marketing Intent mode-switch (P14)
+
+- [ ] **INTENT-01**: Composer intent control — grow⇄sell, default from audience `goal_intent`, per-run override (no audience cloning).
+- [ ] **REACT-01**: Intent-conditioned reaction-frame injection at BOTH points — `runWave3` video sim + the text-skill runner (**de-risk: confirm both before planning; they differ**). NOT an engine refactor — population weights/mechanics unchanged.
+- [ ] **BLOCK-01**: Buyer-reaction output block — `would_buy` / `objection` / `price_reaction`, alongside existing cards.
+
+### OFFER / ADCREATIVE / COMMERCE — Commerce Skills (P15)
+
+- [ ] **OFFER-01**: Offer/Product Validation — test the proposition (concept, price, positioning) against the buyer audience *before any content exists*: would-buy %, ranked objections, price sensitivity (text path).
+- [ ] **ADCREATIVE-01**: Ad Creative pre-flight — stop-scroll + purchase intent + objection-surfaced, ROAS-framed (video/sim path).
+- [ ] **COMMERCE-01**: Brand-profile entity (brands as a separate buyer) + in-thread monetization affordances.
+
+### HARDEN — Pre-launch gate (cross-cutting, before public traffic)
+
+- [ ] **HARDEN-01**: Wire rate-limiting per tool — constants RESERVED-NOT-WIRED (`src/app/api/tools/hooks/route.ts`: `void RATE_LIMIT_WINDOW_SECS`). Re-run full engine regression gate + honesty-spine checks at milestone close.
+
+---
+
 ## Cross-cutting constraints
 
 - **Honesty spine (from v5.0 — READ-10 / D-13):** never present an ungraded generation as graded; never fabricate a Flash score; degrade gracefully when profile/KC is thin.
@@ -126,14 +177,18 @@ reuses its typed-block renderers.
 
 ---
 
-## Future Requirements (v6.1+)
+## Future Requirements (post-v6.0 — deferred seeds, rails laid, NOT this milestone)
 
-> **Scripts + Remix un-deferred to v6.0 Phase 6 (2026-06-18)** — see SCRIPT-01 / REMIX-01 above.
+> **2026-06-19:** the Sandcastles + Commerce + KC-quality tracks were folded INTO v6.0 as Phases 11–15 (see Expansion section above). The items below remain genuinely deferred — rails laid, build gated on data/usage volume.
+>
+> **Pulled IN to phases:** compact onboarding + link-social prefill → WORK-05/06 (P12); own-history exemplar RAG → KCQ-03 (P13, niche-exemplar form); in-thread monetization + brand-profile → COMMERCE-01 (P15); test concept pre-flight → covered by P8 multi-audience concept Read (verify).
 
-- [ ] **Test concept/script text pre-flight mode** — may land with Script (P6) or later.
-- [ ] **Compact onboarding redesign** (shorten the 9-card) + **link-social → Apify metadata prefill** (PROFILE tier C).
-- [ ] **RAG over the creator's own scraped history / exemplar selection** — deferred until usage accumulates.
-- [ ] **In-thread monetization**; **brand-profile entity** (brands as a separate buyer).
+- [ ] **FLYWHEEL-05 cross-creator prior-fitting mechanism** (lever #8) — reconciliation logging shipped (P10); aggregated prior-fitting that sharpens base persona priors is deferred until enough privacy-safe data accumulates.
+- [ ] **Spread / virality prediction in the Read** (P7 deferred).
+- [ ] **Real social OAuth** (P7 deferred — Apify scrape suffices; no Connectors).
+- [ ] **Script Diagnose mode** (paste existing script → line-edits + drop-point) + **remix-your-own-winner** deep dive — skills depth; may fold into P15 or stay backlog.
+- [ ] **RAG over the creator's OWN scraped history** (broader than KCQ-03's niche-exemplar form) — usage-gated.
+- [ ] **Desktop-dense layout.**
 
 ---
 
@@ -195,3 +250,9 @@ reuses its typed-block renderers.
 | FLYWHEEL-04 | Phase 10 | Complete (10-01, 10-06) |
 | FLYWHEEL-05 | Phase 10 | Complete (10-02, 10-06) |
 | FLYWHEEL-06 | Phase 10 | Complete (10-06) |
+| FEED-01..05 | Phase 11 | Planned (expansion) |
+| WORK-01..06 | Phase 12 | Planned (expansion) |
+| KCQ-01..08 | Phase 13 | Planned (expansion) |
+| INTENT-01 / REACT-01 / BLOCK-01 | Phase 14 | Planned (expansion) |
+| OFFER-01 / ADCREATIVE-01 / COMMERCE-01 | Phase 15 | Planned (expansion) |
+| HARDEN-01 | Pre-launch gate | Planned (expansion) |
