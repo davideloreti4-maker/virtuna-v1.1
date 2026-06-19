@@ -20,6 +20,7 @@ import { ScriptCardRenderer } from '@/components/thread/script-card-block';
 import { RemixCardRenderer } from '@/components/thread/remix-card-block';
 import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
+import { PersonaChatTurnBlockRenderer } from '@/components/thread/persona-chat-turn-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -35,6 +36,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "remix-card": RemixCardRenderer,
   "outlier-grid": OutlierGridBlockRenderer,
   "multi-audience-read": MultiAudienceReadBlockRenderer,
+  "persona-chat-turn": PersonaChatTurnBlockRenderer,
 };
 
 export interface MessageBlocksProps {

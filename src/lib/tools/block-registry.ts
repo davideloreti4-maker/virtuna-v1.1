@@ -21,6 +21,7 @@ import {
   RemixCardBlockSchema,
   OutlierGridBlockSchema,
   MultiAudienceReadBlockSchema,
+  PersonaChatTurnBlockSchema,
 } from "./blocks";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export const BLOCK_REGISTRY = {
   "remix-card": { schema: RemixCardBlockSchema as z.ZodType },
   "outlier-grid": { schema: OutlierGridBlockSchema as z.ZodType },
   "multi-audience-read": { schema: MultiAudienceReadBlockSchema as z.ZodType },
+  "persona-chat-turn": { schema: PersonaChatTurnBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

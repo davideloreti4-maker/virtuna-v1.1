@@ -321,6 +321,30 @@ export const MultiAudienceReadBlockSchema = z.object({
 
 export type MultiAudienceReadBlock = z.infer<typeof MultiAudienceReadBlockSchema>;
 
+// ─── Persona-chat-turn block (P9 / LIVE-03, D-03) ────────────────────────────────
+// The "Ask them why →" chat-with-persona sub-thread (Plan 09-03). One turn per row.
+//
+// NO MIGRATION REQUIRED: these persist as ordinary `messages` rows (body = typed-block
+// JSONB array) in the EXISTING grounded thread (threads.reading_id). The "sub-thread" is
+// simply the subset of a thread's messages whose blocks are `persona-chat-turn` for a given
+// `archetype` — re-validated through loadMessages on rehydration (D-14). The Read is ALREADY
+// a thread; `messages` carries any registered block, so no parent_message_id column is added.
+//
+// Honesty spine: a persona-chat turn is labeled SIM-1 in-voice text — it carries NO band,
+// NO score, NO fabricated crowd. `archetype` is the persona tag; `role` distinguishes the
+// creator's question from the persona's in-voice answer.
+
+export const PersonaChatTurnBlockSchema = z.object({
+  type: z.literal("persona-chat-turn"),
+  props: z.object({
+    archetype: z.string().min(1),         // the persona this sub-thread belongs to (D-03)
+    role: z.enum(["user", "assistant"]),  // creator question vs persona in-voice answer
+    text: z.string().min(1),              // the turn content
+  }),
+});
+
+export type PersonaChatTurnBlock = z.infer<typeof PersonaChatTurnBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -333,6 +357,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   RemixCardBlockSchema,
   OutlierGridBlockSchema,
   MultiAudienceReadBlockSchema,
+  PersonaChatTurnBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
