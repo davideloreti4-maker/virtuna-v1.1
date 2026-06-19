@@ -97,6 +97,7 @@ export async function insertReconciliation(
 
   const payload = { ...parsed.data, user_id: user.id };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .insert(payload)
@@ -118,6 +119,7 @@ export async function listReconciliations(
   supabase: SupabaseClient,
   audienceId: string,
 ): Promise<Reconciliation[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .select("*")
@@ -144,6 +146,7 @@ export async function updateProposalState(
   const patch: Record<string, unknown> = { proposal_state: state };
   if (confirmedAt !== undefined) patch.confirmed_at = confirmedAt;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .update(patch)

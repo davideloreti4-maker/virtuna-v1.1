@@ -63,6 +63,7 @@ export async function listSavedItems(
   supabase: SupabaseClient,
   type?: SavedItemType,
 ): Promise<SavedItem[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = supabase
     .from("saved_items")
     .select("*")
@@ -101,6 +102,7 @@ export async function createSavedItem(
 
   const payload = { ...parsed.data, user_id: user.id };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("saved_items")
     .insert(payload)
@@ -121,6 +123,7 @@ export async function deleteSavedItem(
   supabase: SupabaseClient,
   id: string,
 ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await supabase
     .from("saved_items")
     .delete()

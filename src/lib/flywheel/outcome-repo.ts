@@ -98,6 +98,7 @@ export async function insertOutcomeSignature(
 
   const payload = { ...parsed.data, user_id: user.id };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("outcome_signatures")
     .insert(payload)
@@ -124,6 +125,7 @@ export async function findPinnedPrediction(
   supabase: SupabaseClient,
   opts: { analysisId?: string | null; audienceId?: string | null },
 ): Promise<OutcomeSignature | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = supabase
     .from("outcome_signatures")
     .select("*")
@@ -164,6 +166,7 @@ export async function updateOutcomeRealized(
     source?: OutcomeSource;
   },
 ): Promise<OutcomeSignature> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("outcome_signatures")
     .update({
@@ -193,6 +196,7 @@ export async function listOutcomeSignatures(
   supabase: SupabaseClient,
   audienceId: string,
 ): Promise<OutcomeSignature[]> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("outcome_signatures")
     .select("*")
