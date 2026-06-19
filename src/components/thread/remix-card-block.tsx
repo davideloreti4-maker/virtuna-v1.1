@@ -31,6 +31,7 @@
 import { useState, useContext } from 'react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
+import { SaveAffordance } from '@/components/thread/save-affordance';
 import { PlatformContext } from '@/lib/platform-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -241,7 +242,10 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
       )}
 
       {/* CTA — "Develop into hooks →" (remix→hooks, anchorFrom:'card' — wired in 06-05) */}
-      <div className="border-t border-white/[0.06] px-4 py-3">
+      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
+        {/* Save (Act→State) — a remix output is an adapted hook; save it as item_type "hook". */}
+        <SaveAffordance item_type="hook" title={adaptedHook} snapshot={block.props} />
+
         <button
           type="button"
           onClick={onDevelop}

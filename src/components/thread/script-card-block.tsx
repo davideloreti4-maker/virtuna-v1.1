@@ -27,6 +27,7 @@ import { useOnTestScript } from '@/lib/script-test-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
+import { SaveAffordance } from '@/components/thread/save-affordance';
 
 export interface ScriptCardRendererProps {
   block: ScriptCardBlock;
@@ -213,7 +214,14 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
       )}
 
       {/* "Test full →" CTA (D-05) — seam for Plan 06-05 to wire script→test handoff */}
-      <div className="border-t border-white/[0.06] px-4 py-3">
+      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
+        {/* Save (Act→State) — save this script to the shelf (snapshot = block props) */}
+        <SaveAffordance
+          item_type="script"
+          title={openingBeatSeed ?? beats[0]?.content}
+          snapshot={block.props}
+        />
+
         <button
           type="button"
           onClick={onTest}

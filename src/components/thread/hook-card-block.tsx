@@ -31,6 +31,7 @@ import { useOnTestHook, useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
+import { SaveAffordance } from '@/components/thread/save-affordance';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -210,6 +211,9 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
       {/* Chain CTAs (D-05): "Write script →" (hooks→script) + "Test full →" (hooks→test).
           Both seams read from context (HooksThreadView provides them). */}
       <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
+        {/* Save (Act→State) — save this hook to the shelf (snapshot = block props) */}
+        <SaveAffordance item_type="hook" title={hookLine} snapshot={block.props} />
+
         {/* "Write script →" — hooks→script chain handoff (CHAIN_HANDOFFS) */}
         <button
           type="button"

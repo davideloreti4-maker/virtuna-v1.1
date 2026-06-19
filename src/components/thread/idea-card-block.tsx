@@ -33,6 +33,7 @@ import { usePlatform } from '@/lib/platform-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
+import { SaveAffordance } from '@/components/thread/save-affordance';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -241,7 +242,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
       {/* "Develop this →" CTA (D-15/THREAD-05/IDEAS-03) ────────────────────── */}
       {/* Calls PINNED /api/tools/ideas/develop to write anchor + Hooks placeholder */}
-      <div className="border-t border-white/[0.06] px-4 py-3">
+      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
+        {/* Save (Act→State) — save this idea to the shelf (snapshot = block props) */}
+        <SaveAffordance item_type="idea" title={title} snapshot={block.props} />
+
         {!developed ? (
           <>
             <button
