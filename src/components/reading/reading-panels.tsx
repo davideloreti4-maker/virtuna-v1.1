@@ -10,7 +10,9 @@ import {
   buildSegmentGroups,
   worstBadGroupKey,
 } from '@/components/board/audience/audience-derive';
+import { useState } from 'react';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { AudienceLens } from '@/components/audience-lens/AudienceLens';
 import { ScoreDistribution } from '@/components/board/verdict/ScoreDistribution';
 import { confidenceRange, deriveBehavioralTiles } from '@/components/board/verdict/verdict-derive';
 import { useComparisons } from '@/components/board/verdict/use-comparisons';
@@ -182,16 +184,23 @@ function PersonasPanel({ data }: { data: PredictionResult }) {
   const reducedMotion = usePrefersReducedMotion();
   const nodes = buildAudienceNodes(data);
   if (nodes.length === 0) return <PanelEmpty />;
-  return <AudienceList nodes={nodes} reducedMotion={reducedMotion} />;
+  return <AudienceList nodes={nodes} reducedMotion={reducedMotion} data={data} />;
 }
 
 function AudienceList({
   nodes,
   reducedMotion,
+  data,
 }: {
   nodes: PersonaNode[];
   reducedMotion: boolean;
+  data: PredictionResult;
 }) {
+  // The onOpen seam → opens the living AudienceLens (Pitfall 1: previously a dead
+  // stub wired to no consumer). The inline graph below is wrapped in a ≥44px
+  // tap/keyboard affordance whose handler opens the Lens with this Reading's
+  // heatmap + sim results (the rich-signal surface that carries the timeline).
+  const [lensOpen, setLensOpen] = useState(false);
   // Rank best watch-through → worst, so the coral "drops first" cluster sinks to
   // the bottom where it reads as the thing to fix.
   const sorted = [...nodes].sort((a, b) => b.watchThrough - a.watchThrough);
@@ -200,10 +209,35 @@ function AudienceList({
       subtitle="Who watches — and who drops first."
       legend={<LegendKey tone="accent">drops first</LegendKey>}
     >
-      {/* demoted graph: a small textured header, not the load-bearing visual */}
-      <div className="overflow-hidden rounded-[8px] border border-[var(--color-border)]">
+      {/* demoted graph: a small textured header, not the load-bearing visual.
+          Tapping it opens the living AudienceLens (onOpen seam — Pitfall 1 closed). */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label="Open the living audience lens"
+        onClick={() => setLensOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setLensOpen(true);
+          }
+        }}
+        className="cursor-pointer overflow-hidden rounded-[8px] border border-[var(--color-border)] transition-colors hover:bg-[var(--color-hover)]"
+        style={{ minHeight: 44 }}
+      >
         <PersonaGraph personas={nodes} height={120} reducedMotion={reducedMotion} />
       </div>
+
+      {/* The living AudienceLens — opened from the seam above. No Read block on the
+          video Reading surface (it carries a heatmap timeline, not a Read card), so
+          the header is omitted and the Lens leads with the replayable constellation. */}
+      <AudienceLens
+        heatmap={data.heatmap ?? null}
+        simResults={data.persona_simulation_results}
+        reducedMotion={reducedMotion}
+        open={lensOpen}
+        onOpenChange={setLensOpen}
+      />
       {/* the readable instrument: segment · drop time · watch-through */}
       <ul data-testid="panel-personas-list" className="flex flex-col">
         {sorted.map((n) => {

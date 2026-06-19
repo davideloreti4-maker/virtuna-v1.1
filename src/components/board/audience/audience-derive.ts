@@ -380,6 +380,21 @@ function round(n: number): number {
 // the same numbers that already feed the legacy rows, just reshaped.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** First real segment-reason note for a persona (verbatim, never fabricated).
+ *  Returns undefined when the persona has no inflection-point notes. */
+function firstSegmentReason(reasons: Record<number, string> | undefined): string | undefined {
+  if (!reasons) return undefined;
+  const keys = Object.keys(reasons)
+    .map((k) => Number(k))
+    .filter((k) => Number.isFinite(k))
+    .sort((a, b) => a - b);
+  for (const k of keys) {
+    const v = reasons[k];
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+  }
+  return undefined;
+}
+
 /** Mean of a persona's per-segment attentions on a 0-1 scale. */
 function personaAttentionMean(attentions: number[]): number {
   if (attentions.length === 0) return 0;
@@ -456,6 +471,10 @@ export function buildPersonaNodes(
       segment: SLOT_LABEL[slot],
       dropAt: p.swipe_predicted_at != null ? formatTime(p.swipe_predicted_at) : undefined,
       tone: badKey != null && slot === badKey ? ('accent' as const) : ('default' as const),
+      // Verbatim reaction to THIS concept for the Lens drill-down (LIVE-02). On the
+      // video surface the only real per-persona reaction text is `segment_reasons`
+      // (sparse inflection-point notes) — pick the first one, never fabricated.
+      quote: firstSegmentReason(p.segment_reasons),
     };
   });
 }
