@@ -155,6 +155,6 @@ reuses its typed-block renderers.
 | LIVE-02 | Phase 9 | Pending |
 | LIVE-03 | Phase 9 | Pending |
 | LIVE-04 | Phase 9 | Pending |
-| LIVE-05 | Phase 9 | Pending |
+| LIVE-05 | Phase 9 | Pending (math core landed 09-01; swarm/counters/cascade UI W4) |
 | LIVE-06 | Phase 9 | Pending |
 | LIVE-07 | Phase 9 | Pending |
