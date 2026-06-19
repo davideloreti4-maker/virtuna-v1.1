@@ -77,6 +77,16 @@ reuses its typed-block renderers.
 - [x] **SCRIPT-01**: Script tool — from a chosen hook/idea → a script card (beats + timing + per-beat retention markers), content-first with a Flash viability beat + self-judge gate, sitting hooks→script→test, landing on "Test full →". (Diagnose mode — paste existing script → line-edits + drop-point — may follow.)
 - [x] **REMIX-01**: Remix tool — an alternate funnel-top entry: paste a trending/competitor URL or pick the creator's own winner → decode *why it worked* → generate *their* niche/voice version (new hook + script angle) → Flash score → feed the Hooks/Test chain. **Preceded by a reuse scout** of `milestone/viral-remix` (Ingestion + Remix Mode COMPLETE) + `viral-remix-adapt` + `src/app/api/remix/adapt/` — revive, don't rebuild.
 
+### LIVE — Living Audience (AudienceLens, P9)
+
+- [ ] **LIVE-01**: reaction replay (segment-by-segment on the video Test timeline via HeatmapPayload.personas[].attentions[]; staggered cascade elsewhere — D-06).
+- [ ] **LIVE-02**: node drill-down (tap dot → archetype + verbatim reaction to this concept).
+- [ ] **LIVE-03**: chat-with-persona (in-voice, grounded via chat-runner extension; sub-thread persisted within the Read).
+- [ ] **LIVE-04**: segment clustering (Temp × Disposition lens via buildSegmentGroups).
+- [ ] **LIVE-05**: Population·1,000 (deterministic mulberry32 swarm + live counters + cascade + archetype breakdown — D-02, zero model calls).
+- [ ] **LIVE-06**: AudienceLens retrofit (one reusable Lens across all 6 skills, degrade by feature — D-04).
+- [ ] **LIVE-07**: Rewrite-for-audience loop (lever-as-steering via CHAIN_HANDOFFS → new card + Read showing delta — D-05).
+
 ---
 
 ## Cross-cutting constraints
@@ -141,3 +151,10 @@ reuses its typed-block renderers.
 | STUDIO-03 | Phase 5 | Complete (05-04) |
 | SCRIPT-01 | Phase 6 | Complete |
 | REMIX-01 | Phase 6 | Complete |
+| LIVE-01 | Phase 9 | Pending |
+| LIVE-02 | Phase 9 | Pending |
+| LIVE-03 | Phase 9 | Pending |
+| LIVE-04 | Phase 9 | Pending |
+| LIVE-05 | Phase 9 | Pending |
+| LIVE-06 | Phase 9 | Pending |
+| LIVE-07 | Phase 9 | Pending |
