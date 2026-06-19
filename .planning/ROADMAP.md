@@ -25,7 +25,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 5: Studio Conversation Layer** - Make the studio feel like ONE conversation: profile-grounded open chat (no anchoring Reading) + Reading reframed as "Test · powered by SIM-1 Max" + Perplexity-style progress, cards embedded in chat, chat-to-refine (scoped re-run → re-tested card), and the generic skill-to-skill chain plumbing (completed 2026-06-18)
 - [x] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing (completed 2026-06-18)
 - [x] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
-- [ ] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)*
+- [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [ ] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DRAFT 2026-06-18 — not yet discussed)*
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
@@ -316,7 +316,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Reuse vs new:** the cloud primitives, reaction data, persona prompts, and chat-runner all exist. **New build:** the replay animation, the node→card drill interaction, and the per-persona grounded chat session.
 
 **Requirements:** LIVE-01 (reaction replay), LIVE-02 (node drill-down), LIVE-03 (chat-with-persona), LIVE-04 (segment clustering), LIVE-05 (Population·1,000), LIVE-06 (AudienceLens retrofit), LIVE-07 (Rewrite-for-audience loop) — formalized in REQUIREMENTS.md (planned 09-01).
-**Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.**Plans:** 3/5 plans executed
+**Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.**Plans:** 5/5 plans complete
 **Wave 1**
 
 - [x] 09-01-PLAN.md — Formalize LIVE-* + pure lens-derive math core (1,000-from-10, weighted rollup, cascade order) [W1]
@@ -332,7 +332,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 09-05-PLAN.md — Population·1,000 deterministic swarm + weighted counters + batched cascade [W4]
+- [x] 09-05-PLAN.md — Population·1,000 deterministic swarm + weighted counters + batched cascade [W4]
 
 **UI hint:** yes
 
