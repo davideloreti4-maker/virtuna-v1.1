@@ -26,6 +26,7 @@ import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 
 export interface ScriptCardRendererProps {
   block: ScriptCardBlock;
@@ -102,6 +103,13 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         <LensTrigger
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
+          rewrite={buildCardRewrite({
+            skill: 'script',
+            fraction,
+            scrollQuote,
+            conceptText: openingBeatSeed || (beats[0]?.content ?? ''),
+            platform: 'tiktok',
+          })}
           label="See how the room reacted to this opener"
         >
           <blockquote

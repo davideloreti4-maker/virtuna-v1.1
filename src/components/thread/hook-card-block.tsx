@@ -30,6 +30,7 @@ import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnTestHook, useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -128,6 +129,13 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
         <LensTrigger
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
+          rewrite={buildCardRewrite({
+            skill: 'hooks',
+            fraction,
+            scrollQuote,
+            conceptText: hookLine,
+            platform: 'tiktok',
+          })}
           label="See how the room reacted to this hook"
         >
           <blockquote

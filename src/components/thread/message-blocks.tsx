@@ -42,9 +42,39 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
 export interface MessageBlocksProps {
   /** Raw JSON array stored in messages.body (D-13). */
   body: unknown[];
+  /**
+   * The concept text this message's audience reacted to (LIVE-03 / LIVE-06). When present
+   * it is threaded into the `personas` block so the text-Read surface mounts the reusable
+   * AudienceLens with a concept to ground the "Ask them why →" chat. Additive/optional:
+   * when absent the renderer falls back to the in-band concept (a co-located `markdown`
+   * block in the SAME body — the concept the personas reacted to in that turn). Every other
+   * block renderer is invoked byte-identically (`<Component block={block} />`) regardless.
+   */
+  conceptText?: string;
 }
 
-export function MessageBlocks({ body }: MessageBlocksProps) {
+/**
+ * In-band concept fallback: the concept text a `personas` block reacted to is, by the
+ * test-turn shape, carried as a `markdown` block in the SAME message body. We pick the
+ * FIRST validated markdown block's text. Honest — never fabricated; returns undefined
+ * when no markdown block is present (the Lens then gates chat off, by design).
+ */
+function inBandConceptText(body: unknown[]): string | undefined {
+  for (const rawBlock of body) {
+    const result = validateBlock(rawBlock);
+    if (result.ok && result.block.type === 'markdown') {
+      const text = result.block.props.text;
+      if (typeof text === 'string' && text.trim().length > 0) return text;
+    }
+  }
+  return undefined;
+}
+
+export function MessageBlocks({ body, conceptText }: MessageBlocksProps) {
+  // Prefer the explicit concept (threaded by the test/Read view); else derive the
+  // in-band concept from a co-located markdown block (LIVE-06 text-Read surface).
+  const personaConcept = conceptText ?? inBandConceptText(body);
+
   return (
     <div className="flex flex-col gap-3">
       {body.map((rawBlock, index) => {
@@ -60,6 +90,15 @@ export function MessageBlocks({ body }: MessageBlocksProps) {
         if (!Component) {
           // Fallback for a registered type with no component (should not happen but be safe).
           return <UnsupportedBlock key={index} />;
+        }
+
+        // The `personas` (text-Read) renderer additively accepts a `conceptText` so the
+        // shared AudienceLens mounts with a concept to ground chat (LIVE-03 (b) / LIVE-06).
+        // All other renderers are invoked byte-identically — no behavior change for them.
+        if (block.type === 'personas' && personaConcept) {
+          return (
+            <PersonasBlockRenderer key={index} block={block} conceptText={personaConcept} />
+          );
         }
 
         return <Component key={index} block={block} />;

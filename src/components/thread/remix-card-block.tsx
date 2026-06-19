@@ -34,6 +34,7 @@ import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 
 export interface RemixCardRendererProps {
   block: RemixCardBlock;
@@ -152,6 +153,15 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={adaptedHook}
           platform={platform}
+          rewrite={buildCardRewrite({
+            skill: 'remix',
+            fraction,
+            scrollQuote,
+            conceptText: adaptedHook,
+            platform,
+            // remix self-handoff → /api/tools/ideas/develop (anchor-only); lever rides anchor.
+            leverRidesAnchor: true,
+          })}
           label="See how the room reacted to this adapted hook"
         >
           <blockquote

@@ -178,6 +178,35 @@ export function buildAudienceNodes(data: PredictionResult): PersonaNode[] {
   return buildPersonaNodes(heatmap, data.persona_simulation_results, badKey);
 }
 
+/**
+ * The concept text this Reading's audience reacted to — grounds the "Ask them why →"
+ * persona chat in the AudienceLens (LIVE-03). Sourced HONESTLY from the real engine
+ * output (never fabricated): the verbatim hook (spoken + on-screen text from the first
+ * ~3s, the thing the room reacted to) is the primary signal; when no hook verbatim is
+ * present we fall back to the first segment's verbatim. Returns undefined when no real
+ * verbatim exists at all — the Lens then correctly gates chat off (no concept to ground).
+ */
+export function readingConceptText(data: PredictionResult): string | undefined {
+  const v = data.verbatim;
+  if (!v) return undefined;
+  const hookParts = [v.hook?.spoken_words, v.hook?.on_screen_text]
+    .map((s) => (typeof s === 'string' ? s.trim() : ''))
+    .filter((s) => s.length > 0);
+  if (hookParts.length > 0) return hookParts.join('\n');
+  const firstSeg = v.segments?.find(
+    (s) =>
+      (typeof s.spoken_text === 'string' && s.spoken_text.trim().length > 0) ||
+      (typeof s.on_screen_text === 'string' && s.on_screen_text.trim().length > 0),
+  );
+  if (firstSeg) {
+    const segParts = [firstSeg.spoken_text, firstSeg.on_screen_text]
+      .map((s) => (typeof s === 'string' ? s.trim() : ''))
+      .filter((s) => s.length > 0);
+    if (segParts.length > 0) return segParts.join('\n');
+  }
+  return undefined;
+}
+
 /** PersonasPanel (D-03) — list-led (UX rework): the ranked persona list IS the
  *  content; the graph is demoted to a small header strip. Empty nodes → PanelEmpty. */
 function PersonasPanel({ data }: { data: PredictionResult }) {
@@ -230,10 +259,15 @@ function AudienceList({
 
       {/* The living AudienceLens — opened from the seam above. No Read block on the
           video Reading surface (it carries a heatmap timeline, not a Read card), so
-          the header is omitted and the Lens leads with the replayable constellation. */}
+          the header is omitted and the Lens leads with the replayable constellation.
+          conceptText = the verbatim the room reacted to (LIVE-03) — grounds the
+          "Ask them why →" chat on this rich-signal surface where real registry-enum
+          archetype nodes already flow. Undefined when no verbatim → chat stays gated
+          (honest: no concept to ground on). */}
       <AudienceLens
         heatmap={data.heatmap ?? null}
         simResults={data.persona_simulation_results}
+        conceptText={readingConceptText(data)}
         reducedMotion={reducedMotion}
         open={lensOpen}
         onOpenChange={setLensOpen}

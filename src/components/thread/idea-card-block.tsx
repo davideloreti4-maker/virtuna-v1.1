@@ -32,6 +32,7 @@ import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -149,6 +150,13 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={`${title}\n\n${angle}`}
           platform={platform}
+          rewrite={buildCardRewrite({
+            skill: 'idea',
+            fraction,
+            scrollQuote,
+            conceptText: `${title}\n\n${angle}`,
+            platform,
+          })}
           label="See how the room reacted to this idea"
         >
           <blockquote
