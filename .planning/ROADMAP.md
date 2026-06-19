@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** 3/7 plans executed
+**Plans:** 4/7 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -363,7 +363,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
 
 - [x] 10-03-PLAN.md — Outcome capture: pin predicted vector at SIM run + paste-URL signature SSE route + capture form [FLYWHEEL-01/02/03]
-- [ ] 10-04-PLAN.md — Saved shelf: typed /api/saved + flat (app)/saved surface + Save affordance + Use-in-thread via CHAIN_HANDOFFS + nav [SAVE-01/02]
+- [x] 10-04-PLAN.md — Saved shelf: typed /api/saved + flat (app)/saved surface + Save affordance + Use-in-thread via CHAIN_HANDOFFS + nav [SAVE-01/02]
 
 **Wave 3** *(blocked on Wave 2)*
 

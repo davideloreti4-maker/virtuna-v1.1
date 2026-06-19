@@ -99,8 +99,8 @@ reuses its typed-block renderers.
 
 > Flat connective tissue across skills; P12-Library-extendable. Flat guard: **NO folders/tags/CMS**. See D-07.
 
-- [ ] **SAVE-01**: Typed saved-items store — a flat, typed `saved_items` table (Read / idea / hook / script / outlier / format), P12-extendable; no folders/tags/CMS.
-- [ ] **SAVE-02**: Shelf surface + thread↔shelf wiring — a flat Saved surface (own nav item) where every thread output is savable and every shelf item is actionable back into a thread (Acts/State IA).
+- [x] **SAVE-01**: Typed saved-items store — a flat, typed `saved_items` table (Read / idea / hook / script / outlier / format), P12-extendable; no folders/tags/CMS.
+- [x] **SAVE-02**: Shelf surface + thread↔shelf wiring — a flat Saved surface (own nav item) where every thread output is savable and every shelf item is actionable back into a thread (Acts/State IA).
 
 ### FLYWHEEL — recalibration loop (the moat, P10)
 

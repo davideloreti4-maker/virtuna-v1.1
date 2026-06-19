@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: completed
 stopped_at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
-last_updated: "2026-06-19T14:39:27.977Z"
+last_updated: "2026-06-19T14:51:11.623Z"
 last_activity: 2026-06-19 -- Phase 10 Plan 02 complete
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 50
-  completed_plans: 47
+  completed_plans: 48
   percent: 90
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Plan 02 complete — flywheel + shelf persistence rails landed (migrations written, push deferred to Plan 07)
 Last activity: 2026-06-19 -- Phase 10 Plan 02 complete
 
@@ -141,6 +141,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: [Phase 08-04]: REMIX-01 adapt niche = profileNiche · audience.name (goal_label); remix-card audienceName prop optional, omitted for General
 - [Phase ?]: 08-05: multi-audience-read block (the Read) ships single-audience static card — bands only (.strict() rejects numeric score), who-not-for from low-disposition personas (no model call), audiences array W4-ready for 08-06
 - [Phase ?]: 10-03: predicted vector pinned once at SIM run (pinPredictedSignature), never recomputed (Pitfall 6); outcome capture reconciles realized only against the pin
+- [Phase ?]: Plan 10-04: Saved shelf flat/typed (D-07); remix output saves as item_type 'hook'; shelf items launch via CHAIN_HANDOFFS SSOT
 
 ### Roadmap Evolution
 
@@ -165,7 +166,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T14:39:05.467Z
+Last session: 2026-06-19T14:51:03.843Z
 Stopped at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
 Next: Phase 10 Plan 03 (outcome capture — wires outcome-repo + scrapeSinglePostMetrics)
 Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel-draft-not-ye/10-03-PLAN.md
@@ -214,3 +215,4 @@ Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel
 | Phase 10 P01 | 18 | 3 tasks | 9 files |
 | Phase 10 P02 | 25min | 3 tasks (1 checkpoint) | 10 files |
 | Phase 10 P03 | 22 | 3 tasks | 6 files |
+| Phase 10 P04 | 25min | 3 tasks | 12 files |
