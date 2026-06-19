@@ -80,3 +80,76 @@ export type ApifyProfile = z.infer<typeof apifyProfileSchema>;
 
 /** Validated Apify video data (after Zod parsing) */
 export type ApifyVideo = z.infer<typeof apifyVideoSchema>;
+
+// ───────────────────────────────────────────────────────────────────────────
+// apidojo Discover actors (Phase 08, D-12) — DIFFERENT field names than clockworks.
+//
+// Pitfall 1: apidojo/tiktok-scraper returns `views/likes/comments/shares/bookmarks/
+// uploadedAt/channel.followers` where clockworks returns `playCount/diggCount/
+// shareCount/commentCount/collectCount/createTime`. Reusing apifyVideoSchema above
+// would SILENTLY ZERO every metric (each metric field has `.default(0)` and the key
+// names never match). These apidojo-shaped schemas remap onto the SAME VideoData /
+// ProfileData interface so every downstream consumer (outlier-compute, the grid) is
+// actor-agnostic (RESEARCH Pattern 2: normalize at the scrape boundary).
+//
+// The clockworks apifyVideoSchema / apifyProfileSchema above are LEFT UNTOUCHED — the
+// existing competitors/cron/webhook path still consumes them (A4: Discover-scoped swap,
+// not a global retire).
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * apidojo/tiktok-scraper video item.
+ * Field map (apidojo → VideoData): views→views, likes→likes, comments→comments,
+ * shares→shares, bookmarks→saves, uploadedAt→postedAt (Date), id→platformVideoId.
+ * `uploadedAt` is an ISO-8601 string (apidojo) — coerced to Date.
+ */
+export const apidojoVideoSchema = z.object({
+  // id may arrive as a number (apidojo) — coerce to string, but require it present
+  // (reject undefined/null so junk items are skipped rather than yielding "undefined").
+  id: z.union([z.string(), z.number()]).transform((v) => String(v)),
+  // apidojo exposes the canonical post URL under postPage / webVideoUrl depending on
+  // dataset version; accept either, default to "".
+  postPage: z.string().url().optional(),
+  webVideoUrl: z.string().url().optional(),
+  title: z.string().optional().default(""),
+  uploadedAt: z.string().optional(),
+  views: z.coerce.number().int().nonnegative().default(0),
+  likes: z.coerce.number().int().nonnegative().default(0),
+  comments: z.coerce.number().int().nonnegative().default(0),
+  shares: z.coerce.number().int().nonnegative().default(0),
+  bookmarks: z.coerce.number().int().nonnegative().default(0),
+  hashtags: z
+    .array(z.union([z.string(), z.object({ name: z.string() })]))
+    .optional()
+    .default([]),
+  video: z.object({ duration: z.coerce.number().optional() }).optional(),
+  channel: z
+    .object({
+      followers: z.coerce.number().int().nonnegative().optional(),
+    })
+    .optional(),
+});
+
+/**
+ * apidojo/tiktok-profile-scraper item.
+ * Field map (apidojo → ProfileData): channel.username→handle, channel.name→displayName,
+ * channel.bio→bio, channel.avatar→avatarUrl, channel.verified→verified,
+ * channel.followers→followerCount, channel.following→followingCount,
+ * channel.hearts→heartCount, channel.videos→videoCount.
+ */
+export const apidojoProfileSchema = z.object({
+  channel: z.object({
+    username: z.string().transform(normalizeHandle),
+    name: z.string().optional().default(""),
+    bio: z.string().optional().default(""),
+    avatar: z.string().url().optional(),
+    verified: z.boolean().optional().default(false),
+    followers: z.coerce.number().int().nonnegative().default(0),
+    following: z.coerce.number().int().nonnegative().default(0),
+    hearts: z.coerce.number().int().nonnegative().default(0),
+    videos: z.coerce.number().int().nonnegative().default(0),
+  }),
+});
+
+export type ApidojoVideo = z.infer<typeof apidojoVideoSchema>;
+export type ApidojoProfile = z.infer<typeof apidojoProfileSchema>;

@@ -1,7 +1,8 @@
 import { ApifyClient } from "apify-client";
 import {
-  apifyProfileSchema,
   apifyVideoSchema,
+  apidojoProfileSchema,
+  apidojoVideoSchema,
 } from "@/lib/schemas/competitor";
 import type {
   ProfileData,
@@ -11,7 +12,17 @@ import type {
 } from "./types";
 import { IngestError } from "./types";
 
-const PROFILE_ACTOR = "clockworks/tiktok-profile-scraper";
+// ── Discover actors (Phase 08, D-12) — apidojo split actors ──────────────────
+// scrapeVideos / scrapeProfile pull search/profile result sets for Discover and run
+// on apidojo. apidojo returns a materially different field shape than clockworks
+// (Pitfall 1) — the apidojo*Schema remaps it onto VideoData/ProfileData.
+const DISCOVER_PROFILE_ACTOR = "apidojo/tiktok-profile-scraper";
+const DISCOVER_VIDEO_ACTOR = "apidojo/tiktok-scraper";
+
+// ── Remix rehost actor — LEFT on the single-URL-capable clockworks actor ──────
+// Pitfall 2: apidojo/tiktok-scraper FORBIDS single-post URLs (requires ≥10 posts/query).
+// resolveVideoUrl passes one `postURLs:[url]` + `shouldDownloadVideos:true` for the
+// Remix rehost — it MUST stay on clockworks. Do NOT repoint this to a DISCOVER_* slug.
 const VIDEO_ACTOR = "clockworks/tiktok-scraper";
 
 /**
@@ -66,6 +77,53 @@ function isAllowedMp4Host(mp4Url: string): boolean {
   );
 }
 
+/**
+ * Remap one apidojo/tiktok-scraper item onto VideoData (Pitfall 1 mitigation).
+ * Returns null (skipped) when the item fails to parse — mirrors the batch-skip
+ * behaviour the clockworks path used. uploadedAt (ISO string) → postedAt (Date).
+ */
+export function remapApidojoVideo(item: unknown): VideoData | null {
+  const result = apidojoVideoSchema.safeParse(item);
+  if (!result.success) {
+    console.warn(`[scraping] apidojo video validation failed:`, result.error.issues);
+    return null;
+  }
+
+  const v = result.data;
+  const postedAt = v.uploadedAt ? new Date(v.uploadedAt) : new Date();
+
+  return {
+    platformVideoId: v.id,
+    videoUrl: v.postPage ?? v.webVideoUrl ?? "",
+    caption: v.title,
+    views: v.views,
+    likes: v.likes,
+    comments: v.comments,
+    shares: v.shares,
+    saves: v.bookmarks, // apidojo `bookmarks` is the save metric
+    hashtags: v.hashtags.map((h) => (typeof h === "string" ? h : h.name)),
+    durationSeconds: v.video?.duration ?? 0,
+    // Guard an unparseable date string → fall back to now (never NaN postedAt).
+    postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
+  };
+}
+
+/** Remap one apidojo/tiktok-profile-scraper item onto ProfileData. */
+export function remapApidojoProfile(item: unknown): ProfileData {
+  const { channel } = apidojoProfileSchema.parse(item);
+  return {
+    handle: channel.username,
+    displayName: channel.name,
+    bio: channel.bio,
+    avatarUrl: channel.avatar ?? "",
+    verified: channel.verified,
+    followerCount: channel.followers,
+    followingCount: channel.following,
+    heartCount: channel.hearts,
+    videoCount: channel.videos,
+  };
+}
+
 export class ApifyScrapingProvider implements ScrapingProvider {
   private client: ApifyClient;
 
@@ -77,7 +135,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
 
   async scrapeProfile(handle: string): Promise<ProfileData> {
     const run = await this.client
-      .actor(PROFILE_ACTOR)
+      .actor(DISCOVER_PROFILE_ACTOR)
       .call(
         { profiles: [handle], resultsPerPage: 1 },
         { waitSecs: 60 },
@@ -91,24 +149,12 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new Error(`No profile data returned for handle: ${handle}`);
     }
 
-    const { authorMeta } = apifyProfileSchema.parse(items[0]);
-
-    return {
-      handle: authorMeta.name,
-      displayName: authorMeta.nickName,
-      bio: authorMeta.signature,
-      avatarUrl: authorMeta.avatar ?? "",
-      verified: authorMeta.verified,
-      followerCount: authorMeta.fans,
-      followingCount: authorMeta.following,
-      heartCount: authorMeta.heart,
-      videoCount: authorMeta.video,
-    };
+    return remapApidojoProfile(items[0]);
   }
 
   async scrapeVideos(handle: string, limit = 30): Promise<VideoData[]> {
     const run = await this.client
-      .actor(VIDEO_ACTOR)
+      .actor(DISCOVER_VIDEO_ACTOR)
       .call(
         { profiles: [handle], resultsPerPage: limit },
         { waitSecs: 120 },
@@ -119,33 +165,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       .listItems();
 
     return items
-      .map((item) => {
-        const result = apifyVideoSchema.safeParse(item);
-        if (!result.success) {
-          console.warn(
-            `[scraping] Video validation failed:`,
-            result.error.issues,
-          );
-          return null;
-        }
-
-        const v = result.data;
-        return {
-          platformVideoId: v.id,
-          videoUrl: v.webVideoUrl ?? "",
-          caption: v.text,
-          views: v.playCount,
-          likes: v.diggCount,
-          comments: v.commentCount,
-          shares: v.shareCount,
-          saves: v.collectCount,
-          hashtags: v.hashtags.map((h) => h.name),
-          durationSeconds: v.videoMeta?.duration ?? 0,
-          postedAt: v.createTime
-            ? new Date(v.createTime * 1000)
-            : new Date(),
-        };
-      })
+      .map((item) => remapApidojoVideo(item))
       .filter((v): v is VideoData => v !== null);
   }
 
