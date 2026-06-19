@@ -162,7 +162,7 @@ reuses its typed-block renderers.
 - [x] **KCQ-05**: SIM-rank verification loop (#9) — generate→render→simulate→rank+why; the foresight centerpiece (formalize/extend the existing Flash gate).
 - [x] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
 - [ ] **KCQ-07**: Runtime trope-injection + specificity auto-reject (#4/#5) — corpus floor done in P2; runtime enforcement here.
-- [ ] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
+- [x] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
 - [ ] **KCQ-09**: Field-level legibility — surface *which* profile/audience/KC field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness). *(Surfaces via P12 IA where relevant.)*
 
 ### INTENT / REACT / BLOCK — Marketing Intent mode-switch (P15)
@@ -192,7 +192,7 @@ reuses its typed-block renderers.
 - [ ] **UX-02**: Creator-skills vs marketing-skills differentiation in the composer/IA — same surface, distinct grouping (owner: "we differentiate between creator skills and marketing skills"). Folds into P15/P16 + the P12 IA.
 - [ ] **INFRA-01 (pre-launch)**: Video storage → Cloudflare R2 migration + Supabase free/Pro tier planning for first ~100 users; confirm live video playback on R2 in the analysis result. (Owner launch-readiness thread; ties to HARDEN-01 + billing.)
 - [ ] **PERF-01**: Model-routing + latency — Test E2E ~4min is too slow (owner); evaluate switching the text-skill audience-sim from `qwen-3.7-plus` → `3.6-flash` for speed; resolve the engine model-flip **pending on branch `fix/flash-coercion-stability`** (memory `engine-model-assignment`). Engine is OPEN this milestone but regression-gated. See memory `engine-latency-optimization`.
-- [ ] **HONESTY-01**: Chat citation pills are **fake labels, not real RAG** (memory `chat-citations-not-grounded`) — honesty-spine violation. Either ground them for real (fits KCQ-03 exemplar RAG) or drop the pills. Resolve with P14.
+- [x] **HONESTY-01**: Chat citation pills are **fake labels, not real RAG** (memory `chat-citations-not-grounded`) — honesty-spine violation. Either ground them for real (fits KCQ-03 exemplar RAG) or drop the pills. Resolve with P14.
 
 > **Out of product scope (GTM, note only):** the 5 UGC marketing accounts (the founder/content/media/creator/brand "report" accounts), logos, account-warming — go-to-market execution, not a build phase.
 

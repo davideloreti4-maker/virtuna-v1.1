@@ -230,7 +230,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 11. Explore (Audience-Curated Discovery) | — | Planned (expansion) |  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
-| 14. KC Grounding & Quality-Loop | 1/4 | In Progress|  |
+| 14. KC Grounding & Quality-Loop | 2/4 | In Progress|  |
 | 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
 | 16. Commerce Skills | — | Planned (expansion) |  |
 
@@ -431,12 +431,12 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Engine note:** text-path / corpus / UI work — keep the flash+kc regression suites green + preserve same-video Max score-identity; NO `ENGINE_VERSION` bump (niche resolution lives at the runner layer, engine bytes untouched). Corpus fold-in bumps `KC_GEN_VERSION` only.
 **UI hint:** minimal (KCQ-09 inline rationale + KCQ-04 opt-in flop reveal + HONESTY-01 pill deletion — small edits to existing fixed renderers; full field-legibility surface deferred to P12 IA).
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
 - [x] 14-01-PLAN.md — Moat spine: `resolveNicheKey` at the runner layer + Ideas/Hooks panel wiring + slop-vs-strong recalibration with real resolved niches + gate formalization [KCQ-06, KCQ-01, KCQ-05]
-- [ ] 14-03-PLAN.md — Corpus + voice + honesty: voice priority promotion + style-match instruction + the owner's 26 hook templates folded under hooks.md (KC_GEN_VERSION bump) + delete the fake §N citation pills *(autonomous: false — owner supplies the 26 templates + map-before-merge at execution)* [KCQ-08, HONESTY-01]
+- [x] 14-03-PLAN.md — Corpus + voice + honesty: voice priority promotion + style-match instruction + the owner's 26 hook templates folded under hooks.md (KC_GEN_VERSION bump) + delete the fake §N citation pills *(autonomous: false — owner supplies the 26 templates + map-before-merge at execution)* [KCQ-08, HONESTY-01]
 
 **Wave 2** *(blocked on 14-01)*
 

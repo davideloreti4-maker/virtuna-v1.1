@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 14-01-PLAN.md
-last_updated: "2026-06-19T22:32:41.404Z"
+stopped_at: Completed 14-03-PLAN.md
+last_updated: "2026-06-19T23:04:05.954Z"
 last_activity: 2026-06-19 -- Phase 14 execution started
 progress:
   total_phases: 16
   completed_phases: 10
   total_plans: 54
-  completed_plans: 52
+  completed_plans: 53
   percent: 63
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 14 (kc-grounding-quality-loop-expansion-the-durable-moat-not-yet) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-19 -- Phase 14 execution started
 
@@ -163,6 +163,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 10 / 10-06]: DEFERRED — drift composition-shift sensitivity is engine-side: deriveAudienceProfile derives dispositions profile-agnostically (from goal-intent bias, not scraped composition), so hasShift rarely fires until calibration derives real composition from scraped signals. Drift PATH complete + correct; making the shift detectable is a calibration-math change (Plan 07+ / owner calibration refinement).
 - [Phase ?]: [Phase 14 / 14-01]: resolveNicheKey lives at the RUNNER layer (D-02/Pitfall 2) — free-text/sub-slug niche_primary normalized to a top-level NICHE_INSTANTIATION key before the SIM panel; selectPersonaSlots + NICHE_INSTANTIATION bytes untouched, no ENGINE_VERSION bump (still 3.19.0)
 - [Phase ?]: [Phase 14 / 14-01]: KCQ-05 gate floor = band !== Weak (stops >= MIXED_THRESHOLD); thresholds held STRONG=6/MIXED=3 with drift gate; LIVE recalibration deferred (no DASHSCOPE_API_KEY in exec env)
+- [Phase 14 / 14-03]: KCQ-08 — voice moved out of MODE_ROLES tail for idea/hooks/script/remix (chat unchanged) so a BUNDLE_CHAR_CAP drop sheds wins/flops/platform before voice; formatVoice carries explicit 'Write in this voice' directive; volatile path only (compiled.ts/system prompt byte-unchanged)
+- [Phase 14 / 14-03]: D-18 map-before-merge delegated to executor (owner supplied 26 raw-labeled templates); mapped by dominant mechanism to BOLDx8/GAPx5/CONTRARIANx5/NARRATIVEx6/RESEARCHx1/QUESTIONx2; folded under hooks.md archetype table as private-reasoning-only exemplars; KC_GEN_VERSION gen.1.0.0->gen.1.1.0, ENGINE_VERSION unchanged
+- [Phase 14 / 14-03]: HONESTY-01 — fake §N citation pills deleted from ExpertChatThread (CORPUS_SECTIONS + insertCitationMarkers + §cite branch), render {content} directly; no re-light (D-14); board-frame pills + real-code render intact
 
 ### Roadmap Evolution
 
@@ -187,8 +190,8 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T22:32:41.396Z
-Stopped at: Completed 14-01-PLAN.md
+Last session: 2026-06-19T23:04:05.945Z
+Stopped at: Completed 14-03-PLAN.md
 Next: Phase 10 Plan 07 (DB push + database.types.ts regen + remove (supabase as any) casts + live UAT — BLOCKING)
 Resume file: None
 
@@ -240,3 +243,4 @@ Resume file: None
 | Phase 10 P05 | 6 | 3 tasks | 7 files |
 | Phase 10 P06 | 7min | 3 tasks (1 TDD) | 8 files |
 | Phase 14-kc-grounding-quality-loop P01 | 14min | 2 tasks | 7 files |
+| Phase 14-kc-grounding-quality-loop P03 | 20min | 3 tasks | 6 files |
