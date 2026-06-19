@@ -120,6 +120,12 @@ None — no external service configuration required. Zero new packages (RESEARCH
 - The deterministic math spine is ready to be wired into persistence (10-02) and outcome capture (10-03); `buildOverride` is the only write-shape the recalibration wiring (10-05) needs.
 - **REQUIREMENTS.md note (carried from plan):** FLYWHEEL-02/03/04 are not yet enumerated in `.planning/REQUIREMENTS.md` (established Phase-8 provisional gap). `requirements mark-complete` will report `not_found` until REQUIREMENTS.md is reconciled before `/gsd-verify-phase 10`.
 
+## Self-Check: PASSED
+
+- All 9 files verified on disk (5 modules + 4 test files).
+- All 7 commits verified in git history (6 task commits a28cfb3c→d43ced29 + docs 8c8018f4).
+- Working tree clean.
+
 ---
 *Phase: 10-account-read-saved-shelf-recalibration-flywheel*
 *Completed: 2026-06-19*
