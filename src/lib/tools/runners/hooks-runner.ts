@@ -35,6 +35,7 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
+ *   - flash/rubric-critic.ts (critiqueAgainstRubric) — 14-02 best-of-N + flop pass (KCQ-02/04/07)
  *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
  *   - tools/hooks/audience-archetype.ts (deriveAudienceArchetype)
  *   - tools/blocks.ts (HookCardBlockSchema, HookCardBlock)
@@ -46,6 +47,7 @@ import { KC_HOOKS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
+import { critiqueAgainstRubric } from "@/lib/engine/flash/rubric-critic";
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
@@ -301,14 +303,8 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     profileRow,
   );
 
-  const hooks = await generateHooksStructured(userMessage);
-
   // Record which path shipped (Open Q1 resolved decision — mirrors ideas-runner)
   const seedHookPath: "structured" | "markered" = "structured";
-
-  if (hooks.length === 0) {
-    return { blocks: [], warnings: allWarnings, seedHookPath };
-  }
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
   // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
@@ -329,54 +325,99 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
       : undefined;
 
-  const simResults = await Promise.all(
-    hooks.map((hook) =>
-      runFlashTextMode(hook.seedHook ?? hook.hookLine, "hook", panel, audienceRepaint).catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
-        return null; // null = failed SIM → treat as Weak (drop)
-      }),
-    ),
-  );
-
-  // ── GATE: drop sub-floor candidates ──────────────────────────────────────
+  // ── GATE: a survivor candidate carries everything the rank+build need ──────
+  // personas travel ON the candidate (not via a parallel simResults array) so the
+  // FLYWHEEL pin survives the conditional regeneration without index bookkeeping.
   interface SurvivorCandidate {
     hook: StructuredHook;
     band: "Strong" | "Mixed" | "Weak";
     fraction: string;
     scrollQuote: string;
     audienceArchetype: string;
-    generationIndex: number; // preserves generation order for tie-break
+    predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
+    personas: FlashPersona[];             // for the FLYWHEEL-02 pin
+    generationIndex: number;              // preserves generation order for tie-break
   }
 
-  const survivors: SurvivorCandidate[] = [];
-
-  for (let i = 0; i < hooks.length; i++) {
-    const hook = hooks[i];
-    const simResult = simResults[i];
-
-    if (!hook) continue; // type guard
-    if (simResult === null || simResult === undefined) continue; // SIM failed → drop
-
-    const personas = simResult.result.personas;
-    const { band, fraction } = aggregateFlash(personas);
-
-    // GATE FLOOR (Plan-01 handoff): band !== "Weak" (stops >= MIXED_THRESHOLD)
-    if (band === "Weak") continue;
-
-    // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
-    const scrollQuote = selectLeadScrollQuote(personas);
-
-    // D-03: derive audience archetype tag (audience persona, never craft slug — D-04)
-    const audienceArchetype = deriveAudienceArchetype(
-      personas.map((p) => ({
-        archetype: p.archetype,
-        verdict: p.verdict as "stop" | "scroll",
-        quote: p.quote,
-      })),
+  /**
+   * 14-02 best-of-N + flop pass: over-generate → PARALLEL { SIM band + rubric
+   * critic } per candidate → combined gate. SIM + critic run in the SAME Promise.all
+   * entry so wall-clock stays ~1x (D-05 — never serial). Combined gate (KCQ-05 +
+   * KCQ-02): keep iff band !== "Weak" AND verdict.pass. predictedFailureMode (KCQ-04)
+   * rides onto each survivor for the 14-04 drill-reveal. Ranking happens AFTER, on the
+   * returned survivors (D-01 gate-then-rank preserved).
+   */
+  async function gateHooks(hookBatch: StructuredHook[]): Promise<SurvivorCandidate[]> {
+    const judged = await Promise.all(
+      hookBatch.map(async (hook, i) => {
+        const seed = hook.seedHook ?? hook.hookLine;
+        const [simResult, verdict] = await Promise.all([
+          runFlashTextMode(seed, "hook", panel, audienceRepaint).catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
+            return null; // null = failed SIM → treat as Weak (drop)
+          }),
+          critiqueAgainstRubric(seed, "hook", panel), // fail-safe internally (never throws)
+        ]);
+        return { hook, simResult, verdict, generationIndex: i };
+      }),
     );
 
-    survivors.push({ hook, band, fraction, scrollQuote, audienceArchetype, generationIndex: i });
+    const out: SurvivorCandidate[] = [];
+
+    for (const { hook, simResult, verdict, generationIndex } of judged) {
+      if (simResult === null || simResult === undefined) continue; // SIM failed → drop
+
+      const personas = simResult.result.personas;
+      const { band, fraction } = aggregateFlash(personas);
+
+      // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
+      if (band === "Weak") continue;
+      if (!verdict.pass) continue;
+
+      // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
+      const scrollQuote = selectLeadScrollQuote(personas);
+
+      // D-03: derive audience archetype tag (audience persona, never craft slug — D-04)
+      const audienceArchetype = deriveAudienceArchetype(
+        personas.map((p) => ({
+          archetype: p.archetype,
+          verdict: p.verdict as "stop" | "scroll",
+          quote: p.quote,
+        })),
+      );
+
+      out.push({
+        hook,
+        band,
+        fraction,
+        scrollQuote,
+        audienceArchetype,
+        predictedFailureMode: verdict.predictedFailureMode,
+        personas,
+        generationIndex,
+      });
+    }
+
+    return out;
+  }
+
+  // First over-generate batch.
+  const firstBatch = await generateHooksStructured(userMessage);
+  if (firstBatch.length === 0) {
+    return { blocks: [], warnings: allWarnings, seedHookPath };
+  }
+
+  let survivors = await gateHooks(firstBatch);
+
+  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
+  // Never an unbounded serial loop — one extra parallel over-generate + critique
+  // pass, then proceed with whatever survives (may still be 0 — "0 blocks is valid").
+  if (survivors.length === 0) {
+    const secondBatch = await generateHooksStructured(userMessage);
+    if (secondBatch.length > 0) {
+      survivors = await gateHooks(secondBatch);
+    }
   }
 
   // ── RANK + TRIM (D-01): order by band tier → fraction, keep top MAX_HOOKS ──
@@ -414,6 +455,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         scrollQuote: candidate.scrollQuote,
         model: "sim1-flash" as const,
         channel: candidate.hook.channel,
+        predictedFailureMode: candidate.predictedFailureMode, // KCQ-04 (null on clean pass)
       },
     };
 
@@ -431,19 +473,10 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
   // Pin the rank-1 hook's personas (the hook most likely posted), falling back to
-  // the first SIM that resolved so a run that fired the SIM always pins a vector.
+  // the first survivor that resolved so a run that produced any survivor pins a vector.
   // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
   if (input.pin) {
-    let pinnedPersonas: FlashPersona[] | null = null;
-    const lead = ranked[0];
-    if (lead) {
-      const leadSim = simResults[lead.generationIndex];
-      if (leadSim) pinnedPersonas = leadSim.result.personas;
-    }
-    if (!pinnedPersonas) {
-      const firstSim = simResults.find((s) => s != null);
-      if (firstSim) pinnedPersonas = firstSim.result.personas;
-    }
+    const pinnedPersonas = ranked[0]?.personas ?? survivors[0]?.personas ?? null;
     if (pinnedPersonas && pinnedPersonas.length > 0) {
       const audienceId = audience && !audience.is_general ? audience.id : null;
       void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {

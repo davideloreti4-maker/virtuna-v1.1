@@ -5,7 +5,7 @@
  *   - over-generate → gate → ≤3 idea-card blocks
  *   - D-04 lead-quote-on-face invariant (scrollQuote on every card)
  *   - cold-start behavior (null profile → honest baseline grounding line)
- *   - sub-floor (Weak band) cards dropped; no regen loop (D-03)
+ *   - sub-floor (Weak band) cards dropped; all-fail → exactly ONE bounded regen (14-02 D-06)
  *   - cap at 3 survivors even when all 5 pass
  *   - mixed results (only survivors above gate floor returned)
  *   - band/fraction/model embedded in each card block (D-04/D-10)
@@ -27,6 +27,16 @@ vi.mock("@/lib/engine/qwen/client", () => ({
 
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
+}));
+
+// ─── Mock rubric-critic (14-02 best-of-N) ──────────────────────────────────────
+// Default: every candidate PASSES the Value Bar (pass:true, null failureMode) so
+// the SIM band remains the sole discriminator in these pre-14-02 gate tests. The
+// combined gate is `band !== "Weak" AND verdict.pass`; pass:true makes the band the
+// gate. Individual 14-02 tests live in best-of-n.test.ts.
+
+vi.mock("@/lib/engine/flash/rubric-critic", () => ({
+  critiqueAgainstRubric: vi.fn().mockResolvedValue({ pass: true, predictedFailureMode: null }),
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
@@ -172,7 +182,7 @@ describe("runIdeasPipeline (runner)", () => {
     }
   });
 
-  it("drops Weak-band candidates (sub-floor) and returns survivors only (no regen)", async () => {
+  it("drops Weak-band candidates (sub-floor); all-fail triggers exactly ONE bounded regen (14-02 D-06)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
 
@@ -194,10 +204,13 @@ describe("runIdeasPipeline (runner)", () => {
       profileRow: null,
     });
 
-    // All dropped → 0 blocks (no regen loop — D-03)
+    // All dropped → 0 blocks (0 survivors is valid — never an unbounded loop)
     expect(result.blocks.length).toBe(0);
-    // runFlashTextMode called exactly 5 times (one per idea, no regen)
-    expect(runFlashTextMode).toHaveBeenCalledTimes(5);
+    // 14-02 D-06: zero passers triggers ONE conditional regen → two over-generate
+    // batches of 5 SIM calls each (10), then STOP. Bounded — never unbounded serial.
+    expect(runFlashTextMode).toHaveBeenCalledTimes(10);
+    // Exactly two generation calls (initial + one regen).
+    expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 
   it("cold-start (null profile) produces cards with honest baseline grounding line", async () => {

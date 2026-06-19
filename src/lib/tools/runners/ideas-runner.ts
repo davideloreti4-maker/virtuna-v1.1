@@ -36,6 +36,7 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
+ *   - flash/rubric-critic.ts (critiqueAgainstRubric) — 14-02 best-of-N + flop pass (KCQ-02/04/07)
  *   - audience/audience-grounding.ts (buildAudienceGroundingLine) — 07-04 steer (AUD-05/AUD-08)
  *   - audience/resolve-audience-weights.ts (resolveAudienceWeights) — 07-04 react (AUD-04)
  *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
@@ -53,6 +54,7 @@ import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
+import { critiqueAgainstRubric } from "@/lib/engine/flash/rubric-critic";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
@@ -272,14 +274,8 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     profileRow,
   );
 
-  const ideas = await generateIdeasStructured(userMessage);
-
   // Record which path shipped (Open Q1 resolved decision)
   const seedHookPath: "structured" | "markered" = "structured";
-
-  if (ideas.length === 0) {
-    return { blocks: [], warnings: allWarnings, seedHookPath };
-  }
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
   // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
@@ -303,23 +299,10 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
       : undefined;
 
-  const simResults = await Promise.all(
-    ideas.map((idea) =>
-      runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint).catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
-        return null; // null = failed SIM → treat as Weak (drop)
-      }),
-    ),
-  );
-
-  // ── GATE + TRIM: drop sub-floor, keep up to MAX_SURVIVORS ────────────────
   // ── STEER path (07-04 / AUD-05): audience-grounding line replaces buildGroundingLine ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (AUD-08
   // blast-radius gate: only ideas-runner uses audience-grounding in P7).
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
-
-  const survivors: IdeaCardBlock[] = [];
 
   // FLYWHEEL-02: capture the personas to pin — the lead survivor (the idea most
   // likely posted), falling back to the first SIM that resolved so a run that
@@ -327,56 +310,103 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   let leadPersonas: FlashPersona[] | null = null;
   let firstSimPersonas: FlashPersona[] | null = null;
 
-  for (let i = 0; i < ideas.length && survivors.length < MAX_SURVIVORS; i++) {
-    const idea = ideas[i];
-    const simResult = simResults[i];
+  /**
+   * 14-02 best-of-N + flop pass: over-generate → PARALLEL { SIM band + rubric
+   * critic } per candidate → combined gate. The SIM call and the critic call run
+   * in the SAME Promise.all entry (Promise.all on a pair), so wall-clock stays ~1x
+   * (D-05 — never serial). Combined gate (KCQ-05 formalized in 14-01 + KCQ-02):
+   * keep a candidate iff band !== "Weak" AND verdict.pass. The card carries
+   * verdict.predictedFailureMode (KCQ-04, null on pass) for the 14-04 drill-reveal.
+   */
+  async function gatePass(ideaBatch: StructuredIdea[]): Promise<IdeaCardBlock[]> {
+    // Per-candidate parallel pair: [SIM band, rubric verdict]. Both run in parallel;
+    // neither throws into the outer Promise.all (each catches → fail-safe).
+    const judged = await Promise.all(
+      ideaBatch.map(async (idea) => {
+        const [simResult, verdict] = await Promise.all([
+          runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint).catch((err) => {
+            const msg = err instanceof Error ? err.message : String(err);
+            allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
+            return null; // null = failed SIM → treat as Weak (drop)
+          }),
+          critiqueAgainstRubric(idea.seedHook, "idea", panel), // fail-safe internally (never throws)
+        ]);
+        return { idea, simResult, verdict };
+      }),
+    );
 
-    if (!idea) continue; // type guard for TypeScript
-    if (simResult === null || simResult === undefined) continue; // SIM failed → drop
+    const passed: IdeaCardBlock[] = [];
 
-    const personas = simResult.result.personas;
-    if (!firstSimPersonas) firstSimPersonas = personas;
-    const { band, fraction } = aggregateFlash(personas);
+    for (const { idea, simResult, verdict } of judged) {
+      if (passed.length >= MAX_SURVIVORS) break;
+      if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
-    // GATE FLOOR (Plan-01 handoff): band !== "Weak" (stops >= MIXED_THRESHOLD)
-    if (band === "Weak") continue;
+      const personas = simResult.result.personas;
+      if (!firstSimPersonas) firstSimPersonas = personas;
+      const { band, fraction } = aggregateFlash(personas);
 
-    // First gate survivor → the lead card; pin its personas (FLYWHEEL-02).
-    if (!leadPersonas) leadPersonas = personas;
+      // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
+      if (band === "Weak") continue;
+      if (!verdict.pass) continue;
 
-    // D-04 WARNING-4: select lead scrollQuote NOW — ships on the card face
-    const scrollQuote = selectLeadScrollQuote(personas);
+      // First combined-gate survivor → the lead card; pin its personas (FLYWHEEL-02).
+      if (!leadPersonas) leadPersonas = personas;
 
-    // BUILD: validated idea-card block (Plan 02 prop names)
-    const blockData = {
-      type: "idea-card" as const,
-      props: {
-        title: idea.title,
-        angle: idea.angle,
-        whyItFits: groundingLine,   // GROUND-03 (Plan 02)
-        mechanism: idea.mechanism,
-        seedHook: idea.seedHook,
-        needsTake: idea.needsTake,
-        topic: idea.topic,
-        take: idea.take,
-        format: idea.format,
-        band,
-        fraction,
-        scrollQuote,
-        model: "sim1-flash" as const,
-      },
-    };
+      // D-04 WARNING-4: select lead scrollQuote NOW — ships on the card face
+      const scrollQuote = selectLeadScrollQuote(personas);
 
-    // Validate at the runner boundary (D-14 belt-and-suspenders)
-    const validated = IdeaCardBlockSchema.safeParse(blockData);
-    if (!validated.success) {
-      allWarnings.push(
-        `idea-card block validation failed for "${idea.title}": ${validated.error.message}`,
-      );
-      continue;
+      // BUILD: validated idea-card block (Plan 02 prop names + KCQ-04 failure mode)
+      const blockData = {
+        type: "idea-card" as const,
+        props: {
+          title: idea.title,
+          angle: idea.angle,
+          whyItFits: groundingLine,   // GROUND-03 (Plan 02)
+          mechanism: idea.mechanism,
+          seedHook: idea.seedHook,
+          needsTake: idea.needsTake,
+          topic: idea.topic,
+          take: idea.take,
+          format: idea.format,
+          band,
+          fraction,
+          scrollQuote,
+          model: "sim1-flash" as const,
+          predictedFailureMode: verdict.predictedFailureMode, // KCQ-04 (null on clean pass)
+        },
+      };
+
+      // Validate at the runner boundary (D-14 belt-and-suspenders)
+      const validated = IdeaCardBlockSchema.safeParse(blockData);
+      if (!validated.success) {
+        allWarnings.push(
+          `idea-card block validation failed for "${idea.title}": ${validated.error.message}`,
+        );
+        continue;
+      }
+
+      passed.push(validated.data as IdeaCardBlock);
     }
 
-    survivors.push(validated.data as IdeaCardBlock);
+    return passed;
+  }
+
+  // First over-generate batch.
+  const firstBatch = await generateIdeasStructured(userMessage);
+  if (firstBatch.length === 0) {
+    return { blocks: [], warnings: allWarnings, seedHookPath };
+  }
+
+  let survivors = await gatePass(firstBatch);
+
+  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
+  // Never an unbounded serial loop — one extra parallel over-generate + critique
+  // pass, then proceed with whatever survives (may still be 0 — "0 blocks is valid").
+  if (survivors.length === 0) {
+    const secondBatch = await generateIdeasStructured(userMessage);
+    if (secondBatch.length > 0) {
+      survivors = await gatePass(secondBatch);
+    }
   }
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
@@ -384,7 +414,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // persisted with the run's audience_id — the "predict" half of the moat loop.
   // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
   if (input.pin) {
-    const pinnedPersonas = leadPersonas ?? firstSimPersonas;
+    // leadPersonas/firstSimPersonas are mutated INSIDE the gatePass closure. TS
+    // control-flow analysis narrows the outer `let`s to their initializer (`null`)
+    // because it does not track closure assignments, so a direct read infers `never`.
+    // Re-widen explicitly to the declared union before the runtime null-check.
+    const pinnedPersonas = (leadPersonas ?? firstSimPersonas) as FlashPersona[] | null;
     if (pinnedPersonas && pinnedPersonas.length > 0) {
       const audienceId = audience && !audience.is_general ? audience.id : null;
       void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {

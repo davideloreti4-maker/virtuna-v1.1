@@ -11,7 +11,7 @@
  *   - caps at 5 survivors (D-08) even if more than 5 pass
  *   - cold-start (null profile) / anchor-only produces ranked hooks (niche falls back to null)
  *   - SIM called with "hook" framing + { niche, contentType: null } panel
- *   - no regen loop: Flash called exactly once per candidate (D-03)
+ *   - bounded regen (14-02 D-06): all-fail triggers exactly ONE regen batch, never unbounded
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -30,6 +30,16 @@ vi.mock("@/lib/engine/qwen/client", () => ({
 
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
+}));
+
+// ─── Mock rubric-critic (14-02 best-of-N) ──────────────────────────────────────
+// Default: every candidate PASSES the Value Bar so the SIM band stays the sole
+// discriminator in these pre-14-02 gate/rank tests. Combined gate is
+// `band !== "Weak" AND verdict.pass`; pass:true makes the band the gate. The
+// 14-02-specific combined-gate + regen tests live in best-of-n.test.ts.
+
+vi.mock("@/lib/engine/flash/rubric-critic", () => ({
+  critiqueAgainstRubric: vi.fn().mockResolvedValue({ pass: true, predictedFailureMode: null }),
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
@@ -314,7 +324,7 @@ describe("runHooksPipeline (runner)", () => {
     }
   });
 
-  it("drops all Weak-band hooks and returns 0 blocks (no regen loop — D-03)", async () => {
+  it("drops all Weak-band hooks; all-fail triggers exactly ONE bounded regen (14-02 D-06)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
 
@@ -337,9 +347,13 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "an idea",
     });
 
+    // 0 survivors is valid (never an unbounded loop).
     expect(result.blocks.length).toBe(0);
-    // Flash called exactly once per hook candidate — no regen
-    expect(runFlashTextMode).toHaveBeenCalledTimes(8);
+    // 14-02 D-06: zero passers triggers ONE conditional regen → two over-generate
+    // batches of 8 SIM calls each (16), then STOP. Bounded — never unbounded serial.
+    expect(runFlashTextMode).toHaveBeenCalledTimes(16);
+    // Exactly two generation calls (initial + one regen).
+    expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 
   it("caps at MAX_HOOKS (5) even if more than 5 pass the gate (D-08)", async () => {
