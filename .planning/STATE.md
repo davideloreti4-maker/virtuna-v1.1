@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-06-19T11:35:49.567Z"
+stopped_at: Phase 10 context gathered
+last_updated: "2026-06-19T12:39:52.664Z"
 last_activity: 2026-06-19
 progress:
   total_phases: 10
@@ -161,10 +161,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T10:54:39.549Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-06-19T12:39:52.656Z
+Stopped at: Phase 10 context gathered
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
-Resume file: None
+Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel-draft-not-ye/10-CONTEXT.md
 
 ## Performance Metrics
 
