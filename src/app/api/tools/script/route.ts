@@ -43,6 +43,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -73,6 +74,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
+  const guard = csrfGuard(request);
+  if (guard) return guard;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { ask?: unknown; platform?: unknown; anchor?: unknown } = {};

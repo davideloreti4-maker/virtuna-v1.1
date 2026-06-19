@@ -40,6 +40,7 @@ import { runRemixPipeline } from "@/lib/tools/runners/remix-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { createLogger } from "@/lib/logger";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import { z } from "zod";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -87,25 +88,11 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // ── (2) Content-Type 415 guard (T-06-14, WR-05 pattern) ─────────────────────
-  const contentType = request.headers
-    .get("content-type")
-    ?.split(";")[0]
-    ?.trim()
-    ?.toLowerCase();
-  if (contentType !== "application/json") {
-    return Response.json({ error: "Unsupported Media Type" }, { status: 415 });
-  }
-
-  // ── (3) Cross-origin 403 guard (T-06-14, CSRF — copy adapt route T-04-07) ───
-  const origin = request.headers.get("origin");
-  if (origin) {
-    const url = new URL(request.url);
-    const expectedOrigin = `${url.protocol}//${url.host}`;
-    if (origin !== expectedOrigin) {
-      return Response.json({ error: "Cross-origin request denied" }, { status: 403 });
-    }
-  }
+  // ── (2-3) CSRF guard — Content-Type 415 + cross-origin 403 (T-06-14, WR-01) ──
+  // Shared helper (src/lib/http/csrf-guard.ts) — the SSOT for this guard pair across
+  // all mutating POST routes. Was inlined here; factored out per WR-01.
+  const guard = csrfGuard(request);
+  if (guard) return guard;
 
   // ── (4) Zod body validation — 400 on invalid (T-04-06) ─────────────────────
   let body: unknown;
