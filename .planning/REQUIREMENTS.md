@@ -206,6 +206,8 @@ reuses its typed-block renderers.
 - [ ] **Script Diagnose mode** (paste existing script → line-edits + drop-point) + **remix-your-own-winner** deep dive — skills depth; may fold into P15 or stay backlog.
 - [ ] **RAG over the creator's OWN scraped history** (broader than KCQ-03's niche-exemplar form) — usage-gated.
 - [ ] **Desktop-dense layout.**
+- [ ] **Billing / payments infra** — billing API deferred since omni-plus is free (PROJECT.md, v3.1-era); ties to the pricing tiers ($29/$49/$129) + iOS Reader-App payment strategy (memory). Launch-ops, not a build phase here; wire alongside HARDEN-01 before public/paid traffic.
+- *(Cross-milestone, NOT this product: **Landing page rebuild** — separate landing-v2 milestone. **In-app prediction-viz / "hive" rebuild** — superseded by P9 Living Audience AudienceLens. **Light-mode theme** — out of scope, dark-first.)*
 
 ---
 
