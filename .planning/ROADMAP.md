@@ -423,13 +423,28 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 ---
 
-### Phase 14: KC Grounding & Quality-Loop *(EXPANSION — the durable moat — not yet discussed)*
+### Phase 14: KC Grounding & Quality-Loop *(EXPANSION — the durable moat — DISCUSSED + PLANNED 2026-06-20)*
 
-**Goal:** Move generation from *discipline* (prose-craft, mostly done in P2 corpus, caps ~20–30% over raw LLM) to *rightness* (real data + executed self-rejection — "structurally can't be copied"). Source: `.planning/research/kc-improvement-levers.md`.
+**Goal:** Move generation from *discipline* (prose-craft, mostly done in P2 corpus, caps ~20–30% over raw LLM) to *rightness* (real grounding + executed self-rejection — "structurally can't be copied"). Source: `.planning/research/kc-improvement-levers.md`. **Reshaped in discussion (14-CONTEXT.md):** tight SIM-foresight spine + quality loop + voice; ALL exemplar grounding (live RAG, cited-research, large curated library) DEFERRED to a future grounding phase. RESEARCH (14-RESEARCH.md) verified the phase is ~70% built — KCQ-06 is a niche-slug-resolution fix at the runner layer (persona-registry already wired in 07-04), not an engine rebuild.
 **Depends on:** Phase 2 (KC corpus), Phase 7 (Audience), Phase 10 (flywheel reconciliation data feeds lever #8 later).
-**Requirements (sequence by impact×cost):** KCQ-01 (#2 live-profile grounding — gate must test *with* real profile + exemplars, not cold-start), KCQ-02 (#3 generate→critique→regenerate best-of-N w/ rubric, replacing the one-pass gate), KCQ-03 (#1 real-exemplar RAG — inject 2–3 actual recent niche high-performers; pgvector cols exist unused; includes N2 cited-research pass), KCQ-04 (#6 "will this flop?" adversarial pass), KCQ-05 (#9 SIM-rank verification loop — generate→render→simulate→rank+why, the foresight centerpiece; formalize the existing Flash gate), KCQ-06 (#10 SIM niche-blind fix — wire the rich `persona-registry` into the text Flash path), KCQ-07 (#4/#5 runtime trope-injection + specificity auto-reject), KCQ-08 (#7 voice calibration — extends N1).
-**Engine note:** grounding/pipeline/data work — keep the regression gate green; bump `ENGINE_VERSION` only if Max video-scoring output deliberately changes (most is the text path).
-**UI hint:** minimal (mostly pipeline; field-legibility = KCQ-09, surfaces via P12 IA where relevant).
+**Requirements (in plan):** KCQ-01, KCQ-02, KCQ-04, KCQ-05, KCQ-06, KCQ-07, KCQ-08, KCQ-09, HONESTY-01. **KCQ-03 (live-exemplar RAG + N2 cited-research) is DEFERRED** to a future grounding phase (D-15) — out of P14 scope.
+**Engine note:** text-path / corpus / UI work — keep the flash+kc regression suites green + preserve same-video Max score-identity; NO `ENGINE_VERSION` bump (niche resolution lives at the runner layer, engine bytes untouched). Corpus fold-in bumps `KC_GEN_VERSION` only.
+**UI hint:** minimal (KCQ-09 inline rationale + KCQ-04 opt-in flop reveal + HONESTY-01 pill deletion — small edits to existing fixed renderers; full field-legibility surface deferred to P12 IA).
+
+**Plans:** 4 plans, 3 waves
+
+**Wave 1** *(parallel — disjoint files)*
+
+- [ ] 14-01-PLAN.md — Moat spine: `resolveNicheKey` at the runner layer + Ideas/Hooks panel wiring + slop-vs-strong recalibration with real resolved niches + gate formalization [KCQ-06, KCQ-01, KCQ-05]
+- [ ] 14-03-PLAN.md — Corpus + voice + honesty: voice priority promotion + style-match instruction + the owner's 26 hook templates folded under hooks.md (KC_GEN_VERSION bump) + delete the fake §N citation pills *(autonomous: false — owner supplies the 26 templates + map-before-merge at execution)* [KCQ-08, HONESTY-01]
+
+**Wave 2** *(blocked on 14-01)*
+
+- [ ] 14-02-PLAN.md — Quality loop: parallel Flash rubric-critic (Value Bar) best-of-N + shared flop-prediction pass + thin runtime trope reject; Ideas + Hooks only; conditional single regen [KCQ-02, KCQ-04, KCQ-07]
+
+**Wave 3** *(blocked on 14-02)*
+
+- [ ] 14-04-PLAN.md — Surface: inline made-for-you rationale (whyItFits) + opt-in predicted-failure-mode reveal on the idea/hook card renderers [KCQ-09, KCQ-04]
 
 ---
 
