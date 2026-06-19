@@ -18,7 +18,7 @@ Replace the flat skill chip row with a single mode pill in the composer header t
 | 003 | audience-lens-clean | Cleaner UI language — faces not dots, words carry the room. Which inline treatment? | superseded by 005 | audience, simulation, moat, phase9, redesign, clean |
 | 004 | audience-constellation | Node-cloud (Artificial Societies) for the room? + replay as persistent feed | superseded by 005 | constellation, node-cloud, replay-feed, phase9 |
 | 005 | audience-scale | Refine opened audience (Read + Rewrite loop) + scale to 1,000 population (honest swarm) | ✅ CHOSEN — Phase 9 direction | population, scale, the-read, regenerate-loop, phase9 |
-| 006 | composer-skill-selector | What selector scales to ~10 skills (creator+marketing), native on mobile AND desktop, shows the SIM-1 model? | null | composer, skills, navigation, mobile, desktop, marketing, ux-01 |
+| 006 | composer-skill-selector | What selector scales to ~10 skills (creator+marketing), native on mobile AND desktop, shows the SIM-1 model? | ✅ 1 — Minimal · context surfaced | composer, skills, navigation, mobile, desktop, marketing, ux-01 |
 
 ## Phase 9 chosen direction → Sketch 005 (audience-scale)
 The AudienceLens spine: one shared component every skill mounts. **The Read** (interpretation + lever) leads; **Panel · 10 ⇄ Population · 1,000** scale toggle (10 named archetypes are the legend of a variance-instantiated swarm; population cascade + live metrics = the missing touch); persistent reaction feed; audience-scoped chat; sticky **Rewrite for this audience** closes the regenerate loop. Refine in Phase 9. Lineage: 002 (interaction spine) → 003 (clean language) → 004 (constellation + feed) → 005 (interpret + scale).

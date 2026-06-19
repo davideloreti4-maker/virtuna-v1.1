@@ -183,7 +183,12 @@ reuses its typed-block renderers.
 
 ### Cross-cutting & infra debt (surfaced from transcript + memory sweep 2026-06-19 — owner-raised, not yet placed in a feature phase)
 
-- [ ] **UX-01 (NEAR-TERM, recommend before P11)**: Composer / skill-selector redesign — the temporary skill-chip row in the composer is "not good ui/ux" (owner) and **breaks as skills multiply** (P11–16 each add one: Explore, Offer Validation, Ad Creative…). Concept must work clean on mobile AND desktop. Sketch `001-hybrid-composer` exists (mode-pill expanding into context selectors) but **winner: null** — needs a `/gsd-sketch` decision. De-risks the UI of every expansion phase.
+- [x] **UX-01 (NEAR-TERM, before P11)**: Composer / skill-selector redesign — **DIRECTION LOCKED** via sketch `006-composer-skill-selector` (winner: **Variant 1 — Minimal · context surfaced**). Locked decisions to spec into the composer phase:
+  - **Flat-warm THEME-06** (warm charcoal, cream, terracotta serif stele — no glass); premium **line-icon SVGs**, no emoji.
+  - **One accented control** = the **skill pill** (grouped **Creator / Marketing**, `MAX` badge where the video model fires); audience + intent sit beside it as **icon-only borderless** controls; `+` opens upload/attach (the SIM-1 Max **Test** path).
+  - **Model is READ-ONLY** — the skill decides Flash vs Max, shown as an indicator (no selector, no "auto" label).
+  - **Popover everywhere** (desktop AND mobile — no bottom sheet); **`/` slash** entry for fast skill switching.
+  - **Composer sits low** so the upward popover never clips; **popover needs `max-height` + scroll** at ~9 skills; mobile sizing via media query (verified desktop + 390px). Supersedes sketch `001-hybrid-composer`.
 - [ ] **UX-02**: Creator-skills vs marketing-skills differentiation in the composer/IA — same surface, distinct grouping (owner: "we differentiate between creator skills and marketing skills"). Folds into P15/P16 + the P12 IA.
 - [ ] **INFRA-01 (pre-launch)**: Video storage → Cloudflare R2 migration + Supabase free/Pro tier planning for first ~100 users; confirm live video playback on R2 in the analysis result. (Owner launch-readiness thread; ties to HARDEN-01 + billing.)
 - [ ] **PERF-01**: Model-routing + latency — Test E2E ~4min is too slow (owner); evaluate switching the text-skill audience-sim from `qwen-3.7-plus` → `3.6-flash` for speed; resolve the engine model-flip **pending on branch `fix/flash-coercion-stability`** (memory `engine-model-assignment`). Engine is OPEN this milestone but regression-gated. See memory `engine-latency-optimization`.

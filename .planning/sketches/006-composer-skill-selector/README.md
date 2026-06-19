@@ -2,7 +2,7 @@
 sketch: 006
 name: composer-skill-selector
 question: "What skill-selector scales to ~10 skills (creator + marketing), works native on mobile AND desktop, and shows the active SIM-1 model?"
-winner: null
+winner: "1 — Minimal · context surfaced"
 tags: [composer, skills, navigation, mobile, desktop, marketing, model-pill, ux-01]
 ---
 
