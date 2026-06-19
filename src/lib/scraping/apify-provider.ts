@@ -55,6 +55,32 @@ const PRIVATE_IP_PATTERNS = [
   /^localhost$/i,
 ];
 
+/**
+ * Allowlisted host suffixes for a PASTED post URL (input to scrapeSinglePostMetrics).
+ * The paste-URL is untrusted input (T-10-05 SSRF) — require HTTPS + a TikTok host
+ * before it ever reaches the Apify actor. Distinct from the resolved-mp4 allowlist:
+ * the input is a tiktok.com post page, not a CDN media URL.
+ */
+const POST_URL_ALLOWLIST_SUFFIXES = [
+  ".tiktok.com",
+  ".tiktokv.com",
+] as const;
+
+function isAllowedPostUrl(postUrl: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(postUrl);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+  const host = parsed.hostname;
+  if (PRIVATE_IP_PATTERNS.some((re) => re.test(host))) return false;
+  return POST_URL_ALLOWLIST_SUFFIXES.some(
+    (suffix) => host === suffix.slice(1) || host.endsWith(suffix),
+  );
+}
+
 function isAllowedMp4Host(mp4Url: string): boolean {
   let parsed: URL;
   try {
@@ -104,6 +130,44 @@ export function remapApidojoVideo(item: unknown): VideoData | null {
     hashtags: v.hashtags.map((h) => (typeof h === "string" ? h : h.name)),
     durationSeconds: v.video?.duration ?? 0,
     // Guard an unparseable date string → fall back to now (never NaN postedAt).
+    postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
+  };
+}
+
+/**
+ * Remap one CLOCKWORKS tiktok-scraper item onto VideoData (single-URL metrics path).
+ *
+ * Clockworks field names DIFFER from apidojo (Pitfall 1) — clockworks returns
+ * `playCount/diggCount/shareCount/commentCount/collectCount` (spike-confirmed
+ * 2026-06-19), apidojo returns `views/likes/comments/shares/bookmarks`. This MUST
+ * use the clockworks `apifyVideoSchema`, NEVER `apidojoVideoSchema` — reusing the
+ * apidojo schema on a clockworks item silently zeros every metric (the exact bug
+ * `apidojo-remap.test.ts` guards). Remap per spike sign-off:
+ *   playCount→views, diggCount→likes, shareCount→shares, commentCount→comments,
+ *   collectCount→saves.
+ * Returns null when the item fails to parse (caller degrades honestly).
+ */
+export function remapClockworksVideo(item: unknown): VideoData | null {
+  const result = apifyVideoSchema.safeParse(item);
+  if (!result.success) {
+    console.warn(`[scraping] clockworks video validation failed:`, result.error.issues);
+    return null;
+  }
+
+  const v = result.data;
+  const postedAt = v.createTime ? new Date(v.createTime * 1000) : new Date();
+
+  return {
+    platformVideoId: v.id,
+    videoUrl: v.webVideoUrl ?? "",
+    caption: v.text,
+    views: v.playCount,
+    likes: v.diggCount,
+    comments: v.commentCount,
+    shares: v.shareCount,
+    saves: v.collectCount, // clockworks `collectCount` is the save metric (public on TikTok)
+    hashtags: v.hashtags.map((h) => h.name),
+    durationSeconds: v.videoMeta?.duration ?? 0,
     postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
   };
 }
@@ -235,5 +299,56 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       mp4Url,
       durationSeconds: videoMeta?.duration ?? 0,
     };
+  }
+
+  /**
+   * Scrape PUBLIC METRICS for ONE posted TikTok URL (outcome capture, FLYWHEEL-01).
+   *
+   * Mirrors resolveVideoUrl's single-URL clockworks call but with
+   * shouldDownloadVideos:false (metrics only — no KV media fetch). Spike-confirmed
+   * (2026-06-19) that clockworks single-URL returns the full public metric block
+   * INCLUDING saves (collectCount). Remaps via the clockworks `apifyVideoSchema`
+   * (NOT apidojo — Pitfall 1).
+   *
+   * SSRF (T-10-05): the pasted URL is untrusted input — guarded by isAllowedPostUrl
+   * (HTTPS + TikTok host) before reaching the actor.
+   *
+   * Returns null for a deleted/private/404 post or an unparseable item (caller
+   * degrades honestly — never zero-fills). Throws IngestError on actor failure /
+   * empty dataset / a rejected input URL.
+   */
+  async scrapeSinglePostMetrics(url: string): Promise<VideoData | null> {
+    // SSRF guard on the untrusted paste-URL input (T-10-05) BEFORE the actor call.
+    if (!isAllowedPostUrl(url)) {
+      throw new IngestError("ssrf_rejected", url);
+    }
+
+    let run: { defaultDatasetId: string };
+    try {
+      run = await this.client.actor(VIDEO_ACTOR).call(
+        { postURLs: [url], resultsPerPage: 1, shouldDownloadVideos: false },
+        { waitSecs: 180 },
+      );
+    } catch (cause) {
+      throw new IngestError("scrape_failed", url, cause);
+    }
+
+    const { items } = await this.client
+      .dataset(run.defaultDatasetId)
+      .listItems();
+
+    // Empty dataset — unexpected (actor returned no rows at all).
+    if (items.length === 0) {
+      throw new IngestError("empty_dataset", url);
+    }
+
+    const item = items[0] as Record<string, unknown>;
+
+    // Deleted/private posts return count=1 with error/errorCode keys → null (honest absence).
+    if (item.error !== undefined || item.errorCode !== undefined) {
+      return null;
+    }
+
+    return remapClockworksVideo(item);
   }
 }

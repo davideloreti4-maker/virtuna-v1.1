@@ -77,4 +77,14 @@ export interface ScrapingProvider {
    * Throws IngestError on any failure class.
    */
   resolveVideoUrl(url: string): Promise<ResolvedVideo>;
+
+  /**
+   * Scrape PUBLIC METRICS for ONE posted TikTok URL (outcome capture, FLYWHEEL-01).
+   *
+   * Single-URL path → clockworks VIDEO_ACTOR (apidojo forbids single-post URLs,
+   * Pitfall 2). Returns the metrics-only VideoData (views/likes/comments/shares/saves);
+   * null when the post is deleted/private/404 (so callers degrade honestly, never zero-fill).
+   * Throws IngestError on scrape failure / empty dataset / SSRF rejection.
+   */
+  scrapeSinglePostMetrics(url: string): Promise<VideoData | null>;
 }
