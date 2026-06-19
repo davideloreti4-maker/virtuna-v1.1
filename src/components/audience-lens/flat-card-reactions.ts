@@ -10,9 +10,11 @@
  *
  *  - The fraction's real N-of-T stop count drives T flat personas (N stop, T−N scroll) — these
  *    are the actual counts, not invented.
- *  - The single lead `scrollQuote` is attached to the FIRST stop persona (its real verbatim);
- *    every other persona carries an EMPTY quote (we never invent words the SIM never returned —
- *    the drill-down simply shows no quote for them, honest about the thin signal).
+ *  - The single lead `scrollQuote` is attached to the FIRST STOP persona (its real verbatim),
+ *    or — when no persona stopped — to persona 0. Since personas are emitted stops-first, the
+ *    lead is index 0 in both cases. Every other persona carries an EMPTY quote (we never invent
+ *    words the SIM never returned — the drill-down simply shows no quote for them, honest about
+ *    the thin signal).
  *  - `archetype` is a positional placeholder ("viewer_1…T") UNLESS the caller supplies a real
  *    `persona-registry` enum for the lead persona. It MUST NEVER be a human-facing display
  *    label (e.g. the hook card's "Stops the skeptic" tag): the persona-chat route validates
@@ -67,12 +69,21 @@ export function cardScrollQuoteReactions(
       ? (leadArchetype as Archetype)
       : null;
 
+  // WR-07: anchor the one real verbatim to the FIRST STOP persona when any persona stopped,
+  // else to persona 0 (all-scroll). Personas are emitted stops-first (`i < stop` ⇒ stop), so
+  // the first stop persona is index 0 — which is ALSO the all-scroll fallback. We name the
+  // index explicitly so the code and the "first stop persona" honesty framing stay in lockstep
+  // rather than relying on `i === 0` reading as the lead by coincidence of ordering. (If the
+  // emit order ever stops being stops-first, recompute this as `out.findIndex(stop)`.) No
+  // fabrication: only the real lead quote moves; every other persona stays quote-empty.
+  const leadIndex = 0;
+
   const out: FlatPersonaReaction[] = [];
   for (let i = 0; i < total; i++) {
     const verdict: 'stop' | 'scroll' = i < stop ? 'stop' : 'scroll';
-    // Attach the one real verbatim to the first stop persona (or the first persona when no
-    // stops); everyone else carries an empty quote — never an invented one.
-    const isLead = i === 0;
+    // The lead persona carries the single real verbatim; everyone else carries an empty
+    // quote — never an invented one. The lead also carries the groundable registry enum.
+    const isLead = i === leadIndex;
     out.push({
       archetype: isLead && groundable ? groundable : `viewer_${i + 1}`,
       verdict,
