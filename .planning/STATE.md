@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 9 context gathered
-last_updated: "2026-06-19T08:48:31.400Z"
+last_updated: "2026-06-19T08:57:16.672Z"
 last_activity: 2026-06-19 -- Phase 08 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 38
-  completed_plans: 36
+  completed_plans: 37
   percent: 70
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 08 (discover-remix-read-the-competitor-niche-moat-chain-draft-no) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-06-19 -- Phase 08 execution started
 
@@ -136,6 +136,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: [Phase 08-04]: chat/script steer via assembleBundle.overrides (no Flash path); remix/hooks/script feed audienceRepaint into runFlashTextMode
 - [Phase ?]: [Phase 08-04]: General/null = byte-identical no-op (no analysis_override, no audienceRepaint arg); ENGINE_VERSION 3.19.0 unchanged
 - [Phase ?]: [Phase 08-04]: REMIX-01 adapt niche = profileNiche · audience.name (goal_label); remix-card audienceName prop optional, omitted for General
+- [Phase ?]: 08-05: multi-audience-read block (the Read) ships single-audience static card — bands only (.strict() rejects numeric score), who-not-for from low-disposition personas (no model call), audiences array W4-ready for 08-06
 
 ### Roadmap Evolution
 
@@ -152,6 +153,7 @@ None yet.
 - **Spike gate dropped (2026-06-16):** owner resolved both de-risk bets from experience — text-only Flash predicts relative pull (improves with the right data/context/framing); KC goes general-use unconditionally. Residual work relocated: winning-framing discovery → ENGINE-01; authored KC slice → GROUND-01. Phases renumbered 6→5.
 - **Long pole:** generation-grade Knowledge-Core rebuild is a content/curation workstream first — author + eval the slices early (Phase 2 can run parallel to Phase 1).
 - **Pre-existing main hygiene debt:** v5.0 Numen Rework + Landing v2 shipped to main but were never archived to `.planning/milestones/`; main's `.planning/` is mixed. Recommend a `/gsd-complete-milestone` pass on `main` (does not block this milestone).
+- Phase 8 plans reference requirement IDs READ-01/READ-03 not enumerated in milestone REQUIREMENTS.md — mark-complete reports not_found. Planning-time gap; reconcile REQUIREMENTS.md before phase verify.
 
 ## Deferred Items
 
@@ -159,7 +161,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T08:48:25.977Z
+Last session: 2026-06-19T08:56:33.564Z
 Stopped at: Phase 9 context gathered
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
 Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft-not-yet-disc/09-CONTEXT.md
@@ -199,3 +201,4 @@ Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft
 | Phase 08 P02 | 11min | 3 tasks | 10 files |
 | Phase 08 P03 | 10min | 3 tasks | 12 files |
 | Phase 08 P04 | 10min | 3 tasks | 11 files |
+| Phase 08 P05 | 5min | 2 tasks | 8 files |
