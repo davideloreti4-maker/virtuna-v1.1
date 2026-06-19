@@ -153,8 +153,8 @@ reuses its typed-block renderers.
 | REMIX-01 | Phase 6 | Complete |
 | LIVE-01 | Phase 9 | Complete |
 | LIVE-02 | Phase 9 | Complete |
-| LIVE-03 | Phase 9 | Complete |
+| LIVE-03 | Phase 9 | Gap (backend + PersonaChatDrawer built & tested, but unreachable on all 6 surfaces — conceptText never threaded; see 09-VERIFICATION.md gap 1) |
 | LIVE-04 | Phase 9 | Complete |
-| LIVE-05 | Phase 9 | Pending (math core landed 09-01; swarm/counters/cascade UI W4) |
-| LIVE-06 | Phase 9 | Complete |
-| LIVE-07 | Phase 9 | Complete |
+| LIVE-05 | Phase 9 | Complete (deterministic swarm + counters + cascade shipped 09-05, verified reachable) |
+| LIVE-06 | Phase 9 | Partial (Lens mounts 5/6 surfaces; text-Read PersonasBlock unmounted + interactions dead — see 09-VERIFICATION.md gap 3) |
+| LIVE-07 | Phase 9 | Gap (CHAIN_HANDOFFS + RewriteCta built & test-locked, but `rewrite` prop unsupplied by all mount sites → CTA never renders — see 09-VERIFICATION.md gap 2) |
