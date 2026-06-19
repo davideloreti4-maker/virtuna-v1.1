@@ -26,7 +26,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 6: Script & Remix Tools** - Un-deferred from v6.1: Script (hook→script→test) + Remix (alt funnel-top entry: trending/own-winner → ideas/hooks), both on the same Qwen pipeline as Test, plugging into P5's chain plumbing (completed 2026-06-18)
 - [x] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
-- [ ] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)*
+- [x] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)* (completed 2026-06-19)
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
 
@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** 6/7 plans executed
+**Plans:** 7/7 plans complete
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -372,7 +372,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 4** *(blocked on Wave 3; BLOCKING push + gate)*
 
-- [ ] 10-07-PLAN.md — BLOCKING: live schema push + types regen + cast removal + engine regression gate (ENGINE_VERSION unchanged, General unchanged) + E2E UAT [FLYWHEEL-01/04, SAVE-01]
+- [x] 10-07-PLAN.md — BLOCKING: live schema push + types regen + cast removal + engine regression gate (ENGINE_VERSION unchanged, General unchanged) + E2E UAT [FLYWHEEL-01/04, SAVE-01]
 
 **UI hint:** yes
 

@@ -106,7 +106,7 @@ reuses its typed-block renderers.
 
 > The per-creator learning loop that error-corrects the Audience object against real post outcomes: predict → post → measure → reconcile → correct → compound. FULLY SPECIFIED in D-02..D-06. Must preserve determinism + the regression gate + human-in-the-loop (no silent scoring mutation).
 
-- [ ] **FLYWHEEL-01**: Outcome capture — paste posted URL → Apify scrapes public metrics + optional creator-supplied private signals (saves / retention / link-clicks); honest public-vs-creator-supplied (D-04).
+- [x] **FLYWHEEL-01**: Outcome capture — paste posted URL → Apify scrapes public metrics + optional creator-supplied private signals (saves / retention / link-clicks); honest public-vs-creator-supplied (D-04).
 - [x] **FLYWHEEL-02**: Predicted vs realized SIGNATURES — pin the SIM-predicted engagement signature (6-disposition vector) at run; map the real outcome onto the same dispositions. Compare **signatures, not score-vs-views** (D-02).
 - [x] **FLYWHEEL-03**: Calibration-vs-craft reconciliation — a deterministic reconcile classifies divergence as **calibration-error** (audience MIX → Audience object) vs **craft-error** (content under/over-delivered → creator as Account-Read guidance, **never** mutates the model) (D-03).
 - [x] **FLYWHEEL-04**: Confidence-gated recalibration — propose a PersonaWeights recalibration only after ≥N consistent posts → honest PROPOSE nudge → **creator confirms** → write through P7's `analysis_override` slot. No single-post mutation, no silent auto-recalibration; `ENGINE_VERSION` untouched; General-audience baseline unchanged (regression anchor) (D-05).
@@ -184,14 +184,14 @@ reuses its typed-block renderers.
 | LIVE-05 | Phase 9 | Complete (deterministic swarm + counters + cascade shipped 09-05, verified reachable) |
 | LIVE-06 | Phase 9 | Complete (gap closed — text-Read PersonasBlock now mounts the reusable Lens via conceptText threading; all 6 surfaces mount the single shared AudienceLens) |
 | LIVE-07 | Phase 9 | Complete (gap closed — card-rewrite.ts builds LensRewrite from CHAIN_HANDOFFS self-handoff SSOT; rewrite prop supplied at all 4 regenerable card mounts; RewriteCta renders + onRewrite re-POSTs the pinned contract to the real runner; null synchronous delta accepted; card-rewrite regression test locks endpoint sourcing + re-POST) |
-| SELF-01 | Phase 10 | Planned (10-05) |
-| SELF-02 | Phase 10 | Planned (10-05) |
-| SELF-03 | Phase 10 | Planned (10-05) |
-| SAVE-01 | Phase 10 | Planned (10-02, 10-04) |
-| SAVE-02 | Phase 10 | Planned (10-04) |
-| FLYWHEEL-01 | Phase 10 | Planned (10-02, 10-03, 10-07) |
-| FLYWHEEL-02 | Phase 10 | Planned (10-01, 10-03) |
-| FLYWHEEL-03 | Phase 10 | Planned (10-01, 10-03) |
+| SELF-01 | Phase 10 | Complete (10-05) |
+| SELF-02 | Phase 10 | Complete (10-05) |
+| SELF-03 | Phase 10 | Complete (10-05) |
+| SAVE-01 | Phase 10 | Complete (10-02, 10-04, 10-07) |
+| SAVE-02 | Phase 10 | Complete (10-04) |
+| FLYWHEEL-01 | Phase 10 | Complete (10-02, 10-03, 10-07) |
+| FLYWHEEL-02 | Phase 10 | Complete (10-01, 10-03) |
+| FLYWHEEL-03 | Phase 10 | Complete (10-01, 10-03) |
 | FLYWHEEL-04 | Phase 10 | Complete (10-01, 10-06) |
 | FLYWHEEL-05 | Phase 10 | Complete (10-02, 10-06) |
 | FLYWHEEL-06 | Phase 10 | Complete (10-06) |
