@@ -47,8 +47,8 @@ reuses its typed-block renderers.
 ### IDEAS — funnel-top generator
 
 - [x] **IDEAS-01**: Generate ideas — idea cards (title · angle · *why it fits you*) from the creator profile (Auto) or a seeded topic/angle.
-- [ ] **IDEAS-02**: Inline Flash viability hint — each card shows a SIM-1 Flash viability score; **content-first, score streams in** (never blocks content render).
-- [ ] **IDEAS-03**: Chain to Hooks — "Develop this →" carries an idea into Hooks.
+- [x] **IDEAS-02**: Inline Flash viability hint — each card shows a SIM-1 Flash viability score; **content-first, score streams in** (never blocks content render). *(shipped P3 — content-first SSE band/fraction streams after card-face)*
+- [x] **IDEAS-03**: Chain to Hooks — "Develop this →" carries an idea into Hooks. *(shipped P3/P4 — POST /api/tools/ideas/develop → real hook generation)*
 
 ### HOOKS — flagship moat demo
 
@@ -161,8 +161,8 @@ reuses its typed-block renderers.
 | GROUND-01 | Phase 2 | Complete |
 | GROUND-02 | Phase 2 | Complete |
 | IDEAS-01 | Phase 3 | Complete |
-| IDEAS-02 | Phase 3 | Pending |
-| IDEAS-03 | Phase 3 | Pending |
+| IDEAS-02 | Phase 3 | Complete |
+| IDEAS-03 | Phase 3 | Complete (chain to Hooks via /develop) |
 | ENGINE-02 | Phase 3 | Complete |
 | GROUND-03 | Phase 3 | Complete |
 | PROFILE-01 | Phase 3 | Complete |
