@@ -42,6 +42,9 @@ import { KC_SCRIPT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
@@ -76,6 +79,11 @@ export interface ScriptPipelineInput {
   profileRow: ProfileRow | null;
   /** Upstream hook anchor — the chosen hookLine carried from Hooks→Script (optional). */
   anchor?: string;
+  /**
+   * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
+   * null or is_general → profile-based grounding + DEFAULT weights (byte-identical no-op).
+   */
+  audience?: Audience | null;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -218,8 +226,15 @@ function selectLeadScrollQuote(
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor } = input;
+  const { ask, platform, profileRow, anchor, audience = null } = input;
   const allWarnings: string[] = [];
+
+  // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
+  // Calibrated audience → fold the audience-facing line into assembleBundle.overrides so
+  // the script is written FOR the active audience. General/null → undefined (byte-identical).
+  const isCalibrated = Boolean(audience && !audience.is_general);
+  const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
+  const audienceOverride = isCalibrated ? `Write for this audience — ${groundingLine}` : undefined;
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
@@ -228,6 +243,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       platform,
       mode: "script",
       ...(anchor ? { anchor } : {}),
+      ...(audienceOverride ? { overrides: audienceOverride } : {}),
     },
     profileRow,
   );
@@ -251,9 +267,19 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const niche = profileRow?.niche_primary ?? null;
   const panel = { niche, contentType: null } as const;
 
+  // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
+  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
+  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+
+  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
+  const audienceRepaint: Record<string, string> | undefined =
+    audience && !audience.is_general && audience.personas && audience.personas.length > 0
+      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
+      : undefined;
+
   let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
   try {
-    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel);
+    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel, audienceRepaint);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);

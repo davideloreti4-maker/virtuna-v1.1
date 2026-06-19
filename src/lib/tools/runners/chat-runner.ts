@@ -31,6 +31,9 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
+import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
 // ─── Generation call timeout ───────────────────────────────────────────────────
@@ -52,6 +55,12 @@ export interface ChatPipelineInput {
    * The assembler fences this in <<<USER_CONTENT>>> — injection-safe (D-07).
    */
   priorTurns?: Array<{ role: "user" | "assistant"; text: string }>;
+  /**
+   * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
+   * null or is_general → profile-only grounding (byte-identical no-op for General). Chat runs
+   * no Flash, so the steer is the audience-grounding line folded into assembleBundle.overrides.
+   */
+  audience?: Audience | null;
 }
 
 // ─── Result type ─────────────────────────────────────────────────────────────
@@ -122,10 +131,22 @@ export async function runChatPipeline(
   input: ChatPipelineInput,
   onToken: (delta: string) => void,
 ): Promise<ChatPipelineResult> {
-  const { ask, platform, profileRow, priorTurns = [] } = input;
+  const { ask, platform, profileRow, priorTurns = [], audience = null } = input;
 
   // ── COLD-START SIGNAL (D-08) ──────────────────────────────────────────────
   const coldStart = isColdStart(profileRow);
+
+  // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
+  // Chat runs no Flash; the only steer vector is the assembled bundle. For a calibrated
+  // audience the audience-facing line is folded into assembleBundle.overrides so the answer
+  // is grounded on the active audience. General/null → undefined override (byte-identical).
+  const isCalibrated = Boolean(audience && !audience.is_general);
+  const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
+  const audienceOverride = isCalibrated ? `Answer for this audience — ${groundingLine}` : undefined;
+
+  // Weights resolved to mirror the shipped 07-04 shape (DEFAULT for General — no override).
+  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
+  void resolvedWeights; // wired for future Max-path integration; chat has no Flash scoring path
 
   // ── ASSEMBLE: per-request live-tier grounding bundle (D-07) ──────────────
   // Serialise prior turns into the assembleBundle `anchor` field (chat running context).
@@ -138,6 +159,7 @@ export async function runChatPipeline(
       platform,
       mode: "chat",
       ...(anchorText ? { anchor: anchorText } : {}),
+      ...(audienceOverride ? { overrides: audienceOverride } : {}),
     },
     profileRow,
   );

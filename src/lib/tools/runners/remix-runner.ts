@@ -41,6 +41,9 @@ import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import type { Audience } from "@/lib/audience/audience-types";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -56,6 +59,13 @@ export interface RemixPipelineInput {
   profileRow: ProfileRow | null;
   /** Unique request ID for the temp rehost path (prevents concurrent collision). */
   requestId: string;
+  /**
+   * Active audience for this run (08-04 — steer closure + REMIX-01; mirrors 07-04 ideas-runner).
+   * null or is_general → profile-based niche + DEFAULT weights (byte-identical no-op for General).
+   * Calibrated audience → audience niche steers the adapt + Flash panel; repaint feeds Flash;
+   * audienceName surfaces the as-your-{audience} steer tag on the card (D-03).
+   */
+  audience?: Audience | null;
 }
 
 export interface RemixPipelineResult {
@@ -105,8 +115,24 @@ function selectLeadScrollQuote(
  * @param input.requestId   Unique ID for the temp rehost path
  */
 export async function runRemixPipeline(input: RemixPipelineInput): Promise<RemixPipelineResult> {
-  const { url, profileRow, requestId } = input;
+  const { url, platform, profileRow, requestId, audience = null } = input;
   const allWarnings: string[] = [];
+
+  // ── STEER (08-04 / AUD-STEER + REMIX-01): audience-grounding + niche + repaint ──
+  // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
+  // resolveAudienceWeights([]) / is_general → DEFAULT mix (no analysis_override injected).
+  const isCalibrated = Boolean(audience && !audience.is_general);
+  const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
+  void groundingLine; // grounding folds into the adapt niche + card steer tag below
+
+  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
+  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+
+  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
+  const audienceRepaint: Record<string, string> | undefined =
+    audience && !audience.is_general && audience.personas && audience.personas.length > 0
+      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
+      : undefined;
 
   // ── STEP 1: RESOLVE — resolveAndRehost wraps temp mp4 rehost ──────────────────
   // cleanup MUST run in finally (T-03-02 — derive-and-drop invariant).
@@ -146,8 +172,14 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
     // decodeResultToAdaptInput: bridges DecodeResult → AdaptInput (luck NEVER mapped — D-01)
     // generateAdaptConcepts: 3 niche-adapted concepts or null on graceful failure
-    const niche = profileRow?.niche_primary ?? "general";
-    const adaptInput = decodeResultToAdaptInput(decode, niche);
+    // REMIX-01 steer: when a calibrated audience is active, the adapt niche targets that
+    // audience (name + goal) instead of the generic profile niche alone. General → profile niche.
+    const profileNiche = profileRow?.niche_primary ?? "general";
+    const audienceNiche =
+      isCalibrated && audience
+        ? `${profileNiche} · ${audience.name}${audience.goal_label ? ` (${audience.goal_label})` : ""}`
+        : profileNiche;
+    const adaptInput = decodeResultToAdaptInput(decode, audienceNiche);
 
     let concepts: Awaited<ReturnType<typeof generateAdaptConcepts>>;
     try {
@@ -172,7 +204,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
     let simResult: Awaited<ReturnType<typeof runFlashTextMode>>;
     try {
-      simResult = await runFlashTextMode(chosen.hook, "hook", panel);
+      simResult = await runFlashTextMode(chosen.hook, "hook", panel, audienceRepaint);
     } catch (flashErr) {
       const msg = flashErr instanceof Error ? flashErr.message : String(flashErr);
       allWarnings.push(`Flash gate failed for adapted hook: ${msg}`);
@@ -211,6 +243,9 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
         fraction,
         scrollQuote,
         model: "sim1-flash" as const,
+
+        // 08-04 / D-03 STEER tag — populated only for a calibrated audience (General → omitted).
+        ...(isCalibrated && audience ? { audienceName: audience.name } : {}),
       },
     };
 

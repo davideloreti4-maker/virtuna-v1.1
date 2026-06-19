@@ -46,6 +46,9 @@ import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwe
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
+import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
@@ -90,6 +93,12 @@ export interface HooksPipelineInput {
   profileRow: ProfileRow | null;
   /** Upstream idea anchor (the "what to make" concept this Hooks run develops). */
   anchor?: string;
+  /**
+   * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
+   * null or is_general → falls back to profile-based grounding + DEFAULT weights
+   * (byte-identical no-op for General — regression gate preserved).
+   */
+  audience?: Audience | null;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -252,7 +261,7 @@ function parseFractionNumerator(fraction: string): number {
  * @param input.anchor      Upstream idea concept (optional; fenced via assembleBundle).
  */
 export async function runHooksPipeline(input: HooksPipelineInput): Promise<HooksPipelineResult> {
-  const { ask, platform, profileRow, anchor } = input;
+  const { ask, platform, profileRow, anchor, audience = null } = input;
   const allWarnings: string[] = [];
 
   // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
@@ -263,6 +272,14 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     );
   }
 
+  // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
+  // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
+  // For a calibrated audience the line is folded into assembleBundle.overrides so
+  // generation targets the active audience (undefined override for General → byte-identical).
+  const isCalibrated = Boolean(audience && !audience.is_general);
+  const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
+  const audienceOverride = isCalibrated ? `Generate for this audience — ${groundingLine}` : undefined;
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -270,6 +287,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       platform,
       mode: "hooks",
       ...(anchor ? { anchor } : {}),
+      ...(audienceOverride ? { overrides: audienceOverride } : {}),
     },
     profileRow,
   );
@@ -287,9 +305,21 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const niche = profileRow?.niche_primary ?? null;
   const panel = { niche, contentType: null } as const;
 
+  // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
+  // resolveAudienceWeights([]) / is_general → DEFAULT mix (no override).
+  // The repaint (stored at calibration, not generated per-request — Pitfall 2) feeds Flash.
+  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
+  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+
+  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
+  const audienceRepaint: Record<string, string> | undefined =
+    audience && !audience.is_general && audience.personas && audience.personas.length > 0
+      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
+      : undefined;
+
   const simResults = await Promise.all(
     hooks.map((hook) =>
-      runFlashTextMode(hook.seedHook ?? hook.hookLine, "hook", panel).catch((err) => {
+      runFlashTextMode(hook.seedHook ?? hook.hookLine, "hook", panel, audienceRepaint).catch((err) => {
         const msg = err instanceof Error ? err.message : String(err);
         allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
         return null; // null = failed SIM → treat as Weak (drop)

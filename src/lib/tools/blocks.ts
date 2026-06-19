@@ -213,6 +213,11 @@ export const RemixCardBlockSchema = z.object({
     fraction: z.string().min(1),       // e.g. "7/10 stop" — adapted hook audience fraction only
     scrollQuote: z.string().min(1),    // lead per-persona scroll quote for the adapted hook
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for remix cards (D-10)
+
+    // 08-04 / D-03 STEER tag: the active calibrated audience this remix was generated for.
+    // Absent/empty = General (no steer) → renderer shows NO tag (regression-safe no-op).
+    // Populated only when a non-general audience is active (remix-runner Task 1).
+    audienceName: z.string().min(1).optional(),
   }),
 });
 
