@@ -35,6 +35,11 @@ import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import {
+  ARCHETYPE_DEFINITIONS,
+  ARCHETYPE_TRIGGERS,
+  type Archetype,
+} from "@/lib/engine/wave3/persona-registry";
 
 // ─── Generation call timeout ───────────────────────────────────────────────────
 
@@ -61,6 +66,23 @@ export interface ChatPipelineInput {
    * no Flash, so the steer is the audience-grounding line folded into assembleBundle.overrides.
    */
   audience?: Audience | null;
+  /**
+   * Persona-grounding for the "Ask them why →" chat-with-persona drawer (P9 / LIVE-03, D-03).
+   *
+   * ADDITIVE + OPTIONAL — when ABSENT the assembled bundle + system prompt are BYTE-IDENTICAL
+   * to the pre-change open-chat path (Test 1). When PRESENT the runner:
+   *   - PREPENDS the persona system prompt (READ from `ARCHETYPE_DEFINITIONS[archetype]` +
+   *     `ARCHETYPE_TRIGGERS` — the registry is NEVER mutated; landmine 4 / Pitfall 5) so Qwen
+   *     answers IN-VOICE as that archetype reacting to THIS concept;
+   *   - routes `conceptText` + the persona's own `reactionToConcept.quote` through the existing
+   *     `<<<USER_CONTENT>>>` fence (via assembleBundle.overrides) — NEVER raw into the system
+   *     prompt (Security Domain — injection-safe).
+   */
+  personaGrounding?: {
+    archetype: Archetype;
+    reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
+    conceptText: string;
+  };
 }
 
 // ─── Result type ─────────────────────────────────────────────────────────────
@@ -111,6 +133,58 @@ function serializePriorTurns(
     .join("\n");
 }
 
+// ─── Persona grounding (P9 / LIVE-03) ─────────────────────────────────────────
+
+/** Server-side cap on the per-request concept/quote anchor (WARNING-5 — mirrors the route ask-cap). */
+const PERSONA_ANCHOR_CAP = 2000;
+
+/**
+ * Build the persona system-prompt PREFIX from the registry — READ ONLY.
+ *
+ * Pulls `ARCHETYPE_DEFINITIONS[archetype]` (the byte-stable persona definition) and the
+ * archetype's stop/scroll triggers from `ARCHETYPE_TRIGGERS` to instruct Qwen to answer
+ * in-voice. This is REGISTRY-DERIVED, non-user text — safe to place in the system prompt.
+ * The registry objects are never mutated (Pitfall 5 / landmine 4); we only read fields.
+ */
+function buildPersonaSystemPrefix(
+  archetype: Archetype,
+  verdict: "stop" | "scroll",
+): string {
+  const definition = ARCHETYPE_DEFINITIONS[archetype];
+  const triggers = ARCHETYPE_TRIGGERS[archetype];
+  const stop = triggers.stop.join("; ");
+  const scrollPast = triggers.scroll_past.join("; ");
+  return [
+    `You are a single viewer of this archetype, answering in first person, in-voice.`,
+    `Archetype: ${archetype}.`,
+    definition,
+    `What makes you stop: ${stop}.`,
+    `What makes you scroll past: ${scrollPast}.`,
+    `On the concept below you ${verdict === "stop" ? "STOPPED" : "SCROLLED past"}.`,
+    `Answer the creator's question as THIS viewer about THIS concept — honest, specific,`,
+    `first-person. Do not break character or describe yourself as an AI.`,
+  ].join("\n");
+}
+
+/**
+ * Serialize the persona's reaction-to-concept into a single anchor string. This text is
+ * routed through assembleBundle's `<<<USER_CONTENT>>>` fence (Security Domain) — it is
+ * NEVER concatenated raw into the system prompt. Length-capped server-side (WARNING-5).
+ */
+function serializePersonaReaction(g: {
+  reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
+  conceptText: string;
+}): string {
+  const concept = g.conceptText.slice(0, PERSONA_ANCHOR_CAP);
+  const quote = g.reactionToConcept.quote.slice(0, PERSONA_ANCHOR_CAP);
+  return [
+    `The concept you reacted to:`,
+    concept,
+    ``,
+    `Your verbatim reaction was: "${quote}"`,
+  ].join("\n");
+}
+
 // ─── runChatPipeline ─────────────────────────────────────────────────────────
 
 /**
@@ -131,7 +205,14 @@ export async function runChatPipeline(
   input: ChatPipelineInput,
   onToken: (delta: string) => void,
 ): Promise<ChatPipelineResult> {
-  const { ask, platform, profileRow, priorTurns = [], audience = null } = input;
+  const {
+    ask,
+    platform,
+    profileRow,
+    priorTurns = [],
+    audience = null,
+    personaGrounding,
+  } = input;
 
   // ── COLD-START SIGNAL (D-08) ──────────────────────────────────────────────
   const coldStart = isColdStart(profileRow);
@@ -143,6 +224,24 @@ export async function runChatPipeline(
   const isCalibrated = Boolean(audience && !audience.is_general);
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
   const audienceOverride = isCalibrated ? `Answer for this audience — ${groundingLine}` : undefined;
+
+  // ── PERSONA GROUNDING (P9 / LIVE-03, D-03): in-voice answer about THIS concept ──
+  // The persona DEFINITION (registry-derived, non-user) becomes the system-prompt prefix.
+  // The concept + the persona's reaction quote (user-influenced) ride the FENCED overrides —
+  // never raw into the system prompt (Security Domain). When absent → byte-identical no-op.
+  const personaSystemPrefix = personaGrounding
+    ? buildPersonaSystemPrefix(
+        personaGrounding.archetype,
+        personaGrounding.reactionToConcept.verdict,
+      )
+    : undefined;
+  const personaReactionAnchor = personaGrounding
+    ? serializePersonaReaction(personaGrounding)
+    : undefined;
+
+  // Compose the fenced override: audience steer and/or persona reaction (both ride the fence).
+  const composedOverride =
+    [audienceOverride, personaReactionAnchor].filter(Boolean).join("\n\n") || undefined;
 
   // Weights resolved to mirror the shipped 07-04 shape (DEFAULT for General — no override).
   const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
@@ -159,10 +258,16 @@ export async function runChatPipeline(
       platform,
       mode: "chat",
       ...(anchorText ? { anchor: anchorText } : {}),
-      ...(audienceOverride ? { overrides: audienceOverride } : {}),
+      ...(composedOverride ? { overrides: composedOverride } : {}),
     },
     profileRow,
   );
+
+  // System prompt: byte-identical KC_CHAT_SYSTEM_PROMPT for open chat; persona-grounded
+  // chat PREPENDS the registry-derived persona prefix so Qwen answers in-voice (D-03).
+  const systemContent = personaSystemPrefix
+    ? `${personaSystemPrefix}\n\n${KC_CHAT_SYSTEM_PROMPT}`
+    : KC_CHAT_SYSTEM_PROMPT;
 
   // ── STREAM: Qwen generation (D-07 temperature 0.3 — matches grounded chat route) ──
   const controller = new AbortController();
@@ -175,7 +280,7 @@ export async function runChatPipeline(
       {
         model: QWEN_REASONING_MODEL,
         messages: [
-          { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+          { role: "system" as const, content: systemContent },
           { role: "user" as const, content: userMessage },
         ],
         stream: true,
