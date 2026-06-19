@@ -13,14 +13,21 @@
  *  - The single lead `scrollQuote` is attached to the FIRST stop persona (its real verbatim);
  *    every other persona carries an EMPTY quote (we never invent words the SIM never returned —
  *    the drill-down simply shows no quote for them, honest about the thin signal).
- *  - archetype labels are positional placeholders ("Viewer 1…T") since a card carries no
- *    per-persona archetype; the cluster lens still groups them (all fyp slot) and the
- *    cascade/Population still reveal the real stop/scroll mix.
+ *  - `archetype` is a positional placeholder ("viewer_1…T") UNLESS the caller supplies a real
+ *    `persona-registry` enum for the lead persona. It MUST NEVER be a human-facing display
+ *    label (e.g. the hook card's "Stops the skeptic" tag): the persona-chat route validates
+ *    `personaGrounding.archetype` against the `ARCHETYPES` registry enum and silently rejects
+ *    any non-enum value — degrading the in-voice "Ask them why →" answer to generic open chat
+ *    and 400-ing sub-thread rehydration (CR-01). When only placeholders exist the Lens gates
+ *    the "Ask them why →" affordance off (no enum to ground on) rather than promising an
+ *    in-voice answer it cannot deliver. The cluster lens still groups these nodes (all fyp
+ *    slot) and the cascade/Population still reveal the real stop/scroll mix.
  *
  * Pure, no React. Returns [] when the fraction can't be parsed (the Lens then omits itself).
  */
 
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 
 /** Parse "6/10 stop" → { stop: 6, total: 10 }. Returns null on any unexpected shape. */
 function parseFraction(fraction: string): { stop: number; total: number } | null {
@@ -36,16 +43,29 @@ function parseFraction(fraction: string): { stop: number; total: number } | null
 
 /**
  * Build flat reactions for a card from its real `fraction` + lead `scrollQuote`.
- * `archetypeHint` (e.g. the hook card's audienceArchetype) labels the lead persona when present.
+ *
+ * `leadArchetype` is an OPTIONAL registry archetype ENUM (e.g. "tough_crowd") for the lead
+ * persona — it grounds the "Ask them why →" persona chat. It is attached to the lead persona
+ * ONLY when it is a genuine `ARCHETYPES` enum value; a human-facing display label (such as the
+ * hook card's "Stops the skeptic" tag) is NOT an enum and is rejected here, so it can never
+ * leak into `personaGrounding.archetype` and silently break the chat route (CR-01). When no
+ * valid enum is supplied, every persona stays a positional `viewer_N` placeholder and the Lens
+ * gates the chat affordance off.
  */
 export function cardScrollQuoteReactions(
   fraction: string,
   scrollQuote: string,
-  archetypeHint?: string,
+  leadArchetype?: string,
 ): FlatPersonaReaction[] {
   const parsed = parseFraction(fraction);
   if (!parsed) return [];
   const { stop, total } = parsed;
+
+  // Only a genuine registry enum may ground the lead persona — never a display label.
+  const groundable =
+    typeof leadArchetype === 'string' && ARCHETYPES.includes(leadArchetype as Archetype)
+      ? (leadArchetype as Archetype)
+      : null;
 
   const out: FlatPersonaReaction[] = [];
   for (let i = 0; i < total; i++) {
@@ -54,7 +74,7 @@ export function cardScrollQuoteReactions(
     // stops); everyone else carries an empty quote — never an invented one.
     const isLead = i === 0;
     out.push({
-      archetype: isLead && archetypeHint ? archetypeHint : `viewer_${i + 1}`,
+      archetype: isLead && groundable ? groundable : `viewer_${i + 1}`,
       verdict,
       quote: isLead ? scrollQuote : '',
     });

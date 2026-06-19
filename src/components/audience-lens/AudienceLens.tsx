@@ -40,6 +40,7 @@ import {
   type SlotKey,
 } from '@/components/board/audience/audience-derive';
 import type { PersonaNode } from '@/components/board/_kit';
+import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
 import { ReplayController } from './ReplayController';
@@ -188,8 +189,16 @@ export function AudienceLens({
   // The "Ask them why →" list — ordered by the SAME deterministic cascade order the
   // room reveals in (stops first, heaviest first; cascadeOrder, D-06) so the chat list
   // reads in lockstep with the staggered reveal rather than raw input order.
+  //
+  // CRITICAL (CR-01): only personas whose `archetype` is a REAL persona-registry enum are
+  // chat-groundable. The chat route validates personaGrounding.archetype against ARCHETYPES
+  // and rejects anything else (a display label or a positional `viewer_N` placeholder),
+  // silently degrading to generic open chat + 400-ing rehydration. So we gate the affordance
+  // off for non-enum personas rather than promising an in-voice answer we cannot deliver.
   const chatList = useMemo(() => {
-    const grounded = nodes.filter((n) => Boolean(n.archetype));
+    const grounded = nodes.filter(
+      (n) => n.archetype != null && ARCHETYPES.includes(n.archetype as Archetype),
+    );
     const rank = new Map(cascadeOrder(grounded).map((id, i) => [id, i]));
     return grounded
       .slice()
@@ -233,8 +242,10 @@ export function AudienceLens({
                 </div>
                 {/* Per-persona "Ask them why →" — opens the in-context chat drawer scoped to
                     this Read, one persona at a time (D-03). Only where we have a concept to
-                    chat about + an archetype to ground on. */}
-                {conceptText && (
+                    chat about AND at least one persona with a real registry-enum archetype to
+                    ground on (CR-01) — flat card surfaces with only `viewer_N` placeholders
+                    render no row rather than a chat that cannot ground. */}
+                {conceptText && chatList.length > 0 && (
                   <ul className="mt-4 flex flex-col gap-1">
                     {chatList.map((n) => (
                         <li key={n.id}>

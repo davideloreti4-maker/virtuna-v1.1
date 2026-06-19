@@ -120,8 +120,13 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
 
         {/* Lead scroll-quote — the primary SIM signal (D-02/D-04). Tapping it opens the
             single reusable AudienceLens inline (cascade mode, D-06/D-04). */}
+        {/* NOTE: `audienceArchetype` is a HUMAN-FACING display label ("Stops the skeptic"),
+            NOT a persona-registry enum — so it is intentionally NOT passed as the chat-grounding
+            archetype (CR-01). A label leaking into personaGrounding.archetype is rejected by the
+            chat route and breaks the in-voice answer + rehydration. The hook card carries no
+            registry enum, so the Lens correctly gates "Ask them why →" off on this surface. */}
         <LensTrigger
-          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote, audienceArchetype)}
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
           label="See how the room reacted to this hook"
         >
