@@ -22,7 +22,9 @@ export interface BandBlockProps {
 }
 
 // Zone color CSS variables (same tokens as score-gauge.tsx ZONE_VAR).
-const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
+// Exported so the multi-audience-read renderer reuses the EXACT same band→color
+// map (08-05 — verdict bands must never be re-rolled or coral-tinted).
+export const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
   Strong: 'var(--color-success)',
   Mixed: 'var(--color-warning)',
   Weak: 'var(--color-error)',
