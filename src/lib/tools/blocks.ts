@@ -271,6 +271,56 @@ export const OutlierGridBlockSchema = z.object({
 
 export type OutlierGridBlock = z.infer<typeof OutlierGridBlockSchema>;
 
+// ─── Multi-audience-read block (the Read — Phase 08, W3/W4) ──────────────────────
+// Plan 08-05 (READ-01): the single-audience concept Read landing — the moat payoff.
+// Plan 08-06 (D-09): extends the SAME block to the 2-audience compare + verbatim wall.
+//
+// Honesty spine (Pitfall 5 / D-11): each audience entry carries a qualitative
+//   band (Strong/Mixed/Weak) + audience fraction string ONLY — NEVER a numeric
+//   0-100 score. The `.strict()` on each entry REJECTS any payload that smuggles a
+//   `score` (or any other unknown) field, enforcing the bands-only contract at the
+//   validation boundary. Provenance is `model: z.literal("sim1-flash")` (D-10),
+//   mirroring BandBlockSchema.
+//
+// Array shape (D-09): `audiences` is an array — this plan emits exactly 1 entry;
+//   Plan 08-06 emits up to 2 (active calibrated audience vs General). The array is
+//   W4-ready so the 2-audience compare is additive, not a schema change.
+//
+// Per audience: name + aggregate band + fraction (from aggregateFlash — do NOT
+//   re-roll), the one-line interpretation, the Lever line, the who-not-for segment
+//   (from deriveWhoNotFor — D-10), and the per-persona drill (archetype + verdict +
+//   quote, the exact PersonasBlock shape reused in the renderer).
+
+export const MultiAudienceReadBlockSchema = z.object({
+  type: z.literal("multi-audience-read"),
+  props: z.object({
+    audiences: z
+      .array(
+        z
+          .object({
+            name: z.string().min(1),                      // audience display name
+            band: z.enum(["Strong", "Mixed", "Weak"]),    // aggregate band — NO score (Pitfall 5)
+            fraction: z.string().min(1),                  // e.g. "8/10 stop"
+            interpretation: z.string().min(1),            // the one-line Read interpretation
+            lever: z.string().min(1),                     // the "Lever →" line — the one thing to act on
+            whoNotFor: z.string(),                        // "Scrolls past" segment (may be "" → no line)
+            personas: z.array(
+              z.object({
+                archetype: z.string(),
+                verdict: z.enum(["stop", "scroll"]),
+                quote: z.string().min(1).max(160),
+              }),
+            ),
+          })
+          .strict(), // forbids `score` or any 0-100 numeric field (bands-only honesty spine)
+      )
+      .min(1),
+    model: z.literal("sim1-flash"),                       // provenance — always Flash (D-10)
+  }),
+});
+
+export type MultiAudienceReadBlock = z.infer<typeof MultiAudienceReadBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -282,6 +332,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   ScriptCardBlockSchema,
   RemixCardBlockSchema,
   OutlierGridBlockSchema,
+  MultiAudienceReadBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
