@@ -137,13 +137,19 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         {/* Angle — the framing premise */}
         <p className="text-sm text-muted leading-snug">{angle}</p>
 
-        {/* Grounding line — visually distinct from angle prose (D-09) */}
-        <div
-          className="rounded-lg px-3 py-2 border border-white/[0.06] bg-white/[0.02] text-xs text-muted/80 leading-snug"
-          aria-label="Why this fits your profile"
+        {/* Made-for-you rationale (KCQ-09, D-04) — inline plain-language micro-copy
+            surfacing the existing whyItFits grounding line as a personalization-trust +
+            steering lever. NOT source-citation, no pills (D-14). Visually distinct from
+            the angle prose and the band chip; muted THEME-06 tokens, no coral.
+            whyItFits is a required prop, so this line always renders for ideas. */}
+        <p
+          className="text-xs text-muted/70 leading-snug"
+          aria-label="Why this idea was made for you"
         >
+          <span className="text-muted/50">Made for you</span>
+          {' — '}
           {whyItFits}
-        </div>
+        </p>
 
         {/* Lead scroll-quote — the primary SIM signal (D-04). Tapping it opens the single
             reusable AudienceLens inline (cascade mode, D-06/D-04). */}
