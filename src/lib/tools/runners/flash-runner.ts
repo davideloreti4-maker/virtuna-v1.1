@@ -19,14 +19,17 @@
  */
 
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ToolRunner } from "../tool-runner";
 import { assertBlocksInRegistry } from "../block-registry";
 import { runFlashTextMode } from "../../../lib/engine/flash/run-flash-text-mode";
 import type { FlashFraming } from "../../../lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "../../../lib/engine/flash/flash-aggregate";
-import type { FlashResult } from "../../../lib/engine/flash/flash-schema";
+import type { FlashResult, FlashPersona } from "../../../lib/engine/flash/flash-schema";
 import { BandBlockSchema, PersonasBlockSchema } from "../blocks";
 import type { BandBlock, PersonasBlock } from "../blocks";
+import { predictedSignature } from "@/lib/flywheel/signature";
+import { insertOutcomeSignature } from "@/lib/flywheel/outcome-repo";
 
 // Re-export FlashFraming for callers
 export type { FlashFraming };
@@ -109,6 +112,57 @@ export async function runFlashRunner(
   const { bandBlock, personasBlock } = mapFlashResultToBlocks(result);
 
   return { bandBlock, personasBlock, warnings };
+}
+
+// ─── pinPredictedSignature (FLYWHEEL-02, Pitfall 6) ──────────────────────────
+// Pin the PREDICTED disposition vector at SIM run time, paired with the audience_id
+// the run actually used (and the analysis_id when one exists). Reconciliation (Plan 03
+// Task 2) later reads this PINNED prediction — it is NEVER recomputed under a changed
+// audience (Pitfall 6). The predicted vector is computed exactly ONCE, here.
+//
+// Non-fatal by contract: a persistence failure must NEVER block the SIM card render
+// (mirrors the non-fatal insertMessage precedent in the runners — FLYWHEEL-02
+// "content-first"). General/null audience runs STILL pin a vector (reconciliation
+// simply may not propose for General — the confidence gate excludes it).
+
+/**
+ * Context the SIM ran under. `audienceId` is the active audience the run used
+ * (null for General/no-audience). `analysisId` ties the pin to an analysis when present.
+ */
+export interface PredictedPinContext {
+  audienceId: string | null;
+  analysisId?: string | null;
+}
+
+/**
+ * Compute predictedSignature(personas) ONCE and persist it (predicted_vector +
+ * audience_id + analysis_id) so reconciliation reads a pinned prediction (Pitfall 6).
+ *
+ * Returns true on a successful pin, false on a (swallowed) persistence failure.
+ * NEVER throws — the caller's SIM card path is unaffected either way.
+ */
+export async function pinPredictedSignature(
+  supabase: SupabaseClient,
+  personas: FlashPersona[],
+  ctx: PredictedPinContext,
+): Promise<boolean> {
+  try {
+    const predicted_vector = predictedSignature(personas);
+    await insertOutcomeSignature(supabase, {
+      predicted_vector,
+      audience_id: ctx.audienceId ?? null,
+      analysis_id: ctx.analysisId ?? null,
+      source: "paste_url",
+    });
+    return true;
+  } catch (err) {
+    // Non-fatal: log only, never block the SIM card (FLYWHEEL-02 content-first).
+    console.error(
+      "[flash-runner] predicted-signature pin failed (non-fatal):",
+      err instanceof Error ? err.message : String(err),
+    );
+    return false;
+  }
 }
 
 // ─── mapFlashResultToBlocks ──────────────────────────────────────────────────
