@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 07 Plan 05 complete (audience manager UI + calibration + composer chip)
-last_updated: "2026-06-18T19:50:00.000Z"
-last_activity: 2026-06-18 -- Phase 07 Plan 05 complete
+stopped_at: Phase 07 COMPLETE (migration live on prod + BLOCKING regression gate green)
+last_updated: "2026-06-19T06:35:00.000Z"
+last_activity: 2026-06-19 -- Phase 07 Plan 06 complete — Phase 07 closed
 progress:
   total_phases: 10
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 32
-  completed_plans: 31
-  percent: 62
+  completed_plans: 32
+  percent: 70
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — EXECUTING
-Plan: 5 of 6 complete (next: 07-06 migration push + UAT)
-Status: Plan 05 complete — audience UI shipped
-Last activity: 2026-06-18 -- Phase 07 Plan 05 complete
+Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — COMPLETE
+Plan: 6 of 6 complete — migration live on prod (qyxvxleheckijapurisj) + BLOCKING regression gate green (ENGINE_VERSION 3.19.0, General→DEFAULT, 2647 tests green)
+Status: Phase 07 closed. UAT skipped (owner directive); protected-path proof passed automatically. Next: Phase 08 (Discover & Remix→Read) — DRAFT, needs /gsd-discuss-phase 8
+Last activity: 2026-06-19 -- Phase 07 Plan 06 complete — Phase 07 closed
 
 ## Hard Constraints (this milestone)
 

@@ -235,7 +235,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements**: AUD-01 (object + CRUD + persistence), AUD-02 (calibration pipeline), AUD-03 (General default + regression gate), AUD-04 (audience -> react/SIM path), AUD-05 (steer proof in ideas-runner), AUD-06 (goal -> deterministic reweight), AUD-07 (Manager UI + presets + composer chip + per-thread pin), AUD-08 (creator profile slim to name-only, ideas read-path)
 **Depends on:** Phase 6
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans executed — PHASE COMPLETE
 
 **Wave 1** *(parallel - disjoint files)*
 
@@ -256,7 +256,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 5** *(blocked on Wave 4; BLOCKING gate + human-action push)*
 
-- [ ] 07-06-PLAN.md - `supabase db push` + BLOCKING engine regression gate (ENGINE_VERSION 3.19.0 + General->DEFAULT + full suite green) + UAT [AUD-03]
+- [x] 07-06-PLAN.md - migration applied to live prod (qyxvxleheckijapurisj) + types regen + BLOCKING engine regression gate (ENGINE_VERSION 3.19.0 + General->DEFAULT + full suite 2647 green) [AUD-03] — UAT skipped (owner directive); protected-path proof passed automatically
 
 ---
 
