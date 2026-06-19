@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 9 context gathered
-last_updated: "2026-06-19T08:34:59.543Z"
+last_updated: "2026-06-19T08:48:31.400Z"
 last_activity: 2026-06-19 -- Phase 08 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 38
-  completed_plans: 35
+  completed_plans: 36
   percent: 70
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 08 (discover-remix-read-the-competitor-niche-moat-chain-draft-no) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-06-19 -- Phase 08 execution started
 
@@ -133,6 +133,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: [Phase 08-01]: flash-aggregate STRONG/MIXED_THRESHOLD untouched (Pitfall 4) — calibrated not [ASSUMED]; changing shifts every skill gate
 - [Phase ?]: Discover Remix→Read CTA launches the chain via CHAIN_HANDOFFS /api/tools/remix/run then routes to /home (open-thread rehydrate) — no composer/card edit
 - [Phase ?]: OutlierTile reuses VideoCard verbatim (video_url:null → plain div); multiplier badge always carries baselineLabel (vs own/vs niche), never a SIM score (Pitfall 5/D-05)
+- [Phase ?]: [Phase 08-04]: chat/script steer via assembleBundle.overrides (no Flash path); remix/hooks/script feed audienceRepaint into runFlashTextMode
+- [Phase ?]: [Phase 08-04]: General/null = byte-identical no-op (no analysis_override, no audienceRepaint arg); ENGINE_VERSION 3.19.0 unchanged
+- [Phase ?]: [Phase 08-04]: REMIX-01 adapt niche = profileNiche · audience.name (goal_label); remix-card audienceName prop optional, omitted for General
 
 ### Roadmap Evolution
 
@@ -156,7 +159,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T08:34:44.271Z
+Last session: 2026-06-19T08:48:25.977Z
 Stopped at: Phase 9 context gathered
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
 Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft-not-yet-disc/09-CONTEXT.md
@@ -195,3 +198,4 @@ Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft
 | Phase 08-discover-remix-read-the-competitor-niche-moat-chain-draft-no P01 | 8min | 2 tasks | 4 files |
 | Phase 08 P02 | 11min | 3 tasks | 10 files |
 | Phase 08 P03 | 10min | 3 tasks | 12 files |
+| Phase 08 P04 | 10min | 3 tasks | 11 files |
