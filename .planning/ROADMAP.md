@@ -353,11 +353,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** 7 plans, 4 waves *(PLANNED 2026-06-19)*
+**Plans:** 1/7 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
-- [ ] 10-01-PLAN.md — Flywheel math core: predicted/realized signatures + reconcile + confidence-gate + recalibration delta (pure, deterministic) [FLYWHEEL-02/03/04]
+- [x] 10-01-PLAN.md — Flywheel math core: predicted/realized signatures + reconcile + confidence-gate + recalibration delta (pure, deterministic) [FLYWHEEL-02/03/04]
 - [ ] 10-02-PLAN.md — Schema rails: outcome_signatures + reconciliations + saved_items migrations + scrapeSinglePostMetrics + repos + Apify Wave-0 spike [FLYWHEEL-01/05, SAVE-01]
 
 **Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
@@ -385,6 +385,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Sequenced after** the Sandcastles track (provisional Phases 11–13). Numbers assigned later.
 
 **Already scaffolded (de-risks the build):**
+
 - `audiences.goal_intent` enum already includes `"sell"` and is **plumbed**, not cosmetic (`goal-intent.ts` `GOAL_INTENT_BIAS`).
 - `audiences.type = "personal" | "target"` — `target` already models "a market I'm selling to" (not my own followers).
 - Every skill is audience-aware (loads active audience from thread context) → new commerce framing inherits with no plumbing.
@@ -396,6 +397,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Goal:** Make the *existing* skills (Test / Ideas / Hooks / Script) commerce-capable with no audience duplication — a per-run intent control in the composer (grow ⇄ sell, defaults from the audience's `goal_intent`, overridable) that conditions the persona reaction frame + a new buyer-reaction output block.
 
 **Draft scope:**
+
 - **Intent control** in the composer, sitting beside the skill chip + audience picker; defaults from the active audience's `goal_intent`, overridable per run (one audience, switch intent → test an idea then an ad, no clone).
 - **Intent-conditioned reaction frame** injected into the persona simulation (`runWave3` persona prompt for video; the text-skill runner path for Ideas/Hooks — *two injection points to confirm before planning*).
 - **Buyer-reaction output block** (`would_buy`, `objection`, `price_reaction`) alongside the existing persona/idea/hook cards.
@@ -410,6 +412,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Goal:** Ship two net-new skills with no creator analog, both consuming Phase A's buyer-reaction frame. Follow the existing skill triad pattern (route + runner + view + block).
 
 **Draft scope:**
+
 - **Offer / Product Validation** — test the *proposition itself* (concept, price, positioning) against the buyer audience *before any content exists*: would-buy %, ranked objections, price sensitivity. The entry point for sellers who have a product but no content yet. (AS's "validate ideas before build," but on an audience you own + with the Read.)
 - **Ad Creative** — pre-flight ad creative against the buyer audience: stop-scroll + purchase intent + objection-surfaced, ROAS-framed. The spend-saver (test creative before burning ad budget). Likely rides the video/sim path; Offer Validation is text.
 
