@@ -18,6 +18,7 @@ import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
 import { HookCardRenderer } from '@/components/thread/hook-card-block';
 import { ScriptCardRenderer } from '@/components/thread/script-card-block';
 import { RemixCardRenderer } from '@/components/thread/remix-card-block';
+import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -31,6 +32,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "hook-card": HookCardRenderer,
   "script-card": ScriptCardRenderer,
   "remix-card": RemixCardRenderer,
+  "outlier-grid": OutlierGridBlockRenderer,
 };
 
 export interface MessageBlocksProps {
