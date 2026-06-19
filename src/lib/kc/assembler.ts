@@ -95,22 +95,24 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
  * Roles are ordered by PRIORITY (highest first): later roles are dropped first
  * when the assembled bundle exceeds BUNDLE_CHAR_CAP.
  *
- * Ideas   — full creator picture (all six roles) to find resonant angles
+ * Ideas   — full creator picture (all six roles + voice) to find resonant angles
  * Hooks   — develops a specific idea; goals excluded (idea is the primary input)
- * Chat    — thin; base-heavy (D-14); only niche/audience/platform for context
- * Script  — mirrors Hooks role set (GROUND-02 anti-dilution — tight niche+craft
+ *            voice appended last (lowest priority, drops first under cap)
+ * Chat    — thin; base-heavy (D-14); only niche/audience/platform for context;
+ *            voice excluded (chat grounding must stay base-neutral)
+ * Script  — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
  *            slice, not whole-profile); takes a hook and expands it into a beat
  *            structure; goals excluded (the hook/idea is the primary input)
- * Remix   — mirrors Hooks role set (GROUND-02 anti-dilution — tight niche+craft
+ * Remix   — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
  *            slice); adapts a decoded viral video format to the creator's niche;
  *            goals excluded (the source decode anatomy is the primary input)
  */
 export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
-  idea: ["niche", "audience", "goals", "wins", "flops", "platform"],
-  hooks: ["niche", "audience", "platform", "wins", "flops"],
+  idea: ["niche", "audience", "goals", "wins", "flops", "platform", "voice"],
+  hooks: ["niche", "audience", "platform", "wins", "flops", "voice"],
   chat: ["niche", "audience", "platform"],
-  script: ["niche", "audience", "platform", "wins", "flops"],
-  remix: ["niche", "audience", "platform", "wins", "flops"],
+  script: ["niche", "audience", "platform", "wins", "flops", "voice"],
+  remix: ["niche", "audience", "platform", "wins", "flops", "voice"],
 };
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────
@@ -179,7 +181,8 @@ function isProfileThin(profileRow: ProfileRow | null): boolean {
   const hasWins = Boolean(profileRow.past_wins?.length);
   const hasFlops = Boolean(profileRow.past_flops?.length);
   const hasPlatform = Boolean(profileRow.target_platforms?.length);
-  return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform;
+  const hasVoice = Boolean(profileRow.writing_voice_sample?.trim());
+  return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform && !hasVoice;
 }
 
 // ─── Core assembler ───────────────────────────────────────────────────────────
