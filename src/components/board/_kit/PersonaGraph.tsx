@@ -28,6 +28,8 @@ export interface PersonaNode {
   dropAt?: string;
   /** 'accent' paints the node coral (the weak / worst cluster). */
   tone?: 'accent' | 'default';
+  /** Verbatim reaction to THIS concept — surfaced in the detail card (LIVE-02). */
+  quote?: string;
 }
 
 export interface PersonaGraphProps {
@@ -35,6 +37,14 @@ export interface PersonaGraphProps {
   height?: number;
   reducedMotion?: boolean;
   className?: string;
+  /**
+   * Optional replay-driven per-node attention override (AudienceLens, P9). When
+   * present (length === personas.length), each node's fill opacity reflects the
+   * REPLAYED segment's attention instead of its aggregate watch-through, so the
+   * room "lights up" segment-by-segment. Additive + default-undefined — existing
+   * call sites are byte-identical (reading-panels passes nothing).
+   */
+  attentionOverride?: number[];
 }
 
 const VB_W = 320;
@@ -55,6 +65,7 @@ export function PersonaGraph({
   height = 220,
   reducedMotion = false,
   className,
+  attentionOverride,
 }: PersonaGraphProps) {
   // `hover` = desktop pointer-over preview; `pinned` = a tapped node (touch, or a
   // deliberate click). The card shows the pinned node when one is pinned, else the
@@ -169,9 +180,16 @@ export function PersonaGraph({
         ))}
         {nodes.map((nd, i) => {
           const accent = nd.tone === 'accent';
+          // Replay override (P9): when a per-segment attention vector is supplied the
+          // node opacity reflects the REPLAYED segment, so the room lights/dims
+          // segment-by-segment. Falls back to the aggregate watch-through otherwise.
+          const intensity =
+            attentionOverride && attentionOverride.length === nodes.length
+              ? Math.max(0, Math.min(1, attentionOverride[i] ?? 0))
+              : Math.max(0, Math.min(1, nd.watchThrough));
           const fill = accent
             ? 'var(--color-accent)'
-            : `rgba(236, 231, 222, ${(0.28 + Math.max(0, Math.min(1, nd.watchThrough)) * 0.5).toFixed(2)})`;
+            : `rgba(236, 231, 222, ${(0.28 + intensity * 0.5).toFixed(2)})`;
           return (
             <g
               key={nd.id}
@@ -250,6 +268,11 @@ export function PersonaGraph({
                 <div className="mt-1 text-[10px] uppercase tracking-[0.06em] text-foreground-muted">
                   {nd.segment}
                 </div>
+              )}
+              {nd.quote && (
+                <p className="mt-1.5 text-[11px] italic leading-snug text-foreground-secondary">
+                  &ldquo;{nd.quote}&rdquo;
+                </p>
               )}
             </div>
           );
