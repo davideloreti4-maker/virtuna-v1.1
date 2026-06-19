@@ -10,10 +10,11 @@
  *     advances a segment index; each tick feeds that segment's per-node attention into
  *     `PersonaGraph.attentionOverride`, so nodes light/dim as "the room watches."
  *
- *   • CASCADE (W3 seam, stubbed): flat skills (Ideas/Hooks/Script) have NO timeline.
- *     There the control is a "Play" that reveals nodes in `cascadeOrder` (sentiment →
- *     weight). This wave imports the type seam only; the cascade itself lands in W3.
- *     We do NOT fabricate a pseudo-timeline for flat data (D-06).
+ *   • CASCADE (W3, live): flat skills (Ideas/Hooks/Script/Remix) + the text Read have
+ *     NO timeline. There the control is a "Play" that REVEALS nodes one-by-one in
+ *     `cascadeOrder` (stops first, heaviest first) — a staggered reveal animation, NOT a
+ *     fabricated pseudo-timeline (D-06). Before "Play" all nodes are present (static
+ *     cloud); "Play" dims un-revealed nodes and lights them in cascade order.
  *
  * ALL motion is gated on `reducedMotion`: when reduced we render the static cloud + an
  * sr-only aggregate mirror (UI-SPEC copy, verbatim) and expose no auto-advancing motion.
@@ -38,6 +39,8 @@ export interface ReplayControllerProps {
 
 /** ms per replayed segment — calm, readable, not a real-time crowd. */
 const SEGMENT_MS = 700;
+/** ms per cascade-revealed node — slightly snappier than a segment tick. */
+const CASCADE_MS = 320;
 
 export function ReplayController({ nodes, heatmap, reducedMotion = false }: ReplayControllerProps) {
   // Per-node attention timelines aligned to `nodes` order (by persona id). A node is
@@ -54,14 +57,21 @@ export function ReplayController({ nodes, heatmap, reducedMotion = false }: Repl
   );
   const hasTimeline = segmentCount > 0;
 
-  // The cascade order is computed (W3 will drive the flat-skill reveal off it). Kept
-  // wired so the seam compiles and the type contract is exercised this wave.
+  // Deterministic cascade reveal order (stops first, heaviest first) — drives the
+  // flat-signal "Play" staggered reveal (D-06). Pure; no Math.random.
   const reveal = useMemo(() => cascadeOrder(nodes), [nodes]);
-  void reveal;
 
+  // ── TIMELINE replay (video Test surface) ──────────────────────────────────────
   const [segment, setSegment] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── CASCADE reveal (flat surfaces) ────────────────────────────────────────────
+  // How many nodes (in `reveal` order) are currently revealed. null = all present
+  // (static, pre-Play). A number = the staggered reveal is in progress.
+  const [revealed, setRevealed] = useState<number | null>(null);
+  const cascadeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cascading = revealed !== null;
 
   // Advance the segment index while playing. Reduced motion never auto-advances.
   useEffect(() => {
@@ -81,17 +91,53 @@ export function ReplayController({ nodes, heatmap, reducedMotion = false }: Repl
     };
   }, [playing, reducedMotion, hasTimeline, segmentCount]);
 
+  // Advance the cascade reveal one node at a time. Reduced motion never auto-advances
+  // (the static cloud + sr-only mirror cover that path). The tick itself terminates by
+  // setting `revealed` back to null once every node has been lit (all nodes present).
+  useEffect(() => {
+    if (revealed === null || reducedMotion) return;
+    cascadeTimer.current = setInterval(() => {
+      setRevealed((r) => {
+        if (r === null) return null;
+        const next = r + 1;
+        return next > reveal.length ? null : next;
+      });
+    }, CASCADE_MS);
+    return () => {
+      if (cascadeTimer.current) clearInterval(cascadeTimer.current);
+    };
+  }, [revealed, reducedMotion, reveal.length]);
+
   // The per-node attention vector for the currently-replayed segment. Undefined when
   // not replaying → PersonaGraph falls back to aggregate watch-through.
-  const attentionOverride = useMemo(() => {
+  const timelineOverride = useMemo(() => {
     if (segment === null) return undefined;
     return timelines.map((t) => t[segment] ?? 0);
   }, [segment, timelines]);
+
+  // During a cascade, dim un-revealed nodes to ~0 and light revealed ones to their
+  // real watch-through. Ordered by `reveal` (cascadeOrder), aligned back to `nodes`.
+  const cascadeOverride = useMemo(() => {
+    if (revealed === null) return undefined;
+    const rank = new Map<string, number>();
+    reveal.forEach((id, idx) => rank.set(id, idx));
+    return nodes.map((n) => {
+      const idx = rank.get(n.id) ?? Number.POSITIVE_INFINITY;
+      return idx < revealed ? n.watchThrough : 0;
+    });
+  }, [revealed, reveal, nodes]);
+
+  const attentionOverride = timelineOverride ?? cascadeOverride;
 
   function handleReplay() {
     if (reducedMotion || !hasTimeline) return;
     setSegment(0);
     setPlaying(true);
+  }
+
+  function handlePlayCascade() {
+    if (reducedMotion || hasTimeline || nodes.length === 0) return;
+    setRevealed(0);
   }
 
   return (
@@ -105,8 +151,7 @@ export function ReplayController({ nodes, heatmap, reducedMotion = false }: Repl
         />
       </div>
 
-      {/* Replay control — only the timeline path is live this wave (D-06). Hidden when
-          there is no real timeline (flat skills get the W3 cascade instead). */}
+      {/* Replay control — segment-by-segment ONLY where a real timeline exists (D-06). */}
       {hasTimeline && !reducedMotion && (
         <button
           type="button"
@@ -115,6 +160,21 @@ export function ReplayController({ nodes, heatmap, reducedMotion = false }: Repl
           className="self-start rounded-[8px] border border-[var(--color-border)] bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[var(--color-hover)] disabled:opacity-50"
         >
           {playing ? `Replaying… ${(segment ?? 0) + 1}/${segmentCount}` : 'Replay reactions'}
+        </button>
+      )}
+
+      {/* "Play" — staggered cascade reveal on flat surfaces (no timeline → no replay).
+          A reveal animation ordered by verdict/weight, NOT a fabricated timeline. */}
+      {!hasTimeline && !reducedMotion && nodes.length > 0 && (
+        <button
+          type="button"
+          onClick={handlePlayCascade}
+          disabled={cascading}
+          className="self-start rounded-[8px] border border-[var(--color-border)] bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[var(--color-hover)] disabled:opacity-50"
+        >
+          {cascading
+            ? `Reading… ${Math.min(revealed ?? 0, reveal.length)}/${reveal.length}`
+            : 'Play'}
         </button>
       )}
 

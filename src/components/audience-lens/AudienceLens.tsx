@@ -33,18 +33,59 @@ import {
   buildPersonaNodes,
   buildSegmentGroups,
   worstBadGroupKey,
+  buildFlatPersonaNodes,
+  clusterFlatNodes,
+  type FlatPersonaReaction,
+  type SegmentGroup,
+  type SlotKey,
 } from '@/components/board/audience/audience-derive';
+import type { PersonaNode } from '@/components/board/_kit';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
 import { ReplayController } from './ReplayController';
+import { ClusterView } from './ClusterView';
+import { cascadeOrder } from './lens-derive';
 import { useLensScale, type LensScale } from './use-lens-scale';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
+
+/**
+ * The Rewrite-for-audience loop (LIVE-07, D-05). When provided, a sticky "Rewrite for
+ * this audience →" CTA re-POSTs to the ORIGINATING skill's own runner with the Read's
+ * lever injected as steering, producing a new card + Read in-thread; on success the Lens
+ * surfaces the DELTA vs the prior Read. Omitted on non-regenerable surfaces (plain chat
+ * turns — D-05): no concept object to regenerate → no CTA.
+ */
+export interface LensRewrite {
+  /** The originating skill's own runner endpoint (from CHAIN_HANDOFFS self-handoff). */
+  endpoint: string;
+  /** The Read's lever line — injected as the steering anchor on the re-POST. */
+  lever: string;
+  /** Platform carried on the re-POST body (matches the runner contract). */
+  platform: string;
+  /** Prior-Read stop count for the delta readout (e.g. "6/10 → 8/10"). */
+  priorStopCount: number;
+  /** Prior-Read total persona count for the delta readout. */
+  priorTotal: number;
+  /**
+   * Fires the re-POST. The host owns the actual fetch + in-thread streaming (it has the
+   * thread context); the Lens supplies the lever-as-steering anchor + platform. Resolves
+   * with the NEW Read's stop/total so the Lens can render the delta, or null on failure.
+   */
+  onRewrite: (anchor: string, platform: string) => Promise<{ stopCount: number; total: number } | null>;
+}
 
 export interface AudienceLensProps {
   /** The opened Read's heatmap (carries the per-persona attention timeline). */
   heatmap: HeatmapPayload | null;
   /** Per-persona sim results when present (else attention means are used). */
   simResults: PersonaSimulationResult[] | undefined;
+  /**
+   * Flat Shape-B reactions — the text-skill / text-Read persona shape (no timeline,
+   * D-06). When supplied (and `heatmap` is absent), the Lens degrades to cascade mode:
+   * cloud + drill + cluster + Population + chat + Rewrite all work; only segment-by-
+   * segment replay is unavailable (there is no real timeline to replay).
+   */
+  flatPersonas?: FlatPersonaReaction[];
   /** The P8 multi-audience Read block — present on skill surfaces, absent on Reading. */
   readBlock?: MultiAudienceReadBlock | null;
   /** Honors the user's OS motion preference (gates all replay/cascade motion). */
@@ -57,6 +98,11 @@ export interface AudienceLensProps {
   conceptText?: string;
   /** Platform for the persona chat grounding (defaults tiktok). */
   platform?: 'tiktok' | 'instagram' | 'youtube';
+  /**
+   * The Rewrite-for-audience loop (LIVE-07). Omitted ⇒ no sticky CTA (e.g. plain chat
+   * turns — there is no regenerable concept object; D-05).
+   */
+  rewrite?: LensRewrite;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -74,6 +120,7 @@ const EMPTY_BODY = 'Run this concept against your audience to see how the room r
 export function AudienceLens({
   heatmap,
   simResults,
+  flatPersonas,
   readBlock,
   reducedMotion = false,
   conceptText,
@@ -85,14 +132,45 @@ export function AudienceLens({
   // The persona currently being asked "why" (null = drawer closed). One at a time (D-03).
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
 
-  // The same nodes PersonaCloud derives — buildPersonaNodes returns [] when there
-  // are no heatmap personas, which is the degraded-signal omit path.
-  const nodes = useMemo(() => {
-    const badKey = worstBadGroupKey(buildSegmentGroups(heatmap, simResults));
-    return buildPersonaNodes(heatmap, simResults, badKey);
-  }, [heatmap, simResults]);
+  // Signal shape: a real heatmap (rich, timeline) takes precedence; otherwise the flat
+  // Shape-B reactions drive a degraded cascade-mode Lens (D-06). Both resolve to the
+  // SAME PersonaNode[] + SegmentGroup[] shape so every view below is shared (D-04).
+  const useFlat = !heatmap && Array.isArray(flatPersonas) && flatPersonas.length > 0;
+
+  const { nodes, groups, worstKey } = useMemo((): {
+    nodes: PersonaNode[];
+    groups: SegmentGroup[];
+    worstKey: SlotKey | null;
+  } => {
+    if (useFlat) {
+      const flatNodes = buildFlatPersonaNodes(flatPersonas!);
+      const { groups: g, worstKey: w } = clusterFlatNodes(flatNodes);
+      // Paint the worst cluster's nodes coral in the cloud (mirror the table — the one
+      // coral cluster). clusterFlatNodes folds nodes by slot identically, so a node is
+      // in the worst cluster iff its single-node fold lands on the worst slot key.
+      const toned = flatNodes.map((n) => {
+        const slotKey = clusterFlatNodes([n]).groups.find((gr) => gr.count > 0)?.key ?? null;
+        return w != null && slotKey === w ? { ...n, tone: 'accent' as const } : n;
+      });
+      return { nodes: toned, groups: g, worstKey: w };
+    }
+    const g = buildSegmentGroups(heatmap, simResults);
+    const w = worstBadGroupKey(g);
+    return { nodes: buildPersonaNodes(heatmap, simResults, w), groups: g, worstKey: w };
+  }, [useFlat, flatPersonas, heatmap, simResults]);
 
   const hasReaction = nodes.length > 0;
+
+  // The "Ask them why →" list — ordered by the SAME deterministic cascade order the
+  // room reveals in (stops first, heaviest first; cascadeOrder, D-06) so the chat list
+  // reads in lockstep with the staggered reveal rather than raw input order.
+  const chatList = useMemo(() => {
+    const grounded = nodes.filter((n) => Boolean(n.archetype));
+    const rank = new Map(cascadeOrder(grounded).map((id, i) => [id, i]));
+    return grounded
+      .slice()
+      .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+  }, [nodes]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -124,14 +202,17 @@ export function AudienceLens({
                   heatmap={heatmap}
                   reducedMotion={reducedMotion}
                 />
+                {/* Cluster-by-segment lens (D-04): which Temp×Disposition segment loved /
+                    hated the concept; the single worst cluster reads coral (≤2 marks). */}
+                <div className="mt-4">
+                  <ClusterView groups={groups} worstKey={worstKey} />
+                </div>
                 {/* Per-persona "Ask them why →" — opens the in-context chat drawer scoped to
                     this Read, one persona at a time (D-03). Only where we have a concept to
                     chat about + an archetype to ground on. */}
                 {conceptText && (
                   <ul className="mt-4 flex flex-col gap-1">
-                    {nodes
-                      .filter((n) => Boolean(n.archetype))
-                      .map((n) => (
+                    {chatList.map((n) => (
                         <li key={n.id}>
                           <button
                             type="button"
