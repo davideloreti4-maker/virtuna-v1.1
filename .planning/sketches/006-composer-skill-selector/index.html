@@ -9,19 +9,15 @@
 <link rel="stylesheet" href="../themes/flatwarm.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: var(--sans); background: var(--bg); color: var(--cream-2);
-    letter-spacing: 0.1px; -webkit-font-smoothing: antialiased; padding-top: 50px;
-  }
+  body { font-family: var(--sans); background: var(--bg); color: var(--cream-2);
+    letter-spacing: 0.1px; -webkit-font-smoothing: antialiased; padding-top: 50px; }
   svg { display: block; }
-  .ico { width: 17px; height: 17px; stroke: currentColor; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-  .ico-sm { width: 15px; height: 15px; }
+  .ico { width: 18px; height: 18px; stroke: currentColor; stroke-width: 1.5; fill: none; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .ico-sm { width: 14px; height: 14px; }
 
-  /* tab bar */
   #nav { position: fixed; top: 0; left: 0; right: 0; z-index: 9998; background: var(--sidebar);
     border-bottom: 1px solid var(--border); padding: 8px 16px; display: flex; gap: 8px; align-items: center; }
-  #nav .b { font-size: 13px; color: var(--cream-muted); margin-right: 8px; }
-  #nav .b b { color: var(--cream-2); }
+  #nav .b { font-size: 13px; color: var(--cream-muted); margin-right: 8px; } #nav .b b { color: var(--cream-2); }
   .tab { font-family: var(--sans); font-size: 13px; cursor: pointer; background: transparent; color: var(--cream-muted);
     border: 1px solid var(--border); border-radius: var(--r-md); padding: 5px 12px; transition: .15s; }
   .tab:hover { border-color: var(--border-hover); color: var(--cream); }
@@ -29,117 +25,103 @@
 
   .variant { display: none; min-height: calc(100vh - 50px); position: relative; }
   .variant.active { display: block; }
+  .watermark { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); opacity: 0.045; pointer-events: none; }
+  .watermark svg { width: 132px; height: 132px; stroke: var(--cream); stroke-width: 0.9; fill: none; }
 
-  /* faint stele watermark */
-  .watermark { position: absolute; top: 14%; left: 50%; transform: translateX(-50%); opacity: 0.05; pointer-events: none; }
-  .watermark svg { width: 120px; height: 120px; stroke: var(--cream); stroke-width: 1; fill: none; }
+  .center { max-width: 720px; margin: 0 auto; padding: 17vh 24px 40px; display: flex; flex-direction: column; align-items: center; }
+  .greet { font-family: var(--serif); font-size: 2.7rem; font-weight: 400; color: var(--cream); letter-spacing: -0.015em;
+    display: flex; align-items: center; gap: 15px; margin-bottom: 38px; }
+  .greet .stele svg { width: 30px; height: 30px; stroke: var(--coral); stroke-width: 1.3; fill: none; }
 
-  .center { max-width: 760px; margin: 0 auto; padding: 16vh 24px 40px; display: flex; flex-direction: column; align-items: center; }
-  .greet { font-family: var(--serif); font-size: 2.6rem; font-weight: 400; color: var(--cream); letter-spacing: -0.01em;
-    display: flex; align-items: center; gap: 14px; margin-bottom: 34px; }
-  .greet .stele { color: var(--coral); }
-  .greet .stele svg { width: 30px; height: 30px; stroke: var(--coral); stroke-width: 1.4; fill: none; }
-
-  /* ── composer ── */
+  /* ── composer (generous, premium) ── */
   .composer { width: 100%; background: var(--composer); border: 1px solid var(--border);
-    border-radius: var(--r-xl); box-shadow: var(--shadow-float); padding: 16px 16px 12px; position: relative; }
+    border-radius: var(--r-2xl); box-shadow: var(--shadow-float); padding: 20px 20px 14px; position: relative; transition: border-color .15s; }
   .composer:focus-within { border-color: var(--border-hover); }
   .ta { width: 100%; background: transparent; border: none; resize: none; outline: none; color: var(--cream);
-    font-family: var(--sans); font-size: 1.0625rem; line-height: 1.5; padding: 2px 4px 0; min-height: 30px; max-height: 140px; }
+    font-family: var(--sans); font-size: 1.0625rem; line-height: 1.55; padding: 4px 4px 0; min-height: 46px; max-height: 150px; }
   .ta::placeholder { color: var(--cream-muted); }
 
-  .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  .row { display: flex; align-items: center; gap: 6px; margin-top: 16px; }
   .row .grow { flex: 1; }
 
-  /* control button (icon-only, e.g. +, mic) */
-  .ctl { width: 32px; height: 32px; border-radius: var(--r-md); border: 1px solid transparent; background: transparent;
+  /* icon-only control (+) */
+  .ctl { width: 34px; height: 34px; border-radius: var(--r-md); border: none; background: transparent;
     color: var(--cream-2); display: grid; place-items: center; cursor: pointer; transition: .14s; }
   .ctl:hover { background: var(--chip); color: var(--cream); }
 
-  /* labeled chip control (skill / audience / intent) */
-  .chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; background: transparent;
-    border: 1px solid var(--border); border-radius: var(--r-md); padding: 5px 10px 5px 9px; color: var(--cream-2);
-    font-family: var(--sans); font-size: 13px; font-weight: 500; transition: .14s; }
-  .chip:hover { border-color: var(--border-hover); background: rgba(255,255,255,0.02); color: var(--cream); }
-  .chip .ico { color: var(--cream-muted); }
-  .chip.skill .ico { color: var(--coral); }
-  .chip .chev { color: var(--cream-dim); }
-  .chip .lbl-dim { color: var(--cream-muted); font-weight: 400; }
+  /* PRIMARY skill pill — the one accented, bordered element */
+  .skill { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; background: var(--chip);
+    border: 1px solid var(--border); border-radius: var(--r-md); padding: 7px 11px 7px 10px; color: var(--cream);
+    font-family: var(--sans); font-size: 13.5px; font-weight: 500; transition: .14s; }
+  .skill:hover { border-color: var(--border-hover); }
+  .skill .ico { color: var(--coral); }
+  .skill .chev { color: var(--cream-muted); }
 
-  /* model indicator (right, text-led like Claude) */
-  .model { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; background: transparent; border: none;
-    color: var(--cream-muted); font-family: var(--sans); font-size: 13px; padding: 5px 6px; border-radius: var(--r-md); transition: .14s; }
-  .model:hover { color: var(--cream-2); background: var(--chip); }
-  .model b { color: var(--cream-2); font-weight: 500; }
-  .model.max b { color: var(--coral); }
+  /* SECONDARY context controls — borderless, quiet (audience / intent) */
+  .ctx { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; background: transparent; border: none;
+    border-radius: var(--r-md); padding: 6px 8px; color: var(--cream-muted); font-family: var(--sans); font-size: 13px; transition: .14s; }
+  .ctx:hover { background: var(--chip); color: var(--cream-2); }
+  .ctx .ico { width: 15px; height: 15px; }
+  .ctx b { color: var(--cream-2); font-weight: 500; }
 
-  .send { width: 32px; height: 32px; border-radius: var(--r-md); border: none; background: var(--coral); color: var(--coral-fg);
+  /* read-only MODEL indicator (NOT a control — skill decides it) */
+  .modeltag { display: inline-flex; align-items: center; gap: 6px; color: var(--cream-muted); font-size: 12.5px; padding: 0 8px;
+    cursor: default; user-select: none; }
+  .modeltag .dotc { width: 6px; height: 6px; border-radius: 50%; background: var(--cream-muted); }
+  .modeltag.max .dotc { background: var(--coral); }
+  .modeltag.max b { color: var(--coral); }
+  .modeltag b { color: var(--cream-2); font-weight: 500; }
+  .modeltag .auto { color: var(--cream-dim); font-size: 11px; }
+
+  .send { width: 34px; height: 34px; border-radius: var(--r-md); border: none; background: var(--coral); color: var(--coral-fg);
     display: grid; place-items: center; cursor: pointer; transition: .14s; }
-  .send:hover { filter: brightness(1.06); }
-  .send:disabled { background: var(--chip); color: var(--cream-dim); cursor: default; filter: none; }
-
-  .divider-v { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
+  .send:hover { filter: brightness(1.07); }
 
   /* ── popover ── */
   .pop-anchor { position: relative; }
-  .pop { position: absolute; bottom: calc(100% + 10px); z-index: 100; min-width: 290px; background: var(--popover);
-    border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); padding: 6px;
+  .pop { position: absolute; bottom: calc(100% + 12px); z-index: 100; min-width: 296px; max-height: 60vh; overflow-y: auto;
+    background: var(--popover); border: 1px solid var(--border); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); padding: 6px;
     opacity: 0; transform: translateY(6px) scale(0.99); transform-origin: bottom left; pointer-events: none; transition: .15s; }
-  .pop.right { left: auto; right: 0; transform-origin: bottom right; }
   .pop.open { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
-  .pop-hint { font-size: 11px; color: var(--cream-dim); padding: 7px 10px 4px; display: flex; align-items: center; gap: 6px; }
-  .grp { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cream-dim);
-    padding: 9px 10px 5px; display: flex; align-items: center; gap: 8px; }
+  .pop-hint { font-size: 11px; color: var(--cream-dim); padding: 8px 11px 5px; display: flex; align-items: center; gap: 6px; }
+  .grp { font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--cream-dim); padding: 10px 11px 5px; display: flex; align-items: center; gap: 8px; }
   .grp .gbadge { font-size: 9px; letter-spacing: .04em; padding: 1px 6px; border-radius: var(--r-full); border: 1px solid var(--coral-border); color: var(--coral); }
   .sep { height: 1px; background: var(--border); margin: 6px 4px; }
-  .item { display: flex; align-items: center; gap: 11px; padding: 8px 10px; border-radius: var(--r-md); cursor: pointer; transition: background .12s; }
+  .item { display: flex; align-items: center; gap: 12px; padding: 9px 11px; border-radius: var(--r-md); cursor: pointer; transition: background .12s; }
   .item:hover { background: var(--popover-hi); }
   .item .ico { color: var(--cream-2); }
   .item .txt { flex: 1; min-width: 0; }
   .item .nm { font-size: 13.5px; font-weight: 500; color: var(--cream); display: flex; align-items: center; gap: 7px; }
-  .item .ds { font-size: 11.5px; color: var(--cream-muted); margin-top: 1px; }
-  .item .mtag { font-size: 10px; color: var(--cream-muted); }
-  .item .mtag.max { color: var(--coral); }
-  .item .badge-max { font-size: 9px; font-weight: 600; letter-spacing: .03em; padding: 1px 5px; border-radius: 4px;
-    background: var(--coral-soft); color: var(--coral); }
-  .item .chk { color: var(--coral); opacity: 0; }
-  .item.on .chk { opacity: 1; }
-  .item.on .nm { color: var(--coral); }
-  .item .chev-r { color: var(--cream-dim); }
-  .item .kbd { font-size: 10px; color: var(--cream-dim); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
-  .item.disabled { opacity: .45; cursor: default; }
-  .item.disabled:hover { background: transparent; }
-
-  /* slash command inline menu */
-  .slash { position: absolute; bottom: calc(100% + 8px); left: 12px; width: 300px; }
-
-  /* segmented (intent) */
-  .seg { display: flex; gap: 4px; padding: 6px; }
-  .seg button { flex: 1; padding: 9px; border-radius: var(--r-md); border: 1px solid var(--border); background: transparent;
-    color: var(--cream-2); font-family: var(--sans); font-size: 13px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; align-items: center; }
+  .item .ds { font-size: 11.5px; color: var(--cream-muted); margin-top: 2px; }
+  .item .badge-max { font-size: 9px; font-weight: 600; letter-spacing: .03em; padding: 1px 5px; border-radius: 4px; background: var(--coral-soft); color: var(--coral); }
+  .item .chk { color: var(--coral); opacity: 0; } .item.on .chk { opacity: 1; } .item.on .nm { color: var(--coral); }
+  .item .chev-r { color: var(--cream-dim); } .item .kbd { font-size: 10px; color: var(--cream-dim); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px; }
+  .slash { position: absolute; bottom: calc(100% + 10px); left: 16px; width: 300px; }
+  .seg { display: flex; gap: 5px; padding: 7px; }
+  .seg button { flex: 1; padding: 10px; border-radius: var(--r-md); border: 1px solid var(--border); background: transparent; color: var(--cream-2);
+    font-family: var(--sans); font-size: 13px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; align-items: center; }
   .seg button .sm { font-size: 10.5px; color: var(--cream-muted); }
-  .seg button.on { border-color: var(--coral-border); background: var(--coral-soft); color: var(--coral); }
-  .seg button.on .sm { color: var(--coral); }
+  .seg button.on { border-color: var(--coral-border); background: var(--coral-soft); color: var(--coral); } .seg button.on .sm { color: var(--coral); }
 
-  .note { max-width: 720px; margin: 30px auto 0; padding: 0 24px; color: var(--cream-muted); font-size: 13px; line-height: 1.65; }
-  .note b { color: var(--cream-2); }
-  .vlabel { text-align: center; color: var(--cream-muted); font-size: 12.5px; margin-top: -18px; margin-bottom: 30px; }
+  .note { max-width: 720px; margin: 34px auto 0; padding: 0 24px; color: var(--cream-muted); font-size: 13px; line-height: 1.65; }
+  .note b { color: var(--cream-2); } .note code { color: var(--cream-2); background: var(--chip); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+  .vlabel { text-align: center; color: var(--cream-muted); font-size: 12.5px; margin-top: -22px; margin-bottom: 34px; }
+  .vlabel code { color: var(--cream-2); }
 
   #tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px;
     background: rgba(0,0,0,.7); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .4; transition: .2s; display: flex; gap: 10px; }
-  #tools:hover { opacity: 1; }
-  #tools button { background: #333; color: #fff; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+  #tools:hover { opacity: 1; } #tools button { background: #333; color: #fff; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
 </style>
 </head>
 <body>
 
 <div id="nav">
   <span class="b"><b>Sketch 006</b> · Composer — flat-warm, premium</span>
-  <button class="tab active" onclick="show('a',event)">A: Full control bar</button>
-  <button class="tab" onclick="show('b',event)">B: Minimal + slash</button>
+  <button class="tab active" onclick="show('a',event)">1: Minimal · context surfaced</button>
+  <button class="tab" onclick="show('b',event)">2: Minimal · context folded</button>
 </div>
 
-<!-- ════ VARIANT A ════ -->
+<!-- ════ VARIANT 1 — surfaced ════ -->
 <div id="variant-a" class="variant active">
   <div class="watermark" id="wmA"></div>
   <div class="center">
@@ -147,44 +129,21 @@
     <div class="composer" id="cA">
       <textarea class="ta" id="taA" placeholder="Describe an idea, paste a URL, or ask Numen…    type / for skills" rows="1" oninput="onInput('A')"></textarea>
       <div class="row">
-        <!-- + attach -->
-        <div class="pop-anchor">
-          <button class="ctl" title="Attach / upload" onclick="toggle('attachA',event)" id="plusA"></button>
-          <div class="pop" id="attachA"></div>
-        </div>
-        <!-- skill -->
-        <div class="pop-anchor">
-          <button class="chip skill" onclick="toggle('skillA',event)" id="skillBtnA"></button>
-          <div class="pop" id="skillA"></div>
-        </div>
-        <!-- audience -->
-        <div class="pop-anchor">
-          <button class="chip" onclick="toggle('audA',event)" id="audBtnA"></button>
-          <div class="pop" id="audA"></div>
-        </div>
-        <!-- intent -->
-        <div class="pop-anchor">
-          <button class="chip" onclick="toggle('intentA',event)" id="intentBtnA"></button>
-          <div class="pop" id="intentA"></div>
-        </div>
-
+        <div class="pop-anchor"><button class="ctl" title="Upload / attach" onclick="toggle('attachA',event)" id="plusA"></button><div class="pop" id="attachA"></div></div>
+        <div class="pop-anchor"><button class="skill" onclick="toggle('skillA',event)" id="skillBtnA"></button><div class="pop" id="skillA"></div></div>
+        <div class="pop-anchor"><button class="ctx" onclick="toggle('audA',event)" id="audBtnA"></button><div class="pop" id="audA"></div></div>
+        <div class="pop-anchor"><button class="ctx" onclick="toggle('intentA',event)" id="intentBtnA"></button><div class="pop" id="intentA"></div></div>
         <div class="grow"></div>
-
-        <!-- model -->
-        <div class="pop-anchor">
-          <button class="model" onclick="toggle('modelA',event)" id="modelBtnA"></button>
-          <div class="pop right" id="modelA"></div>
-        </div>
-        <button class="ctl" title="Voice" id="micA"></button>
+        <span class="modeltag" id="modelA" title="The skill decides the model — Max for video, Flash for text"></span>
         <button class="send" id="sendA"></button>
       </div>
-      <!-- slash menu -->
       <div class="pop slash" id="slashA"></div>
     </div>
   </div>
+  <div class="vlabel">Skill is the one accented control; <b style="color:var(--cream-2)">audience</b> + <b style="color:var(--cream-2)">intent</b> sit quiet beside it (borderless). Model is a read-only tag — <code>/</code> for fast skill entry.</div>
 </div>
 
-<!-- ════ VARIANT B ════ -->
+<!-- ════ VARIANT 2 — folded ════ -->
 <div id="variant-b" class="variant">
   <div class="watermark" id="wmB"></div>
   <div class="center">
@@ -192,199 +151,113 @@
     <div class="composer" id="cB">
       <textarea class="ta" id="taB" placeholder="Describe an idea, paste a URL, or ask Numen…    type / for skills" rows="1" oninput="onInput('B')"></textarea>
       <div class="row">
-        <div class="pop-anchor">
-          <button class="ctl" title="Attach / upload" onclick="toggle('attachB',event)" id="plusB"></button>
-          <div class="pop" id="attachB"></div>
-        </div>
-        <div class="pop-anchor">
-          <button class="chip skill" onclick="toggle('skillB',event)" id="skillBtnB"></button>
-          <div class="pop" id="skillB"></div>
-        </div>
+        <div class="pop-anchor"><button class="ctl" title="Upload / attach" onclick="toggle('attachB',event)" id="plusB"></button><div class="pop" id="attachB"></div></div>
+        <div class="pop-anchor"><button class="skill" onclick="toggle('skillB',event)" id="skillBtnB"></button><div class="pop" id="skillB"></div></div>
         <div class="grow"></div>
-        <div class="pop-anchor">
-          <button class="model" onclick="toggle('modelB',event)" id="modelBtnB"></button>
-          <div class="pop right" id="modelB"></div>
-        </div>
+        <span class="modeltag" id="modelB" title="The skill decides the model"></span>
         <button class="send" id="sendB"></button>
       </div>
       <div class="pop slash" id="slashB"></div>
     </div>
   </div>
-  <div class="vlabel">Audience + intent fold into the skill popover header — the bar stays Claude-clean; <code>/</code> drives skill entry.</div>
+  <div class="vlabel">Bar is just <code>+</code> · skill · model · send. Audience + intent live in the skill popover’s <b style="color:var(--cream-2)">CONTEXT</b> header — one tap deeper, zero bar clutter.</div>
 </div>
 
 <div class="note" id="globalNote"></div>
-
-<div id="tools">
-  <span style="opacity:.7">view:</span>
-  <button onclick="document.querySelectorAll('.composer').forEach(e=>e.style.maxWidth='380px')">phone</button>
-  <button onclick="document.querySelectorAll('.composer').forEach(e=>e.style.maxWidth='')">desktop</button>
-</div>
+<div id="tools"><span style="opacity:.7">view:</span>
+  <button onclick="document.querySelectorAll('.composer,.center').forEach(e=>e.style.maxWidth='390px')">phone</button>
+  <button onclick="document.querySelectorAll('.composer,.center').forEach(e=>e.style.maxWidth='')">desktop</button></div>
 
 <script>
-// ───────── icons (stroke line, premium — no emoji) ─────────
 const P = {
-  plus:'<path d="M8 3v10M3 8h10"/>', chev:'<path d="M4 6l4 4 4-4"/>', chevR:'<path d="M6 4l4 4-4 4"/>',
-  check:'<path d="M3 8.5l3.2 3.2L13 5"/>', mic:'<rect x="6" y="2.5" width="4" height="7.5" rx="2"/><path d="M3.5 8a4.5 4.5 0 009 0M8 12.5V14"/>',
-  up:'<path d="M8 13V4M4 8l4-4 4 4"/>', people:'<circle cx="6" cy="6" r="2.2"/><path d="M2.5 13c0-2 1.6-3.2 3.5-3.2S9.5 11 9.5 13"/><path d="M10.5 4.2a2 2 0 010 3.6M11 13c0-1.4-.5-2.4-1.3-3"/>',
+  plus:'<path d="M8 3v10M3 8h10"/>', chev:'<path d="M4 6.2l4 4 4-4"/>', chevR:'<path d="M6 4l4 4-4 4"/>', check:'<path d="M3 8.5l3.2 3.2L13 5"/>',
+  up:'<path d="M8 13V4M4 8l4-4 4 4"/>', people:'<circle cx="6" cy="6" r="2.2"/><path d="M2.3 13c0-2 1.7-3.2 3.7-3.2S9.7 11 9.7 13"/><path d="M10.6 4.2a2 2 0 010 3.6M11.2 13c0-1.4-.5-2.4-1.3-3"/>',
   target:'<circle cx="8" cy="8" r="5.2"/><circle cx="8" cy="8" r="2"/>', cpu:'<rect x="4" y="4" width="8" height="8" rx="1.5"/><path d="M6.5 1.5v2M9.5 1.5v2M6.5 12.5v2M9.5 12.5v2M1.5 6.5h2M1.5 9.5h2M12.5 6.5h2M12.5 9.5h2"/>',
   compass:'<circle cx="8" cy="8" r="6"/><path d="M10.5 5.5L9 9l-3.5 1.5L7 7z"/>', bulb:'<path d="M5.5 10a3.5 3.5 0 115 0c-.6.5-1 1-1 2H6.5c0-1-.4-1.5-1-2z"/><path d="M6.5 14h3"/>',
-  anchor:'<circle cx="8" cy="3.5" r="1.5"/><path d="M8 5v8M3.5 9a4.5 4.5 0 009 0M3.5 9H5M11 9h1.5"/>',
-  doc:'<path d="M4 2.5h5L12 5.5V13.5H4z"/><path d="M9 2.5V6h3M6 9h4M6 11h4"/>', shuffle:'<path d="M2.5 4.5h3l5 7h3M2.5 11.5h3l1.5-2M11 9.5l2.5 2-2.5 2M11 2.5l2.5 2-2.5 2M9.5 6.5l1-1.5"/>',
-  crosshair:'<circle cx="8" cy="8" r="5.2"/><path d="M8 1.5v2.5M8 12v2.5M1.5 8h2.5M12 8h2.5"/>', chat:'<path d="M2.5 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H7l-3 2.5V11H4.5a2 2 0 01-2-2z"/>',
-  tag:'<path d="M2.5 7.5l5-5H13V8l-5 5z"/><circle cx="10" cy="5" r="0.8"/>', mega:'<path d="M2.5 6.5v3l7 3V3.5z"/><path d="M9.5 5.5a3 3 0 010 5M3 9.5v2.5h2"/>',
-  video:'<rect x="2" y="4" width="8" height="8" rx="1.5"/><path d="M10 7l4-2v6l-4-2z"/>', image:'<rect x="2.5" y="3.5" width="11" height="9" rx="1.5"/><circle cx="6" cy="6.5" r="1"/><path d="M3 11l3-2.5 3 2 2-1.5 3 2.5"/>',
-  camera:'<rect x="2" y="4.5" width="12" height="8" rx="1.5"/><circle cx="8" cy="8.5" r="2.3"/><path d="M5.5 4.5l1-1.5h3l1 1.5"/>',
-  search:'<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>',
-  stele:'<path d="M12 2v20M12 7l-7-3M12 7l7-3M12 13l-8-2M12 13l8-2M12 18l-6-1M12 18l6-1"/>'
+  anchor:'<circle cx="8" cy="3.5" r="1.5"/><path d="M8 5v8M3.5 9a4.5 4.5 0 009 0M3.5 9H5M11 9h1.5"/>', doc:'<path d="M4 2.5h5L12 5.5V13.5H4z"/><path d="M9 2.5V6h3M6 9h4M6 11h4"/>',
+  shuffle:'<path d="M2.5 4.5h3l5 7h3M2.5 11.5h3l1.5-2M11 9.5l2.5 2-2.5 2M11 2.5l2.5 2-2.5 2"/>', crosshair:'<circle cx="8" cy="8" r="5.2"/><path d="M8 1.5v2.5M8 12v2.5M1.5 8h2.5M12 8h2.5"/>',
+  chat:'<path d="M2.5 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H7l-3 2.5V11H4.5a2 2 0 01-2-2z"/>', tag:'<path d="M2.5 7.5l5-5H13V8l-5 5z"/><circle cx="10" cy="5" r="0.8"/>',
+  mega:'<path d="M2.5 6.5v3l7 3V3.5z"/><path d="M9.5 5.5a3 3 0 010 5M3 9.5v2.5h2"/>', video:'<rect x="2" y="4" width="8" height="8" rx="1.5"/><path d="M10 7l4-2v6l-4-2z"/>',
+  image:'<rect x="2.5" y="3.5" width="11" height="9" rx="1.5"/><circle cx="6" cy="6.5" r="1"/><path d="M3 11l3-2.5 3 2 2-1.5 3 2.5"/>', camera:'<rect x="2" y="4.5" width="12" height="8" rx="1.5"/><circle cx="8" cy="8.5" r="2.3"/><path d="M5.5 4.5l1-1.5h3l1 1.5"/>',
+  search:'<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>', stele:'<path d="M12 2v20M12 7l-7-3M12 7l7-3M12 13l-8-2M12 13l8-2M12 18l-6-1M12 18l6-1"/>'
 };
 function svg(d, cls='ico'){ return `<svg class="${cls}" viewBox="0 0 16 16">${d}</svg>`; }
-function steleSvg(){ return `<svg viewBox="0 0 24 24">${P.stele}</svg>`; }
+function stele(){ return `<svg viewBox="0 0 24 24">${P.stele}</svg>`; }
 
-// ───────── data ─────────
-const SKILLS = {
-  creator: [
-    {id:'explore', i:P.compass,  nm:'Explore', ds:'Audience-curated discovery', m:'Flash'},
-    {id:'idea',    i:P.bulb,     nm:'Ideas',   ds:'Funnel-top idea cards',       m:'Flash'},
-    {id:'hooks',   i:P.anchor,   nm:'Hooks',   ds:'Ranked scroll-stoppers',      m:'Flash'},
-    {id:'script',  i:P.doc,      nm:'Script',  ds:'Beats + retention markers',   m:'Flash'},
-    {id:'remix',   i:P.shuffle,  nm:'Remix',   ds:'Decode a winner → your version', m:'Flash'},
-    {id:'test',    i:P.crosshair,nm:'Test',    ds:'Full Read on a real video',   m:'Max'},
-    {id:'chat',    i:P.chat,     nm:'Chat',    ds:'Ask Numen anything',          m:'Flash'},
-  ],
+const SKILLS = { creator: [
+    {id:'explore',i:P.compass,nm:'Explore',ds:'Audience-curated discovery',m:'Flash'},
+    {id:'idea',i:P.bulb,nm:'Ideas',ds:'Funnel-top idea cards',m:'Flash'},
+    {id:'hooks',i:P.anchor,nm:'Hooks',ds:'Ranked scroll-stoppers',m:'Flash'},
+    {id:'script',i:P.doc,nm:'Script',ds:'Beats + retention markers',m:'Flash'},
+    {id:'remix',i:P.shuffle,nm:'Remix',ds:'Decode a winner → your version',m:'Flash'},
+    {id:'test',i:P.crosshair,nm:'Test',ds:'Full Read on a real video',m:'Max'},
+    {id:'chat',i:P.chat,nm:'Chat',ds:'Ask Numen anything',m:'Flash'} ],
   marketing: [
-    {id:'offer', i:P.tag,  nm:'Offer Validation', ds:'Test a product, price, positioning', m:'Flash'},
-    {id:'ad',    i:P.mega, nm:'Ad Creative',      ds:'Pre-flight an ad, ROAS-framed',       m:'Max'},
-  ],
-};
-const ALL = [...SKILLS.creator, ...SKILLS.marketing];
-const byId = id => ALL.find(s => s.id === id);
+    {id:'offer',i:P.tag,nm:'Offer Validation',ds:'Test a product, price, positioning',m:'Flash'},
+    {id:'ad',i:P.mega,nm:'Ad Creative',ds:'Pre-flight an ad, ROAS-framed',m:'Max'} ] };
+const ALL = [...SKILLS.creator, ...SKILLS.marketing]; const byId = id => ALL.find(s=>s.id===id);
 const AUDIENCES = [{id:'gym',nm:'Gym Beginners',sub:'TikTok · 18–25'},{id:'fin',nm:'Finance Newbies',sub:'IG · 25–34'},{id:'buyers',nm:'Skincare Buyers',sub:'Target market'}];
-
-// per-variant state
 const ST = { A:{skill:'hooks',aud:'gym',intent:'grow'}, B:{skill:'hooks',aud:'gym',intent:'grow'} };
 
-// ───────── renderers ─────────
-function renderSkillRows(active){
-  const grp = (label, list, mk) => {
-    let h = `<div class="grp">${label}${mk?` <span class="gbadge">MARKETING</span>`:''}</div>`;
-    h += list.map(s => `<div class="item ${s.id===active?'on':''}" data-skill="${s.id}">
-      ${svg(s.i)}
-      <span class="txt"><span class="nm">${s.nm}${s.m==='Max'?' <span class="badge-max">MAX</span>':''}</span><span class="ds">${s.ds}</span></span>
-      ${svg(P.check,'ico chk')}</div>`).join('');
-    return h;
-  };
-  return `<div class="pop-hint">${svg(P.search,'ico ico-sm')} type to filter · ↵ select</div>`
-    + grp('CREATOR', SKILLS.creator, false) + `<div class="sep"></div>` + grp('MARKETING', SKILLS.marketing, true);
+function skillRows(active){
+  const grp=(label,list,mk)=>`<div class="grp">${label}${mk?` <span class="gbadge">MARKETING</span>`:''}</div>`+
+    list.map(s=>`<div class="item ${s.id===active?'on':''}" data-skill="${s.id}">${svg(s.i)}<span class="txt"><span class="nm">${s.nm}${s.m==='Max'?' <span class="badge-max">MAX</span>':''}</span><span class="ds">${s.ds}</span></span>${svg(P.check,'ico chk')}</div>`).join('');
+  return `<div class="pop-hint">${svg(P.search,'ico ico-sm')} type to filter · ↵ to select</div>`+grp('CREATOR',SKILLS.creator,false)+`<div class="sep"></div>`+grp('MARKETING',SKILLS.marketing,true);
 }
-function renderAttach(){
-  return [
-    {i:P.video, nm:'Upload video', sub:'Run a full SIM-1 Max Test', kbd:'⌘U'},
-    {i:P.image, nm:'Add files or photos', sub:''},
-    {i:P.camera, nm:'Take a screenshot', sub:''},
-  ].map(o=>`<div class="item"><span class="ico">${svg(o.i)}</span><span class="txt"><span class="nm">${o.nm}</span>${o.sub?`<span class="ds">${o.sub}</span>`:''}</span>${o.kbd?`<span class="kbd">${o.kbd}</span>`:''}</div>`).join('');
-}
-function renderModel(active){
-  const rows = [
-    {m:'Flash', nm:'SIM-1 Flash', ds:'Fast text read — ideas, hooks, scripts, chat'},
-    {m:'Max',   nm:'SIM-1 Max',   ds:'Full sighted video Read — the real test'},
-  ];
-  return `<div class="pop-hint">Auto-selected by skill · override per run</div>`
-    + rows.map(r=>`<div class="item ${r.m===active?'on':''}" data-model="${r.m}">
-        ${svg(P.cpu)}<span class="txt"><span class="nm">${r.nm}${r.m==='Max'?' <span class="badge-max">VIDEO</span>':''}</span><span class="ds">${r.ds}</span></span>${svg(P.check,'ico chk')}</div>`).join('');
-}
-function renderAud(active){
-  return `<div class="grp">YOUR AUDIENCES</div>` + AUDIENCES.map(a=>`<div class="item ${a.id===active?'on':''}" data-aud="${a.id}">
-      ${svg(P.people)}<span class="txt"><span class="nm">${a.nm}</span><span class="ds">${a.sub}</span></span>${svg(P.check,'ico chk')}</div>`).join('')
-    + `<div class="sep"></div><div class="item"><span class="ico">${svg(P.plus)}</span><span class="txt"><span class="nm">Manage audiences</span></span>${svg(P.chevR,'ico chev-r')}</div>`;
-}
-function renderIntent(active){
-  return `<div class="pop-hint">How should your audience judge this?</div><div class="seg">
-    <button class="${active==='grow'?'on':''}" data-intent="grow">${svg(P.target)}<span>Grow</span><span class="sm">watch · share</span></button>
-    <button class="${active==='sell'?'on':''}" data-intent="sell">${svg(P.tag)}<span>Sell</span><span class="sm">would-buy · price</span></button></div>`;
-}
+function attachRows(){ return [{i:P.video,nm:'Upload video',sub:'Run a full SIM-1 Max Test',kbd:'⌘U'},{i:P.image,nm:'Add files or photos',sub:''},{i:P.camera,nm:'Take a screenshot',sub:''}]
+  .map(o=>`<div class="item">${svg(o.i)}<span class="txt"><span class="nm">${o.nm}</span>${o.sub?`<span class="ds">${o.sub}</span>`:''}</span>${o.kbd?`<span class="kbd">${o.kbd}</span>`:''}</div>`).join(''); }
+function audRows(active){ return `<div class="grp">YOUR AUDIENCE</div>`+AUDIENCES.map(a=>`<div class="item ${a.id===active?'on':''}" data-aud="${a.id}">${svg(P.people)}<span class="txt"><span class="nm">${a.nm}</span><span class="ds">${a.sub}</span></span>${svg(P.check,'ico chk')}</div>`).join('')
+  +`<div class="sep"></div><div class="item">${svg(P.plus)}<span class="txt"><span class="nm">Manage audiences</span></span>${svg(P.chevR,'ico chev-r')}</div>`; }
+function intentRows(active){ return `<div class="pop-hint">How should your audience judge this?</div><div class="seg">
+  <button class="${active==='grow'?'on':''}" data-intent="grow">${svg(P.target)}<span>Grow</span><span class="sm">watch · share</span></button>
+  <button class="${active==='sell'?'on':''}" data-intent="sell">${svg(P.tag)}<span>Sell</span><span class="sm">would-buy · price</span></button></div>`; }
 
-// ───────── pill labels ─────────
 function paint(v){
-  const st = ST[v], s = byId(st.skill), a = AUDIENCES.find(x=>x.id===st.aud);
-  // skill pill
+  const st=ST[v], s=byId(st.skill), a=AUDIENCES.find(x=>x.id===st.aud);
   document.getElementById('skillBtn'+v).innerHTML = `${svg(s.i)}<span>${s.nm}</span>${svg(P.chev,'ico ico-sm chev')}`;
-  document.getElementById('skillBtn'+v).className = 'chip skill';
-  // model (follows skill, overridable — track its own but default to skill's)
-  st.model = st.model || s.m;
-  const mdl = byId(st.skill).m; // skill drives default
-  const showModel = st.modelOverride || mdl;
-  const mb = document.getElementById('modelBtn'+v);
-  mb.className = 'model' + (showModel==='Max'?' max':'');
-  mb.innerHTML = `${svg(P.cpu,'ico ico-sm')}<b>SIM-1 ${showModel}</b>${svg(P.chev,'ico ico-sm chev')}`;
-  // plus / mic / send
-  document.getElementById('plus'+v).innerHTML = svg(P.plus);
-  const mic = document.getElementById('mic'+v); if(mic) mic.innerHTML = svg(P.mic);
-  document.getElementById('send'+v).innerHTML = svg(P.up);
-  // stele + watermark
-  document.getElementById('stele'+v).innerHTML = steleSvg();
-  document.getElementById('wm'+v).innerHTML = steleSvg();
-  // A-only chips
+  // model = read-only, follows skill
+  const mt=document.getElementById('model'+v); mt.className='modeltag'+(s.m==='Max'?' max':'');
+  mt.innerHTML=`<span class="dotc"></span><b>SIM-1 ${s.m}</b><span class="auto">auto</span>`;
+  document.getElementById('plus'+v).innerHTML=svg(P.plus);
+  document.getElementById('send'+v).innerHTML=svg(P.up);
+  document.getElementById('stele'+v).innerHTML=stele(); document.getElementById('wm'+v).innerHTML=stele();
   if(v==='A'){
-    document.getElementById('audBtnA').innerHTML = `${svg(P.people)}<span>${a.nm}</span>${svg(P.chev,'ico ico-sm chev')}`;
-    const intentLbl = st.intent==='sell'?'Sell':'Grow';
-    document.getElementById('intentBtnA').innerHTML = `${svg(P.target)}<span class="lbl-dim">intent</span><span>${intentLbl}</span>${svg(P.chev,'ico ico-sm chev')}`;
+    document.getElementById('audBtnA').innerHTML=`${svg(P.people)}<b>${a.nm}</b>${svg(P.chev,'ico ico-sm chev')}`;
+    document.getElementById('intentBtnA').innerHTML=`${svg(P.target)}<span>intent</span> <b>${st.intent==='sell'?'Sell':'Grow'}</b>${svg(P.chev,'ico ico-sm chev')}`;
   }
 }
-
-// ───────── popover open/close ─────────
 function fill(id){
-  const v = id.endsWith('A')?'A':'B'; const st = ST[v]; const kind = id.replace(/[AB]$/,'');
-  const el = document.getElementById(id);
+  const v=id.endsWith('A')?'A':'B', st=ST[v], kind=id.replace(/[AB]$/,''), el=document.getElementById(id);
   if(kind==='skill'){
-    let head = '';
-    if(v==='B'){ const a=AUDIENCES.find(x=>x.id===st.aud); const intentLbl=st.intent==='sell'?'Sell':'Grow';
-      head = `<div class="grp" style="padding-top:6px">CONTEXT</div>
-        <div class="item" data-open="audB">${svg(P.people)}<span class="txt"><span class="nm" style="font-size:13px">${a.nm}</span><span class="ds">active audience</span></span>${svg(P.chevR,'ico chev-r')}</div>
-        <div class="item" data-open="intentB">${svg(P.target)}<span class="txt"><span class="nm" style="font-size:13px">${intentLbl}</span><span class="ds">intent</span></span>${svg(P.chevR,'ico chev-r')}</div>
-        <div class="sep"></div>`; }
-    el.innerHTML = head + renderSkillRows(st.skill);
-    el.querySelectorAll('[data-open]').forEach(n=>n.onclick=(ev)=>{ ev.stopPropagation();
-      const a=AUDIENCES.find(x=>x.id===st.aud); const intentLbl=st.intent==='sell'?'Sell':'Grow';
-      // cycle for demo: audience → next, intent → toggle
-      if(n.dataset.open==='audB'){ const i=AUDIENCES.findIndex(x=>x.id===st.aud); st.aud=AUDIENCES[(i+1)%AUDIENCES.length].id; }
-      else st.intent = st.intent==='grow'?'sell':'grow';
+    let head='';
+    if(v==='B'){ const a=AUDIENCES.find(x=>x.id===st.aud);
+      head=`<div class="grp" style="padding-top:6px">CONTEXT</div>
+        <div class="item" data-open="aud">${svg(P.people)}<span class="txt"><span class="nm" style="font-size:13px">${a.nm}</span><span class="ds">active audience</span></span>${svg(P.chevR,'ico chev-r')}</div>
+        <div class="item" data-open="intent">${svg(P.target)}<span class="txt"><span class="nm" style="font-size:13px">${st.intent==='sell'?'Sell':'Grow'}</span><span class="ds">intent</span></span>${svg(P.chevR,'ico chev-r')}</div><div class="sep"></div>`; }
+    el.innerHTML=head+skillRows(st.skill);
+    el.querySelectorAll('[data-open]').forEach(n=>n.onclick=e=>{ e.stopPropagation();
+      if(n.dataset.open==='aud'){ const i=AUDIENCES.findIndex(x=>x.id===st.aud); st.aud=AUDIENCES[(i+1)%AUDIENCES.length].id; } else st.intent=st.intent==='grow'?'sell':'grow';
       fill('skillB'); paint('B'); });
   }
-  else if(kind==='slash') el.innerHTML = renderSkillRows(st.skill);
-  else if(kind==='attach') el.innerHTML = renderAttach();
-  else if(kind==='model') el.innerHTML = renderModel(st.modelOverride||byId(st.skill).m);
-  else if(kind==='aud') el.innerHTML = renderAud(st.aud);
-  else if(kind==='intent') el.innerHTML = renderIntent(st.intent);
-  // wire clicks
-  el.querySelectorAll('[data-skill]').forEach(n=>n.onclick=()=>{ st.skill=n.dataset.skill; st.modelOverride=null; closeAll(); paint(v); });
-  el.querySelectorAll('[data-model]').forEach(n=>n.onclick=()=>{ st.modelOverride=n.dataset.model; closeAll(); paint(v); });
+  else if(kind==='slash') el.innerHTML=skillRows(st.skill);
+  else if(kind==='attach') el.innerHTML=attachRows();
+  else if(kind==='aud') el.innerHTML=audRows(st.aud);
+  else if(kind==='intent') el.innerHTML=intentRows(st.intent);
+  el.querySelectorAll('[data-skill]').forEach(n=>n.onclick=()=>{ st.skill=n.dataset.skill; closeAll(); paint(v); });
   el.querySelectorAll('[data-aud]').forEach(n=>n.onclick=()=>{ st.aud=n.dataset.aud; closeAll(); paint(v); });
   el.querySelectorAll('[data-intent]').forEach(n=>n.onclick=()=>{ st.intent=n.dataset.intent; closeAll(); paint(v); });
 }
 function closeAll(){ document.querySelectorAll('.pop.open').forEach(p=>p.classList.remove('open')); }
-function toggle(id, e){ e.stopPropagation(); const el=document.getElementById(id); const was=el.classList.contains('open'); closeAll(); if(!was){ fill(id); el.classList.add('open'); } }
-
-// slash command in textarea
-function onInput(v){
-  const ta = document.getElementById('ta'+v); const slash = document.getElementById('slash'+v);
-  if(ta.value.startsWith('/')){ fill('slash'+v); slash.classList.add('open');
-    // filter
-    const q = ta.value.slice(1).toLowerCase();
-    slash.querySelectorAll('.item').forEach(it=>{ const nm=(it.querySelector('.nm')?.textContent||'').toLowerCase(); it.style.display = (!q||nm.includes(q))?'':'none'; });
-    slash.querySelectorAll('[data-skill]').forEach(n=>n.onclick=()=>{ ST[v].skill=n.dataset.skill; ST[v].modelOverride=null; ta.value=''; slash.classList.remove('open'); paint(v); });
-  } else slash.classList.remove('open');
-}
-
-document.addEventListener('click', closeAll);
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAll(); });
-function show(id,e){ document.querySelectorAll('.variant').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+function toggle(id,e){ e.stopPropagation(); const el=document.getElementById(id), was=el.classList.contains('open'); closeAll(); if(!was){ fill(id); el.classList.add('open'); } }
+function onInput(v){ const ta=document.getElementById('ta'+v), sl=document.getElementById('slash'+v);
+  if(ta.value.startsWith('/')){ fill('slash'+v); sl.classList.add('open'); const q=ta.value.slice(1).toLowerCase();
+    sl.querySelectorAll('.item').forEach(it=>{ const nm=(it.querySelector('.nm')?.textContent||'').toLowerCase(); it.style.display=(!q||nm.includes(q))?'':'none'; });
+    sl.querySelectorAll('[data-skill]').forEach(n=>n.onclick=()=>{ ST[v].skill=n.dataset.skill; ta.value=''; sl.classList.remove('open'); paint(v); });
+  } else sl.classList.remove('open'); }
+document.addEventListener('click',closeAll); document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAll(); });
+function show(id,e){ document.querySelectorAll('.variant').forEach(v=>v.classList.remove('active')); document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('variant-'+id).classList.add('active'); e.target.classList.add('active'); }
-
-document.getElementById('globalNote').innerHTML =
-  `<b>Both variants:</b> flat-warm THEME-06 (warm charcoal, cream, terracotta stele — no glass), premium line icons, popover-everywhere (cleaner than a sheet on mobile too). <b>+</b> opens upload/attach (the SIM-1 Max Test path). Skills grouped Creator/Marketing with a MAX badge where the video model fires. The right-side <b>SIM-1 Flash/Max</b> indicator is auto-set by the skill, overridable. Type <code>/</code> in the field for fast skill entry. <b>A</b> shows audience + intent as always-on chips; <b>B</b> keeps the bar minimal and folds them into the skill popover — pick based on whether at-a-glance audience/intent is worth the density.`;
-
+document.getElementById('globalNote').innerHTML=`<b>Both:</b> flat-warm THEME-06 (warm charcoal · cream · terracotta stele — no glass), premium line icons, popover everywhere (cleaner than a sheet on mobile too). <b>Model is read-only</b> — the skill decides Flash vs Max, so it's an indicator (<code>auto</code>), not a control. <code>/</code> for fast skill entry; <code>+</code> opens upload/attach (the SIM-1 Max Test path). The two variants differ only in whether <b>audience + intent</b> ride the bar (1) or fold into the skill popover (2).`;
 paint('A'); paint('B');
 </script>
 </body>
