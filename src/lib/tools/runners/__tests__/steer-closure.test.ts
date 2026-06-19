@@ -113,8 +113,8 @@ const calibratedAudience: Audience = {
   // Non-default weights — proves analysis_override is injected (source 'analysis_override')
   persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
   personas: [
-    { archetype: "skeptic", repaint: "Doubts every claim", temperature: "cold", disposition: "skeptic", share: 0.5 },
-    { archetype: "converter", repaint: "Ready to buy", temperature: "hot", disposition: "converter", share: 0.5 },
+    { archetype: "tough_crowd", repaint: "Doubts every claim", temperature: "cold", disposition: "skeptic", share: 0.5 },
+    { archetype: "niche_deep_buyer", repaint: "Ready to buy", temperature: "hot", disposition: "converter", share: 0.5 },
   ],
   profile: {
     temperature_mix: { cold: 0.2, warm: 0.3, hot: 0.5 },
@@ -228,8 +228,8 @@ describe("steer-closure: hooks-runner", () => {
     expect(calls.length).toBeGreaterThan(0);
     const repaint = calls[0]![3] as Record<string, string> | undefined;
     expect(repaint).toBeDefined();
-    expect(repaint!.skeptic).toBe("Doubts every claim");
-    expect(repaint!.converter).toBe("Ready to buy");
+    expect(repaint!.tough_crowd).toBe("Doubts every claim");
+    expect(repaint!.niche_deep_buyer).toBe("Ready to buy");
   });
 });
 
@@ -274,7 +274,7 @@ describe("steer-closure: script-runner", () => {
     expect(calls.length).toBe(1);
     const repaint = calls[0]![3] as Record<string, string> | undefined;
     expect(repaint).toBeDefined();
-    expect(repaint!.skeptic).toBe("Doubts every claim");
+    expect(repaint!.tough_crowd).toBe("Doubts every claim");
   });
 });
 
@@ -368,7 +368,7 @@ describe("steer-closure: remix-runner", () => {
     expect(calls.length).toBe(1);
     const repaint = calls[0]![3] as Record<string, string> | undefined;
     expect(repaint).toBeDefined();
-    expect(repaint!.skeptic).toBe("Doubts every claim");
+    expect(repaint!.tough_crowd).toBe("Doubts every claim");
     expect(result.blocks.length).toBe(1);
     expect((result.blocks[0]!.props as { audienceName?: string }).audienceName).toBe(
       "Skincare Buyers",
