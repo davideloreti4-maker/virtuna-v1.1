@@ -71,4 +71,39 @@ describe("deriveWhoNotFor — low-disposition scrolls-past segment (D-10)", () =
   it("empty input yields an empty segment (no personas → nothing to derive)", () => {
     expect(deriveWhoNotFor([])).toBe("");
   });
+
+  // CR-01: `scanner` disposition is ambiguous — warm for purposeful_viewer, cold for
+  // cross_niche_curiosity. Selection MUST be by temperature, not disposition string.
+  it("does NOT label a WARM purposeful_viewer (disposition scanner) as scrolls-past", () => {
+    const personas: CalibratedPersona[] = [
+      // purposeful_viewer is WARM despite carrying the `scanner` disposition.
+      persona("purposeful_viewer", "scanner", "warm"),
+      persona("loyalist", "connector", "hot"),
+    ];
+
+    // No cold personas → no honest scrolls-past segment at all.
+    expect(deriveWhoNotFor(personas)).toBe("");
+  });
+
+  it("labels a COLD cross_niche_curiosity (disposition scanner) as Scanners", () => {
+    const personas: CalibratedPersona[] = [
+      // cross_niche_curiosity is COLD and carries the SAME `scanner` disposition.
+      persona("cross_niche_curiosity", "scanner", "cold"),
+      persona("loyalist", "connector", "hot"),
+    ];
+
+    expect(deriveWhoNotFor(personas)).toBe("Scanners");
+  });
+
+  it("includes the cold scanner but excludes the warm scanner when BOTH are present", () => {
+    const personas: CalibratedPersona[] = [
+      persona("purposeful_viewer", "scanner", "warm"),     // warm scanner — excluded
+      persona("cross_niche_curiosity", "scanner", "cold"), // cold scanner — included
+      persona("tough_crowd", "skeptic", "cold"),           // cold skeptic — included
+    ];
+
+    // Both cold dispositions surface; the warm scanner does not change the result
+    // (the cold scanner already accounts for the "Scanners" label).
+    expect(deriveWhoNotFor(personas)).toBe("Skeptics, Scanners");
+  });
 });
