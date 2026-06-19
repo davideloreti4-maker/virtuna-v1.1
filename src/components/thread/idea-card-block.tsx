@@ -59,10 +59,13 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     band,
     fraction,
     scrollQuote,
+    predictedFailureMode,
   } = block.props;
 
   const platform = usePlatform();
   const [expanded, setExpanded] = useState(false);
+  // KCQ-04 (D-10): opt-in flop reveal — a second drill INSIDE the disclosure.
+  const [flopOpen, setFlopOpen] = useState(false);
   const bandColor = BAND_COLOR[band];
 
   // ── "Develop this →" CTA state ────────────────────────────────────────────
@@ -242,6 +245,35 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               )}
             </div>
           </div>
+
+          {/* KCQ-04 (D-10) — opt-in predicted-failure-mode reveal. Renders ONLY when
+              predictedFailureMode is non-null, and only here INSIDE the disclosure
+              (never on the always-visible face). A further drill gates the text itself,
+              so it is opt-in, never silent-only. Warning-toned (--color-warning) — never
+              coral, never error-red (honesty-spine tone). */}
+          {predictedFailureMode != null && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setFlopOpen((v) => !v)}
+                className="text-xs font-medium transition-opacity hover:opacity-80 focus-visible:outline-none"
+                style={{ color: 'var(--color-warning)' }}
+                aria-expanded={flopOpen}
+                aria-label={flopOpen ? 'Hide why this idea might miss' : 'Reveal why this idea might miss'}
+              >
+                {flopOpen ? '↑ Hide the risk' : 'If this could flop →'}
+              </button>
+              {flopOpen && (
+                <p
+                  className="mt-1 text-sm leading-snug"
+                  style={{ color: 'var(--color-warning)', opacity: 0.85 }}
+                  aria-label="Predicted failure mode"
+                >
+                  {predictedFailureMode}
+                </p>
+              )}
+            </div>
+          )}
 
         </div>
       )}

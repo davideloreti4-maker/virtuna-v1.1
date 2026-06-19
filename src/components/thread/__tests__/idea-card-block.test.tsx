@@ -88,3 +88,48 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     expect(quoteIdx).toBeLessThan(fractionIdx);
   });
 });
+
+describe('IdeaCardRenderer — KCQ-04 opt-in flop reveal (Task 2)', () => {
+  it('renders NO flop affordance when predictedFailureMode is null', () => {
+    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: null })} />);
+    // Expand the disclosure — the affordance must still be absent.
+    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
+    expect(screen.queryByText(/if this could flop/i)).toBeNull();
+  });
+
+  it('renders NO flop affordance when predictedFailureMode is absent (older rehydrated card)', () => {
+    const block = makeBlock();
+    delete (block.props as { predictedFailureMode?: string | null }).predictedFailureMode;
+    renderWithClient(<IdeaCardRenderer block={block} />);
+    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    expect(screen.queryByText(/if this could flop/i)).toBeNull();
+  });
+
+  it('flop affordance is gated behind the disclosure — NOT on the always-visible face', () => {
+    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
+    // Before expanding: affordance is not present on the face.
+    expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
+    expect(screen.queryByText(FLOP_REASON)).toBeNull();
+  });
+
+  it('reveals the failure-mode text only after a second opt-in drill (never silent-only)', () => {
+    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
+    // 1) open the disclosure — affordance appears but text stays hidden (opt-in).
+    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    const flopBtn = screen.getByRole('button', { name: /reveal why this idea might miss/i });
+    expect(flopBtn).toBeTruthy();
+    expect(screen.queryByText(FLOP_REASON)).toBeNull();
+    // 2) drill the affordance — now the failure-mode text is reachable.
+    fireEvent.click(flopBtn);
+    expect(screen.getByText(FLOP_REASON)).toBeTruthy();
+  });
+
+  it('the flop affordance is warning-toned (--color-warning), never coral, never error-red', () => {
+    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
+    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    const flopBtn = screen.getByRole('button', { name: /reveal why this idea might miss/i });
+    expect(flopBtn.getAttribute('style')).toContain('--color-warning');
+    expect(flopBtn.getAttribute('style')).not.toContain('255,127,80'); // no coral
+  });
+});

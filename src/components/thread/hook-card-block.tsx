@@ -62,6 +62,7 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
     fraction,
     scrollQuote,
     channel,
+    predictedFailureMode,
   } = block.props;
 
   // Read the handoff callbacks from context (provided by HooksThreadView).
@@ -78,6 +79,8 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
     : undefined);
 
   const [expanded, setExpanded] = useState(false);
+  // KCQ-04 (D-10): opt-in flop reveal — a second drill INSIDE the disclosure.
+  const [flopOpen, setFlopOpen] = useState(false);
   const bandColor = BAND_COLOR[band];
 
   return (
@@ -203,6 +206,35 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
             <div>
               <p className="text-xs text-muted/60 uppercase tracking-wide mb-1">Delivery</p>
               <p className="text-sm text-foreground/80 leading-snug capitalize">{channel}</p>
+            </div>
+          )}
+
+          {/* KCQ-04 (D-10) — opt-in predicted-failure-mode reveal. Renders ONLY when
+              predictedFailureMode is non-null, and only here INSIDE the disclosure
+              (never on the always-visible face). A further drill gates the text itself,
+              so it is opt-in, never silent-only. Warning-toned (--color-warning) — never
+              coral, never error-red (honesty-spine tone). */}
+          {predictedFailureMode != null && (
+            <div>
+              <button
+                type="button"
+                onClick={() => setFlopOpen((v) => !v)}
+                className="text-xs font-medium transition-opacity hover:opacity-80 focus-visible:outline-none"
+                style={{ color: 'var(--color-warning)' }}
+                aria-expanded={flopOpen}
+                aria-label={flopOpen ? 'Hide why this hook might miss' : 'Reveal why this hook might miss'}
+              >
+                {flopOpen ? '↑ Hide the risk' : 'If this could flop →'}
+              </button>
+              {flopOpen && (
+                <p
+                  className="mt-1 text-sm leading-snug"
+                  style={{ color: 'var(--color-warning)', opacity: 0.85 }}
+                  aria-label="Predicted failure mode"
+                >
+                  {predictedFailureMode}
+                </p>
+              )}
             </div>
           )}
         </div>
