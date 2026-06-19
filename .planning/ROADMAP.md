@@ -230,7 +230,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 11. Explore (Audience-Curated Discovery) | — | Planned (expansion) |  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
-| 14. KC Grounding & Quality-Loop | 2/4 | In Progress|  |
+| 14. KC Grounding & Quality-Loop | 3/4 | In Progress|  |
 | 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
 | 16. Commerce Skills | — | Planned (expansion) |  |
 
@@ -440,7 +440,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Wave 2** *(blocked on 14-01)*
 
-- [ ] 14-02-PLAN.md — Quality loop: parallel Flash rubric-critic (Value Bar) best-of-N + shared flop-prediction pass + thin runtime trope reject; Ideas + Hooks only; conditional single regen [KCQ-02, KCQ-04, KCQ-07]
+- [x] 14-02-PLAN.md — Quality loop: parallel Flash rubric-critic (Value Bar) best-of-N + shared flop-prediction pass + thin runtime trope reject; Ideas + Hooks only; conditional single regen [KCQ-02, KCQ-04, KCQ-07]
 
 **Wave 3** *(blocked on 14-02)*
 
