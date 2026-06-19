@@ -52,6 +52,8 @@ import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -132,6 +134,22 @@ export async function POST(request: Request): Promise<Response> {
   // ── (5) Get/create open thread ────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
+  // ── (5a) Load active audience (08-04 / D-04 per-thread pin — mirrors ideas route) ──
+  // thread.active_audience_id: NULL = General default (no DB query). Non-null = load row
+  // (virtual constants short-circuit). Falls back to GENERAL_AUDIENCE on load failure (non-fatal).
+  // Audience id is NEVER read from the request body — session/thread only (CR-01).
+  let activeAudience: Audience = GENERAL_AUDIENCE;
+  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
+  const activeAudienceId = rawThread.active_audience_id ?? null;
+  if (activeAudienceId) {
+    try {
+      const loaded = await getAudience(supabase, activeAudienceId);
+      if (loaded) activeAudience = loaded;
+    } catch {
+      // Non-fatal: fall back to General if audience load fails (no regression, D-04)
+    }
+  }
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -158,6 +176,7 @@ export async function POST(request: Request): Promise<Response> {
           platform,
           profileRow: profileRow ?? null,
           anchor: rawAnchor,
+          audience: activeAudience,
         });
 
         // ── STAGE: Generating (done) ──────────────────────────────────────────

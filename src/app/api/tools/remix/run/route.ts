@@ -39,7 +39,9 @@ import { insertMessage } from "@/lib/threads/messages";
 import { runRemixPipeline } from "@/lib/tools/runners/remix-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { createLogger } from "@/lib/logger";
+import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { z } from "zod";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
 
@@ -136,6 +138,22 @@ export async function POST(request: Request): Promise<Response> {
   // ── (7) Get/create open thread ────────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
+  // ── (7a) Load active audience (08-04 / D-04 per-thread pin — mirrors ideas route) ──
+  // thread.active_audience_id: NULL = General default (no DB query). Non-null = load row
+  // (virtual constants short-circuit). Falls back to GENERAL_AUDIENCE on load failure (non-fatal).
+  // Audience id is NEVER read from the request body — session/thread only (CR-01).
+  let activeAudience: Audience = GENERAL_AUDIENCE;
+  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
+  const activeAudienceId = rawThread.active_audience_id ?? null;
+  if (activeAudienceId) {
+    try {
+      const loaded = await getAudience(supabase, activeAudienceId);
+      if (loaded) activeAudience = loaded;
+    } catch {
+      // Non-fatal: fall back to General if audience load fails (no regression, D-04)
+    }
+  }
+
   // ── (8) SSE stream: run pipeline + emit events ────────────────────────────────
   const encoder = new TextEncoder();
 
@@ -171,6 +189,7 @@ export async function POST(request: Request): Promise<Response> {
           platform,
           profileRow,
           requestId,
+          audience: activeAudience,
         });
 
         send("stage", { name: "Resolving", status: "done" });
