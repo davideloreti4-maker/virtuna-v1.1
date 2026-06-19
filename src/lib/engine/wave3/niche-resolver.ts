@@ -27,14 +27,19 @@
  */
 
 import { NICHE_TREE } from "@/lib/niches/taxonomy";
-import {
-  NICHE_INSTANTIATION_KEYS,
-  isNicheInstantiationKey,
-} from "./persona-registry";
+import { isNicheInstantiationKey } from "./persona-registry";
+
+type NicheTreeNode = (typeof NICHE_TREE)[number];
 
 /** Normalize a free-text niche value: trim + lowercase. */
 function normalize(value: string): string {
   return value.trim().toLowerCase();
+}
+
+/** A slug/label plus its hyphenless variant ("food-cooking" → ["food-cooking", "food cooking"]). */
+function hyphenVariants(token: string): string[] {
+  const t = normalize(token);
+  return t.includes("-") ? [t, t.replace(/-/g, " ")] : [t];
 }
 
 /**
@@ -45,9 +50,11 @@ function normalize(value: string): string {
  *   2. Normalized direct top-level instantiation-key hit → return it.
  *   3. Sub-slug → walk NICHE_TREE, find the parent whose `subs[]` contains the slug;
  *      return parent.slug if it is an instantiation key.
- *   4. Keyword/contains fallback against top-level labels/slugs (and their sub labels/slugs) →
- *      the nearest top-level instantiation key.
- *   5. No match → null (honest generic fallback — never fabricate a niche).
+ *   4. Forward-contains (input phrase CONTAINS a known token): 4a top-level slug/label,
+ *      then 4b sub slug/label. Longest matched token wins (specificity > declaration order, WR-02).
+ *   5. Reverse whole-segment (a known token has the input as a whole hyphen/space SEGMENT) —
+ *      bare single-word inputs only, ≥3 chars (e.g. "finance" → education, WR-03).
+ *   6. No match → null (honest generic fallback — never fabricate a niche).
  *
  * @param nichePrimary The raw `creator_profiles.niche_primary` value (free text, sub-slug, or null).
  * @returns A top-level NICHE_INSTANTIATION key, or null when nothing resolves.
@@ -68,30 +75,61 @@ export function resolveNicheKey(nichePrimary: string | null): string | null {
     }
   }
 
-  // (4) keyword/contains fallback against top-level + sub labels/slugs.
-  //     Iterate NICHE_TREE in declared order → first (= most prominent) match wins,
-  //     deterministic. Only top-level slugs that ARE instantiation keys are eligible.
-  for (const top of NICHE_TREE) {
-    if (!isNicheInstantiationKey(top.slug)) continue;
+  // (4) forward-contains fallback — the input PHRASE contains a known token.
+  //     Specificity beats declaration order (WR-02): tier 4a tests TOP-LEVEL slug/label
+  //     first (a niche NAME in the text is the strongest signal), tier 4b tests SUB
+  //     slug/label. Within each tier the LONGEST matched token wins (most specific), with
+  //     declaration order as the deterministic tie-break. This stops an incidental short
+  //     sub-token from an earlier niche (e.g. "makeup") beating a later top-level match.
+  const forwardBest = (tokensFor: (top: NicheTreeNode) => string[]): string | null => {
+    let best: { key: string; len: number } | null = null;
+    for (const top of NICHE_TREE) {
+      if (!isNicheInstantiationKey(top.slug)) continue;
+      for (const tok of tokensFor(top)) {
+        if (tok.length > 0 && norm.includes(tok)) {
+          // strict `>` keeps the earlier (declaration-order) niche on a length tie
+          if (best === null || tok.length > best.len) best = { key: top.slug, len: tok.length };
+        }
+      }
+    }
+    return best?.key ?? null;
+  };
 
-    const topSlug = normalize(top.slug);
-    const topLabel = normalize(top.label);
-    // Direct contains on the top-level slug/label (e.g. "fitness coaching" → fitness).
-    if (norm.includes(topSlug) || norm.includes(topLabel)) return top.slug;
-    // Hyphenless top-level slug match (e.g. "food cooking" → food-cooking).
-    if (topSlug.includes("-") && norm.includes(topSlug.replace(/-/g, " "))) return top.slug;
+  // 4a — top-level slug/label (+ hyphenless variants)
+  const topHit = forwardBest((top) => [
+    ...hyphenVariants(top.slug),
+    ...hyphenVariants(top.label),
+  ]);
+  if (topHit) return topHit;
 
-    // Sub label/slug contains (e.g. "investing for beginners" never matches a sub here,
-    // but "skincare routine" → beauty via the skincare sub).
-    for (const sub of top.subs) {
-      const subSlug = normalize(sub.slug);
-      const subLabel = normalize(sub.label);
-      if (norm.includes(subSlug) || norm.includes(subLabel)) return top.slug;
-      if (subSlug.includes("-") && norm.includes(subSlug.replace(/-/g, " "))) return top.slug;
+  // 4b — sub slug/label (+ hyphenless variants)
+  const subHit = forwardBest((top) =>
+    top.subs.flatMap((sub) => [...hyphenVariants(sub.slug), ...hyphenVariants(sub.label)]),
+  );
+  if (subHit) return subHit;
+
+  // (5) reverse whole-segment fallback for BARE single-word inputs (WR-03): the most
+  //     common production free-text ("finance", "tech", "food", "fashion", "music") is a
+  //     whole hyphen/space-delimited SEGMENT of a known token (e.g. "finance" is a segment
+  //     of "personal-finance" → education; "tech" of "tech-gadgets"). Whole-segment match
+  //     (NOT arbitrary substring) avoids mid-word false positives ("art" must not match the
+  //     "art" inside "smart-home"). Gated to single-word inputs (phrases are handled by the
+  //     forward pass) with a 3-char floor to keep 1–2 char noise out. Declaration order is
+  //     the tie-break, so an earlier niche wins when a segment is shared.
+  if (norm.length >= 3 && !/\s/.test(norm)) {
+    for (const top of NICHE_TREE) {
+      if (!isNicheInstantiationKey(top.slug)) continue;
+      const tokens = [
+        normalize(top.slug),
+        normalize(top.label),
+        ...top.subs.flatMap((sub) => [normalize(sub.slug), normalize(sub.label)]),
+      ];
+      for (const tok of tokens) {
+        if (tok.split(/[-\s]+/).includes(norm)) return top.slug;
+      }
     }
   }
 
-  // (5) no match → honest null (generic fallback downstream)
-  void NICHE_INSTANTIATION_KEYS; // keyset is the source of truth for what's resolvable
+  // (6) no match → honest null (generic fallback downstream)
   return null;
 }

@@ -116,4 +116,65 @@ describe("resolveNicheKey", () => {
       expect(a).toBe("education");
     });
   });
+
+  // ---- Gap closure: 14-REVIEW WR-02 / WR-03 (resolver hardening) ----
+
+  describe("(WR-03) bare single-word terms resolve via whole-segment reverse match", () => {
+    // These are the MOST COMMON production free-text values and previously fell
+    // through to the honest-generic path, defeating the discrimination the resolver exists to restore.
+    it("'finance' → 'education' (segment of 'personal-finance')", () => {
+      expect(resolveNicheKey("finance")).toBe("education");
+    });
+
+    it("'tech' → 'tech-gadgets' (segment of the top slug)", () => {
+      expect(resolveNicheKey("tech")).toBe("tech-gadgets");
+    });
+
+    it("'food' → 'food-cooking'", () => {
+      expect(resolveNicheKey("food")).toBe("food-cooking");
+    });
+
+    it("'fashion' → 'fashion-style'", () => {
+      expect(resolveNicheKey("fashion")).toBe("fashion-style");
+    });
+
+    it("'music' → 'music-performance'", () => {
+      expect(resolveNicheKey("music")).toBe("music-performance");
+    });
+
+    it("'cooking' → 'food-cooking' (second segment)", () => {
+      expect(resolveNicheKey("cooking")).toBe("food-cooking");
+    });
+
+    it("case-insensitive bare term: 'Finance' → 'education'", () => {
+      expect(resolveNicheKey("Finance")).toBe("education");
+    });
+  });
+
+  describe("(WR-03) reverse match is whole-segment — no mid-word false positives", () => {
+    it("'art' → null (must NOT match 'sm-art-home'/'smart-home')", () => {
+      expect(resolveNicheKey("art")).toBeNull();
+    });
+
+    it("1–2 char noise → null ('ai' below min length, no bare-term match)", () => {
+      expect(resolveNicheKey("ai")).toBeNull();
+    });
+
+    it("reverse fallback only applies to single-word input, not phrases", () => {
+      // a multi-word prose phrase must not reverse-match a segment
+      expect(resolveNicheKey("the finance of art")).toBeNull();
+    });
+  });
+
+  describe("(WR-02) specificity beats declaration order", () => {
+    it("top-level niche name beats an incidental earlier sub-token: 'makeup gaming' → 'gaming'", () => {
+      // 'makeup' is a beauty sub (declared first); 'gaming' is a top-level niche (declared later).
+      // The top-level niche NAME is the stronger signal and must win.
+      expect(resolveNicheKey("makeup gaming")).toBe("gaming");
+    });
+
+    it("longest forward token wins within a tier: 'food cooking show' → 'food-cooking'", () => {
+      expect(resolveNicheKey("food cooking show")).toBe("food-cooking");
+    });
+  });
 });
