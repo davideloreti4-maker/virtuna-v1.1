@@ -30,6 +30,8 @@
 import { useCallback, useState } from 'react';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
+import { LensTrigger } from '@/components/audience-lens/LensTrigger';
+import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -141,13 +143,21 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           {whyItFits}
         </div>
 
-        {/* Lead scroll-quote — the primary SIM signal (D-04) */}
-        <blockquote
-          className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-          aria-label="Audience scroll quote"
+        {/* Lead scroll-quote — the primary SIM signal (D-04). Tapping it opens the single
+            reusable AudienceLens inline (cascade mode, D-06/D-04). */}
+        <LensTrigger
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+          conceptText={`${title}\n\n${angle}`}
+          platform={platform}
+          label="See how the room reacted to this idea"
         >
-          &ldquo;{scrollQuote}&rdquo;
-        </blockquote>
+          <blockquote
+            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+            aria-label="Audience scroll quote"
+          >
+            &ldquo;{scrollQuote}&rdquo;
+          </blockquote>
+        </LensTrigger>
 
         {/* Secondary band chip + expand toggle row */}
         <div className="flex items-center justify-between gap-2">

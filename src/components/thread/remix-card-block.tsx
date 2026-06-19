@@ -32,6 +32,8 @@ import { useState, useContext } from 'react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
 import { PlatformContext } from '@/lib/platform-context';
+import { LensTrigger } from '@/components/audience-lens/LensTrigger';
+import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 
 export interface RemixCardRendererProps {
   block: RemixCardBlock;
@@ -144,13 +146,21 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           </div>
         </div>
 
-        {/* Lead scroll-quote — the primary SIM signal for the adapted hook */}
-        <blockquote
-          className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-          aria-label="Audience scroll quote for adapted hook"
+        {/* Lead scroll-quote — the primary SIM signal for the adapted hook. Tapping it opens
+            the single reusable AudienceLens inline (cascade mode, D-06/D-04). */}
+        <LensTrigger
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+          conceptText={adaptedHook}
+          platform={platform}
+          label="See how the room reacted to this adapted hook"
         >
-          &ldquo;{scrollQuote}&rdquo;
-        </blockquote>
+          <blockquote
+            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+            aria-label="Audience scroll quote for adapted hook"
+          >
+            &ldquo;{scrollQuote}&rdquo;
+          </blockquote>
+        </LensTrigger>
 
         {/* Opener-scoped band chip + expand toggle row */}
         <div className="flex items-center justify-between gap-2">

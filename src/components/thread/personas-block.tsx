@@ -15,9 +15,16 @@
 
 import { useState } from 'react';
 import type { PersonasBlock } from '@/lib/tools/blocks';
+import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 
 export interface PersonasBlockProps {
   block: PersonasBlock;
+  /**
+   * The concept text these personas reacted to (the text Read surface). When present, the
+   * block mounts the reusable AudienceLens inline (cascade mode, D-06) — without it the
+   * block renders byte-identical to before (no concept to chat/rewrite about).
+   */
+  conceptText?: string;
 }
 
 const VERDICT_STYLE: Record<'stop' | 'scroll', string> = {
@@ -30,32 +37,52 @@ const VERDICT_LABEL: Record<'stop' | 'scroll', string> = {
   scroll: 'scrolls',
 };
 
-export function PersonasBlockRenderer({ block }: PersonasBlockProps) {
+export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps) {
   const { personas } = block.props;
   const [expanded, setExpanded] = useState(false);
 
   const stopCount = personas.filter((p) => p.verdict === 'stop').length;
   const total = personas.length;
 
+  // The text Read surface mounts the single reusable AudienceLens inline (D-04), opened in
+  // cascade mode (flat Shape-B, no timeline — D-06). The PersonasBlock IS already the
+  // {archetype, verdict, quote} shape buildFlatPersonaNodes consumes, so it maps 1:1.
+  const lensHeader = (
+    <span className="px-4 py-3 text-sm font-medium text-foreground">
+      Audience reactions
+      <span className="ml-2 text-sm text-muted font-normal">
+        {stopCount}/{total} stop
+      </span>
+      <span className="ml-2 text-xs text-muted/60">· see the room →</span>
+    </span>
+  );
+
   return (
     <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] overflow-hidden">
-      {/* Header row — summary + expand toggle */}
-      <button
-        type="button"
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
-        aria-expanded={expanded}
-      >
-        <span className="text-sm font-medium text-foreground">
-          Audience reactions
-          <span className="ml-2 text-sm text-muted font-normal">
-            {stopCount}/{total} stop
-          </span>
-        </span>
-        <span className="text-muted text-xs" aria-hidden="true">
+      {/* Header row — summary + expand toggle. When a concept is present, the summary cue
+          opens the Lens; the chevron still toggles the inline list. */}
+      <div className="flex items-center justify-between">
+        {conceptText ? (
+          <LensTrigger
+            flatPersonas={personas}
+            conceptText={conceptText}
+            label="See how the room reacted"
+          >
+            {lensHeader}
+          </LensTrigger>
+        ) : (
+          lensHeader
+        )}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="px-4 py-3 text-muted text-xs hover:text-foreground transition-colors"
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Hide reactions' : 'Show reactions'}
+        >
           {expanded ? '↑ Hide' : '↓ Show'}
-        </span>
-      </button>
+        </button>
+      </div>
 
       {/* Persona rows — visible when expanded */}
       {expanded && (

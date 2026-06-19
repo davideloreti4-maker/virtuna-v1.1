@@ -24,6 +24,8 @@
 import { useState } from 'react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
+import { LensTrigger } from '@/components/audience-lens/LensTrigger';
+import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 
 export interface ScriptCardRendererProps {
   block: ScriptCardBlock;
@@ -94,14 +96,21 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
       style={{ boxShadow: 'rgba(255,255,255,0.05) 0 1px 0 0 inset' }}
       aria-label="Script card"
     >
-      {/* OPENER SIGNAL — scrollQuote from Flash opener gate (Pitfall 5: opener-only) */}
+      {/* OPENER SIGNAL — scrollQuote from Flash opener gate (Pitfall 5: opener-only).
+          Tapping it opens the single reusable AudienceLens inline (cascade mode, D-06/D-04). */}
       <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
-        <blockquote
-          className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-          aria-label="Audience opener quote"
+        <LensTrigger
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
+          conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
+          label="See how the room reacted to this opener"
         >
-          &ldquo;{scrollQuote}&rdquo;
-        </blockquote>
+          <blockquote
+            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+            aria-label="Audience opener quote"
+          >
+            &ldquo;{scrollQuote}&rdquo;
+          </blockquote>
+        </LensTrigger>
 
         {/* Opener band chip — scoped to the OPENER only (Pitfall 5 honesty spine) */}
         <div

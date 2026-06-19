@@ -28,6 +28,8 @@
 import { useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnTestHook, useOnWriteScriptHook } from '@/lib/hook-test-context';
+import { LensTrigger } from '@/components/audience-lens/LensTrigger';
+import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -116,13 +118,20 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
           {hookLine}
         </p>
 
-        {/* Lead scroll-quote — the primary SIM signal (D-02/D-04) */}
-        <blockquote
-          className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-          aria-label="Audience scroll quote"
+        {/* Lead scroll-quote — the primary SIM signal (D-02/D-04). Tapping it opens the
+            single reusable AudienceLens inline (cascade mode, D-06/D-04). */}
+        <LensTrigger
+          flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote, audienceArchetype)}
+          conceptText={hookLine}
+          label="See how the room reacted to this hook"
         >
-          &ldquo;{scrollQuote}&rdquo;
-        </blockquote>
+          <blockquote
+            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+            aria-label="Audience scroll quote"
+          >
+            &ldquo;{scrollQuote}&rdquo;
+          </blockquote>
+        </LensTrigger>
 
         {/* Secondary band chip + expand toggle row */}
         <div className="flex items-center justify-between gap-2">
