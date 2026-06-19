@@ -16,14 +16,17 @@ The temporary skill-chip row (`tool-chips.tsx`) doesn't scale — v6.0's expansi
 open .planning/sketches/006-composer-skill-selector/index.html
 ```
 
-## Variants
-- **A: Grouped popover** — One skill pill in the composer; click → compact anchored popover with Creator/Marketing sections, each skill row showing icon · name · one-line desc · model tag. Lightest, Claude-model-pill familiar.
-- **B: Command menu (⌘K)** — Pill (or ⌘K) opens a searchable Raycast-style overlay, grouped + filterable. Scales best to 10+; power-user feel.
-- **C: Adaptive popover↔sheet** — Same trigger, two native surfaces: desktop = popover (A), mobile = thumb-reachable bottom sheet with bigger touch targets. One data model, two presentations. Shown as a side-by-side desktop frame + phone frame.
+## Direction (locked after round 2)
+Flat-warm **THEME-06** (warm charcoal `#262624` / composer `#1e1d1b`, cream `#ece7de`, **terracotta** stele `#d97757`, Newsreader serif greeting, **no glass/glow**). **Premium line-icon SVGs — no emoji.** **Popover everywhere** (cleaner than a bottom sheet on mobile too). Theme: `../themes/flatwarm.css` (separate from the old Raycast `default.css`).
+
+The composer carries the **full decided control set**: `+` upload/attach (the SIM-1 Max Test path) · **skill** selector (grouped Creator/Marketing, MAX badge where the video model fires) · **audience** selector · **intent** selector (grow⇄sell) · right-side **SIM-1 Flash/Max** indicator (auto-set by skill, overridable) · mic · send. Type `/` in the field for fast skill entry.
+
+## Variants (round 2 — control-bar density)
+- **A: Full control bar** — `+` · Skill · Audience · Intent on the left, SIM-1 model · mic · send on the right. All controls always visible/labeled. Most legible "what am I about to run"; busier.
+- **B: Minimal + slash** — Claude-clean bar (`+` · Skill left, model · send right); audience + intent fold into the skill popover's CONTEXT header; `/` drives skill entry. Calmest; one tap deeper for audience/intent.
 
 ## What to Look For
-- Does the pill read instantly as "the skill switcher" — and is the SIM-1 Flash/Max tag legible without being noisy?
-- Does the **Creator / Marketing** split feel clarifying or like over-structure at 9 skills?
-- A vs B: popover (calm, creator-first) vs command-menu (fast, power-user) — which fits Numen's "one conversation" co-pilot?
-- C: do the mobile bottom-sheet touch targets feel native? Is "same trigger → two surfaces" the right answer to mobile+desktop, or overkill vs just making A responsive?
-- All three: does the composer feel cleaner than today's chip row, without losing the at-a-glance "what am I about to run" context?
+- Premium + on-platform now? (serif stele greeting, terracotta accent, matte — matches the live app)
+- A vs B: are always-on audience/intent chips worth the density, or is B's folded CONTEXT header cleaner?
+- Does the right-side **SIM-1 Flash/Max** indicator read clearly as "which engine fires," with the MAX badge legible?
+- `/` slash entry + grouped Creator/Marketing popover — fast enough to retire the chip row?

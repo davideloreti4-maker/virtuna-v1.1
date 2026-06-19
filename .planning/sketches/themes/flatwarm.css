@@ -1,0 +1,38 @@
+/* Numen flat-warm THEME-06 — mirrors src/app/globals.css live tokens.
+   Warm neutral charcoal, cream text (never #fff), matured terracotta coral, NO glass/glow. */
+:root {
+  /* charcoal surface scale (de-blued, matte) */
+  --bg:            #262624;  /* app surface */
+  --sidebar:       #1a1a18;
+  --composer:      #1e1d1b;  /* composer card */
+  --chip:          #2f2e2b;  /* lifted matte chips */
+  --popover:       #211f1d;  /* popover surface, one step over composer */
+  --popover-hi:    #2b2926;  /* hovered row */
+
+  /* cream text (never pure white) */
+  --cream:         #ece7de;  /* brightest */
+  --cream-2:       #c2bdb4;  /* default chrome / typed */
+  --cream-muted:   #8a857c;  /* placeholders, labels, desc */
+  --cream-dim:     rgba(236,231,222,0.30);
+
+  /* terracotta coral (matured #d97757) — accent only, no glow */
+  --coral:         #d97757;
+  --coral-soft:    rgba(217,119,87,0.14);
+  --coral-border:  rgba(217,119,87,0.34);
+  --coral-fg:      #1a0f0a;  /* dark brown on coral */
+
+  /* hairline borders */
+  --border:        rgba(255,255,255,0.06);
+  --border-hover:  rgba(255,255,255,0.10);
+
+  /* type */
+  --sans:  'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --serif: 'Newsreader', ui-serif, Georgia, 'Times New Roman', serif;
+
+  /* radius (live scale) */
+  --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-2xl: 20px; --r-full: 9999px;
+
+  /* matte shadows (no inset shine) */
+  --shadow-float: 0 10px 30px rgba(0,0,0,0.35);
+  --shadow-pop:   0 12px 40px rgba(0,0,0,0.45);
+}
