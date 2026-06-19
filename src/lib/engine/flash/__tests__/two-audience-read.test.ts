@@ -169,6 +169,50 @@ describe("runTwoAudienceRead (runner)", () => {
     expect(block.props.audiences[1]!.whoNotFor).toBe("");
   });
 
+  // CR-02: the route ALWAYS passes [active, second]. The default (no calibrated
+  // audience, no explicit second) is [General, General]. That self-pair must
+  // collapse to a SINGLE-audience Read, not a degenerate General-vs-General compare.
+  it("collapses a General-vs-General default to a single-audience Read (CR-02)", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(8) },
+      warnings: [],
+    });
+
+    // Mirrors the route's default: [GENERAL, GENERAL] (same identity).
+    const block = await runTwoAudienceRead("hook", [GENERAL_AUDIENCE, GENERAL_AUDIENCE]);
+
+    // Single entry — NOT a 2-element self-compare.
+    expect(block.props.audiences).toHaveLength(1);
+    const only = block.props.audiences[0]!;
+    expect(only.name).toBe("General");
+    // No degenerate "Both General and General land the same" lever.
+    expect(only.lever).not.toContain("Both General and General");
+    expect(only.interpretation).not.toContain("General wins (Strong) — General");
+    // Flash ran once (one audience), not twice.
+    expect(runFlashTextMode).toHaveBeenCalledTimes(1);
+  });
+
+  // A duplicate CALIBRATED pair dedupes to one distinct calibrated audience, which
+  // then defaults to the D-09 compare (calibrated vs General) — NOT a self-compare.
+  it("dedupes a duplicate calibrated pair to calibrated-vs-General (CR-02)", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+
+    const aud = makeCalibratedAudience(); // same id on both sides
+    const block = await runTwoAudienceRead("hook", [aud, aud]);
+
+    // Distinct ids = 1 → defaults to [Growth, General], a genuine compare.
+    expect(block.props.audiences).toHaveLength(2);
+    expect(block.props.audiences[0]!.name).toBe("Growth");
+    expect(block.props.audiences[1]!.name).toBe("General");
+    // Never a "Growth vs Growth" self-compare.
+    expect(block.props.audiences[1]!.name).not.toBe("Growth");
+  });
+
   it("caps the pick at 2 audiences for v1 legibility (D-09)", async () => {
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
     (runFlashTextMode as ReturnType<typeof vi.fn>)

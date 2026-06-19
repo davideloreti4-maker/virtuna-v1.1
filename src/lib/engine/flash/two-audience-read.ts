@@ -137,31 +137,82 @@ function buildDelta(self: { name: string; band: FlashBand }, other: { name: stri
 /**
  * Read one concept against up to 2 audiences side by side (D-08/D-09).
  *
- * Defaulting: if only ONE audience is passed, General is filled as the comparison
- * pair (the default = active calibrated audience vs General, D-09). The pick is
- * capped at 2 for v1 legibility — extra audiences are dropped (array-ready for N).
+ * Defaulting: if only ONE distinct audience is passed, General is filled as the
+ * comparison pair (the default = active calibrated audience vs General, D-09). The
+ * pick is capped at 2 for v1 legibility — extra audiences are dropped (array-ready
+ * for N).
+ *
+ * Identity dedupe (CR-02): audiences are deduped by `id` BEFORE defaulting. When the
+ * two resolved audiences are the SAME audience (e.g. the common default where no
+ * calibrated audience is pinned → [General, General]), the result collapses to a
+ * SINGLE-audience Read rather than a degenerate self-compare ("Both General and
+ * General land the same"). A genuine compare requires two distinct audiences.
  *
  * @param concept    The concept/hook text to read.
  * @param audiences  1 or 2 audiences. 1 → [active, General]. >2 → first 2 kept.
- * @returns A `multi-audience-read` block with exactly 2 per-audience entries
- *          (band + fraction + delta interpretation + Lever + who-not-for + persona drill),
+ *                   Same-identity pairs collapse to a single-audience Read.
+ * @returns A `multi-audience-read` block with 1 entry (same-identity / single-audience
+ *          case) or 2 per-audience entries (genuine compare) — each carrying
+ *          band + fraction + interpretation + Lever + who-not-for + persona drill,
  *          bands only, `model: "sim1-flash"` provenance.
  */
 export async function runTwoAudienceRead(
   concept: string,
   audiences: Audience[],
 ): Promise<MultiAudienceReadBlock> {
+  // ── Dedupe by audience IDENTITY first (CR-02) ──────────────────────────────
+  // The route ALWAYS passes a 2-element [active, second] array, so a length check
+  // is not enough: the common default (no calibrated audience pinned, no explicit
+  // second pick) resolves to [General, General]. Comparing General-to-General
+  // renders a degenerate "General: Strong · General: Strong / Both General and
+  // General land the same" Read. Collapse same-identity pairs to ONE audience BEFORE
+  // defaulting, so the dedupe fires regardless of array length.
+  const distinct: Audience[] = [];
+  const seenIds = new Set<string>();
+  for (const aud of audiences.slice(0, MAX_AUDIENCES)) {
+    if (!seenIds.has(aud.id)) {
+      seenIds.add(aud.id);
+      distinct.push(aud);
+    }
+  }
+
   // Default pair (D-09): a single active audience compares against General.
   // Dedupe the explicit General case so we never compare General to General.
   let pair: Audience[];
-  if (audiences.length === 0) {
+  if (distinct.length === 0) {
     pair = [GENERAL_AUDIENCE, GENERAL_AUDIENCE];
-  } else if (audiences.length === 1) {
-    const first = audiences[0]!;
+  } else if (distinct.length === 1) {
+    const first = distinct[0]!;
     pair = first.is_general ? [GENERAL_AUDIENCE, GENERAL_AUDIENCE] : [first, GENERAL_AUDIENCE];
   } else {
-    // Cap at 2 for v1 legibility (D-09).
-    pair = audiences.slice(0, MAX_AUDIENCES);
+    // Two distinct audiences — the genuine compare path (cap already applied above).
+    pair = distinct;
+  }
+
+  // ── Single-audience Read (CR-02): both sides are the SAME identity ──────────
+  // When the dedupe collapsed to a self-pair (e.g. the default General-only case),
+  // present a single-audience Read — NOT a degenerate self-compare. One entry, no
+  // delta framing against an identical "other" audience (which would read as the
+  // dishonest "Both General and General land the same").
+  const isSelfPair = pair[0]!.id === pair[1]!.id;
+  if (isSelfPair) {
+    const { entry, band } = await readForAudience(concept, pair[0]!);
+    // No comparison audience → no delta. The interpretation states this audience's
+    // verdict on its own terms; the lever points at the single verdict.
+    const interpretation = `${entry.name} ${BAND_VERB[band]} (${band}).`;
+    const lever =
+      band === "Strong"
+        ? `Strong for ${entry.name}. Calibrate a second audience to see where it diverges.`
+        : band === "Weak"
+          ? `Soft for ${entry.name}. Sharpen the hook, then re-read.`
+          : `Mixed for ${entry.name}. Tighten the opener to push it toward Strong.`;
+    return {
+      type: "multi-audience-read",
+      props: {
+        audiences: [{ ...entry, interpretation, lever }],
+        model: "sim1-flash",
+      },
+    };
   }
 
   // Resolve + run Flash per audience SEPARATELY (the second resolve is real, D-08).

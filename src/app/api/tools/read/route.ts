@@ -103,6 +103,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // ── (6) Run the 2-audience Read + persist the block ──────────────────────────
+  // CR-02: the runner dedupes by audience IDENTITY. In the common default (no
+  // calibrated audience pinned, no explicit second pick) both resolve to General,
+  // and the runner collapses that self-pair to a SINGLE-audience Read instead of a
+  // degenerate "General vs General" compare.
   try {
     const block = await runTwoAudienceRead(concept, [activeAudience, secondAudience]);
 
