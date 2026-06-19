@@ -28,9 +28,11 @@
   .watermark { position: absolute; top: 12%; left: 50%; transform: translateX(-50%); opacity: 0.045; pointer-events: none; }
   .watermark svg { width: 132px; height: 132px; stroke: var(--cream); stroke-width: 0.9; fill: none; }
 
-  .center { max-width: 720px; margin: 0 auto; padding: 17vh 24px 40px; display: flex; flex-direction: column; align-items: center; }
+  /* composer sits in the LOWER portion → the upward popover has the whole top half to open into (no clip) */
+  .center { max-width: 720px; margin: 0 auto; min-height: calc(100vh - 50px); padding: 0 24px 9vh;
+    display: flex; flex-direction: column; justify-content: flex-end; align-items: center; }
   .greet { font-family: var(--serif); font-size: 2.7rem; font-weight: 400; color: var(--cream); letter-spacing: -0.015em;
-    display: flex; align-items: center; gap: 15px; margin-bottom: 38px; }
+    display: flex; align-items: center; gap: 15px; margin-bottom: 36px; margin-top: 4px; }
   .greet .stele svg { width: 30px; height: 30px; stroke: var(--coral); stroke-width: 1.3; fill: none; }
 
   /* ── composer (generous, premium) ── */
@@ -108,6 +110,25 @@
   .vlabel { text-align: center; color: var(--cream-muted); font-size: 12.5px; margin-top: -22px; margin-bottom: 34px; }
   .vlabel code { color: var(--cream-2); }
 
+  /* ── mobile sizing (narrow the browser window to test) ── */
+  @media (max-width: 560px) {
+    #nav .b { display: none; }
+    #nav { padding: 8px 10px; }
+    .tab { font-size: 12px; padding: 5px 9px; }
+    .center { padding: 0 12px 7vh; }
+    .greet { font-size: 1.7rem; gap: 10px; margin-bottom: 24px; }
+    .greet .stele svg { width: 23px; height: 23px; }
+    .composer { padding: 13px 13px 11px; border-radius: var(--r-xl); }
+    .ta { font-size: 16px; min-height: 38px; }
+    .row { gap: 3px; margin-top: 12px; }
+    .ctl, .send { width: 32px; height: 32px; }
+    .skill { padding: 6px 9px; font-size: 13px; gap: 6px; }
+    .modeltag { font-size: 11.5px; padding: 0 4px; gap: 5px; }
+    .pop { min-width: 0; width: calc(100vw - 28px); max-height: 52vh; }
+    .slash { left: 12px; right: 12px; width: auto; }
+    .watermark { display: none; }
+    .vlabel { font-size: 11.5px; }
+  }
   #tools { position: fixed; bottom: 12px; right: 12px; z-index: 9999; font-family: system-ui; font-size: 12px;
     background: rgba(0,0,0,.7); color: #fff; padding: 8px 12px; border-radius: 8px; opacity: .4; transition: .2s; display: flex; gap: 10px; }
   #tools:hover { opacity: 1; } #tools button { background: #333; color: #fff; border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
@@ -131,8 +152,8 @@
       <div class="row">
         <div class="pop-anchor"><button class="ctl" title="Upload / attach" onclick="toggle('attachA',event)" id="plusA"></button><div class="pop" id="attachA"></div></div>
         <div class="pop-anchor"><button class="skill" onclick="toggle('skillA',event)" id="skillBtnA"></button><div class="pop" id="skillA"></div></div>
-        <div class="pop-anchor"><button class="ctx" onclick="toggle('audA',event)" id="audBtnA"></button><div class="pop" id="audA"></div></div>
-        <div class="pop-anchor"><button class="ctx" onclick="toggle('intentA',event)" id="intentBtnA"></button><div class="pop" id="intentA"></div></div>
+        <div class="pop-anchor"><button class="ctl" onclick="toggle('audA',event)" id="audBtnA"></button><div class="pop" id="audA"></div></div>
+        <div class="pop-anchor"><button class="ctl" onclick="toggle('intentA',event)" id="intentBtnA"></button><div class="pop" id="intentA"></div></div>
         <div class="grow"></div>
         <span class="modeltag" id="modelA" title="The skill decides the model — Max for video, Flash for text"></span>
         <button class="send" id="sendA"></button>
@@ -217,13 +238,13 @@ function paint(v){
   document.getElementById('skillBtn'+v).innerHTML = `${svg(s.i)}<span>${s.nm}</span>${svg(P.chev,'ico ico-sm chev')}`;
   // model = read-only, follows skill
   const mt=document.getElementById('model'+v); mt.className='modeltag'+(s.m==='Max'?' max':'');
-  mt.innerHTML=`<span class="dotc"></span><b>SIM-1 ${s.m}</b><span class="auto">auto</span>`;
+  mt.innerHTML=`<span class="dotc"></span><b>SIM-1 ${s.m}</b>`;
   document.getElementById('plus'+v).innerHTML=svg(P.plus);
   document.getElementById('send'+v).innerHTML=svg(P.up);
   document.getElementById('stele'+v).innerHTML=stele(); document.getElementById('wm'+v).innerHTML=stele();
   if(v==='A'){
-    document.getElementById('audBtnA').innerHTML=`${svg(P.people)}<b>${a.nm}</b>${svg(P.chev,'ico ico-sm chev')}`;
-    document.getElementById('intentBtnA').innerHTML=`${svg(P.target)}<span>intent</span> <b>${st.intent==='sell'?'Sell':'Grow'}</b>${svg(P.chev,'ico ico-sm chev')}`;
+    const ab=document.getElementById('audBtnA'); ab.innerHTML=svg(P.people); ab.title=`Audience · ${a.nm}`;
+    const ib=document.getElementById('intentBtnA'); ib.innerHTML=svg(P.target); ib.title=`Intent · ${st.intent==='sell'?'Sell':'Grow'}`;
   }
 }
 function fill(id){
