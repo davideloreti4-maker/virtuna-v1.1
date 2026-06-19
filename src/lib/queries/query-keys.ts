@@ -30,6 +30,11 @@ export const queryKeys = {
     all: ["bookmarks"] as const,
     list: () => ["bookmarks", "list"] as const,
   },
+  saved: {
+    all: ["saved"] as const,
+    // Flat filter, NOT a folder: `type` is an optional client-side item_type filter.
+    list: (type?: string) => ["saved", "list", type ?? "all"] as const,
+  },
   profile: {
     all: ["profile"] as const,
     current: () => ["profile", "current"] as const,
