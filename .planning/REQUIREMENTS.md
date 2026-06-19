@@ -181,6 +181,16 @@ reuses its typed-block renderers.
 
 - [ ] **HARDEN-01**: Wire rate-limiting per tool — constants RESERVED-NOT-WIRED (`src/app/api/tools/hooks/route.ts`: `void RATE_LIMIT_WINDOW_SECS`). Re-run full engine regression gate + honesty-spine checks at milestone close.
 
+### Cross-cutting & infra debt (surfaced from transcript + memory sweep 2026-06-19 — owner-raised, not yet placed in a feature phase)
+
+- [ ] **UX-01 (NEAR-TERM, recommend before P11)**: Composer / skill-selector redesign — the temporary skill-chip row in the composer is "not good ui/ux" (owner) and **breaks as skills multiply** (P11–16 each add one: Explore, Offer Validation, Ad Creative…). Concept must work clean on mobile AND desktop. Sketch `001-hybrid-composer` exists (mode-pill expanding into context selectors) but **winner: null** — needs a `/gsd-sketch` decision. De-risks the UI of every expansion phase.
+- [ ] **UX-02**: Creator-skills vs marketing-skills differentiation in the composer/IA — same surface, distinct grouping (owner: "we differentiate between creator skills and marketing skills"). Folds into P15/P16 + the P12 IA.
+- [ ] **INFRA-01 (pre-launch)**: Video storage → Cloudflare R2 migration + Supabase free/Pro tier planning for first ~100 users; confirm live video playback on R2 in the analysis result. (Owner launch-readiness thread; ties to HARDEN-01 + billing.)
+- [ ] **PERF-01**: Model-routing + latency — Test E2E ~4min is too slow (owner); evaluate switching the text-skill audience-sim from `qwen-3.7-plus` → `3.6-flash` for speed; resolve the engine model-flip **pending on branch `fix/flash-coercion-stability`** (memory `engine-model-assignment`). Engine is OPEN this milestone but regression-gated. See memory `engine-latency-optimization`.
+- [ ] **HONESTY-01**: Chat citation pills are **fake labels, not real RAG** (memory `chat-citations-not-grounded`) — honesty-spine violation. Either ground them for real (fits KCQ-03 exemplar RAG) or drop the pills. Resolve with P14.
+
+> **Out of product scope (GTM, note only):** the 5 UGC marketing accounts (the founder/content/media/creator/brand "report" accounts), logos, account-warming — go-to-market execution, not a build phase.
+
 ---
 
 ## Cross-cutting constraints
