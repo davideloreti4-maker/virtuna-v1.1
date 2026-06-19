@@ -173,6 +173,54 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     endpoint: "/api/tools/remix/run",   // P8 LIVE — set 2026-06-19 (08-03)
     anchorFrom: "card",
   },
+
+  // ── P9 LIVE: Rewrite for this audience (same-skill self-handoff, D-05/LIVE-07) ──
+  // The AudienceLens "Rewrite for this audience →" sticky CTA re-POSTs to the
+  // ORIGINATING skill's own runner with the Read's LEVER injected as steering, producing
+  // a new card + Read in-thread. from===to (a self-handoff): the flywheel regenerates the
+  // SAME skill, steered by what the audience told us. anchorFrom "card" — the card supplies
+  // the prior concept; the Lens injects the lever as the steering `ask`.
+  //
+  // A2 disposition (09-04 T2 — runners verified read-only):
+  //   idea   → /api/tools/ideas   accepts { ask?, platform } — lever rides `ask`.            ✓ self-handoff
+  //   hooks  → /api/tools/hooks   accepts { ask?, anchor?, platform } — lever `ask` + concept `anchor`. ✓
+  //   script → /api/tools/script  accepts { ask?, anchor?, platform } — same shape as hooks. ✓
+  //   remix  → /api/tools/remix/run REJECTS a lever-steered re-POST (schema = { url, platform }
+  //            only; no ask/anchor). MINIMAL ADJUSTMENT (no route change): the remix Rewrite
+  //            re-develops the adapted concept via the PINNED /api/tools/ideas/develop route
+  //            (already confirmed for remix→hooks to accept { anchor, platform }); the lever +
+  //            adapted hook ride the `anchor`. from stays "remix" (the originating card), the
+  //            endpoint is the remix-origin develop route. Documented in 09-04-SUMMARY.md.
+  {
+    from: "idea",
+    to: "idea",
+    ctaLabel: "Rewrite for this audience →",
+    endpoint: "/api/tools/ideas",          // self-handoff — lever as `ask`
+    anchorFrom: "card",
+  },
+  {
+    from: "hooks",
+    to: "hooks",
+    ctaLabel: "Rewrite for this audience →",
+    endpoint: "/api/tools/hooks",          // self-handoff — lever as `ask`, concept as `anchor`
+    anchorFrom: "card",
+  },
+  {
+    from: "script",
+    to: "script",
+    ctaLabel: "Rewrite for this audience →",
+    endpoint: "/api/tools/script",         // self-handoff — lever as `ask`, opener as `anchor`
+    anchorFrom: "card",
+  },
+  {
+    from: "remix",
+    to: "remix",
+    ctaLabel: "Rewrite for this audience →",
+    // remix/run rejects ask/anchor (url-only); re-develop the adapted concept via the
+    // PINNED develop route (remix-origin, accepts { anchor, platform }). A2 minimal adjustment.
+    endpoint: "/api/tools/ideas/develop",
+    anchorFrom: "card",
+  },
 ];
 
 // ─── handoffsFor ─────────────────────────────────────────────────────────────

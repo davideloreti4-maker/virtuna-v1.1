@@ -139,6 +139,47 @@ describe('handoffsFor("discover")', () => {
   });
 });
 
+// ── 3c. Rewrite for this audience — same-skill self-handoff (P9 / LIVE-07, D-05) ──
+
+describe('Rewrite for this audience (same-skill self-handoff)', () => {
+  const REWRITE_LABEL = 'Rewrite for this audience →';
+
+  // from===to + originating endpoint, pinned so a future drift fails here.
+  const cases: Array<{ skill: SkillId; endpoint: string }> = [
+    { skill: 'idea', endpoint: '/api/tools/ideas' },
+    { skill: 'hooks', endpoint: '/api/tools/hooks' },
+    { skill: 'script', endpoint: '/api/tools/script' },
+    // remix/run rejects a lever re-POST (url-only); re-develops via the PINNED develop route (A2)
+    { skill: 'remix', endpoint: '/api/tools/ideas/develop' },
+  ];
+
+  for (const { skill, endpoint } of cases) {
+    it(`${skill} has a self-handoff Rewrite CTA (from===to) with the pinned endpoint`, () => {
+      const handoffs = handoffsFor(skill);
+      const rewrite = handoffs.find((h) => h.to === skill && h.ctaLabel === REWRITE_LABEL);
+
+      expect(rewrite).toBeDefined();
+      // from===to — the regenerable self-handoff (the flywheel, D-05)
+      expect(rewrite!.from).toBe(skill);
+      expect(rewrite!.to).toBe(skill);
+      expect(rewrite!.ctaLabel).toBe(REWRITE_LABEL);
+      // lever injected as the steering anchor → anchorFrom "card"
+      expect(rewrite!.anchorFrom).toBe('card');
+      // pinned originating endpoint — drift fails loudly here
+      expect(rewrite!.endpoint).toBe(endpoint);
+    });
+  }
+
+  it('does NOT add a Rewrite for non-regenerable surfaces (no chat/discover/test self-handoff)', () => {
+    for (const skill of ['discover', 'test'] as SkillId[]) {
+      const selfRewrite = handoffsFor(skill).find(
+        (h) => h.to === skill && h.ctaLabel === REWRITE_LABEL,
+      );
+      expect(selfRewrite).toBeUndefined();
+    }
+  });
+});
+
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {

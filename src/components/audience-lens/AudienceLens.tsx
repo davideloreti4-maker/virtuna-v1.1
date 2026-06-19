@@ -125,12 +125,37 @@ export function AudienceLens({
   reducedMotion = false,
   conceptText,
   platform = 'tiktok',
+  rewrite,
   open,
   onOpenChange,
 }: AudienceLensProps) {
   const [scale, setScale] = useLensScale();
   // The persona currently being asked "why" (null = drawer closed). One at a time (D-03).
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
+  // Rewrite-for-audience loop state (LIVE-07): in-flight + the delta vs the prior Read.
+  const [rewriting, setRewriting] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
+  const [delta, setDelta] = useState<{ stopCount: number; total: number } | null>(null);
+
+  async function handleRewrite() {
+    if (!rewrite || rewriting) return;
+    setRewriting(true);
+    setRewriteError(null);
+    try {
+      // Inject the Read's lever as the steering anchor (lever-as-steering, D-05). The host
+      // owns the actual re-POST + in-thread streaming; the Lens supplies the steering.
+      const result = await rewrite.onRewrite(rewrite.lever, rewrite.platform);
+      if (result) {
+        setDelta(result);
+      } else {
+        setRewriteError("Couldn't rewrite right now. Your concept is saved — try again in a moment.");
+      }
+    } catch {
+      setRewriteError("Couldn't rewrite right now. Your concept is saved — try again in a moment.");
+    } finally {
+      setRewriting(false);
+    }
+  }
 
   // Signal shape: a real heatmap (rich, timeline) takes precedence; otherwise the flat
   // Shape-B reactions drive a degraded cascade-mode Lens (D-06). Both resolve to the
@@ -242,6 +267,20 @@ export function AudienceLens({
             <PopulationSlot honesty={POPULATION_HONESTY} />
           )}
         </div>
+
+        {/* 4 ── STICKY Rewrite-for-audience CTA (LIVE-07, D-05). Hidden where there is no
+            regenerable concept object (plain chat turns) — `rewrite` is then undefined.
+            Coral + --shadow-button (the one primary action; coral is reserved). */}
+        {rewrite && hasReaction && (
+          <RewriteCta
+            rewriting={rewriting}
+            error={rewriteError}
+            delta={delta}
+            priorStopCount={rewrite.priorStopCount}
+            priorTotal={rewrite.priorTotal}
+            onRewrite={() => void handleRewrite()}
+          />
+        )}
       </SheetContent>
 
       {/* The in-context chat-with-persona drawer (P9 / LIVE-03, D-03). Mounted only when a
@@ -255,6 +294,71 @@ export function AudienceLens({
         />
       )}
     </Sheet>
+  );
+}
+
+/**
+ * Sticky "Rewrite for this audience →" CTA (LIVE-07, D-05). The one primary action —
+ * coral + `--shadow-button` flat-matte (mirrors the shipped chain CTAs). On success the
+ * Lens shows the DELTA vs the prior Read (prior stop-count → new stop-count). Sticks to
+ * the bottom of the sheet so it stays reachable as the room scrolls.
+ */
+function RewriteCta({
+  rewriting,
+  error,
+  delta,
+  priorStopCount,
+  priorTotal,
+  onRewrite,
+}: {
+  rewriting: boolean;
+  error: string | null;
+  delta: { stopCount: number; total: number } | null;
+  priorStopCount: number;
+  priorTotal: number;
+  onRewrite: () => void;
+}) {
+  return (
+    <div className="sticky bottom-0 flex flex-col gap-2 border-t border-[var(--color-border)] bg-background px-5 py-4">
+      {/* Delta readout — prior → new stop-count (shown after a successful rewrite). The
+          honest signal: did steering on the lever actually move the room? */}
+      {delta && (
+        <p className="text-[13px] text-foreground" role="status" aria-live="polite">
+          <span className="text-[var(--color-cream-muted)]">
+            {priorStopCount}/{priorTotal} stop
+          </span>
+          <span className="mx-1.5 text-[var(--color-cream-muted)]">→</span>
+          <span className="font-medium">
+            {delta.stopCount}/{delta.total} stop
+          </span>
+          <span className="ml-2 text-[var(--color-cream-muted)]">
+            {delta.stopCount > priorStopCount
+              ? 'the lever moved the room.'
+              : delta.stopCount < priorStopCount
+                ? 'the lever cost you stops.'
+                : 'no change from the lever.'}
+          </span>
+        </p>
+      )}
+      {error && (
+        <p className="text-[13px] text-[var(--color-error)]" role="alert">
+          {error}
+        </p>
+      )}
+      <button
+        type="button"
+        onClick={onRewrite}
+        disabled={rewriting}
+        className="w-full rounded-[8px] px-4 py-2.5 text-[14px] font-medium text-[var(--color-accent-foreground)] transition-opacity disabled:opacity-60"
+        style={{
+          backgroundColor: 'var(--color-accent)',
+          boxShadow: 'var(--shadow-button)',
+        }}
+        aria-label="Rewrite this concept steered by the audience's lever"
+      >
+        {rewriting ? 'Rewriting…' : 'Rewrite for this audience →'}
+      </button>
+    </div>
   );
 }
 
