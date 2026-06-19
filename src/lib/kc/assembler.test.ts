@@ -55,28 +55,29 @@ const BASE_INPUT: AssemblerInput = {
 // ─── 1. MODE_ROLES structure ──────────────────────────────────────────────────
 
 describe("MODE_ROLES", () => {
-  it("idea mode includes niche, audience, goals, wins, flops, platform", () => {
+  it("idea mode includes niche, audience, goals, wins, flops, platform, voice", () => {
     expect(MODE_ROLES.idea).toEqual(
-      expect.arrayContaining(["niche", "audience", "goals", "wins", "flops", "platform"])
+      expect.arrayContaining(["niche", "audience", "goals", "wins", "flops", "platform", "voice"])
     );
-    expect(MODE_ROLES.idea).toHaveLength(6);
+    expect(MODE_ROLES.idea).toHaveLength(7);
   });
 
-  it("hooks mode includes niche, audience, platform, wins, flops (no goals)", () => {
+  it("hooks mode includes niche, audience, platform, wins, flops, voice (no goals)", () => {
     expect(MODE_ROLES.hooks).toEqual(
-      expect.arrayContaining(["niche", "audience", "platform", "wins", "flops"])
+      expect.arrayContaining(["niche", "audience", "platform", "wins", "flops", "voice"])
     );
     expect(MODE_ROLES.hooks).not.toContain("goals");
-    expect(MODE_ROLES.hooks).toHaveLength(5);
+    expect(MODE_ROLES.hooks).toHaveLength(6);
   });
 
-  it("chat mode includes niche, audience, platform only", () => {
+  it("chat mode includes niche, audience, platform only (no goals, wins, flops, voice)", () => {
     expect(MODE_ROLES.chat).toEqual(
       expect.arrayContaining(["niche", "audience", "platform"])
     );
     expect(MODE_ROLES.chat).not.toContain("goals");
     expect(MODE_ROLES.chat).not.toContain("wins");
     expect(MODE_ROLES.chat).not.toContain("flops");
+    expect(MODE_ROLES.chat).not.toContain("voice");
     expect(MODE_ROLES.chat).toHaveLength(3);
   });
 });
