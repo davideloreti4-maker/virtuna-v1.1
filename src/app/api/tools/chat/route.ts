@@ -235,7 +235,15 @@ export async function POST(request: Request): Promise<Response> {
             })),
         )
         .slice(-MAX_PRIOR_TURNS)
-    : hydratedMessages
+    : // WR-05 INVARIANT: the open-chat anchor assumes EXACTLY ONE `markdown` block per message
+      // row. Role is attributed from `msg.role` (per-message), so a conversational "turn" === a
+      // message; the `.slice(-MAX_PRIOR_TURNS)` cap below counts blocks, which equals turns ONLY
+      // while this invariant holds (open-chat persistence writes a single markdown block per turn
+      // — see the POST persistence path: one `{ type: "markdown" }` block per insertMessage). If
+      // multi-block markdown messages are ever introduced, attribute role per BLOCK (carry it on
+      // the block) before relying on this anchor — otherwise the cap miscounts and every block in
+      // a message inherits the parent message role.
+      hydratedMessages
         .flatMap((msg) =>
           msg.blocks
             .filter(
