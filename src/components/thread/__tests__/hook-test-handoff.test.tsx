@@ -13,9 +13,19 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HookCardRenderer } from '@/components/thread/hook-card-block';
 import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context';
 import type { HookCardBlock } from '@/lib/tools/blocks';
+
+// HookCardRenderer mounts SaveAffordance (useSaveItem → useQueryClient), so every
+// render must sit under a QueryClientProvider (Phase 10 Saved-shelf integration).
+function renderWithClient(ui: Parameters<typeof render>[0]) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const mockBlock: HookCardBlock = {
   type: 'hook-card',
@@ -41,7 +51,7 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
   it('calls the HookTestContext callback with hookLine + audienceArchetype on click', () => {
     const onTestHook = vi.fn();
 
-    render(
+    renderWithClient(
       <HookTestContext.Provider value={onTestHook}>
         <HookCardRenderer block={mockBlock} />
       </HookTestContext.Provider>,
@@ -60,7 +70,7 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
   it('renders the CTA button as enabled when HookTestContext provides a callback', () => {
     const onTestHook = vi.fn();
 
-    render(
+    renderWithClient(
       <HookTestContext.Provider value={onTestHook}>
         <HookCardRenderer block={mockBlock} />
       </HookTestContext.Provider>,
@@ -72,7 +82,7 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
 
   it('renders the CTA button as a stub (disabled) when no context callback is set', () => {
     // Default context value is null → stub behavior (Plan 01 state)
-    render(<HookCardRenderer block={mockBlock} />);
+    renderWithClient(<HookCardRenderer block={mockBlock} />);
 
     const ctaBtn = screen.getByRole('button', { name: /test this hook/i });
     expect(ctaBtn).toBeDisabled();
@@ -82,7 +92,7 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
     const contextFn = vi.fn();
     const propFn = vi.fn();
 
-    render(
+    renderWithClient(
       <HookTestContext.Provider value={contextFn}>
         <HookCardRenderer block={mockBlock} onTest={propFn} />
       </HookTestContext.Provider>,
@@ -101,7 +111,7 @@ describe('HookCardRenderer — "Test full →" handoff seam (D-05/D-06, HOOKS-03
     // not by checking that an API was called (no API call is the assertion).
     const onTestHook = vi.fn();
 
-    render(
+    renderWithClient(
       <HookTestContext.Provider value={onTestHook}>
         <HookCardRenderer block={mockBlock} />
       </HookTestContext.Provider>,
@@ -123,7 +133,7 @@ describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS h
   it('calls the HookWriteScriptContext callback with hookLine + audienceArchetype on click', () => {
     const onWriteScript = vi.fn();
 
-    render(
+    renderWithClient(
       <HookWriteScriptContext.Provider value={onWriteScript}>
         <HookCardRenderer block={mockBlock} />
       </HookWriteScriptContext.Provider>,
@@ -139,7 +149,7 @@ describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS h
   });
 
   it('renders the CTA enabled when HookWriteScriptContext provides a callback', () => {
-    render(
+    renderWithClient(
       <HookWriteScriptContext.Provider value={vi.fn()}>
         <HookCardRenderer block={mockBlock} />
       </HookWriteScriptContext.Provider>,
@@ -149,7 +159,7 @@ describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS h
   });
 
   it('renders the CTA as a stub (disabled) when no context callback is set', () => {
-    render(<HookCardRenderer block={mockBlock} />);
+    renderWithClient(<HookCardRenderer block={mockBlock} />);
 
     expect(screen.getByRole('button', { name: /write a full script from this hook/i })).toBeDisabled();
   });
@@ -158,7 +168,7 @@ describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS h
     const contextFn = vi.fn();
     const propFn = vi.fn();
 
-    render(
+    renderWithClient(
       <HookWriteScriptContext.Provider value={contextFn}>
         <HookCardRenderer block={mockBlock} onWriteScript={propFn} />
       </HookWriteScriptContext.Provider>,
@@ -174,7 +184,7 @@ describe('HookCardRenderer — "Write script →" handoff seam (CHAIN_HANDOFFS h
     const onTestHook = vi.fn();
     const onWriteScript = vi.fn();
 
-    render(
+    renderWithClient(
       <HookTestContext.Provider value={onTestHook}>
         <HookWriteScriptContext.Provider value={onWriteScript}>
           <HookCardRenderer block={mockBlock} />
