@@ -115,29 +115,45 @@ reuses its typed-block renderers.
 
 ---
 
-## Expansion Phases 11–15 (added 2026-06-19 — owner folded the Sandcastles + Commerce + KC-quality tracks into v6.0; NOT yet discussed)
+## Expansion Phases 11–16 (added 2026-06-19; corrected to the authoritative Sandcastles shape — owner folded the Sandcastles + KC-quality + Commerce tracks into v6.0; NOT yet discussed)
 
-> Full scope + debt→phase map: `.planning/NEXT-MILESTONE-VISION.md`. All inherit the cross-cutting constraints below. Requirement IDs firm; each phase still needs a `/gsd-discuss-phase` pass.
+> Full scope + debt→phase map: `.planning/NEXT-MILESTONE-VISION.md`. Authoritative Sandcastles phase shape: `research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE` (it SUPERSEDES the early "Living Research Feed / Collections" framing). All inherit the cross-cutting constraints below. Each phase still needs a `/gsd-discuss-phase` pass.
 
-### FEED — Living Research Feed (P11)
+### EXPLORE — Explore (Audience-Curated Discovery) (P11)
 
-- [ ] **FEED-01**: Persistent watchlist — profiles + niches/keywords the creator tracks, surviving sessions.
-- [ ] **FEED-02**: Auto-explore agents — scheduled discovery that refreshes the feed (reuses P8 apidojo Discover; adds persistence).
-- [ ] **FEED-03**: Audience-relative outlier scoring — outliers scored *relative to the active calibrated audience*, not just the source channel's baseline.
-- [ ] **FEED-04**: Inline Read per node — every outlier node offers a Read in-place; tile CTA "Remix → Read" (our chain, never "rewrite for me").
-- [ ] **FEED-05**: Comment seeding — deferred from P8 D-04; lands here.
+> THE flagship adopt: discovery as an in-thread SKILL, NOT a feed surface. The "separate Feed" framing is explicitly superseded — the SIM lets the *audience* curate.
 
-### WORK — Creator-Persona+ & Workspace (P12)
+- [ ] **EXPLORE-01**: Explore skill in-thread — audience-curated outlier/competitor discovery; customizable params (the audience-on-tap control + serendipity valve); reuses P8 apidojo Discover + outlier-score.
+- [ ] **EXPLORE-02**: Each result card carries an **ambient audience reaction** + lands on a Read; tile CTA "Remix → Read" (our chain, never "rewrite for me").
+- [ ] **EXPLORE-03**: Audience-relative outlier scoring — relative to YOUR audience, not generic source-channel view-count.
+- [ ] **EXPLORE-04**: Start-screen set-actions — audience-aware quick-actions so a blank thread is never intimidating ("Top performers in my niche today", "What are my competitors shipping").
+- [ ] **EXPLORE-05**: Tracked-accounts/watchlist as input State — lives in Library (P12); click a tracked account → "Explore its outliers" fires in-thread.
+- [ ] **EXPLORE-06**: Comment seeding — deferred from P8 D-04; lands here.
 
-- [ ] **WORK-01**: Field-level legibility — surface *which* profile/audience field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness).
-- [ ] **WORK-02**: Projects/Collections — a grouping VIEW layered over the P10 flat `saved_items` store; **NOT** a second store (no double-build).
-- [ ] **WORK-03**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in).
-- [ ] **WORK-04**: Persona editing (P7 deferred, pulled in).
-- [ ] **WORK-05**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
-- [ ] **WORK-06**: Link-social → Apify metadata prefill (PROFILE tier-C).
-- *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; this phase surfaces/extends it, does NOT rebuild.)*
+### IA / LIB / AUD-EDIT — Library & Acts/State IA (P12)
 
-### KCQ — KC Grounding & Quality-Loop (P13, the durable moat — `kc-improvement-levers.md`)
+> The State home + nav collapse. **Acts** (generate/explore/test/refine/chat) → the thread; **State** (watchlist, saved work, audience, settings) → surfaces; wired together.
+
+- [ ] **IA-01**: 4-item nav collapse — **Thread · Audience · Library · Settings** (from Sandcastles' 11 sections).
+- [ ] **LIB-01**: Library = saved nouns (Reads/ideas/hooks/scripts), sectioned — **EXTENDS** the P10 flat `saved_items` store (built P12-extendable on purpose, D-07); **NOT** a second store / no rework.
+- [ ] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
+- [ ] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.
+- [ ] **AUD-EDIT-01**: Persona editing (P7 deferred, pulled in) — on the Audience surface.
+- [ ] **AUD-EDIT-02**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in).
+- [ ] **AUD-EDIT-03**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
+- [ ] **AUD-EDIT-04**: Link-social → Apify metadata prefill (PROFILE tier-C).
+- *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; surface/extend on the Audience surface, do NOT rebuild. Confirm P8 W0 removed persona-value `[ASSUMED]` markers.)*
+
+### AMBIENT / PROACTIVE — Proactive Numen (Ambient + Initiated) (P13 — the "ambient audience system")
+
+> Thread alive even when not typing = daily-habit engine, in-conversation, no dashboard. ⚠️ EXTEND P9's shipped reaction primitive (persona-cloud Lens + chat-with-persona) — do NOT duplicate.
+
+- [ ] **AMBIENT-01**: Ambient audience reaction on EVERY skill card — Ideas/Hooks/Script/Remix/Explore results carry a lightweight inline audience reaction (always felt, not summoned), reusing P9's primitive.
+- [ ] **PROACTIVE-01**: Proactive morning drops — Numen INITIATES ("3 things stirring your people would bite on").
+- [ ] **PROACTIVE-02**: Scheduled Explore (their Automations equivalent) — recurring audience-curated discovery delivered into the thread.
+- *(Honesty spine: never fabricate a reaction; degrade gracefully when thin.)*
+
+### KCQ — KC Grounding & Quality-Loop (P14, the durable moat — `kc-improvement-levers.md`)
 
 - [ ] **KCQ-01**: Live-profile grounding (#2) — gate must test *with* real profile + exemplars, not cold-start.
 - [ ] **KCQ-02**: Generate→critique→regenerate (#3) — best-of-N w/ rubric, replacing the current one-pass gate.
@@ -147,14 +163,15 @@ reuses its typed-block renderers.
 - [ ] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
 - [ ] **KCQ-07**: Runtime trope-injection + specificity auto-reject (#4/#5) — corpus floor done in P2; runtime enforcement here.
 - [ ] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
+- [ ] **KCQ-09**: Field-level legibility — surface *which* profile/audience/KC field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness). *(Surfaces via P12 IA where relevant.)*
 
-### INTENT / REACT / BLOCK — Marketing Intent mode-switch (P14)
+### INTENT / REACT / BLOCK — Marketing Intent mode-switch (P15)
 
 - [ ] **INTENT-01**: Composer intent control — grow⇄sell, default from audience `goal_intent`, per-run override (no audience cloning).
 - [ ] **REACT-01**: Intent-conditioned reaction-frame injection at BOTH points — `runWave3` video sim + the text-skill runner (**de-risk: confirm both before planning; they differ**). NOT an engine refactor — population weights/mechanics unchanged.
 - [ ] **BLOCK-01**: Buyer-reaction output block — `would_buy` / `objection` / `price_reaction`, alongside existing cards.
 
-### OFFER / ADCREATIVE / COMMERCE — Commerce Skills (P15)
+### OFFER / ADCREATIVE / COMMERCE — Commerce Skills (P16)
 
 - [ ] **OFFER-01**: Offer/Product Validation — test the proposition (concept, price, positioning) against the buyer audience *before any content exists*: would-buy %, ranked objections, price sensitivity (text path).
 - [ ] **ADCREATIVE-01**: Ad Creative pre-flight — stop-scroll + purchase intent + objection-surfaced, ROAS-framed (video/sim path).
@@ -181,7 +198,7 @@ reuses its typed-block renderers.
 
 > **2026-06-19:** the Sandcastles + Commerce + KC-quality tracks were folded INTO v6.0 as Phases 11–15 (see Expansion section above). The items below remain genuinely deferred — rails laid, build gated on data/usage volume.
 >
-> **Pulled IN to phases:** compact onboarding + link-social prefill → WORK-05/06 (P12); own-history exemplar RAG → KCQ-03 (P13, niche-exemplar form); in-thread monetization + brand-profile → COMMERCE-01 (P15); test concept pre-flight → covered by P8 multi-audience concept Read (verify).
+> **Pulled IN to phases:** compact onboarding + link-social prefill → AUD-EDIT-03/04 (P12); own-history exemplar RAG → KCQ-03 (P14, niche-exemplar form); in-thread monetization + brand-profile → COMMERCE-01 (P16); test concept pre-flight → covered by P8 multi-audience concept Read (verify).
 
 - [ ] **FLYWHEEL-05 cross-creator prior-fitting mechanism** (lever #8) — reconciliation logging shipped (P10); aggregated prior-fitting that sharpens base persona priors is deferred until enough privacy-safe data accumulates.
 - [ ] **Spread / virality prediction in the Read** (P7 deferred).
@@ -250,9 +267,10 @@ reuses its typed-block renderers.
 | FLYWHEEL-04 | Phase 10 | Complete (10-01, 10-06) |
 | FLYWHEEL-05 | Phase 10 | Complete (10-02, 10-06) |
 | FLYWHEEL-06 | Phase 10 | Complete (10-06) |
-| FEED-01..05 | Phase 11 | Planned (expansion) |
-| WORK-01..06 | Phase 12 | Planned (expansion) |
-| KCQ-01..08 | Phase 13 | Planned (expansion) |
-| INTENT-01 / REACT-01 / BLOCK-01 | Phase 14 | Planned (expansion) |
-| OFFER-01 / ADCREATIVE-01 / COMMERCE-01 | Phase 15 | Planned (expansion) |
+| EXPLORE-01..06 | Phase 11 | Planned (expansion) |
+| IA-01 / LIB-01..03 / AUD-EDIT-01..04 | Phase 12 | Planned (expansion) |
+| AMBIENT-01 / PROACTIVE-01..02 | Phase 13 | Planned (expansion) |
+| KCQ-01..09 | Phase 14 | Planned (expansion) |
+| INTENT-01 / REACT-01 / BLOCK-01 | Phase 15 | Planned (expansion) |
+| OFFER-01 / ADCREATIVE-01 / COMMERCE-01 | Phase 16 | Planned (expansion) |
 | HARDEN-01 | Pre-launch gate | Planned (expansion) |

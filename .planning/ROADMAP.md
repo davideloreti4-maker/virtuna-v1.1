@@ -27,17 +27,18 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)* (completed 2026-06-19)
-- [ ] **Phase 11: Living Research Feed** - Persistent watchlist + auto-explore + outliers scored *relative to your audience* + inline Read per node + comment seeding; reuses P8 Discover/outlier-score *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md)*
-- [ ] **Phase 12: Creator-Persona+ & Workspace** - Field-level legibility + Projects/Collections (layer on P10 Saved shelf) + multi-select audience compare + persona editing + compact onboarding + link-social prefill; voice-sample (N1) already shipped *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 13: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG, generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, cited-research, voice calibration *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 14: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 15: Commerce Skills** - Offer/Product Validation + Ad Creative + brand-profile entity + in-thread monetization, consuming P14's buyer frame *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)*
+- [ ] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 13: Proactive Numen (Ambient + Initiated)** - The "ambient audience system": ambient audience reaction on EVERY skill card (always felt, not summoned; builds on P9 reaction primitive — must not duplicate) + Numen INITIATES (proactive morning drops "3 things stirring your people would bite on" + scheduled Explore = their Automations equivalent) = daily-habit engine, in-conversation. *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 15: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 16: Commerce Skills** - Offer/Product Validation + Ad Creative + brand-profile entity + in-thread monetization, consuming P15's buyer frame *(IN-MILESTONE EXPANSION 2026-06-19)*
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
 
 > **Phases 8–10 drafted (2026-06-18) — NOT yet discussed.** Competitor audit (Blort, Sandcastles) + MVP-value discussion produced three new phases that extend the moat from "generate + test" into "discover + remix + interrogate + self-optimize." Sequenced *after* Phase 7 (they consume the calibrated Audience object). Details below are a draft shape for a future `/gsd-discuss-phase` pass; requirement IDs are provisional. Source decisions captured in memory `phase8-discover-remix-roadmap.md` (+ `numen-tools-vision.md`).
 
-> **IN-MILESTONE EXPANSION (2026-06-19) — Phases 11–15 added to v6.0 (owner decision: extend, not spin a new milestone).** The Sandcastles competitor-parity track + the Commerce/Marketing-Intent track + the KC quality-loop levers are folded into v6.0 as Phases 11–15 (continuous numbering): **11 Living Research Feed**, **12 Creator-Persona+ & Workspace**, **13 KC Grounding & Quality-Loop**, **14 Marketing Intent (mode-switch)**, **15 Commerce Skills**. The old loose "Sandcastles P13" placeholder is **dropped** (no content); P13 here is the net-new KC Grounding phase. Full scope + the complete debt→phase map live in `.planning/NEXT-MILESTONE-VISION.md` (retained as the expansion brief). Requirement IDs (FEED-*/WORK-*/KCQ-*/INTENT-*/REACT-*/BLOCK-*/OFFER-*/ADCREATIVE-*) added to REQUIREMENTS.md. All inherit v6.0's hard constraints (honesty spine, Qwen-only, fixed renderers, regression-gated engine). Details below; not yet discussed — each needs a `/gsd-discuss-phase` pass. ⚠️ open sequencing: P13 levers #1/#2 (RAG + profile grounding) underpin P11 — roadmapper decides precede-or-parallel.
+> **IN-MILESTONE EXPANSION (2026-06-19, corrected) — Phases 11–16 added to v6.0 (owner decision: extend, not spin a new milestone).** Three tracks fold in: **(a) Sandcastles competitor-parity** — the AUTHORITATIVE shape is `research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE`, which supersedes the early "Living Research Feed / Collections" framing → **11 Explore (Audience-Curated Discovery, a skill not a feed)**, **12 Library & Acts/State IA**, **13 Proactive Numen (Ambient + Initiated — the ambient audience system)**; **(b) KC quality-loop levers** → **14 KC Grounding & Quality-Loop**; **(c) Commerce** → **15 Marketing Intent (mode-switch)**, **16 Commerce Skills**. N1 voice-sample already shipped (`d2f121e7`); N2 cited-research folds into P14. The old loose "Sandcastles P13" placeholder is dropped. Full scope + debt→phase map: `.planning/NEXT-MILESTONE-VISION.md`. Requirement IDs (EXPLORE-*/LIB-*/IA-*/AUD-EDIT-*/AMBIENT-*/PROACTIVE-*/KCQ-*/INTENT-*/REACT-*/BLOCK-*/OFFER-*/ADCREATIVE-*/COMMERCE-*/HARDEN-*) in REQUIREMENTS.md. All inherit v6.0's hard constraints (honesty spine, Qwen-only, fixed renderers, regression-gated engine). Not yet discussed — each needs `/gsd-discuss-phase`. ⚠️ open sequencing: P14 levers #1/#2 (RAG + profile grounding) underpin P11 Explore — roadmapper decides precede-or-parallel; P13 ambient builds on P9's shipped reaction primitive (extend, don't duplicate).
 
 ## Phase Details
 
@@ -212,7 +213,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 ## Progress
 
 **Execution Order:**
-Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a content workstream). **Expansion Phases 11 → 15** (added 2026-06-19) execute next, each after a `/gsd-discuss-phase` pass. ⚠️ Sequencing: P13 (KC Grounding levers #1/#2) underpins P11 (audience-relative exemplars) — roadmapper decides whether P13 precedes or runs parallel to P11. P14 → P15 ordered (P15 consumes P14's buyer frame). **Pre-launch hardening gate** (rate-limiting wire-up) runs before any public traffic.
+Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a content workstream). **Expansion Phases 11 → 16** (added 2026-06-19) execute next, each after a `/gsd-discuss-phase` pass. ⚠️ Sequencing: P14 (KC Grounding levers #1/#2) underpins P11 (Explore's audience-relative exemplars) — roadmapper decides precede-or-parallel; P13 ambient extends P9's shipped reaction primitive; P15 → P16 ordered (P16 consumes P15's buyer frame). **Pre-launch hardening gate** (rate-limiting wire-up) runs before any public traffic.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -226,11 +227,12 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Living Research Feed | — | Planned (expansion) |  |
-| 12. Creator-Persona+ & Workspace | — | Planned (expansion) |  |
-| 13. KC Grounding & Quality-Loop | — | Planned (expansion) |  |
-| 14. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
-| 15. Commerce Skills | — | Planned (expansion) |  |
+| 11. Explore (Audience-Curated Discovery) | — | Planned (expansion) |  |
+| 12. Library & Acts/State IA | — | Planned (expansion) |  |
+| 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
+| 14. KC Grounding & Quality-Loop | — | Planned (expansion) |  |
+| 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
+| 16. Commerce Skills | — | Planned (expansion) |  |
 
 ### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
 
@@ -392,37 +394,46 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 ---
 
-### Phase 11: Living Research Feed *(EXPANSION — not yet discussed)*
+### Phase 11: Explore (Audience-Curated Discovery) *(EXPANSION — not yet discussed)*
 
-**Goal:** A persistent, daily-habit research surface that beats Sandcastles/Blort (they stop at "here's a script"). Adopt their whole Research surface (watchlists + niche feed + auto-explore agents); **improve** it by scoring every outlier *relative to the active calibrated audience* and offering an inline Read at every node — "they tell you it went viral; we tell you if it'll land for *your* people."
-**Depends on:** Phase 8 (Discover grid + outlier-score + apidojo actor — already shipped), Phase 7 (Audience object). ⚠️ Benefits heavily from Phase 13 lever #1 (real-exemplar RAG) — roadmapper decides precede-or-parallel.
-**Requirements:** FEED-01 (persistent watchlist: profiles + niches/keywords), FEED-02 (auto-explore agents), FEED-03 (audience-relative outlier scoring), FEED-04 (inline Read per node), FEED-05 (comment seeding — deferred from P8 D-04).
-**Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack. Tile CTA stays "Remix → Read" (our chain), never "rewrite for me."
+**Goal:** THE flagship adopt. Turn one-shot Discover into the daily-habit entry door — but as an in-thread **skill**, NOT a feed dashboard (the "separate Feed surface" tension dissolves: Numen has the SIM, so the *audience* curates). "They tell you it popped; we tell you if it lands for *your* people."
+**Depends on:** Phase 8 (Discover grid + outlier-score + apidojo actor — shipped), Phase 9 (audience reaction primitive), Phase 7 (Audience object). ⚠️ Benefits from Phase 14 lever #1 (real-exemplar RAG) — roadmapper decides precede-or-parallel.
+**Requirements:** EXPLORE-01 (Explore skill in-thread — audience-curated outlier/competitor discovery, customizable params = audience-on-tap + serendipity valve), EXPLORE-02 (each result card carries an **ambient audience reaction** + lands on a Read; tile CTA "Remix → Read", never "rewrite for me"), EXPLORE-03 (audience-relative outlier scoring — relative to YOUR audience, not generic view-count), EXPLORE-04 (start-screen set-actions — audience-aware quick-actions: "Top performers in my niche today", "What are my competitors shipping"), EXPLORE-05 (tracked-accounts/watchlist as input State, lives in Library — P12), EXPLORE-06 (comment seeding — deferred from P8 D-04).
+**Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
 ---
 
-### Phase 12: Creator-Persona+ & Workspace *(EXPANSION — not yet discussed)*
+### Phase 12: Library & Acts/State IA *(EXPANSION — not yet discussed)*
 
-**Goal:** Match Sandcastles' persona depth + org primitive, **layering** on what we already have — never double-building.
-**Depends on:** Phase 10 (Saved shelf — Collections layers over it), Phase 7 (Audience object).
-**Requirements:** WORK-01 (field-level legibility — surface *which* profile/audience field drove each output; extends GROUND-03), WORK-02 (Projects/Collections — a grouping view that LAYERS on the P10 flat Saved shelf, NOT a second store), WORK-03 (multi-select audience compare — the KILLER feature, retention-vs-growth side-by-side; object already `audience_ids[]`-ready), WORK-04 (persona editing), WORK-05 (compact onboarding redesign — shorten the 9-card), WORK-06 (link-social → Apify metadata prefill, PROFILE tier-C).
-**⚠️ Already shipped — do NOT rebuild:** writing-voice sample (N1, merge `d2f121e7`: `writing_voice_sample` col + `voice` role/formatter + MODE_ROLES + 10th profile card). This phase **surfaces/extends** it (field legibility, per-skill voice toggle). Also confirm P8 W0 removed the persona-value `[ASSUMED]` markers.
+**Goal:** Crystallize the **Acts/State principle** — Acts (generate/explore/test/refine/chat) live in the **thread**; State (watchlist, saved work, audience, settings) lives on **surfaces**, wired together. Collapse Sandcastles' 11 sections into a **4-item IA: Thread · Audience · Library · Settings.**
+**Depends on:** Phase 10 (Saved shelf — built flat+typed+Library-compatible on purpose, D-07), Phase 7 (Audience), Phase 11 (Explore feeds the watchlist).
+**Requirements:** IA-01 (4-item nav collapse — Thread/Audience/Library/Settings), LIB-01 (Library = saved nouns: Reads/ideas/hooks/scripts, sectioned — **EXTENDS** the P10 flat shelf, no rework), LIB-02 (tracked accounts/watchlist in Library), LIB-03 (surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface). **Audience-surface enhancements** (the "Audience" nav item = profile + voice + SIM + persona-cloud Lens): AUD-EDIT-01 (persona editing), AUD-EDIT-02 (multi-select audience compare — the KILLER feature, retention-vs-growth side-by-side; object already `audience_ids[]`-ready), AUD-EDIT-03 (compact onboarding redesign — shorten the 9-card), AUD-EDIT-04 (link-social → Apify metadata prefill, PROFILE tier-C).
+**⚠️ Already shipped — do NOT rebuild:** writing-voice sample (N1, merge `d2f121e7`). Surface/extend it here. Confirm P8 W0 removed the persona-value `[ASSUMED]` markers.
 **UI hint:** yes
 
 ---
 
-### Phase 13: KC Grounding & Quality-Loop *(EXPANSION — the durable moat — not yet discussed)*
+### Phase 13: Proactive Numen (Ambient + Initiated) *(EXPANSION — the "ambient audience system" — not yet discussed)*
+
+**Goal:** Make the thread alive even when the creator isn't typing — the daily-habit engine, in-conversation, no dashboard. Two layers: **ambient audience** (the SIM reacts on *every* skill card, always felt, never summoned) + **proactive Numen** (Numen INITIATES).
+**Depends on:** Phase 11 (Explore), Phase 9 (persona-cloud Lens + chat-with-persona reaction primitive — **shipped**). ⚠️ **Reconcile vs P9: EXTEND the shipped reaction primitive, do NOT duplicate it.**
+**Requirements:** AMBIENT-01 (ambient audience reaction on every skill card — Ideas/Hooks/Script/Remix/Explore results carry a lightweight inline audience reaction, reusing P9's primitive), PROACTIVE-01 (proactive morning drops — Numen initiates "3 things stirring your people would bite on"), PROACTIVE-02 (scheduled Explore = their Automations equivalent — recurring audience-curated discovery delivered into the thread). Honesty spine: never fabricate a reaction; degrade gracefully.
+**UI hint:** yes
+
+---
+
+### Phase 14: KC Grounding & Quality-Loop *(EXPANSION — the durable moat — not yet discussed)*
 
 **Goal:** Move generation from *discipline* (prose-craft, mostly done in P2 corpus, caps ~20–30% over raw LLM) to *rightness* (real data + executed self-rejection — "structurally can't be copied"). Source: `.planning/research/kc-improvement-levers.md`.
 **Depends on:** Phase 2 (KC corpus), Phase 7 (Audience), Phase 10 (flywheel reconciliation data feeds lever #8 later).
 **Requirements (sequence by impact×cost):** KCQ-01 (#2 live-profile grounding — gate must test *with* real profile + exemplars, not cold-start), KCQ-02 (#3 generate→critique→regenerate best-of-N w/ rubric, replacing the one-pass gate), KCQ-03 (#1 real-exemplar RAG — inject 2–3 actual recent niche high-performers; pgvector cols exist unused; includes N2 cited-research pass), KCQ-04 (#6 "will this flop?" adversarial pass), KCQ-05 (#9 SIM-rank verification loop — generate→render→simulate→rank+why, the foresight centerpiece; formalize the existing Flash gate), KCQ-06 (#10 SIM niche-blind fix — wire the rich `persona-registry` into the text Flash path), KCQ-07 (#4/#5 runtime trope-injection + specificity auto-reject), KCQ-08 (#7 voice calibration — extends N1).
 **Engine note:** grounding/pipeline/data work — keep the regression gate green; bump `ENGINE_VERSION` only if Max video-scoring output deliberately changes (most is the text path).
-**UI hint:** minimal (mostly pipeline; legibility surfaces via P12 WORK-01).
+**UI hint:** minimal (mostly pipeline; field-legibility = KCQ-09, surfaces via P12 IA where relevant).
 
 ---
 
-## Phases 14–15: Commerce / Marketing Intent
+## Phases 15–16: Commerce / Marketing Intent
 
 **Strategic frame:** Expand Numen's TAM from B2C creators to *anyone who monetizes content* (digital-product sellers, brand/e-com owners, TikTok Shop sellers, affiliates) **without forking a parallel "marketing" app.** One universal product: same audience-you-own, same SIM-1 engine, same skills. The differentiator is a per-run **intent** — the audience is the mode-switch. Commerce users are arguably a *better* moat fit than creators: hard ground truth (sales/ROAS, not views) → higher WTP + a stronger training signal for the flywheel.
 
@@ -434,7 +445,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Core design decision (locked in discussion):** Switching intent does **NOT** change population weights or engine mechanics. It changes (1) the per-persona **reaction frame** (what each persona evaluates: "would I buy this?" vs "would I watch this?"), (2) the **output "why" vocabulary** (purchase objection / price reaction / desire vs hook / watch-time / share), and (3) the **scoring objective**. Same person, different question. → Content/prompt-layer change, not an engine refactor.
 
-### Phase 14: Marketing Intent (mode-switch) *(EXPANSION — not yet discussed)*
+### Phase 15: Marketing Intent (mode-switch) *(EXPANSION — not yet discussed)*
 
 **Goal:** Make the *existing* skills (Test / Ideas / Hooks / Script) commerce-capable with no audience duplication — a per-run intent control in the composer (grow ⇄ sell, defaults from the audience's `goal_intent`, overridable) that conditions the persona reaction frame + a new buyer-reaction output block.
 
@@ -449,16 +460,16 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Requirements:** INTENT-01 (composer intent control — grow⇄sell, default from audience `goal_intent`, per-run override), REACT-01 (intent-conditioned reaction-frame injection at BOTH injection points — `runWave3` video sim + text-skill runner; **de-risk: confirm both before planning**), BLOCK-01 (buyer-reaction output block: `would_buy` / `objection` / `price_reaction`).
 **UI hint:** yes
 
-### Phase 15: Commerce Skills (Offer Validation + Ad Creative) *(EXPANSION — not yet discussed)*
+### Phase 16: Commerce Skills (Offer Validation + Ad Creative) *(EXPANSION — not yet discussed)*
 
-**Goal:** Ship two net-new skills with no creator analog, both consuming Phase 14's buyer-reaction frame. Follow the existing skill triad pattern (route + runner + view + block). **Brand-profile entity** (brands as a separate buyer) + **in-thread monetization** affordances land here.
+**Goal:** Ship two net-new skills with no creator analog, both consuming Phase 15's buyer-reaction frame. Follow the existing skill triad pattern (route + runner + view + block). **Brand-profile entity** (brands as a separate buyer) + **in-thread monetization** affordances land here.
 
 **Draft scope:**
 
 - **Offer / Product Validation** — test the *proposition itself* (concept, price, positioning) against the buyer audience *before any content exists*: would-buy %, ranked objections, price sensitivity. The entry point for sellers who have a product but no content yet. (AS's "validate ideas before build," but on an audience you own + with the Read.)
 - **Ad Creative** — pre-flight ad creative against the buyer audience: stop-scroll + purchase intent + objection-surfaced, ROAS-framed. The spend-saver (test creative before burning ad budget). Likely rides the video/sim path; Offer Validation is text.
 
-**Depends on:** Phase 14 (buyer-reaction frame + intent infra).
+**Depends on:** Phase 15 (buyer-reaction frame + intent infra).
 **Requirements:** OFFER-01 (proposition/price/positioning validation — would-buy %, ranked objections, price sensitivity; text path), ADCREATIVE-01 (ad creative pre-flight — stop-scroll + purchase intent + objection-surfaced, ROAS-framed; video/sim path), COMMERCE-01 (brand-profile entity + in-thread monetization).
 **UI hint:** yes
 

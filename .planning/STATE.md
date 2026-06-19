@@ -7,11 +7,11 @@ stopped_at: Phases 1–10 complete; expansion Phases 11–15 added (not yet disc
 last_updated: "2026-06-19T18:00:00.000Z"
 last_activity: 2026-06-19 -- Phases 11–15 folded into v6.0 (Sandcastles + Commerce + KC-quality tracks)
 progress:
-  total_phases: 15
+  total_phases: 16
   completed_phases: 10
   total_plans: 51
   completed_plans: 51
-  percent: 67
+  percent: 63
 ---
 
 # Project State
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Expansion Phases 11–15 — Sandcastles parity (11 Living Research Feed, 12 Persona+/Workspace), KC quality-loop (13), Commerce (14 Marketing Intent, 15 Commerce Skills). Each needs a `/gsd-discuss-phase` pass. See `.planning/NEXT-MILESTONE-VISION.md`.
+**Current focus:** Expansion Phases 11–16 — Sandcastles parity (11 Explore, 12 Library & Acts/State IA, 13 Proactive Numen / ambient audience), KC quality-loop (14), Commerce (15 Marketing Intent, 16 Commerce Skills). Each needs a `/gsd-discuss-phase` pass. Authoritative Sandcastles shape: `research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE`. See `.planning/NEXT-MILESTONE-VISION.md`.
 
 ## Current Position
 
-Phase: 1–10 COMPLETE. **Expansion 11–15 ADDED 2026-06-19** (owner: fold into v6.0, don't spin a new milestone) — not yet discussed.
-Plan: none active. Next = `/gsd-discuss-phase 11` (or 13 first — see sequencing note).
-Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans executed + verified; live UAT was the last gate). Expansion Phases 11–15 scoped + requirements enumerated (FEED/WORK/KCQ/INTENT/REACT/BLOCK/OFFER/ADCREATIVE/COMMERCE/HARDEN) in REQUIREMENTS.md + ROADMAP.md. ⚠️ Sequencing: P13 levers #1/#2 (RAG + profile grounding) underpin P11 — resolve precede-or-parallel in roadmap before discussing P11.
+Phase: 1–10 COMPLETE. **Expansion 11–16 ADDED 2026-06-19** (owner: fold into v6.0, don't spin a new milestone; corrected to the authoritative Sandcastles shape — added Explore-as-skill / Library-IA / Proactive-ambient, which earlier draft missed) — not yet discussed.
+Plan: none active. Next = `/gsd-discuss-phase 11` (or 14 first — see sequencing note).
+Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans executed + verified; live UAT was the last gate). Expansion Phases 11–16 scoped + requirements enumerated (EXPLORE/IA/LIB/AUD-EDIT/AMBIENT/PROACTIVE/KCQ/INTENT/REACT/BLOCK/OFFER/ADCREATIVE/COMMERCE/HARDEN) in REQUIREMENTS.md + ROADMAP.md. ⚠️ Sequencing: P14 levers #1/#2 (RAG + profile grounding) underpin P11 Explore — resolve precede-or-parallel in roadmap; P13 ambient EXTENDS P9's shipped reaction primitive (don't duplicate).
 Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
@@ -56,11 +56,12 @@ Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 | 8 | Discover & Remix→Read | DISC-*, REMIX/AUD-STEER, READ-* | Complete ✓ |
 | 9 | Living Audience | LIVE-01..07 | Complete ✓ |
 | 10 | Account Read, Saved Shelf & Flywheel | SELF-*, SAVE-*, FLYWHEEL-* | Complete ✓ |
-| 11 | Living Research Feed | FEED-01..05 | Planned (expansion) — not discussed |
-| 12 | Creator-Persona+ & Workspace | WORK-01..06 | Planned (expansion) — not discussed |
-| 13 | KC Grounding & Quality-Loop | KCQ-01..08 | Planned (expansion) — not discussed |
-| 14 | Marketing Intent (mode-switch) | INTENT-01, REACT-01, BLOCK-01 | Planned (expansion) — not discussed |
-| 15 | Commerce Skills | OFFER-01, ADCREATIVE-01, COMMERCE-01 | Planned (expansion) — not discussed |
+| 11 | Explore (Audience-Curated Discovery) | EXPLORE-01..06 | Planned (expansion) — not discussed |
+| 12 | Library & Acts/State IA | IA-01, LIB-01..03, AUD-EDIT-01..04 | Planned (expansion) — not discussed |
+| 13 | Proactive Numen (Ambient + Initiated) | AMBIENT-01, PROACTIVE-01..02 | Planned (expansion) — not discussed |
+| 14 | KC Grounding & Quality-Loop | KCQ-01..09 | Planned (expansion) — not discussed |
+| 15 | Marketing Intent (mode-switch) | INTENT-01, REACT-01, BLOCK-01 | Planned (expansion) — not discussed |
+| 16 | Commerce Skills | OFFER-01, ADCREATIVE-01, COMMERCE-01 | Planned (expansion) — not discussed |
 | — | Pre-launch hardening gate | HARDEN-01 | Planned — before public traffic |
 
 ## Accumulated Context

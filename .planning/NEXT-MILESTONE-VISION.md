@@ -1,12 +1,22 @@
-# v6.0 EXPANSION BRIEF — *Discover · Sell · Sharpen* (Phases 11–15)
+# v6.0 EXPANSION BRIEF — *Discover · Sell · Sharpen* (Phases 11–16)
 
-> **Status: LOCKED scope, folded INTO v6.0 (owner decision 2026-06-19 — extend, do NOT spin a new
-> milestone).** This is the expansion brief + complete debt→phase map. Phases are now numbered
-> **11–15 within v6.0** (ROADMAP.md + REQUIREMENTS.md updated). The headings below read "Phase 1–5"
-> as originally drafted — **map them: P1→11, P2→12, P3→13, P4→14, P5→15** (a relabel pass can align
-> them in place; the content is unchanged). Each phase still needs a `/gsd-discuss-phase` pass.
-> The "new milestone v7.0" framing in the original draft is superseded — no new worktree, no
-> `/gsd-new-milestone`; continue on `milestone/numen-tools`.
+> **⚠️ CORRECTED 2026-06-19 — this body is the early draft; the CANONICAL phase shapes now live in
+> `ROADMAP.md` + `REQUIREMENTS.md`.** A first pass mislabeled the Sandcastles track. The authoritative
+> structure (per `research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE`) is **6 phases, 11–16**:
+>
+> | v6.0 # | Phase | This doc's stale section |
+> |---|---|---|
+> | **11** | **Explore (Audience-Curated Discovery)** — a SKILL in-thread, NOT a feed; cards carry ambient reaction | "P1 Living Research Feed" (superseded framing) |
+> | **12** | **Library & Acts/State IA** — 4-item nav; extends P10 shelf; + Audience-surface edits | "P2 Creator-Persona+ & Workspace" |
+> | **13** | **Proactive Numen (Ambient + Initiated)** — ambient reaction on every card + proactive drops *(was MISSING)* | — (new) |
+> | **14** | **KC Grounding & Quality-Loop** | "P3" |
+> | **15** | **Marketing Intent (mode-switch)** | "P4" |
+> | **16** | **Commerce Skills** | "P5" |
+>
+> **Status: folded INTO v6.0 (owner decision — extend, NOT a new milestone).** No new worktree, no
+> `/gsd-new-milestone`; continue on `milestone/numen-tools`. The debt→phase map below is still valid
+> (re-key FEED→EXPLORE, WORK→IA/LIB/AUD-EDIT, and add AMBIENT/PROACTIVE for P13). Each phase needs a
+> `/gsd-discuss-phase` pass.
 
 ---
 
@@ -174,12 +184,13 @@ existing skill triad (route + runner + view + block).
 ---
 
 ## How to continue (in-milestone — no new worktree)
-1. **Resolve sequencing:** does P13 (KC Grounding, esp. lever #1 RAG + #2 profile grounding) precede or
-   run parallel to P11 (Living Research Feed needs audience-relative exemplars)? Decide in roadmap.
-2. **Discuss the first expansion phase:** `/gsd-discuss-phase 13` (if levers-first) **or** `/gsd-discuss-phase 11`.
-3. **Wire the tracked P10 follow-up** (FLYWHEEL-02 `pinPredictedSignature` into each runner) — naturally
-   belongs with KCQ-05 (P13 SIM-rank loop).
+1. **Resolve sequencing:** does P14 (KC Grounding, esp. lever #1 RAG + #2 profile grounding) precede or
+   run parallel to P11 (Explore needs audience-relative exemplars)? Decide in roadmap. Also: P13 ambient
+   EXTENDS P9's shipped reaction primitive — confirm the reuse seam.
+2. **Discuss the first expansion phase:** `/gsd-discuss-phase 11` (Explore, the flagship) **or** `/gsd-discuss-phase 14` (levers-first).
+3. **Wire the tracked P10 follow-up** (FLYWHEEL-02 `pinPredictedSignature` into each runner) — belongs with KCQ-05 (P14 SIM-rank loop).
 4. **Pre-launch:** HARDEN-01 rate-limiting before any public traffic.
 
-> Phase map: draft P1–P5 headings above = v6.0 **Phases 11–15**. The old loose "Sandcastles P13"
-> placeholder is **dropped** (no content); P13 here is the net-new KC Grounding phase.
+> Canonical phase list = ROADMAP.md (Phases 11–16). The old loose "Sandcastles P13" placeholder is
+> dropped; the early "Living Research Feed / Persona+ Workspace" framing in this doc's body is superseded
+> by Explore-as-skill / Library-IA / Proactive-ambient.
