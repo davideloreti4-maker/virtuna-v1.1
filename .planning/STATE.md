@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 10-05-PLAN.md
-last_updated: "2026-06-19T15:01:35.653Z"
-last_activity: 2026-06-19 -- Phase 10 Plan 02 complete
+stopped_at: Completed 10-06-PLAN.md
+last_updated: "2026-06-19T17:11:00.000Z"
+last_activity: 2026-06-19 -- Phase 10 Plan 06 complete
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 50
-  completed_plans: 49
-  percent: 90
+  total_plans: 51
+  completed_plans: 50
+  percent: 92
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING
-Plan: 6 of 7
-Status: Plan 02 complete — flywheel + shelf persistence rails landed (migrations written, push deferred to Plan 07)
-Last activity: 2026-06-19 -- Phase 10 Plan 02 complete
+Plan: 7 of 7
+Status: Plan 06 complete — recalibration flywheel closed (propose→confirm→override, drift cron folds into same path); FLYWHEEL-04/05/06 complete. Plan 07 = DB push + types regen (BLOCKING).
+Last activity: 2026-06-19 -- Phase 10 Plan 06 complete
 
 ## Hard Constraints (this milestone)
 
@@ -143,6 +143,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: 10-03: predicted vector pinned once at SIM run (pinPredictedSignature), never recomputed (Pitfall 6); outcome capture reconciles realized only against the pin
 - [Phase ?]: Plan 10-04: Saved shelf flat/typed (D-07); remix output saves as item_type 'hook'; shelf items launch via CHAIN_HANDOFFS SSOT
 - [Phase ?]: 10-05: Account Read own-handle resolved from personal audience calibration.handle (T-10-12 ownership, no new OAuth); fix from CRAFT-disposition reconciliations only (D-03); track record withheld below 3 rows (SELF-03)
+- [Phase 10 / 10-06]: Proposal identity = the gate-passing CALIBRATION disposition string (no separate proposal rows); confirm/decline transition the contributing reconciliation rows' proposal_state → a declined proposal's rows are excluded from the next gate pass (no re-nag). propose.ts isRecalibratableAudience refuses General/preset on BOTH read (null) and write (throw); confirm writes ONLY persona_weights via updateAudience. General-unchanged regression anchor green.
+- [Phase 10 / 10-06]: Drift cron uses createServiceClient (no session) + reads user_id off the audience row → inserts outcome_signatures source='drift_scrape' + reconciliations DIRECTLY (the session-deriving repos call getUser() and can't run in cron). Same reconcile/gate/propose path as outcome capture (D-01). vercel.json drift cron '0 5 * * 1' [ASSUMED A4].
+- [Phase 10 / 10-06]: DEFERRED — drift composition-shift sensitivity is engine-side: deriveAudienceProfile derives dispositions profile-agnostically (from goal-intent bias, not scraped composition), so hasShift rarely fires until calibration derives real composition from scraped signals. Drift PATH complete + correct; making the shift detectable is a calibration-math change (Plan 07+ / owner calibration refinement).
 
 ### Roadmap Evolution
 
@@ -167,9 +170,9 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T15:01:35.645Z
-Stopped at: Completed 10-05-PLAN.md
-Next: Phase 10 Plan 03 (outcome capture — wires outcome-repo + scrapeSinglePostMetrics)
+Last session: 2026-06-19T17:11:00.000Z
+Stopped at: Completed 10-06-PLAN.md
+Next: Phase 10 Plan 07 (DB push + database.types.ts regen + remove (supabase as any) casts + live UAT — BLOCKING)
 Resume file: None
 
 ## Performance Metrics
@@ -218,3 +221,4 @@ Resume file: None
 | Phase 10 P03 | 22 | 3 tasks | 6 files |
 | Phase 10 P04 | 25min | 3 tasks | 12 files |
 | Phase 10 P05 | 6 | 3 tasks | 7 files |
+| Phase 10 P06 | 7min | 3 tasks (1 TDD) | 8 files |

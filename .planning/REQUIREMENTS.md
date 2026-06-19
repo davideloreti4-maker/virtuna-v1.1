@@ -110,8 +110,8 @@ reuses its typed-block renderers.
 - [x] **FLYWHEEL-02**: Predicted vs realized SIGNATURES — pin the SIM-predicted engagement signature (6-disposition vector) at run; map the real outcome onto the same dispositions. Compare **signatures, not score-vs-views** (D-02).
 - [x] **FLYWHEEL-03**: Calibration-vs-craft reconciliation — a deterministic reconcile classifies divergence as **calibration-error** (audience MIX → Audience object) vs **craft-error** (content under/over-delivered → creator as Account-Read guidance, **never** mutates the model) (D-03).
 - [x] **FLYWHEEL-04**: Confidence-gated recalibration — propose a PersonaWeights recalibration only after ≥N consistent posts → honest PROPOSE nudge → **creator confirms** → write through P7's `analysis_override` slot. No single-post mutation, no silent auto-recalibration; `ENGINE_VERSION` untouched; General-audience baseline unchanged (regression anchor) (D-05).
-- [ ] **FLYWHEEL-05**: Reconciliation logging (cross-creator SEED) — log structured reconciliation data so aggregated, privacy-safe patterns can later sharpen base persona priors; the prior-fitting mechanism is **deferred** (lay rails, don't fake) (D-06).
-- [ ] **FLYWHEEL-06**: Drift trigger — scheduled re-scrape of the creator's own account; when audience composition diverges, route into the **same** propose→confirm recalibration path (folded into FLYWHEEL-04, not a separate mechanism) (D-06 / D-01).
+- [x] **FLYWHEEL-05**: Reconciliation logging (cross-creator SEED) — log structured reconciliation data so aggregated, privacy-safe patterns can later sharpen base persona priors; the prior-fitting mechanism is **deferred** (lay rails, don't fake) (D-06).
+- [x] **FLYWHEEL-06**: Drift trigger — scheduled re-scrape of the creator's own account; when audience composition diverges, route into the **same** propose→confirm recalibration path (folded into FLYWHEEL-04, not a separate mechanism) (D-06 / D-01).
 
 ---
 
@@ -192,6 +192,6 @@ reuses its typed-block renderers.
 | FLYWHEEL-01 | Phase 10 | Planned (10-02, 10-03, 10-07) |
 | FLYWHEEL-02 | Phase 10 | Planned (10-01, 10-03) |
 | FLYWHEEL-03 | Phase 10 | Planned (10-01, 10-03) |
-| FLYWHEEL-04 | Phase 10 | Planned (10-01, 10-06, 10-07) |
-| FLYWHEEL-05 | Phase 10 | Planned (10-02, 10-06) |
-| FLYWHEEL-06 | Phase 10 | Planned (10-06) |
+| FLYWHEEL-04 | Phase 10 | Complete (10-01, 10-06) |
+| FLYWHEEL-05 | Phase 10 | Complete (10-02, 10-06) |
+| FLYWHEEL-06 | Phase 10 | Complete (10-06) |
