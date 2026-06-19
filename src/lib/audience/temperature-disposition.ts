@@ -6,8 +6,11 @@
  * It NEVER feeds the engine. Engine vocabulary stays: fyp/niche_deep/loyalist/cross_niche
  * + the 10 archetype slugs in wave3/persona-registry.ts.
  *
- * Mapping source: 07-RESEARCH.md §"Temperature × Disposition Label Lens"
- * [ASSUMED] per D-02 Claude's Discretion — planner locks the table; see §Assumptions A2.
+ * Mapping source: 08-RESEARCH.md §"W0 Persona-Tuning Targets" (D-02).
+ * Phase 8 Plan 01 (W0) — values LOCKED. The lens is final and meaningful: the spread is
+ * tuned so low-disposition archetypes (skeptic/lurker/scanner) can name the who-it's-NOT-for
+ * "scrolls past" segment (D-10), and hot archetypes (converter/connector/collector) anchor the
+ * verbatim "stopped the scroll" cluster (D-11).
  *
  * Temperature assignment rule (grounded in SlotType semantics):
  *   cold  = fyp archetypes with high scroll-past rate OR cross_niche (unfamiliar territory)

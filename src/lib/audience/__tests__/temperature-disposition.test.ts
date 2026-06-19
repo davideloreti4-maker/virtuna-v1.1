@@ -9,9 +9,22 @@
  *  - Each archetype maps to the locked table from RESEARCH.md
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
 
 import { TEMPERATURE_DISPOSITION, labelForArchetype } from "../temperature-disposition";
 import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
+
+const TEMP_DISPOSITION_SOURCE = readFileSync(
+  resolve(dirname(fileURLToPath(import.meta.url)), "../temperature-disposition.ts"),
+  "utf8",
+);
+
+/** Low-intent / "scrolls past" dispositions — feed who-it's-NOT-for (D-10). */
+const LOW_DISPOSITIONS = new Set(["skeptic", "lurker", "scanner"]);
+/** Hot / "stopped the scroll" dispositions — feed verbatim grouping (D-11). */
+const HOT_DISPOSITIONS = new Set(["converter", "connector", "collector"]);
 
 const VALID_TEMPERATURES = new Set(["cold", "warm", "hot"]);
 const VALID_DISPOSITIONS = new Set(["scanner", "skeptic", "collector", "connector", "converter", "lurker"]);
@@ -46,6 +59,28 @@ describe("TEMPERATURE_DISPOSITION — label lens covers all 10 archetypes", () =
 
   it("exactly 10 archetypes mapped (no extras)", () => {
     expect(Object.keys(TEMPERATURE_DISPOSITION)).toHaveLength(ARCHETYPES.length);
+  });
+});
+
+// W0 (08-01) — the lens must be MEANINGFUL: a real spread so who-it's-NOT-for (D-10)
+// can name a "scrolls past" segment and verbatim grouping (D-11) has a hot cluster.
+describe("TEMPERATURE_DISPOSITION — meaningful spread (W0 / D-10 + D-11)", () => {
+  const labels = ARCHETYPES.map((a) => TEMPERATURE_DISPOSITION[a]);
+
+  it("at least 2 archetypes carry a low/negative disposition (who-it's-NOT-for, D-10)", () => {
+    const lowCount = labels.filter((l) => LOW_DISPOSITIONS.has(l.disposition)).length;
+    expect(lowCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("at least 2 archetypes carry a hot/positive disposition (verbatim cluster, D-11)", () => {
+    const hotCount = labels.filter(
+      (l) => l.temperature === "hot" && HOT_DISPOSITIONS.has(l.disposition),
+    ).length;
+    expect(hotCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("source carries NO [ASSUMED] marker — W0 locked the lens values", () => {
+    expect(TEMP_DISPOSITION_SOURCE).not.toMatch(/\[ASSUMED\]/i);
   });
 });
 
