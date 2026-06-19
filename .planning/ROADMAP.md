@@ -316,13 +316,24 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Reuse vs new:** the cloud primitives, reaction data, persona prompts, and chat-runner all exist. **New build:** the replay animation, the node→card drill interaction, and the per-persona grounded chat session.
 
 **Requirements:** LIVE-01 (reaction replay), LIVE-02 (node drill-down), LIVE-03 (chat-with-persona), LIVE-04 (segment clustering), LIVE-05 (Population·1,000), LIVE-06 (AudienceLens retrofit), LIVE-07 (Rewrite-for-audience loop) — formalized in REQUIREMENTS.md (planned 09-01).
-**Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.
-**Plans:** 5 plans, 4 waves
+**Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.**Plans:** 5 plans, 4 waves
+**Wave 1**
+
 - [ ] 09-01-PLAN.md — Formalize LIVE-* + pure lens-derive math core (1,000-from-10, weighted rollup, cascade order) [W1]
 - [ ] 09-02-PLAN.md — AudienceLens shell + onOpen seam wired on video Test surface + node drill + reaction replay [W1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 09-03-PLAN.md — Chat-with-persona: chat-runner personaGrounding + drawer + sub-thread persistence [W2]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 09-04-PLAN.md — Cluster-by-segment + Rewrite-for-audience loop + Lens mounts on 4 text skills + text Read [W3]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 09-05-PLAN.md — Population·1,000 deterministic swarm + weighted counters + batched cascade [W4]
+
 **UI hint:** yes
 
 ### Phase 10: Account Read, Saved Shelf & Recalibration Flywheel *(DRAFT — not yet discussed)*
