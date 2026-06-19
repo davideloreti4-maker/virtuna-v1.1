@@ -22,6 +22,7 @@ import {
   OutlierGridBlockSchema,
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
+  AccountReadBlockSchema,
 } from "./blocks";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -37,6 +38,7 @@ export const BLOCK_REGISTRY = {
   "outlier-grid": { schema: OutlierGridBlockSchema as z.ZodType },
   "multi-audience-read": { schema: MultiAudienceReadBlockSchema as z.ZodType },
   "persona-chat-turn": { schema: PersonaChatTurnBlockSchema as z.ZodType },
+  "account-read": { schema: AccountReadBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

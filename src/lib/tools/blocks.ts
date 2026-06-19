@@ -345,6 +345,59 @@ export const PersonaChatTurnBlockSchema = z.object({
 
 export type PersonaChatTurnBlock = z.infer<typeof PersonaChatTurnBlockSchema>;
 
+// ─── Account-read block (the Account Read — Phase 10, SELF-01/02/03) ─────────────
+// Plan 10-05: "A Read on your own account" — the know-thyself companion to Discover's
+// know-thy-competitor. A STATIC composed card (multi-audience-read is the precedent)
+// that maps the deterministic AccountReadResult (account-read.ts) onto the fixed
+// `reading/` renderers (ReadingHero + ReadingSection accordions). NO model-generated UI.
+//
+// Honesty spine (SELF-02, carries P7 D-06): the `fallback:'thin'` discriminant carries
+// NO patterns — the renderer shows the warning-toned "Not enough history to read yet"
+// state, NEVER a fabricated pattern. A non-fallback payload always carries `patterns`.
+//
+// Accuracy track record (SELF-03): `trackRecord` is { withinPct, lastN } | null. Null →
+// the renderer shows the "not enough posted outcomes yet" empty copy. The number is data
+// (cream-primary), never a coral CTA.
+//
+// The block is SAVABLE to the shelf as item_type 'read' (SaveAffordance, Plan 04). Its
+// own props ARE the snapshot the shelf re-renders without a re-fetch.
+
+const FormatMixEntrySchema = z.object({
+  label: z.string(),
+  count: z.number(),
+  pct: z.number(),
+});
+
+const AccountReadPatternsSchema = z.object({
+  recurringHooks: z.array(z.string()),
+  formatMix: z.array(FormatMixEntrySchema),
+  dropPoints: z.array(z.string()),
+  working: z.array(z.string()),
+  fix: z.array(z.string()),
+});
+
+const TrackRecordSchema = z.object({
+  withinPct: z.number(),
+  lastN: z.number(),
+});
+
+export const AccountReadBlockSchema = z.object({
+  type: z.literal("account-read"),
+  props: z.object({
+    // The creator's own handle (resolved from session — T-10-12, never arbitrary input).
+    handle: z.string().min(1),
+    // Honest thin-history flag (SELF-02). When true, patterns are omitted and the
+    // renderer shows the warning-toned fallback. When absent/false, `patterns` is present.
+    fallback: z.literal("thin").optional(),
+    // Pattern payload — present on the success path, absent on the thin fallback.
+    patterns: AccountReadPatternsSchema.optional(),
+    // Accuracy track record (SELF-03) — null below the row threshold (empty copy shown).
+    trackRecord: TrackRecordSchema.nullable().optional(),
+  }),
+});
+
+export type AccountReadBlock = z.infer<typeof AccountReadBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -358,6 +411,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   OutlierGridBlockSchema,
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
+  AccountReadBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
