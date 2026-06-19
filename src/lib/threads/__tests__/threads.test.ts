@@ -30,6 +30,7 @@ function makeRow(overrides: Partial<ThreadRow> = {}): ThreadRow {
     user_id: USER_A,
     type: "grounded",
     reading_id: READING_ID,
+    active_audience_id: null,
     created_at: "2026-06-17T00:00:00Z",
     updated_at: "2026-06-17T00:00:00Z",
     ...overrides,
