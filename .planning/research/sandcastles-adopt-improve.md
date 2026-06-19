@@ -44,6 +44,12 @@ and turning their stickiest habit mechanic into something audience-grounded.
 
 ## P11+ CANDIDATE PHASES
 
+> ⚠️ **SUPERSEDED (2026-06-19) — this early framing pre-dates the brainstorm.** The
+> authoritative phase shapes are in **§PROPOSED PHASE STRUCTURE** below. Key reframes:
+> "Living Research Feed" → **Explore skill in-thread (no feed surface)**; "Collections &
+> Research Workspace" → **Library (saved nouns + watchlist), Acts/State IA**. Kept here
+> for the reasoning trail only.
+
 ### P11 — Living Research Feed (the flagship adopt)
 Turn one-shot Discover into a **returning, living surface**: persistent tracked
 channels + auto-exploration agents. **Improvement over Sandcastles:** every
@@ -228,16 +234,17 @@ Past-vs-predicted, concrete: their card "9.2M views (someone else, past)" vs Num
 
 ## PROPOSED PHASE STRUCTURE (P11+ — provisional, for /gsd-discuss-phase later)
 
-> Sits AFTER P9 (Living Audience) + P10 (Account Read/Saved Shelf/Flywheel), which are in flight.
-> ⚠️ Reconcile overlaps: P9 already owns persona-cloud Lens + chat-with-persona; P10 already owns Saved shelf + outcome loop + Connectors. These phases BUILD ON those, must not duplicate.
+> **STATUS (2026-06-19):** P9 CLOSED. P10 DISCUSSED — `10-CONTEXT.md` committed (`3a2a0131`). N1 MERGED into milestone/numen-tools (`d2f121e7`, gate green). These phases sit AFTER P10.
+> ✅ Reconcile resolved: P10 D-07 locked the Saved shelf as **flat + typed + Library-compatible (thread↔shelf wiring)** → P12 EXTENDS it (adds watchlist + Explore wiring), does NOT rework. P10 D-08 Account Read reuses the `reading/` render. (Note: P10 Account Read uses Apify scrape, NOT Connectors — the earlier "Connectors" assumption was corrected.)
+> ⚠️ Still reconcile vs P9: persona-cloud Lens + chat-with-persona already shipped — P13's "ambient reaction on every card" builds on P9's reaction primitive, must not duplicate.
 
 **Near-term inserts (quick wins, not full phases — /gsd-quick or fold into a live phase):**
-- **N1 — Creator voice (writing-sample capture).** Small. Anti-slop. Independent.
-- **N2 — Cited research pass for Script.** Medium. Grounded-facts pre-script. Independent.
+- **N1 — Creator voice (writing-sample capture).** ✅ DONE 2026-06-19 — merged `d2f121e7`, 2757 tests + build green.
+- **N2 — Cited research pass for Script.** Medium. Grounded-facts pre-script. Independent. STILL PENDING.
 
 **P11 — Explore (Audience-Curated Discovery).** THE flagship. Explore skill = audience-curated outlier/competitor discovery in-thread; customizable params; start-screen set-actions; each result card carries ambient audience reaction + lands on a Read. Includes tracked-accounts/watchlist as input State (lives in Library). Reframes the old "Living Research Feed" correctly as a skill — no feed surface. Depends on P9 (audience reactions) + SIM.
 
-**P12 — Library & Acts/State IA.** The State home + the nav collapse. Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist, sectioned. Surface↔thread wiring (launch-into-thread + save-to-Library). Crystallizes the 4-item IA (Thread/Audience/Library/Settings). Extends P10's saved shelf — reconcile.
+**P12 — Library & Acts/State IA.** The State home + the nav collapse. Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist, sectioned. Surface↔thread wiring (launch-into-thread + save-to-Library). Crystallizes the 4-item IA (Thread/Audience/Library/Settings). **EXTENDS P10's saved shelf** (P10 D-07 built it flat+typed+Library-compatible on purpose) — adds watchlist + Explore wiring; no rework.
 
 **P13 — Proactive Numen (Ambient + Initiated).** Ambient audience reaction on every skill card (if not landed in P9) + proactive morning drops / scheduled Explore (their Automations equivalent) = daily-habit engine, in-conversation. Depends on P11 + P9.
 
