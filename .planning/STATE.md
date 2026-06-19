@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Phases 1–10 complete; expansion Phases 11–15 added (not yet discussed)
-last_updated: "2026-06-19T18:00:00.000Z"
-last_activity: 2026-06-19 -- Phases 11–15 folded into v6.0 (Sandcastles + Commerce + KC-quality tracks)
+status: verifying
+stopped_at: Phase 14 context gathered
+last_updated: "2026-06-19T21:55:28.970Z"
+last_activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 progress:
   total_phases: 16
   completed_phases: 10
-  total_plans: 51
+  total_plans: 50
   completed_plans: 51
   percent: 63
 ---
@@ -31,6 +31,7 @@ Status: Phases 1–10 shipped. P10 marked finished by owner (all 7 plans execute
 Last activity: 2026-06-19 -- Phases 11–15 folded into v6.0
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
+
 `pinPredictedSignature()` is built/exported/unit-tested and the capture route reads the pinned row, but **no SIM runner calls it** (`runFlashRunner` returns without pinning). The capture→reconcile loop stays dormant in the live flow until the seam is wired into each runner's post-SIM point (+ a runner-level test). Wire it next; naturally belongs with **KCQ-05 (SIM-rank verification loop, P13)**. Until then the reconcile log can't fire end-to-end. See 10-VERIFICATION.md + 10-UAT.md Gaps.
 
 ## Hard Constraints (this milestone)
@@ -184,10 +185,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T17:11:00.000Z
-Stopped at: Completed 10-06-PLAN.md
+Last session: 2026-06-19T21:55:28.962Z
+Stopped at: Phase 14 context gathered
 Next: Phase 10 Plan 07 (DB push + database.types.ts regen + remove (supabase as any) casts + live UAT — BLOCKING)
-Resume file: None
+Resume file: .planning/phases/14-kc-grounding-quality-loop-expansion-the-durable-moat-not-yet/14-CONTEXT.md
 
 ## Performance Metrics
 
