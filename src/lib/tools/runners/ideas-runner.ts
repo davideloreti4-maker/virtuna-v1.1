@@ -38,6 +38,7 @@
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
  *   - audience/audience-grounding.ts (buildAudienceGroundingLine) — 07-04 steer (AUD-05/AUD-08)
  *   - audience/resolve-audience-weights.ts (resolveAudienceWeights) — 07-04 react (AUD-04)
+ *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
  *   - tools/blocks.ts (IdeaCardBlockSchema, IdeaCardBlock)
  *
  * 07-04 BLAST RADIUS (AUD-08): the profile slim-down for grounding is confined HERE only.
@@ -59,6 +60,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
+import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
 import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -280,7 +282,10 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   }
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
-  const niche = profileRow?.niche_primary ?? null;
+  // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
+  // NICHE_INSTANTIATION key BEFORE building the panel — otherwise the exact-slug
+  // match in selectPersonaSlots silently falls back to generic ("all Mixed").
+  const niche = resolveNicheKey(profileRow?.niche_primary ?? null);
   const panel = { niche, contentType: null } as const;
 
   // ── REACT path (07-04 / AUD-04): resolve audience weights + persona repaint ──

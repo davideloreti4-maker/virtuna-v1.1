@@ -35,6 +35,7 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
+ *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
  *   - tools/hooks/audience-archetype.ts (deriveAudienceArchetype)
  *   - tools/blocks.ts (HookCardBlockSchema, HookCardBlock)
  */
@@ -53,6 +54,7 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
+import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
 import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -309,7 +311,10 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   }
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
-  const niche = profileRow?.niche_primary ?? null;
+  // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
+  // NICHE_INSTANTIATION key BEFORE building the panel (KCQ-06/KCQ-01) — otherwise
+  // selectPersonaSlots' exact-slug match silently falls back to generic.
+  const niche = resolveNicheKey(profileRow?.niche_primary ?? null);
   const panel = { niche, contentType: null } as const;
 
   // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
