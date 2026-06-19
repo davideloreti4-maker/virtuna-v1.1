@@ -276,10 +276,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Reuse vs new:** ~80% is wiring the existing Ideas→Hooks→Test chain + P6 remix-runner + P7 audience object to a new front door. **New build:** Apify scrape layer + outlier-score compute + the grid UI.
 
 **Requirements:** AUD-W0 (persona-value tuning), DISC-01/02/03/04 (apidojo swap, outlier grid view, outlier-score compute, per-day cache), REMIX-01 + AUD-STEER (audience-steered remix + close all-runner steer debt), READ-01/02/03 (single-audience Read, multi-audience compare, verbatim wall + who-it's-not-for). Comment seeding DEFERRED (D-04).
-**Depends on:** Phase 7 (calibrated Audience object + react-path grounding).**Plans:** 6 plans, 5 waves
+**Depends on:** Phase 7 (calibrated Audience object + react-path grounding).**Plans:** 1/6 plans executed
 **Wave 1**
 
-- [ ] 08-01-PLAN.md — W0 persona-value tuning (GOAL_INTENT_BIAS + TEMPERATURE_DISPOSITION, regression-gate-safe) [AUD-W0]
+- [x] 08-01-PLAN.md — W0 persona-value tuning (GOAL_INTENT_BIAS + TEMPERATURE_DISPOSITION, regression-gate-safe) [AUD-W0]
 
 **Wave 2** *(blocked on Wave 1 completion)*
 

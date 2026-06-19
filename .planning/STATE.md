@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: "Phase 07 closed. UAT skipped (owner directive); protected-path proof passed automatically. Next: Phase 08 (Discover & Remix→Read) — DRAFT, needs /gsd-discuss-phase 8"
+status: executing
 stopped_at: Phase 8 UI-SPEC approved
-last_updated: "2026-06-19T07:50:54.237Z"
-last_activity: 2026-06-19 -- Phase 07 Plan 06 complete — Phase 07 closed
+last_updated: "2026-06-19T08:04:18.620Z"
+last_activity: 2026-06-19 -- Phase 08 execution started
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 32
-  completed_plans: 32
+  total_plans: 38
+  completed_plans: 33
   percent: 70
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 07 — audience-manager-calibrated-audience-as-shared-substrate-acr
+**Current focus:** Phase 08 — discover-remix-read-the-competitor-niche-moat-chain-draft-no
 
 ## Current Position
 
-Phase: 07 (audience-manager-calibrated-audience-as-shared-substrate-acr) — COMPLETE
-Plan: 6 of 6 complete — migration live on prod (qyxvxleheckijapurisj) + BLOCKING regression gate green (ENGINE_VERSION 3.19.0, General→DEFAULT, 2647 tests green)
-Status: Phase 07 closed. UAT skipped (owner directive); protected-path proof passed automatically. Next: Phase 08 (Discover & Remix→Read) — DRAFT, needs /gsd-discuss-phase 8
-Last activity: 2026-06-19 -- Phase 07 Plan 06 complete — Phase 07 closed
+Phase: 08 (discover-remix-read-the-competitor-niche-moat-chain-draft-no) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-06-19 -- Phase 08 execution started
 
 ## Hard Constraints (this milestone)
 
@@ -128,6 +128,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 07-05]: PATCH /api/threads/[id] created (no prior threads/[id] route) to persist per-thread audience pin; auth-first + RLS + explicit user_id ownership guard; NULL active_audience_id = General
 - [Phase 07-05]: openThreadId captured from the existing GET /api/threads/open mount fetch (already returns threadId) — no extra request for the composer AudienceChip
 - [Phase 07-05]: Calibration fallback uses --color-warning (never coral, never error) and NEVER fabricates personas (D-06 honesty spine)
+- [Phase ?]: [Phase 08-01]: W0 LOCKS persona-bias values not structure — P7 key mappings already correct; change = remove [ASSUMED] markers + add source-marker/spread/preset test guards
+- [Phase ?]: [Phase 08-01]: sell + authority share WEIGHT_PRESETS.niche_heavy by design — both depth plays, audience in-niche; per-intent flavour from repaint prose not weight mix
+- [Phase ?]: [Phase 08-01]: flash-aggregate STRONG/MIXED_THRESHOLD untouched (Pitfall 4) — calibrated not [ASSUMED]; changing shifts every skill gate
 
 ### Roadmap Evolution
 
@@ -151,7 +154,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T07:25:52.694Z
+Last session: 2026-06-19T08:03:57.234Z
 Stopped at: Phase 8 UI-SPEC approved
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
 Resume file: .planning/phases/08-discover-remix-read-the-competitor-niche-moat-chain-draft-no/08-UI-SPEC.md
@@ -187,3 +190,4 @@ Resume file: .planning/phases/08-discover-remix-read-the-competitor-niche-moat-c
 | Phase 07-audience-manager P03 | 8m | 2 tasks | 7 files |
 | Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P04 | 5m | 2 tasks | 6 files |
 | Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P05 | 75m | 2 tasks + checkpoint | 11 files (UI + shell fix) |
+| Phase 08-discover-remix-read-the-competitor-niche-moat-chain-draft-no P01 | 8min | 2 tasks | 4 files |
