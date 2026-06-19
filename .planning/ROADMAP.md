@@ -328,7 +328,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 09-04-PLAN.md — Cluster-by-segment + Rewrite-for-audience loop + Lens mounts on 4 text skills + text Read [W3]
+- [x] 09-04-PLAN.md — Cluster-by-segment + Rewrite-for-audience loop + Lens mounts on 4 text skills + text Read [W3]
 
 **Wave 4** *(blocked on Wave 3 completion)*
 

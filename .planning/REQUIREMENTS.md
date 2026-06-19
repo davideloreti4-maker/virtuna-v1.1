@@ -82,10 +82,10 @@ reuses its typed-block renderers.
 - [x] **LIVE-01**: reaction replay (segment-by-segment on the video Test timeline via HeatmapPayload.personas[].attentions[]; staggered cascade elsewhere — D-06).
 - [x] **LIVE-02**: node drill-down (tap dot → archetype + verbatim reaction to this concept).
 - [x] **LIVE-03**: chat-with-persona (in-voice, grounded via chat-runner extension; sub-thread persisted within the Read).
-- [ ] **LIVE-04**: segment clustering (Temp × Disposition lens via buildSegmentGroups).
+- [x] **LIVE-04**: segment clustering (Temp × Disposition lens via buildSegmentGroups).
 - [ ] **LIVE-05**: Population·1,000 (deterministic mulberry32 swarm + live counters + cascade + archetype breakdown — D-02, zero model calls).
 - [x] **LIVE-06**: AudienceLens retrofit (one reusable Lens across all 6 skills, degrade by feature — D-04).
-- [ ] **LIVE-07**: Rewrite-for-audience loop (lever-as-steering via CHAIN_HANDOFFS → new card + Read showing delta — D-05).
+- [x] **LIVE-07**: Rewrite-for-audience loop (lever-as-steering via CHAIN_HANDOFFS → new card + Read showing delta — D-05).
 
 ---
 
@@ -154,7 +154,7 @@ reuses its typed-block renderers.
 | LIVE-01 | Phase 9 | Complete |
 | LIVE-02 | Phase 9 | Complete |
 | LIVE-03 | Phase 9 | Complete |
-| LIVE-04 | Phase 9 | Pending |
+| LIVE-04 | Phase 9 | Complete |
 | LIVE-05 | Phase 9 | Pending (math core landed 09-01; swarm/counters/cascade UI W4) |
 | LIVE-06 | Phase 9 | Complete |
-| LIVE-07 | Phase 9 | Pending |
+| LIVE-07 | Phase 9 | Complete |
