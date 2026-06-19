@@ -65,6 +65,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     band,
     fraction,
     scrollQuote,
+    audienceName,
   } = block.props;
 
   // Read RemixDevelopContext — enables RemixThreadView to provide the handler without
@@ -110,6 +111,21 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             Borrowed: {formatBorrowed}
           </span>
         </div>
+
+        {/* 08-04 / D-03 STEER tag — "as your {audience}" near the adapted-hook headline.
+            Muted/foreground only, NEVER coral (coral stays on Borrowed chip + Develop CTA —
+            one-coral law). Rendered only for a calibrated audience; General → no tag, byte-
+            identical to today (regression-safe no-op). */}
+        {audienceName ? (
+          <span
+            className="text-xs text-muted/60"
+            style={{ letterSpacing: '0.02em' }}
+            aria-label={`Adapted for your ${audienceName} audience`}
+            title={`Generated for your "${audienceName}" audience`}
+          >
+            as your {audienceName}
+          </span>
+        ) : null}
 
         {/* Adapted hook headline — dominant face element (AdaptConcept.hook) */}
         <p className="text-base font-semibold text-foreground leading-snug">
