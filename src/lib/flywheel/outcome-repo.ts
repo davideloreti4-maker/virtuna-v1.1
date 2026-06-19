@@ -116,6 +116,82 @@ export async function insertOutcomeSignature(
 }
 
 /**
+ * Read the most-recent PINNED prediction for a given analysis/audience (Pitfall 6:
+ * reconciliation compares ONLY against this pinned predicted_vector — never a recompute).
+ *
+ * Resolution order: prefer the row matching analysisId (the exact SIM run), else fall
+ * back to the newest row for audienceId. Returns the row whose realized side is still
+ * empty (not yet reconciled), newest first, or null when no pinned prediction exists.
+ * RLS scopes to the authenticated user.
+ */
+export async function findPinnedPrediction(
+  supabase: SupabaseClient,
+  opts: { analysisId?: string | null; audienceId?: string | null },
+): Promise<OutcomeSignature | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let query = (supabase as any) // TODO(10-07): remove cast after types regen
+    .from("outcome_signatures")
+    .select("*")
+    .is("realized_vector", null)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  if (opts.analysisId) {
+    query = query.eq("analysis_id", opts.analysisId);
+  } else if (opts.audienceId) {
+    query = query.eq("audience_id", opts.audienceId);
+  } else {
+    // No correlation key — cannot resolve a pinned prediction honestly.
+    return null;
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    throw new Error(`outcome_signatures find-pinned failed: ${error.message}`);
+  }
+  const rows = (data ?? []) as OutcomeSignature[];
+  return rows[0] ?? null;
+}
+
+/**
+ * Write the realized side back onto a pinned outcome_signatures row (the "measure" half).
+ * Updates realized_vector / realized_provenance / raw_metrics / platform_post_url / source.
+ * The predicted_vector is NEVER touched here (Pitfall 6). RLS scopes to the owner.
+ */
+export async function updateOutcomeRealized(
+  supabase: SupabaseClient,
+  id: string,
+  patch: {
+    realized_vector: DispositionVector;
+    realized_provenance: RealizedProvenance;
+    raw_metrics: RawMetrics;
+    platform_post_url?: string | null;
+    source?: OutcomeSource;
+  },
+): Promise<OutcomeSignature> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+    .from("outcome_signatures")
+    .update({
+      realized_vector: patch.realized_vector,
+      realized_provenance: patch.realized_provenance,
+      raw_metrics: patch.raw_metrics,
+      ...(patch.platform_post_url !== undefined
+        ? { platform_post_url: patch.platform_post_url }
+        : {}),
+      ...(patch.source !== undefined ? { source: patch.source } : {}),
+    })
+    .eq("id", id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw new Error(`outcome_signatures updateRealized failed: ${error.message}`);
+  }
+  return data as OutcomeSignature;
+}
+
+/**
  * List outcome signatures for one audience (the confidence-gate's K rows),
  * newest first. RLS scopes to the authenticated user.
  */
