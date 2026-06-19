@@ -300,7 +300,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **UI hint:** yes
 
-### Phase 9: Living Audience — interactive simulation UX *(DRAFT — not yet discussed)*
+### Phase 9: Living Audience — interactive simulation UX *(PLANNED — 5 plans, 4 waves)*
 
 **Goal:** Make "tested against YOUR audience" *felt*, not just numeric. Turn the static persona cloud into a living, interrogable audience — the Artificial-Societies node-cloud experience, on top of infra that already exists (`PersonaCloud`, `PersonaGraph` with 200 viewer dots / links / hover cards / pulse, per-persona `segment_reactions`, persona system prompts in `persona-registry.ts`, the P5 chat-runner).
 
@@ -315,9 +315,14 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Reuse vs new:** the cloud primitives, reaction data, persona prompts, and chat-runner all exist. **New build:** the replay animation, the node→card drill interaction, and the per-persona grounded chat session.
 
-**Requirements:** provisional — LIVE-* (reaction replay, node drill-down, chat-with-persona, segment clustering). To be formalized at discuss-phase.
+**Requirements:** LIVE-01 (reaction replay), LIVE-02 (node drill-down), LIVE-03 (chat-with-persona), LIVE-04 (segment clustering), LIVE-05 (Population·1,000), LIVE-06 (AudienceLens retrofit), LIVE-07 (Rewrite-for-audience loop) — formalized in REQUIREMENTS.md (planned 09-01).
 **Depends on:** Phase 8 (a Read worth interrogating) — though rungs 1–2 only need Phase 7.
-**Plans:** TBD
+**Plans:** 5 plans, 4 waves
+- [ ] 09-01-PLAN.md — Formalize LIVE-* + pure lens-derive math core (1,000-from-10, weighted rollup, cascade order) [W1]
+- [ ] 09-02-PLAN.md — AudienceLens shell + onOpen seam wired on video Test surface + node drill + reaction replay [W1]
+- [ ] 09-03-PLAN.md — Chat-with-persona: chat-runner personaGrounding + drawer + sub-thread persistence [W2]
+- [ ] 09-04-PLAN.md — Cluster-by-segment + Rewrite-for-audience loop + Lens mounts on 4 text skills + text Read [W3]
+- [ ] 09-05-PLAN.md — Population·1,000 deterministic swarm + weighted counters + batched cascade [W4]
 **UI hint:** yes
 
 ### Phase 10: Account Read, Saved Shelf & Recalibration Flywheel *(DRAFT — not yet discussed)*
