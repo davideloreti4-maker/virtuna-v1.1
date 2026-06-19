@@ -276,14 +276,28 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 **Reuse vs new:** ~80% is wiring the existing Ideas→Hooks→Test chain + P6 remix-runner + P7 audience object to a new front door. **New build:** Apify scrape layer + outlier-score compute + the grid UI.
 
 **Requirements:** AUD-W0 (persona-value tuning), DISC-01/02/03/04 (apidojo swap, outlier grid view, outlier-score compute, per-day cache), REMIX-01 + AUD-STEER (audience-steered remix + close all-runner steer debt), READ-01/02/03 (single-audience Read, multi-audience compare, verbatim wall + who-it's-not-for). Comment seeding DEFERRED (D-04).
-**Depends on:** Phase 7 (calibrated Audience object + react-path grounding).
-**Plans:** 6 plans, 5 waves
+**Depends on:** Phase 7 (calibrated Audience object + react-path grounding).**Plans:** 6 plans, 5 waves
+**Wave 1**
+
 - [ ] 08-01-PLAN.md — W0 persona-value tuning (GOAL_INTENT_BIAS + TEMPERATURE_DISPOSITION, regression-gate-safe) [AUD-W0]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 08-02-PLAN.md — W1 backend: apidojo swap + field remap + outlier-compute + classify + per-day cache + /api/discover [DISC-01/03/04]
-- [ ] 08-03-PLAN.md — W1 frontend: outlier-grid block + discover→remix chain + Discover grid view (reuse VideoCard/DottedGrid) [DISC-02]
 - [ ] 08-04-PLAN.md — W2: audience-steered Remix + close all-runner steer debt (hooks/script/chat/remix) + steer tag [REMIX-01, AUD-STEER]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 08-03-PLAN.md — W1 frontend: outlier-grid block + discover→remix chain + Discover grid view (reuse VideoCard/DottedGrid) [DISC-02]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 08-05-PLAN.md — W3: single-audience concept Read block + who-it's-NOT-for (bands only, static card) [READ-01, READ-03]
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 08-06-PLAN.md — W4: multi-audience compare (pick-2, active-vs-General) + verbatim wall + /api/tools/read [READ-02, READ-03]
+
 **UI hint:** yes
 
 ### Phase 9: Living Audience — interactive simulation UX *(DRAFT — not yet discussed)*
