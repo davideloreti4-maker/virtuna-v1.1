@@ -87,6 +87,32 @@ reuses its typed-block renderers.
 - [x] **LIVE-06**: AudienceLens retrofit (one reusable Lens across all 6 skills, degrade by feature — D-04).
 - [x] **LIVE-07**: Rewrite-for-audience loop (lever-as-steering via CHAIN_HANDOFFS → new card + Read showing delta — D-05).
 
+### SELF — Account Read (know thyself, P10)
+
+> "A Read on your own account" — the companion to Discover's "know thy competitor." Reuses Apify personal-scrape + the fixed `reading/` renderers. See `phases/10-.../10-CONTEXT.md` D-08.
+
+- [ ] **SELF-01**: Account Read generation — from the creator's own Apify personal-scrape + analysis/history, generate a standing "Read on your own account" surfacing recurring hook/format patterns, drop-points, and what's-working-vs-what-to-fix. Reuses Apify scrape — **not** new Connectors/OAuth.
+- [ ] **SELF-02**: Account Read render + savable — a thread card reusing the **fixed** `reading/` components (an Act whose output is State, savable to the shelf); honest thin-history fallback when own history is empty/thin (**never fabricate**).
+- [ ] **SELF-03**: Accuracy track record — a trust-building "within X% on your last N" stat sourced from accumulated reconciliations; honest empty state ("not enough posted outcomes yet") when the track record is empty.
+
+### SAVE — Saved shelf (lean, flat, P10)
+
+> Flat connective tissue across skills; P12-Library-extendable. Flat guard: **NO folders/tags/CMS**. See D-07.
+
+- [ ] **SAVE-01**: Typed saved-items store — a flat, typed `saved_items` table (Read / idea / hook / script / outlier / format), P12-extendable; no folders/tags/CMS.
+- [ ] **SAVE-02**: Shelf surface + thread↔shelf wiring — a flat Saved surface (own nav item) where every thread output is savable and every shelf item is actionable back into a thread (Acts/State IA).
+
+### FLYWHEEL — recalibration loop (the moat, P10)
+
+> The per-creator learning loop that error-corrects the Audience object against real post outcomes: predict → post → measure → reconcile → correct → compound. FULLY SPECIFIED in D-02..D-06. Must preserve determinism + the regression gate + human-in-the-loop (no silent scoring mutation).
+
+- [ ] **FLYWHEEL-01**: Outcome capture — paste posted URL → Apify scrapes public metrics + optional creator-supplied private signals (saves / retention / link-clicks); honest public-vs-creator-supplied (D-04).
+- [ ] **FLYWHEEL-02**: Predicted vs realized SIGNATURES — pin the SIM-predicted engagement signature (6-disposition vector) at run; map the real outcome onto the same dispositions. Compare **signatures, not score-vs-views** (D-02).
+- [ ] **FLYWHEEL-03**: Calibration-vs-craft reconciliation — a deterministic reconcile classifies divergence as **calibration-error** (audience MIX → Audience object) vs **craft-error** (content under/over-delivered → creator as Account-Read guidance, **never** mutates the model) (D-03).
+- [ ] **FLYWHEEL-04**: Confidence-gated recalibration — propose a PersonaWeights recalibration only after ≥N consistent posts → honest PROPOSE nudge → **creator confirms** → write through P7's `analysis_override` slot. No single-post mutation, no silent auto-recalibration; `ENGINE_VERSION` untouched; General-audience baseline unchanged (regression anchor) (D-05).
+- [ ] **FLYWHEEL-05**: Reconciliation logging (cross-creator SEED) — log structured reconciliation data so aggregated, privacy-safe patterns can later sharpen base persona priors; the prior-fitting mechanism is **deferred** (lay rails, don't fake) (D-06).
+- [ ] **FLYWHEEL-06**: Drift trigger — scheduled re-scrape of the creator's own account; when audience composition diverges, route into the **same** propose→confirm recalibration path (folded into FLYWHEEL-04, not a separate mechanism) (D-06 / D-01).
+
 ---
 
 ## Cross-cutting constraints
@@ -158,3 +184,14 @@ reuses its typed-block renderers.
 | LIVE-05 | Phase 9 | Complete (deterministic swarm + counters + cascade shipped 09-05, verified reachable) |
 | LIVE-06 | Phase 9 | Complete (gap closed — text-Read PersonasBlock now mounts the reusable Lens via conceptText threading; all 6 surfaces mount the single shared AudienceLens) |
 | LIVE-07 | Phase 9 | Complete (gap closed — card-rewrite.ts builds LensRewrite from CHAIN_HANDOFFS self-handoff SSOT; rewrite prop supplied at all 4 regenerable card mounts; RewriteCta renders + onRewrite re-POSTs the pinned contract to the real runner; null synchronous delta accepted; card-rewrite regression test locks endpoint sourcing + re-POST) |
+| SELF-01 | Phase 10 | Planned (10-05) |
+| SELF-02 | Phase 10 | Planned (10-05) |
+| SELF-03 | Phase 10 | Planned (10-05) |
+| SAVE-01 | Phase 10 | Planned (10-02, 10-04) |
+| SAVE-02 | Phase 10 | Planned (10-04) |
+| FLYWHEEL-01 | Phase 10 | Planned (10-02, 10-03, 10-07) |
+| FLYWHEEL-02 | Phase 10 | Planned (10-01, 10-03) |
+| FLYWHEEL-03 | Phase 10 | Planned (10-01, 10-03) |
+| FLYWHEEL-04 | Phase 10 | Planned (10-01, 10-06, 10-07) |
+| FLYWHEEL-05 | Phase 10 | Planned (10-02, 10-06) |
+| FLYWHEEL-06 | Phase 10 | Planned (10-06) |
