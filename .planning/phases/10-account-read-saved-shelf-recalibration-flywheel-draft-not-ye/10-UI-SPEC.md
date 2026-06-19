@@ -1,10 +1,11 @@
 ---
 phase: 10
 slug: account-read-saved-shelf-recalibration-flywheel
-status: draft
+status: approved
 shadcn_initialized: true
 preset: "new-york (slate base, cssVariables) — pre-existing; flat-warm SSOT THEME-06 overrides palette"
 created: 2026-06-19
+reviewed_at: 2026-06-19
 ---
 
 # Phase 10 — UI Design Contract
