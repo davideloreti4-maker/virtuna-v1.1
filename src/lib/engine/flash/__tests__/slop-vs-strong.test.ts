@@ -48,6 +48,14 @@
 import { describe, it, expect } from "vitest";
 import { aggregateFlash, STRONG_THRESHOLD, MIXED_THRESHOLD } from "../flash-aggregate";
 import type { FlashPersona } from "../flash-schema";
+import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
+
+// ─── Phase 14 (14-01) KCQ-05 gate-floor contract ─────────────────────────────
+// The named gate is `band !== "Weak"` (pass iff stops >= MIXED_THRESHOLD). These are
+// the locked threshold values; the drift-gate `describe` below asserts the runtime
+// constants still equal them so any silent retune fails the suite loud.
+const LOCKED_STRONG_THRESHOLD = 6;
+const LOCKED_MIXED_THRESHOLD = 3;
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
 
@@ -112,6 +120,21 @@ describe("D-06 acceptance gate — PURE/deterministic (no API)", () => {
 
     it("MIXED_THRESHOLD is 3", () => {
       expect(MIXED_THRESHOLD).toBe(3);
+    });
+  });
+
+  // Phase 14 (14-01 / KCQ-05): explicit drift gate. The gate floor `band !== "Weak"`
+  // is a load-bearing contract across every skill runner — pin the exact values so a
+  // future silent retune of either threshold fails THIS test loudly + in lockstep.
+  describe("KCQ-05 threshold drift gate (lockstep)", () => {
+    it("STRONG_THRESHOLD === LOCKED_STRONG_THRESHOLD", () => {
+      expect(STRONG_THRESHOLD === LOCKED_STRONG_THRESHOLD).toBe(true);
+      expect(STRONG_THRESHOLD).toBe(LOCKED_STRONG_THRESHOLD);
+    });
+
+    it("MIXED_THRESHOLD === LOCKED_MIXED_THRESHOLD", () => {
+      expect(MIXED_THRESHOLD === LOCKED_MIXED_THRESHOLD).toBe(true);
+      expect(MIXED_THRESHOLD).toBe(LOCKED_MIXED_THRESHOLD);
     });
   });
 
@@ -189,9 +212,19 @@ describe.skipIf(!HAS_API_KEY)("D-06 acceptance gate — LIVE API (fitness niche 
   const STRONG_HOOK =
     "I trained legs every day for 30 days on a knee rehab protocol — here's what changed in my squat depth";
 
-  const FITNESS_PANEL = { niche: "fitness", contentType: null as null };
+  // Phase 14 (14-01 / KCQ-06): exercise the PRODUCTION resolution path, not a hand-built
+  // panel. A real creator's niche_primary is free text — route it through resolveNicheKey
+  // (the runner-layer fix) so the LIVE half validates exactly what the runners feed the SIM.
+  // "fitness" is a non-placeholder niche (real corpus instantiation cells), so the resolved
+  // panel actually discriminates. resolveNicheKey("fitness") → "fitness".
+  const RESOLVED_NICHE = resolveNicheKey("fitness");
+  const FITNESS_PANEL = { niche: RESOLVED_NICHE, contentType: null as null };
 
-  it("slop hook scores clearly below known-great hook with niche panel (margin ≥ 2 stops)", async () => {
+  it("resolveNicheKey resolves the test niche to a real instantiation key (production path)", () => {
+    expect(RESOLVED_NICHE).toBe("fitness");
+  });
+
+  it("slop hook scores clearly below known-great hook with resolved niche panel (margin ≥ 2 stops)", async () => {
     const { runFlashTextMode } = await import("../run-flash-text-mode");
     const { aggregateFlash: agg } = await import("../flash-aggregate");
 
@@ -206,9 +239,10 @@ describe.skipIf(!HAS_API_KEY)("D-06 acceptance gate — LIVE API (fitness niche 
     const slopStops = parseInt(slopAgg.fraction.split("/")[0]!, 10);
     const strongStops = parseInt(strongAgg.fraction.split("/")[0]!, 10);
 
-    // Core D-06 assertion: garbage scores clearly below known-great (margin ≥ 2)
+    // Core KCQ-06 assertion: garbage scores clearly below known-great (margin ≥ 2)
+    // on the RESOLVED-niche production path.
     expect(strongStops - slopStops).toBeGreaterThanOrEqual(2);
-    // The strong idea should at least be Mixed (pass the gate)
+    // The strong idea should at least be Mixed (pass the KCQ-05 gate floor).
     expect(strongAgg.band).not.toBe("Weak");
   }, 60_000); // 60s timeout for two parallel Flash calls
 });

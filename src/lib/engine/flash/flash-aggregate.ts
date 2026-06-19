@@ -44,8 +44,21 @@ import type { FlashPersona } from "./flash-schema";
 //
 // The niche-aware panel (D-05) is what creates real discrimination — without it, the
 // flat generic prompts produce ~5–7 stops on everything (the "all Mixed" failure mode).
-// Calibration after D-05 lands confirmed STRONG=6/MIXED=3 are empirically correct for
-// this distribution. No recalibration needed; the key fix was the niche panel itself.
+//
+// Phase 14 (14-01 / Pitfall 3) correction to the earlier "no recalibration needed" claim:
+//   The niche panel only DISCRIMINATES once `resolveNicheKey` (wave3/niche-resolver.ts) lands
+//   at the RUNNER layer. Before that, production `niche_primary` is free text / a sub-slug that
+//   fails selectPersonaSlots' exact-slug match and silently falls back to generic — so the panel
+//   was niche-blind in production and the gate could not say no. With the resolver wired (14-01
+//   Task 1), the panel receives a real top-level instantiation key and the slop/strong margin
+//   re-appears. The LIVE half of slop-vs-strong.test.ts now routes its hooks through
+//   `resolveNicheKey` to exercise the production resolution path (not a hand-built panel).
+//
+// KCQ-05 gate (formalized 14-01): the gate floor is `band !== "Weak"` — i.e. an item PASSES iff
+//   stops ≥ MIXED_THRESHOLD. STRONG_THRESHOLD/MIXED_THRESHOLD are the named gate contract; the
+//   test asserts their exact values so any future drift fails loud. Values stay 6/3 — the pure
+//   half holds the slop<MIXED / strong≥STRONG margin, and the LIVE half (DASHSCOPE_API_KEY-gated)
+//   re-validates on the resolved-niche path. Adjust ONLY in lockstep with the test assertions.
 
 /** Minimum stop-count for "Strong" band (inclusive). D-06 calibrated for niche-aware 10-persona panel. */
 export const STRONG_THRESHOLD = 6;
