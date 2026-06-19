@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 14-02-PLAN.md
+stopped_at: Completed 14-04-PLAN.md
 last_updated: "2026-06-20T00:00:00.000Z"
-last_activity: 2026-06-20 -- Phase 14 Plan 02 (rubric-critic best-of-N) complete
+last_activity: 2026-06-20 -- Phase 14 Plan 04 (surface lane: made-for-you rationale + opt-in flop reveal) complete — Phase 14 COMPLETE
 progress:
   total_phases: 16
   completed_phases: 10
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 14 (kc-grounding-quality-loop-expansion-the-durable-moat-not-yet) — EXECUTING
-Plan: 4 of 4 (14-01, 14-02, 14-03 complete)
-Status: Ready to execute 14-04
-Last activity: 2026-06-20 -- Phase 14 Plan 02 (rubric-critic best-of-N) complete
+Phase: 14 (kc-grounding-quality-loop-expansion-the-durable-moat-not-yet) — COMPLETE ✓
+Plan: 4 of 4 (14-01, 14-02, 14-03, 14-04 complete)
+Status: Phase 14 complete — all 4 plans executed
+Last activity: 2026-06-20 -- Phase 14 Plan 04 (surface lane) complete
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -60,7 +60,7 @@ Last activity: 2026-06-20 -- Phase 14 Plan 02 (rubric-critic best-of-N) complete
 | 11 | Explore (Audience-Curated Discovery) | EXPLORE-01..06 | Planned (expansion) — not discussed |
 | 12 | Library & Acts/State IA | IA-01, LIB-01..03, AUD-EDIT-01..04 | Planned (expansion) — not discussed |
 | 13 | Proactive Numen (Ambient + Initiated) | AMBIENT-01, PROACTIVE-01..02 | Planned (expansion) — not discussed |
-| 14 | KC Grounding & Quality-Loop | KCQ-01..09 | Planned (expansion) — not discussed |
+| 14 | KC Grounding & Quality-Loop | KCQ-01..09 | Complete ✓ |
 | 15 | Marketing Intent (mode-switch) | INTENT-01, REACT-01, BLOCK-01 | Planned (expansion) — not discussed |
 | 16 | Commerce Skills | OFFER-01, ADCREATIVE-01, COMMERCE-01 | Planned (expansion) — not discussed |
 | — | Pre-launch hardening gate | HARDEN-01 | Planned — before public traffic |
@@ -166,6 +166,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 14 / 14-03]: KCQ-08 — voice moved out of MODE_ROLES tail for idea/hooks/script/remix (chat unchanged) so a BUNDLE_CHAR_CAP drop sheds wins/flops/platform before voice; formatVoice carries explicit 'Write in this voice' directive; volatile path only (compiled.ts/system prompt byte-unchanged)
 - [Phase 14 / 14-03]: D-18 map-before-merge delegated to executor (owner supplied 26 raw-labeled templates); mapped by dominant mechanism to BOLDx8/GAPx5/CONTRARIANx5/NARRATIVEx6/RESEARCHx1/QUESTIONx2; folded under hooks.md archetype table as private-reasoning-only exemplars; KC_GEN_VERSION gen.1.0.0->gen.1.1.0, ENGINE_VERSION unchanged
 - [Phase 14 / 14-03]: HONESTY-01 — fake §N citation pills deleted from ExpertChatThread (CORPUS_SECTIONS + insertCitationMarkers + §cite branch), render {content} directly; no re-light (D-14); board-frame pills + real-code render intact
+- [Phase 14 / 14-04]: KCQ-09/04 surface lane — idea card's existing whyItFits reframed into inline "Made for you — {whyItFits}" micro-copy (personalization-trust + steering lever, NOT citation, no pills, D-04/D-14); predictedFailureMode (from 14-02) rendered as a TWO-stage opt-in drill INSIDE the disclosure on BOTH idea+hook renderers (off the face + text gated behind a second drill = never always-visible AND never silent-only, D-10); warning-toned (--color-warning, never coral/error-red); `!= null` covers absent/legacy cards; hooks get the flop reveal but NO rationale (no whyItFits prop); pure client render, no ENGINE_VERSION bump (3.19.0)
 - [Phase 14 / 14-02]: KCQ-02/04/07 — parallel Flash rubric-critic (critiqueAgainstRubric) executes the BASE Value Bar (Test A/B/C + Prohibition 6) at runtime in Ideas+Hooks; combined gate = band !== Weak AND verdict.pass; SIM+critic run as a Promise.all pair (~1x latency, D-05/D-08 independent judge); critic fail-safe (error → pass:false, never throws); conditional single regen on all-fail (D-06, bounded); predictedFailureMode (KCQ-04) optional-nullable on both card schemas (no migration, for 14-04 drill-reveal); no ENGINE_VERSION bump
 
 ### Roadmap Evolution
@@ -192,8 +193,8 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 ## Session Continuity
 
 Last session: 2026-06-20T00:00:00.000Z
-Stopped at: Completed 14-02-PLAN.md
-Next: 14-04 (opt-in drill-reveal — consumes predictedFailureMode from 14-02 cards)
+Stopped at: Completed 14-04-PLAN.md — Phase 14 complete
+Next: Phase 14 done. Candidate next: phase verify, or Phase 11 (Explore) / Phase 12 (Library & field-legibility, consumes P14 deferred surface)
 Resume file: None
 
 ## Performance Metrics
@@ -246,3 +247,4 @@ Resume file: None
 | Phase 14-kc-grounding-quality-loop P01 | 14min | 2 tasks | 7 files |
 | Phase 14-kc-grounding-quality-loop P03 | 20min | 3 tasks | 6 files |
 | Phase 14-kc-grounding-quality-loop P02 | 12min | 2 tasks (1 TDD) | 8 files |
+| Phase 14-kc-grounding-quality-loop P04 | 8min | 2 tasks | 3 files |

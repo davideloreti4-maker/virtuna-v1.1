@@ -163,7 +163,7 @@ reuses its typed-block renderers.
 - [x] **KCQ-06**: SIM niche-blind fix (#10) — wire the rich `persona-registry` into the text Flash path (currently generic equal-weighted).
 - [x] **KCQ-07**: Runtime trope-injection + specificity auto-reject (#4/#5) — corpus floor done in P2; runtime enforcement here.
 - [x] **KCQ-08**: Voice calibration (#7) — extends the shipped N1 voice sample.
-- [ ] **KCQ-09**: Field-level legibility — surface *which* profile/audience/KC field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness). *(Surfaces via P12 IA where relevant.)*
+- [x] **KCQ-09**: Field-level legibility — surface *which* profile/audience/KC field drove each output (extends GROUND-03; counters the "robotic/generic" competitor weakness). *(Thin surface shipped in 14-04: inline "Made for you — {whyItFits}" rationale on the idea card, D-04. Full field-level legibility surface deferred to P12 IA.)*
 
 ### INTENT / REACT / BLOCK — Marketing Intent mode-switch (P15)
 

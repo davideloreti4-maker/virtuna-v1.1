@@ -30,7 +30,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [ ] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)*
 - [ ] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [ ] **Phase 13: Proactive Numen (Ambient + Initiated)** - The "ambient audience system": ambient audience reaction on EVERY skill card (always felt, not summoned; builds on P9 reaction primitive — must not duplicate) + Numen INITIATES (proactive morning drops "3 things stirring your people would bite on" + scheduled Explore = their Automations equivalent) = daily-habit engine, in-conversation. *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [x] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [ ] **Phase 15: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [ ] **Phase 16: Commerce Skills** - Offer/Product Validation + Ad Creative + brand-profile entity + in-thread monetization, consuming P15's buyer frame *(IN-MILESTONE EXPANSION 2026-06-19)*
 
@@ -230,7 +230,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 11. Explore (Audience-Curated Discovery) | — | Planned (expansion) |  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
-| 14. KC Grounding & Quality-Loop | 3/4 | In Progress|  |
+| 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
 | 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
 | 16. Commerce Skills | — | Planned (expansion) |  |
 
@@ -444,7 +444,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Wave 3** *(blocked on 14-02)*
 
-- [ ] 14-04-PLAN.md — Surface: inline made-for-you rationale (whyItFits) + opt-in predicted-failure-mode reveal on the idea/hook card renderers [KCQ-09, KCQ-04]
+- [x] 14-04-PLAN.md — Surface: inline made-for-you rationale (whyItFits) + opt-in predicted-failure-mode reveal on the idea/hook card renderers [KCQ-09, KCQ-04]
 
 ---
 
