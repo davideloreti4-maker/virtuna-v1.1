@@ -50,6 +50,7 @@
  * P6 extends this union — add "script" | "remix" when implementing Phase 6.
  */
 export type SkillId =
+  | "discover" // Phase 8 — live (08-03): the Discover front door, tile CTA launches discover→remix
   | "idea"
   | "hooks"
   | "script"   // Phase 6 — live (06-05)
@@ -154,6 +155,22 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     to: "hooks",
     ctaLabel: "Develop into hooks →",
     endpoint: "/api/tools/ideas/develop",  // P6 LIVE — reuse path confirmed 2026-06-18 (06-05)
+    anchorFrom: "card",
+  },
+
+  // ── P8 LIVE: Discover → Remix ────────────────────────────────────────────────
+  // "Remix → Read" on the Discover OutlierTile POSTs the outlier's videoUrl to the
+  // remix rehost route, which decode→adapts it and drops the result into the thread
+  // chain (Remix → Hooks → Script → Test). This is the funnel-top moat coupling:
+  // Discover is browsable, but the ACTION launches the chain (no save/watchlist — P10).
+  // anchorFrom "card" — the tile's own videoUrl IS the anchor.
+  // PINNED: /api/tools/remix/run accepts { url: string, platform: string }
+  //   (08-03; tools/remix/run/route.ts schema = { url: z.string().min(1).max(2000), platform }).
+  {
+    from: "discover",
+    to: "remix",
+    ctaLabel: "Remix → Read",
+    endpoint: "/api/tools/remix/run",   // P8 LIVE — set 2026-06-19 (08-03)
     anchorFrom: "card",
   },
 ];

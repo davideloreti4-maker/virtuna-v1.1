@@ -117,10 +117,32 @@ describe('handoffsFor("remix")', () => {
   });
 });
 
+// ── 3b. discover → remix (Phase 8) ────────────────────────────────────────────
+
+describe('handoffsFor("discover")', () => {
+  it('includes a remix CTA with the pinned rehost endpoint and card anchor', () => {
+    const handoffs = handoffsFor('discover');
+    const remixHandoff = handoffs.find((h) => h.to === 'remix');
+
+    expect(remixHandoff).toBeDefined();
+    expect(remixHandoff!.ctaLabel).toBe('Remix → Read');
+    // PINNED: /api/tools/remix/run — must match tools/remix/run/route.ts ({ url, platform })
+    expect(remixHandoff!.endpoint).toBe('/api/tools/remix/run');
+    // anchorFrom "card" — the OutlierTile's own videoUrl is POSTed as the rehost url
+    expect(remixHandoff!.anchorFrom).toBe('card');
+  });
+
+  it('resolves as a valid SkillId via handoffsFor (no missing registration)', () => {
+    const discover: SkillId = 'discover';
+    expect(() => handoffsFor(discover)).not.toThrow();
+    expect(Array.isArray(handoffsFor(discover))).toBe(true);
+  });
+});
+
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {
-  const skillIds: SkillId[] = ['idea', 'hooks', 'script', 'remix', 'test'];
+  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'test'];
 
   it('does not throw for any SkillId', () => {
     for (const skillId of skillIds) {
@@ -149,6 +171,9 @@ describe('CHAIN_HANDOFFS registry completeness', () => {
     expect(pairs).toContain('hooks→script');
     expect(pairs).toContain('script→test');
     expect(pairs).toContain('remix→hooks');
+
+    // P8 new chain — Discover front door launches the moat chain
+    expect(pairs).toContain('discover→remix');
   });
 
   it('all endpoints are either a non-empty string or null', () => {

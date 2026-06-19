@@ -218,6 +218,54 @@ export const RemixCardBlockSchema = z.object({
 
 export type RemixCardBlock = z.infer<typeof RemixCardBlockSchema>;
 
+// ─── Outlier-grid block (Discover) ──────────────────────────────────────────────
+// Phase 08 (D-13/D-14). A Discover outlier TILE: the VideoCard metrics grid + a
+// MEASURED outlier multiplier carrying its honest baseline label + a source tag.
+//
+// Honesty spine (Pitfall 5 / D-05 / D-11):
+//   This block carries NO band, NO 0-100 score, and NO `model: sim1-flash` field.
+//   Discover tiles are MEASURED scrape data (real engagement arithmetic), NOT SIM
+//   output. The multiplier is `views / baseline` (computed in outlier-compute.ts).
+//   The renderer MUST surface the multiplier WITH its baselineLabel ("vs own" |
+//   "vs niche") — NEVER a bare "{n}×" (D-05).
+//
+// The video reference (videoUrl / platformVideoId / caption) is what the
+// "Remix → Read" CTA needs to launch the discover→remix chain (chain-handoff.ts).
+// Fixed typed renderer — model/route emits validated props only; OutlierTile owns
+// ALL layout (THREAD-04).
+
+export const OutlierGridBlockSchema = z.object({
+  type: z.literal("outlier-grid"),
+  props: z.object({
+    tiles: z.array(
+      z.object({
+        // Video reference — what Remix needs (videoUrl is the rehost anchor)
+        platformVideoId: z.string().min(1),
+        videoUrl: z.string().min(1),
+        caption: z.string(),
+        // VideoCard-derived metrics grid (measured scrape data)
+        views: z.number(),
+        likes: z.number(),
+        comments: z.number(),
+        shares: z.number(),
+        saves: z.number(),
+        durationSeconds: z.number(),
+        postedAt: z.string(),                          // ISO string (block props are JSON-serializable)
+        // Measured outlier signal (NOT a SIM score — Pitfall 5)
+        multiplier: z.number(),                        // views / baseline ("{n}×")
+        baselineLabel: z.enum(["vs own", "vs niche"]), // D-05 — renderer NEVER shows a bare multiplier
+        // Source tag (D-15): "Your channel" | "Competitor" (profile) | niche label (niche)
+        source: z.string().min(1),
+      }),
+    ),
+    mode: z.enum(["profile", "niche"]),
+    // NOTE: deliberately NO `model: "sim1-flash"`, NO `band`, NO `score` —
+    //       Discover tiles are measured data, not SIM output (Pitfall 5 / D-11).
+  }),
+});
+
+export type OutlierGridBlock = z.infer<typeof OutlierGridBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -228,6 +276,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   HookCardBlockSchema,
   ScriptCardBlockSchema,
   RemixCardBlockSchema,
+  OutlierGridBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;
