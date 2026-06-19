@@ -3,7 +3,6 @@
  *
  * v2 changes vs v1:
  * - Markdown rendering via react-markdown + rehype-sanitize (no raw HTML injection)
- * - §citation pills inline (coral-outline, title= section name on hover)
  * - FRAME:<name> tag parser — renders non-interactive frame pill
  * - Copy + Regenerate controls on hover (Regenerate on last answer only)
  * - jump-to-latest pill when scrolled up during/after streaming
@@ -22,20 +21,6 @@ import rehypeSanitize from 'rehype-sanitize';
 import { Copy, RotateCcw, ChevronDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/hooks/queries/use-expert-chat';
-
-// ── Corpus section map for §citation tooltips ──────────────────────────────
-const CORPUS_SECTIONS: Record<string, string> = {
-  '1': 'Hook & first-3-seconds retention',
-  '2': 'Pacing & editing rhythm',
-  '3': 'Storytelling arc & narrative',
-  '4': 'CTA placement & conversion',
-  '5': 'Authenticity & creator trust',
-  '6': 'Visual quality & production',
-  '7': 'Audio & sound design',
-  '8': 'Viewer psychology & retention',
-  '9': 'Platform-specific optimization',
-  '10': 'Viral triggers & shareability',
-};
 
 // ── Valid board frame names ────────────────────────────────────────────────
 const VALID_FRAMES = new Set([
@@ -320,20 +305,12 @@ function MessageBubble({
   );
 }
 
-// ── AssistantContent — Markdown + §citation pills ─────────────────────────
+// ── AssistantContent — Markdown render ─────────────────────────────────────
 
 interface AssistantContentProps {
   content: string;
   isStreaming?: boolean;
   reducedMotion: boolean;
-}
-
-/**
- * Pre-process content: replace §N with `§cite:N` so the code component
- * can render them as coral-outline pills, cleanly separated from real code.
- */
-function insertCitationMarkers(content: string): string {
-  return content.replace(/§(\d+)/g, '`§cite:$1`');
 }
 
 function AssistantContent({ content, isStreaming, reducedMotion }: AssistantContentProps) {
@@ -360,33 +337,18 @@ function AssistantContent({ content, isStreaming, reducedMotion }: AssistantCont
           p: ({ children }) => (
             <p className="mb-1 last:mb-0 text-sm leading-relaxed">{children}</p>
           ),
-          // Code: intercept §cite:N pills, pass through real code
-          code: ({ children, ...props }) => {
-            const text = String(children).trim();
-            if (text.startsWith('§cite:')) {
-              const num = text.replace('§cite:', '').trim();
-              const sectionName = CORPUS_SECTIONS[num] ?? `Section ${num}`;
-              return (
-                <span
-                  title={sectionName}
-                  className="mx-0.5 inline-flex items-center rounded border border-coral/30 px-1 py-0.5 text-[10px] font-medium text-coral/80 cursor-help"
-                >
-                  §{num}
-                </span>
-              );
-            }
-            return (
-              <code
-                {...props}
-                className="rounded bg-white/[0.06] px-1 py-0.5 text-xs font-mono text-foreground"
-              >
-                {children}
-              </code>
-            );
-          },
+          // Code — inline/block code render
+          code: ({ children, ...props }) => (
+            <code
+              {...props}
+              className="rounded bg-white/[0.06] px-1 py-0.5 text-xs font-mono text-foreground"
+            >
+              {children}
+            </code>
+          ),
         }}
       >
-        {insertCitationMarkers(content)}
+        {content}
       </ReactMarkdown>
       {/* Streaming caret — disabled under prefers-reduced-motion */}
       {isStreaming && !reducedMotion && (
