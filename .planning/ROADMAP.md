@@ -353,12 +353,12 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** 1/7 plans executed
+**Plans:** 2/7 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
 - [x] 10-01-PLAN.md — Flywheel math core: predicted/realized signatures + reconcile + confidence-gate + recalibration delta (pure, deterministic) [FLYWHEEL-02/03/04]
-- [ ] 10-02-PLAN.md — Schema rails: outcome_signatures + reconciliations + saved_items migrations + scrapeSinglePostMetrics + repos + Apify Wave-0 spike [FLYWHEEL-01/05, SAVE-01]
+- [x] 10-02-PLAN.md — Schema rails: outcome_signatures + reconciliations + saved_items migrations + scrapeSinglePostMetrics + repos + Apify Wave-0 spike [FLYWHEEL-01/05, SAVE-01]
 
 **Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
 

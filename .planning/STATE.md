@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 10 UI-SPEC approved
-last_updated: "2026-06-19T14:01:44.072Z"
-last_activity: 2026-06-19 -- Phase 10 execution started
+stopped_at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
+last_updated: "2026-06-19T14:34:00.000Z"
+last_activity: 2026-06-19 -- Phase 10 Plan 02 complete
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 50
-  completed_plans: 45
-  percent: 90
+  completed_plans: 46
+  percent: 92
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING
-Plan: 2 of 7
-Status: Ready to execute
-Last activity: 2026-06-19 -- Phase 10 execution started
+Plan: 3 of 7
+Status: Plan 02 complete — flywheel + shelf persistence rails landed (migrations written, push deferred to Plan 07)
+Last activity: 2026-06-19 -- Phase 10 Plan 02 complete
 
 ## Hard Constraints (this milestone)
 
@@ -67,6 +67,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: BandBlock: qualitative only (band word + fraction + model tag), no numeric score (D-11 honesty spine)
 - [Phase ?]: Flash aggregate thresholds
 - [Phase ?]: Flash model routing
+- [Phase 10 / 10-02]: A1 calibration/craft split OWNER-CONFIRMED — calibration={collector,connector,converter}, craft={scanner,lurker,skeptic}; [ASSUMED] markers removed from reconcile.ts.
+- [Phase 10 / 10-02]: Single-URL outcome scrape stays on clockworks VIDEO_ACTOR; apidojo (the current provider) forbids single-post URLs (Pitfall 2) and is used only for the multi-post Account-Read path.
+- [Phase 10 / 10-02]: 3 sibling tables (outcome_signatures, reconciliations, saved_items) added; the contested `outcomes` table untouched (Pitfall 1). DB push deferred to Plan 07.
 - [Phase ?]: reading_id FK is text not uuid — analysis_results.id is text on live DB; plan Pitfall #3 was incorrect; all FK semantics preserved
 - [Phase ?]: ThreadRow/MessageRow derive from Database public Tables post-regen; role narrowed to union at app layer
 - [Phase ?]: D-14 double-validation: validateBlock at write boundary AND on rehydration; invalid blocks become UnsupportedBlock sentinel
@@ -161,10 +164,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T14:01:37.845Z
-Stopped at: Phase 10 UI-SPEC approved
-Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
-Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel-draft-not-ye/10-UI-SPEC.md
+Last session: 2026-06-19T14:34:00.000Z
+Stopped at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
+Next: Phase 10 Plan 03 (outcome capture — wires outcome-repo + scrapeSinglePostMetrics)
+Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel-draft-not-ye/10-03-PLAN.md
 
 ## Performance Metrics
 
@@ -208,3 +211,4 @@ Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel
 | Phase 09 P03 | 9m | 3 tasks | 12 files |
 | Phase 09 P05 | 3m | 2 tasks | 3 files |
 | Phase 10 P01 | 18 | 3 tasks | 9 files |
+| Phase 10 P02 | 25min | 3 tasks (1 checkpoint) | 10 files |
