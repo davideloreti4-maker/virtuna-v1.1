@@ -8,7 +8,7 @@
  * The classification is the mechanical basis of D-03 — the protection that a content
  * flop (craft) never corrupts the audience object (calibration):
  *
- *   [ASSUMED] A1 (single highest-value owner-confirm — 10-RESEARCH.md §1/§3):
+ *   A1 (OWNER-CONFIRMED 2026-06-19 at the 10-02 spike gate — 10-SPIKE.md sign-off):
  *     CALIBRATION dispositions = collector / connector / converter  (the "WHO" —
  *       which segment actually showed up vs. the modeled mix). Persistent divergence
  *       here = the audience MIX is wrong → may PROPOSE a PersonaWeights override.
@@ -32,8 +32,8 @@
 import type { Disposition } from "@/lib/audience/audience-types";
 
 /**
- * [ASSUMED] A1 — the "WHO" dispositions. Divergence here = the audience MIX is off →
- * calibration error → may feed a PersonaWeights override (confidence-gate.ts).
+ * A1 (OWNER-CONFIRMED 2026-06-19) — the "WHO" dispositions. Divergence here = the
+ * audience MIX is off → calibration error → may feed a PersonaWeights override (confidence-gate.ts).
  */
 export const CALIBRATION_DISPOSITIONS: readonly Disposition[] = [
   "collector",
@@ -42,8 +42,8 @@ export const CALIBRATION_DISPOSITIONS: readonly Disposition[] = [
 ] as const;
 
 /**
- * [ASSUMED] A1 — the "HOW-WELL" dispositions. Divergence here = a craft problem →
- * Account Read guidance only; NEVER reaches the recalibration path (D-03 protection).
+ * A1 (OWNER-CONFIRMED 2026-06-19) — the "HOW-WELL" dispositions. Divergence here = a craft
+ * problem → Account Read guidance only; NEVER reaches the recalibration path (D-03 protection).
  */
 export const CRAFT_DISPOSITIONS: readonly Disposition[] = [
   "scanner",
