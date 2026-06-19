@@ -52,6 +52,8 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
+import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
+import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -99,6 +101,11 @@ export interface HooksPipelineInput {
    * (byte-identical no-op for General — regression gate preserved).
    */
   audience?: Audience | null;
+  /**
+   * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
+   * (rank-1 hook's personas) + audience_id. Non-fatal — never blocks the cards.
+   */
+  pin?: RunnerPinContext;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -415,6 +422,30 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     }
 
     blocks.push(validated.data as HookCardBlock);
+  }
+
+  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
+  // Pin the rank-1 hook's personas (the hook most likely posted), falling back to
+  // the first SIM that resolved so a run that fired the SIM always pins a vector.
+  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
+  if (input.pin) {
+    let pinnedPersonas: FlashPersona[] | null = null;
+    const lead = ranked[0];
+    if (lead) {
+      const leadSim = simResults[lead.generationIndex];
+      if (leadSim) pinnedPersonas = leadSim.result.personas;
+    }
+    if (!pinnedPersonas) {
+      const firstSim = simResults.find((s) => s != null);
+      if (firstSim) pinnedPersonas = firstSim.result.personas;
+    }
+    if (pinnedPersonas && pinnedPersonas.length > 0) {
+      const audienceId = audience && !audience.is_general ? audience.id : null;
+      void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
+        audienceId,
+        analysisId: input.pin.analysisId ?? null,
+      });
+    }
   }
 
   return { blocks, warnings: allWarnings, seedHookPath };

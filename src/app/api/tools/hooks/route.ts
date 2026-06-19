@@ -182,6 +182,8 @@ export async function POST(request: Request): Promise<Response> {
           profileRow: profileRow ?? null,
           anchor: rawAnchor,
           audience: activeAudience,
+          // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
+          pin: { supabase, analysisId: null },
         });
 
         // ── STAGE: Generating (done) ──────────────────────────────────────────

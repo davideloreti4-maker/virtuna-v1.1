@@ -47,6 +47,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Input / Output types ─────────────────────────────────────────────────────
 
@@ -66,6 +67,11 @@ export interface RemixPipelineInput {
    * audienceName surfaces the as-your-{audience} steer tag on the card (D-03).
    */
   audience?: Audience | null;
+  /**
+   * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
+   * adapted hook's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
+   */
+  pin?: RunnerPinContext;
 }
 
 export interface RemixPipelineResult {
@@ -214,6 +220,17 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     const personas = simResult.result.personas;
     const { band, fraction } = aggregateFlash(personas);
     const scrollQuote = selectLeadScrollQuote(personas);
+
+    // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
+    // The adapted hook's personas ARE the run's prediction (opener-scoped SIM, D-05).
+    // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
+    if (input.pin && personas.length > 0) {
+      const audienceId = audience && !audience.is_general ? audience.id : null;
+      void pinPredictedSignature(input.pin.supabase, personas, {
+        audienceId,
+        analysisId: input.pin.analysisId ?? null,
+      });
+    }
 
     // ── STEP 6: BUILD — assemble remix-card block (D-05 moat: real 4-beat decode anatomy) ──
     // sourceDecode carries the REAL structural decode output — NOT a metadata guess.

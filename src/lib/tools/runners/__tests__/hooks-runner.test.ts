@@ -32,6 +32,11 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
+// ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
+vi.mock("@/lib/tools/runners/flash-runner", () => ({
+  pinPredictedSignature: vi.fn().mockResolvedValue(true),
+}));
+
 // ─── Mock assembleBundle ──────────────────────────────────────────────────────
 
 vi.mock("@/lib/kc/assembler", () => ({
@@ -459,5 +464,130 @@ describe("runHooksPipeline (runner)", () => {
       const validation = HookCardBlockSchema.safeParse(block);
       expect(validation.success).toBe(true);
     }
+  });
+});
+
+// ─── FLYWHEEL-02: predicted-signature pin wiring ──────────────────────────────
+
+const calibratedAudience = {
+  id: "aud-calibrated",
+  user_id: "user-1",
+  name: "Skincare Buyers",
+  type: "target",
+  platform: "instagram",
+  goal_label: "Drive sales",
+  goal_intent: "sell",
+  is_general: false,
+  is_preset: false,
+  persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
+  personas: [],
+  profile: null,
+  calibration: null,
+  created_at: "2026-06-19T00:00:00Z",
+  updated_at: "2026-06-19T00:00:00Z",
+} as never;
+
+const generalAudience = { ...(calibratedAudience as object), id: "general", is_general: true, personas: [] } as never;
+
+describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("pins the rank-1 hook's personas with the run's audience_id + analysis_id", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+          }),
+        },
+      },
+    });
+    const leadPersonas = makePersonasStrong();
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: leadPersonas },
+      warnings: [],
+    });
+
+    const supabase = {} as never;
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: calibratedAudience,
+      pin: { supabase, analysisId: "an-1" },
+    });
+
+    expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
+    expect(pinPredictedSignature).toHaveBeenCalledWith(supabase, leadPersonas, {
+      audienceId: "aud-calibrated",
+      analysisId: "an-1",
+    });
+  });
+
+  it("pins audience_id null for a General audience", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+          }),
+        },
+      },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasStrong() },
+      warnings: [],
+    });
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: generalAudience,
+      pin: { supabase: {} as never, analysisId: null },
+    });
+
+    expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
+    expect((pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0][2]).toEqual({
+      audienceId: null,
+      analysisId: null,
+    });
+  });
+
+  it("does NOT pin when no pin context is passed", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+          }),
+        },
+      },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasStrong() },
+      warnings: [],
+    });
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    await runHooksPipeline({ ask: "Hooks", platform: "tiktok", profileRow: null });
+
+    expect(pinPredictedSignature).not.toHaveBeenCalled();
   });
 });

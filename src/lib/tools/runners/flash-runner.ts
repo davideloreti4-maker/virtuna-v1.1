@@ -135,6 +135,17 @@ export interface PredictedPinContext {
 }
 
 /**
+ * Runner-level pin context (FLYWHEEL-02 wiring). Carries the Supabase client +
+ * optional analysis_id from the route; the runner derives audience_id from the
+ * run's active audience. Threaded through each pipeline's optional `pin` input
+ * so a SIM run pins its predicted vector end-to-end (the moat's capture path).
+ */
+export interface RunnerPinContext {
+  supabase: SupabaseClient;
+  analysisId?: string | null;
+}
+
+/**
  * Compute predictedSignature(personas) ONCE and persist it (predicted_vector +
  * audience_id + analysis_id) so reconciliation reads a pinned prediction (Pitfall 6).
  *

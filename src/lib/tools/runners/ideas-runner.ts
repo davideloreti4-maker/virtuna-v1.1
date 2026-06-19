@@ -58,6 +58,8 @@ import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights"
 import type { Audience } from "@/lib/audience/audience-types";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
+import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
+import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -100,6 +102,11 @@ export interface IdeasPipelineInput {
    * other runners still use buildGroundingLine(profileRow) unchanged.
    */
   audience?: Audience | null;
+  /**
+   * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
+   * (lead idea's personas) + audience_id. Non-fatal — never blocks the cards.
+   */
+  pin?: RunnerPinContext;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -309,6 +316,12 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
   const survivors: IdeaCardBlock[] = [];
 
+  // FLYWHEEL-02: capture the personas to pin — the lead survivor (the idea most
+  // likely posted), falling back to the first SIM that resolved so a run that
+  // fired the SIM always pins a vector.
+  let leadPersonas: FlashPersona[] | null = null;
+  let firstSimPersonas: FlashPersona[] | null = null;
+
   for (let i = 0; i < ideas.length && survivors.length < MAX_SURVIVORS; i++) {
     const idea = ideas[i];
     const simResult = simResults[i];
@@ -317,10 +330,14 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
     const personas = simResult.result.personas;
+    if (!firstSimPersonas) firstSimPersonas = personas;
     const { band, fraction } = aggregateFlash(personas);
 
     // GATE FLOOR (Plan-01 handoff): band !== "Weak" (stops >= MIXED_THRESHOLD)
     if (band === "Weak") continue;
+
+    // First gate survivor → the lead card; pin its personas (FLYWHEEL-02).
+    if (!leadPersonas) leadPersonas = personas;
 
     // D-04 WARNING-4: select lead scrollQuote NOW — ships on the card face
     const scrollQuote = selectLeadScrollQuote(personas);
@@ -355,6 +372,21 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     }
 
     survivors.push(validated.data as IdeaCardBlock);
+  }
+
+  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
+  // The predicted vector is computed ONCE here from the lead idea's personas and
+  // persisted with the run's audience_id — the "predict" half of the moat loop.
+  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
+  if (input.pin) {
+    const pinnedPersonas = leadPersonas ?? firstSimPersonas;
+    if (pinnedPersonas && pinnedPersonas.length > 0) {
+      const audienceId = audience && !audience.is_general ? audience.id : null;
+      void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
+        audienceId,
+        analysisId: input.pin.analysisId ?? null,
+      });
+    }
   }
 
   return { blocks: survivors, warnings: allWarnings, seedHookPath };

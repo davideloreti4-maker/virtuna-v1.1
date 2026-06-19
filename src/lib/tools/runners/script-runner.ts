@@ -48,6 +48,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
+import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,11 @@ export interface ScriptPipelineInput {
    * null or is_general → profile-based grounding + DEFAULT weights (byte-identical no-op).
    */
   audience?: Audience | null;
+  /**
+   * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
+   * opener's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
+   */
+  pin?: RunnerPinContext;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -291,6 +297,18 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
 
   // D-04: select lead scrollQuote NOW — ships on the card face
   const scrollQuote = selectLeadScrollQuote(personas);
+
+  // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
+  // The opener's personas ARE the run's prediction (opener-only SIM, D-01). Pinned
+  // before build so even a dropped card still records the SIM's predicted vector.
+  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
+  if (input.pin && personas.length > 0) {
+    const audienceId = audience && !audience.is_general ? audience.id : null;
+    void pinPredictedSignature(input.pin.supabase, personas, {
+      audienceId,
+      analysisId: input.pin.analysisId ?? null,
+    });
+  }
 
   // ── BUILD: assemble script-card block ─────────────────────────────────────────
   const blockData = {

@@ -59,6 +59,12 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: (...args: unknown[]) => mockRunFlashTextMode(...args),
 }));
 
+// ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
+const mockPinPredictedSignature = vi.fn().mockResolvedValue(true);
+vi.mock("@/lib/tools/runners/flash-runner", () => ({
+  pinPredictedSignature: (...args: unknown[]) => mockPinPredictedSignature(...args),
+}));
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
 function makeOmniOutput() {
@@ -393,5 +399,92 @@ describe("runRemixPipeline (runner)", () => {
     expect(result.error).toBe("resolve_failed");
     expect(result.blocks).toEqual([]);
     expect(mockAnalyzeVideoWithOmni).not.toHaveBeenCalled();
+  });
+});
+
+// ─── FLYWHEEL-02: predicted-signature pin wiring ──────────────────────────────
+
+const calibratedAudience = {
+  id: "aud-calibrated",
+  user_id: "user-1",
+  name: "Skincare Buyers",
+  type: "target",
+  platform: "instagram",
+  goal_label: "Drive sales",
+  goal_intent: "sell",
+  is_general: false,
+  is_preset: false,
+  persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
+  personas: [],
+  profile: null,
+  calibration: null,
+  created_at: "2026-06-19T00:00:00Z",
+  updated_at: "2026-06-19T00:00:00Z",
+} as never;
+
+const generalAudience = { ...(calibratedAudience as object), id: "general", is_general: true, personas: [] } as never;
+
+describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+  });
+
+  it("pins the adapted hook's personas with the run's audience_id + analysis_id", async () => {
+    setupHappyPath();
+    const adaptedHookPersonas = makeStrongPersonas();
+    mockRunFlashTextMode.mockResolvedValue({
+      result: { personas: adaptedHookPersonas },
+      warnings: [],
+    });
+
+    const supabase = {} as never;
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+      audience: calibratedAudience,
+      pin: { supabase, analysisId: "an-1" },
+    });
+
+    expect(mockPinPredictedSignature).toHaveBeenCalledTimes(1);
+    expect(mockPinPredictedSignature).toHaveBeenCalledWith(supabase, adaptedHookPersonas, {
+      audienceId: "aud-calibrated",
+      analysisId: "an-1",
+    });
+  });
+
+  it("pins audience_id null for a General audience", async () => {
+    setupHappyPath();
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+      audience: generalAudience,
+      pin: { supabase: {} as never, analysisId: null },
+    });
+
+    expect(mockPinPredictedSignature).toHaveBeenCalledTimes(1);
+    expect(mockPinPredictedSignature.mock.calls[0][2]).toEqual({
+      audienceId: null,
+      analysisId: null,
+    });
+  });
+
+  it("does NOT pin when no pin context is passed", async () => {
+    setupHappyPath();
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+    });
+
+    expect(mockPinPredictedSignature).not.toHaveBeenCalled();
   });
 });
