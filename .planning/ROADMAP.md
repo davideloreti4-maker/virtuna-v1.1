@@ -353,7 +353,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** 4/7 plans executed
+**Plans:** 5/7 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -367,7 +367,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 10-05-PLAN.md — Account Read: pattern extraction + thin gate + account-read typed block (reuses reading/) + SSE route [SELF-01/02/03]
+- [x] 10-05-PLAN.md — Account Read: pattern extraction + thin gate + account-read typed block (reuses reading/) + SSE route [SELF-01/02/03]
 - [ ] 10-06-PLAN.md — Recalibration loop: confidence-gated propose→confirm override + one nudge (outcome+drift) + drift cron (folded in) [FLYWHEEL-04/05/06]
 
 **Wave 4** *(blocked on Wave 3; BLOCKING push + gate)*

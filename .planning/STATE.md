@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
-last_updated: "2026-06-19T14:51:11.623Z"
+stopped_at: Completed 10-05-PLAN.md
+last_updated: "2026-06-19T15:01:35.653Z"
 last_activity: 2026-06-19 -- Phase 10 Plan 02 complete
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 50
-  completed_plans: 48
+  completed_plans: 49
   percent: 90
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Plan 02 complete — flywheel + shelf persistence rails landed (migrations written, push deferred to Plan 07)
 Last activity: 2026-06-19 -- Phase 10 Plan 02 complete
 
@@ -142,6 +142,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: 08-05: multi-audience-read block (the Read) ships single-audience static card — bands only (.strict() rejects numeric score), who-not-for from low-disposition personas (no model call), audiences array W4-ready for 08-06
 - [Phase ?]: 10-03: predicted vector pinned once at SIM run (pinPredictedSignature), never recomputed (Pitfall 6); outcome capture reconciles realized only against the pin
 - [Phase ?]: Plan 10-04: Saved shelf flat/typed (D-07); remix output saves as item_type 'hook'; shelf items launch via CHAIN_HANDOFFS SSOT
+- [Phase ?]: 10-05: Account Read own-handle resolved from personal audience calibration.handle (T-10-12 ownership, no new OAuth); fix from CRAFT-disposition reconciliations only (D-03); track record withheld below 3 rows (SELF-03)
 
 ### Roadmap Evolution
 
@@ -166,10 +167,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T14:51:03.843Z
-Stopped at: Phase 10 Plan 02 complete (flywheel + shelf persistence rails)
+Last session: 2026-06-19T15:01:35.645Z
+Stopped at: Completed 10-05-PLAN.md
 Next: Phase 10 Plan 03 (outcome capture — wires outcome-repo + scrapeSinglePostMetrics)
-Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel-draft-not-ye/10-03-PLAN.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -216,3 +217,4 @@ Resume file: .planning/phases/10-account-read-saved-shelf-recalibration-flywheel
 | Phase 10 P02 | 25min | 3 tasks (1 checkpoint) | 10 files |
 | Phase 10 P03 | 22 | 3 tasks | 6 files |
 | Phase 10 P04 | 25min | 3 tasks | 12 files |
+| Phase 10 P05 | 6 | 3 tasks | 7 files |

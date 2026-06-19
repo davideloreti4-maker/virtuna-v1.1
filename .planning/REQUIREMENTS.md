@@ -91,9 +91,9 @@ reuses its typed-block renderers.
 
 > "A Read on your own account" — the companion to Discover's "know thy competitor." Reuses Apify personal-scrape + the fixed `reading/` renderers. See `phases/10-.../10-CONTEXT.md` D-08.
 
-- [ ] **SELF-01**: Account Read generation — from the creator's own Apify personal-scrape + analysis/history, generate a standing "Read on your own account" surfacing recurring hook/format patterns, drop-points, and what's-working-vs-what-to-fix. Reuses Apify scrape — **not** new Connectors/OAuth.
-- [ ] **SELF-02**: Account Read render + savable — a thread card reusing the **fixed** `reading/` components (an Act whose output is State, savable to the shelf); honest thin-history fallback when own history is empty/thin (**never fabricate**).
-- [ ] **SELF-03**: Accuracy track record — a trust-building "within X% on your last N" stat sourced from accumulated reconciliations; honest empty state ("not enough posted outcomes yet") when the track record is empty.
+- [x] **SELF-01**: Account Read generation — from the creator's own Apify personal-scrape + analysis/history, generate a standing "Read on your own account" surfacing recurring hook/format patterns, drop-points, and what's-working-vs-what-to-fix. Reuses Apify scrape — **not** new Connectors/OAuth.
+- [x] **SELF-02**: Account Read render + savable — a thread card reusing the **fixed** `reading/` components (an Act whose output is State, savable to the shelf); honest thin-history fallback when own history is empty/thin (**never fabricate**).
+- [x] **SELF-03**: Accuracy track record — a trust-building "within X% on your last N" stat sourced from accumulated reconciliations; honest empty state ("not enough posted outcomes yet") when the track record is empty.
 
 ### SAVE — Saved shelf (lean, flat, P10)
 
