@@ -26,7 +26,7 @@
  * for the worst cluster + the Rewrite CTA + the inherited Read lever ONLY.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { HeatmapPayload, PersonaSimulationResult } from '@/lib/engine/types';
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import {
@@ -43,6 +43,7 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
 import { ReplayController } from './ReplayController';
+import { PopulationSwarm } from './PopulationSwarm';
 import { ClusterView } from './ClusterView';
 import { cascadeOrder } from './lens-derive';
 import { useLensScale, type LensScale } from './use-lens-scale';
@@ -112,8 +113,6 @@ const SCALE_OPTIONS: ReadonlyArray<{ value: LensScale; label: string }> = [
   { value: 'population', label: 'Population · 1,000' },
 ] as const;
 
-/** Population honesty label — always visible under the swarm (UI-SPEC copy, verbatim). */
-const POPULATION_HONESTY = '1,000 viewers instantiated from your 10 calibrated archetypes.';
 const EMPTY_HEADING = 'No audience reaction yet.';
 const EMPTY_BODY = 'Run this concept against your audience to see how the room reacts.';
 
@@ -263,8 +262,10 @@ export function AudienceLens({
             ) : (
               <EmptyReaction />
             )
+          ) : hasReaction ? (
+            <PopulationRegion nodes={nodes} reducedMotion={reducedMotion} />
           ) : (
-            <PopulationSlot honesty={POPULATION_HONESTY} />
+            <EmptyReaction />
           )}
         </div>
 
@@ -401,19 +402,64 @@ function ScaleToggle({
   );
 }
 
-/** Reserved Population·1,000 slot — W4 fills this with the deterministic swarm
- *  (consumes `instantiatePopulation` + `weightedRollup` from lens-derive). The
- *  honesty label is already wired so it ships the moment the swarm lands. */
-function PopulationSlot({ honesty }: { honesty: string }) {
+/**
+ * Population·1,000 region — fills the scale toggle's Population side with the
+ * deterministic `PopulationSwarm` fed the SAME `nodes` Panel uses (one source — D-02
+ * honesty). Switching Panel⇄Population is pure presentation: no refetch, no re-score
+ * (Population never touches the scoring path).
+ *
+ * Cascade-on-play: ONE batched motion timeline (Pitfall 2) — a single `progress`
+ * fraction advances 0→1 on a calm tick; `PopulationSwarm` dims dots whose rank exceeds
+ * it via a single batched opacity decision (NOT 1,000 SMIL elements). Gated on
+ * `reducedMotion`: when reduced we render the static swarm + its always-present sr-only
+ * mirror and expose no auto-advancing motion.
+ */
+function PopulationRegion({
+  nodes,
+  reducedMotion,
+}: {
+  nodes: PersonaNode[];
+  reducedMotion: boolean;
+}) {
+  // null = static (all dots present, pre-Play). A number 0..1 = cascade in progress.
+  const [progress, setProgress] = useState<number | null>(null);
+  const cascadeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const cascading = progress !== null;
+
+  // Advance the single batched cascade timeline. Reduced motion never auto-advances
+  // (the static swarm + sr-only mirror cover that path). The tick terminates by
+  // settling to null (all dots present) once progress passes 1.
+  useEffect(() => {
+    if (progress === null || reducedMotion) return;
+    cascadeTimer.current = setInterval(() => {
+      setProgress((p) => {
+        if (p === null) return null;
+        const next = p + 0.06;
+        return next >= 1 ? null : next;
+      });
+    }, 40);
+    return () => {
+      if (cascadeTimer.current) clearInterval(cascadeTimer.current);
+    };
+  }, [progress, reducedMotion]);
+
   return (
-    <div className="flex flex-col gap-2">
-      <div
-        data-testid="population-slot"
-        className="flex h-[200px] items-center justify-center rounded-[8px] border border-dashed border-[var(--color-border)] bg-surface/40 text-[13px] text-foreground-muted"
-      >
-        Population swarm
-      </div>
-      <p className="text-[11px] text-[var(--color-cream-muted)]">{honesty}</p>
+    <div className="flex flex-col gap-3">
+      <PopulationSwarm
+        nodes={nodes}
+        reducedMotion={reducedMotion}
+        cascadeProgress={progress ?? undefined}
+      />
+      {!reducedMotion && (
+        <button
+          type="button"
+          onClick={() => setProgress(0)}
+          disabled={cascading}
+          className="self-start rounded-[8px] border border-[var(--color-border)] bg-surface px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-[var(--color-hover)] disabled:opacity-50"
+        >
+          {cascading ? 'Reading the room…' : 'Play'}
+        </button>
+      )}
     </div>
   );
 }
