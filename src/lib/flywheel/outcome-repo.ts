@@ -5,9 +5,6 @@
  *  - SupabaseClient param, row↔domain mappers, zod-validated insert shape.
  *  - user_id ALWAYS derived from the session (CR-01) — NEVER from caller input.
  *
- * Cast convention: `(supabase as any).from('outcome_signatures')` until
- * database.types.ts is regenerated after the migration push in Plan 07
- * (STATE 07-02 interim pattern). TODO(10-07): remove cast after types regen.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -102,7 +99,7 @@ export async function insertOutcomeSignature(
   const payload = { ...parsed.data, user_id: user.id };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("outcome_signatures")
     .insert(payload)
     .select("*")
@@ -129,7 +126,7 @@ export async function findPinnedPrediction(
   opts: { analysisId?: string | null; audienceId?: string | null },
 ): Promise<OutcomeSignature | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any) // TODO(10-07): remove cast after types regen
+  let query = supabase
     .from("outcome_signatures")
     .select("*")
     .is("realized_vector", null)
@@ -170,7 +167,7 @@ export async function updateOutcomeRealized(
   },
 ): Promise<OutcomeSignature> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("outcome_signatures")
     .update({
       realized_vector: patch.realized_vector,
@@ -200,7 +197,7 @@ export async function listOutcomeSignatures(
   audienceId: string,
 ): Promise<OutcomeSignature[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("outcome_signatures")
     .select("*")
     .eq("audience_id", audienceId)

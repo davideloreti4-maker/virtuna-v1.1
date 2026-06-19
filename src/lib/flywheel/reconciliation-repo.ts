@@ -8,9 +8,6 @@
  *
  * Rails only — the cross-creator prior-fitting job is NOT built here (RESEARCH §8).
  *
- * Cast convention: `(supabase as any).from('reconciliations')` until
- * database.types.ts is regenerated after the Plan 07 push.
- * TODO(10-07): remove cast after types regen.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -101,7 +98,7 @@ export async function insertReconciliation(
   const payload = { ...parsed.data, user_id: user.id };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("reconciliations")
     .insert(payload)
     .select("*")
@@ -123,7 +120,7 @@ export async function listReconciliations(
   audienceId: string,
 ): Promise<Reconciliation[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("reconciliations")
     .select("*")
     .eq("audience_id", audienceId)
@@ -150,7 +147,7 @@ export async function updateProposalState(
   if (confirmedAt !== undefined) patch.confirmed_at = confirmedAt;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("reconciliations")
     .update(patch)
     .eq("id", id)

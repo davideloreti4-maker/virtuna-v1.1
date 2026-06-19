@@ -7,9 +7,6 @@
  *
  * FLAT by construction (D-07): no folder_id, no tags. P12 EXTENDS, never reworks.
  *
- * Cast convention: `(supabase as any).from('saved_items')` until
- * database.types.ts is regenerated after the Plan 07 push.
- * TODO(10-07): remove cast after types regen.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -67,7 +64,7 @@ export async function listSavedItems(
   type?: SavedItemType,
 ): Promise<SavedItem[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let query = (supabase as any) // TODO(10-07): remove cast after types regen
+  let query = supabase
     .from("saved_items")
     .select("*")
     .order("created_at", { ascending: false });
@@ -106,7 +103,7 @@ export async function createSavedItem(
   const payload = { ...parsed.data, user_id: user.id };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { data, error } = await supabase
     .from("saved_items")
     .insert(payload)
     .select("*")
@@ -127,7 +124,7 @@ export async function deleteSavedItem(
   id: string,
 ): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+  const { error } = await supabase
     .from("saved_items")
     .delete()
     .eq("id", id);

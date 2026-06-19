@@ -810,7 +810,6 @@ export type Database = {
           updated_at: string | null
           user_id: string
           youtube_handle: string | null
-          writing_voice_sample: string | null
           youtube_subscribers: number | null
         }
         Insert: {
@@ -849,7 +848,6 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           youtube_handle?: string | null
-          writing_voice_sample?: string | null
           youtube_subscribers?: number | null
         }
         Update: {
@@ -888,7 +886,6 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           youtube_handle?: string | null
-          writing_voice_sample?: string | null
           youtube_subscribers?: number | null
         }
         Relationships: []
@@ -1176,6 +1173,59 @@ export type Database = {
         }
         Relationships: []
       }
+      outcome_signatures: {
+        Row: {
+          analysis_id: string | null
+          audience_id: string | null
+          created_at: string
+          id: string
+          platform_post_url: string | null
+          posted_at: string | null
+          predicted_vector: Json
+          raw_metrics: Json | null
+          realized_provenance: Json | null
+          realized_vector: Json | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          audience_id?: string | null
+          created_at?: string
+          id?: string
+          platform_post_url?: string | null
+          posted_at?: string | null
+          predicted_vector: Json
+          raw_metrics?: Json | null
+          realized_provenance?: Json | null
+          realized_vector?: Json | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          audience_id?: string | null
+          created_at?: string
+          id?: string
+          platform_post_url?: string | null
+          posted_at?: string | null
+          predicted_vector?: Json
+          raw_metrics?: Json | null
+          realized_provenance?: Json | null
+          realized_vector?: Json | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outcome_signatures_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outcomes: {
         Row: {
           analysis_id: string
@@ -1255,6 +1305,75 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reconciliations: {
+        Row: {
+          audience_id: string | null
+          classification: Json
+          confirmed_at: string | null
+          created_at: string
+          divergence_vector: Json
+          follower_tier: string | null
+          goal_intent: string | null
+          id: string
+          niche: string | null
+          outcome_signature_id: string | null
+          predicted_vector: Json
+          proposal_state: string
+          proposed_delta: Json | null
+          realized_vector: Json
+          user_id: string
+        }
+        Insert: {
+          audience_id?: string | null
+          classification: Json
+          confirmed_at?: string | null
+          created_at?: string
+          divergence_vector: Json
+          follower_tier?: string | null
+          goal_intent?: string | null
+          id?: string
+          niche?: string | null
+          outcome_signature_id?: string | null
+          predicted_vector: Json
+          proposal_state?: string
+          proposed_delta?: Json | null
+          realized_vector: Json
+          user_id: string
+        }
+        Update: {
+          audience_id?: string | null
+          classification?: Json
+          confirmed_at?: string | null
+          created_at?: string
+          divergence_vector?: Json
+          follower_tier?: string | null
+          goal_intent?: string | null
+          id?: string
+          niche?: string | null
+          outcome_signature_id?: string | null
+          predicted_vector?: Json
+          proposal_state?: string
+          proposed_delta?: Json | null
+          realized_vector?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliations_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliations_outcome_signature_id_fkey"
+            columns: ["outcome_signature_id"]
+            isOneToOne: false
+            referencedRelation: "outcome_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_clicks: {
         Row: {
@@ -1418,6 +1537,47 @@ export type Database = {
           weight?: number
         }
         Relationships: []
+      }
+      saved_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          ref_id: string | null
+          snapshot: Json
+          thread_id: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          ref_id?: string | null
+          snapshot: Json
+          thread_id?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          ref_id?: string | null
+          snapshot?: Json
+          thread_id?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_items_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scraped_videos: {
         Row: {
@@ -2240,4 +2400,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-
