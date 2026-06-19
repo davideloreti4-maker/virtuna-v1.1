@@ -107,7 +107,7 @@ reuses its typed-block renderers.
 > The per-creator learning loop that error-corrects the Audience object against real post outcomes: predict → post → measure → reconcile → correct → compound. FULLY SPECIFIED in D-02..D-06. Must preserve determinism + the regression gate + human-in-the-loop (no silent scoring mutation).
 
 - [x] **FLYWHEEL-01**: Outcome capture — paste posted URL → Apify scrapes public metrics + optional creator-supplied private signals (saves / retention / link-clicks); honest public-vs-creator-supplied (D-04).
-- [x] **FLYWHEEL-02**: Predicted vs realized SIGNATURES — pin the SIM-predicted engagement signature (6-disposition vector) at run; map the real outcome onto the same dispositions. Compare **signatures, not score-vs-views** (D-02).
+- [x] **FLYWHEEL-02**: Predicted vs realized SIGNATURES — pin the SIM-predicted engagement signature (6-disposition vector) at run; map the real outcome onto the same dispositions. Compare **signatures, not score-vs-views** (D-02). **Pin now WIRED** (2026-06-19, commit `7ae00c2f`): ideas/hooks/script/remix runners call `pinPredictedSignature` post-SIM (was dormant — fn existed but no caller); the paste-URL → reconcile loop fires end-to-end.
 - [x] **FLYWHEEL-03**: Calibration-vs-craft reconciliation — a deterministic reconcile classifies divergence as **calibration-error** (audience MIX → Audience object) vs **craft-error** (content under/over-delivered → creator as Account-Read guidance, **never** mutates the model) (D-03).
 - [x] **FLYWHEEL-04**: Confidence-gated recalibration — propose a PersonaWeights recalibration only after ≥N consistent posts → honest PROPOSE nudge → **creator confirms** → write through P7's `analysis_override` slot. No single-post mutation, no silent auto-recalibration; `ENGINE_VERSION` untouched; General-audience baseline unchanged (regression anchor) (D-05).
 - [x] **FLYWHEEL-05**: Reconciliation logging (cross-creator SEED) — log structured reconciliation data so aggregated, privacy-safe patterns can later sharpen base persona priors; the prior-fitting mechanism is **deferred** (lay rails, don't fake) (D-06).
@@ -183,7 +183,7 @@ reuses its typed-block renderers.
 
 ### Cross-cutting & infra debt (surfaced from transcript + memory sweep 2026-06-19 — owner-raised, not yet placed in a feature phase)
 
-- [x] **UX-01 (NEAR-TERM, before P11)**: Composer / skill-selector redesign — **DIRECTION LOCKED** via sketch `006-composer-skill-selector` (winner: **Variant 1 — Minimal · context surfaced**). Locked decisions to spec into the composer phase:
+- [x] **UX-01 (NEAR-TERM, before P11)**: Composer / skill-selector redesign — **BUILT** (2026-06-19, commit `feb55e43`) in the real app — not just sketched. `composer-controls.tsx` (skill pill + grouped Creator/Marketing popover, audience + intent icon-only, read-only ModelTag, `/` slash entry) replaces `tool-chips.tsx`; verified desktop + 390px. **DIRECTION LOCKED** via sketch `006-composer-skill-selector` (winner: **Variant 1 — Minimal · context surfaced**). Locked decisions, now shipped:
   - **Flat-warm THEME-06** (warm charcoal, cream, terracotta serif stele — no glass); premium **line-icon SVGs**, no emoji.
   - **One accented control** = the **skill pill** (grouped **Creator / Marketing**, `MAX` badge where the video model fires); audience + intent sit beside it as **icon-only borderless** controls; `+` opens upload/attach (the SIM-1 Max **Test** path).
   - **Model is READ-ONLY** — the skill decides Flash vs Max, shown as an indicator (no selector, no "auto" label).
