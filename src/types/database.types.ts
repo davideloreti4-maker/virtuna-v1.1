@@ -810,6 +810,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           youtube_handle: string | null
+          writing_voice_sample: string | null
           youtube_subscribers: number | null
         }
         Insert: {
@@ -848,6 +849,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           youtube_handle?: string | null
+          writing_voice_sample?: string | null
           youtube_subscribers?: number | null
         }
         Update: {
@@ -886,6 +888,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           youtube_handle?: string | null
+          writing_voice_sample?: string | null
           youtube_subscribers?: number | null
         }
         Relationships: []
