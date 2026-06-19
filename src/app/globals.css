@@ -301,6 +301,19 @@
   }
 }
 
+/* Composer popover (UX-01): a quick upward fade-scale from the trigger's bottom-left.
+ * Calm + short (.14s) per the flat-warm taste bar — no bounce, no glow. */
+@keyframes composer-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */

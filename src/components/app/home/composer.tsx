@@ -36,7 +36,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Plus, ArrowUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,9 +44,16 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
-import { ToolChips, type ToolId } from "./tool-chips";
-import { PlatformChip, type Platform } from "./platform-chip";
-import { AudienceChip } from "./audience-chip";
+import {
+  ComposerControls,
+  ModelTag,
+  SkillRows,
+  SKILLS,
+  type ToolId,
+  type Intent,
+} from "./composer-controls";
+import type { Platform } from "./platform-chip";
+import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
 import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
 import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
 import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
@@ -80,7 +87,17 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   chat: "Ask anything…",
   script: "Carry a hook in, or type a topic to script…",
   remix: "Paste a trending or competitor TikTok URL to remix…",
+  // Not-yet-shipped skills (P11/P16) — render as disabled rows in the selector,
+  // so these placeholders are never actually reached (kept for the Record contract).
+  explore: "Explore what's working for your audience…",
+  offer: "Describe a product, price, or positioning to validate…",
+  ad: "Paste an ad concept to pre-flight, ROAS-framed…",
 };
+
+// Map an audience's platform to the composer Platform union (custom → tiktok).
+function audienceToPlatform(p?: AudiencePlatform | null): Platform {
+  return p === "instagram" || p === "youtube" ? p : "tiktok";
+}
 
 export interface ComposerProps {
   className?: string;
@@ -107,10 +124,19 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
   const [activeTool, setActiveTool] = useState<ToolId>("test");
 
-  // ── Platform chip state (D-07) ─────────────────────────────────────────────
-  // Default: "tiktok". The user can change per send via the chip.
-  // Sent as the first-class platform param to the Ideas route.
-  const [platform, setPlatform] = useState<Platform>("tiktok");
+  // ── Audience + intent state (UX-01) ────────────────────────────────────────
+  // Audience is the shared substrate across skills (the moat). Platform is no
+  // longer a separate control — it is DERIVED from the selected audience
+  // (each audience carries its platform); General → tiktok default (D-07).
+  // Intent (grow ⇄ sell) is surfaced per the locked composer; it is local UI
+  // state for now — the commerce track wires it into scoring later.
+  const [audiences, setAudiences] = useState<Audience[]>([]);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
+  const [intent, setIntent] = useState<Intent>("grow");
+
+  const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
+  // Sent as the first-class platform param to the skill routes (derived, not picked).
+  const platform: Platform = audienceToPlatform(selectedAudience?.platform);
 
   // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
   // Captured on mount from GET /api/threads/open (returns threadId).
@@ -279,6 +305,42 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // empty dep set — run once on mount
+
+  // ── Audience list fetch (UX-01 — lifted from AudienceChip) ─────────────────
+  // Populates the audience popover. Silent on 401 (not logged in yet).
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAudiences() {
+      try {
+        const res = await fetch("/api/audiences");
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { audiences?: Audience[] };
+        if (!cancelled) setAudiences(data.audiences ?? []);
+      } catch {
+        // silent — popover renders the empty state
+      }
+    }
+    void fetchAudiences();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Audience select (UX-01 — per-thread pin, D-04) ─────────────────────────
+  // null = General (sentinel). Persists to the open thread when one exists.
+  // Non-fatal: the pill reflects optimistic state even if the PATCH fails.
+  const handleSelectAudience = useCallback(async (audience: Audience) => {
+    const newId = audience.is_general ? null : audience.id;
+    setSelectedAudienceId(newId);
+    if (!openThreadId) return;
+    try {
+      await fetch(`/api/threads/${openThreadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active_audience_id: newId }),
+      });
+    } catch {
+      // non-fatal — chip reflects optimistic state
+    }
+  }, [openThreadId]);
 
   // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
   // Invoked by HookCardRenderer via HookTestContext when the creator clicks
@@ -577,21 +639,56 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     void handleSubmit();
   };
 
+  // ── `/` slash entry (UX-01) ────────────────────────────────────────────────
+  // Typing `/` in the field opens the skill list as a command menu, filterable;
+  // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
+  // this never collides with the Test/Remix URL paths.
+  const slashActive = url.startsWith("/");
+  const slashQuery = slashActive ? url.slice(1) : "";
+  const firstSlashSkill = () => {
+    const q = slashQuery.trim().toLowerCase();
+    return (
+      SKILLS.find(
+        (s) =>
+          s.enabled &&
+          (!q || s.label.toLowerCase().includes(q) || s.command.includes(q)),
+      ) ?? null
+    );
+  };
+  const selectSkill = (id: ToolId) => {
+    setActiveTool(id);
+    setUrl(""); // clear the `/query` after selection
+  };
+
+  const onFieldKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashActive) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const s = firstSlashSkill();
+        if (s) selectSkill(s.id);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setUrl("");
+        return;
+      }
+      // While the slash menu is open, Enter/Escape are handled above; other keys
+      // keep filtering. Don't fall through to submit-on-Enter.
+      return;
+    }
+    // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      if (canSubmit) void handleSubmit();
+    }
+  };
+
   // Placeholder follows the active chip; in the pinned state the follow-up copy
   // takes precedence so it's contextually accurate (D-07 / D-24).
   const activePlaceholder = hasSimulation
     ? PLACEHOLDER_ACTIVE
     : PLACEHOLDER_BY_TOOL[activeTool];
-
-  // Show the platform chip when Idea, Hooks, Chat, Script, or Remix tool is active (D-07)
-  // Script: platform-relevant (SIM runs on platform persona set).
-  // Remix: include for consistency (URL's platform is the decode target).
-  const showPlatformChip =
-    activeTool === "idea" ||
-    activeTool === "hooks" ||
-    activeTool === "chat" ||
-    activeTool === "script" ||
-    activeTool === "remix";
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. This only activates when hasThread is true,
@@ -716,39 +813,30 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     >
         <div
           className={cn(
-            "rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
+            "relative rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
             // Whisper float ONLY when centered (D-05) — pinned rests on the column.
             layout === "centered" && "shadow-float",
             !reducedMotion && "transition-shadow duration-200",
           )}
         >
-          {/* Tool chip row (D-07/D-08/D-09) — sits above the input row.
-              onSelect updates activeTool; it is NEVER a submit and MUST NOT arm
-              pendingNavRef.current (Pitfall #5 / WR-05). */}
-          <div className="mb-2.5 flex items-center gap-2 flex-wrap">
-            <ToolChips
-              activeTool={activeTool}
-              onSelect={setActiveTool}
-            />
-            {/* Platform chip — only visible when Idea tool is active (D-07) */}
-            {showPlatformChip && (
-              <PlatformChip
-                value={platform}
-                onChange={setPlatform}
-                className="ml-1"
-              />
-            )}
-            {/* Audience chip — per-thread pin (07-05 / D-04).
-                Present under the same showPlatformChip gating set.
-                Single collapsed pill: "for {platform} · {name}".
-                General = neutral; calibrated = coral (moat signal). */}
-            {showPlatformChip && (
-              <AudienceChip
-                threadId={openThreadId}
-                className="ml-1"
-              />
-            )}
-          </div>
+          {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
+              the field value starts with `/`. Filterable; selecting sets the skill
+              and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
+          {slashActive && (
+            <div
+              role="menu"
+              aria-label="Skills"
+              className={cn(
+                "absolute bottom-[calc(100%+10px)] left-3 z-50",
+                "w-[320px] max-w-[calc(100%-1.5rem)] max-h-[60vh] overflow-y-auto",
+                "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
+                "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+                "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
+              )}
+            >
+              <SkillRows active={activeTool} filter={slashQuery} onSelect={selectSkill} />
+            </div>
+          )}
 
           {/* Test brief banner (Task 2 — D-05/D-06 handoff).
               Shown when "Test full →" was clicked on a hook card; surfaces the
@@ -799,57 +887,58 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
             <VideoUpload bare file={file} onFileSelect={setFile} />
           </div>
 
-          <div className="flex items-end gap-2">
-            {/* + upload toggle (D-22). ≥44px hit area on touch.
-                Hidden when Idea, Hooks, or Chat tool is active (upload not applicable). */}
-            {activeTool !== "idea" && activeTool !== "hooks" && activeTool !== "chat" && activeTool !== "script" && activeTool !== "remix" && (
-              <button
-                type="button"
-                aria-label="Upload a video"
-                aria-expanded={showUpload}
-                onClick={() => setShowUpload((v) => !v)}
-                className={cn(
-                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                  "text-foreground-muted transition-colors hover:bg-white/[0.05] hover:text-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                  "pointer-coarse:h-11 pointer-coarse:w-11",
-                  showUpload && "bg-white/[0.06] text-foreground",
-                )}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+          {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
+              Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
+              tools it carries a URL; a `/` opens the skill command menu (above). */}
+          <textarea
+            rows={1}
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={onFieldKeyDown}
+            placeholder={activePlaceholder}
+            aria-label={
+              activeTool === "idea"
+                ? "Idea topic or angle (leave empty for Auto)"
+                : activeTool === "hooks"
+                  ? "Hook topic (leave empty for Auto)"
+                  : activeTool === "chat"
+                    ? "Ask anything about your content"
+                    : activeTool === "script"
+                      ? "Script topic or leave empty to carry in a hook"
+                      : activeTool === "remix"
+                        ? "Paste a TikTok URL to decode and remix"
+                        : hasSimulation
+                          ? "Ask about this simulation"
+                          : "Paste a TikTok link"
+            }
+            aria-invalid={showUrlError || undefined}
+            className={cn(
+              "w-full resize-none bg-transparent px-1 pt-1 text-base text-foreground",
+              "placeholder:text-foreground-muted focus:outline-none",
+              "min-h-[44px] max-h-[150px] leading-[1.55]",
             )}
+          />
 
-            {/* URL / free-text input.
-                For the Idea tool: free text (topic/angle or empty for Auto).
-                For the Test tool: TikTok URL or upload path. Coral only on focus ring. */}
-            <input
-              type="text"
-              inputMode={activeTool === "idea" || activeTool === "hooks" || activeTool === "chat" || activeTool === "script" ? "text" : "url"}
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder={activePlaceholder}
-              aria-label={
-                activeTool === "idea"
-                  ? "Idea topic or angle (leave empty for Auto)"
-                  : activeTool === "hooks"
-                    ? "Hook topic (leave empty for Auto)"
-                    : activeTool === "chat"
-                      ? "Ask anything about your content"
-                      : activeTool === "script"
-                        ? "Script topic or leave empty to carry in a hook"
-                        : activeTool === "remix"
-                          ? "Paste a TikTok URL to decode and remix"
-                          : hasSimulation
-                            ? "Ask about this simulation"
-                            : "Paste a TikTok link"
-              }
-              aria-invalid={showUrlError || undefined}
-              className={cn(
-                "min-w-0 flex-1 bg-transparent px-1 py-2 text-base text-foreground",
-                "placeholder:text-foreground-muted focus:outline-none",
-              )}
+          {/* Control row (UX-01): [+] [skill ▾] [audience] [intent] ··· [model] [↑].
+              ComposerControls owns the left cluster + every popover; the model is a
+              read-only indicator (the skill decides it); send is the lone coral
+              affordance. Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
+          <div className="mt-3 flex items-center gap-1.5">
+            <ComposerControls
+              activeTool={activeTool}
+              onSelectTool={setActiveTool}
+              audiences={audiences}
+              selectedAudienceId={selectedAudienceId}
+              onSelectAudience={(a) => void handleSelectAudience(a)}
+              intent={intent}
+              onIntentChange={setIntent}
+              onUploadClick={() => setShowUpload(true)}
             />
+
+            <div className="flex-1" />
+
+            {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
+            <ModelTag activeTool={activeTool} />
 
             {/* Submit — the lone coral affordance besides the focus ring. */}
             <Button
