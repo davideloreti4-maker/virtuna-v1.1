@@ -20,14 +20,21 @@
  *    error) — NEVER coral. Coral is reserved for the Lever + the `.read`
  *    interpretation highlight ONLY.
  *
- * Array shape (D-09): the block carries an `audiences` array. This plan emits a
- * single entry; the renderer already maps over the array so Plan 08-06's 2-audience
- * compare is additive, not a rewrite.
+ * Array shape (D-09): the block carries an `audiences` array. Plan 08-05 emitted a
+ * single entry; Plan 08-06 (W4) emits 2 — the active calibrated audience vs General.
+ *
+ * 2-AUDIENCE COMPARE (Plan 08-06, W4 / D-08/D-09): when the payload has 2 entries the
+ * renderer shows the two verdict lines SIDE BY SIDE (Growth: Strong · Buyers: Weak),
+ * each one's DELTA interpretation + Lever coral panel, per-audience collapsible persona
+ * drills, and a verbatim focus-group quote wall (VerbatimWall) over the already-emitted
+ * quotes. The 1-entry single-audience path (Plan 05) is preserved unchanged — the
+ * 2-entry path is purely additive. STATIC CARD ONLY (no live cloud — P9 boundary).
  */
 
 import { useState } from 'react';
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
+import { VerbatimWall } from './verbatim-wall';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -161,14 +168,53 @@ function AudienceRead({
   );
 }
 
+/**
+ * Compact side-by-side verdict header for the 2-audience compare (D-08).
+ * One line per audience — "{Audience}: {band} {fraction}" — band colored by
+ * BAND_COLOR (never coral), separated by a thin divider. This is the at-a-glance
+ * "wins for X, bombs for Y" row that sits ABOVE the per-audience Read panels.
+ */
+function CompareVerdictRow({
+  audiences,
+}: {
+  audiences: MultiAudienceReadBlock['props']['audiences'];
+}) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[15px]">
+      {audiences.map((a, i) => (
+        <span key={`${a.name}-${i}`} className="flex items-baseline gap-2">
+          {i > 0 && <span className="mr-1 text-muted/40" aria-hidden="true">·</span>}
+          <span className="font-semibold text-foreground">{a.name}:</span>
+          <span className="font-semibold" style={{ color: BAND_COLOR[a.band] }}>
+            {a.band}
+          </span>
+          <span className="text-sm text-muted">{a.fraction}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlockProps) {
   const { audiences } = block.props;
+  const isCompare = audiences.length > 1;
 
   return (
     <div className="flex flex-col gap-5">
+      {/* 2-audience compare: the side-by-side verdict header (D-08, wins-for-X/bombs-for-Y). */}
+      {isCompare && <CompareVerdictRow audiences={audiences} />}
+
+      {/* Per-audience Read — full panel + Lever + who-not-for + persona drill. The
+          AudienceRead block works for both the 1-entry (Plan 05) and 2-entry paths. */}
       {audiences.map((audience, i) => (
         <AudienceRead key={`${audience.name}-${i}`} audience={audience} />
       ))}
+
+      {/* Verbatim focus-group quote wall (D-11) — presentation over already-emitted
+          quotes, NO new model call. Grouped by stop/scroll, audience-tagged, sharpest
+          pulled as a lead. Renders for both single- and multi-audience payloads. */}
+      <VerbatimWall audiences={audiences} />
+
       {/* Provenance — SIM-1 Flash. No 0-100 number anywhere (honesty spine). */}
       <p className="text-xs text-muted/60">SIM-1 Flash</p>
     </div>
