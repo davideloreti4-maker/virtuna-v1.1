@@ -32,6 +32,8 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 
 > **Phases 8–10 drafted (2026-06-18) — NOT yet discussed.** Competitor audit (Blort, Sandcastles) + MVP-value discussion produced three new phases that extend the moat from "generate + test" into "discover + remix + interrogate + self-optimize." Sequenced *after* Phase 7 (they consume the calibrated Audience object). Details below are a draft shape for a future `/gsd-discuss-phase` pass; requirement IDs are provisional. Source decisions captured in memory `phase8-discover-remix-roadmap.md` (+ `numen-tools-vision.md`).
 
+> **Commerce / Marketing Intent track drafted (2026-06-19) — UNNUMBERED, NOT yet discussed.** Discussion on expanding Numen from B2C creators to anyone who profits from content (sellers, brands, affiliates, e-com, TikTok Shop). Sequenced *after* the Sandcastles track (provisional Phases 11–13). **Not numbered** to avoid churn — gets real numbers once P10 + Sandcastles firm up. Two future phases captured under "Future Track: Commerce / Marketing Intent" below. Source decision: keep one universal product (audience = mode-switch via per-run **intent**), do NOT fork a parallel marketing app. Depends on Phase 7 (the calibrated Audience object + `goal_intent` field, which already exists).
+
 ## Phase Details
 
 ### Phase 1: Engine & Thread Foundation
@@ -349,9 +351,70 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 (Phase 2 may be
 
 **Backlog adjacent (noted, not scoped here):** remix-your-own-winner (idea E — already on v6.1 backlog), generate→critique→regenerate quality loop (backlog lever #3 — the "improve-against-weakest-segment" loop), RAG over creator history.
 
-**Requirements:** provisional — SELF-* (account read), SAVE-* (saved shelf), FLYWHEEL-* (drift + outcome loop). To be formalized at discuss-phase.
+**Requirements:** SELF-01/02/03 (Account Read), SAVE-01/02 (Saved shelf), FLYWHEEL-01..06 (outcome loop + drift recalibration). *(Coined in CONTEXT/RESEARCH/UI-SPEC; not yet enumerated in REQUIREMENTS.md — reconcile before phase verify, same provisional pattern as P8.)*
 **Depends on:** Phase 7 (personal scrape + audience object); benefits from Phase 8 (saved outliers) + Phase 9 (interrogable Reads).
-**Plans:** TBD
+**Plans:** 7 plans, 4 waves *(PLANNED 2026-06-19)*
+
+**Wave 1** *(parallel — disjoint files)*
+
+- [ ] 10-01-PLAN.md — Flywheel math core: predicted/realized signatures + reconcile + confidence-gate + recalibration delta (pure, deterministic) [FLYWHEEL-02/03/04]
+- [ ] 10-02-PLAN.md — Schema rails: outcome_signatures + reconciliations + saved_items migrations + scrapeSinglePostMetrics + repos + Apify Wave-0 spike [FLYWHEEL-01/05, SAVE-01]
+
+**Wave 2** *(blocked on Wave 1; parallel — disjoint files)*
+
+- [ ] 10-03-PLAN.md — Outcome capture: pin predicted vector at SIM run + paste-URL signature SSE route + capture form [FLYWHEEL-01/02/03]
+- [ ] 10-04-PLAN.md — Saved shelf: typed /api/saved + flat (app)/saved surface + Save affordance + Use-in-thread via CHAIN_HANDOFFS + nav [SAVE-01/02]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 10-05-PLAN.md — Account Read: pattern extraction + thin gate + account-read typed block (reuses reading/) + SSE route [SELF-01/02/03]
+- [ ] 10-06-PLAN.md — Recalibration loop: confidence-gated propose→confirm override + one nudge (outcome+drift) + drift cron (folded in) [FLYWHEEL-04/05/06]
+
+**Wave 4** *(blocked on Wave 3; BLOCKING push + gate)*
+
+- [ ] 10-07-PLAN.md — BLOCKING: live schema push + types regen + cast removal + engine regression gate (ENGINE_VERSION unchanged, General unchanged) + E2E UAT [FLYWHEEL-01/04, SAVE-01]
+
 **UI hint:** yes
 
-**UI hint**: yes
+---
+
+## Future Track: Commerce / Marketing Intent *(UNNUMBERED — drafted 2026-06-19, NOT yet discussed)*
+
+**Strategic frame:** Expand Numen's TAM from B2C creators to *anyone who monetizes content* (digital-product sellers, brand/e-com owners, TikTok Shop sellers, affiliates) **without forking a parallel "marketing" app.** One universal product: same audience-you-own, same SIM-1 engine, same skills. The differentiator is a per-run **intent** — the audience is the mode-switch. Commerce users are arguably a *better* moat fit than creators: hard ground truth (sales/ROAS, not views) → higher WTP + a stronger training signal for the flywheel.
+
+**Sequenced after** the Sandcastles track (provisional Phases 11–13). Numbers assigned later.
+
+**Already scaffolded (de-risks the build):**
+- `audiences.goal_intent` enum already includes `"sell"` and is **plumbed**, not cosmetic (`goal-intent.ts` `GOAL_INTENT_BIAS`).
+- `audiences.type = "personal" | "target"` — `target` already models "a market I'm selling to" (not my own followers).
+- Every skill is audience-aware (loads active audience from thread context) → new commerce framing inherits with no plumbing.
+
+**Core design decision (locked in discussion):** Switching intent does **NOT** change population weights or engine mechanics. It changes (1) the per-persona **reaction frame** (what each persona evaluates: "would I buy this?" vs "would I watch this?"), (2) the **output "why" vocabulary** (purchase objection / price reaction / desire vs hook / watch-time / share), and (3) the **scoring objective**. Same person, different question. → Content/prompt-layer change, not an engine refactor.
+
+### Future Phase A: Marketing Intent (Mode-Switch)
+
+**Goal:** Make the *existing* skills (Test / Ideas / Hooks / Script) commerce-capable with no audience duplication — a per-run intent control in the composer (grow ⇄ sell, defaults from the audience's `goal_intent`, overridable) that conditions the persona reaction frame + a new buyer-reaction output block.
+
+**Draft scope:**
+- **Intent control** in the composer, sitting beside the skill chip + audience picker; defaults from the active audience's `goal_intent`, overridable per run (one audience, switch intent → test an idea then an ad, no clone).
+- **Intent-conditioned reaction frame** injected into the persona simulation (`runWave3` persona prompt for video; the text-skill runner path for Ideas/Hooks — *two injection points to confirm before planning*).
+- **Buyer-reaction output block** (`would_buy`, `objection`, `price_reaction`) alongside the existing persona/idea/hook cards.
+
+**De-risk before planning:** confirm exactly where intent plugs into BOTH the video sim (wave3) and the text-skill path — they differ. This is the only real technical unknown.
+**Depends on:** Phase 7 (Audience object + `goal_intent`).
+**Requirements:** provisional — INTENT-* (composer control + default/override), REACT-* (reaction-frame injection), BLOCK-* (buyer-reaction block).
+**UI hint:** yes
+
+### Future Phase B: Commerce Skills (Offer Validation + Ad Creative)
+
+**Goal:** Ship two net-new skills with no creator analog, both consuming Phase A's buyer-reaction frame. Follow the existing skill triad pattern (route + runner + view + block).
+
+**Draft scope:**
+- **Offer / Product Validation** — test the *proposition itself* (concept, price, positioning) against the buyer audience *before any content exists*: would-buy %, ranked objections, price sensitivity. The entry point for sellers who have a product but no content yet. (AS's "validate ideas before build," but on an audience you own + with the Read.)
+- **Ad Creative** — pre-flight ad creative against the buyer audience: stop-scroll + purchase intent + objection-surfaced, ROAS-framed. The spend-saver (test creative before burning ad budget). Likely rides the video/sim path; Offer Validation is text.
+
+**Depends on:** Future Phase A (buyer-reaction frame + intent infra).
+**Requirements:** provisional — OFFER-* (proposition validation), ADCREATIVE-* (creative pre-flight).
+**UI hint:** yes
+
+> **Competitive note:** the reference tool "Augmented Society" (flat format-picker: Survey / Ad / LinkedIn / TikTok Script / Product Proposition over canned "Societies") **shut down (access ends 15 Feb)** — breadth-of-format-wrappers without a calibrated audience-you-own, a generate→test chain, or a ground-truth loop didn't hold. Numen's edge: SIMs you build + the Read + the flywheel. Don't trade those for breadth.
