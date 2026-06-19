@@ -97,7 +97,6 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
  *
  * Ideas   — full creator picture (all six roles + voice) to find resonant angles
  * Hooks   — develops a specific idea; goals excluded (idea is the primary input)
- *            voice appended last (lowest priority, drops first under cap)
  * Chat    — thin; base-heavy (D-14); only niche/audience/platform for context;
  *            voice excluded (chat grounding must stay base-neutral)
  * Script  — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
@@ -106,13 +105,21 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
  * Remix   — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
  *            slice); adapts a decoded viral video format to the creator's niche;
  *            goals excluded (the source decode anatomy is the primary input)
+ *
+ * VOICE PRIORITY (KCQ-08 / D-11/D-12): `voice` is intentionally NOT the tail
+ * element of idea/hooks/script/remix. The cap-drop loop pops from the tail first,
+ * so a voice in tail position was the first thing silently dropped under
+ * BUNDLE_CHAR_CAP — making output stop sounding like the creator. Voice now sits
+ * ahead of wins/flops/platform so a routine cap-drop sheds lower-signal grounding
+ * (recent wins/flops, the per-request-overridable platform line) before the creator's
+ * voice. `chat` stays voice-free by design (base-neutral grounding).
  */
 export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
-  idea: ["niche", "audience", "goals", "wins", "flops", "platform", "voice"],
-  hooks: ["niche", "audience", "platform", "wins", "flops", "voice"],
+  idea: ["niche", "audience", "goals", "voice", "wins", "flops", "platform"],
+  hooks: ["niche", "audience", "voice", "wins", "flops", "platform"],
   chat: ["niche", "audience", "platform"],
-  script: ["niche", "audience", "platform", "wins", "flops", "voice"],
-  remix: ["niche", "audience", "platform", "wins", "flops", "voice"],
+  script: ["niche", "audience", "voice", "wins", "flops", "platform"],
+  remix: ["niche", "audience", "voice", "wins", "flops", "platform"],
 };
 
 // ─── Injection fence helpers ──────────────────────────────────────────────────

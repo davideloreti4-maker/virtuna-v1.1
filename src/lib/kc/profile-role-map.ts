@@ -138,8 +138,10 @@ function formatPlatform(row: ProfileRow): string | null {
 
 /**
  * Format voice: wraps the creator's verbatim writing sample in an injection
- * fence with an instruction header that explicitly restricts emulation to
- * STYLE/rhythm/tone — never content or claims (honesty-spine aligned, D-04).
+ * fence with an instruction header that explicitly directs the model to WRITE
+ * IN this voice (sentence rhythm, vocabulary register, tone — KCQ-08 / D-11/D-12)
+ * while restricting emulation to STYLE only — never content or claims
+ * (honesty-spine aligned, D-04).
  *
  * Returns null when writing_voice_sample is absent or blank (graceful cold-start).
  * The fence uses the same <<<USER_CONTENT>>> sentinels as all other user-supplied
@@ -152,7 +154,7 @@ function formatVoice(row: ProfileRow): string | null {
   const sample = row.writing_voice_sample?.trim();
   if (!sample) return null;
   return [
-    "Writing voice — emulate the STYLE, rhythm, and tone only; do NOT reuse specific content or claims:",
+    "Writing voice — Write in this voice: match its sentence rhythm, vocabulary register, and tone. Emulate STYLE only; do NOT reuse specific content or claims:",
     "<<<USER_CONTENT>>>",
     sample,
     "<<<END_USER_CONTENT>>>",
