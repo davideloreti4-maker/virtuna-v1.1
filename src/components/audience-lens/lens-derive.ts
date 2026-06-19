@@ -176,20 +176,25 @@ export function weightedRollup(nodes: PersonaNode[]): WeightedRollup {
   if (nodes.length === 0) return { stop: 0, scroll: 0, total: 0, byArchetype: [] };
 
   const totalW = nodes.reduce((a, n) => a + effectiveWeight(n), 0);
-  let stop = 0;
 
+  // WR-01 honesty/consistency: round each per-archetype stop contribution FIRST, then derive
+  // the headline as the SUM of those rounded rows. This makes the displayed breakdown and the
+  // headline count identical BY CONSTRUCTION — previously the headline rounded the float sum
+  // while each row rounded independently, so the breakdown could visibly fail to add up to the
+  // headline (undercutting the D-02 "same numbers, denser resolution" claim). No fabrication:
+  // counts are still the weighted rollup of the real 10's verdicts.
+  let stop = 0;
   const byArchetype = nodes.map((n) => {
     const w = effectiveWeight(n);
     const isStop = verdictOf(n.watchThrough) === 'stop';
-    const contribution = (w / totalW) * DEFAULT_TOTAL;
-    if (isStop) stop += contribution;
-    return { archetype: n.id, stop: isStop ? Math.round(contribution) : 0, weight: w };
+    const rounded = isStop ? Math.round((w / totalW) * DEFAULT_TOTAL) : 0;
+    stop += rounded;
+    return { archetype: n.id, stop: rounded, weight: w };
   });
 
-  const stopRounded = Math.round(stop);
   return {
-    stop: stopRounded,
-    scroll: DEFAULT_TOTAL - stopRounded,
+    stop,
+    scroll: DEFAULT_TOTAL - stop,
     total: DEFAULT_TOTAL,
     byArchetype,
   };
