@@ -27,8 +27,11 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 Phase: 10 (account-read-saved-shelf-recalibration-flywheel) — EXECUTING (all 7 plans built; awaiting live UAT)
 Plan: 7 of 7 — code complete
-Status: All 7 plans executed. Plan 07 Task 1 (live DB push of 3 additive migrations to qyxvxleheckijapurisj + types regen + casts removed) DONE via Supabase MCP; outcomes table untouched. Task 2 BLOCKING engine regression gate PASSED (suite 2823 green, ENGINE_VERSION 3.19.0 unchanged, General-unchanged anchor green). Task 3 = end-to-end live UAT PENDING → run /gsd-verify-work 10 (needs APIFY_TOKEN + CRON_SECRET; verify apidojo single-post field names live). All phase-10 requirements (SELF-*/SAVE-*/FLYWHEEL-*) checkboxes [x].
-Last activity: 2026-06-19 -- Phase 10 Plan 07 code complete (live push + regression gate); live UAT pending
+Status: All 7 plans executed + verified (16/17 truths; status human_needed). Plan 07 Task 1 (live DB push of 3 additive migrations to qyxvxleheckijapurisj + types regen + casts removed) DONE via Supabase MCP; outcomes table untouched. Task 2 BLOCKING engine regression gate PASSED (suite 2823 green, ENGINE_VERSION 3.19.0 unchanged, General-unchanged anchor green). Task 3 = 8 live-UAT scenarios PENDING → run /gsd-verify-work 10 (needs APIFY_TOKEN + CRON_SECRET; 10-UAT.md persisted). All phase-10 requirement checkboxes [x].
+Last activity: 2026-06-19 -- Phase 10 executed + verified; live UAT pending
+
+### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
+`pinPredictedSignature()` is built/exported/unit-tested and the capture route reads the pinned row, but **no SIM runner calls it** (`runFlashRunner` returns without pinning). The capture→reconcile loop is therefore dormant in the live flow until the seam is wired into each runner's post-SIM point (+ a runner-level test). Owner accepted as a follow-up (not a P10 blocker) — wire it next; until then UAT scenario 2 (reconcile log) cannot fire end-to-end. See 10-VERIFICATION.md warnings + 10-UAT.md Gaps.
 
 ## Hard Constraints (this milestone)
 
