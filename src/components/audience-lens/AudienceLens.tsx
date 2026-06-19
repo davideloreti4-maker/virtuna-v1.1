@@ -383,7 +383,12 @@ function RewriteCta({
 }
 
 /** Flat-matte segmented control. Selected side uses white-alpha hover/active — NEVER
- *  coral (UI-SPEC §Color: coral is reserved for the worst cluster + Rewrite CTA). */
+ *  coral (UI-SPEC §Color: coral is reserved for the worst cluster + Rewrite CTA).
+ *
+ *  WR-06: this is a segmented control, NOT an ARIA tabs widget — the Panel/Population regions
+ *  below are not `role="tabpanel"` and there is no aria-controls / roving-tabindex / arrow-key
+ *  wiring. Promising "tab" semantics the markup does not fulfill misleads screen readers, so we
+ *  use `role="group"` + per-button `aria-pressed` (the correct pattern for an inline toggle). */
 function ScaleToggle({
   value,
   onChange,
@@ -393,7 +398,7 @@ function ScaleToggle({
 }) {
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label="Audience scale"
       className="inline-flex rounded-[8px] border border-[var(--color-border)] bg-surface p-0.5"
     >
@@ -403,8 +408,7 @@ function ScaleToggle({
           <button
             key={opt.value}
             type="button"
-            role="tab"
-            aria-selected={active}
+            aria-pressed={active}
             onClick={() => onChange(opt.value)}
             className={
               'rounded-[6px] px-3 py-1.5 text-[13px] font-medium transition-colors ' +
