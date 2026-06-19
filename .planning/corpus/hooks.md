@@ -343,6 +343,68 @@ No acceptable batch reaches for Question without first exhausting Bold, Gap, Con
 
 ---
 
+**OWNER EXEMPLAR PATTERNS — PRIVATE REASONING ONLY (D-16/D-17)**
+
+The patterns below are owner-curated, pre-validated concrete INSTANCES of the archetype mechanisms
+defined above (BOLD / GAP / CONTRARIAN / RESEARCH / NARRATIVE / QUESTION). They exist as **pattern
+inspiration for internal reasoning ONLY** — extra structural texture for selecting and shaping a hook,
+folded UNDER the archetype table they instantiate.
+
+They are governed by the SAME private-reasoning discipline as the archetype vocabulary and the
+diversity rule (see "Hook Reasoning Scaffold → Clean Deliverable" and BASE "Output Discipline —
+Scaffolding Is Private"):
+
+- **NEVER emit any of these verbatim.** They are reasoning scaffolds, not deliverables.
+- **NEVER ship a `[bracketed placeholder]` to the creator** as a fill-in-the-blank / mad-libs template.
+  The `[…]` slots mark where the creator's specific, grounded content goes — you resolve them into a
+  concrete, executable hook (Actionability Component 3), you do not hand the creator the blank form.
+  A hook that still contains a `[placeholder]` has failed this mode.
+- **NO archetype slug tags, NO field labels, NO meta-commentary** about which exemplar inspired a hook.
+- Each pattern still runs through the full Actionability Contract and the intra-batch diversity rule —
+  these add texture to the archetypes; they do not bypass mechanism, fit, or executable-form checks.
+
+Patterns are grouped by the archetype mechanism they instantiate so the diversity rule can read them.
+
+*BOLD (declarative claim / stakes):*
+- "These are the only [number] [category] that you need to [action] if you want to [desired outcome]."
+- "You will never [achieve desired outcome] unless you understand [this/concept]."
+- "Don't start [activity] until you learn how to [process/step]."
+- "Here's [number] of the most common [topic] mistakes you need to avoid."
+- "There is one [asset] that I guarantee if you spend [short time] [action], it will be your [best result] of the [long time]."
+- "Never ever, ever post [content type] on [platform] without using [tool/feature]."
+- "Here are [number] simple ways to make your [action/process] more effective."
+
+*GAP (open loop / withheld resolution):*
+- "This [technique/system] has gotten me [impressive result], but [reason why it is rare/secret]."
+- "There's a wave of [trend] blowing up right now that [benefit], but [common barrier]."
+- "Did you know you could take a [boring object] and turn it into a [massive financial result] [new category]?"
+- "This [content] got [massive metric] all because of this [specific, small detail]."
+- "I seriously think I just found the biggest [niche] [benefit] in [year]."
+
+*CONTRARIAN (prediction error / "wait, what?"):*
+- "Everything you heard about [Subject] was a lie."
+- "[High percentage] of [Industry products] are [Negative attribute]. Here are the only [Number] worth [Action]."
+- "At what point are we going to admit that [Subject] [Negative Outcome]?"
+- "Give me [short time], I'll teach you [complex topic] better than [expensive/official alternative]."
+- "This might be an unpopular opinion, but I think that the best way to [attain goal] is to actually be unwilling to [common advice]."
+
+*RESEARCH (depth / effort signal):*
+- "I'm a [Professional]. It took me [Time] to learn this and I'm gonna teach you in [Short Time]."
+
+*NARRATIVE (personal event / transformation):*
+- "I just got the most [adjective] [noun] ever."
+- "[Brand] went from [failure/zero] to [massive success] in [time] by [specific strategy]."
+- "This is how I [achieved major result] in [short time frame]."
+- "I haven't seen anybody talk about [relatable niche problem]. Please tell me I'm not the only one that [struggles with specific symptom]."
+- "How I got [result] from [point A] to [point B] in [time frame]."
+- "I gained [result] in [timeframe], here's exactly how I did it."
+
+*QUESTION (explicit question — last-resort archetype; see the QUESTION caution above):*
+- "Is it possible for [demographic] to [huge result]? This [person] did [even bigger result] in [short time]."
+- "What happens when you [action] for [duration]? The [results] are [adjective]."
+
+---
+
 **FLOPS-AS-NEGATIVE-GROUNDING RULE (when flops data is present)**
 
 The assembled live context includes this creator's reported wins AND reported flops.

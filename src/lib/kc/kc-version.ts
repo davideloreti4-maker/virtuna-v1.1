@@ -23,4 +23,4 @@
  *   MINOR: meaningful authoring update to base or any slice (content curation pass)
  *   PATCH: minor wording / typo correction
  */
-export const KC_GEN_VERSION = "gen.1.0.0";
+export const KC_GEN_VERSION = "gen.1.1.0";
