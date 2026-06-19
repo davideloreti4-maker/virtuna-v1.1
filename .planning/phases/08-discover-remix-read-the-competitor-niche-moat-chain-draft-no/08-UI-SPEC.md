@@ -1,10 +1,11 @@
 ---
 phase: 8
 slug: discover-remix-read-the-competitor-niche-moat-chain
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-19
+reviewed_at: 2026-06-19
 ---
 
 # Phase 8 — UI Design Contract
