@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 9 context gathered
-last_updated: "2026-06-19T08:19:07.501Z"
+last_updated: "2026-06-19T08:34:59.543Z"
 last_activity: 2026-06-19 -- Phase 08 execution started
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 38
-  completed_plans: 34
+  completed_plans: 35
   percent: 70
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 08 (discover-remix-read-the-competitor-niche-moat-chain-draft-no) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-06-19 -- Phase 08 execution started
 
@@ -131,6 +131,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: [Phase 08-01]: W0 LOCKS persona-bias values not structure — P7 key mappings already correct; change = remove [ASSUMED] markers + add source-marker/spread/preset test guards
 - [Phase ?]: [Phase 08-01]: sell + authority share WEIGHT_PRESETS.niche_heavy by design — both depth plays, audience in-niche; per-intent flavour from repaint prose not weight mix
 - [Phase ?]: [Phase 08-01]: flash-aggregate STRONG/MIXED_THRESHOLD untouched (Pitfall 4) — calibrated not [ASSUMED]; changing shifts every skill gate
+- [Phase ?]: Discover Remix→Read CTA launches the chain via CHAIN_HANDOFFS /api/tools/remix/run then routes to /home (open-thread rehydrate) — no composer/card edit
+- [Phase ?]: OutlierTile reuses VideoCard verbatim (video_url:null → plain div); multiplier badge always carries baselineLabel (vs own/vs niche), never a SIM score (Pitfall 5/D-05)
 
 ### Roadmap Evolution
 
@@ -154,7 +156,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-19T08:19:07.492Z
+Last session: 2026-06-19T08:34:44.271Z
 Stopped at: Phase 9 context gathered
 Next: Phase 07 Plan 06 (push audiences migration + regen database.types.ts + full calibration UAT)
 Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft-not-yet-disc/09-CONTEXT.md
@@ -192,3 +194,4 @@ Resume file: .planning/phases/09-living-audience-interactive-simulation-ux-draft
 | Phase 07-audience-manager-calibrated-audience-as-shared-substrate-acr P05 | 75m | 2 tasks + checkpoint | 11 files (UI + shell fix) |
 | Phase 08-discover-remix-read-the-competitor-niche-moat-chain-draft-no P01 | 8min | 2 tasks | 4 files |
 | Phase 08 P02 | 11min | 3 tasks | 10 files |
+| Phase 08 P03 | 10min | 3 tasks | 12 files |
