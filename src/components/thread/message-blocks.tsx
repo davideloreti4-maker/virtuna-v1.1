@@ -62,8 +62,11 @@ export interface MessageBlocksProps {
 function inBandConceptText(body: unknown[]): string | undefined {
   for (const rawBlock of body) {
     const result = validateBlock(rawBlock);
+    // `props` is typed `unknown` on the validated block (block-registry); read `text`
+    // defensively rather than relying on a type-discriminant narrow.
     if (result.ok && result.block.type === 'markdown') {
-      const text = result.block.props.text;
+      const props = result.block.props as { text?: unknown };
+      const text = props.text;
       if (typeof text === 'string' && text.trim().length > 0) return text;
     }
   }
@@ -96,8 +99,14 @@ export function MessageBlocks({ body, conceptText }: MessageBlocksProps) {
         // shared AudienceLens mounts with a concept to ground chat (LIVE-03 (b) / LIVE-06).
         // All other renderers are invoked byte-identically — no behavior change for them.
         if (block.type === 'personas' && personaConcept) {
+          // block is the validated personas block; props is typed `unknown` on the registry
+          // result, so cast to the renderer's expected shape (already schema-validated above).
           return (
-            <PersonasBlockRenderer key={index} block={block} conceptText={personaConcept} />
+            <PersonasBlockRenderer
+              key={index}
+              block={block as Parameters<typeof PersonasBlockRenderer>[0]['block']}
+              conceptText={personaConcept}
+            />
           );
         }
 
