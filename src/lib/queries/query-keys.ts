@@ -35,6 +35,12 @@ export const queryKeys = {
     // Flat filter, NOT a folder: `type` is an optional client-side item_type filter.
     list: (type?: string) => ["saved", "list", type ?? "all"] as const,
   },
+  recalibration: {
+    all: ["recalibration"] as const,
+    // Pending recalibration proposal for one audience (null below the gate).
+    proposals: (audienceId: string) =>
+      ["recalibration", "proposals", audienceId] as const,
+  },
   profile: {
     all: ["profile"] as const,
     current: () => ["profile", "current"] as const,
