@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-06-20T02:28:54.261Z"
-last_activity: 2026-06-20 -- Phase 11 execution started
+last_updated: "2026-06-20T02:40:00.000Z"
+last_activity: 2026-06-20 -- 11-05 complete (Explore client primitives: useExploreStream + tile fit-bar/Track + renderer wiring)
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 62
-  completed_plans: 59
+  completed_plans: 60
   percent: 69
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — EXECUTING
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
-Last activity: 2026-06-20 -- 11-04 complete (Explore server half: /api/tools/explore SSE route + explore-runner)
+Last activity: 2026-06-20 -- 11-05 complete (Explore client primitives: useExploreStream + OutlierTile fit-bar/Track + OutlierGridBlockRenderer wiring)
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -174,6 +174,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 11-04]: /api/tools/explore clones the hooks SSE route but delegates the WHOLE pipeline to runExplorePipeline (no Flash/gate loop); stages "Pulling outliers" → "Scoring for your audience", content-first, NO fake % (UI-SPEC honesty — the apidojo pull is genuinely minutes); active audience ALWAYS from openThread.active_audience_id (CR-01), never body; General/preset/thin degrades every tile to fit:null
 - [Phase 11-04]: runExplorePipeline returns { block, ranked } (additive to the locked signature) so the in-memory Discover cache fills from the SAME pull — eliminates a double scrape (Rule 1 fix). Cache stores audience-independent measured RankedOutlier[]; a cache HIT re-runs rankWithAudienceFit per active audience before building the block (fit depends on the audience, not the pull). Zero SIM/Flash/@/lib/engine import — ENGINE_VERSION 3.19.0 untouched (D-02/D-03, Pitfall 6)
 - [Phase 11-04]: timeWindow param accepted into the route contract but NOT yet threaded into the pull (rankOutliers already applies WINDOW_DAYS=90 + half-life); honest no-op (void body.timeWindow) — narrowing by today/week/month is a follow-up, never faked. Profile-mode tiles trackable:true + trackHandle (pull-input handle, no @, lowercased); niche-mode trackable:false (VideoData exposes no author handle — RESEARCH Q3)
+- [Phase 11-05]: useExploreStream clones use-hooks-stream but SIMPLER — one outlier-grid block in the content event (no per-tile score events, no followup); fetch+getReader (NOT the GET-only SSE client, BLOCKER-1); start/stop/reset/toBlocks/stages + WR-05 isMountedRef guard. OutlierTile fit bar = 3-level (Strong 100%/Fair 66%/Weak 33%) success/warning/muted, NEVER coral (DATA not action, one-accent law); omitted ENTIRELY when fit==null (honest degrade D-02 — no empty/zero bar). "+ Track account" non-accent text-button (trackable only) → "Tracking ✓". OutlierGridBlockRenderer upgraded LIVE (Pitfall 2): imports OutlierGridBlock from blocks.ts (single source of truth, schema tile structurally = OutlierTileData), forwards onRemix/onTrack/remixPendingId/trackPendingId/trackedIds → DiscoverGrid → tile; callbacks optional → static-reference fallback preserved for the Discover page; message-blocks/block-registry unchanged. tracked keys off trackHandle∈trackedIds, trackPending off platformVideoId. The on-tap real reaction stays lazy (reused remix-card LensTrigger downstream) — no reaction UI on the grid
 
 ### Roadmap Evolution
 
@@ -198,10 +199,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T02:28:54.252Z
-Stopped at: Completed 11-04-PLAN.md (Explore server half — SSE route + audience-fit runner)
-Next: 11-05 (use-explore-stream + tile fit-bar/Track button), then 11-06 (ExploreThreadView idle quick-actions) + 11-07 (composer wiring + enable explore skill pill)
-Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-05-PLAN.md
+Last session: 2026-06-20T02:40:00.000Z
+Stopped at: Completed 11-05-PLAN.md (Explore client primitives — useExploreStream + OutlierTile fit-bar/Track + OutlierGridBlockRenderer wiring)
+Next: 11-06 (ExploreThreadView idle quick-actions — mounts useExploreStream + supplies onRemix/onTrack handlers), then 11-07 (composer wiring + enable explore skill pill)
+Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-06-PLAN.md
 
 ## Performance Metrics
 
@@ -258,3 +259,4 @@ Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-no
 | Phase 11-explore-audience-curated-discovery P02 | 8min | 1 tasks | 1 files |
 | Phase 11 P03 | 7min | 2 tasks | 3 files |
 | Phase 11 P04 | 10min | 2 tasks | 3 files |
+| Phase 11 P05 | 6min | 3 tasks | 4 files |
