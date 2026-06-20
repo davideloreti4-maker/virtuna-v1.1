@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: Live Playwright UAT PASS — T1/T2/T3/T4/T6/T7 PASS, T5 partial (Explore-side wiring PASS; remix-card blocked by Phase-6 remix-skill decode_failed, GAP-REMIX-01). Live clockworks scrape renders the fit-scored grid; fit bar shows on calibrated (FIT·Weak+predicted) / omitted on General; Track persists+idempotent; reload rehydrates. Honesty spine held. Gates green (vitest 165/165, build ✓). 5 src/test files changed UNCOMMITTED — awaiting commit decision.
-stopped_at: Phase 12 context gathered
-last_updated: "2026-06-20T14:13:24.426Z"
+stopped_at: Phase 12 UI-SPEC approved
+last_updated: "2026-06-20T14:22:37.116Z"
 last_activity: "2026-06-20 -- Reverted Discover/Explore scrape apidojo→clockworks (free-plan-compatible) + mode-aware scrapeVideos; re-ran full Playwright UAT live (6/7 PASS). See 11-UAT.md. Outstanding: GAP-REMIX-01 (remix decode, Phase 6), prod Apify provider strategy."
 progress:
   total_phases: 16
@@ -207,10 +207,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T14:13:24.417Z
-Stopped at: Phase 12 context gathered
+Last session: 2026-06-20T14:22:37.107Z
+Stopped at: Phase 12 UI-SPEC approved
 Next: 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — closes Phase 11; until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/12-CONTEXT.md
+Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/12-UI-SPEC.md
 
 ## Performance Metrics
 
