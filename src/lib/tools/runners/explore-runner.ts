@@ -20,7 +20,7 @@
  */
 
 import { createScrapingProvider } from "@/lib/scraping";
-import { rankOutliers } from "@/lib/discover/outlier-compute";
+import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
 import { OutlierGridBlockSchema, type OutlierGridBlock } from "@/lib/tools/blocks";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -43,6 +43,13 @@ export interface RunExploreInput {
 
 export interface RunExploreResult {
   block: OutlierGridBlock;
+  /**
+   * The MEASURED ranked tiles (pre-fit, audience-independent) from this same pull.
+   * The route caches these so a subsequent same-day pull skips the scrape and re-runs
+   * the audience-fit re-rank per request (fit depends on the active audience). Exposing
+   * them here avoids a wasteful second scrape just to fill the cache.
+   */
+  ranked: RankedOutlier[];
 }
 
 /**
@@ -119,5 +126,5 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
     throw new Error(`explore block validation failed: ${parsed.error.message}`);
   }
 
-  return { block: parsed.data };
+  return { block: parsed.data, ranked };
 }
