@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 11-07-PLAN.md (Explore wired into composer — pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)
+stopped_at: Phase 11 code-complete (all 8 plans executed; 11-08 live migration pushed + types regen + casts dropped + regression gate green). Verifier = human_needed — Task 4 live-data UAT (11-UAT.md, 7 steps) pending before phase marks complete.
 last_updated: "2026-06-20T11:25:49.919Z"
 last_activity: "2026-06-20 -- 11-08 Tasks 2+3 done (dropped interim (supabase as any) casts post-regen; BLOCKING gate green: ENGINE_VERSION 3.19.0, engine+KC 1191 green, full suite 2941 green, build OK, touched-file lint clean). Task 1 (live migration push + types regen) done earlier by orchestrator (commit 63375675). Task 4 UAT reserved for human."
 progress:
   total_phases: 16
-  completed_phases: 11
+  completed_phases: 10
   total_plans: 63
   completed_plans: 62
-  percent: 69
+  percent: 63
 ---
 
 # Project State
