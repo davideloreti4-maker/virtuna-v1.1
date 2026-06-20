@@ -230,7 +230,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
 | 11. Explore (Audience-Curated Discovery) | 8/8 | Complete ✓ (UAT 6/7; T5 partial → downstream GAP-REMIX-01) | 2026-06-20 |
 | 12. Library & Acts/State IA | 4/4 | Complete    | 2026-06-20 |
-| 13. Proactive Numen (Ambient + Initiated) | 1/4 | In Progress|  |
+| 13. Proactive Numen (Ambient + Initiated) | 2/4 | In Progress|  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
 | 15. Marketing Intent (mode-switch) | — | Deferred → v6.1 Commerce (2026-06-20) |  |
 | 16. Commerce Skills | — | Deferred → v6.1 Commerce (2026-06-20) |  |
@@ -461,18 +461,18 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Requirements:** AMBIENT-01 (the living always-present audience). Locked decisions (13-CONTEXT.md): D-01 persistent docked presence + per-card reactions at rest; D-02 live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type) — reactions **never aggregated**; D-03 reacts on every card via already-emitted data (no new model calls, determinism-safe); D-04 **type-to-room** → the room *reacts* (real SIM, Flash text-mode), not conversational; D-05/06 keep P9's per-card Lens as the per-artifact depth (one Lens, many doors). Honesty spine: never fabricate; idle at rest; degrade gracefully.
 **UI hint:** yes
 
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 
 - [x] 13-01-PLAN.md — Type-to-room reaction route (POST /api/tools/react) + shared buildReactionPanel helper extracted from the runners (niche-discriminating; resolves Open Q1/Pitfall 2) [AMBIENT-01, D-04]
-- [ ] 13-02-PLAN.md — Per-card reaction at rest: promote the shipped LensTrigger on all 4 card blocks via a shared CardReactionAtRest readout (stop fraction + thin ribbon; honest degrade) [AMBIENT-01, D-01/D-03/D-05]
+- [x] 13-02-PLAN.md — Per-card reaction at rest: promote the shipped LensTrigger on all 4 card blocks via a shared CardReactionAtRest readout (stop fraction + thin ribbon; honest degrade) [AMBIENT-01, D-01/D-03/D-05]
 - [ ] 13-03-PLAN.md — AmbientPresence component: persistent dot-cloud strip + live spotlight subject + type-to-room input; opens the one shipped AudienceLens (Surfaces 1/2/4) [AMBIENT-01, D-01/D-02/D-04/D-05]
 - [ ] 13-04-PLAN.md — Mount the presence sticky in composer-thread-region + scroll-spy/tap/type-to-room focus (useAmbientFocus) + BLOCKING regression gate (ENGINE_VERSION 3.19.0) [AMBIENT-01, D-01/D-02/D-03/D-04]
 
 **Wave 1** *(parallel — disjoint files: server vs card-blocks)*
 
-- [ ] 13-01-PLAN.md — react route + buildReactionPanel + runner refactor
+- [x] 13-01-PLAN.md — react route + buildReactionPanel + runner refactor
 - [ ] 13-02-PLAN.md — CardReactionAtRest on the 4 card blocks
 
 **Wave 2** *(blocked on 13-01)*

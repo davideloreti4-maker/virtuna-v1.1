@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-06-20T21:02:31.973Z"
+stopped_at: Completed 13-02-PLAN.md (Surface 3 reaction-at-rest on all four cards)
+last_updated: "2026-06-20T21:16:33.482Z"
 last_activity: 2026-06-20 -- Phase 13 execution started
 progress:
   total_phases: 17
   completed_phases: 13
   total_plans: 70
-  completed_plans: 68
+  completed_plans: 69
   percent: 76
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 13 (proactive-numen-ambient-initiated-expansion-the-ambient-audi) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-20 -- Phase 13 execution started
 
@@ -194,6 +194,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 12-04]: Disposition/Temperature labels are sibling <span>s NOT <label htmlFor> (Rule 1 a11y fix surfaced by the unit test) — the shipped Select renders its trigger as a <button role="combobox"> that does not accept an id, so htmlFor would dangle; Name/Description keep htmlFor (Input/Textarea forward the id). AC name-fallback example ("collector"→"Collector") conflated Disposition with Archetype; test uses a real archetype slug (high_engager→"High Engager") on the same fallback path.
 - [Phase ?]: [Phase 13 / 13-01]: buildReactionPanel(profileRow, audience) extracted as the single niche-panel+repaint source for ideas-runner, hooks-runner, AND POST /api/tools/react — byte-identical lift (panel={niche:resolveNicheKey(niche_primary),contentType:null}; audienceRepaint=archetype→repaint or undefined for General/no-audience). resolveAudienceWeights stays OUT (void-wired Max path). Resolves RESEARCH Open Q1 / Pitfall 2; ENGINE_VERSION 3.19.0.
 - [Phase ?]: [Phase 13 / 13-01]: POST /api/tools/react = type-to-room reaction (ONLY new model-calling code in P13). Auth-first → Zod {text,framing?} → server-resolved audience off thread.active_audience_id (CR-01, body audienceId ignored) → buildReactionPanel → runFlashTextMode(default framing 'hook', A1) → {fraction,scrollQuote}. NOT markdown chat route (Pitfall 1), no streaming, no persistence (ephemeral, Open Q3), Flash fail→502 reaction_failed. selectLeadScrollQuote inline-copied (A4).
+- [Phase ?]: [Phase 13 / 13-02]: Surface 3 reaction-at-rest = CardReactionAtRest rendered INSIDE the shipped LensTrigger on all four cards (idea/hook/script/remix), above the verbatim quote — a promotion, not a sibling/fork (D-05/D-06). Takes only {fraction}, re-parses with the flat-card-reactions parseFraction contract, returns null on bad input (honest silent degrade in lockstep with LensTrigger flatPersonas=[]). Cream ribbon over muted track; zero legacy coral hex (var(--color-foreground)); coral reserved for out-of-scope worst-cluster only. Zero new model calls; ENGINE_VERSION 3.19.0.
+- [Phase ?]: [Phase 13 / 13-02]: Rule 1 — idea-card ordering test disambiguated; Surface 3 makes the stop fraction string occur twice (resting readout above the quote + band chip below), so the band-fraction assertion anchors on the 'SIM-1 Flash' chip row and a complementary assertion confirms the at-rest readout leads the quote. Tap seam unchanged: CardReactionAtRest gains no prop, LensTrigger not forked; Plan 13-04 adds tap-to-focus via an onClickCapture wrapper around each card.
 
 ### Roadmap Evolution
 
@@ -219,10 +221,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T21:01:39.138Z
-Stopped at: Phase 13 UI-SPEC approved
+Last session: 2026-06-20T21:16:33.473Z
+Stopped at: Completed 13-02-PLAN.md (Surface 3 reaction-at-rest on all four cards)
 Next: Discussing Phase 13 Proactive Numen (/gsd-discuss-phase 13). ✓ RESOLVED — Phase 11 11-08 is done: the tracked_accounts migration is applied on live prod (migration 20260620111029, confirmed via list_migrations), types regenerated (database.types.ts L1800), engine regression gate green (ENGINE_VERSION 3.19.0). The "+ Track account" write + hasTrackedAccounts read hit the live table (UAT Test 6 persisted a real row). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
-Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the-ambient-audi/13-UI-SPEC.md
+Resume file: None
 
 ## Performance Metrics
 
@@ -288,3 +290,4 @@ Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the
 | Phase 12-library-acts-state-ia P03 | ~5min + UAT | 4 tasks (3 auto + 1 human-verify) | 3 files |
 | Phase 12-library-acts-state-ia P04 | 11min + UAT | 4 tasks (3 auto + 1 human-verify) | 4 files |
 | Phase 13 P01 | 7min | 2 tasks | 6 files |
+| Phase 13 P02 | 7min | 2 tasks (1 TDD) tasks | 7 files files |
