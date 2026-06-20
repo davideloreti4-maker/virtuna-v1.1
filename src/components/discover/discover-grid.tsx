@@ -36,6 +36,15 @@ interface DiscoverGridProps {
   onRemix?: (tile: OutlierTileData) => void;
   /** The platformVideoId currently launching a remix (disables that tile's CTA). */
   remixPendingId?: string | null;
+  /**
+   * Writes the watchlist row for a tile's account (EXPLORE-05 / D-08). Forwarded to each
+   * OutlierTile; the "+ Track account" button only renders when the tile is trackable.
+   */
+  onTrack?: (tile: OutlierTileData) => void;
+  /** The platformVideoId whose track write is in flight (disables that tile's track button). */
+  trackPendingId?: string | null;
+  /** The set of already-tracked handles — drives each tile's "Tracking ✓" state. */
+  trackedIds?: Set<string>;
   /** Re-runs the last pull (error Retry). */
   onRetry?: () => void;
 }
@@ -72,6 +81,9 @@ export function DiscoverGrid({
   sourceLabel,
   onRemix,
   remixPendingId,
+  onTrack,
+  trackPendingId,
+  trackedIds,
   onRetry,
 }: DiscoverGridProps) {
   // ── Loading — tile skeletons, NO fake progress % (slow Apify pull) ──────────
@@ -138,6 +150,9 @@ export function DiscoverGrid({
           tile={tile}
           onRemix={onRemix}
           remixPending={remixPendingId === tile.platformVideoId}
+          onTrack={onTrack}
+          trackPending={trackPendingId === tile.platformVideoId}
+          tracked={tile.trackHandle != null && trackedIds?.has(tile.trackHandle) === true}
         />
       ))}
     </div>
