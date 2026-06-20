@@ -4,8 +4,8 @@ milestone: v6.0
 milestone_name: milestone
 status: discussing
 stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-06-20T20:07:44.159Z"
-last_activity: 2026-06-20
+last_updated: "2026-06-20T20:46:27.807Z"
+last_activity: 2026-06-20 -- Phase 13 planning complete
 progress:
   total_phases: 17
   completed_phases: 13
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 Phase: 13
 Plan: Not started (discussing)
 Status: P11 Explore verified-complete (UAT 6/7; T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug, not Explore). P12 + P14 complete. Currently discussing P13 Proactive Numen. Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
-Last activity: 2026-06-20
+Last activity: 2026-06-20 -- Phase 13 planning complete
 
 ### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
 
