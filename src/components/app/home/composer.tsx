@@ -127,6 +127,17 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
   // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
   const [activeTool, setActiveTool] = useState<ToolId>("test");
+  // Tracks whether the creator has manually picked a tool this mount. Guards the
+  // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
+  // deliberate pick made while the GET /api/threads/open fetch was in flight.
+  const hasUserSelectedToolRef = useRef(false);
+  // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
+  // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
+  // flip it — they are not the creator choosing where to land on reload.
+  const handleUserSelectTool = useCallback((id: ToolId) => {
+    hasUserSelectedToolRef.current = true;
+    setActiveTool(id);
+  }, []);
 
   // ── Audience + intent state (UX-01) ────────────────────────────────────────
   // Audience is the shared substrate across skills (the moat). Platform is no
@@ -748,7 +759,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     );
   };
   const selectSkill = (id: ToolId) => {
-    setActiveTool(id);
+    handleUserSelectTool(id);
     setUrl(""); // clear the `/query` after selection
   };
 

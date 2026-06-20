@@ -334,15 +334,28 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
     personas: FlashPersona[];             // for the FLYWHEEL-02 pin
     generationIndex: number;              // preserves generation order for tie-break
+    // WR-06: true when the rubric critic returned a GENUINE fail (parseable !pass,
+    // not an abstention). gateHooks now KEEPS these band-passing candidates (tagged)
+    // instead of hard-dropping them, so the caller can prefer critic-cleared cards
+    // normally but fall back to the band-passers when the critic failed EVERY one
+    // (never zero a SIM-passing thread — extends the WR-01 abstention principle).
+    criticGenuineFail: boolean;
   }
 
   /**
    * 14-02 best-of-N + flop pass: over-generate → PARALLEL { SIM band + rubric
-   * critic } per candidate → combined gate. SIM + critic run in the SAME Promise.all
-   * entry so wall-clock stays ~1x (D-05 — never serial). Combined gate (KCQ-05 +
-   * KCQ-02): keep iff band !== "Weak" AND verdict.pass. predictedFailureMode (KCQ-04)
-   * rides onto each survivor for the 14-04 drill-reveal. Ranking happens AFTER, on the
-   * returned survivors (D-01 gate-then-rank preserved).
+   * critic } per candidate → gate. SIM + critic run in the SAME Promise.all entry so
+   * wall-clock stays ~1x (D-05 — never serial).
+   *
+   * HARD GATE (unchanged): band !== "Weak" — a SIM Weak (audience would scroll) is
+   *   always dropped here. The SIM is the floor we never go below.
+   * SOFT GATE (WR-06 change): the rubric critic no longer HARD-DROPS a band-passing
+   *   candidate on a genuine fail. Instead every band-passer is RETURNED, tagged with
+   *   `criticGenuineFail`. The caller prefers critic-cleared candidates (pass OR
+   *   abstain) and only falls back to genuine-fail band-passers when the critic failed
+   *   EVERY candidate — so an over-strict critic can never silently zero a thread the
+   *   SIM said people would stop on. predictedFailureMode (KCQ-04) rides on each card
+   *   for the 14-04 drill-reveal regardless. Ranking happens AFTER (D-01 preserved).
    */
   async function gateHooks(hookBatch: StructuredHook[]): Promise<SurvivorCandidate[]> {
     const judged = await Promise.all(
@@ -369,17 +382,16 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       const personas = simResult.result.personas;
       const { band, fraction } = aggregateFlash(personas);
 
-      // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
+      // HARD GATE: band !== "Weak". A SIM Weak (audience would scroll) is always dropped.
       if (band === "Weak") continue;
-      // WR-01: a critic ABSTENTION (infra failure — timeout/429/parse) is NOT a quality
-      // FAIL. Hard-dropping both identically lets a transient critic outage silently zero
-      // a SIM-Strong thread with no diagnostic. On abstention, degrade to the band-only
-      // gate (the candidate already cleared band !== "Weak") and surface a warning.
-      if (verdict.abstained) {
-        abstainedKept++;
-      } else if (!verdict.pass) {
-        continue;
-      }
+
+      // SOFT GATE (WR-01 + WR-06): classify the critic verdict but do NOT hard-drop.
+      //  - abstained (infra failure — timeout/429/parse): kept, counted, warned (WR-01).
+      //  - genuine fail (parseable !pass): kept but TAGGED criticGenuineFail so the
+      //    caller only surfaces it as a last-resort floor (WR-06). Hard-dropping these
+      //    here is what silently zeroed the flagship thread when the critic failed all.
+      if (verdict.abstained) abstainedKept++;
+      const criticGenuineFail = !verdict.pass && !verdict.abstained;
 
       // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
       const scrollQuote = selectLeadScrollQuote(personas);
@@ -402,6 +414,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         predictedFailureMode: verdict.predictedFailureMode,
         personas,
         generationIndex,
+        criticGenuineFail,
       });
     }
 
@@ -422,16 +435,36 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     return { blocks: [], warnings: allWarnings, seedHookPath };
   }
 
-  let survivors = await gateHooks(firstBatch);
+  // The band-passing POOL (band !== "Weak"); each candidate is tagged criticGenuineFail.
+  // Critic-cleared = passed OR abstained (WR-01). These are the normal survivors.
+  let pool = await gateHooks(firstBatch);
+  let survivors = pool.filter((c) => !c.criticGenuineFail);
 
-  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
+  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates clear ──
   // Never an unbounded serial loop — one extra parallel over-generate + critique
-  // pass, then proceed with whatever survives (may still be 0 — "0 blocks is valid").
+  // pass, then proceed with whatever clears (the WR-06 floor below catches the rest).
   if (survivors.length === 0) {
     const secondBatch = await generateHooksStructured(userMessage);
     if (secondBatch.length > 0) {
-      survivors = await gateHooks(secondBatch);
+      pool = [...pool, ...(await gateHooks(secondBatch))];
+      survivors = pool.filter((c) => !c.criticGenuineFail);
     }
+  }
+
+  // ── WR-06 FLOOR: never zero a SIM-passing thread ─────────────────────────────
+  // If the rubric critic returned a genuine fail for EVERY band-passing candidate
+  // (after regen), do NOT return 0 blocks — fall back to the band-passers. The SIM
+  // already said the audience would stop on these (band !== "Weak"); a single
+  // over-strict judge must not be able to silently nuke the flagship flow with no
+  // output. The critic's verdict still rides each card via predictedFailureMode
+  // ("if this flops, here's why"), so the cards are honest, not laundered as clean
+  // passes. Genuinely-Weak SIM hooks were already dropped in the hard gate, so this
+  // only surfaces hooks the audience would plausibly stop on. (Extends WR-01.)
+  if (survivors.length === 0 && pool.length > 0) {
+    survivors = pool;
+    allWarnings.push(
+      `Quality critic did not confirm a clean pass for any of the ${pool.length} SIM band-passing hook(s) — surfacing the top band-passers (each carries its "if this flops" note). Sharpen the ask with a concrete angle for a cleaner pass.`,
+    );
   }
 
   // ── RANK + TRIM (D-01): order by band tier → fraction, keep top MAX_HOOKS ──
