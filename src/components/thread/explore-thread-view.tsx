@@ -162,14 +162,14 @@ export function ExploreThreadView({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ url: tile.videoUrl, platform }),
         });
-        if (!res.ok) {
-          setRemixPendingId(null);
-          return;
-        }
         // Surface the persisted remix-card by reloading the open thread in place
         // (RESEARCH Q2 — NOT router.push; Explore is an in-thread skill in /home).
-        onThreadReload?.();
+        if (res.ok) onThreadReload?.();
       } catch {
+        // Network error — leave the grid for retry (the finally re-enables the tile).
+      } finally {
+        // WR-01: ALWAYS clear the pending id — incl. the success path — so the tile's
+        // "Remix → Read" button re-enables instead of sticking on "Remixing…" forever.
         setRemixPendingId(null);
       }
     },

@@ -13,10 +13,17 @@
  *  - The grid carries NO fabricated persona quote / reaction (D-02 — the real reaction
  *    is lazy, on the reused remix-card's LensTrigger downstream).
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from '@testing-library/react';
 import { ExploreThreadView } from './explore-thread-view';
 import type { ExploreThreadViewProps } from './explore-thread-view';
+import type { OutlierGridBlock } from '@/lib/tools/blocks';
 
 afterEach(cleanup);
 
@@ -156,6 +163,105 @@ describe('ExploreThreadView — honesty spine (D-02)', () => {
     expect(
       screen.queryByRole('button', { name: 'Top performers in my niche today' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+// ── WR-01: remix pending-state must clear on a SUCCESSFUL remix ─────────────────
+
+/** A minimal schema-valid outlier-grid block with one tile for the remix-CTA tests. */
+function oneTileBlock(): OutlierGridBlock {
+  return {
+    type: 'outlier-grid',
+    props: {
+      mode: 'niche',
+      tiles: [
+        {
+          platformVideoId: 'vid_1',
+          videoUrl: 'https://www.tiktok.com/@creator/video/123',
+          caption: 'a tile',
+          views: 100_000,
+          likes: 8_000,
+          comments: 400,
+          shares: 600,
+          saves: 1_200,
+          durationSeconds: 22,
+          postedAt: new Date().toISOString(),
+          multiplier: 3.2,
+          baselineLabel: 'vs niche',
+          source: 'fitness',
+          fit: null,
+          trackable: false,
+        },
+      ],
+    },
+  };
+}
+
+describe('ExploreThreadView — remix pending state (WR-01)', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('clears the Remixing… pending state after a SUCCESSFUL remix so the tile re-enables', async () => {
+    // Mock the discover→remix POST (/api/tools/remix/run) to succeed.
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
+
+    const onThreadReload = vi.fn();
+    render(
+      <ExploreThreadView
+        {...baseProps({
+          persistedBlocks: [oneTileBlock()],
+          onThreadReload,
+        })}
+      />,
+    );
+
+    const remix = screen.getByRole('button', { name: 'Remix this outlier into a Read' });
+    expect(remix).toBeEnabled();
+    expect(remix).toHaveTextContent('Remix → Read');
+
+    fireEvent.click(remix);
+
+    // While the fetch is in flight the CTA shows the pending label and is disabled.
+    expect(remix).toHaveTextContent('Remixing…');
+    expect(remix).toBeDisabled();
+
+    // After the successful remix resolves, the success path reloads the thread AND the
+    // pending id is cleared (finally) — the tile re-enables instead of sticking forever.
+    await waitFor(() => expect(onThreadReload).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(remix).toBeEnabled());
+    expect(remix).toHaveTextContent('Remix → Read');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/tools/remix/run',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('clears the pending state on a FAILED remix too (no reload, tile re-enables for retry)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ error: 'nope' }), { status: 502 }),
+    );
+
+    const onThreadReload = vi.fn();
+    render(
+      <ExploreThreadView
+        {...baseProps({ persistedBlocks: [oneTileBlock()], onThreadReload })}
+      />,
+    );
+
+    const remix = screen.getByRole('button', { name: 'Remix this outlier into a Read' });
+    fireEvent.click(remix);
+    expect(remix).toBeDisabled();
+
+    await waitFor(() => expect(remix).toBeEnabled());
+    expect(remix).toHaveTextContent('Remix → Read');
+    expect(onThreadReload).not.toHaveBeenCalled();
   });
 });
 
