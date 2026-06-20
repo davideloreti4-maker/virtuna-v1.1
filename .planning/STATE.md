@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 11 context gathered
-last_updated: "2026-06-20T00:52:32.024Z"
+stopped_at: Phase 11 UI-SPEC approved
+last_updated: "2026-06-20T00:59:02.031Z"
 last_activity: 2026-06-20 -- Phase 14 Plan 04 (surface lane) complete
 progress:
   total_phases: 16
@@ -192,10 +192,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T00:52:32.014Z
-Stopped at: Phase 11 context gathered
+Last session: 2026-06-20T00:59:02.023Z
+Stopped at: Phase 11 UI-SPEC approved
 Next: Phase 14 done. Candidate next: phase verify, or Phase 11 (Explore) / Phase 12 (Library & field-legibility, consumes P14 deferred surface)
-Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-CONTEXT.md
+Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-UI-SPEC.md
 
 ## Performance Metrics
 
