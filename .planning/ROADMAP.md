@@ -28,7 +28,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)* (completed 2026-06-19)
 - [ ] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)* (code complete 2026-06-20 — all 8 plans executed; Task 4 end-to-end Explore UAT PENDING human verification, phase not yet verified-complete)
-- [ ] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [x] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19; 4/4 planned plans complete 2026-06-20 — LIB-02/AUD-EDIT-03/04 owner-deferred out of phase)*
 - [ ] **Phase 13: Proactive Numen (Ambient + Initiated)** - The "ambient audience system": ambient audience reaction on EVERY skill card (always felt, not summoned; builds on P9 reaction primitive — must not duplicate) + Numen INITIATES (proactive morning drops "3 things stirring your people would bite on" + scheduled Explore = their Automations equivalent) = daily-habit engine, in-conversation. *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [x] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [ ] **Phase 15: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19)*
@@ -228,7 +228,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
 | 11. Explore (Audience-Curated Discovery) | 8/8 | Verifying — code complete, Task 4 human UAT pending | 2026-06-20 |
-| 12. Library & Acts/State IA | 3/4 | In Progress|  |
+| 12. Library & Acts/State IA | 4/4 | Complete ✓ | 2026-06-20 |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
 | 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
@@ -440,14 +440,14 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **⚠️ Already shipped — do NOT rebuild:** writing-voice sample (N1, merge `d2f121e7`). Surface/extend it here. Confirm P8 W0 removed the persona-value `[ASSUMED]` markers.
 **UI hint:** yes
 
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans executed — PHASE COMPLETE
 
 **Wave 1** *(parallel — zero files_modified overlap)*
 
 - [x] 12-01-PLAN.md — IA-01: add the Library nav item + relabel the four literal nouns (New Thread / Thread / Audience / Library / Settings) in the active Sidebar.tsx [IA-01]
 - [x] 12-02-PLAN.md — LIB-01/LIB-03: Library State home (extend SavedShelf → /library, redirect /saved) + complete the save↔use loop (Save the flagship Read card, launch saved Reads/Outliers into the open thread) *(autonomous: false — visual checkpoint)* [LIB-01, LIB-03]
 - [x] 12-03-PLAN.md — AUD-EDIT-02: multi-select Compare entry on /audience → reuse P8's multi-audience Read against an arbitrary audience pair (extend /api/tools/read) *(autonomous: false — human-verified via Playwright UAT 2026-06-20)* [AUD-EDIT-02]
-- [ ] 12-04-PLAN.md — AUD-EDIT-01: persona editing (Name/Disposition/Temperature/Description) on calibrated audiences only, written to the per-audience override slot; General read-only + regression-gate-safe *(autonomous: false — visual checkpoint)* [AUD-EDIT-01]
+- [x] 12-04-PLAN.md — AUD-EDIT-01: persona editing (Name/Disposition/Temperature/Description) on calibrated audiences only, written to the per-audience override slot; General read-only + regression-gate-safe *(autonomous: false — human-verified via Playwright UAT 2026-06-20)* [AUD-EDIT-01]
 
 > **Deferred (owner-locked, NOT planned this phase):** LIB-02 (tracked-accounts/watchlist → future Channels/Accounts page), AUD-EDIT-03 (compact onboarding redesign), AUD-EDIT-04 (Apify metadata prefill — blocked by GAP-ENV-01).
 

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 12-03-PLAN.md (Audience Compare — multi-select arbitrary-pair → reused P8 multi-audience Read; AUD-EDIT-02, human-verified)
-last_updated: "2026-06-20T17:52:00.000Z"
-last_activity: 2026-06-20 -- Completed 12-03-PLAN.md (AUD-EDIT-02 Compare)
+stopped_at: Completed 12-04-PLAN.md (Persona editing — Name/Disposition/Temperature/Description per persona → per-audience override slot; AUD-EDIT-01, human-verified). Phase 12 COMPLETE (4/4).
+last_updated: "2026-06-20T16:13:54.000Z"
+last_activity: 2026-06-20 -- Completed 12-04-PLAN.md (AUD-EDIT-01 persona editing) — Phase 12 complete (4/4)
 progress:
   total_phases: 16
-  completed_phases: 12
+  completed_phases: 13
   total_plans: 67
-  completed_plans: 66
-  percent: 76
+  completed_plans: 67
+  percent: 78
 ---
 
 # Project State
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 12 (library-acts-state-ia-expansion-not-yet-discussed) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute (12-04 AUD-EDIT-01 persona editing — last plan in phase)
-Last activity: 2026-06-20 -- Completed 12-03-PLAN.md (AUD-EDIT-02 Compare)
+Phase: 12 (library-acts-state-ia-expansion-not-yet-discussed) — COMPLETE (4/4 plans)
+Plan: 4 of 4 — DONE
+Status: Phase 12 complete (AUD-EDIT-01 persona editing human-verified). Next: phase verify, or proceed to the next expansion phase (13 Proactive Numen — not yet discussed).
+Last activity: 2026-06-20 -- Completed 12-04-PLAN.md (AUD-EDIT-01 persona editing) — Phase 12 complete
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -58,7 +58,7 @@ Last activity: 2026-06-20 -- Completed 12-03-PLAN.md (AUD-EDIT-02 Compare)
 | 9 | Living Audience | LIVE-01..07 | Complete ✓ |
 | 10 | Account Read, Saved Shelf & Flywheel | SELF-*, SAVE-*, FLYWHEEL-* | Complete ✓ |
 | 11 | Explore (Audience-Curated Discovery) | EXPLORE-01..06 | Planned (expansion) — not discussed |
-| 12 | Library & Acts/State IA | IA-01, LIB-01..03, AUD-EDIT-01..04 | Planned (expansion) — not discussed |
+| 12 | Library & Acts/State IA | IA-01, LIB-01..03, AUD-EDIT-01..04 | Complete ✓ (4/4; LIB-02 + AUD-EDIT-03/04 owner-deferred out of phase) |
 | 13 | Proactive Numen (Ambient + Initiated) | AMBIENT-01, PROACTIVE-01..02 | Planned (expansion) — not discussed |
 | 14 | KC Grounding & Quality-Loop | KCQ-01..09 | Complete ✓ |
 | 15 | Marketing Intent (mode-switch) | INTENT-01, REACT-01, BLOCK-01 | Planned (expansion) — not discussed |
@@ -190,6 +190,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 12-03]: AUD-EDIT-02 Compare = thin entry over P8 infra. /api/tools/read gains an OPTIONAL audienceIds[2] branch (NEW): both ids resolved via getAudience under the session (RLS-scoped, never raw weights), bad id → 400 audience_not_found (NO silent General fallback, CR-01); the shipped active-vs-General default (thread.active_audience_id + optional secondAudienceId) is the else branch, byte-unchanged. Both paths share runTwoAudienceRead + persistence. No ENGINE_VERSION bump.
 - [Phase 12-03]: audience-manager.tsx selection mode (D-05): Compare header action toggles selectionMode; rows gain a NEUTRAL checkbox (white/[0.06] + cream Check via text-cream-secondary, NOT coral) + selection toggle (cap 2, replace-oldest); navigation + ⋯ menu + General badge suppressed in selection mode. 'Compare these two →' (coral CTA, enabled at exactly 2) POSTs {concept, audienceIds}; result rendered INLINE via the REUSED MultiAudienceReadBlockRenderer (render component fixed, not redesigned). Under-calibrated/launch error → warning-tone note (never error-red, never coral).
 - [Phase 12-03]: Live UAT confirmed the 12-02 SaveAffordance gap closed end-to-end — saving the inline Compare Read persisted a real 'read' item ('Growth Audience — Mixed Read') to saved_items (then cleaned up). Under-calibrated warning note wired but NOT exercised (all 4 test-account audiences are calibrated enough; code path present, no defect).
+- [Phase 12-04]: AUD-EDIT-01 persona editing — Name persists to a NEW presentation-only `label?: string` on CalibratedPersona (the type had no name field; display was archetype-derived everywhere). Edits Name(→label)/Disposition/Temperature/Description(→repaint) → PATCH /api/audiences/[id] { personas } (the route already accepts personas: z.array(z.unknown()), so `label` passes with NO schema edit). archetype + share byte-stable (NO weight field, D-06). Gate-safe by construction: General is a virtual constant (personas:[], no DB row, no Edit affordance) = structurally unwritable; runners read [archetype, repaint] only and NEVER `label` (verified positive invariant: 5× repaint-map sites unchanged). ENGINE_VERSION stays 3.19.0; no migration (label is a JSONB key). Edit form = inline expand (planner discretion over Dialog) with local-state refresh on save (no hard reload).
+- [Phase 12-04]: Disposition/Temperature labels are sibling <span>s NOT <label htmlFor> (Rule 1 a11y fix surfaced by the unit test) — the shipped Select renders its trigger as a <button role="combobox"> that does not accept an id, so htmlFor would dangle; Name/Description keep htmlFor (Input/Textarea forward the id). AC name-fallback example ("collector"→"Collector") conflated Disposition with Archetype; test uses a real archetype slug (high_engager→"High Engager") on the same fallback path.
 
 ### Roadmap Evolution
 
@@ -214,10 +216,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T17:52:00.000Z
-Stopped at: Completed 12-03-PLAN.md (Audience Compare — multi-select arbitrary-pair → reused P8 multi-audience Read; AUD-EDIT-02, human-verified via Playwright UAT)
-Next: Execute 12-04-PLAN.md (AUD-EDIT-01 persona editing — last plan in Phase 12). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/12-04-PLAN.md
+Last session: 2026-06-20T16:13:54.000Z
+Stopped at: Completed 12-04-PLAN.md (AUD-EDIT-01 persona editing — Name/Disposition/Temperature/Description per persona → per-audience override slot; human-verified via Playwright UAT). Phase 12 COMPLETE (4/4).
+Next: Phase 12 done — run phase verify, or proceed to the next expansion phase (13 Proactive Numen — not yet discussed; /gsd-discuss-phase 13). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
+Resume file: (Phase 12 complete — no active plan)
 
 ## Performance Metrics
 
@@ -281,3 +283,4 @@ Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discuss
 | Phase Phase 12-library-acts-state-ia P01 | 4min | 2 tasks tasks | 4 files files |
 | Phase Phase 12-library-acts-state-ia P02 P02 | 12min | 2 tasks | 5 files |
 | Phase 12-library-acts-state-ia P03 | ~5min + UAT | 4 tasks (3 auto + 1 human-verify) | 3 files |
+| Phase 12-library-acts-state-ia P04 | 11min + UAT | 4 tasks (3 auto + 1 human-verify) | 4 files |
