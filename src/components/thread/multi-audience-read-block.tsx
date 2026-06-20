@@ -35,6 +35,7 @@ import { useState } from 'react';
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
 import { VerbatimWall } from './verbatim-wall';
+import { SaveAffordance } from './save-affordance';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -199,6 +200,13 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
   const { audiences } = block.props;
   const isCompare = audiences.length > 1;
 
+  // Human-readable Library label derived from the compare verdict (LIB-03):
+  // the lead audience's name + band (e.g. "Growth — Strong Read"). Falls back to
+  // "Read" when no audience is present. The flagship Read is the last savable noun
+  // that was missing the Act→State affordance (Plan 12-02, LIB-03).
+  const lead = audiences[0];
+  const saveTitle = lead ? `${lead.name} — ${lead.band} Read` : 'Read';
+
   return (
     <div className="flex flex-col gap-5">
       {/* 2-audience compare: the side-by-side verdict header (D-08, wins-for-X/bombs-for-Y). */}
@@ -215,8 +223,19 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
           pulled as a lead. Renders for both single- and multi-audience payloads. */}
       <VerbatimWall audiences={audiences} />
 
-      {/* Provenance — SIM-1 Flash. No 0-100 number anywhere (honesty spine). */}
-      <p className="text-xs text-muted/60">SIM-1 Flash</p>
+      {/* Provenance + Save (LIB-03). The flagship Read is now savable to Library;
+          snapshot = the block's own props so the shelf re-renders the SAME typed
+          renderer without a re-fetch (mirrors account-read-block). Save check is
+          cream, never coral (SaveAffordance owns the color discipline). */}
+      <div className="flex items-center justify-between gap-3">
+        {/* Provenance — SIM-1 Flash. No 0-100 number anywhere (honesty spine). */}
+        <p className="text-xs text-muted/60">SIM-1 Flash</p>
+        <SaveAffordance
+          item_type="read"
+          title={saveTitle}
+          snapshot={block.props as Record<string, unknown>}
+        />
+      </div>
     </div>
   );
 }

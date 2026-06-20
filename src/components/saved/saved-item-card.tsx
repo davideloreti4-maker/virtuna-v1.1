@@ -12,7 +12,7 @@
  *  - title (cream-primary) + muted timestamp
  *  - primary "Use in thread →" (accent CTA) — per-type label resolved from
  *    CHAIN_HANDOFFS (saved hook → "Test full →", saved idea → "Develop →")
- *  - overflow "Remove" → "Remove from shelf?" confirmation (destructive)
+ *  - overflow "Remove" → "Remove from Library?" confirmation (destructive)
  *
  * Launch model (mirrors DiscoverClient): POST the snapshot's anchor to the
  * resolved handoff endpoint, then navigate to /home where the open thread
@@ -97,6 +97,11 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
   const [launching, setLaunching] = useState(false);
 
   const handoff = launchHandoffFor(item.item_type);
+  // A saved Read has no CHAIN_HANDOFFS entry (it is re-OPENED, not re-generated):
+  // when no handoff resolves AND the item is a `read`, fall back to re-opening the
+  // open thread at /home (LIB-03 / D-04). This is the ONLY type that takes the
+  // no-endpoint fallback — every other launchable noun resolves a handoff.
+  const isReadFallback = !handoff && item.item_type === "read";
   const launchLabel =
     LAUNCH_LABEL[item.item_type] ?? handoff?.ctaLabel ?? "Use in thread →";
   const displayTitle = item.title?.trim() || TYPE_LABEL[item.item_type];
@@ -123,9 +128,17 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
     }
   };
 
+  // Re-open the open thread for a saved Read — no re-generation endpoint (honesty:
+  // a saved Read is a record; re-opening the thread is the honest action, D-04).
+  // createOpenThreadLazy guarantees an open thread exists server-side on the next
+  // skill action, so /home always rehydrates without an error path.
+  const handleUseRead = () => {
+    router.push("/home");
+  };
+
   const handleRemove = () => {
     remove.mutate(item.id, {
-      onSuccess: () => toast({ variant: "success", title: "Removed from shelf" }),
+      onSuccess: () => toast({ variant: "success", title: "Removed from Library" }),
       onError: () =>
         toast({ variant: "error", title: "Couldn't remove this item." }),
     });
@@ -179,10 +192,10 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
               }}
             >
               <AlertDialog.Title className="text-lg font-semibold text-foreground">
-                Remove from shelf?
+                Remove from Library?
               </AlertDialog.Title>
               <AlertDialog.Description className="mt-2 text-sm text-foreground-secondary">
-                This takes &ldquo;{displayTitle}&rdquo; off your shelf. It won&rsquo;t
+                This takes &ldquo;{displayTitle}&rdquo; off your Library. It won&rsquo;t
                 delete the original.
               </AlertDialog.Description>
               <div className="mt-6 flex justify-end gap-3">
@@ -223,6 +236,23 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
         >
           {launching ? "Launching…" : launchLabel}
           {!launching && <ArrowRight size={14} weight="bold" />}
+        </button>
+      )}
+
+      {/* Read fallback launch — re-opens the open thread (no handoff/endpoint).
+          Scoped to `read` ONLY: a saved Read is re-opened, not re-generated (D-04). */}
+      {isReadFallback && (
+        <button
+          type="button"
+          onClick={handleUseRead}
+          className={cn(
+            "inline-flex items-center gap-1 self-start text-sm font-medium transition-colors",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+          )}
+          style={{ color: "#FF7F50" }}
+          aria-label="Use this Read in a thread"
+        >
+          Use in thread →
         </button>
       )}
     </div>
