@@ -134,7 +134,7 @@ reuses its typed-block renderers.
 
 > The State home + nav collapse. **Acts** (generate/explore/test/refine/chat) → the thread; **State** (watchlist, saved work, audience, settings) → surfaces; wired together.
 
-- [ ] **IA-01**: 4-item nav collapse — **Thread · Audience · Library · Settings** (from Sandcastles' 11 sections).
+- [x] **IA-01**: 4-item nav collapse — **Thread · Audience · Library · Settings** (from Sandcastles' 11 sections).
 - [ ] **LIB-01**: Library = saved nouns (Reads/ideas/hooks/scripts), sectioned — **EXTENDS** the P10 flat `saved_items` store (built P12-extendable on purpose, D-07); **NOT** a second store / no rework.
 - [ ] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
 - [ ] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.

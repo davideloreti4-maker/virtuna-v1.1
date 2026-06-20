@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: Live Playwright UAT PASS — T1/T2/T3/T4/T6/T7 PASS, T5 partial (Explore-side wiring PASS; remix-card blocked by Phase-6 remix-skill decode_failed, GAP-REMIX-01). Live clockworks scrape renders the fit-scored grid; fit bar shows on calibrated (FIT·Weak+predicted) / omitted on General; Track persists+idempotent; reload rehydrates. Honesty spine held. Gates green (vitest 165/165, build ✓). 5 src/test files changed UNCOMMITTED — awaiting commit decision.
-stopped_at: Phase 12 planned — 4 plans (Wave 1), checker-verified (2W+1B resolved)
-last_updated: "2026-06-20T14:57:59.000Z"
-last_activity: "2026-06-20 -- Reverted Discover/Explore scrape apidojo→clockworks (free-plan-compatible) + mode-aware scrapeVideos; re-ran full Playwright UAT live (6/7 PASS). See 11-UAT.md. Outstanding: GAP-REMIX-01 (remix decode, Phase 6), prod Apify provider strategy."
+status: executing
+stopped_at: Completed 12-01-PLAN.md (Library nav item + sidebar IA relabel; IA-01)
+last_updated: "2026-06-20T15:26:22.430Z"
+last_activity: 2026-06-20 -- Phase 12 execution started
 progress:
   total_phases: 16
   completed_phases: 12
-  total_plans: 62
-  completed_plans: 63
+  total_plans: 66
+  completed_plans: 64
   percent: 75
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 11 — explore-audience-curated-discovery-expansion-not-yet-discuss
+**Current focus:** Phase 12 — library-acts-state-ia-expansion-not-yet-discussed
 
 ## Current Position
 
-Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — UAT PASSED live (6/7 + 1 partial) after clockworks scrape swap
-Plan: 8 of 8
-Status: Live Playwright UAT PASS — T1/T2/T3/T4/T6/T7 PASS, T5 partial (Explore-side wiring PASS; remix-card blocked by Phase-6 remix-skill decode_failed, GAP-REMIX-01). Live clockworks scrape renders the fit-scored grid; fit bar shows on calibrated (FIT·Weak+predicted) / omitted on General; Track persists+idempotent; reload rehydrates. Honesty spine held. Gates green (vitest 165/165, build ✓). 5 src/test files changed UNCOMMITTED — awaiting commit decision.
-Last activity: 2026-06-20 -- Reverted Discover/Explore scrape apidojo→clockworks (free-plan-compatible) + mode-aware scrapeVideos; re-ran full Playwright UAT live (6/7 PASS). See 11-UAT.md. Outstanding: GAP-REMIX-01 (remix decode, Phase 6), prod Apify provider strategy.
+Phase: 12 (library-acts-state-ia-expansion-not-yet-discussed) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-20 -- Phase 12 execution started
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -183,6 +183,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 11-08]: All 3 interim (supabase as any) casts dropped from tracked-accounts-repo post-regen (list/upsert/delete) — typed client resolves every from() call, no residual cast needed; DB platform:string narrowed to TrackedAccountPlatform on the boundary return cast (shelf-repo idiom)
 - [Phase 11-08]: BLOCKING regression gate GREEN — ENGINE_VERSION frozen at 3.19.0 (Explore made zero video-scoring changes, Pitfall 6); engine+KC 1191 green, full suite 2941 green (authoritative vitest binary node ./node_modules/vitest/vitest.mjs run), npm run build OK
 - [Phase 11-08]: Repo-wide eslint baseline (63 errors/98 warnings, all Phase-07-and-earlier files) is pre-existing out-of-scope — NOT fixed (touched file lints clean, build unaffected); logged to deferred-items.md alongside the 46 pre-existing tsc errors
+- [Phase 12-01]: Library NavItem added to active studio sidebar (icon Books, /library, matte non-coral active state — one-accent rule keeps coral on New Thread); four nav nouns now literal Thread · Audience · Library · Settings; IA-01 source+tests+build green; /library route itself created in 12-02 (nav item is the consumer, 404s until then)
+- [Phase 12-01]: Relabel scope kept sidebar-only (D-01) — CTA New Simulation→New Thread, history Simulations→Thread + No threads yet., collapsed tooltip/aria-label→Thread; singular per-row 'Simulation · {when}' history-row fallback left unchanged (D-13 row behavior preserved)
 
 ### Roadmap Evolution
 
@@ -207,10 +209,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T14:22:37.107Z
-Stopped at: Phase 12 planned — 4 plans (Wave 1), checker-verified (2 warnings + 1 blocker resolved over 2 revisions)
+Last session: 2026-06-20T15:26:22.425Z
+Stopped at: Completed 12-01-PLAN.md (Library nav item + sidebar IA relabel; IA-01)
 Next: Execute Phase 12 (/gsd-execute-phase 12). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/ (12-01..12-04 PLAN.md)
+Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/ (12-02..12-04 PLAN.md)
 
 ## Performance Metrics
 
@@ -271,3 +273,4 @@ Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discuss
 | Phase 11 P06 | 14min | 1 task | 2 files |
 | Phase 11 P07 | 20min | 2 tasks | 3 files |
 | Phase Phase 11 PP08 | 12min | 2 tasks (2+3; T1 orchestrator, T4 PENDING UAT) tasks | 2 files files |
+| Phase Phase 12-library-acts-state-ia P01 | 4min | 2 tasks tasks | 4 files files |
