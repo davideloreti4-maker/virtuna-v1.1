@@ -64,6 +64,8 @@ import { useScriptStream } from "@/hooks/queries/use-script-stream";
 import { ScriptThreadView } from "@/components/thread/script-thread-view";
 import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { RemixThreadView } from "@/components/thread/remix-thread-view";
+import { useExploreStream } from "@/hooks/queries/use-explore-stream";
+import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -156,6 +158,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedRemixBlocks, setPersistedRemixBlocks] = useState<any[]>([]);
+  // Explore persisted grids (Plan 11-07 — filter b.type === 'outlier-grid' on mount).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedExploreBlocks, setPersistedExploreBlocks] = useState<any[]>([]);
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
@@ -202,6 +207,22 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     activeTool === "remix" &&
     (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null || persistedRemixBlocks.length > 0);
 
+  // ── Explore stream (Plan 11-07 — EXPLORE-01/02/04) ─────────────────────────
+  // Provides the SSE outlier-grid block rendered above the composer in
+  // ExploreThreadView. CRITICAL: explore.start() NEVER arms pendingNavRef/stream.start
+  // (Pitfall 1 — Explore renders in-thread in /home, NEVER navigates to /analyze/[id]).
+  const explore = useExploreStream();
+  const exploreBlocks = explore.toBlocks();
+  // Explore view ALWAYS shows when the explore chip is active (it owns its idle
+  // quick-actions, exactly like ChatThreadView — D-07/EXPLORE-04, unconditional gate).
+  const showExploreView = activeTool === "explore";
+
+  // ── Tracked accounts presence (Plan 11-07 — drives card-2 honest degrade) ──
+  // Whether the creator has any tracked accounts; gates ExploreThreadView card 2
+  // ("What competitors shipped" → "Track an account first" when false). Fetched on
+  // mount; silent on 401 (mirrors the audiences fetch). Never fabricates a feed (D-02).
+  const [hasTrackedAccounts, setHasTrackedAccounts] = useState(false);
+
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
   // True when any idea/hook thread content exists to show (streaming or persisted).
   // Used by page-level layout (HomePageLayout) to switch to the full-height
@@ -213,17 +234,21 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     chat.isStreaming ||
     script.isStreaming ||
     remix.isStreaming ||
+    explore.isStreaming ||
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
     scriptBlocks.length > 0 ||
     remixBlocks.length > 0 ||
+    exploreBlocks.length > 0 ||
     persistedIdeaBlocks.length > 0 ||
     persistedHookBlocks.length > 0 ||
     persistedChatBlocks.length > 0 ||
     persistedScriptBlocks.length > 0 ||
     persistedRemixBlocks.length > 0 ||
-    showChatView; // chat view always shown when chip is active (owns empty state)
+    persistedExploreBlocks.length > 0 ||
+    showChatView || // chat view always shown when chip is active (owns empty state)
+    showExploreView; // explore view always shown when chip is active (owns idle quick-actions)
 
   // Notify parent whenever thread presence changes (HomePageLayout uses this).
   useEffect(() => {
@@ -264,7 +289,10 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           // Remix: URL required (canSubmit gates on trimmedUrl.length > 0 per plan spec)
           : activeTool === "remix"
             ? !submitting && !remix.isStreaming && trimmedUrl.length > 0
-            : (isValidTikTok || file !== null) && !submitting;
+            // Explore: field-send optional (empty = un-niched pull); gate only on stream state.
+            : activeTool === "explore"
+              ? !submitting && !explore.isStreaming
+              : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -292,11 +320,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
         const scriptBlocks = allBlocks.filter((b) => b.type === 'script-card');
         const remixBlocks = allBlocks.filter((b) => b.type === 'remix-card');
+        const outlierGridBlocks = allBlocks.filter((b) => b.type === 'outlier-grid');
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
         setPersistedChatBlocks(markdownBlocks);
         setPersistedScriptBlocks(scriptBlocks);
         setPersistedRemixBlocks(remixBlocks);
+        setPersistedExploreBlocks(outlierGridBlocks);
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
       }
@@ -321,6 +351,25 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       }
     }
     void fetchAudiences();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Tracked-accounts presence fetch (Plan 11-07 — card-2 honest degrade) ───
+  // GET /api/tracked-accounts → { accounts }. Drives ExploreThreadView card 2.
+  // Silent on 401 (not logged in yet) — mirrors the audiences fetch posture.
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTrackedAccounts() {
+      try {
+        const res = await fetch("/api/tracked-accounts");
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { accounts?: unknown[] };
+        if (!cancelled) setHasTrackedAccounts((data.accounts ?? []).length > 0);
+      } catch {
+        // silent — card 2 degrades to "Track an account first" (honest, never a fake feed)
+      }
+    }
+    void fetchTrackedAccounts();
     return () => { cancelled = true; };
   }, []);
 
@@ -408,6 +457,32 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       // Network error — silent (user can retry)
     }
   }, [hooks]);
+
+  // ── Explore in-place thread reload (Plan 11-07 — RESEARCH Q2) ──────────────
+  // After a tile "Remix → Read" tap, the remix-card persists to the SAME open
+  // thread. Explore renders in-thread in /home, so we refetch GET /api/threads/open
+  // and re-filter the persisted blocks IN PLACE (NEVER router.push — Pitfall 1 sibling).
+  // Re-filtering remix-card is what surfaces the freshly-persisted Read; we also
+  // refresh outlier-grid so the grid stays in sync. Mirrors handleDevelopRemix's shape.
+  const reloadOpenThread = useCallback(async () => {
+    try {
+      const res = await fetch('/api/threads/open');
+      if (!res.ok) return;
+      const data = await res.json() as {
+        messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      const allBlocks = messages.flatMap(
+        (m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? [],
+      );
+      const outlierGridBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'outlier-grid');
+      const remixBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'remix-card');
+      setPersistedExploreBlocks(outlierGridBlocks);
+      setPersistedRemixBlocks(remixBlocks);
+    } catch {
+      // Network error — silent (the grid stays; the user can retry the tap)
+    }
+  }, []);
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -570,6 +645,21 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       return;
     }
 
+    // ── Explore tool path (Plan 11-07, EXPLORE-01 — Pitfall 1 CRITICAL) ───────
+    // CRITICAL: this block MUST NOT set pendingNavRef.current and MUST NOT call
+    // stream.start — Explore renders in-thread in /home and NEVER navigates to
+    // /analyze/[id] (Pitfall 1; pendingNavRef/stream.start are Test-exclusive).
+    // A typed field-send maps to the niche param (empty → un-niched pull). The
+    // params popover + quick-actions are the richer entry points (onRunExplore /
+    // onQuickAction → explore.start), but a bare field-send still works.
+    if (activeTool === "explore") {
+      const ask = trimmedUrl; // typed niche/keywords or empty
+      setUrl(""); // clear input after send
+      // explore.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant).
+      await explore.start({ niche: ask || undefined });
+      return;
+    }
+
     // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
@@ -631,7 +721,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -800,6 +890,28 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           }}
         />
       )}
+
+      {/* Explore thread view — renders above the composer when the Explore tool is active.
+          Owns its idle quick-actions (D-07/EXPLORE-04) so showExploreView is unconditional
+          (mirrors ChatThreadView). The grid taps fire the discover→remix chain internally,
+          surfacing the persisted remix-card via onThreadReload (in-place, RESEARCH Q2).
+          CRITICAL: Explore NEVER navigates to /analyze — onQuickAction/onRetry call
+          explore.start (no pendingNavRef, Pitfall 1). hasTrackedAccounts drives card-2 degrade. */}
+      {showExploreView && (
+        <ExploreThreadView
+          persistedBlocks={persistedExploreBlocks}
+          streamingBlocks={exploreBlocks}
+          stages={explore.stages}
+          isStreaming={explore.isStreaming}
+          error={explore.error}
+          platform={platform}
+          audience={selectedAudience}
+          hasTrackedAccounts={hasTrackedAccounts}
+          onQuickAction={(params) => void explore.start(params)}
+          onRetry={() => void explore.start({})}
+          onThreadReload={() => void reloadOpenThread()}
+        />
+      )}
     </>
   );
 
@@ -933,6 +1045,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               intent={intent}
               onIntentChange={setIntent}
               onUploadClick={() => setShowUpload(true)}
+              onRunExplore={(params) => void explore.start(params)}
             />
 
             <div className="flex-1" />
@@ -945,9 +1058,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : "Simulate"}
+              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
               disabled={!canSubmit}
-              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming}
+              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />

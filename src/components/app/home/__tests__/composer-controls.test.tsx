@@ -6,7 +6,7 @@
  *  - The skill pill shows the active skill and opens a grouped Creator/Marketing popover.
  *  - Popover rows carry their `/command` label + a MAX badge where the video model fires.
  *  - The active skill is checked; selecting an enabled skill fires onSelectTool.
- *  - Not-yet-shipped skills (Explore/Offer/Ad) render disabled ("coming soon").
+ *  - Explore is live (P11 / EXPLORE-01); not-yet-shipped skills (Offer/Ad) render disabled ("coming soon").
  *  - ModelTag is a read-only indicator: SIM-1 Max for Test/Ad, SIM-1 Flash otherwise.
  *  - Audience + intent popovers fire their change handlers.
  *  - SkillRows filters by query (the `/` slash menu reuses it).
@@ -99,13 +99,25 @@ describe("ComposerControls — skill pill + popover", () => {
     expect(onSelectTool).toHaveBeenCalledWith("hooks");
   });
 
-  it("renders not-yet-shipped skills disabled (Explore/Offer/Ad) and does not fire on click", () => {
+  it("renders Explore enabled and fires onSelectTool on click (P11 / EXPLORE-01)", () => {
     const onSelectTool = vi.fn();
     renderControls({ onSelectTool });
     openSkillPopover();
     const explore = screen.getByRole("menuitemradio", { name: /explore/i });
-    expect(explore).toBeDisabled();
+    expect(explore).not.toBeDisabled();
     fireEvent.click(explore);
+    expect(onSelectTool).toHaveBeenCalledWith("explore");
+  });
+
+  it("renders not-yet-shipped skills disabled (Offer/Ad) and does not fire on click", () => {
+    const onSelectTool = vi.fn();
+    renderControls({ onSelectTool });
+    openSkillPopover();
+    for (const name of [/offer validation/i, /ad creative/i]) {
+      const row = screen.getByRole("menuitemradio", { name });
+      expect(row).toBeDisabled();
+      fireEvent.click(row);
+    }
     expect(onSelectTool).not.toHaveBeenCalled();
   });
 });
