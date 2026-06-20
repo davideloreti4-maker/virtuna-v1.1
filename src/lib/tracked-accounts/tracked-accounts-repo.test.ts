@@ -53,7 +53,7 @@ import {
   listTrackedAccounts,
   createTrackedAccount,
   deleteTrackedAccount,
-} from "../tracked-accounts-repo";
+} from "@/lib/tracked-accounts/tracked-accounts-repo";
 
 // ─── createTrackedAccount — CR-01 (session-derived user_id) ────────────────────
 
