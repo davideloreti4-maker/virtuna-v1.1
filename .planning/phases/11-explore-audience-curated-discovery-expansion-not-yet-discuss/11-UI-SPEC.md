@@ -1,10 +1,11 @@
 ---
 phase: 11
 slug: explore-audience-curated-discovery
-status: draft
+status: approved
 shadcn_initialized: true
 preset: "new-york / slate base / RSC (components.json — pre-existing, project default)"
 created: 2026-06-20
+reviewed_at: 2026-06-20
 ---
 
 # Phase 11 — UI Design Contract: Explore (Audience-Curated Discovery)
