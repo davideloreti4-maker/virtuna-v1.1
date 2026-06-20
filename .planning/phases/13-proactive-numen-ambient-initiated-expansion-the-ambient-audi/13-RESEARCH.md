@@ -405,22 +405,25 @@ const flatPersonas = cardScrollQuoteReactions(fraction, scrollQuote);
 
 **If the owner confirms A1-A3 during plan/discuss, all assumptions resolve to locked decisions.**
 
-## Open Questions
+## Open Questions (RESOLVED at plan time — Phase 13 planning)
 
 1. **Where exactly does the shared niche-panel build live for the reaction route?**
    - What we know: `ideas-runner.ts` (L325-382) and `hooks-runner.ts` (L355-388) build a `panel` (via `resolveNicheKey`, 14-01) + `audienceRepaint` from the active audience before `runFlashTextMode`. The Flash call itself is identical.
    - What's unclear: whether that panel-build is already a callable shared helper or inlined in each runner (would need light extraction for the new route to reuse without duplication).
    - Recommendation: the planner reads `ideas-runner.ts` / `hooks-runner.ts` panel-construction lines and either calls the existing helper or extracts a small `buildReactionPanel(audience)` shared by the runners + the new route. Keep it byte-identical to the runners so type-to-room discriminates exactly like a card reaction.
+   - **RESOLVED — `buildReactionPanel` shared helper (Plan 13-01).** Verified the panel/repaint build is inlined byte-identically in both runners (ideas L284-300, hooks L313-323); Plan 13-01 Task 1 extracts `buildReactionPanel(profileRow, audience)` and refactors both runners + the new react route onto it.
 
 2. **Does the presence persist its expanded/collapsed state across re-focus and re-render?**
    - What we know: the Lens remembers scale per-Lens (`useLensScale`); the composer popovers use an outside-click/Escape effect (`composer-controls.tsx`).
    - What's unclear: whether collapsed/expanded is session-sticky or resets.
    - Recommendation: local component state is sufficient for v1 (UI-SPEC says "collapses on outside-tap/Escape"); reuse the composer's outside-click/Escape effect pattern. Not a blocker.
+   - **RESOLVED — local component state + the composer outside-click/Escape effect (Plan 13-03).** AmbientPresence owns collapsed/expanded as local state and reuses the `composer-controls.tsx` L389-403 outside-click/Escape pattern to collapse; not session-persisted in v1.
 
 3. **Type-to-room result lifecycle — does the ad-hoc reaction persist to the thread, or is it ephemeral?**
    - What we know: skill cards persist as blocks; chat persists markdown turns. Type-to-room is "a quick read, not a full Test" (UI-SPEC caption).
    - What's unclear: whether a typed-thought reaction should leave a durable artifact or vanish after the spotlight/Lens close.
    - Recommendation: default to **ephemeral** (it's a gut-check, not a saved concept) — matches the "not a full Test" framing and avoids polluting the thread ledger. Confirm with owner; if persistence is wanted later, it's additive.
+   - **RESOLVED — ephemeral (Plans 13-01 + 13-03).** The react route persists nothing and AmbientPresence holds the type-to-room result in local state only; the ad-hoc reaction vanishes when the spotlight/Lens close — no thread-ledger pollution. Persistence stays additive if wanted later.
 
 ## Validation Architecture
 
