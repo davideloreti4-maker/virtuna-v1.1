@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 11 code-complete (all 8 plans executed; 11-08 live migration pushed + types regen + casts dropped + regression gate green). Verifier = human_needed — Task 4 live-data UAT (11-UAT.md, 7 steps) pending before phase marks complete.
-last_updated: "2026-06-20T14:05:00.000Z"
-last_activity: "2026-06-20 -- 11-REVIEW code-review fixes applied (3 commits, branch milestone/numen-tools): CR-01 un-niched Explore pull when input empty (route no longer 400s the default/General user; honest trending fallback, fit=null) [95beb49e]; CR-02 'What competitors shipped' resolves the session user's tracked_accounts server-side (capped 5, merged+deduped pull, user_id session-derived; clean 400 only on the zero-accounts race) [2cd740a3]; WR-01 remix CTA clears remixPendingId in a finally so a successful remix re-enables the tile [58633fe2]. Gates green: ENGINE_VERSION 3.19.0 (untouched), full suite 2956 passing / 28 skipped (was 2941 +15 new tests), npm run build OK, touched-file lint clean. WR-02..05 + IN-01..04 left as documented follow-ups in 11-REVIEW.md. Phase NOT marked complete — Task 4 live-data UAT (11-UAT.md, 7 steps) still pending; the CR-01/CR-02 blockers that would have failed UAT are now resolved."
+stopped_at: Phase 11 UAT PASSED live 2026-06-20 (Playwright) after a clockworks scrape swap. 6/7 PASS (T1,T2,T3,T4,T6,T7), T5 PARTIAL (Explore fires the remix chain in-place correctly; remix-card blocked by a downstream Phase-6 remix-skill decode_failed, not Explore). Root-cause fix: apidojo/tiktok-scraper is a PAID actor the Apify FREE plan refuses → reverted Discover/Explore scrape to clockworks (free-plan-OK, real data), made scrapeVideos mode-aware (profiles vs searchQueries). Gates: vitest affected 165/165, touched files typecheck clean, `next build` ✓ compiled. 5 src/test files changed, uncommitted. Remaining: GAP-REMIX-01 (remix-skill decode — Phase 6 follow-up), confirm prod Apify plan/provider strategy.
+last_updated: "2026-06-20T16:30:00.000Z"
+last_activity: "2026-06-20 -- Ran Phase 11 UAT in Playwright (e2e-test user, live Supabase). PASS: T1 (pill + `/` slash both open Explore idle + 3 cards, no auto-fire), T2 (card-2 disabled 'Track an account first' at zero accounts; flips to enabled at 1), T6-backend (tracked_accounts POST→201 normalized 'chrisbumstead', 2nd POST idempotent same-id, GET=1 row, RLS/CR-01 — verified via authenticated in-browser fetch + DB). PARTIAL: T7 (outlier-grid block persists w/ kcGenVersion stamp + rehydrates on reload; empty tiles only). BLOCKED: T3/T4/T5 — Apify FREE plan (account rousing_saxophone) blocks apidojo/tiktok-scraper API runs → no live grid → fit bar/remix not observable (both code-verified by gsd-verifier + units). Honesty spine HELD (no fabricated reaction, no empty fit bar, no fake %, no coral misuse; failed scrape shows honest empty-degrade). Findings: GAP-ENV-01 (Apify Free plan — use paid token locally or run on Vercel), GAP-SCRAPE-01 (scrapeVideos input `profiles` rejected by actor; wants `keywords`/`startUrls` — shared P8/P10/P11 stack, needs fix + paid-plan confirm), OBS-01 (failed scrape persists empty grid block), OBS-02 (audience pill resets to General on reload despite thread active_audience_id). Seeded + KEPT: audience 'Fitness Creators' (b0bbcfd9), tracked tiktok/chrisbumstead (88258b92). See 11-UAT.md."
 progress:
   total_phases: 16
   completed_phases: 10
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — code path complete, Task 4 human UAT PENDING
+Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — UAT PASSED live (6/7 + 1 partial) after clockworks scrape swap
 Plan: 8 of 8
-Status: 11-08 code path done (live tracked_accounts + types regen + casts dropped + regression gate green) — Task 4 end-to-end Explore UAT PENDING human verification; phase NOT yet complete
-Last activity: 2026-06-20 -- 11-08 Tasks 2+3 done (dropped interim (supabase as any) casts post-regen; BLOCKING gate green: ENGINE_VERSION 3.19.0, engine+KC 1191 green, full suite 2941 green, build OK, touched-file lint clean). Task 1 (live migration push + types regen) done earlier by orchestrator (commit 63375675). Task 4 UAT reserved for human.
+Status: Live Playwright UAT PASS — T1/T2/T3/T4/T6/T7 PASS, T5 partial (Explore-side wiring PASS; remix-card blocked by Phase-6 remix-skill decode_failed, GAP-REMIX-01). Live clockworks scrape renders the fit-scored grid; fit bar shows on calibrated (FIT·Weak+predicted) / omitted on General; Track persists+idempotent; reload rehydrates. Honesty spine held. Gates green (vitest 165/165, build ✓). 5 src/test files changed UNCOMMITTED — awaiting commit decision.
+Last activity: 2026-06-20 -- Reverted Discover/Explore scrape apidojo→clockworks (free-plan-compatible) + mode-aware scrapeVideos; re-ran full Playwright UAT live (6/7 PASS). See 11-UAT.md. Outstanding: GAP-REMIX-01 (remix decode, Phase 6), prod Apify provider strategy.
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
