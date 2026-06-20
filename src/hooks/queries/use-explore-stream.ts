@@ -43,6 +43,12 @@ export interface ExploreStartParams {
   serendipity?: number;
   /** A single preset input string (quick-actions may pass this directly). */
   input?: string;
+  /**
+   * CR-02 — "use my tracked accounts" signal (the competitors card). The route resolves
+   * the session user's tracked handles server-side; the client NEVER sends handles
+   * (preserves the CR-01 user_id-from-session invariant).
+   */
+  tracked?: boolean;
 }
 
 export interface UseExploreStreamReturn {

@@ -65,6 +65,11 @@ export interface ExploreQuickActionParams {
   accounts?: string;
   timeWindow?: string;
   serendipity?: number;
+  /**
+   * CR-02 — the competitors card sets this so the route pulls from the session user's
+   * tracked accounts (resolved server-side; the client never sends handles).
+   */
+  tracked?: boolean;
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -250,7 +255,9 @@ export function ExploreThreadView({
               disabled={!hasTrackedAccounts}
               onClick={
                 hasTrackedAccounts
-                  ? () => onQuickAction({ timeWindow: 'week' })
+                  ? // CR-02: signal the route to resolve the session user's tracked accounts
+                    // server-side (no handles sent from the client — CR-01 invariant).
+                    () => onQuickAction({ tracked: true, timeWindow: 'week' })
                   : undefined
               }
             />

@@ -75,6 +75,26 @@ describe('ExploreThreadView — idle quick-actions (EXPLORE-04 / D-07)', () => {
     ).toBeInTheDocument();
   });
 
+  it('card 2 fires the tracked:true signal on tap (CR-02 — route resolves handles server-side, none sent from client)', () => {
+    const onQuickAction = vi.fn();
+    render(
+      <ExploreThreadView
+        {...baseProps({ onQuickAction, hasTrackedAccounts: true })}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'What competitors shipped' }),
+    );
+    expect(onQuickAction).toHaveBeenCalledTimes(1);
+    const params = onQuickAction.mock.calls[0]![0] as Record<string, unknown>;
+    expect(params.tracked).toBe(true);
+    expect(params.timeWindow).toBe('week');
+    // SECURITY (CR-01): the client NEVER sends account handles — the route resolves the
+    // session user's tracked accounts itself. The payload carries no handle/accounts.
+    expect(params.accounts).toBeUndefined();
+  });
+
   it('NEVER auto-fires onQuickAction on render (D-07 — only on tap)', () => {
     const onQuickAction = vi.fn();
     render(<ExploreThreadView {...baseProps({ onQuickAction, hasTrackedAccounts: true })} />);
