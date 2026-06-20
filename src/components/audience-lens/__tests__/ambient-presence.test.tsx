@@ -184,4 +184,156 @@ describe('AmbientPresence — source guards (token / determinism)', () => {
     const src = readSrc();
     expect(src).toMatch(/reducedMotion/);
   });
+
+  it('makes no client-side Qwen call (no runFlashTextMode / getQwenClient — server-only)', () => {
+    const code = readCode();
+    expect(code).not.toMatch(/runFlashTextMode/);
+    expect(code).not.toMatch(/getQwenClient/);
+  });
+});
+
+// ── Task 2: type-to-room input — explicit-submit Flash reaction (D-04) ───────────
+/** Expand the presence and return the type-to-room textarea + send button. */
+function expandAndGetInput() {
+  fireEvent.click(screen.getByRole('button', { name: 'Expand audience presence' }));
+  const textarea = screen.getByLabelText(
+    'Type a thought to test against the room',
+  ) as HTMLTextAreaElement;
+  const send = screen.getByRole('button', { name: 'Test this →' });
+  return { textarea, send };
+}
+
+function mockFetchOk(body: { fraction: string; scrollQuote: string }) {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => body,
+  } as Response);
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+describe('AmbientPresence — type-to-room input (Surface 4, D-04)', () => {
+  it('renders the placeholder + `Test this →` send affordance in the expanded panel', () => {
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    expect(textarea.placeholder).toBe('Type a thought — see how the room reacts');
+    expect(send).toBeTruthy();
+  });
+
+  it('disables send for empty / whitespace-only input and enables it once a char is typed', () => {
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(textarea, { target: { value: '   ' } });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(textarea, { target: { value: 'open with a question' } });
+    expect((send as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('does NOT fetch on keystroke — only on explicit submit (no keystroke-fired calls)', () => {
+    const fetchMock = mockFetchOk({ fraction: '7/10 stop', scrollQuote: 'Stopped me.' });
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'a thought' } });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('fires exactly ONE POST to /api/tools/react with the typed text on explicit submit', async () => {
+    const fetchMock = mockFetchOk({ fraction: '7/10 stop', scrollQuote: 'Stopped me.' });
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'open with a question' } });
+    fireEvent.click(send);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(url).toBe('/api/tools/react');
+    expect((init as RequestInit).method).toBe('POST');
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({
+      text: 'open with a question',
+    });
+  });
+
+  it('submits on Enter (Shift+Enter does NOT submit — newline idiom)', async () => {
+    const fetchMock = mockFetchOk({ fraction: '7/10 stop', scrollQuote: 'Stopped me.' });
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'a thought' } });
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: true });
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.keyDown(textarea, { key: 'Enter', shiftKey: false });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+  });
+
+  it('on success: sets the subject to the typed thought, calls onFocusChange, shows the caption, opens the Lens', async () => {
+    mockFetchOk({ fraction: '7/10 stop', scrollQuote: 'Stopped me.' });
+    const onFocusChange = vi.fn();
+    render(<AmbientPresence audience={calibrated10()} focus={null} onFocusChange={onFocusChange} />);
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'open with a question' } });
+    fireEvent.click(send);
+
+    // onFocusChange fires with the typed thought's returned reaction.
+    await vi.waitFor(() =>
+      expect(onFocusChange).toHaveBeenCalledWith({
+        conceptText: 'open with a question',
+        fraction: '7/10 stop',
+        scrollQuote: 'Stopped me.',
+      }),
+    );
+    // Subject becomes the typed thought.
+    expect(screen.getByTestId('ambient-subject').textContent).toContain('open with a question');
+    // Honesty caption renders.
+    expect(screen.getByTestId('ambient-caption').textContent).toContain(
+      'A quick SIM read on your Growth Audience — not a full Test.',
+    );
+    // The ONE Lens opened, scoped to the typed thought.
+    expect(screen.getAllByText('Audience').length).toBeGreaterThan(0);
+  });
+
+  it('shows `Reading the room…` in an aria-live polite region while awaiting', async () => {
+    // A deferred fetch keeps the loading state observable.
+    let resolveFetch: (v: Response) => void = () => {};
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise<Response>((res) => {
+          resolveFetch = res;
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'a thought' } });
+    fireEvent.click(send);
+    await vi.waitFor(() => expect(screen.getByTestId('ambient-loading')).toBeTruthy());
+    const loading = screen.getByTestId('ambient-loading');
+    expect(loading.textContent).toBe('Reading the room…');
+    expect(loading.getAttribute('aria-live')).toBe('polite');
+    // Resolve to settle the promise.
+    resolveFetch({ ok: true, json: async () => ({ fraction: '5/10 stop', scrollQuote: 'x' }) } as Response);
+  });
+
+  it('on error: renders the verbatim error copy + a Retry affordance (never error-red)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 502, json: async () => ({ error: 'reaction_failed' }) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'a thought' } });
+    fireEvent.click(send);
+    await vi.waitFor(() => expect(screen.getByTestId('ambient-error')).toBeTruthy());
+    expect(screen.getByTestId('ambient-error').textContent).toContain(
+      "Couldn't reach the audience right now. Your thought is saved — try again in a moment.",
+    );
+    expect(screen.getByRole('button', { name: 'Retry →' })).toBeTruthy();
+  });
+
+  it('error branch source is never error-red (no color-error / text-red / #ef)', () => {
+    // Assert against the CODE (comments stripped) so prose never trips the guard.
+    const code = readCode();
+    // Narrow to the error testid block and confirm no error-red token appears in the component.
+    expect(code).not.toMatch(/color-error/);
+    expect(code).not.toMatch(/text-red/);
+    expect(code).not.toMatch(/#ef[0-9a-f]{2,}/i);
+  });
 });

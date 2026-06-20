@@ -32,12 +32,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLens } from './AudienceLens';
-import type { AmbientPresenceProps } from './ambient-presence-types';
+import type { AmbientFocus, AmbientPresenceProps } from './ambient-presence-types';
 
 // ── Copy (UI-SPEC §Copywriting) ────────────────────────────────────────────────
 const TITLE = 'Your audience';
 const IDLE_COPY = 'Your people are here. Make something — or type a thought to test it.';
 const GENERAL_SUBTITLE = 'General audience · default panel';
+// Type-to-room (Surface 4)
+const TYPE_PLACEHOLDER = 'Type a thought — see how the room reacts';
+const SEND_LABEL = 'Test this →';
+const LOADING_COPY = 'Reading the room…';
+const ERROR_COPY =
+  "Couldn't reach the audience right now. Your thought is saved — try again in a moment.";
 
 // ── Dot-cloud strip geometry ────────────────────────────────────────────────────
 // A thin horizontal band sized to the collapsed 48px strip. Dots are laid out evenly
@@ -95,9 +101,23 @@ export function AmbientPresence({
   const [lensOpen, setLensOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const isFocused = focus !== null;
+  // ── Type-to-room local state (Surface 4, D-04) ──────────────────────────────────
+  // The typed-thought reaction is held LOCALLY (ephemeral — RESEARCH Open Q3): it drives the
+  // spotlight + Lens immediately and notifies the composer via onFocusChange, but is never
+  // persisted. A fresh typed result takes precedence over the driven `focus` so the subject
+  // becomes the typed thought (UI-SPEC §Surface 4 result).
+  const [draft, setDraft] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [typedFocus, setTypedFocus] = useState<AmbientFocus>(null);
+  const [lastSubmitted, setLastSubmitted] = useState(''); // preserved for the honest Retry
+
+  // The effective in-focus concept: a just-typed thought wins, else the composer-driven focus.
+  const effectiveFocus: AmbientFocus = typedFocus ?? focus;
+  const isFocused = effectiveFocus !== null;
   const personas = audience?.personas ?? [];
   const isGeneral = audience == null || audience.is_general || personas.length === 0;
+  const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
 
   // Subtitle: `{N} calibrated people` for a real calibrated roster; the General panel otherwise.
   const subtitle = isGeneral ? GENERAL_SUBTITLE : `${personas.length} calibrated people`;
@@ -105,8 +125,11 @@ export function AmbientPresence({
   // The in-focus concept's honest flat reactions (real counts + one real lead quote). `[]` when
   // idle OR when the fraction can't be parsed — both collapse to the calm roster, no fabrication.
   const flatPersonas: FlatPersonaReaction[] = useMemo(
-    () => (focus ? cardScrollQuoteReactions(focus.fraction, focus.scrollQuote) : []),
-    [focus],
+    () =>
+      effectiveFocus
+        ? cardScrollQuoteReactions(effectiveFocus.fraction, effectiveFocus.scrollQuote)
+        : [],
+    [effectiveFocus],
   );
 
   // ── Strip dots ────────────────────────────────────────────────────────────────
@@ -184,7 +207,43 @@ export function AmbientPresence({
     setLensOpen(true);
   };
 
-  const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
+  // ── Type-to-room: explicit-submit Flash reaction (Surface 4, D-04) ──────────────
+  // Fires the Wave-1 POST /api/tools/react ONCE on an EXPLICIT submit (button click or Enter —
+  // NEVER on keystroke/debounce; the live-composer-as-you-type stretch is DEFERRED per CONTEXT).
+  // On return: sets the spotlight subject to the typed thought (locally + notifies the composer
+  // via onFocusChange), tones the dots, and auto-opens the ONE Lens scoped to the thought. The
+  // reaction is EPHEMERAL — never persisted (RESEARCH Open Q3). NO client-side model call: the
+  // input only fetches the server route (the Flash text-mode primitive stays server-only).
+  const submitThought = async (raw: string) => {
+    const text = raw.trim();
+    if (text.length === 0 || loading) return;
+    setLoading(true);
+    setError(false);
+    setLastSubmitted(text);
+    try {
+      const res = await fetch('/api/tools/react', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) throw new Error('reaction_failed');
+      const data: { fraction?: string; scrollQuote?: string } = await res.json();
+      const next: AmbientFocus = {
+        conceptText: text,
+        fraction: data.fraction ?? '',
+        scrollQuote: data.scrollQuote ?? '',
+      };
+      setTypedFocus(next); // local spotlight (drives dots + Lens immediately)
+      onFocusChange?.(next); // notify the composer's focus state (Plan 13-04)
+      setDraft('');
+      setLensOpen(true); // auto-open the ONE Lens scoped to the typed thought (Surface 5)
+    } catch {
+      // Honest degrade: quiet error copy + a non-red Retry; the typed text is preserved.
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div
@@ -258,14 +317,16 @@ export function AmbientPresence({
 
         {/* Subject (Surface 2) — `reacting to: {concept}`, one line truncated. Present only when
             focused; ABSENT at idle (the spotlight is never ambiguous, never fabricated). */}
-        {isFocused && (
+        {effectiveFocus && (
           <div
             data-testid="ambient-subject"
             className="flex min-w-0 max-w-[40%] shrink items-center truncate text-[13px] font-medium leading-snug"
-            title={focus.conceptText}
+            title={effectiveFocus.conceptText}
           >
             <span className="shrink-0 text-[var(--color-foreground-muted)]">reacting to:&nbsp;</span>
-            <span className="truncate text-[var(--color-foreground)]">{focus.conceptText}</span>
+            <span className="truncate text-[var(--color-foreground)]">
+              {effectiveFocus.conceptText}
+            </span>
           </div>
         )}
 
@@ -311,8 +372,80 @@ export function AmbientPresence({
               {IDLE_COPY}
             </p>
           )}
-          {/* Type-to-room input slot (Surface 4) — lands here in Task 2. */}
-          <div data-testid="ambient-typetoroom-slot" />
+
+          {/* Type-to-room input (Surface 4, D-04) — explicit-submit Flash reaction. */}
+          <div data-testid="ambient-typetoroom" className="flex flex-col gap-2">
+            <div className="flex items-end gap-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  // Reuse the PersonaChatDrawer idiom: Enter submits, Shift+Enter newline.
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void submitThought(draft);
+                  }
+                }}
+                rows={1}
+                aria-label="Type a thought to test against the room"
+                placeholder={TYPE_PLACEHOLDER}
+                className="min-h-[42px] flex-1 resize-none rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-[14px] text-[var(--color-foreground)] transition-colors placeholder:text-[var(--color-foreground-muted)] focus:border-[var(--color-border-hover)] focus:bg-[var(--color-active)] focus:outline-none"
+              />
+              <button
+                type="button"
+                aria-label={SEND_LABEL}
+                onClick={() => void submitThought(draft)}
+                disabled={loading || draft.trim().length === 0}
+                style={{ minHeight: 44 }}
+                className="shrink-0 rounded-[8px] px-3 text-[13px] font-medium text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)] disabled:opacity-40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-accent)]"
+              >
+                {SEND_LABEL}
+              </button>
+            </div>
+
+            {/* Loading affordance — honest "the SIM is reacting" vocabulary, aria-live polite. */}
+            {loading && (
+              <p
+                data-testid="ambient-loading"
+                role="status"
+                aria-live="polite"
+                className="text-[13px] font-medium leading-snug text-[var(--color-foreground-muted)]"
+              >
+                {LOADING_COPY}
+              </p>
+            )}
+
+            {/* Result honesty caption — sets expectation: a fast Flash read, not the Max Test. */}
+            {!loading && !error && typedFocus !== null && (
+              <p
+                data-testid="ambient-caption"
+                className="text-[13px] font-medium leading-snug text-[var(--color-foreground-muted)]"
+              >
+                A quick SIM read on your {audienceName} — not a full Test.
+              </p>
+            )}
+
+            {/* Error — verbatim honest copy + a quiet non-red Retry (preserves the typed text). */}
+            {error && !loading && (
+              <div data-testid="ambient-error" className="flex flex-col gap-1" role="alert">
+                <p
+                  className="text-[13px] font-medium leading-snug"
+                  style={{ color: 'var(--color-cream-secondary)' }}
+                >
+                  {ERROR_COPY}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void submitThought(lastSubmitted)}
+                  disabled={loading || lastSubmitted.trim().length === 0}
+                  className="self-start text-[13px] font-medium transition-colors disabled:opacity-40"
+                  style={{ color: 'var(--color-cream-secondary)' }}
+                >
+                  Retry →
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -321,8 +454,8 @@ export function AmbientPresence({
       <div className="sr-only" role="status" aria-live="polite">
         <p>
           {TITLE} — {subtitle}.
-          {isFocused
-            ? ` Reacting to: ${focus.conceptText}. ${focus.fraction}.`
+          {effectiveFocus
+            ? ` Reacting to: ${effectiveFocus.conceptText}. ${effectiveFocus.fraction}.`
             : ` ${IDLE_COPY}`}
         </p>
         <ul>
@@ -332,22 +465,20 @@ export function AmbientPresence({
         </ul>
       </div>
 
-      {/* The ONE shipped Lens, scoped to the in-focus concept (D-05 — no fork, no restyle). */}
-      {isFocused && (
+      {/* The ONE shipped Lens, scoped to the in-focus concept (D-05 — no fork, no restyle).
+          `effectiveFocus` resolves a just-typed thought first, else the composer-driven focus,
+          so all three doors (tap, scroll-spy, type-to-room) open the SAME Lens scoped right. */}
+      {effectiveFocus && (
         <AudienceLens
           heatmap={null}
           simResults={undefined}
           flatPersonas={flatPersonas}
-          conceptText={focus.conceptText}
+          conceptText={effectiveFocus.conceptText}
           reducedMotion={reducedMotion}
           open={lensOpen}
           onOpenChange={setLensOpen}
         />
       )}
-
-      {/* onFocusChange + audienceName are consumed by the Task-2 type-to-room input; reference
-          them so the isolated-build (no composer) keeps the contract live without unused warnings. */}
-      <span hidden aria-hidden="true" data-audience-name={audienceName} data-has-focus-cb={onFocusChange ? '1' : '0'} />
     </div>
   );
 }
