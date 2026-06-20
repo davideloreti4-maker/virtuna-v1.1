@@ -228,7 +228,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
 | 11. Explore (Audience-Curated Discovery) | 8/8 | Verifying — code complete, Task 4 human UAT pending | 2026-06-20 |
-| 12. Library & Acts/State IA | 4/4 | Complete ✓ | 2026-06-20 |
+| 12. Library & Acts/State IA | 4/4 | Complete    | 2026-06-20 |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
 | 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
@@ -440,7 +440,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **⚠️ Already shipped — do NOT rebuild:** writing-voice sample (N1, merge `d2f121e7`). Surface/extend it here. Confirm P8 W0 removed the persona-value `[ASSUMED]` markers.
 **UI hint:** yes
 
-**Plans:** 4/4 plans executed — PHASE COMPLETE
+**Plans:** 4/4 plans complete
 
 **Wave 1** *(parallel — zero files_modified overlap)*
 

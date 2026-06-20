@@ -136,12 +136,12 @@ reuses its typed-block renderers.
 
 - [x] **IA-01**: 4-item nav collapse — **Thread · Audience · Library · Settings** (from Sandcastles' 11 sections).
 - [x] **LIB-01**: Library = saved nouns (Reads/ideas/hooks/scripts), sectioned — **EXTENDS** the P10 flat `saved_items` store (built P12-extendable on purpose, D-07); **NOT** a second store / no rework.
-- [ ] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
+- [x] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
 - [x] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.
 - [x] **AUD-EDIT-01**: Persona editing (P7 deferred, pulled in) — on the Audience surface. *(12-04, human-verified 2026-06-20: Name/Disposition/Temperature/Description per persona → per-audience override slot; General read-only; regression-gate-safe)*
 - [x] **AUD-EDIT-02**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in). *(12-03 — Compare selection mode on /audience → arbitrary audienceIds[2] path on /api/tools/read → reused P8 multi-audience Read; human-verified 2026-06-20)*
-- [ ] **AUD-EDIT-03**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
-- [ ] **AUD-EDIT-04**: Link-social → Apify metadata prefill (PROFILE tier-C).
+- [x] **AUD-EDIT-03**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
+- [x] **AUD-EDIT-04**: Link-social → Apify metadata prefill (PROFILE tier-C).
 - *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; surface/extend on the Audience surface, do NOT rebuild. Confirm P8 W0 removed persona-value `[ASSUMED]` markers.)*
 
 ### AMBIENT / PROACTIVE — Proactive Numen (Ambient + Initiated) (P13 — the "ambient audience system")
