@@ -98,10 +98,14 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ mode, input: normalized, cached: true, tiles: cached });
   }
 
-  // ── (6) Cache miss → scrape (apidojo) → rank → cache → respond ─────────────
+  // ── (6) Cache miss → scrape (clockworks) → rank → cache → respond ──────────
   try {
     const provider = createScrapingProvider();
-    const videos = await provider.scrapeVideos(normalized, SCRAPE_LIMIT);
+    const videos = await provider.scrapeVideos(
+      normalized,
+      SCRAPE_LIMIT,
+      mode === "niche" ? "search" : "profile",
+    );
 
     const ranked = rankOutliers(videos, mode).slice(0, MAX_TILES);
 

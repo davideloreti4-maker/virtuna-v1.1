@@ -201,7 +201,8 @@ describe("runExplorePipeline", () => {
     });
 
     expect(mockScrapeVideos).toHaveBeenCalledTimes(1);
-    expect(mockScrapeVideos).toHaveBeenCalledWith("fitness", 30);
+    // niche mode → clockworks search input (searchQueries), not a profile lookup.
+    expect(mockScrapeVideos).toHaveBeenCalledWith("fitness", 30, "search");
   });
 
   // ── CR-02: the merged "What competitors shipped" multi-handle pull ───────────────
@@ -224,10 +225,11 @@ describe("runExplorePipeline", () => {
     });
 
     // One scrape per handle (3), and the merged grid carries tiles from all of them.
+    // Merged competitors pull = handles → profile mode.
     expect(mockScrapeVideos).toHaveBeenCalledTimes(3);
-    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorone", 30);
-    expect(mockScrapeVideos).toHaveBeenCalledWith("creatortwo", 30);
-    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorthree", 30);
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorone", 30, "profile");
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatortwo", 30, "profile");
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorthree", 30, "profile");
 
     expect(OutlierGridBlockSchema.safeParse(block).success).toBe(true);
     const ids = block.props.tiles.map((t) => t.platformVideoId);

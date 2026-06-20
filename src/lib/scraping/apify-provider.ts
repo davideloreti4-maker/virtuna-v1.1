@@ -1,6 +1,7 @@
 import { ApifyClient } from "apify-client";
 import {
   apifyVideoSchema,
+  apifyProfileSchema,
   apidojoProfileSchema,
   apidojoVideoSchema,
 } from "@/lib/schemas/competitor";
@@ -12,12 +13,16 @@ import type {
 } from "./types";
 import { IngestError } from "./types";
 
-// ── Discover actors (Phase 08, D-12) — apidojo split actors ──────────────────
-// scrapeVideos / scrapeProfile pull search/profile result sets for Discover and run
-// on apidojo. apidojo returns a materially different field shape than clockworks
-// (Pitfall 1) — the apidojo*Schema remaps it onto VideoData/ProfileData.
-const DISCOVER_PROFILE_ACTOR = "apidojo/tiktok-profile-scraper";
-const DISCOVER_VIDEO_ACTOR = "apidojo/tiktok-scraper";
+// ── Discover/Explore actors — clockworks (reverted from apidojo 2026-06-20) ───
+// scrapeVideos / scrapeProfile pull search/profile result sets for Discover + Explore.
+// REVERTED to clockworks: apidojo/tiktok-scraper is a PAID/rental actor that refuses
+// Apify Free-plan API runs ("You cannot use the API with the Free Plan"), which blocked
+// every live Discover/Explore pull. clockworks runs on the Free plan and returns real
+// engagement metrics; its field shape (playCount/diggCount/collectCount/createTime) is
+// remapped onto VideoData/ProfileData via the clockworks apify*Schema (NOT apidojo).
+// Profile pulls → `profiles:[handle]`; niche/search pulls → `searchQueries:[query]`.
+const DISCOVER_PROFILE_ACTOR = "clockworks/tiktok-profile-scraper";
+const DISCOVER_VIDEO_ACTOR = "clockworks/tiktok-scraper";
 
 // ── Single-post METRICS actor (Phase 10) — apidojo single-post tier ──────────
 // apidojo/tiktok-scraper-api is a DISTINCT actor from apidojo/tiktok-scraper (the
@@ -160,6 +165,54 @@ export function remapApidojoProfile(item: unknown): ProfileData {
   };
 }
 
+/**
+ * Remap one clockworks/tiktok-scraper video item onto VideoData.
+ * clockworks shape: playCount→views, diggCount→likes, commentCount→comments,
+ * shareCount→shares, collectCount→saves, createTime(unix s)→postedAt. Returns null
+ * (skipped) on parse failure — mirrors the batch-skip behaviour.
+ */
+export function remapClockworksVideo(item: unknown): VideoData | null {
+  const result = apifyVideoSchema.safeParse(item);
+  if (!result.success) {
+    console.warn(`[scraping] clockworks video validation failed:`, result.error.issues);
+    return null;
+  }
+
+  const v = result.data;
+  return {
+    platformVideoId: v.id,
+    videoUrl: v.webVideoUrl ?? "",
+    caption: v.text,
+    views: v.playCount,
+    likes: v.diggCount,
+    comments: v.commentCount,
+    shares: v.shareCount,
+    saves: v.collectCount,
+    hashtags: v.hashtags.map((h) => h.name),
+    durationSeconds: v.videoMeta?.duration ?? 0,
+    postedAt: v.createTime ? new Date(v.createTime * 1000) : new Date(),
+  };
+}
+
+/**
+ * Remap one clockworks profile item onto ProfileData. clockworks/tiktok-profile-scraper
+ * returns video-level items with profile data nested under `authorMeta`.
+ */
+export function remapClockworksProfile(item: unknown): ProfileData {
+  const { authorMeta } = apifyProfileSchema.parse(item);
+  return {
+    handle: authorMeta.name,
+    displayName: authorMeta.nickName,
+    bio: authorMeta.signature,
+    avatarUrl: authorMeta.avatar ?? "",
+    verified: authorMeta.verified,
+    followerCount: authorMeta.fans,
+    followingCount: authorMeta.following,
+    heartCount: authorMeta.heart,
+    videoCount: authorMeta.video,
+  };
+}
+
 export class ApifyScrapingProvider implements ScrapingProvider {
   private client: ApifyClient;
 
@@ -185,23 +238,37 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new Error(`No profile data returned for handle: ${handle}`);
     }
 
-    return remapApidojoProfile(items[0]);
+    return remapClockworksProfile(items[0]);
   }
 
-  async scrapeVideos(handle: string, limit = 30): Promise<VideoData[]> {
+  /**
+   * Pull a result set for Discover/Explore.
+   * @param query a handle (profile mode) OR a niche/search phrase (search mode).
+   * @param limit resultsPerPage cap.
+   * @param mode  "profile" → clockworks `profiles:[query]`; "search" → `searchQueries:[query]`.
+   *              clockworks `profiles` expects usernames; a multi-word niche phrase must go
+   *              through `searchQueries` or it returns nothing — hence the explicit mode.
+   */
+  async scrapeVideos(
+    query: string,
+    limit = 30,
+    mode: "profile" | "search" = "profile",
+  ): Promise<VideoData[]> {
+    const input =
+      mode === "search"
+        ? { searchQueries: [query], resultsPerPage: limit }
+        : { profiles: [query], resultsPerPage: limit };
+
     const run = await this.client
       .actor(DISCOVER_VIDEO_ACTOR)
-      .call(
-        { profiles: [handle], resultsPerPage: limit },
-        { waitSecs: 120 },
-      );
+      .call(input, { waitSecs: 120 });
 
     const { items } = await this.client
       .dataset(run.defaultDatasetId)
       .listItems();
 
     return items
-      .map((item) => remapApidojoVideo(item))
+      .map((item) => remapClockworksVideo(item))
       .filter((v): v is VideoData => v !== null);
   }
 

@@ -97,8 +97,12 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
       : [opts.normalizedInput];
   const isMerged = sources.length > 1;
 
+  // clockworks needs the right input field per mode: a niche phrase must go through
+  // `searchQueries` (profile mode would treat it as a username → no results). Merged
+  // competitors pulls are always handles → profile mode.
+  const scrapeMode = opts.mode === "niche" ? "search" : "profile";
   const scraped = await Promise.all(
-    sources.map((source) => provider.scrapeVideos(source, SCRAPE_LIMIT)),
+    sources.map((source) => provider.scrapeVideos(source, SCRAPE_LIMIT, scrapeMode)),
   );
   const seen = new Set<string>();
   const videos = scraped.flat().filter((v) => {

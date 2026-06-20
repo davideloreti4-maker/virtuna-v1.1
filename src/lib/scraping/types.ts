@@ -69,8 +69,16 @@ export interface ScrapingProvider {
   /** Scrape a single TikTok profile by handle. Throws if profile not found. */
   scrapeProfile(handle: string): Promise<ProfileData>;
 
-  /** Scrape recent videos for a TikTok handle. Returns validated videos (invalid items skipped). */
-  scrapeVideos(handle: string, limit?: number): Promise<VideoData[]>;
+  /**
+   * Scrape a result set for Discover/Explore. `query` is a handle (profile mode) or a
+   * niche/search phrase (search mode); `mode` selects the clockworks input field
+   * (profiles vs searchQueries). Returns validated videos (invalid items skipped).
+   */
+  scrapeVideos(
+    query: string,
+    limit?: number,
+    mode?: "profile" | "search",
+  ): Promise<VideoData[]>;
 
   /**
    * Resolve ONE non-owned TikTok URL to a fetchable mp4 URL.
