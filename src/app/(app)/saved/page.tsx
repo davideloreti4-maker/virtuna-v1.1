@@ -1,31 +1,13 @@
-import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
-import { SavedShelf } from "@/components/saved/saved-shelf";
-
-export const metadata: Metadata = {
-  title: "Saved | Numen",
-  description: "Your flat, typed shelf — Reads, ideas, hooks, and outliers pinned from any thread.",
-};
+import { redirect } from "next/navigation";
 
 /**
- * Server component for the /saved surface (Phase 10, Plan 04 — SAVE-01, D-07).
+ * /saved — deep-link preservation redirect (Phase 12, Plan 02 — LIB-01, D-03).
  *
- * Lives INSIDE the (app) route group so it inherits AppShell + auth + sidebar
- * (RESEARCH §5 / STATE 07-05). Auth-gated as defense-in-depth alongside the
- * (app) layout guard. AppShell owns the <main>; this page renders a plain
- * content <div> — do NOT nest a second <main> (STATE 07-05).
+ * The Saved shelf was relabeled Library and repointed to /library over the SAME
+ * saved_items store. This route is retained ONLY as a redirect so existing
+ * bookmarks / deep links to /saved keep resolving — there is no second store
+ * and no duplicate shelf mount here. The redirect IS the route.
  */
-export default async function SavedPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:p-6">
-      <SavedShelf />
-    </div>
-  );
+export default function SavedPage() {
+  redirect("/library");
 }

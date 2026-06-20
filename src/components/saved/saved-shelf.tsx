@@ -45,9 +45,10 @@ export function SavedShelf() {
     <div className="flex flex-col gap-6">
       {/* Header */}
       <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-foreground">Saved</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Library</h1>
         <p className="text-sm text-foreground-muted">
-          Everything you&rsquo;ve pinned from a thread — ready to pull back in.
+          Everything you&rsquo;ve saved — Reads, ideas, hooks, scripts, outliers
+          — ready to pull back into a thread.
         </p>
       </header>
 
@@ -83,10 +84,10 @@ export function SavedShelf() {
 
       {/* Body: loading / error / empty / grid */}
       {isLoading ? (
-        <p className="text-sm text-foreground-muted">Loading your shelf…</p>
+        <p className="text-sm text-foreground-muted">Loading your library…</p>
       ) : isError ? (
         <p className="text-sm text-foreground-muted">
-          Couldn&rsquo;t load your shelf. Try again in a moment.
+          Couldn&rsquo;t load your library. Try again in a moment.
         </p>
       ) : visible.length === 0 ? (
         <EmptyState filtered={filter !== "all"} />
@@ -106,7 +107,7 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-[var(--radius-lg)] border border-white/[0.06] px-6 py-16 text-center">
       <p className="text-base font-semibold text-foreground">
-        {filtered ? "Nothing of this type yet" : "Nothing saved yet"}
+        {filtered ? "Nothing of this type yet" : "Nothing in your Library yet"}
       </p>
       <p className="max-w-md text-sm text-foreground-muted">
         Save a Read, idea, hook, or outlier from any thread and it lands here —
