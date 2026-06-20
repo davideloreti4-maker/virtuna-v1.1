@@ -27,12 +27,13 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)* (completed 2026-06-19)
-- [ ] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)* (code complete 2026-06-20 — all 8 plans executed; Task 4 end-to-end Explore UAT PENDING human verification, phase not yet verified-complete)
+- [x] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)* (verified-complete 2026-06-20 — all 8 plans executed; UAT 6/7 PASS, T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug — Explore's own contract satisfied; 1 downstream caveat)
 - [x] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19; 4/4 planned plans complete 2026-06-20 — LIB-02/AUD-EDIT-03/04 owner-deferred out of phase)*
-- [ ] **Phase 13: Proactive Numen (Ambient + Initiated)** - The "ambient audience system": ambient audience reaction on EVERY skill card (always felt, not summoned; builds on P9 reaction primitive — must not duplicate) + Numen INITIATES (proactive morning drops "3 things stirring your people would bite on" + scheduled Explore = their Automations equivalent) = daily-habit engine, in-conversation. *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 13: Ambient Numen** - The living, always-present audience: a persistent docked audience presence + per-card reactions at rest (always felt, never summoned) + **type-to-room** (type a thought → the room reacts) + spotlight-on-the-in-focus-concept (never aggregates) — all EXTENDING P9's Lens (one Lens, many doors; must not duplicate). *(IN-MILESTONE EXPANSION 2026-06-19; DISCUSSED + narrowed to Ambient 2026-06-20 — see 13-CONTEXT.md; Initiated half split → Phase 17)*
 - [x] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 15: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19)*
-- [ ] **Phase 16: Commerce Skills** - Offer/Product Validation + Ad Creative + brand-profile entity + in-thread monetization, consuming P15's buyer frame *(IN-MILESTONE EXPANSION 2026-06-19)*
+- [ ] **Phase 15: Marketing Intent (mode-switch)** - Per-run composer intent (grow⇄sell) conditioning the persona reaction frame + buyer-reaction block; content/prompt-layer, NOT engine refactor *(IN-MILESTONE EXPANSION 2026-06-19; DEFERRED → v6.1 Commerce milestone 2026-06-20 — ship the creator studio first)*
+- [ ] **Phase 16: Commerce Skills** - Offer/Product Validation + Ad Creative + brand-profile entity + in-thread monetization, consuming P15's buyer frame *(IN-MILESTONE EXPANSION 2026-06-19; DEFERRED → v6.1 Commerce milestone 2026-06-20)*
+- [ ] **Phase 17: Initiated Numen** - The deferred "Initiated" half of P13: Numen INITIATES — proactive morning drops ("3 things stirring your people would bite on"; audience-curated Explore pull, cron pre-computed) + scheduled Explore = their Automations equivalent (default automation + one light schedule surface) + proactive delivery (in-thread drop + opt-in nudge), reusing the existing cron + `user_settings`/notifications rails. *(SPLIT from P13 2026-06-20 — see 13-CONTEXT.md Deferred Ideas)*
 
 > **Phase 5 re-scoped + Phase 6 added (2026-06-18).** Discuss-phase expanded P5 from "Open Chat & Test Reframe" into the integrative **Studio Conversation Layer**, and **un-deferred Scripts + Remix from v6.1** into a combined **Phase 6**. See `.planning/phases/05-open-chat-test-reframe/05-CONTEXT.md` (D-00).
 
@@ -227,12 +228,12 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 8/8 | Verifying — code complete, Task 4 human UAT pending | 2026-06-20 |
+| 11. Explore (Audience-Curated Discovery) | 8/8 | Complete ✓ (UAT 6/7; T5 partial → downstream GAP-REMIX-01) | 2026-06-20 |
 | 12. Library & Acts/State IA | 4/4 | Complete    | 2026-06-20 |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
-| 15. Marketing Intent (mode-switch) | — | Planned (expansion) |  |
-| 16. Commerce Skills | — | Planned (expansion) |  |
+| 15. Marketing Intent (mode-switch) | — | Deferred → v6.1 Commerce (2026-06-20) |  |
+| 16. Commerce Skills | — | Deferred → v6.1 Commerce (2026-06-20) |  |
 
 ### Phase 7: Audience Manager — calibrated audience as shared substrate across all skills (the moat)
 
@@ -453,11 +454,11 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 ---
 
-### Phase 13: Proactive Numen (Ambient + Initiated) *(EXPANSION — the "ambient audience system" — not yet discussed)*
+### Phase 13: Ambient Numen — the living, always-present audience *(EXPANSION — DISCUSSED + narrowed to Ambient 2026-06-20 — see 13-CONTEXT.md)*
 
-**Goal:** Make the thread alive even when the creator isn't typing — the daily-habit engine, in-conversation, no dashboard. Two layers: **ambient audience** (the SIM reacts on *every* skill card, always felt, never summoned) + **proactive Numen** (Numen INITIATES).
-**Depends on:** Phase 11 (Explore), Phase 9 (persona-cloud Lens + chat-with-persona reaction primitive — **shipped**). ⚠️ **Reconcile vs P9: EXTEND the shipped reaction primitive, do NOT duplicate it.**
-**Requirements:** AMBIENT-01 (ambient audience reaction on every skill card — Ideas/Hooks/Script/Remix/Explore results carry a lightweight inline audience reaction, reusing P9's primitive), PROACTIVE-01 (proactive morning drops — Numen initiates "3 things stirring your people would bite on"), PROACTIVE-02 (scheduled Explore = their Automations equivalent — recurring audience-curated discovery delivered into the thread). Honesty spine: never fabricate a reaction; degrade gracefully.
+**Goal:** Turn "tested against YOUR audience" from a *summoned tap* (P9's per-card Lens cue) into an **always-felt, reacting, addressable presence** — the 10 calibrated personas become a persistent companion you can see, watch react to what you make, and **type to**. This phase delivers the **Ambient** layer only; the **Initiated** half (proactive drops + scheduled Explore + delivery) was split to **Phase 17: Initiated Numen**.
+**Depends on:** Phase 9 (the shipped AudienceLens / LensTrigger reaction primitive + chat-with-persona + Rewrite). ⚠️ **EXTEND the shipped Lens, do NOT duplicate it** — every door (per-card tap · presence spotlight · type-to-room) opens the **same single Lens**.
+**Requirements:** AMBIENT-01 (the living always-present audience). Locked decisions (13-CONTEXT.md): D-01 persistent docked presence + per-card reactions at rest; D-02 live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type) — reactions **never aggregated**; D-03 reacts on every card via already-emitted data (no new model calls, determinism-safe); D-04 **type-to-room** → the room *reacts* (real SIM, Flash text-mode), not conversational; D-05/06 keep P9's per-card Lens as the per-artifact depth (one Lens, many doors). Honesty spine: never fabricate; idle at rest; degrade gracefully.
 **UI hint:** yes
 
 ---
@@ -530,3 +531,14 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 > **Pre-Launch Hardening gate (cross-cutting, before any public traffic):** wire **rate-limiting per tool** — constants are RESERVED-NOT-WIRED (`src/app/api/tools/hooks/route.ts`: `void RATE_LIMIT_WINDOW_SECS`). Re-run the full engine regression gate + honesty-spine checks at milestone close.
 
 > **Competitive note:** the reference tool "Augmented Society" (flat format-picker: Survey / Ad / LinkedIn / TikTok Script / Product Proposition over canned "Societies") **shut down (access ends 15 Feb)** — breadth-of-format-wrappers without a calibrated audience-you-own, a generate→test chain, or a ground-truth loop didn't hold. Numen's edge: SIMs you build + the Read + the flywheel. Don't trade those for breadth.
+
+---
+
+### Phase 17: Initiated Numen *(SPLIT from P13 2026-06-20 — the deferred "Initiated" half — not yet discussed)*
+
+**Goal:** Make the thread alive *even when the creator isn't typing* — the daily-habit engine where **Numen INITIATES**, in-conversation, no dashboard. The complement to Phase 13's always-present Ambient layer: P13 makes the audience *felt* whenever you act; P17 makes Numen *reach out first*.
+**Depends on:** Phase 13 (Ambient presence + the shipped Lens), Phase 11 (Explore — the discovery source), Phase 9 (reaction primitive). Honesty spine: never fabricate a drop; degrade gracefully; opt-in only.
+**Requirements:** PROACTIVE-01 (proactive morning drops — Numen initiates "3 things stirring your people would bite on"), PROACTIVE-02 (scheduled Explore = their Automations equivalent — recurring audience-curated discovery delivered into the thread).
+**Owner-leaning shapes (from 13-CONTEXT.md Deferred Ideas — not yet locked):** drops = audience-curated **Explore pull, cron pre-computed** (mirrors the shipped `audience-drift` cron) so they're instant on app-open; automations = the morning drop as a **pre-enabled default automation** + **one lightweight schedule surface** (reuse cron infra + `verifyCronAuth`; avoid a dashboard); delivery = **in-thread drop card + opt-in return nudge** (reuse `user_settings` flags + `/api/settings/notifications`).
+**Rails already exist (reference, do NOT pre-build):** `vercel.json` crons + `src/app/api/cron/audience-drift/route.ts` (cron-auth + service-client + honesty-gate precedent); `src/app/api/settings/notifications/route.ts` + `user_settings`.
+**UI hint:** yes

@@ -144,14 +144,20 @@ reuses its typed-block renderers.
 - [x] **AUD-EDIT-04**: Link-social → Apify metadata prefill (PROFILE tier-C).
 - *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; surface/extend on the Audience surface, do NOT rebuild. Confirm P8 W0 removed persona-value `[ASSUMED]` markers.)*
 
-### AMBIENT / PROACTIVE — Proactive Numen (Ambient + Initiated) (P13 — the "ambient audience system")
+### AMBIENT — Ambient Numen, the living always-present audience (P13)
 
-> Thread alive even when not typing = daily-habit engine, in-conversation, no dashboard. ⚠️ EXTEND P9's shipped reaction primitive (persona-cloud Lens + chat-with-persona) — do NOT duplicate.
+> Turn "tested against YOUR audience" from a summoned tap into an always-felt, reacting, addressable presence. ⚠️ EXTEND P9's shipped Lens (persona-cloud + chat-with-persona + Rewrite) — do NOT duplicate; every door opens the same single Lens. *(DISCUSSED + narrowed to Ambient 2026-06-20 — see 13-CONTEXT.md. The Initiated half split → P17.)*
 
-- [ ] **AMBIENT-01**: Ambient audience reaction on EVERY skill card — Ideas/Hooks/Script/Remix/Explore results carry a lightweight inline audience reaction (always felt, not summoned), reusing P9's primitive.
-- [ ] **PROACTIVE-01**: Proactive morning drops — Numen INITIATES ("3 things stirring your people would bite on").
-- [ ] **PROACTIVE-02**: Scheduled Explore (their Automations equivalent) — recurring audience-curated discovery delivered into the thread.
-- *(Honesty spine: never fabricate a reaction; degrade gracefully when thin.)*
+- [ ] **AMBIENT-01**: The living, always-present audience — a persistent docked audience presence + per-card reactions at rest (always felt, never summoned) + **type-to-room** (type a thought → the room reacts, real SIM) + live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type; reactions never aggregated), all reusing P9's primitive. Keep P9's per-card Lens as the per-artifact depth.
+- *(Honesty spine: never fabricate a reaction; idle at rest; degrade gracefully when thin.)*
+
+### PROACTIVE — Initiated Numen, Numen reaches out first (P17 — split from P13)
+
+> Thread alive even when not typing = daily-habit engine, in-conversation, no dashboard. The Initiated complement to P13's Ambient presence. Rails already exist (cron + `user_settings`/notifications); not yet discussed.
+
+- [ ] **PROACTIVE-01**: Proactive morning drops — Numen INITIATES ("3 things stirring your people would bite on"). Owner-leaning: audience-curated Explore pull, cron pre-computed.
+- [ ] **PROACTIVE-02**: Scheduled Explore (their Automations equivalent) — recurring audience-curated discovery delivered into the thread. Owner-leaning: default automation + one light schedule surface; delivery = in-thread drop + opt-in nudge.
+- *(Honesty spine: never fabricate a drop; opt-in only; degrade gracefully when thin.)*
 
 ### KCQ — KC Grounding & Quality-Loop (P14, the durable moat — `kc-improvement-levers.md`)
 
@@ -286,7 +292,8 @@ reuses its typed-block renderers.
 | FLYWHEEL-06 | Phase 10 | Complete (10-06) |
 | EXPLORE-01..06 | Phase 11 | Planned (expansion) |
 | IA-01 / LIB-01..03 / AUD-EDIT-01..04 | Phase 12 | Complete (IA-01, LIB-01, LIB-03, AUD-EDIT-02, AUD-EDIT-01 done; LIB-02 + AUD-EDIT-03/04 owner-deferred out of phase) |
-| AMBIENT-01 / PROACTIVE-01..02 | Phase 13 | Planned (expansion) |
+| AMBIENT-01 | Phase 13 (Ambient Numen) | Discussed 2026-06-20 (13-CONTEXT.md) |
+| PROACTIVE-01..02 | Phase 17 (Initiated Numen) | Planned (split from P13 2026-06-20) |
 | KCQ-01..09 | Phase 14 | Planned (expansion) |
 | INTENT-01 / REACT-01 / BLOCK-01 | Phase 15 | Planned (expansion) |
 | OFFER-01 / ADCREATIVE-01 / COMMERCE-01 | Phase 16 | Planned (expansion) |
