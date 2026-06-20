@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-06-20T01:44:13.154Z"
-last_activity: 2026-06-20 -- Phase 14 Plan 04 (surface lane) complete
+last_updated: "2026-06-20T02:01:32.428Z"
+last_activity: 2026-06-20 -- Phase 11 execution started
 progress:
   total_phases: 16
   completed_phases: 11
-  total_plans: 54
-  completed_plans: 55
+  total_plans: 62
+  completed_plans: 56
   percent: 69
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 14 — kc-grounding-quality-loop-expansion-the-durable-moat-not-yet
+**Current focus:** Phase 11 — explore-audience-curated-discovery-expansion-not-yet-discuss
 
 ## Current Position
 
-Phase: 14 (kc-grounding-quality-loop-expansion-the-durable-moat-not-yet) — COMPLETE ✓
-Plan: 4 of 4 (14-01, 14-02, 14-03, 14-04 complete)
+Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-06-20 -- Phase 14 Plan 04 (surface lane) complete
+Last activity: 2026-06-20 -- Phase 11 execution started
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -168,6 +168,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 14 / 14-03]: HONESTY-01 — fake §N citation pills deleted from ExpertChatThread (CORPUS_SECTIONS + insertCitationMarkers + §cite branch), render {content} directly; no re-light (D-14); board-frame pills + real-code render intact
 - [Phase 14 / 14-04]: KCQ-09/04 surface lane — idea card's existing whyItFits reframed into inline "Made for you — {whyItFits}" micro-copy (personalization-trust + steering lever, NOT citation, no pills, D-04/D-14); predictedFailureMode (from 14-02) rendered as a TWO-stage opt-in drill INSIDE the disclosure on BOTH idea+hook renderers (off the face + text gated behind a second drill = never always-visible AND never silent-only, D-10); warning-toned (--color-warning, never coral/error-red); `!= null` covers absent/legacy cards; hooks get the flop reveal but NO rationale (no whyItFits prop); pure client render, no ENGINE_VERSION bump (3.19.0)
 - [Phase 14 / 14-02]: KCQ-02/04/07 — parallel Flash rubric-critic (critiqueAgainstRubric) executes the BASE Value Bar (Test A/B/C + Prohibition 6) at runtime in Ideas+Hooks; combined gate = band !== Weak AND verdict.pass; SIM+critic run as a Promise.all pair (~1x latency, D-05/D-08 independent judge); critic fail-safe (error → pass:false, never throws); conditional single regen on all-fail (D-06, bounded); predictedFailureMode (KCQ-04) optional-nullable on both card schemas (no migration, for 14-04 drill-reveal); no ENGINE_VERSION bump
+- [Phase 11-01]: rankWithAudienceFit is pure runner/route-layer math (no engine/SIM/network) — ENGINE_VERSION stays 3.19.0 (Pitfall 6); fit-score constants STRONG=0.66/FAIR=0.4/α=0.5 are [ASSUMED A2] UAT tunables — D-01/D-02/D-03: the eager per-tile fit signal is honest re-ranked math, never a SIM call or fabricated quote; constants tune in UAT like the Flash thresholds
+- [Phase 11-01]: OutlierGridBlockSchema extended with fit/trackable/trackHandle as nullable-optional (mirrors predictedFailureMode) — zero migration, zero block-registry edit; degrade gate returns fit:null (never empty/zero bar) — EXPLORE-03/05 producer-half plumbing; existing persisted outlier-grid blocks stay valid; honesty spine keeps no-band/no-model/no-score on the MEASURED tile (Pitfall 5)
 
 ### Roadmap Evolution
 
@@ -192,7 +194,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T00:59:02.023Z
+Last session: 2026-06-20T02:00:57.838Z
 Stopped at: Phase 11 UI-SPEC approved
 Next: Phase 14 done. Candidate next: phase verify, or Phase 11 (Explore) / Phase 12 (Library & field-legibility, consumes P14 deferred surface)
 Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-UI-SPEC.md
@@ -248,3 +250,4 @@ Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-no
 | Phase 14-kc-grounding-quality-loop P03 | 20min | 3 tasks | 6 files |
 | Phase 14-kc-grounding-quality-loop P02 | 12min | 2 tasks (1 TDD) | 8 files |
 | Phase 14-kc-grounding-quality-loop P04 | 8min | 2 tasks | 3 files |
+| Phase 11-explore-audience-curated-discovery P01 | 22min | 2 tasks | 3 files |

@@ -227,7 +227,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 0/8 | Planned (8 plans, 6 waves) |  |
+| 11. Explore (Audience-Curated Discovery) | 1/8 | In Progress|  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
@@ -402,26 +402,32 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
-**Plans:** 8 plans, 6 waves. Integration phase (~90% reuse of shipped P8 Discover / P9 reaction / chain-handoff) — new build is one pure fit module + one non-scoring SSE route + a watchlist rail + UI extensions. ENGINE_VERSION frozen at 3.19.0 (no video-scoring change).
+**Plans:** 1/8 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
-- [ ] 11-01-PLAN.md — Foundation pure-modules: `explore-rank.ts` audience-fit re-rank (TDD, no SIM call) + extend `OutlierGridBlockSchema` with fit/trackable/trackHandle (no migration) [EXPLORE-03, EXPLORE-05]
+
+- [x] 11-01-PLAN.md — Foundation pure-modules: `explore-rank.ts` audience-fit re-rank (TDD, no SIM call) + extend `OutlierGridBlockSchema` with fit/trackable/trackHandle (no migration) [EXPLORE-03, EXPLORE-05]
 - [ ] 11-02-PLAN.md — Watchlist rail: `tracked_accounts` migration file (flat-typed, RLS own-rows, idempotent UNIQUE — push deferred to 11-08) [EXPLORE-05]
 
 **Wave 2** *(parallel — disjoint files; 11-03 on 11-02, 11-04 on 11-01)*
+
 - [ ] 11-03-PLAN.md — Watchlist write: `tracked-accounts-repo` + `/api/tracked-accounts` (session-derived user_id, idempotent upsert, auth+csrf) [EXPLORE-05]
 - [ ] 11-04-PLAN.md — Explore server: `explore-runner` (pull→rank→fit→validated block, no SIM call) + `/api/tools/explore` SSE route (skill-chain contract, audience from active_audience_id) [EXPLORE-01, EXPLORE-02, EXPLORE-03]
 
 **Wave 3** *(blocked on 11-01/11-04)*
+
 - [ ] 11-05-PLAN.md — Client primitives: `use-explore-stream` (fetch+getReader) + extend `OutlierTile` (fit bar + "+ Track account", honesty/one-accent) + upgrade `OutlierGridBlockRenderer` to wire CTAs (Pitfall 2) [EXPLORE-02, EXPLORE-03, EXPLORE-05]
 
 **Wave 4** *(blocked on 11-05)*
+
 - [ ] 11-06-PLAN.md — `ExploreThreadView`: idle 3 quick-actions (D-07, card-2 honest degrade) + grid + onRemix (reuse `discover→remix` + in-place reload, Q2) + onTrack [EXPLORE-01, EXPLORE-02, EXPLORE-04, EXPLORE-05]
 
 **Wave 5** *(blocked on 11-06)*
+
 - [ ] 11-07-PLAN.md — Composer wiring: enable `explore` skill + params popover (serendipity valve) + submit branch (Pitfall 1, no nav) + persisted rehydrate + ExploreThreadView mount + reload [EXPLORE-01, EXPLORE-02, EXPLORE-04]
 
 **Wave 6** *(blocked on 11-02/03/04/07; BLOCKING push + gate)*
+
 - [ ] 11-08-PLAN.md — BLOCKING: `supabase db push` (live `tracked_accounts`) + types regen + cast cleanup + engine/KC regression gate (ENGINE_VERSION 3.19.0) + end-to-end UAT *(autonomous: false — push may need auth, UAT human-verified)* [EXPLORE-05]
 
 ---
