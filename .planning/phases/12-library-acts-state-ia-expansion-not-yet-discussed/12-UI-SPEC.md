@@ -90,11 +90,12 @@ Read from `globals.css` `--text-*`. Inter, two weights only on net-new chrome.
 | Role | Size | Weight | Line Height | Usage |
 |------|------|--------|-------------|-------|
 | Nav item | 14px (--text-sm) | 500 medium | 1.4 | Library/Thread/Audience/Settings labels (shipped `NavItem` is `text-sm font-medium`) |
-| Section label | 10px | 600 semibold | uppercase, tracking 0.08em | Sidebar "Thread" history header (shipped `SectionLabel`) |
 | Label | 12px (--text-xs) | 400 regular | 1.4 | Filter chips, type tags, field labels, timestamps, helper text |
 | Body | 14px (--text-sm) | 400 regular | 1.5 | Item titles, audience-row names, form inputs, dialog body, edit-form values |
 | Title | 16px (--text-base) | 600 semibold | 1.4 | Item-card titles, dialog titles, persona-edit headings |
 | Heading | 24px (--text-2xl) | 600 semibold (library) / 500 medium (audience) | 1.2 | "Library" H1 (`text-2xl font-semibold`, matches shipped SavedShelf); "Your audiences" H1 stays `text-2xl font-medium` (shipped manager) |
+
+Sizes on net-new chrome: exactly **4** — 12 / 14 / 16 / 24px. (The sidebar "Thread" history header is the pre-existing shipped `SectionLabel` at 10px, uppercase semibold — **untouched**: IA-01/D-01 changes only its *text* ("Simulations"→"Thread"), not its size, so it is inherited shipped state, not a net-new declaration.)
 
 Weights on net-new chrome: **regular (400) + semibold (600)** (medium 500 is the shipped nav/manager weight — kept as-is on those existing components; do not introduce a fourth weight on net-new elements).
 
