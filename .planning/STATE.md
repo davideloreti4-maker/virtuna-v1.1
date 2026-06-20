@@ -4,8 +4,8 @@ milestone: v6.0
 milestone_name: milestone
 status: verifying
 stopped_at: Phase 11 code-complete (all 8 plans executed; 11-08 live migration pushed + types regen + casts dropped + regression gate green). Verifier = human_needed — Task 4 live-data UAT (11-UAT.md, 7 steps) pending before phase marks complete.
-last_updated: "2026-06-20T11:25:49.919Z"
-last_activity: "2026-06-20 -- 11-08 Tasks 2+3 done (dropped interim (supabase as any) casts post-regen; BLOCKING gate green: ENGINE_VERSION 3.19.0, engine+KC 1191 green, full suite 2941 green, build OK, touched-file lint clean). Task 1 (live migration push + types regen) done earlier by orchestrator (commit 63375675). Task 4 UAT reserved for human."
+last_updated: "2026-06-20T14:05:00.000Z"
+last_activity: "2026-06-20 -- 11-REVIEW code-review fixes applied (3 commits, branch milestone/numen-tools): CR-01 un-niched Explore pull when input empty (route no longer 400s the default/General user; honest trending fallback, fit=null) [95beb49e]; CR-02 'What competitors shipped' resolves the session user's tracked_accounts server-side (capped 5, merged+deduped pull, user_id session-derived; clean 400 only on the zero-accounts race) [2cd740a3]; WR-01 remix CTA clears remixPendingId in a finally so a successful remix re-enables the tile [58633fe2]. Gates green: ENGINE_VERSION 3.19.0 (untouched), full suite 2956 passing / 28 skipped (was 2941 +15 new tests), npm run build OK, touched-file lint clean. WR-02..05 + IN-01..04 left as documented follow-ups in 11-REVIEW.md. Phase NOT marked complete — Task 4 live-data UAT (11-UAT.md, 7 steps) still pending; the CR-01/CR-02 blockers that would have failed UAT are now resolved."
 progress:
   total_phases: 16
   completed_phases: 10
