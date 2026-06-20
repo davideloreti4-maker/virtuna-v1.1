@@ -157,11 +157,9 @@ export function PersonaEditForm({
         />
       </div>
 
-      {/* Disposition */}
+      {/* Disposition (Select trigger is a combobox button; label is a sibling span) */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-foreground-secondary" htmlFor="persona-disposition">
-          Disposition
-        </label>
+        <span className="text-sm text-foreground-secondary">Disposition</span>
         <Select
           options={DISPOSITION_OPTIONS}
           value={disposition}
@@ -170,11 +168,9 @@ export function PersonaEditForm({
         />
       </div>
 
-      {/* Temperature */}
+      {/* Temperature (Select trigger is a combobox button; label is a sibling span) */}
       <div className="flex flex-col gap-1.5">
-        <label className="text-sm text-foreground-secondary" htmlFor="persona-temperature">
-          Temperature
-        </label>
+        <span className="text-sm text-foreground-secondary">Temperature</span>
         <Select
           options={TEMPERATURE_OPTIONS}
           value={temperature}
