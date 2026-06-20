@@ -85,7 +85,7 @@ describe("createTrackedAccount — CR-01 session-derived user_id", () => {
     expect(supabase.auth.getUser).toHaveBeenCalled();
 
     // The payload written carries the SESSION user_id, never the body's.
-    const writeArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const writeArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(writeArg.user_id).toBe("test-user-id");
     expect(writeArg.user_id).not.toBe("attacker-user-id");
   });
@@ -121,7 +121,7 @@ describe("createTrackedAccount — handle normalization", () => {
       handle: "@GymBeginner",
     });
 
-    const writeArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const writeArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0]![0];
     expect(writeArg.handle).toBe("gymbeginner");
   });
 });
@@ -159,7 +159,7 @@ describe("createTrackedAccount — idempotent upsert (UNIQUE constraint)", () =>
     });
 
     expect(supabase._chain.upsert).toHaveBeenCalledTimes(1);
-    const onConflictArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    const onConflictArg = (supabase._chain.upsert as ReturnType<typeof vi.fn>).mock.calls[0]![1];
     expect(onConflictArg).toMatchObject({ onConflict: "user_id,platform,handle" });
   });
 });
