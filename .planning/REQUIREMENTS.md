@@ -135,9 +135,9 @@ reuses its typed-block renderers.
 > The State home + nav collapse. **Acts** (generate/explore/test/refine/chat) → the thread; **State** (watchlist, saved work, audience, settings) → surfaces; wired together.
 
 - [x] **IA-01**: 4-item nav collapse — **Thread · Audience · Library · Settings** (from Sandcastles' 11 sections).
-- [ ] **LIB-01**: Library = saved nouns (Reads/ideas/hooks/scripts), sectioned — **EXTENDS** the P10 flat `saved_items` store (built P12-extendable on purpose, D-07); **NOT** a second store / no rework.
+- [x] **LIB-01**: Library = saved nouns (Reads/ideas/hooks/scripts), sectioned — **EXTENDS** the P10 flat `saved_items` store (built P12-extendable on purpose, D-07); **NOT** a second store / no rework.
 - [ ] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
-- [ ] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.
+- [x] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.
 - [ ] **AUD-EDIT-01**: Persona editing (P7 deferred, pulled in) — on the Audience surface.
 - [ ] **AUD-EDIT-02**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in).
 - [ ] **AUD-EDIT-03**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).

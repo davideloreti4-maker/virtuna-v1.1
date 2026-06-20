@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 12-01-PLAN.md (Library nav item + sidebar IA relabel; IA-01)
-last_updated: "2026-06-20T15:26:22.430Z"
+stopped_at: Completed 12-02-PLAN.md (Library surface /library + /saved redirect; LIB-03 save↔use loop closed; IA/LIB-01/03)
+last_updated: "2026-06-20T15:44:00.840Z"
 last_activity: 2026-06-20 -- Phase 12 execution started
 progress:
   total_phases: 16
   completed_phases: 12
   total_plans: 66
-  completed_plans: 64
+  completed_plans: 65
   percent: 75
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 12 (library-acts-state-ia-expansion-not-yet-discussed) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-20 -- Phase 12 execution started
 
@@ -185,6 +185,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 11-08]: Repo-wide eslint baseline (63 errors/98 warnings, all Phase-07-and-earlier files) is pre-existing out-of-scope — NOT fixed (touched file lints clean, build unaffected); logged to deferred-items.md alongside the 46 pre-existing tsc errors
 - [Phase 12-01]: Library NavItem added to active studio sidebar (icon Books, /library, matte non-coral active state — one-accent rule keeps coral on New Thread); four nav nouns now literal Thread · Audience · Library · Settings; IA-01 source+tests+build green; /library route itself created in 12-02 (nav item is the consumer, 404s until then)
 - [Phase 12-01]: Relabel scope kept sidebar-only (D-01) — CTA New Simulation→New Thread, history Simulations→Thread + No threads yet., collapsed tooltip/aria-label→Thread; singular per-row 'Simulation · {when}' history-row fallback left unchanged (D-13 row behavior preserved)
+- [Phase 12-02]: Library = SavedShelf relabeled Saved→Library over the SAME saved_items store at /library; /saved retained as a redirect('/library') stub (D-03 physical-rename-with-redirect). One store, no folder/tag UI, no duplicate mount.
+- [Phase 12-02]: LIB-03 closed: SaveAffordance item_type='read' mounted on the flagship multi-audience Read card; a saved Read launches via router.push('/home') (re-open the open thread, NO fabricated re-generation endpoint, D-04 honesty), scoped strictly to item_type==='read'. Outlier discover→remix launch + CHAIN_HANDOFFS SSOT unchanged.
 
 ### Roadmap Evolution
 
@@ -209,10 +211,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T15:26:22.425Z
-Stopped at: Completed 12-01-PLAN.md (Library nav item + sidebar IA relabel; IA-01)
+Last session: 2026-06-20T15:44:00.836Z
+Stopped at: Completed 12-02-PLAN.md (Library surface /library + /saved redirect; LIB-03 save↔use loop closed; IA/LIB-01/03)
 Next: Execute Phase 12 (/gsd-execute-phase 12). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/ (12-02..12-04 PLAN.md)
+Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/ (12-03..12-04 PLAN.md)
 
 ## Performance Metrics
 
@@ -274,3 +276,4 @@ Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discuss
 | Phase 11 P07 | 20min | 2 tasks | 3 files |
 | Phase Phase 11 PP08 | 12min | 2 tasks (2+3; T1 orchestrator, T4 PENDING UAT) tasks | 2 files files |
 | Phase Phase 12-library-acts-state-ia P01 | 4min | 2 tasks tasks | 4 files files |
+| Phase Phase 12-library-acts-state-ia P02 P02 | 12min | 2 tasks | 5 files |
