@@ -66,6 +66,8 @@ import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
+import { AmbientPresence } from "@/components/audience-lens/ambient-presence";
+import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -785,6 +787,95 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // so empty home keeps the existing centered hero layout (no regression).
   const homeThreadMode = hasThread && !hasSimulation;
 
+  // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
+  // Build the focus descriptors from the VISIBLE tool's already-rendered cards
+  // (persisted + streaming, in render order). Each card already emits its real
+  // { fraction, scrollQuote } + a concept line — the spotlight READS that data,
+  // never re-runs a model (D-03 determinism-gate-safe; zero new model calls).
+  // Only the active tool's view is mounted at a time, so we derive from that set.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardDescriptor = (b: any, idx: number, kind: string): AmbientCardDescriptor | null => {
+    const p = b?.props;
+    if (!p) return null;
+    const concept: string | undefined =
+      p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook;
+    const fraction: string | undefined = p.fraction;
+    const scrollQuote: string | undefined = p.scrollQuote;
+    if (typeof concept !== "string" || typeof fraction !== "string") return null;
+    return {
+      id: `${kind}-${idx}`,
+      conceptText: concept,
+      fraction,
+      scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
+    };
+  };
+  const ambientDescriptors: AmbientCardDescriptor[] = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = (persisted: any[], streaming: any[], kind: string) =>
+      [...persisted, ...streaming]
+        .map((b, i) => cardDescriptor(b, i, kind))
+        .filter((d): d is AmbientCardDescriptor => d !== null);
+    if (activeTool === "hooks") return pick(persistedHookBlocks, hooksBlocks, "hook");
+    if (activeTool === "idea") return pick(persistedIdeaBlocks, ideasBlocks, "idea");
+    if (activeTool === "script") return pick(persistedScriptBlocks, scriptBlocks, "script");
+    if (activeTool === "remix") return pick(persistedRemixBlocks, remixBlocks, "remix");
+    return [];
+  })();
+
+  const {
+    focus: ambientFocus,
+    focusByTap,
+    focusByThought,
+    registerThreadRegion,
+  } = useAmbientFocus(ambientDescriptors);
+
+  // The sticky presence strip + the per-card focus markers (data-ambient-card).
+  // Rendered as the FIRST child inside the composer-thread-region scroll div so the
+  // audience is always felt as the creator scrolls the ledger (D-01). Each marker
+  // carries the card's concept/fraction/scrollQuote as data-attributes and fires
+  // focusByTap in the CAPTURE phase (Pitfall 4 / D-05 — focus + Lens both run; the
+  // shipped LensTrigger is never forked). The IntersectionObserver (rooted on the
+  // region via registerThreadRegion) re-focuses the spotlight on scroll.
+  const ambientPresenceStrip = (
+    <div
+      data-testid="ambient-presence-strip"
+      className="sticky top-0 z-[1]"
+      style={{ position: "sticky", top: 0 }}
+    >
+      <AmbientPresence
+        audience={selectedAudience}
+        focus={ambientFocus}
+        reducedMotion={reducedMotion}
+        onFocusChange={focusByThought}
+      />
+      {/* Per-card focus markers — the scroll-spy + capture-phase tap seam. Visually thin
+          (a one-line concept label) so the moving spotlight tracks the ledger as it scrolls,
+          WITHOUT forking the shipped card renderers or threading a prop through every view. */}
+      {ambientDescriptors.length > 0 && (
+        <div className="flex flex-col">
+          {ambientDescriptors.map((d) => (
+            <div
+              key={d.id}
+              data-ambient-card=""
+              data-card-id={d.id}
+              data-concept={d.conceptText}
+              data-fraction={d.fraction}
+              data-scroll-quote={d.scrollQuote}
+              role="button"
+              tabIndex={0}
+              aria-label={`Focus the audience on: ${d.conceptText}`}
+              onClickCapture={() => focusByTap(d.id)}
+              onKeyDownCapture={(e) => {
+                if (e.key === "Enter" || e.key === " ") focusByTap(d.id);
+              }}
+              className="sr-only"
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   // Shared thread content block (rendered in both mode branches below).
   const threadContent = (
     <>
@@ -1098,11 +1189,16 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           className,
         )}
       >
-        {/* Scrollable thread region — fills all available space above the form */}
+        {/* Scrollable thread region — fills all available space above the form.
+            The persistent presence strip docks sticky at the TOP of this scroll div
+            (always felt as the ledger scrolls — D-01); registerThreadRegion roots the
+            scroll-spy IntersectionObserver on this element (Pattern 5). */}
         <div
+          ref={registerThreadRegion}
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto"
         >
+          {ambientPresenceStrip}
           {threadContent}
         </div>
 
@@ -1114,9 +1210,18 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     );
   }
 
-  // Branch B: centered / permalink layout (unchanged behavior).
+  // Branch B: centered / permalink layout (unchanged behavior + the idle presence).
+  // The presence NEVER hides (D-01): on empty/centered home it renders in its IDLE
+  // state (roster + idle copy, NO reaction — there are no cards to focus, so no
+  // scroll-spy and no onFocusChange needed here). This satisfies the UI-SPEC
+  // empty-state copy contract ("Your people are here…" / "Calibrate an audience…").
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-0", className)}>
+      <AmbientPresence
+        audience={selectedAudience}
+        focus={null}
+        reducedMotion={reducedMotion}
+      />
       {threadContent}
       {composerForm}
     </div>
