@@ -12,10 +12,10 @@
  * FLAT by construction (D-08): no folder_id, no tags, no CMS. P12 EXTENDS (Library),
  * never reworks this shape.
  *
- * INTERIM TYPING: database.types.ts has no tracked_accounts type until the live-prod
- * push + types regen in the BLOCKING final wave (11-08). Until then this repo uses the
- * `(supabase as any)` cast convention (the audience-repo / shelf-repo interim idiom);
- * 11-08 drops the casts.
+ * TYPING: the live-prod push + types regen (BLOCKING wave 11-08) added tracked_accounts
+ * to src/types/database.types.ts, so the typed client now resolves the from("tracked_accounts")
+ * calls — the interim `(supabase as any)` casts were dropped here. The DB types platform as
+ * `string`; the domain union narrowing happens on the boundary return cast (mirrors shelf-repo).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -68,8 +68,7 @@ function normalizeHandle(handle: string): string {
 export async function listTrackedAccounts(
   supabase: SupabaseClient,
 ): Promise<TrackedAccount[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("tracked_accounts")
     .select("*")
     .order("created_at", { ascending: false });
@@ -78,6 +77,8 @@ export async function listTrackedAccounts(
     throw new Error(`tracked_accounts list failed: ${error.message}`);
   }
 
+  // DB types platform as `string`; narrow to the domain union on the boundary
+  // (mirrors shelf-repo's typed-row return convention).
   return (data ?? []) as TrackedAccount[];
 }
 
@@ -109,8 +110,7 @@ export async function createTrackedAccount(
 
   // IDEMPOTENT upsert: re-tracking the same (user, platform, handle) returns the
   // existing row instead of erroring on the UNIQUE constraint.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("tracked_accounts")
     .upsert(payload, { onConflict: "user_id,platform,handle" })
     .select("*")
@@ -130,8 +130,7 @@ export async function deleteTrackedAccount(
   supabase: SupabaseClient,
   id: string,
 ): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("tracked_accounts")
     .delete()
     .eq("id", id);
