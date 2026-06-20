@@ -467,7 +467,7 @@ Plans:
 
 - [x] 13-01-PLAN.md — Type-to-room reaction route (POST /api/tools/react) + shared buildReactionPanel helper extracted from the runners (niche-discriminating; resolves Open Q1/Pitfall 2) [AMBIENT-01, D-04]
 - [x] 13-02-PLAN.md — Per-card reaction at rest: promote the shipped LensTrigger on all 4 card blocks via a shared CardReactionAtRest readout (stop fraction + thin ribbon; honest degrade) [AMBIENT-01, D-01/D-03/D-05]
-- [ ] 13-03-PLAN.md — AmbientPresence component: persistent dot-cloud strip + live spotlight subject + type-to-room input; opens the one shipped AudienceLens (Surfaces 1/2/4) [AMBIENT-01, D-01/D-02/D-04/D-05]
+- [x] 13-03-PLAN.md — AmbientPresence component: persistent dot-cloud strip + live spotlight subject + type-to-room input; opens the one shipped AudienceLens (Surfaces 1/2/4) [AMBIENT-01, D-01/D-02/D-04/D-05]
 - [ ] 13-04-PLAN.md — Mount the presence sticky in composer-thread-region + scroll-spy/tap/type-to-room focus (useAmbientFocus) + BLOCKING regression gate (ENGINE_VERSION 3.19.0) [AMBIENT-01, D-01/D-02/D-03/D-04]
 
 **Wave 1** *(parallel — disjoint files: server vs card-blocks)*
@@ -477,7 +477,7 @@ Plans:
 
 **Wave 2** *(blocked on 13-01)*
 
-- [ ] 13-03-PLAN.md — AmbientPresence (consumes the react route)
+- [x] 13-03-PLAN.md — AmbientPresence (consumes the react route)
 
 **Wave 3** *(blocked on 13-02 + 13-03)*
 
