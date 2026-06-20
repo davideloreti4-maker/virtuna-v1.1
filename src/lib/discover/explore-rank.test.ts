@@ -16,9 +16,9 @@
  * The fit re-rank is honest math only — NO network, NO SIM, NO fabricated reaction.
  */
 import { describe, expect, it } from "vitest";
-import { rankWithAudienceFit } from "../explore-rank";
-import type { FitLevel } from "../explore-rank";
-import type { RankedOutlier } from "../outlier-compute";
+import { rankWithAudienceFit } from "./explore-rank";
+import type { FitLevel } from "./explore-rank";
+import type { RankedOutlier } from "./outlier-compute";
 import type {
   Audience,
   CalibratedPersona,
@@ -69,7 +69,7 @@ function persona(
   share: number,
 ): CalibratedPersona {
   return {
-    archetype: "the_loyalist",
+    archetype: "loyalist",
     repaint: "",
     temperature,
     disposition,
@@ -227,23 +227,32 @@ describe("rankWithAudienceFit — calibrated path", () => {
 
 describe("rankWithAudienceFit — serendipity widens (D-06)", () => {
   it("raising serendipity lifts an off-niche tile's level (niche-match weight shrinks)", () => {
-    const aud = calibratedAudience();
+    // A warm-dominant audience so a strong-save (warm) play has high calibration-fit.
+    const aud = calibratedAudience({
+      personas: [persona("warm", "collector", 0.85), persona("cold", "scanner", 0.15)],
+      profile: {
+        temperature_mix: { cold: 0.15, warm: 0.85, hot: 0 },
+        top_dispositions: ["collector", "scanner"],
+        follower_tier: "10k-100k",
+      },
+    });
+    // Off-niche caption (zero token overlap) but an overwhelming save (warm) signature
+    // that aligns with the warm-dominant mix → calibration-fit is high.
     const offNiche = tile({
       platformVideoId: "off",
       caption: "extreme motocross stunts compilation",
       hashtags: ["moto", "stunts"],
-      // give it strong calibration-fit (warm/hot save play) so widening reveals it
-      multiplier: 1.1,
+      multiplier: 1.05, // low broad-reach (little cold pull)
       views: 10_000,
-      saves: 2_500,
-      shares: 1_800,
+      saves: 6_000, // saveRate 0.6 → very high warm pull
+      shares: 200, // shareRate 0.02 → little hot pull
     });
     const rank: Record<FitLevel, number> = { Weak: 0, Fair: 1, Strong: 2 };
     const atNiche = rankWithAudienceFit([offNiche], aud, 0)[0]!;
     const atWide = rankWithAudienceFit([offNiche], aud, 1)[0]!;
-    // Widening beyond niche must NOT lower the off-niche tile; it rises (or holds).
-    expect(rank[atWide.fit!.level]).toBeGreaterThanOrEqual(rank[atNiche.fit!.level]);
-    // And strictly rises in this constructed case (off-niche but calibration-strong).
+    // At serendipity 0 niche-match dominates → off-niche tile is Weak (no overlap).
+    expect(atNiche.fit!.level).toBe("Weak");
+    // Widening beyond niche surfaces the calibration signal → the level strictly rises.
     expect(rank[atWide.fit!.level]).toBeGreaterThan(rank[atNiche.fit!.level]);
   });
 
