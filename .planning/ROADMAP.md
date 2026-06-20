@@ -461,6 +461,24 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Requirements:** AMBIENT-01 (the living always-present audience). Locked decisions (13-CONTEXT.md): D-01 persistent docked presence + per-card reactions at rest; D-02 live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type) — reactions **never aggregated**; D-03 reacts on every card via already-emitted data (no new model calls, determinism-safe); D-04 **type-to-room** → the room *reacts* (real SIM, Flash text-mode), not conversational; D-05/06 keep P9's per-card Lens as the per-artifact depth (one Lens, many doors). Honesty spine: never fabricate; idle at rest; degrade gracefully.
 **UI hint:** yes
 
+**Plans:** 4 plans in 3 waves
+
+Plans:
+- [ ] 13-01-PLAN.md — Type-to-room reaction route (POST /api/tools/react) + shared buildReactionPanel helper extracted from the runners (niche-discriminating; resolves Open Q1/Pitfall 2) [AMBIENT-01, D-04]
+- [ ] 13-02-PLAN.md — Per-card reaction at rest: promote the shipped LensTrigger on all 4 card blocks via a shared CardReactionAtRest readout (stop fraction + thin ribbon; honest degrade) [AMBIENT-01, D-01/D-03/D-05]
+- [ ] 13-03-PLAN.md — AmbientPresence component: persistent dot-cloud strip + live spotlight subject + type-to-room input; opens the one shipped AudienceLens (Surfaces 1/2/4) [AMBIENT-01, D-01/D-02/D-04/D-05]
+- [ ] 13-04-PLAN.md — Mount the presence sticky in composer-thread-region + scroll-spy/tap/type-to-room focus (useAmbientFocus) + BLOCKING regression gate (ENGINE_VERSION 3.19.0) [AMBIENT-01, D-01/D-02/D-03/D-04]
+
+**Wave 1** *(parallel — disjoint files: server vs card-blocks)*
+- [ ] 13-01-PLAN.md — react route + buildReactionPanel + runner refactor
+- [ ] 13-02-PLAN.md — CardReactionAtRest on the 4 card blocks
+
+**Wave 2** *(blocked on 13-01)*
+- [ ] 13-03-PLAN.md — AmbientPresence (consumes the react route)
+
+**Wave 3** *(blocked on 13-02 + 13-03)*
+- [ ] 13-04-PLAN.md — composer mount + spotlight focus + regression gate
+
 ---
 
 ### Phase 14: KC Grounding & Quality-Loop *(EXPANSION — the durable moat — DISCUSSED + PLANNED 2026-06-20)*
