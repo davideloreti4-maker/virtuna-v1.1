@@ -124,17 +124,17 @@ describe('Sidebar collapse — rendering branches', () => {
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     // Expanded width class must NOT be present once collapsed to the rail.
     expect(nav.className).not.toContain('w-[220px]');
-    // The "Simulations" section label is hidden in the collapsed rail.
-    expect(screen.queryByText('Simulations')).toBeNull();
+    // The "Thread" section label is hidden in the collapsed rail.
+    expect(screen.queryByText('Thread')).toBeNull();
   });
 
-  it('desktop + expanded renders the full 220px nav with the Simulations label', () => {
+  it('desktop + expanded renders the full 220px nav with the Thread label', () => {
     storeState.isCollapsed = false;
     mobile = false;
     render(<Sidebar />);
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     expect(nav.className).toContain('w-[220px]');
-    expect(screen.getByText('Simulations')).toBeInTheDocument();
+    expect(screen.getByText('Thread')).toBeInTheDocument();
   });
 
   it('mobile is the full-width drawer, never the collapsed rail (even when isCollapsed is true)', () => {
@@ -144,7 +144,7 @@ describe('Sidebar collapse — rendering branches', () => {
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     // On mobile the drawer keeps the full expanded width (it slides in/out, not a rail).
     expect(nav.className).toContain('w-[220px]');
-    // Drawer content (the Simulations label) renders — it is not the icon-only rail.
-    expect(screen.getByText('Simulations')).toBeInTheDocument();
+    // Drawer content (the Thread label) renders — it is not the icon-only rail.
+    expect(screen.getByText('Thread')).toBeInTheDocument();
   });
 });
