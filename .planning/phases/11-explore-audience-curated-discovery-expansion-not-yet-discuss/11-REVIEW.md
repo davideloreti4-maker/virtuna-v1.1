@@ -24,11 +24,12 @@ files_reviewed_list:
   - src/lib/tracked-accounts/tracked-accounts-repo.test.ts
   - supabase/migrations/20260620090000_tracked_accounts.sql
 findings:
-  critical: 2
-  warning: 5
+  critical: 0
+  warning: 4
   info: 4
-  total: 11
-status: issues_found
+  total: 8
+status: resolved
+criticals_resolved: "CR-01, CR-02 (critical) + WR-01 (warning) fixed 2026-06-20 — commits 95beb49e, 2cd740a3, 58633fe2"
 ---
 
 # Phase 11: Code Review Report
@@ -36,7 +37,9 @@ status: issues_found
 **Reviewed:** 2026-06-20T11:44:39Z
 **Depth:** standard
 **Files Reviewed:** 19
-**Status:** issues_found
+**Status:** resolved (both criticals + WR-01 fixed; WR-02/04/05 + IN-01..04 deferred as documented follow-ups)
+
+> **RESOLUTION (2026-06-20):** CR-01 (un-niched pull on empty input — commit `95beb49e`), CR-02 (route resolves session tracked_accounts for the competitors pull, capped 5, session-derived — commit `2cd740a3`), and WR-01 (remix CTA cleared in `finally` — commit `58633fe2`) are FIXED and verified (full suite 2956 passing / 0 failing, `npm run build` OK, ENGINE_VERSION 3.19.0). Remaining open items below — WR-02 (cache key timeWindow), WR-04 (cache DTO typing), WR-05 (persisted block re-validation), IN-01..04 — are non-blocking follow-ups. WR-03 was neutralized on the fixed path via a non-empty `source` guard.
 
 ## Summary
 
