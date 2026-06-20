@@ -364,6 +364,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     );
 
     const out: SurvivorCandidate[] = [];
+    let abstainedKept = 0; // WR-01: candidates kept on band-only because the critic abstained
 
     for (const { hook, simResult, verdict, generationIndex } of judged) {
       if (simResult === null || simResult === undefined) continue; // SIM failed → drop
@@ -373,7 +374,15 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
 
       // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
       if (band === "Weak") continue;
-      if (!verdict.pass) continue;
+      // WR-01: a critic ABSTENTION (infra failure — timeout/429/parse) is NOT a quality
+      // FAIL. Hard-dropping both identically lets a transient critic outage silently zero
+      // a SIM-Strong thread with no diagnostic. On abstention, degrade to the band-only
+      // gate (the candidate already cleared band !== "Weak") and surface a warning.
+      if (verdict.abstained) {
+        abstainedKept++;
+      } else if (!verdict.pass) {
+        continue;
+      }
 
       // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
       const scrollQuote = selectLeadScrollQuote(personas);
@@ -397,6 +406,14 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         personas,
         generationIndex,
       });
+    }
+
+    // WR-01: one aggregated warning when the critic was unavailable, so a degraded
+    // run is observable (not a silent band-only pass mislabelled as a quality pass).
+    if (abstainedKept > 0) {
+      allWarnings.push(
+        `Quality critic unavailable for ${abstainedKept} hook candidate(s) — kept on SIM band only (critic degraded, not a quality pass).`,
+      );
     }
 
     return out;

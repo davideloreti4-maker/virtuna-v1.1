@@ -56,14 +56,33 @@ const PER_CALL_TIMEOUT_MS = 60_000;
  *  - pass: Test A + B + C + Prohibition 6 all clear.
  *  - predictedFailureMode: KCQ-04 — the "if this flops, here's why" one-liner;
  *    null when the candidate passes cleanly, a non-empty reason when it fails.
+ *  - abstained: WR-01 — true ONLY when the judge could not run at all (transport /
+ *    timeout / unparseable output), i.e. an INFRA failure, NOT a quality verdict.
+ *    The runner uses this to distinguish "the model judged this a fail" (drop) from
+ *    "the critic was unavailable" (degrade to band-only + warn, never silently zero
+ *    a SIM-Strong thread). Absent/false on every genuine model verdict.
  */
 export interface RubricVerdict {
   pass: boolean;
   predictedFailureMode: string | null;
+  abstained?: boolean;
 }
 
-/** The fail-safe verdict — the judge abstains as a fail (never silently passes slop). */
+/**
+ * Genuine strict-fail verdict — a real (non-abstained) judgment that the item does
+ * not clear the bar. Used when the model returned parseable output that isn't an
+ * unambiguous pass. The runner hard-drops these.
+ */
 const FAIL_SAFE: RubricVerdict = { pass: false, predictedFailureMode: null };
+
+/**
+ * Abstention verdict (WR-01) — the judge could not run (transport / timeout /
+ * unparseable). pass:false so slop is never silently passed, but abstained:true
+ * tells the runner to degrade to the SIM band-only gate and surface a warning
+ * instead of hard-dropping an otherwise-Strong candidate. An outage degrades
+ * quality gracefully; it does not zero the thread with no diagnostic.
+ */
+const ABSTAINED: RubricVerdict = { pass: false, predictedFailureMode: null, abstained: true };
 
 // ─── System prompt (the BASE Value Bar as a runtime critic) ──────────────────
 // Byte-stable string — encodes base.md:260-303 verbatim-in-spirit (D-04: Claude's
@@ -204,13 +223,17 @@ export async function critiqueAgainstRubric(
     try {
       parsed = JSON.parse(text);
     } catch {
-      // Unparseable model output → the judge abstains as a fail (never silently pass).
-      return FAIL_SAFE;
+      // Unparseable model output → the judge could not produce a verdict: ABSTAIN
+      // (pass:false, abstained:true), so the runner degrades to band-only rather
+      // than silently dropping the candidate (WR-01). Never silently passes slop.
+      return ABSTAINED;
     }
 
     return coerceVerdict(parsed);
   } catch {
-    // Transport / timeout / any unexpected error → fail-safe, never throw (D-08).
-    return FAIL_SAFE;
+    // Transport / timeout / any unexpected error → ABSTAIN, never throw (D-08).
+    // abstained:true so a critic outage degrades gracefully (band-only) instead of
+    // zeroing a SIM-Strong thread with no diagnostic (WR-01).
+    return ABSTAINED;
   }
 }

@@ -265,4 +265,78 @@ describe("best-of-N + flop pass (14-02)", () => {
     expect(result.blocks.length).toBe(0);
     expect(mockCreate).toHaveBeenCalledTimes(2);
   });
+
+  // ── WR-01: critic ABSTENTION (infra failure) degrades gracefully, never silently zeros ──
+
+  it("WR-01 Ideas: critic ABSTAINED (infra failure) on Strong candidates → kept band-only + warning (not dropped)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { critiqueAgainstRubric } = await import("@/lib/engine/flash/rubric-critic");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(5)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasStrong() },
+      warnings: [],
+    });
+    // Critic OUTAGE: every verdict is an abstention (pass:false BUT abstained:true).
+    // Before WR-01 this was indistinguishable from a fail → silent zero-out.
+    (critiqueAgainstRubric as ReturnType<typeof vi.fn>).mockResolvedValue({
+      pass: false,
+      predictedFailureMode: null,
+      abstained: true,
+    });
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const result = await runIdeasPipeline({ ask: "ideas", platform: "tiktok", profileRow: null });
+
+    // Graceful degrade: Strong candidates survive on band-only (NOT a silent empty thread).
+    expect(result.blocks.length).toBeGreaterThanOrEqual(1);
+    // Observability: exactly the degraded-critic warning is surfaced.
+    expect(result.warnings.some((w) => /critic unavailable/i.test(w))).toBe(true);
+    // No regen needed (survivors exist on first batch) → one generation call.
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    // predictedFailureMode is null on a band-only survivor (critic produced no verdict).
+    for (const block of result.blocks) {
+      expect((block as IdeaCardBlock).props.predictedFailureMode).toBeNull();
+    }
+  });
+
+  it("WR-01 Hooks: critic ABSTAINED on Strong candidates → kept band-only + warning (not dropped)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { critiqueAgainstRubric } = await import("@/lib/engine/flash/rubric-critic");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasStrong() },
+      warnings: [],
+    });
+    (critiqueAgainstRubric as ReturnType<typeof vi.fn>).mockResolvedValue({
+      pass: false,
+      predictedFailureMode: null,
+      abstained: true,
+    });
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "hooks",
+      platform: "tiktok",
+      profileRow: null,
+      anchor: "an idea",
+    });
+
+    expect(result.blocks.length).toBeGreaterThanOrEqual(1);
+    expect(result.warnings.some((w) => /critic unavailable/i.test(w))).toBe(true);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
 });

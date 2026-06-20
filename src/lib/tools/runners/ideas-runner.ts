@@ -336,6 +336,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     );
 
     const passed: IdeaCardBlock[] = [];
+    let abstainedKept = 0; // WR-01: candidates kept on band-only because the critic abstained
 
     for (const { idea, simResult, verdict } of judged) {
       if (passed.length >= MAX_SURVIVORS) break;
@@ -347,7 +348,15 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
       // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
       if (band === "Weak") continue;
-      if (!verdict.pass) continue;
+      // WR-01: a critic ABSTENTION (infra failure — timeout/429/parse) is NOT a quality
+      // FAIL. Hard-dropping both identically lets a transient critic outage silently zero
+      // a SIM-Strong thread with no diagnostic. On abstention, degrade to the band-only
+      // gate (the candidate already cleared band !== "Weak") and surface a warning.
+      if (verdict.abstained) {
+        abstainedKept++;
+      } else if (!verdict.pass) {
+        continue;
+      }
 
       // First combined-gate survivor → the lead card; pin its personas (FLYWHEEL-02).
       if (!leadPersonas) leadPersonas = personas;
@@ -386,6 +395,14 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       }
 
       passed.push(validated.data as IdeaCardBlock);
+    }
+
+    // WR-01: one aggregated warning when the critic was unavailable, so a degraded
+    // run is observable (not a silent band-only pass mislabelled as a quality pass).
+    if (abstainedKept > 0) {
+      allWarnings.push(
+        `Quality critic unavailable for ${abstainedKept} idea candidate(s) — kept on SIM band only (critic degraded, not a quality pass).`,
+      );
     }
 
     return passed;

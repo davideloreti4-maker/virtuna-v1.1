@@ -118,6 +118,8 @@ describe("critiqueAgainstRubric (rubric-critic)", () => {
     const verdict = await critiqueAgainstRubric("anything", "hook", FITNESS_PANEL);
 
     expect(verdict.pass).toBe(false);
+    // WR-01: a transport failure is an ABSTENTION, not a quality fail.
+    expect(verdict.abstained).toBe(true);
   });
 
   it("malformed JSON model output → fail-safe verdict (pass: false), never throws", async () => {
@@ -130,6 +132,37 @@ describe("critiqueAgainstRubric (rubric-critic)", () => {
     const verdict = await critiqueAgainstRubric("anything", "idea", FITNESS_PANEL);
 
     expect(verdict.pass).toBe(false);
+    // WR-01: unparseable model output → the judge could not run → ABSTAIN.
+    expect(verdict.abstained).toBe(true);
+  });
+
+  it("WR-01: a GENUINE model fail (valid JSON, pass:false) is NOT abstained", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockClientReturning(
+        JSON.stringify({ pass: false, predictedFailureMode: "generic trope" }),
+      ),
+    );
+
+    const { critiqueAgainstRubric } = await import("../rubric-critic");
+    const verdict = await critiqueAgainstRubric("5 money tips", "idea", FITNESS_PANEL);
+
+    expect(verdict.pass).toBe(false);
+    // The model judged it — a real verdict, not an infra abstention. Runner hard-drops.
+    expect(verdict.abstained).toBeFalsy();
+  });
+
+  it("WR-01: a clean pass is NOT abstained", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockClientReturning(JSON.stringify({ pass: true, predictedFailureMode: null })),
+    );
+
+    const { critiqueAgainstRubric } = await import("../rubric-critic");
+    const verdict = await critiqueAgainstRubric("concrete idea", "idea", FITNESS_PANEL);
+
+    expect(verdict.pass).toBe(true);
+    expect(verdict.abstained).toBeFalsy();
   });
 
   it("null-niche panel still produces a verdict (generic critique path)", async () => {
