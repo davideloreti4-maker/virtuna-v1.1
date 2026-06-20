@@ -1,10 +1,11 @@
 ---
 phase: 12
 slug: library-acts-state-ia
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-20
+reviewed_at: 2026-06-20
 ---
 
 # Phase 12 — UI Design Contract
