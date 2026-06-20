@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 11 UAT PASSED live 2026-06-20 (Playwright) after a clockworks scrape swap. 6/7 PASS (T1,T2,T3,T4,T6,T7), T5 PARTIAL (Explore fires the remix chain in-place correctly; remix-card blocked by a downstream Phase-6 remix-skill decode_failed, not Explore). Root-cause fix: apidojo/tiktok-scraper is a PAID actor the Apify FREE plan refuses → reverted Discover/Explore scrape to clockworks (free-plan-OK, real data), made scrapeVideos mode-aware (profiles vs searchQueries). Gates: vitest affected 165/165, touched files typecheck clean, `next build` ✓ compiled. 5 src/test files changed, uncommitted. Remaining: GAP-REMIX-01 (remix-skill decode — Phase 6 follow-up), confirm prod Apify plan/provider strategy.
-last_updated: "2026-06-20T16:30:00.000Z"
-last_activity: "2026-06-20 -- Ran Phase 11 UAT in Playwright (e2e-test user, live Supabase). PASS: T1 (pill + `/` slash both open Explore idle + 3 cards, no auto-fire), T2 (card-2 disabled 'Track an account first' at zero accounts; flips to enabled at 1), T6-backend (tracked_accounts POST→201 normalized 'chrisbumstead', 2nd POST idempotent same-id, GET=1 row, RLS/CR-01 — verified via authenticated in-browser fetch + DB). PARTIAL: T7 (outlier-grid block persists w/ kcGenVersion stamp + rehydrates on reload; empty tiles only). BLOCKED: T3/T4/T5 — Apify FREE plan (account rousing_saxophone) blocks apidojo/tiktok-scraper API runs → no live grid → fit bar/remix not observable (both code-verified by gsd-verifier + units). Honesty spine HELD (no fabricated reaction, no empty fit bar, no fake %, no coral misuse; failed scrape shows honest empty-degrade). Findings: GAP-ENV-01 (Apify Free plan — use paid token locally or run on Vercel), GAP-SCRAPE-01 (scrapeVideos input `profiles` rejected by actor; wants `keywords`/`startUrls` — shared P8/P10/P11 stack, needs fix + paid-plan confirm), OBS-01 (failed scrape persists empty grid block), OBS-02 (audience pill resets to General on reload despite thread active_audience_id). Seeded + KEPT: audience 'Fitness Creators' (b0bbcfd9), tracked tiktok/chrisbumstead (88258b92). See 11-UAT.md."
+status: Live Playwright UAT PASS — T1/T2/T3/T4/T6/T7 PASS, T5 partial (Explore-side wiring PASS; remix-card blocked by Phase-6 remix-skill decode_failed, GAP-REMIX-01). Live clockworks scrape renders the fit-scored grid; fit bar shows on calibrated (FIT·Weak+predicted) / omitted on General; Track persists+idempotent; reload rehydrates. Honesty spine held. Gates green (vitest 165/165, build ✓). 5 src/test files changed UNCOMMITTED — awaiting commit decision.
+stopped_at: Phase 12 context gathered
+last_updated: "2026-06-20T14:13:24.426Z"
+last_activity: "2026-06-20 -- Reverted Discover/Explore scrape apidojo→clockworks (free-plan-compatible) + mode-aware scrapeVideos; re-ran full Playwright UAT live (6/7 PASS). See 11-UAT.md. Outstanding: GAP-REMIX-01 (remix decode, Phase 6), prod Apify provider strategy."
 progress:
   total_phases: 16
-  completed_phases: 10
-  total_plans: 63
-  completed_plans: 62
-  percent: 63
+  completed_phases: 12
+  total_plans: 62
+  completed_plans: 63
+  percent: 75
 ---
 
 # Project State
@@ -207,10 +207,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T11:25:49.909Z
-Stopped at: Completed 11-07-PLAN.md (Explore wired into composer — pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)
+Last session: 2026-06-20T14:13:24.417Z
+Stopped at: Phase 12 context gathered
 Next: 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — closes Phase 11; until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: None
+Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/12-CONTEXT.md
 
 ## Performance Metrics
 
