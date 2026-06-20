@@ -4,13 +4,13 @@ milestone: v6.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-06-20T02:16:24.591Z"
+last_updated: "2026-06-20T02:28:54.261Z"
 last_activity: 2026-06-20 -- Phase 11 execution started
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 62
-  completed_plans: 58
+  completed_plans: 59
   percent: 69
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — EXECUTING
-Plan: 4 of 8
+Plan: 5 of 8
 Status: Ready to execute
-Last activity: 2026-06-20 -- Phase 11 execution started
+Last activity: 2026-06-20 -- 11-04 complete (Explore server half: /api/tools/explore SSE route + explore-runner)
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -171,6 +171,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 11-01]: rankWithAudienceFit is pure runner/route-layer math (no engine/SIM/network) — ENGINE_VERSION stays 3.19.0 (Pitfall 6); fit-score constants STRONG=0.66/FAIR=0.4/α=0.5 are [ASSUMED A2] UAT tunables — D-01/D-02/D-03: the eager per-tile fit signal is honest re-ranked math, never a SIM call or fabricated quote; constants tune in UAT like the Flash thresholds
 - [Phase 11-01]: OutlierGridBlockSchema extended with fit/trackable/trackHandle as nullable-optional (mirrors predictedFailureMode) — zero migration, zero block-registry edit; degrade gate returns fit:null (never empty/zero bar) — EXPLORE-03/05 producer-half plumbing; existing persisted outlier-grid blocks stay valid; honesty spine keeps no-band/no-model/no-score on the MEASURED tile (Pitfall 5)
 - [Phase 11-02]: tracked_accounts is a NEW dedicated flat table (not a saved_items overload) — a tracked account is an input HANDLE not a block snapshot; idempotent via UNIQUE(user_id,platform,handle); RLS own-rows (tracked_all_own mirrors saved_all_own); WRITTEN only, live push + types regen deferred to BLOCKING wave 11-08; EXPLORE-06 comment-seeding stays deferred (D-09)
+- [Phase 11-04]: /api/tools/explore clones the hooks SSE route but delegates the WHOLE pipeline to runExplorePipeline (no Flash/gate loop); stages "Pulling outliers" → "Scoring for your audience", content-first, NO fake % (UI-SPEC honesty — the apidojo pull is genuinely minutes); active audience ALWAYS from openThread.active_audience_id (CR-01), never body; General/preset/thin degrades every tile to fit:null
+- [Phase 11-04]: runExplorePipeline returns { block, ranked } (additive to the locked signature) so the in-memory Discover cache fills from the SAME pull — eliminates a double scrape (Rule 1 fix). Cache stores audience-independent measured RankedOutlier[]; a cache HIT re-runs rankWithAudienceFit per active audience before building the block (fit depends on the audience, not the pull). Zero SIM/Flash/@/lib/engine import — ENGINE_VERSION 3.19.0 untouched (D-02/D-03, Pitfall 6)
+- [Phase 11-04]: timeWindow param accepted into the route contract but NOT yet threaded into the pull (rankOutliers already applies WINDOW_DAYS=90 + half-life); honest no-op (void body.timeWindow) — narrowing by today/week/month is a follow-up, never faked. Profile-mode tiles trackable:true + trackHandle (pull-input handle, no @, lowercased); niche-mode trackable:false (VideoData exposes no author handle — RESEARCH Q3)
 
 ### Roadmap Evolution
 
@@ -195,10 +198,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T02:16:19.171Z
-Stopped at: Phase 11 UI-SPEC approved
-Next: Phase 14 done. Candidate next: phase verify, or Phase 11 (Explore) / Phase 12 (Library & field-legibility, consumes P14 deferred surface)
-Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-UI-SPEC.md
+Last session: 2026-06-20T02:28:54.252Z
+Stopped at: Completed 11-04-PLAN.md (Explore server half — SSE route + audience-fit runner)
+Next: 11-05 (use-explore-stream + tile fit-bar/Track button), then 11-06 (ExploreThreadView idle quick-actions) + 11-07 (composer wiring + enable explore skill pill)
+Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-05-PLAN.md
 
 ## Performance Metrics
 
@@ -254,3 +257,4 @@ Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-no
 | Phase 11-explore-audience-curated-discovery P01 | 22min | 2 tasks | 3 files |
 | Phase 11-explore-audience-curated-discovery P02 | 8min | 1 tasks | 1 files |
 | Phase 11 P03 | 7min | 2 tasks | 3 files |
+| Phase 11 P04 | 10min | 2 tasks | 3 files |
