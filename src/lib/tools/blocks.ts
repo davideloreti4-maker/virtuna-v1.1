@@ -271,11 +271,28 @@ export const OutlierGridBlockSchema = z.object({
         baselineLabel: z.enum(["vs own", "vs niche"]), // D-05 — renderer NEVER shows a bare multiplier
         // Source tag (D-15): "Your channel" | "Competitor" (profile) | niche label (niche)
         source: z.string().min(1),
+        // ── Phase 11 Explore extension (EXPLORE-03/05) ──────────────────────────
+        // The audience-relative fit ESTIMATE (EXPLORE-03 / D-01). Level WORD only —
+        // NO number, NO band, NO quote, NO model tag (D-02 honesty: re-ranked math
+        // from rankWithAudienceFit, NOT SIM output). `null` = no calibrated audience
+        // signal → renderer omits the bar entirely (degrade, D-02). OPTIONAL →
+        // existing persisted outlier-grid blocks stay valid (no migration, mirrors
+        // predictedFailureMode).
+        fit: z.object({ level: z.enum(["Strong", "Fair", "Weak"]) }).nullable().optional(),
+        // Whether this tile offers the "+ Track account" affordance (EXPLORE-05 / D-08).
+        // OPTIONAL → existing Discover-view blocks default to no track button.
+        trackable: z.boolean().optional(),
+        // The @handle the track button writes (no '@', lowercased), present only when
+        // trackable. Profile-mode pulls only — niche-mode video items carry no author
+        // handle (RESEARCH Q3).
+        trackHandle: z.string().optional(),
       }),
     ),
     mode: z.enum(["profile", "niche"]),
-    // NOTE: deliberately NO `model: "sim1-flash"`, NO `band`, NO `score` —
-    //       Discover tiles are measured data, not SIM output (Pitfall 5 / D-11).
+    // NOTE: deliberately NO `model: "sim1-flash"`, NO `band`, NO `score` for the
+    //       MEASURED tile — Discover tiles are measured data, not SIM output
+    //       (Pitfall 5 / D-11). The Phase 11 `fit` field above is an explicit
+    //       audience-fit ESTIMATE (re-ranked math), not a SIM verdict.
   }),
 });
 
