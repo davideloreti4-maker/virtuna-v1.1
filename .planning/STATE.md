@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 13-03-PLAN.md (AmbientPresence — dot-cloud strip + spotlight + type-to-room)
-last_updated: "2026-06-20T21:31:29.000Z"
-last_activity: 2026-06-20 -- Phase 13 execution started
+status: verifying
+stopped_at: Completed 13-03-PLAN.md (AmbientPresence built in isolation — dot-cloud strip + spotlight subject + type-to-room input; Wave 2 done)
+last_updated: "2026-06-20T21:52:46.682Z"
+last_activity: 2026-06-20 -- Completed 13-03 (AmbientPresence built in isolation; Wave 2 done)
 progress:
   total_phases: 17
-  completed_phases: 13
+  completed_phases: 14
   total_plans: 70
-  completed_plans: 70
-  percent: 77
+  completed_plans: 71
+  percent: 82
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 Phase: 13 (proactive-numen-ambient-initiated-expansion-the-ambient-audi) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-20 -- Completed 13-03 (AmbientPresence built in isolation; Wave 2 done)
 
 ### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
@@ -199,6 +199,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 13 / 13-03]: AmbientPresence (Surfaces 1/2/4) built in ISOLATION against a driven `focus` prop + `audience` prop — a thin always-docked persona-cloud strip reusing the PersonaCloud/PersonaGraph family (mulberry32, cream-alpha fill, worst-cluster coral, <animate> gated on reducedMotion, sr-only mirror) at strip scale; opens the ONE shipped AudienceLens exactly as LensTrigger does (no fork). Spotlights exactly one `reacting to: {concept}` subject when focused (never aggregated, D-02), idles honestly (calm roster + idle copy, no reaction) when focus=null (D-01). Contract: AmbientFocus={conceptText,fraction,scrollQuote}|null; AmbientPresenceProps={audience,focus,reducedMotion?,onFocusChange?}.
 - [Phase 13 / 13-03]: effectiveFocus = typedFocus ?? focus — a just-typed type-to-room result wins locally (drives subject+dots+Lens immediately even without the composer), onFocusChange notifies 13-04; cardScrollQuoteReactions is the single honesty gate for both dot toning AND the Lens flatPersonas. Dot toning: stop=0.7α cream, scroll=0.28α cream, first scroll slot=var(--color-accent) coral (only when focused); idle=0.45α uniform cream, no coral on the roster.
 - [Phase 13 / 13-03]: Type-to-room (D-04) = explicit-submit-only (button/Enter, Shift+Enter newline via the PersonaChatDrawer idiom), single POST /api/tools/react with {text}, no fetch on keystroke; loading 'Reading the room…' aria-live polite; success → typedFocus+onFocusChange+caption 'A quick SIM read on your {name} — not a full Test.'+auto-open Lens; error → verbatim copy + quiet non-red Retry (cream-secondary), preserved text; ephemeral (no persistence); NO client-side Qwen (fetch-only). ENGINE_VERSION 3.19.0 unchanged (pure client work).
+- [Phase 13 / 13-04]: useAmbientFocus exports a PURE decision core (resolveAmbientFocus: typed-thought > sticky-tap > scroll-spy > default-latest > null) + the hook wrapping it with the IntersectionObserver behind registerThreadRegion (root=composer-thread-region, rootMargin under the 48px sticky strip); no Math.random/Date.now in the core (engine-gate safe). Tap-priority (Pitfall 4): a sticky tap suppresses scroll-spy until the next tap or a deliberate 64px scroll.
+- [Phase 13 / 13-04]: Tap-to-focus rides onClickCapture on a data-ambient-card wrapper in composer.tsx — CAPTURE phase fires focusByTap BEFORE the shipped LensTrigger's bubble onClick (both run: focus + Lens), LensTrigger NOT forked + CardReactionAtRest unchanged (D-05/D-06). Focus descriptors built from the active tool's already-rendered card blocks (hookLine/title/openingBeatSeed/adaptedHook + real fraction/scrollQuote) → zero new model calls on re-focus (D-03); no new audience fetch; no fresh-thread reset (Pitfall 5 awareness).
+- [Phase 13 / 13-04]: AMBIENT-01 COMPLETE — presence mounted in BOTH composer branches (sticky atop the homeThreadMode scroll region via ref=registerThreadRegion + idle focus=null in Branch B so it never hides, D-01). BLOCKING phase-close gate GREEN on the authoritative binary node ./node_modules/vitest/vitest.mjs run (1328 passed/20 skipped/0 failed, 112 files), ENGINE_VERSION held 3.19.0, no new legacy coral, no client-side Qwen, LensTrigger un-forked. Known limitation: continuous scroll-spy pixel-precision bounded by the no-thread-view-edit files_modified scope (markers rendered in composer); tap + default-latest + type-to-room fully wired.
 
 ### Roadmap Evolution
 
@@ -224,7 +227,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T21:31:29.000Z
+Last session: 2026-06-20T21:52:00.649Z
 Stopped at: Completed 13-03-PLAN.md (AmbientPresence built in isolation — dot-cloud strip + spotlight subject + type-to-room input; Wave 2 done)
 Next: Execute 13-04 (final, Wave 3) — mount the presence sticky in composer-thread-region + scroll-spy/tap/type-to-room focus (useAmbientFocus) + BLOCKING regression gate (ENGINE_VERSION 3.19.0). 13-04 listens to AmbientPresence's onFocusChange and passes selectedAudience + reducedMotion + the focus state down. ✓ RESOLVED — Phase 11 11-08 is done: the tracked_accounts migration is applied on live prod (migration 20260620111029, confirmed via list_migrations), types regenerated (database.types.ts L1800), engine regression gate green (ENGINE_VERSION 3.19.0). The "+ Track account" write + hasTrackedAccounts read hit the live table (UAT Test 6 persisted a real row). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
 Resume file: None
@@ -295,3 +298,4 @@ Resume file: None
 | Phase 13 P01 | 7min | 2 tasks | 6 files |
 | Phase 13 P02 | 7min | 2 tasks (1 TDD) tasks | 7 files files |
 | Phase 13 P03 | 12min | 2 tasks | 3 files |
+| Phase 13 P04 | 12min | 3 tasks | 4 files |
