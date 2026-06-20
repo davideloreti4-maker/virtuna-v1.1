@@ -227,7 +227,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 2/8 | In Progress|  |
+| 11. Explore (Audience-Curated Discovery) | 3/8 | In Progress|  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
@@ -402,7 +402,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -411,7 +411,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Wave 2** *(parallel — disjoint files; 11-03 on 11-02, 11-04 on 11-01)*
 
-- [ ] 11-03-PLAN.md — Watchlist write: `tracked-accounts-repo` + `/api/tracked-accounts` (session-derived user_id, idempotent upsert, auth+csrf) [EXPLORE-05]
+- [x] 11-03-PLAN.md — Watchlist write: `tracked-accounts-repo` + `/api/tracked-accounts` (session-derived user_id, idempotent upsert, auth+csrf) [EXPLORE-05]
 - [ ] 11-04-PLAN.md — Explore server: `explore-runner` (pull→rank→fit→validated block, no SIM call) + `/api/tools/explore` SSE route (skill-chain contract, audience from active_audience_id) [EXPLORE-01, EXPLORE-02, EXPLORE-03]
 
 **Wave 3** *(blocked on 11-01/11-04)*
