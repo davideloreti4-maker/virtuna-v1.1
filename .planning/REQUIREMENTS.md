@@ -148,7 +148,7 @@ reuses its typed-block renderers.
 
 > Turn "tested against YOUR audience" from a summoned tap into an always-felt, reacting, addressable presence. ⚠️ EXTEND P9's shipped Lens (persona-cloud + chat-with-persona + Rewrite) — do NOT duplicate; every door opens the same single Lens. *(DISCUSSED + narrowed to Ambient 2026-06-20 — see 13-CONTEXT.md. The Initiated half split → P17.)*
 
-- [ ] **AMBIENT-01**: The living, always-present audience — a persistent docked audience presence + per-card reactions at rest (always felt, never summoned) + **type-to-room** (type a thought → the room reacts, real SIM) + live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type; reactions never aggregated), all reusing P9's primitive. Keep P9's per-card Lens as the per-artifact depth.
+- [x] **AMBIENT-01**: The living, always-present audience — a persistent docked audience presence + per-card reactions at rest (always felt, never summoned) + **type-to-room** (type a thought → the room reacts, real SIM) + live spotlight on ONE in-focus labeled concept (re-focuses on tap/scroll/type; reactions never aggregated), all reusing P9's primitive. Keep P9's per-card Lens as the per-artifact depth.
 - *(Honesty spine: never fabricate a reaction; idle at rest; degrade gracefully when thin.)*
 
 ### PROACTIVE — Initiated Numen, Numen reaches out first (P17 — split from P13)

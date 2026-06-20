@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: planned
-stopped_at: Phase 13 planned (4 plans, 3 waves) — ready to execute
-last_updated: "2026-06-20T20:46:27.807Z"
-last_activity: 2026-06-20 -- Phase 13 planning complete
+status: executing
+stopped_at: Phase 13 UI-SPEC approved
+last_updated: "2026-06-20T21:02:31.973Z"
+last_activity: 2026-06-20 -- Phase 13 execution started
 progress:
   total_phases: 17
   completed_phases: 13
-  total_plans: 66
-  completed_plans: 67
+  total_plans: 70
+  completed_plans: 68
   percent: 76
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 13 — Ambient Numen (the living, always-present audience) — planned, ready to execute
+**Current focus:** Phase 13 — proactive-numen-ambient-initiated-expansion-the-ambient-audi
 
 ## Current Position
 
-Phase: 13
-Plan: Planned (4 plans, 3 waves) — ready to execute (/gsd-execute-phase 13)
-Status: P11 Explore verified-complete (UAT 6/7; T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug, not Explore). P12 + P14 complete. P13 Ambient Numen PLANNED — 4 plans / 3 waves, plan-checker PASSED (1 blocker + 3 warnings resolved in iteration 2). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
-Last activity: 2026-06-20 -- Phase 13 planning complete
+Phase: 13 (proactive-numen-ambient-initiated-expansion-the-ambient-audi) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-20 -- Phase 13 execution started
 
 ### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -192,6 +192,8 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 12-03]: Live UAT confirmed the 12-02 SaveAffordance gap closed end-to-end — saving the inline Compare Read persisted a real 'read' item ('Growth Audience — Mixed Read') to saved_items (then cleaned up). Under-calibrated warning note wired but NOT exercised (all 4 test-account audiences are calibrated enough; code path present, no defect).
 - [Phase 12-04]: AUD-EDIT-01 persona editing — Name persists to a NEW presentation-only `label?: string` on CalibratedPersona (the type had no name field; display was archetype-derived everywhere). Edits Name(→label)/Disposition/Temperature/Description(→repaint) → PATCH /api/audiences/[id] { personas } (the route already accepts personas: z.array(z.unknown()), so `label` passes with NO schema edit). archetype + share byte-stable (NO weight field, D-06). Gate-safe by construction: General is a virtual constant (personas:[], no DB row, no Edit affordance) = structurally unwritable; runners read [archetype, repaint] only and NEVER `label` (verified positive invariant: 5× repaint-map sites unchanged). ENGINE_VERSION stays 3.19.0; no migration (label is a JSONB key). Edit form = inline expand (planner discretion over Dialog) with local-state refresh on save (no hard reload).
 - [Phase 12-04]: Disposition/Temperature labels are sibling <span>s NOT <label htmlFor> (Rule 1 a11y fix surfaced by the unit test) — the shipped Select renders its trigger as a <button role="combobox"> that does not accept an id, so htmlFor would dangle; Name/Description keep htmlFor (Input/Textarea forward the id). AC name-fallback example ("collector"→"Collector") conflated Disposition with Archetype; test uses a real archetype slug (high_engager→"High Engager") on the same fallback path.
+- [Phase ?]: [Phase 13 / 13-01]: buildReactionPanel(profileRow, audience) extracted as the single niche-panel+repaint source for ideas-runner, hooks-runner, AND POST /api/tools/react — byte-identical lift (panel={niche:resolveNicheKey(niche_primary),contentType:null}; audienceRepaint=archetype→repaint or undefined for General/no-audience). resolveAudienceWeights stays OUT (void-wired Max path). Resolves RESEARCH Open Q1 / Pitfall 2; ENGINE_VERSION 3.19.0.
+- [Phase ?]: [Phase 13 / 13-01]: POST /api/tools/react = type-to-room reaction (ONLY new model-calling code in P13). Auth-first → Zod {text,framing?} → server-resolved audience off thread.active_audience_id (CR-01, body audienceId ignored) → buildReactionPanel → runFlashTextMode(default framing 'hook', A1) → {fraction,scrollQuote}. NOT markdown chat route (Pitfall 1), no streaming, no persistence (ephemeral, Open Q3), Flash fail→502 reaction_failed. selectLeadScrollQuote inline-copied (A4).
 
 ### Roadmap Evolution
 
@@ -217,7 +219,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T20:07:44.149Z
+Last session: 2026-06-20T21:01:39.138Z
 Stopped at: Phase 13 UI-SPEC approved
 Next: Discussing Phase 13 Proactive Numen (/gsd-discuss-phase 13). ✓ RESOLVED — Phase 11 11-08 is done: the tracked_accounts migration is applied on live prod (migration 20260620111029, confirmed via list_migrations), types regenerated (database.types.ts L1800), engine regression gate green (ENGINE_VERSION 3.19.0). The "+ Track account" write + hasTrackedAccounts read hit the live table (UAT Test 6 persisted a real row). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
 Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the-ambient-audi/13-UI-SPEC.md
@@ -285,3 +287,4 @@ Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the
 | Phase Phase 12-library-acts-state-ia P02 P02 | 12min | 2 tasks | 5 files |
 | Phase 12-library-acts-state-ia P03 | ~5min + UAT | 4 tasks (3 auto + 1 human-verify) | 3 files |
 | Phase 12-library-acts-state-ia P04 | 11min + UAT | 4 tasks (3 auto + 1 human-verify) | 4 files |
+| Phase 13 P01 | 7min | 2 tasks | 6 files |
