@@ -58,11 +58,27 @@ import {
   recordUserPull,
 } from "@/lib/discover/discover-cache";
 import { runExplorePipeline } from "@/lib/tools/runners/explore-runner";
+import { listTrackedAccounts } from "@/lib/tracked-accounts/tracked-accounts-repo";
 import { OutlierGridBlockSchema, type OutlierGridBlock } from "@/lib/tools/blocks";
 import type { Audience } from "@/lib/audience/audience-types";
 
 // ── Server-side caps (independent of client) ────────────────────────────────────
 const MAX_INPUT_LENGTH = 200; // a handle or short niche phrase (mirrors /api/discover)
+
+// CR-01 — the un-niched / general trending pull. When the user fires Explore with NO
+// niche/accounts/input (the default General-audience flagship quick-action, or a bare
+// field-send), the route does NOT 400 — it runs a real scrape with a broad trending
+// query (the composer documents this intent at composer.tsx:659 "empty → un-niched
+// pull"). This is an HONEST default seed: a real scrape with a general term, NOT
+// fabricated data. A General audience naturally yields fit=null (the honesty spine omits
+// the fit bar — unchanged). Niche mode → source tag = this label (always non-empty, so
+// OutlierGridBlockSchema's source.min(1) can never throw on this path — WR-03 guard).
+const TRENDING_FALLBACK_QUERY = "trending";
+
+// CR-02 — the "What competitors shipped" pull resolves the SESSION user's tracked
+// accounts server-side (user_id is session-derived, NEVER from the body — CR-01 invariant)
+// and pulls from up to this many handles, merged + ranked into one grid.
+const MAX_TRACKED_PULL = 5;
 
 // ── SSE headers ─────────────────────────────────────────────────────────────────
 
@@ -93,9 +109,12 @@ function buildBlockFromRanked(
   mode: "profile" | "niche",
   normalized: string,
   serendipity: number,
+  isMerged: boolean = false,
 ): OutlierGridBlock {
   const fitRanked = rankWithAudienceFit(ranked, audience, serendipity);
-  const trackable = mode === "profile";
+  // CR-02: merged competitors tiles are not individually trackable (no per-tile author);
+  // mirrors runExplorePipeline so a cache-hit rebuild matches a cache-miss build.
+  const trackable = mode === "profile" && !isMerged;
   const trackHandle = trackable ? normalized.replace(/^@/, "").toLowerCase() : undefined;
   const source = sourceTag(mode, normalized);
 
@@ -155,6 +174,7 @@ export async function POST(request: Request): Promise<Response> {
     timeWindow?: unknown;
     serendipity?: unknown;
     input?: unknown; // quick-action presets may pass a single input string
+    tracked?: unknown; // CR-02 — card 2 sets this so the route pulls from tracked accounts
   } = {};
   try {
     body = await request.json();
@@ -190,15 +210,61 @@ export async function POST(request: Request): Promise<Response> {
   // we don't pretend to filter by it). Read it so the param is part of the contract.
   void body.timeWindow;
 
-  // Determine the pull input: prefer accounts (a handle → profile pull), else niche, else
-  // the single `input` preset string. Both empty → 400.
+  // CR-02 — explicit "use my tracked accounts" signal (card 2). The handles are NEVER
+  // sent by the client; the route resolves them from the SESSION user (CR-01 invariant).
+  const wantTracked = body.tracked === true;
+
+  // Determine the pull: prefer an explicit input (accounts → profile, else niche, else the
+  // single `input` preset). Falls through to the tracked-accounts pull (CR-02) or the
+  // un-niched trending pull (CR-01) when no explicit input is given.
   const pullInput = rawAccounts || rawNiche || rawInput;
-  if (!pullInput) {
-    return Response.json({ error: "input is required" }, { status: 400 });
+
+  let mode: "profile" | "niche";
+  let normalized: string;
+  // CR-02 — when set, the runner scrapes EACH handle and merges before one rank pass.
+  let mergeInputs: string[] | undefined;
+
+  if (pullInput) {
+    // Explicit input → classify (profile vs niche) via the reused Discover classifier.
+    ({ mode, normalized } = classifyDiscoverInput(pullInput));
+  } else if (wantTracked) {
+    // CR-02 — competitors pull: resolve the session user's tracked accounts (RLS-scoped),
+    // cap the list, and build a merged profile pull. user_id is session-derived (CR-01).
+    const tracked = await listTrackedAccounts(supabase);
+    const handles = tracked
+      .map((a) => a.handle.replace(/^@/, "").trim().toLowerCase())
+      .filter((h) => h.length > 0)
+      .slice(0, MAX_TRACKED_PULL);
+
+    if (handles.length === 0) {
+      // Card 2 is UI-gated on hasTrackedAccounts, so this is a defensive race guard:
+      // a clean 400 (SkillRunError-compatible), NOT a thrown 500/SSE error.
+      return Response.json(
+        { error: "no_tracked_accounts", message: "Track an account first to see what your competitors shipped." },
+        { status: 400 },
+      );
+    }
+
+    mode = "profile";
+    normalized = handles[0]!; // primary source (tag + single-handle track attribution)
+    mergeInputs = handles;
+  } else {
+    // CR-01 — no input at all → honest un-niched trending pull (a real scrape with a broad
+    // query). source tag is the non-empty fallback label, so the block schema can't throw.
+    mode = "niche";
+    normalized = TRENDING_FALLBACK_QUERY;
   }
 
-  // Classify (profile vs niche) — reused Discover classifier.
-  const { mode, normalized } = classifyDiscoverInput(pullInput);
+  // A merged competitors pull mixes several handles into one ranked set; its tiles are NOT
+  // individually trackable (no per-tile author — RESEARCH Q3) and its cache entry must NOT
+  // collide with a single-handle profile pull of the same first handle. Both the runner
+  // (trackability) and the cache key (below) need this flag.
+  const isMerged = (mergeInputs?.length ?? 0) > 1;
+
+  // Cache key: the measured ranking is keyed per (key, mode, day). For a merged pull the
+  // composite includes every handle so a 3-account competitors pull never reuses a
+  // single-account pull's cache (Pitfall 6 — distinct inputs → distinct keys).
+  const cacheKey = isMerged ? `competitors:${mergeInputs!.join(",")}` : normalized;
 
   // ── (3) Open thread + active audience (CR-01 — id NEVER from body) ─────────
   const openThread = await createOpenThreadLazy(user.id);
@@ -244,8 +310,9 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // Cache check (per input, mode, day — Pitfall 5/6). Stores measured ranked tiles.
-        const cachedRanked = getCachedDiscover<RankedOutlier>(normalized, mode);
+        // Cache check (per key, mode, day — Pitfall 5/6). Stores measured ranked tiles.
+        // cacheKey == normalized for normal pulls; a composite for a merged competitors pull.
+        const cachedRanked = getCachedDiscover<RankedOutlier>(cacheKey, mode);
 
         let block: OutlierGridBlock;
 
@@ -265,6 +332,7 @@ export async function POST(request: Request): Promise<Response> {
             mode,
             normalized,
             serendipity,
+            isMerged,
           );
           send("stage", { name: "Scoring for your audience", status: "done" });
         } else {
@@ -275,6 +343,7 @@ export async function POST(request: Request): Promise<Response> {
             mode,
             normalizedInput: normalized,
             serendipity,
+            mergeInputs,
           });
           block = result.block;
           send("stage", { name: "Pulling outliers", status: "done" });
@@ -286,7 +355,7 @@ export async function POST(request: Request): Promise<Response> {
           // measured ranking so subsequent same-day pulls skip the scrape and re-fit per
           // the active audience (Pitfall 5 — in-memory soft optimization).
           recordUserPull(user.id);
-          setCachedDiscover<RankedOutlier>(normalized, mode, result.ranked);
+          setCachedDiscover<RankedOutlier>(cacheKey, mode, result.ranked);
         }
 
         // Content event: the outlier-grid block (content-first — no fake %).

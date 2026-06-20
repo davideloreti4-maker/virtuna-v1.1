@@ -39,6 +39,19 @@ export interface RunExploreInput {
   normalizedInput: string;
   /** The serendipity valve: 0 = on-niche, 1 = widen beyond niche (D-06). */
   serendipity: number;
+  /**
+   * CR-02 — the "What competitors shipped" multi-source pull. When present, scrape EACH
+   * of these handles (the session user's tracked accounts, already capped by the route)
+   * and MERGE the VideoData before a SINGLE rank pass. `normalizedInput` is still the
+   * primary source (used for the source tag / single-handle track attribution).
+   *
+   * Attribution note (RESEARCH Q3): VideoData carries no author handle, so when MORE than
+   * one handle is merged we cannot attribute a tile back to its source account — those
+   * tiles are therefore NOT individually trackable (and they are already tracked anyway,
+   * which is the whole point of the competitors pull). A single-handle merge keeps the
+   * normal profile-mode trackability.
+   */
+  mergeInputs?: string[];
 }
 
 export interface RunExploreResult {
@@ -73,8 +86,26 @@ function sourceTag(mode: "profile" | "niche", normalizedInput: string): string {
  */
 export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExploreResult> {
   // ── (1) Pull — the only network call (no SIM, Pitfall 6) ──────────────────
+  // CR-02: a competitors pull merges several tracked handles. The route caps the list;
+  // here we scrape each (single source = the [normalizedInput] one-element case) and
+  // concat the VideoData before a single rank pass. Dedupe by platformVideoId so a video
+  // that surfaces under two tracked handles is not double-counted in the baseline median.
   const provider = createScrapingProvider();
-  const videos = await provider.scrapeVideos(opts.normalizedInput, SCRAPE_LIMIT);
+  const sources =
+    opts.mergeInputs && opts.mergeInputs.length > 0
+      ? opts.mergeInputs
+      : [opts.normalizedInput];
+  const isMerged = sources.length > 1;
+
+  const scraped = await Promise.all(
+    sources.map((source) => provider.scrapeVideos(source, SCRAPE_LIMIT)),
+  );
+  const seen = new Set<string>();
+  const videos = scraped.flat().filter((v) => {
+    if (seen.has(v.platformVideoId)) return false;
+    seen.add(v.platformVideoId);
+    return true;
+  });
 
   // ── (2) Rank (measured, honest) ───────────────────────────────────────────
   const ranked = rankOutliers(videos, opts.mode).slice(0, MAX_TILES);
@@ -83,10 +114,13 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
   const fitRanked = rankWithAudienceFit(ranked, opts.audience, opts.serendipity);
 
   // ── (4) Track handle source (RESEARCH Q3, resolved) ───────────────────────
-  // Profile-mode pulls are trackable, handle = the pull input (no @, lowercased).
-  // RESEARCH Q3: niche-mode video items expose no author handle on VideoData → not
-  // trackable in P11 (profile-mode Track only). Still satisfies the producer half (D-08).
-  const trackable = opts.mode === "profile";
+  // Profile-mode SINGLE-handle pulls are trackable, handle = the pull input (no @,
+  // lowercased). RESEARCH Q3: niche-mode video items expose no author handle on
+  // VideoData → not trackable in P11 (profile-mode Track only).
+  // CR-02: a MERGED competitors pull mixes several handles into one ranked set; with no
+  // per-tile author we cannot attribute a tile to a handle, so merged tiles are NOT
+  // individually trackable (and the accounts are already tracked — re-tracking is moot).
+  const trackable = opts.mode === "profile" && !isMerged;
   const trackHandle = trackable
     ? opts.normalizedInput.replace(/^@/, "").toLowerCase()
     : undefined;

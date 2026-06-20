@@ -204,6 +204,96 @@ describe("runExplorePipeline", () => {
     expect(mockScrapeVideos).toHaveBeenCalledWith("fitness", 30);
   });
 
+  // ── CR-02: the merged "What competitors shipped" multi-handle pull ───────────────
+
+  it("scrapes EACH tracked handle and merges them into one ranked block (CR-02)", async () => {
+    // Distinct videos per handle so the merge is observable.
+    mockScrapeVideos.mockImplementation((handle: string) =>
+      Promise.resolve([
+        makeVideo({ platformVideoId: `${handle}_a`, views: 200_000 }),
+        makeVideo({ platformVideoId: `${handle}_b`, views: 90_000 }),
+      ]),
+    );
+
+    const { block } = await runExplorePipeline({
+      audience: makeCalibratedAudience(),
+      mode: "profile",
+      normalizedInput: "creatorone",
+      serendipity: 0,
+      mergeInputs: ["creatorone", "creatortwo", "creatorthree"],
+    });
+
+    // One scrape per handle (3), and the merged grid carries tiles from all of them.
+    expect(mockScrapeVideos).toHaveBeenCalledTimes(3);
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorone", 30);
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatortwo", 30);
+    expect(mockScrapeVideos).toHaveBeenCalledWith("creatorthree", 30);
+
+    expect(OutlierGridBlockSchema.safeParse(block).success).toBe(true);
+    const ids = block.props.tiles.map((t) => t.platformVideoId);
+    expect(ids).toContain("creatorone_a");
+    expect(ids).toContain("creatortwo_a");
+    expect(ids).toContain("creatorthree_a");
+  });
+
+  it("merged competitors tiles are NOT individually trackable (no per-tile author — CR-02/Q3)", async () => {
+    mockScrapeVideos.mockImplementation((handle: string) =>
+      Promise.resolve([makeVideo({ platformVideoId: `${handle}_a` })]),
+    );
+
+    const { block } = await runExplorePipeline({
+      audience: makeCalibratedAudience(),
+      mode: "profile",
+      normalizedInput: "creatorone",
+      serendipity: 0,
+      mergeInputs: ["creatorone", "creatortwo"],
+    });
+
+    for (const tile of block.props.tiles) {
+      expect(tile.trackable).toBe(false);
+      expect(tile.trackHandle).toBeUndefined();
+    }
+  });
+
+  it("a SINGLE-handle mergeInputs keeps normal profile trackability (CR-02 edge)", async () => {
+    mockScrapeVideos.mockResolvedValue([makeVideo({ platformVideoId: "x" })]);
+
+    const { block } = await runExplorePipeline({
+      audience: makeCalibratedAudience(),
+      mode: "profile",
+      normalizedInput: "@SoloCreator",
+      serendipity: 0,
+      mergeInputs: ["solocreator"],
+    });
+
+    expect(mockScrapeVideos).toHaveBeenCalledTimes(1);
+    for (const tile of block.props.tiles) {
+      expect(tile.trackable).toBe(true);
+      expect(tile.trackHandle).toBe("solocreator");
+    }
+  });
+
+  it("dedupes a video that surfaces under two tracked handles (CR-02 — no double-count)", async () => {
+    // Both handles return the SAME video id "dup" → it must appear once.
+    mockScrapeVideos.mockImplementation((handle: string) =>
+      Promise.resolve([
+        makeVideo({ platformVideoId: "dup", views: 150_000 }),
+        makeVideo({ platformVideoId: `${handle}_unique` }),
+      ]),
+    );
+
+    const { block } = await runExplorePipeline({
+      audience: makeCalibratedAudience(),
+      mode: "profile",
+      normalizedInput: "h1",
+      serendipity: 0,
+      mergeInputs: ["h1", "h2"],
+    });
+
+    const dupCount = block.props.tiles.filter((t) => t.platformVideoId === "dup").length;
+    expect(dupCount).toBe(1);
+  });
+
   it("does not import or call any engine SIM/Flash scoring (D-02/D-03 — pure grid)", async () => {
     // Statically assert the runner source carries no engine-scoring imports/calls.
     // (Belt-and-suspenders alongside the verification grep; keeps the honesty spine
