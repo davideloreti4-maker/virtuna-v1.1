@@ -1,10 +1,11 @@
 ---
 phase: 13
 slug: ambient-numen
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-06-20
+reviewed_at: 2026-06-20
 ---
 
 # Phase 13 — UI Design Contract (Ambient Numen)
@@ -58,7 +59,7 @@ Declared values (all real `--spacing-*` tokens from `globals.css`; all multiples
 
 ## Typography
 
-All sizes are real `--text-*` / inline `text-[Npx]` values already used across the shipped Lens and cards. **Hold to ≤4 sizes + ≤2 weights on the new Ambient surfaces** (the shipped components already obey this).
+All sizes are real `--text-*` / inline `text-[Npx]` values already used across the shipped Lens and cards. **Hold to ≤4 sizes + the 3 intentional weights below on the new Ambient surfaces** (the shipped components already obey this — these three are the established system weights, not new ones).
 
 | Role | Size | Weight | Line Height |
 |------|------|--------|-------------|
@@ -68,7 +69,7 @@ All sizes are real `--text-*` / inline `text-[Npx]` values already used across t
 | Micro / sr-context + uppercase eyebrow | 11px (`text-[11px]`) | 500 (`--font-medium`) | 1.25 |
 
 **Rules:**
-- Exactly **two weights** in use on Ambient surfaces: 400 (body/reaction text) and 600 (headings/emphasis). 500 (`--font-medium`) is permitted for labels/captions ONLY (it is the shipped Lens caption weight) — do not introduce 700 on any Ambient surface.
+- Exactly **three intentional weights**, each role-bound (these are the established shipped-system weights, not invented): **400** (`--font-regular`) body/reaction text · **500** (`--font-medium`) labels/captions/subject only (the shipped Lens caption weight) · **600** (`--font-semibold`) headings/emphasis. **700 is forbidden** on any Ambient surface — no other weight may appear.
 - The "reacting to: `<concept>`" subject label: 13px / weight 500, with the **concept clause** in `--color-foreground` and the static `reacting to:` prefix in `--color-foreground-muted`. Concept text truncates with ellipsis at one line (`truncate`) — never wraps to dominate the strip.
 - Live counts (stop/total fractions on the presence) use `tabular-nums` (matches `PopulationSwarm`).
 - Serif (`--font-serif`) is **forbidden** on every Ambient surface — these are chrome/data, not voice moments.
