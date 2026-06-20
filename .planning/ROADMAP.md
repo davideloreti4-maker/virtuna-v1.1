@@ -227,7 +227,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 5/8 | In Progress|  |
+| 11. Explore (Audience-Curated Discovery) | 6/8 | In Progress|  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
@@ -402,7 +402,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
-**Plans:** 4/8 plans executed
+**Plans:** 6/8 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -420,7 +420,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Wave 4** *(blocked on 11-05)*
 
-- [ ] 11-06-PLAN.md — `ExploreThreadView`: idle 3 quick-actions (D-07, card-2 honest degrade) + grid + onRemix (reuse `discover→remix` + in-place reload, Q2) + onTrack [EXPLORE-01, EXPLORE-02, EXPLORE-04, EXPLORE-05]
+- [x] 11-06-PLAN.md — `ExploreThreadView`: idle 3 quick-actions (D-07, card-2 honest degrade) + grid + onRemix (reuse `discover→remix` + in-place reload, Q2) + onTrack [EXPLORE-01, EXPLORE-02, EXPLORE-04, EXPLORE-05]
 
 **Wave 5** *(blocked on 11-06)*
 

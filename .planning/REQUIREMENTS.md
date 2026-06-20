@@ -126,7 +126,7 @@ reuses its typed-block renderers.
 - [x] **EXPLORE-01**: Explore skill in-thread — audience-curated outlier/competitor discovery; customizable params (the audience-on-tap control + serendipity valve); reuses P8 apidojo Discover + outlier-score.
 - [x] **EXPLORE-02**: Each result card carries an **ambient audience reaction** + lands on a Read; tile CTA "Remix → Read" (our chain, never "rewrite for me").
 - [x] **EXPLORE-03**: Audience-relative outlier scoring — relative to YOUR audience, not generic source-channel view-count.
-- [ ] **EXPLORE-04**: Start-screen set-actions — audience-aware quick-actions so a blank thread is never intimidating ("Top performers in my niche today", "What are my competitors shipping").
+- [x] **EXPLORE-04**: Start-screen set-actions — audience-aware quick-actions so a blank thread is never intimidating ("Top performers in my niche today", "What are my competitors shipping").
 - [x] **EXPLORE-05**: Tracked-accounts/watchlist as input State — lives in Library (P12); click a tracked account → "Explore its outliers" fires in-thread.
 - [ ] **EXPLORE-06**: Comment seeding — deferred from P8 D-04; lands here.
 

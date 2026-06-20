@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 11 UI-SPEC approved
-last_updated: "2026-06-20T02:40:00.000Z"
-last_activity: 2026-06-20 -- 11-05 complete (Explore client primitives: useExploreStream + tile fit-bar/Track + renderer wiring)
+stopped_at: Completed 11-05-PLAN.md (Explore client primitives — useExploreStream + OutlierTile fit-bar/Track + OutlierGridBlockRenderer wiring)
+last_updated: "2026-06-20T02:51:32.239Z"
+last_activity: "2026-06-20 -- 11-06 complete (ExploreThreadView: idle quick-actions + grid + onRemix(reload)/onTrack)"
 progress:
   total_phases: 16
   completed_phases: 11
   total_plans: 62
-  completed_plans: 60
+  completed_plans: 61
   percent: 69
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
-Last activity: 2026-06-20 -- 11-05 complete (Explore client primitives: useExploreStream + OutlierTile fit-bar/Track + OutlierGridBlockRenderer wiring)
+Last activity: 2026-06-20 -- 11-06 complete (ExploreThreadView: idle quick-actions + grid + onRemix(reload)/onTrack)
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -175,6 +175,7 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 11-04]: runExplorePipeline returns { block, ranked } (additive to the locked signature) so the in-memory Discover cache fills from the SAME pull — eliminates a double scrape (Rule 1 fix). Cache stores audience-independent measured RankedOutlier[]; a cache HIT re-runs rankWithAudienceFit per active audience before building the block (fit depends on the audience, not the pull). Zero SIM/Flash/@/lib/engine import — ENGINE_VERSION 3.19.0 untouched (D-02/D-03, Pitfall 6)
 - [Phase 11-04]: timeWindow param accepted into the route contract but NOT yet threaded into the pull (rankOutliers already applies WINDOW_DAYS=90 + half-life); honest no-op (void body.timeWindow) — narrowing by today/week/month is a follow-up, never faked. Profile-mode tiles trackable:true + trackHandle (pull-input handle, no @, lowercased); niche-mode trackable:false (VideoData exposes no author handle — RESEARCH Q3)
 - [Phase 11-05]: useExploreStream clones use-hooks-stream but SIMPLER — one outlier-grid block in the content event (no per-tile score events, no followup); fetch+getReader (NOT the GET-only SSE client, BLOCKER-1); start/stop/reset/toBlocks/stages + WR-05 isMountedRef guard. OutlierTile fit bar = 3-level (Strong 100%/Fair 66%/Weak 33%) success/warning/muted, NEVER coral (DATA not action, one-accent law); omitted ENTIRELY when fit==null (honest degrade D-02 — no empty/zero bar). "+ Track account" non-accent text-button (trackable only) → "Tracking ✓". OutlierGridBlockRenderer upgraded LIVE (Pitfall 2): imports OutlierGridBlock from blocks.ts (single source of truth, schema tile structurally = OutlierTileData), forwards onRemix/onTrack/remixPendingId/trackPendingId/trackedIds → DiscoverGrid → tile; callbacks optional → static-reference fallback preserved for the Discover page; message-blocks/block-registry unchanged. tracked keys off trackHandle∈trackedIds, trackPending off platformVideoId. The on-tap real reaction stays lazy (reused remix-card LensTrigger downstream) — no reaction UI on the grid
+- [Phase 11-06]: ExploreThreadView owns its idle state (clone of ChatThreadView idle-ownership) — heading + 3 LOCKED-copy quick-action cards (niche/competitors/serendipity); cards run a preset ONLY on tap, never auto-fire (D-07/EXPLORE-04). Card-2 "What competitors shipped" degrades to a DISABLED "Track an account first" sub-state when hasTrackedAccounts=false (onClick omitted + disabled → no pull can fire; real sub-copy asserted absent) — never a fabricated competitor feed (honesty D-02). Renders the streaming+persisted grid via OutlierGridBlockRenderer DIRECTLY, not MessageBlocks (MessageBlocks forwards only `block`, never onRemix/onTrack — direct mount is the only way to wire the live handlers this view owns). handleRemix = VERBATIM discover→remix (handoffsFor("discover").find(h=>h.to==="remix") → POST {url,platform}) + onThreadReload on success (in-place thread reload, RESEARCH Q2 — NO useRouter import at all, structurally cannot router.push); on-tap real reaction rides the reused remix-card LensTrigger downstream → NO reaction UI on the grid (D-02/D-04/D-05, no new chain entry). handleTrack POSTs /api/tracked-accounts. trackedIds keyed by trackHandle, remix/track pending keyed by platformVideoId (11-05 renderer contract). 9-test happy-dom lock; EXPLORE-01/02/04/05
 
 ### Roadmap Evolution
 
@@ -199,10 +200,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T02:40:00.000Z
-Stopped at: Completed 11-05-PLAN.md (Explore client primitives — useExploreStream + OutlierTile fit-bar/Track + OutlierGridBlockRenderer wiring)
-Next: 11-06 (ExploreThreadView idle quick-actions — mounts useExploreStream + supplies onRemix/onTrack handlers), then 11-07 (composer wiring + enable explore skill pill)
-Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-06-PLAN.md
+Last session: 2026-06-20T02:50:28.917Z
+Stopped at: Completed 11-06-PLAN.md (ExploreThreadView — idle quick-actions + grid + onRemix(reload)/onTrack)
+Next: 11-07 (composer wiring — mount ExploreThreadView, supply audience + hasTrackedAccounts + onThreadReload + onQuickAction→useExploreStream.start, gate showExploreView unconditionally on activeTool==='explore' like chat, enable the explore skill pill; Explore submit branch must NEVER arm pendingNavRef/stream.start — Pitfall 1), then 11-08 (BLOCKING: live tracked_accounts migration push + types regen + engine regression gate)
+Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-not-yet-discuss/11-07-PLAN.md
 
 ## Performance Metrics
 
@@ -260,3 +261,4 @@ Resume file: .planning/phases/11-explore-audience-curated-discovery-expansion-no
 | Phase 11 P03 | 7min | 2 tasks | 3 files |
 | Phase 11 P04 | 10min | 2 tasks | 3 files |
 | Phase 11 P05 | 6min | 3 tasks | 4 files |
+| Phase 11 P06 | 14min | 1 task | 2 files |
