@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 11-07-PLAN.md (Explore wired into composer — pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)
-last_updated: "2026-06-20T03:05:50.866Z"
-last_activity: "2026-06-20 -- 11-07 complete (Explore wired into composer: pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)"
+last_updated: "2026-06-20T11:25:49.919Z"
+last_activity: "2026-06-20 -- 11-08 Tasks 2+3 done (dropped interim (supabase as any) casts post-regen; BLOCKING gate green: ENGINE_VERSION 3.19.0, engine+KC 1191 green, full suite 2941 green, build OK, touched-file lint clean). Task 1 (live migration push + types regen) done earlier by orchestrator (commit 63375675). Task 4 UAT reserved for human."
 progress:
   total_phases: 16
   completed_phases: 11
-  total_plans: 62
+  total_plans: 63
   completed_plans: 62
   percent: 69
 ---
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — EXECUTING
+Phase: 11 (explore-audience-curated-discovery-expansion-not-yet-discuss) — code path complete, Task 4 human UAT PENDING
 Plan: 8 of 8
-Status: Ready to execute
-Last activity: 2026-06-20 -- 11-07 complete (Explore wired into composer: pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)
+Status: 11-08 code path done (live tracked_accounts + types regen + casts dropped + regression gate green) — Task 4 end-to-end Explore UAT PENDING human verification; phase NOT yet complete
+Last activity: 2026-06-20 -- 11-08 Tasks 2+3 done (dropped interim (supabase as any) casts post-regen; BLOCKING gate green: ENGINE_VERSION 3.19.0, engine+KC 1191 green, full suite 2941 green, build OK, touched-file lint clean). Task 1 (live migration push + types regen) done earlier by orchestrator (commit 63375675). Task 4 UAT reserved for human.
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -179,6 +179,10 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase ?]: [Phase 11-07] Explore wired into composer: showExploreView unconditional (activeTool==='explore', mirrors chat D-07) so idle quick-actions show; handleSubmit explore branch calls explore.start({niche})+return, NEVER pendingNavRef/stream.start and no router.push('/analyze') in composer.tsx (Pitfall 1 structurally guarded — navigate-on-id effect stays Test-exclusive)
 - [Phase ?]: [Phase 11-07] Explore params Search popover lives INSIDE ComposerControls (reuses Popover shell + ctl + Ico 'search' beside audience control; onRunExplore prop → explore.start); shown only when activeTool==='explore'. Field-send maps textarea→niche (empty=un-niched); canSubmit gates only on !explore.isStreaming. reloadOpenThread re-filters outlier-grid+remix-card from GET /api/threads/open to surface the Read after a tile Remix in place (RESEARCH Q2, no router.push); hasTrackedAccounts mount fetch drives card-2 honest degrade
 - [Phase ?]: [Phase 11-07] Stale composer-controls test fixed (Rule 1): 'not-yet-shipped disabled' case asserted Explore disabled — split into Explore-enabled+fires-onSelectTool('explore') and Offer/Ad-disabled; EXPLORE-01/02/04 now live + selectable in /home; build ✓, composer+explore suites green
+- [Phase 11-08]: Types path correction — regenerated types live at src/types/database.types.ts (plan frontmatter's src/lib/database.types.ts does not exist in this repo); real path used everywhere
+- [Phase 11-08]: All 3 interim (supabase as any) casts dropped from tracked-accounts-repo post-regen (list/upsert/delete) — typed client resolves every from() call, no residual cast needed; DB platform:string narrowed to TrackedAccountPlatform on the boundary return cast (shelf-repo idiom)
+- [Phase 11-08]: BLOCKING regression gate GREEN — ENGINE_VERSION frozen at 3.19.0 (Explore made zero video-scoring changes, Pitfall 6); engine+KC 1191 green, full suite 2941 green (authoritative vitest binary node ./node_modules/vitest/vitest.mjs run), npm run build OK
+- [Phase 11-08]: Repo-wide eslint baseline (63 errors/98 warnings, all Phase-07-and-earlier files) is pre-existing out-of-scope — NOT fixed (touched file lints clean, build unaffected); logged to deferred-items.md alongside the 46 pre-existing tsc errors
 
 ### Roadmap Evolution
 
@@ -203,7 +207,7 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T03:05:50.857Z
+Last session: 2026-06-20T11:25:49.909Z
 Stopped at: Completed 11-07-PLAN.md (Explore wired into composer — pill enabled + ExploreThreadView mounted + Pitfall-1-guarded submit + in-place reload)
 Next: 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — closes Phase 11; until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
 Resume file: None
@@ -266,3 +270,4 @@ Resume file: None
 | Phase 11 P05 | 6min | 3 tasks | 4 files |
 | Phase 11 P06 | 14min | 1 task | 2 files |
 | Phase 11 P07 | 20min | 2 tasks | 3 files |
+| Phase Phase 11 PP08 | 12min | 2 tasks (2+3; T1 orchestrator, T4 PENDING UAT) tasks | 2 files files |

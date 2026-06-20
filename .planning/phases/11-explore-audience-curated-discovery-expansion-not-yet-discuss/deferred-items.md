@@ -24,3 +24,26 @@ Affected files (test-only):
 Cause: engine/flash/board test fixtures drifted from their production types in earlier
 milestones. They do not affect runtime or the production build. Recommend a dedicated
 test-fixture-typing cleanup pass (not blocking Explore).
+
+## Pre-existing repo-wide ESLint baseline (discovered Plan 11-08 Task 3)
+
+A repo-wide `eslint .` during the Plan 11-08 BLOCKING gate reports **161 problems
+(63 errors, 98 warnings)** across ~80 files — ALL pre-existing and UNRELATED to Explore.
+The 63 errors live in files last touched by Phase 07 and earlier (spot-checked:
+`src/app/api/audiences/route.ts` → 07-03; `src/components/board/__tests__/Board.test.tsx`
+→ board redesign; `src/app/error.tsx` → phase-7). Rule mix: `@typescript-eslint/no-explicit-any`,
+`@typescript-eslint/no-require-imports` (board `__tests__`), `react-hooks/*`
+(exhaustive-deps / static-components / set-state-in-effect), `@next/next/no-html-link-for-pages`,
+`@typescript-eslint/no-unused-vars`.
+
+Scope decision (matches the 11-05 convention — "`npx eslint` on the [touched] files —
+No issues found"): Plan 11-08 lints its OWN touched file only.
+`eslint src/lib/tracked-accounts/tracked-accounts-repo.ts` → **EXIT 0, clean** (the dropped
+`(supabase as any)` casts + their now-unused `eslint-disable` comments removed; no new
+`no-explicit-any`). `npm run build` (`next build`) **succeeds** — these eslint findings do not
+gate the production build in this project's config (`next.config.ts` sets no eslint/ts ignore
+flags; the flat-config `eslint .` lint script is decoupled from `next build`).
+
+The repo-wide eslint baseline is NOT fixed here (SCOPE BOUNDARY + explicit 11-08 task
+instruction: pre-existing out-of-scope lint = note, don't fix). Recommend a dedicated
+lint-cleanup pass alongside the test-fixture-typing pass above (neither blocks Explore).

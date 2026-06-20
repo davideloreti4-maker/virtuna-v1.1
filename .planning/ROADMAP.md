@@ -27,7 +27,7 @@ The journey starts at the **engine + thread foundation** (Flash text-mode, gener
 - [x] **Phase 8: Discover & Remix→Read** - New funnel-top: Discover niche/competitor outliers (Apify, ranked by outlier-score + value metrics) → audience-steered Remix → multi-audience concept Read (verbatim quote panel, who-it's-NOT-for, comment seeding) *before* filming *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 9: Living Audience** - Make "tested against YOUR audience" tangible: reaction replay on the persona cloud, clickable persona nodes with verbatim reactions, and chat-with-persona (ask an archetype *why*) *(DRAFT 2026-06-18 — not yet discussed)* (completed 2026-06-19)
 - [x] **Phase 10: Account Read, Saved Shelf & Recalibration Flywheel** - Turn the studio inward: self-optimize Account Read over your own history, a lean Saved shelf, drift→recalibrate nudge, and the post→measure→correct outcome loop *(DISCUSSED 2026-06-19 — see 10-CONTEXT.md; ready to plan)* (completed 2026-06-19)
-- [ ] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)*
+- [x] **Phase 11: Explore (Audience-Curated Discovery)** - THE flagship adopt: Explore as an in-thread SKILL (NOT a feed surface) — audience-curated outlier/competitor discovery, customizable params, start-screen set-actions, each result card carries an ambient audience reaction + lands on a Read; tracked-accounts/watchlist = input State in Library. Reuses P8 Discover/outlier-score. *(IN-MILESTONE EXPANSION 2026-06-19 — see NEXT-MILESTONE-VISION.md + research/sandcastles-adopt-improve.md §PROPOSED PHASE STRUCTURE)* (code complete 2026-06-20 — all 8 plans executed; Task 4 end-to-end Explore UAT PENDING human verification, phase not yet verified-complete)
 - [ ] **Phase 12: Library & Acts/State IA** - The State home + nav collapse to the 4-item IA (Thread · Audience · Library · Settings); Library = saved nouns (Reads/ideas/hooks/scripts) + tracked accounts/watchlist; surface↔thread wiring (launch-into-thread + save-to-Library); **EXTENDS P10 saved shelf** (built P12-extendable on purpose), no rework. Audience-surface enhancements: persona editing, multi-select audience compare, compact onboarding, link-social prefill. *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [ ] **Phase 13: Proactive Numen (Ambient + Initiated)** - The "ambient audience system": ambient audience reaction on EVERY skill card (always felt, not summoned; builds on P9 reaction primitive — must not duplicate) + Numen INITIATES (proactive morning drops "3 things stirring your people would bite on" + scheduled Explore = their Automations equivalent) = daily-habit engine, in-conversation. *(IN-MILESTONE EXPANSION 2026-06-19)*
 - [x] **Phase 14: KC Grounding & Quality-Loop** - The moat levers: real-exemplar RAG (+ N2 cited-research pass), generate→critique→regenerate, flop-prediction, SIM-rank verification, niche-blind fix, runtime trope/specificity enforce, voice calibration, field-level legibility *(IN-MILESTONE EXPANSION 2026-06-19)*
@@ -227,7 +227,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 7/8 | In Progress|  |
+| 11. Explore (Audience-Curated Discovery) | 8/8 | Verifying — code complete, Task 4 human UAT pending | 2026-06-20 |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
@@ -402,7 +402,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
-**Plans:** 7/8 plans executed
+**Plans:** 8/8 plans complete
 
 **Wave 1** *(parallel — disjoint files)*
 
@@ -428,7 +428,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 
 **Wave 6** *(blocked on 11-02/03/04/07; BLOCKING push + gate)*
 
-- [ ] 11-08-PLAN.md — BLOCKING: `supabase db push` (live `tracked_accounts`) + types regen + cast cleanup + engine/KC regression gate (ENGINE_VERSION 3.19.0) + end-to-end UAT *(autonomous: false — push may need auth, UAT human-verified)* [EXPLORE-05]
+- [x] 11-08-PLAN.md — BLOCKING: `supabase db push` (live `tracked_accounts`) + types regen + cast cleanup + engine/KC regression gate (ENGINE_VERSION 3.19.0) + end-to-end UAT *(autonomous: false — push may need auth, UAT human-verified)* [EXPLORE-05]
 
 ---
 
