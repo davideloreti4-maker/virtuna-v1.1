@@ -56,7 +56,7 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
-import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
+import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -307,23 +307,20 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const seedHookPath: "structured" | "markered" = "structured";
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
-  // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
-  // NICHE_INSTANTIATION key BEFORE building the panel (KCQ-06/KCQ-01) — otherwise
-  // selectPersonaSlots' exact-slug match silently falls back to generic.
-  const niche = resolveNicheKey(profileRow?.niche_primary ?? null);
-  const panel = { niche, contentType: null } as const;
+  // Niche panel + audience repaint via the shared buildReactionPanel helper (Plan 13-01):
+  // resolveNicheKey normalizes free-text/sub-slug niche_primary to a top-level
+  // NICHE_INSTANTIATION key BEFORE the panel (14-01 / KCQ-06/KCQ-01 — otherwise
+  // selectPersonaSlots' exact-slug match silently falls back to generic); audienceRepaint is
+  // undefined for General/no-audience → runFlashTextMode omits the arg → byte-identical no-op.
+  // POST /api/tools/react reuses the SAME helper (RESEARCH Open Q1 / Pitfall 2).
+  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
-  // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
+  // ── REACT path (08-04 / AUD-STEER): resolve audience weights ──
   // resolveAudienceWeights([]) / is_general → DEFAULT mix (no override).
-  // The repaint (stored at calibration, not generated per-request — Pitfall 2) feeds Flash.
+  // void: weights are dead-wired for the future Max-path integration; the Flash text path
+  // uses the repaint (built above), NOT the weights — so this stays OUT of buildReactionPanel.
   const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
   void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
-
-  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
-  const audienceRepaint: Record<string, string> | undefined =
-    audience && !audience.is_general && audience.personas && audience.personas.length > 0
-      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-      : undefined;
 
   // ── GATE: a survivor candidate carries everything the rank+build need ──────
   // personas travel ON the candidate (not via a parallel simResults array) so the

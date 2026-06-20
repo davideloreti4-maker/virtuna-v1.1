@@ -62,7 +62,7 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
-import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
+import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -278,26 +278,22 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   const seedHookPath: "structured" | "markered" = "structured";
 
   // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
-  // Phase 14 (14-01): resolve free-text / sub-slug niche_primary to a top-level
-  // NICHE_INSTANTIATION key BEFORE building the panel — otherwise the exact-slug
-  // match in selectPersonaSlots silently falls back to generic ("all Mixed").
-  const niche = resolveNicheKey(profileRow?.niche_primary ?? null);
-  const panel = { niche, contentType: null } as const;
+  // Niche panel + audience repaint via the shared buildReactionPanel helper (Plan 13-01):
+  // resolveNicheKey normalizes free-text/sub-slug niche_primary to a top-level
+  // NICHE_INSTANTIATION key BEFORE the panel (14-01 — otherwise selectPersonaSlots' exact-slug
+  // match silently falls back to generic "all Mixed"); audienceRepaint is undefined for
+  // General/no-audience → runFlashTextMode omits the arg → byte-identical no-op (regression gate).
+  // The new POST /api/tools/react route reuses the SAME helper so type-to-room discriminates
+  // by niche exactly like a card reaction (RESEARCH Open Q1 / Pitfall 2).
+  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
-  // ── REACT path (07-04 / AUD-04): resolve audience weights + persona repaint ──
+  // ── REACT path (07-04 / AUD-04): resolve audience weights ──
   // resolveAudienceWeights([]) or audience.is_general → DEFAULT mix (no override).
   // Calibrated audience → pre-baked persona_weights via analysis_override slot.
-  // The repaint (stored at calibration, not generated per-request — Pitfall 2) is
-  // extracted as a Record<string, string> for buildNicheAwareSystemPrompt.
+  // void: weights are dead-wired for the future Max-path integration; the Flash text path
+  // uses the repaint (built above), NOT the weights — so this stays OUT of buildReactionPanel.
   const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
   void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
-
-  // Extract audience repaint as archetype-slug → description map (undefined for General/no audience).
-  // When undefined → runFlashTextMode omits the arg → byte-identical no-op (regression gate).
-  const audienceRepaint: Record<string, string> | undefined =
-    audience && !audience.is_general && audience.personas && audience.personas.length > 0
-      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-      : undefined;
 
   // ── STEER path (07-04 / AUD-05): audience-grounding line replaces buildGroundingLine ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (AUD-08
