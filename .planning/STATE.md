@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 12-02-PLAN.md (Library surface /library + /saved redirect; LIB-03 save↔use loop closed; IA/LIB-01/03)
-last_updated: "2026-06-20T15:44:00.840Z"
-last_activity: 2026-06-20 -- Phase 12 execution started
+stopped_at: Completed 12-03-PLAN.md (Audience Compare — multi-select arbitrary-pair → reused P8 multi-audience Read; AUD-EDIT-02, human-verified)
+last_updated: "2026-06-20T17:52:00.000Z"
+last_activity: 2026-06-20 -- Completed 12-03-PLAN.md (AUD-EDIT-02 Compare)
 progress:
   total_phases: 16
   completed_phases: 12
-  total_plans: 66
-  completed_plans: 65
-  percent: 75
+  total_plans: 67
+  completed_plans: 66
+  percent: 76
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 ## Current Position
 
 Phase: 12 (library-acts-state-ia-expansion-not-yet-discussed) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Last activity: 2026-06-20 -- Phase 12 execution started
+Plan: 4 of 4
+Status: Ready to execute (12-04 AUD-EDIT-01 persona editing — last plan in phase)
+Last activity: 2026-06-20 -- Completed 12-03-PLAN.md (AUD-EDIT-02 Compare)
 
 ### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
 
@@ -187,6 +187,9 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 - [Phase 12-01]: Relabel scope kept sidebar-only (D-01) — CTA New Simulation→New Thread, history Simulations→Thread + No threads yet., collapsed tooltip/aria-label→Thread; singular per-row 'Simulation · {when}' history-row fallback left unchanged (D-13 row behavior preserved)
 - [Phase 12-02]: Library = SavedShelf relabeled Saved→Library over the SAME saved_items store at /library; /saved retained as a redirect('/library') stub (D-03 physical-rename-with-redirect). One store, no folder/tag UI, no duplicate mount.
 - [Phase 12-02]: LIB-03 closed: SaveAffordance item_type='read' mounted on the flagship multi-audience Read card; a saved Read launches via router.push('/home') (re-open the open thread, NO fabricated re-generation endpoint, D-04 honesty), scoped strictly to item_type==='read'. Outlier discover→remix launch + CHAIN_HANDOFFS SSOT unchanged.
+- [Phase 12-03]: AUD-EDIT-02 Compare = thin entry over P8 infra. /api/tools/read gains an OPTIONAL audienceIds[2] branch (NEW): both ids resolved via getAudience under the session (RLS-scoped, never raw weights), bad id → 400 audience_not_found (NO silent General fallback, CR-01); the shipped active-vs-General default (thread.active_audience_id + optional secondAudienceId) is the else branch, byte-unchanged. Both paths share runTwoAudienceRead + persistence. No ENGINE_VERSION bump.
+- [Phase 12-03]: audience-manager.tsx selection mode (D-05): Compare header action toggles selectionMode; rows gain a NEUTRAL checkbox (white/[0.06] + cream Check via text-cream-secondary, NOT coral) + selection toggle (cap 2, replace-oldest); navigation + ⋯ menu + General badge suppressed in selection mode. 'Compare these two →' (coral CTA, enabled at exactly 2) POSTs {concept, audienceIds}; result rendered INLINE via the REUSED MultiAudienceReadBlockRenderer (render component fixed, not redesigned). Under-calibrated/launch error → warning-tone note (never error-red, never coral).
+- [Phase 12-03]: Live UAT confirmed the 12-02 SaveAffordance gap closed end-to-end — saving the inline Compare Read persisted a real 'read' item ('Growth Audience — Mixed Read') to saved_items (then cleaned up). Under-calibrated warning note wired but NOT exercised (all 4 test-account audiences are calibrated enough; code path present, no defect).
 
 ### Roadmap Evolution
 
@@ -211,10 +214,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T15:44:00.836Z
-Stopped at: Completed 12-02-PLAN.md (Library surface /library + /saved redirect; LIB-03 save↔use loop closed; IA/LIB-01/03)
-Next: Execute Phase 12 (/gsd-execute-phase 12). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/ (12-03..12-04 PLAN.md)
+Last session: 2026-06-20T17:52:00.000Z
+Stopped at: Completed 12-03-PLAN.md (Audience Compare — multi-select arbitrary-pair → reused P8 multi-audience Read; AUD-EDIT-02, human-verified via Playwright UAT)
+Next: Execute 12-04-PLAN.md (AUD-EDIT-01 persona editing — last plan in Phase 12). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
+Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discussed/12-04-PLAN.md
 
 ## Performance Metrics
 
@@ -277,3 +280,4 @@ Resume file: .planning/phases/12-library-acts-state-ia-expansion-not-yet-discuss
 | Phase Phase 11 PP08 | 12min | 2 tasks (2+3; T1 orchestrator, T4 PENDING UAT) tasks | 2 files files |
 | Phase Phase 12-library-acts-state-ia P01 | 4min | 2 tasks tasks | 4 files files |
 | Phase Phase 12-library-acts-state-ia P02 P02 | 12min | 2 tasks | 5 files |
+| Phase 12-library-acts-state-ia P03 | ~5min + UAT | 4 tasks (3 auto + 1 human-verify) | 3 files |

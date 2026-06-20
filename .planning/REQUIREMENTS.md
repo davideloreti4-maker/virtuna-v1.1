@@ -139,7 +139,7 @@ reuses its typed-block renderers.
 - [ ] **LIB-02**: Tracked accounts/watchlist live in Library (the State home for Explore's inputs).
 - [x] **LIB-03**: Surface↔thread wiring — every surface item actionable INTO the thread; every thread output savable TO a surface.
 - [ ] **AUD-EDIT-01**: Persona editing (P7 deferred, pulled in) — on the Audience surface.
-- [ ] **AUD-EDIT-02**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in).
+- [x] **AUD-EDIT-02**: Multi-select audience compare — the KILLER feature: retention-vs-growth side-by-side; object already `audience_ids[]`-ready (P7 deferred, pulled in). *(12-03 — Compare selection mode on /audience → arbitrary audienceIds[2] path on /api/tools/read → reused P8 multi-audience Read; human-verified 2026-06-20)*
 - [ ] **AUD-EDIT-03**: Compact onboarding redesign — shorten the 9-card (PROFILE tier-C).
 - [ ] **AUD-EDIT-04**: Link-social → Apify metadata prefill (PROFILE tier-C).
 - *(Voice-sample N1 ALREADY SHIPPED — merge `d2f121e7`; surface/extend on the Audience surface, do NOT rebuild. Confirm P8 W0 removed persona-value `[ASSUMED]` markers.)*
@@ -285,7 +285,7 @@ reuses its typed-block renderers.
 | FLYWHEEL-05 | Phase 10 | Complete (10-02, 10-06) |
 | FLYWHEEL-06 | Phase 10 | Complete (10-06) |
 | EXPLORE-01..06 | Phase 11 | Planned (expansion) |
-| IA-01 / LIB-01..03 / AUD-EDIT-01..04 | Phase 12 | Planned (expansion) |
+| IA-01 / LIB-01..03 / AUD-EDIT-01..04 | Phase 12 | In progress (IA-01, LIB-01, LIB-03, AUD-EDIT-02 complete; AUD-EDIT-01 = 12-04; LIB-02 + AUD-EDIT-03/04 deferred) |
 | AMBIENT-01 / PROACTIVE-01..02 | Phase 13 | Planned (expansion) |
 | KCQ-01..09 | Phase 14 | Planned (expansion) |
 | INTENT-01 / REACT-01 / BLOCK-01 | Phase 15 | Planned (expansion) |
