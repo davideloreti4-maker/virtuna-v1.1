@@ -64,10 +64,6 @@ function mulberry32(seed: number) {
   };
 }
 
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
-}
-
 /** A laid-out strip dot: position + cream-alpha (or worst-cluster coral) fill + sr label. */
 interface StripDot {
   id: string;
@@ -100,6 +96,7 @@ export function AmbientPresence({
   const [expanded, setExpanded] = useState(false);
   const [lensOpen, setLensOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const inflightRef = useRef<AbortController | null>(null);
 
   // ── Type-to-room local state (Surface 4, D-04) ──────────────────────────────────
   // The typed-thought reaction is held LOCALLY (ephemeral — RESEARCH Open Q3): it drives the
@@ -178,10 +175,23 @@ export function AmbientPresence({
         : `Persona ${i + 1}`;
       const srLabel = isFocused && reaction ? `${name}: ${reaction.verdict}` : name;
 
-      out.push({ id: persona?.archetype ?? `roster_${i}`, cx, cy, r: r * clamp01(1), fill, srLabel });
+      out.push({ id: persona?.archetype ?? `roster_${i}`, cx, cy, r, fill, srLabel });
     }
     return out;
   }, [personas, flatPersonas, isFocused]);
+
+  // ── Focus reconciliation (WR-01, D-02 moving spotlight) ─────────────────────────
+  // The composer (parent) is the source of truth for focus once a deliberate tap/scroll lands —
+  // it round-trips a typed result back via onFocusChange. Drop the local just-typed override
+  // whenever the driven `focus` prop changes, so a later tap/scroll re-points the spotlight
+  // instead of staying frozen on the typed thought. (No-op on mount and on the self-echo of the
+  // typed thought: effectiveFocus falls through to the identical parent `focus`, no flicker.)
+  useEffect(() => {
+    setTypedFocus(null);
+  }, [focus]);
+
+  // Abort any in-flight type-to-room reaction on unmount (WR-03 — no setState after teardown).
+  useEffect(() => () => inflightRef.current?.abort(), []);
 
   // ── Outside-click / Escape collapses the expanded panel (reuse composer-controls idiom) ──
   useEffect(() => {
@@ -217,6 +227,11 @@ export function AmbientPresence({
   const submitThought = async (raw: string) => {
     const text = raw.trim();
     if (text.length === 0 || loading) return;
+    // Supersede any in-flight reaction and guard against setState-after-unmount (WR-03): a stale
+    // ~8–17s Flash call must not retroactively yank the spotlight or pop the Lens after teardown.
+    inflightRef.current?.abort();
+    const controller = new AbortController();
+    inflightRef.current = controller;
     setLoading(true);
     setError(false);
     setLastSubmitted(text);
@@ -225,9 +240,12 @@ export function AmbientPresence({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return; // a newer submit / unmount superseded this one
       if (!res.ok) throw new Error('reaction_failed');
       const data: { fraction?: string; scrollQuote?: string } = await res.json();
+      if (controller.signal.aborted) return;
       const next: AmbientFocus = {
         conceptText: text,
         fraction: data.fraction ?? '',
@@ -237,11 +255,13 @@ export function AmbientPresence({
       onFocusChange?.(next); // notify the composer's focus state (Plan 13-04)
       setDraft('');
       setLensOpen(true); // auto-open the ONE Lens scoped to the typed thought (Surface 5)
-    } catch {
-      // Honest degrade: quiet error copy + a non-red Retry; the typed text is preserved.
+    } catch (e) {
+      // Ignore an aborted request; otherwise honest degrade: quiet error + non-red Retry.
+      if (controller.signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
       setError(true);
     } finally {
-      setLoading(false);
+      // Only the still-active request releases the loading state (a superseding submit owns it).
+      if (inflightRef.current === controller) setLoading(false);
     }
   };
 
@@ -378,7 +398,12 @@ export function AmbientPresence({
             <div className="flex items-end gap-2">
               <textarea
                 value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  // Clear a stale failure the moment the user edits — no misleading banner +
+                  // a "Retry →" that would re-send the previous text alongside a fresh draft (WR-04).
+                  if (error) setError(false);
+                }}
                 onKeyDown={(e) => {
                   // Reuse the PersonaChatDrawer idiom: Enter submits, Shift+Enter newline.
                   if (e.key === 'Enter' && !e.shiftKey) {

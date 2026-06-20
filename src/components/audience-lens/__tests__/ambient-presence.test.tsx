@@ -337,3 +337,50 @@ describe('AmbientPresence — type-to-room input (Surface 4, D-04)', () => {
     expect(code).not.toMatch(/#ef[0-9a-f]{2,}/i);
   });
 });
+
+// ── Regression: focus reconciliation + stale-error reset (WR-01 / WR-04) ─────────
+describe('AmbientPresence — focus reconciliation (WR-01, D-02 moving spotlight)', () => {
+  it('re-points the spotlight when the driven focus prop changes after a typed submit (no stuck typedFocus)', async () => {
+    mockFetchOk({ fraction: '7/10 stop', scrollQuote: 'Stopped me.' });
+    const { rerender } = render(<AmbientPresence audience={calibrated10()} focus={FOCUS} />);
+
+    // Type a thought → the spotlight becomes the typed thought (local override).
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'open with a question' } });
+    fireEvent.click(send);
+    await vi.waitFor(() =>
+      expect(screen.getByTestId('ambient-subject').textContent).toContain('open with a question'),
+    );
+
+    // A deliberate tap/scroll drives a NEW focus from the composer (parent = source of truth).
+    const NEXT: AmbientFocus = {
+      conceptText: 'a totally different card',
+      fraction: '3/10 stop',
+      scrollQuote: 'Kept scrolling.',
+    };
+    rerender(<AmbientPresence audience={calibrated10()} focus={NEXT} />);
+
+    // The spotlight follows the parent — it does NOT stay frozen on the typed thought (WR-01).
+    const subject = screen.getByTestId('ambient-subject');
+    expect(subject.textContent).toContain('a totally different card');
+    expect(subject.textContent).not.toContain('open with a question');
+  });
+});
+
+describe('AmbientPresence — stale-error reset (WR-04)', () => {
+  it('clears the stale error + Retry the moment the user edits the draft', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: false, status: 502, json: async () => ({}) } as Response);
+    vi.stubGlobal('fetch', fetchMock);
+    render(<AmbientPresence audience={calibrated10()} focus={null} />);
+    const { textarea, send } = expandAndGetInput();
+    fireEvent.change(textarea, { target: { value: 'a thought' } });
+    fireEvent.click(send);
+    await vi.waitFor(() => expect(screen.getByTestId('ambient-error')).toBeTruthy());
+
+    // Editing the draft clears the stale banner — no misleading state, no Retry of old text.
+    fireEvent.change(textarea, { target: { value: 'a thought v2' } });
+    expect(screen.queryByTestId('ambient-error')).toBeNull();
+  });
+});
