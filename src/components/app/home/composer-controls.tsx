@@ -61,7 +61,7 @@ export interface SkillMeta {
 
 // Order mirrors sketch 006 + the handoff table.
 export const SKILLS: SkillMeta[] = [
-  { id: "explore", label: "Explore",          desc: "Audience-curated discovery",          command: "/explore", group: "creator",   model: "Flash", enabled: false },
+  { id: "explore", label: "Explore",          desc: "Audience-curated discovery",          command: "/explore", group: "creator",   model: "Flash", enabled: true  },
   { id: "idea",    label: "Ideas",            desc: "Funnel-top idea cards",               command: "/ideas",   group: "creator",   model: "Flash", enabled: true  },
   { id: "hooks",   label: "Hooks",            desc: "Ranked scroll-stoppers",              command: "/hooks",   group: "creator",   model: "Flash", enabled: true  },
   { id: "script",  label: "Script",           desc: "Beats + retention markers",           command: "/script",  group: "creator",   model: "Flash", enabled: true  },
@@ -312,7 +312,22 @@ export function ModelTag({ activeTool, className }: { activeTool: ToolId; classN
 }
 
 // ─── ComposerControls — the LEFT cluster ([+] · skill · audience · intent) ────
-type PopId = "attach" | "skill" | "aud" | "intent" | null;
+// "search" added (P11): the Explore-only params popover trigger sits beside the
+// audience control; only mounts when activeTool === "explore".
+type PopId = "attach" | "skill" | "aud" | "intent" | "search" | null;
+
+/**
+ * Params the Explore "Search" popover passes up to onRunExplore (forwarded to
+ * useExploreStream.start by the composer). Structural so the composer threads it
+ * straight through (mirrors ExploreStartParams). serendipity is 0..1 (0 = on-niche,
+ * 1 = widen beyond niche — the valve, D-06).
+ */
+export interface ExploreParams {
+  niche?: string;
+  accounts?: string;
+  timeWindow?: string;
+  serendipity?: number;
+}
 
 const PLATFORM_SHORT: Record<string, string> = {
   tiktok: "TikTok",
@@ -336,6 +351,15 @@ export interface ComposerControlsProps {
   /** Reveal the upload drop zone (the SIM-1 Max Test path). */
   onUploadClick: () => void;
 
+  /**
+   * Run an Explore pull from the params popover (P11 / EXPLORE-01). Wired by the
+   * composer to useExploreStream.start. The apply button calls this then closes the
+   * popover. Optional so non-Explore composers (none today) stay valid.
+   * CRITICAL (Pitfall 5): the skill pill is NEVER a submit — only this explicit
+   * "Run Explore" apply fires a pull.
+   */
+  onRunExplore?: (params: ExploreParams) => void;
+
   className?: string;
 }
 
@@ -348,10 +372,19 @@ export function ComposerControls({
   intent,
   onIntentChange,
   onUploadClick,
+  onRunExplore,
   className,
 }: ComposerControlsProps) {
   const [pop, setPop] = useState<PopId>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+
+  // ── Explore params popover local state (P11 / EXPLORE-01, D-06) ─────────────
+  // Kept local to ComposerControls; the apply button lifts the values via
+  // onRunExplore then closes the popover. serendipity defaults to 0 (on-niche).
+  const [exNiche, setExNiche] = useState("");
+  const [exAccounts, setExAccounts] = useState("");
+  const [exWindow, setExWindow] = useState("today");
+  const [exSerendipity, setExSerendipity] = useState(0);
 
   // Outside-click / Escape closes any open popover.
   useEffect(() => {
@@ -523,6 +556,126 @@ export function ComposerControls({
           </Link>
         </Popover>
       </div>
+
+      {/* Search — Explore-only params popover (P11 / EXPLORE-01, D-06, UI-SPEC §Surface 4).
+          Icon-only borderless control beside the audience picker; mounts ONLY when the
+          Explore skill is active. The popover refines niche/accounts/time-window + the
+          serendipity valve; "Run Explore" (the popover's ONE terracotta accent) lifts the
+          params via onRunExplore then closes. The skill pill is NEVER a submit (Pitfall 5). */}
+      {activeTool === "explore" && (
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Search"
+            title="Search · refine the Explore pull"
+            aria-haspopup="menu"
+            aria-expanded={pop === "search"}
+            onClick={() => toggle("search")}
+            className={cn(ctl, pop === "search" && "text-[#d97757]")}
+          >
+            <Ico name="search" size={16} />
+          </button>
+          <Popover open={pop === "search"} className="min-w-[300px]">
+            <div className="flex flex-col gap-3 p-2.5">
+              {/* Niche or keywords */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm text-foreground">Niche or keywords</span>
+                <input
+                  type="text"
+                  value={exNiche}
+                  onChange={(e) => setExNiche(e.target.value)}
+                  placeholder="e.g. gym beginners, myth-busting"
+                  className="h-[42px] w-full rounded-lg border border-white/[0.05] bg-[rgba(255,255,255,0.05)] px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-white/[0.1] focus:outline-none"
+                />
+              </label>
+
+              {/* Accounts */}
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm text-foreground">Accounts</span>
+                <input
+                  type="text"
+                  value={exAccounts}
+                  onChange={(e) => setExAccounts(e.target.value)}
+                  placeholder="@handle, @handle"
+                  className="h-[42px] w-full rounded-lg border border-white/[0.05] bg-[rgba(255,255,255,0.05)] px-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-white/[0.1] focus:outline-none"
+                />
+              </label>
+
+              {/* Time window — segmented control */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm text-foreground">Time window</span>
+                <div className="flex gap-1.5">
+                  {(
+                    [
+                      { id: "today", label: "Today" },
+                      { id: "week", label: "This week" },
+                      { id: "month", label: "This month" },
+                    ] as const
+                  ).map((o) => {
+                    const on = exWindow === o.id;
+                    return (
+                      <button
+                        key={o.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setExWindow(o.id)}
+                        className={cn(
+                          "flex-1 rounded-lg border px-2 py-1.5 text-[12.5px] transition-colors",
+                          on
+                            ? "border-[rgba(217,119,87,0.34)] bg-[rgba(217,119,87,0.14)] text-[#d97757]"
+                            : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
+                        )}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Serendipity slider — the widen-beyond-niche valve (D-06). Terracotta
+                  active track via accent-color. Range 0..1 (0 = on-niche, 1 = surprise). */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-sm text-foreground">Serendipity</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={exSerendipity}
+                  onChange={(e) => setExSerendipity(Number(e.target.value))}
+                  aria-label="Serendipity — on-niche to surprise me"
+                  className="w-full accent-[#d97757]"
+                />
+                <div className="flex justify-between text-[11px] text-foreground-muted">
+                  <span>On-niche</span>
+                  <span>Surprise me</span>
+                </div>
+                <span className="text-[11px] text-foreground-muted/70">
+                  Slide right to widen beyond your niche.
+                </span>
+              </div>
+
+              {/* Run Explore — the popover's ONE terracotta accent (apply). */}
+              <button
+                type="button"
+                onClick={() => {
+                  onRunExplore?.({
+                    niche: exNiche.trim() || undefined,
+                    accounts: exAccounts.trim() || undefined,
+                    timeWindow: exWindow,
+                    serendipity: exSerendipity,
+                  });
+                  setPop(null);
+                }}
+                className="mt-0.5 rounded-lg border border-[rgba(217,119,87,0.34)] bg-[rgba(217,119,87,0.14)] px-3 py-2 text-[13px] font-medium text-[#d97757] transition-colors hover:bg-[rgba(217,119,87,0.2)]"
+              >
+                Run Explore
+              </button>
+            </div>
+          </Popover>
+        </div>
+      )}
 
       {/* Intent — icon-only, borderless (Grow / Sell segmented popover) */}
       <div className="relative">
