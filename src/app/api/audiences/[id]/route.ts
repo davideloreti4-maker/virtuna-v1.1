@@ -4,7 +4,9 @@
  * DELETE /api/audiences/[id] — delete a single audience (General is refused)
  *
  * Security:
- *  - Auth-first on all methods (CR-01 / T-07-03)
+ *  - csrfGuard on mutating methods (PATCH/DELETE) — Content-Type 415 + cross-origin
+ *    403, mirroring the tracked-accounts/tools routes (Phase 12 CR-01)
+ *  - Auth-first on all methods (T-07-03)
  *  - RLS at DB layer (T-07-02); virtual constants short-circuit via audience-repo
  *  - General/preset sentinel DELETE is explicitly refused (D-04)
  *  - user_id from session only (T-07-03)
@@ -15,6 +17,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import type { Audience } from "@/lib/audience/audience-types";
 import {
   getAudience,
@@ -90,6 +93,10 @@ export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  // CSRF: Content-Type 415 + cross-origin 403, before any DB work (CR-01).
+  const guard = csrfGuard(req);
+  if (guard) return guard;
+
   const { id } = await params;
   const supabase = await createClient();
 
@@ -124,9 +131,13 @@ export async function PATCH(
 // ─── DELETE /api/audiences/[id] ───────────────────────────────────────────────
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> },
 ): Promise<Response> {
+  // CSRF: Content-Type 415 + cross-origin 403, before any DB work (CR-01).
+  const guard = csrfGuard(req);
+  if (guard) return guard;
+
   const { id } = await params;
   const supabase = await createClient();
 
