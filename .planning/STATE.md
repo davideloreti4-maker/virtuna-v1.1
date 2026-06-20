@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
 status: discussing
-stopped_at: Phase 13 context gathered (narrowed to Ambient Numen)
-last_updated: "2026-06-20T19:50:04.601Z"
+stopped_at: Phase 13 UI-SPEC approved
+last_updated: "2026-06-20T20:07:44.159Z"
 last_activity: 2026-06-20
 progress:
-  total_phases: 16
+  total_phases: 17
   completed_phases: 13
   total_plans: 66
   completed_plans: 67
-  percent: 81
+  percent: 76
 ---
 
 # Project State
@@ -217,10 +217,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T19:50:04.591Z
-Stopped at: Phase 13 context gathered (narrowed to Ambient Numen)
+Last session: 2026-06-20T20:07:44.149Z
+Stopped at: Phase 13 UI-SPEC approved
 Next: Discussing Phase 13 Proactive Numen (/gsd-discuss-phase 13). ✓ RESOLVED — Phase 11 11-08 is done: the tracked_accounts migration is applied on live prod (migration 20260620111029, confirmed via list_migrations), types regenerated (database.types.ts L1800), engine regression gate green (ENGINE_VERSION 3.19.0). The "+ Track account" write + hasTrackedAccounts read hit the live table (UAT Test 6 persisted a real row). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
-Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the-ambient-audi/13-CONTEXT.md
+Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the-ambient-audi/13-UI-SPEC.md
 
 ## Performance Metrics
 
