@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 12-04-PLAN.md (AUD-EDIT-01 persona editing — Name/Disposition/Temperature/Description per persona → per-audience override slot; human-verified via Playwright UAT). Phase 12 COMPLETE (4/4).
-last_updated: "2026-06-20T16:39:10.395Z"
+status: discussing
+stopped_at: Phase 13 context gathered (narrowed to Ambient Numen)
+last_updated: "2026-06-20T19:50:04.601Z"
 last_activity: 2026-06-20
 progress:
   total_phases: 16
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 12 — library-acts-state-ia-expansion-not-yet-discussed
+**Current focus:** Phase 13 — Proactive Numen (Ambient + Initiated) — discussing
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Phase 12 complete (AUD-EDIT-01 persona editing human-verified). Next: phase verify, or proceed to the next expansion phase (13 Proactive Numen — not yet discussed).
+Phase: 13
+Plan: Not started (discussing)
+Status: P11 Explore verified-complete (UAT 6/7; T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug, not Explore). P12 + P14 complete. Currently discussing P13 Proactive Numen. Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
 Last activity: 2026-06-20
 
-### ⚠ Tracked follow-up (owner-accepted 2026-06-19) — FLYWHEEL-02 predicted-pin runner wiring
+### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
 
-`pinPredictedSignature()` is built/exported/unit-tested and the capture route reads the pinned row, but **no SIM runner calls it** (`runFlashRunner` returns without pinning). The capture→reconcile loop stays dormant in the live flow until the seam is wired into each runner's post-SIM point (+ a runner-level test). Wire it next; naturally belongs with **KCQ-05 (SIM-rank verification loop, P13)**. Until then the reconcile log can't fire end-to-end. See 10-VERIFICATION.md + 10-UAT.md Gaps.
+`pinPredictedSignature()` is now wired into the live runners — `ideas-runner.ts` and `hooks-runner.ts` both call `void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {...})` (fire-and-forget, never blocks card render, swallows errors). Residual: confirm the script/remix runners pin too + verify the capture→reconcile loop fires end-to-end against live data (belongs in the v6.0 close-out integration test). See 10-VERIFICATION.md + 10-UAT.md Gaps.
 
 ## Hard Constraints (this milestone)
 
@@ -195,13 +195,14 @@ Full log in PROJECT.md Key Decisions. Launch decisions (2026-06-16):
 
 ### Roadmap Evolution
 
+- **Phases 15–16 deferred to v6.1 (2026-06-20, owner decision).** Marketing Intent + Commerce Skills are a TAM expansion to sellers/brands (B2C→B2B), not a tail of the creator studio. Sequence locked: finish P13 (Proactive Numen) → v6.0 close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship → **v6.1 Commerce** (15/16) on a tested base. Rationale: smallest test blast radius, ships the creator moat soonest, and commerce needs the engine/flywheel *more* reliable (ground truth = sales, not views). The P15/P16 detail blocks in ROADMAP are retained as v6.1 input.
 - Phase 7 added (2026-06-18): **Audience Manager** — calibrated audience as shared substrate across all skills (the moat). Designed in discussion; full locked scope in ROADMAP Phase 7 + memory `audience-manager-phase7.md`. Depends on Phase 6. Followed by owner's KC/slice/live-context refinement run.
 
 ### Pending Todos
 
 [From .planning/todos/pending/]
 
-None yet.
+- **GAP-REMIX-01** — remix skill `decode` returns null → `decode_failed` (reproducible across 2 videos); omni analysis completes but no remix-card/persona reaction surfaces. Blocks the visual end of the discover→remix→Read chain. Phase 6 (viral-remix) + engine; surfaced by Phase 11 Explore UAT (Test 5). See `todos/pending/gap-remix-01-decode-failed.md`.
 
 ### Blockers/Concerns
 
@@ -216,10 +217,10 @@ Deferred to v6.1+: in-thread monetization, brand-profile entity, RAG over creato
 
 ## Session Continuity
 
-Last session: 2026-06-20T16:13:54.000Z
-Stopped at: Completed 12-04-PLAN.md (AUD-EDIT-01 persona editing — Name/Disposition/Temperature/Description per persona → per-audience override slot; human-verified via Playwright UAT). Phase 12 COMPLETE (4/4).
-Next: Phase 12 done — run phase verify, or proceed to the next expansion phase (13 Proactive Numen — not yet discussed; /gsd-discuss-phase 13). ⚠ STILL OPEN from Phase 11 → 11-08 (BLOCKING: live tracked_accounts migration push + database.types.ts regen + engine regression gate) — until it runs, the "+ Track account" write + hasTrackedAccounts read hit a table that exists only in the migration file (degrades safely to false)
-Resume file: (Phase 12 complete — no active plan)
+Last session: 2026-06-20T19:50:04.591Z
+Stopped at: Phase 13 context gathered (narrowed to Ambient Numen)
+Next: Discussing Phase 13 Proactive Numen (/gsd-discuss-phase 13). ✓ RESOLVED — Phase 11 11-08 is done: the tracked_accounts migration is applied on live prod (migration 20260620111029, confirmed via list_migrations), types regenerated (database.types.ts L1800), engine regression gate green (ENGINE_VERSION 3.19.0). The "+ Track account" write + hasTrackedAccounts read hit the live table (UAT Test 6 persisted a real row). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
+Resume file: .planning/phases/13-proactive-numen-ambient-initiated-expansion-the-ambient-audi/13-CONTEXT.md
 
 ## Performance Metrics
 
