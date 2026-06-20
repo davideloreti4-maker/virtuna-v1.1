@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: discussing
-stopped_at: Phase 13 UI-SPEC approved
+status: planned
+stopped_at: Phase 13 planned (4 plans, 3 waves) — ready to execute
 last_updated: "2026-06-20T20:46:27.807Z"
 last_activity: 2026-06-20 -- Phase 13 planning complete
 progress:
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-VISION.md · Worktree identity: .planning/MILESTONE.md
 
 **Core value:** AI-powered content intelligence for TikTok creators — now extended from "analyze a recorded video" to a creator studio where every generated idea/hook/script is tested on a synthetic audience (SIM-1) before the creator acts.
-**Current focus:** Phase 13 — Proactive Numen (Ambient + Initiated) — discussing
+**Current focus:** Phase 13 — Ambient Numen (the living, always-present audience) — planned, ready to execute
 
 ## Current Position
 
 Phase: 13
-Plan: Not started (discussing)
-Status: P11 Explore verified-complete (UAT 6/7; T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug, not Explore). P12 + P14 complete. Currently discussing P13 Proactive Numen. Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
+Plan: Planned (4 plans, 3 waves) — ready to execute (/gsd-execute-phase 13)
+Status: P11 Explore verified-complete (UAT 6/7; T5 partial = downstream GAP-REMIX-01, a Phase-6 remix-decode bug, not Explore). P12 + P14 complete. P13 Ambient Numen PLANNED — 4 plans / 3 waves, plan-checker PASSED (1 blocker + 3 warnings resolved in iteration 2). Remaining build (v6.0): P13 + close-out (reconcile requirement IDs, fix GAP-REMIX-01, flywheel + cross-phase integration test, repo hygiene, HARDEN rate-limiting) → merge/ship. Commerce P15/P16 deferred to a v6.1 milestone (owner decision 2026-06-20: ship the creator studio first).
 Last activity: 2026-06-20 -- Phase 13 planning complete
 
 ### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
