@@ -32,6 +32,7 @@ import type { IdeaCardBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { CardReactionAtRest } from '@/components/audience-lens/card-reaction-at-rest';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 
@@ -169,12 +170,20 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           })}
           label="See how the room reacted to this idea"
         >
-          <blockquote
-            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-            aria-label="Audience scroll quote"
-          >
-            &ldquo;{scrollQuote}&rdquo;
-          </blockquote>
+          {/* Surface 3 (D-01/D-03) — the room reacting AT REST: the real stop fraction +
+              a thin cream-vs-muted ribbon, rendered inside the SAME LensTrigger above the
+              verbatim quote. The two stack top-to-bottom (the LensTrigger row is flex-center,
+              so wrap them in one flex-col block). CardReactionAtRest collapses to nothing on
+              an unparseable fraction (honest degrade, in lockstep with flatPersonas=[]). */}
+          <div className="flex w-full flex-col gap-2">
+            <CardReactionAtRest fraction={fraction} />
+            <blockquote
+              className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+              aria-label="Audience scroll quote"
+            >
+              &ldquo;{scrollQuote}&rdquo;
+            </blockquote>
+          </div>
         </LensTrigger>
 
         {/* Secondary band chip + expand toggle row */}

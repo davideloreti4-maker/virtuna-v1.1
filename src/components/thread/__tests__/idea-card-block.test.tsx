@@ -81,11 +81,21 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     const { container } = renderWithClient(<IdeaCardRenderer block={makeBlock()} />);
     const html = container.innerHTML;
     const quoteIdx = html.indexOf(SCROLL_QUOTE);
-    const fractionIdx = html.indexOf('7/10 stop');
+    // Phase 13-02 Surface 3 added a resting-reaction readout (the real "{stop}/{total} stop"
+    // fraction + ribbon) ABOVE the verbatim quote, inside the same LensTrigger. So "7/10 stop"
+    // now occurs twice: first the Surface-3 readout (above the quote), then the secondary band
+    // chip (below it). This test guards the ORIGINAL invariant — the quote leads the secondary
+    // BAND-CHIP row — so anchor on the band chip's fraction (the occurrence in the "SIM-1 Flash"
+    // chip row), not the new Surface-3 readout.
+    const bandChipIdx = html.indexOf('SIM-1 Flash');
+    const bandFractionIdx = html.lastIndexOf('7/10 stop', bandChipIdx);
     expect(quoteIdx).toBeGreaterThan(-1);
-    expect(fractionIdx).toBeGreaterThan(-1);
-    // Scroll-quote DOM position precedes the band fraction.
-    expect(quoteIdx).toBeLessThan(fractionIdx);
+    expect(bandFractionIdx).toBeGreaterThan(-1);
+    // Scroll-quote DOM position precedes the secondary band-chip fraction.
+    expect(quoteIdx).toBeLessThan(bandFractionIdx);
+    // And the new Surface-3 resting readout precedes the quote (the at-rest reaction leads).
+    const surface3FractionIdx = html.indexOf('7/10 stop');
+    expect(surface3FractionIdx).toBeLessThan(quoteIdx);
   });
 });
 

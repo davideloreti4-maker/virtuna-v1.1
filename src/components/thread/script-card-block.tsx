@@ -26,6 +26,7 @@ import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
+import { CardReactionAtRest } from '@/components/audience-lens/card-reaction-at-rest';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 
@@ -113,12 +114,21 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           })}
           label="See how the room reacted to this opener"
         >
-          <blockquote
-            className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-            aria-label="Audience opener quote"
-          >
-            &ldquo;{scrollQuote}&rdquo;
-          </blockquote>
+          {/* Surface 3 (D-01/D-03) — the room reacting AT REST on the OPENER (Pitfall 5
+              honesty spine: this fraction is opener-only, matching the band chip below). The
+              real stop fraction + a thin cream-vs-muted ribbon render inside the SAME
+              LensTrigger above the verbatim quote, stacked top-to-bottom (the row is
+              flex-center, so wrap in one flex-col block). Collapses to nothing on an
+              unparseable fraction (honest degrade, in lockstep with flatPersonas=[]). */}
+          <div className="flex w-full flex-col gap-2">
+            <CardReactionAtRest fraction={fraction} />
+            <blockquote
+              className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
+              aria-label="Audience opener quote"
+            >
+              &ldquo;{scrollQuote}&rdquo;
+            </blockquote>
+          </div>
         </LensTrigger>
 
         {/* Opener band chip — scoped to the OPENER only (Pitfall 5 honesty spine) */}
