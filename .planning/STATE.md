@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 13-03-PLAN.md (AmbientPresence built in isolation — dot-cloud strip + spotlight subject + type-to-room input; Wave 2 done)
-last_updated: "2026-06-20T21:52:46.682Z"
-last_activity: 2026-06-20 -- Completed 13-03 (AmbientPresence built in isolation; Wave 2 done)
+status: paused
+stopped_at: P13 built (4/4) but ambient UX REJECTED by owner — rebuild required. See 13-HANDOFF.md. Fix generate→render bug first.
+last_updated: "2026-06-21T00:00:00.000Z"
+last_activity: 2026-06-21 -- P13 ambient UX rejected; handoff written, paused for clean-context rebuild
 progress:
   total_phases: 17
   completed_phases: 14
@@ -25,10 +25,10 @@ See: .planning/PROJECT.md · Discuss input (EXPLORATORY): .planning/NUMEN-TOOLS-
 
 ## Current Position
 
-Phase: 13 (proactive-numen-ambient-initiated-expansion-the-ambient-audi) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-06-20 -- Completed 13-03 (AmbientPresence built in isolation; Wave 2 done)
+Phase: 13 (proactive-numen-ambient-initiated-expansion-the-ambient-audi) — PAUSED (rebuild)
+Plan: 4 of 4 built + review fixes (ba53d318), but ambient UX REJECTED by owner
+Status: ⛔ NOT complete. Ambient shipped as a thin strip + redundant empty-home mount — owner wants a premium, always-on, alive PANEL (tap → reactions + chat → opens the shipped P9 AudienceLens). Rebuild to sketch 005. **READ `.planning/phases/13-*/13-HANDOFF.md` FIRST.** Blocker to fix first: generate→render bug (POST /api/tools/hooks 200 but UI doesn't paint; PATCH /api/threads 500). P9 AudienceLens itself is built+live (not the problem).
+Last activity: 2026-06-21 -- P13 ambient UX rejected by owner; 13-HANDOFF.md written; paused for clean-context rebuild
 
 ### ✓ Resolved (2026-06-20) — FLYWHEEL-02 predicted-pin runner wiring
 
