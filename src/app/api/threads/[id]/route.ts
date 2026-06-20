@@ -6,14 +6,20 @@
  * Security:
  *  - Auth-first (T-07 pattern)
  *  - RLS-scoped via session client — only the thread owner can update
- *  - active_audience_id: null = General default; validated UUID or 'general'/'preset-*' sentinel
+ *  - active_audience_id: null = General default; otherwise a real audience-row UUID.
+ *    The column is `uuid`, so virtual sentinels ('general'/'preset-*') CANNOT persist
+ *    here — they are rejected with a clean 400 (previously they reached Postgres and
+ *    surfaced as a 500). General is represented by null; virtual presets stay session-
+ *    local on the client until materialized into a real row.
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 const PatchSchema = z.object({
-  active_audience_id: z.string().nullable().optional(),
+  // null = General default; otherwise must be a real audience UUID (the column is uuid).
+  // A non-UUID string (e.g. a "preset-*" virtual sentinel) fails here → 400, never 500.
+  active_audience_id: z.string().uuid().nullable().optional(),
 });
 
 export async function PATCH(

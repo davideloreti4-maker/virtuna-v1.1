@@ -76,6 +76,12 @@ import { detectRefineIntent } from "@/lib/tools/refine";
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 
+// Matches a canonical v1–v5 UUID. Used to gate the per-thread audience pin: only a
+// real audience-row UUID (or null=General) may PATCH threads.active_audience_id (uuid
+// column); virtual preset ids like "preset-growth" must never reach it (would 500).
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
@@ -340,6 +346,33 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         setPersistedScriptBlocks(scriptBlocks);
         setPersistedRemixBlocks(remixBlocks);
         setPersistedExploreBlocks(outlierGridBlocks);
+
+        // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
+        // activeTool defaults to "test", but every thread-view gate (showHooksView,
+        // showIdeasView, …) requires activeTool === its matching tool. On a reload of
+        // a thread that already holds idea/hook/script/remix/explore cards, hasThread
+        // flips to thread-layout but NO view renders — a blank home with a pinned
+        // composer. Restore the tool of the MOST RECENT persisted card so the creator
+        // lands back where they left off. Guarded by hasUserSelectedToolRef so a pick
+        // made while this fetch was in flight always wins.
+        if (!hasUserSelectedToolRef.current) {
+          const TYPE_TO_TOOL: Record<string, ToolId> = {
+            'idea-card': 'idea',
+            'hook-card': 'hooks',
+            'script-card': 'script',
+            'remix-card': 'remix',
+            'outlier-grid': 'explore',
+          };
+          let restored: ToolId | null = null;
+          for (let i = messages.length - 1; i >= 0 && !restored; i--) {
+            const blocks = messages[i]?.blocks ?? [];
+            for (let j = blocks.length - 1; j >= 0; j--) {
+              const t = blocks[j]?.type;
+              if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
+            }
+          }
+          if (restored && !hasUserSelectedToolRef.current) setActiveTool(restored);
+        }
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
       }
@@ -393,6 +426,11 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     const newId = audience.is_general ? null : audience.id;
     setSelectedAudienceId(newId);
     if (!openThreadId) return;
+    // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
+    // preset ids ("preset-growth"/"preset-conversion") are not UUIDs and threads
+    // .active_audience_id is a uuid column — PATCHing one used to 500. Presets stay
+    // session-local (optimistic pill) until materialized into a real row. (Bug: P13.)
+    if (newId !== null && !UUID_PATTERN.test(newId)) return;
     try {
       await fetch(`/api/threads/${openThreadId}`, {
         method: "PATCH",
@@ -1140,7 +1178,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           <div className="mt-3 flex items-center gap-1.5">
             <ComposerControls
               activeTool={activeTool}
-              onSelectTool={setActiveTool}
+              onSelectTool={handleUserSelectTool}
               audiences={audiences}
               selectedAudienceId={selectedAudienceId}
               onSelectAudience={(a) => void handleSelectAudience(a)}
