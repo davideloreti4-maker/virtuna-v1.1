@@ -55,6 +55,10 @@ export type AudiencePlatform = "tiktok" | "instagram" | "youtube" | "custom";
  * - repaint: stored at calibration time for deterministic prompt fold (D-17 cache safety).
  * - temperature / disposition: the D-02 presentation lens (from TEMPERATURE_DISPOSITION).
  * - share: this archetype's share of the audience (0..1, sums to 1.0 across all personas).
+ * - label: creator-editable display name (AUD-EDIT-01 / D-06). Presentation-only —
+ *   runners read `archetype` + `repaint` only and NEVER `label`, so it is outside the
+ *   regression-gate surface. Falls back to the archetype-derived string when absent
+ *   (legacy personas + General have none). Written via the personas JSONB override.
  */
 export interface CalibratedPersona {
   archetype: Archetype;
@@ -62,6 +66,13 @@ export interface CalibratedPersona {
   temperature: Temperature;
   disposition: Disposition;
   share: number;
+  /**
+   * Creator-editable display name (AUD-EDIT-01 / D-06). Presentation-only — the engine
+   * never reads it (runners build their repaint map from `[archetype, repaint]` only),
+   * so it is outside the regression-gate surface. Absent on legacy personas + General;
+   * the display falls back to the archetype-derived string.
+   */
+  label?: string;
 }
 
 // ─── Audience Profile (derived from calibration) ─────────────────────────────
