@@ -9,17 +9,25 @@
  * to active-vs-General (which doubles as proof calibration MOVES the verdict). The DELTA
  * is the one-line Read + Lever — the foresight payoff.
  *
+ * Two pair-resolution paths share the SAME runner + persistence:
+ *   - DEFAULT (08-06): primary from thread.active_audience_id, optional secondAudienceId
+ *     from the body, default second = General (active-vs-General).
+ *   - EXPLICIT PAIR (AUD-EDIT-02 / D-05): an OPTIONAL `audienceIds: [string, string]`
+ *     body field selects an ARBITRARY pair of saved audiences. Each id is resolved via
+ *     getAudience under the session (RLS-scoped); a bad id is rejected 400 (audience_not_found)
+ *     — NO silent General fallback for an explicit pick.
+ *
  * Security spine (mirrors the ideas route — T-03-07 … T-03-12):
  *   - Auth enforced BEFORE any DB read or Flash run (T-03-07)
- *   - Audience id read from the THREAD (active_audience_id), never from the body (T-03-08 / CR-01).
- *     The body carries the concept text + an OPTIONAL explicit second audience id; that id is
- *     still resolved via getAudience under the session (RLS-scoped) — never trusted as raw weights.
+ *   - Default-path primary audience id read from the THREAD (active_audience_id), never the
+ *     body (T-03-08 / CR-01). Explicit-pair ids are still resolved via getAudience under the
+ *     session (RLS-scoped) — never trusted as raw weights.
  *   - Server-side concept length cap (WARNING-5)
  *   - insertMessage re-validates the block at the write boundary (T-03-11)
  *   - KC_GEN_VERSION stamp on the persisted message (T-03-12)
  *
  * Cap (D-09): exactly 2 audiences for v1 legibility. runTwoAudienceRead enforces the cap;
- *   the route resolves at most a default pair + one explicit second pick.
+ *   the route resolves a default pair, one explicit second pick, OR an explicit arbitrary pair.
  *
  * Honesty spine (Pitfall 5 / D-11): the emitted block is bands-only (no numeric score).
  */
@@ -55,7 +63,7 @@ export async function POST(request: Request): Promise<Response> {
   // The PRIMARY (active) audience id is NEVER read from the body — it comes from the
   // thread (T-03-08 / CR-01). The optional second id is still resolved under the
   // session via getAudience (RLS-scoped), never trusted as raw weights.
-  let body: { concept?: unknown; secondAudienceId?: unknown } = {};
+  let body: { concept?: unknown; secondAudienceId?: unknown; audienceIds?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -75,36 +83,78 @@ export async function POST(request: Request): Promise<Response> {
   const secondAudienceId =
     typeof body.secondAudienceId === "string" ? body.secondAudienceId : null;
 
+  // Explicit arbitrary-pair input (NEW, AUD-EDIT-02 / D-05): an OPTIONAL array of
+  // string audience ids. When it carries exactly 2 entries, the route compares that
+  // ARBITRARY pair (not the thread-derived active-vs-General default). Each id is
+  // still resolved via getAudience under the session (RLS-scoped, CR-01/T-03-08) —
+  // never trusted as raw weights.
+  const audienceIds = Array.isArray(body.audienceIds)
+    ? body.audienceIds.filter((x): x is string => typeof x === "string")
+    : null;
+
   // ── (3) Get/create open thread ───────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
-  // ── (4) Resolve the PRIMARY audience from the THREAD, never the body (CR-01) ──
-  // thread.active_audience_id: NULL = General default. Non-null = load the row
-  // (virtual ids short-circuit). Falls back to General on any load failure (no block).
-  let activeAudience: Audience = GENERAL_AUDIENCE;
-  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
-  const activeAudienceId = rawThread.active_audience_id ?? null;
-  if (activeAudienceId) {
-    try {
-      const loaded = await getAudience(supabase, activeAudienceId);
-      if (loaded) activeAudience = loaded;
-    } catch {
-      // Non-fatal: fall back to General (no regression, D-04).
-    }
-  }
+  // ── (4) Resolve the comparison PAIR ───────────────────────────────────────────
+  // Two paths share the SAME runner + persistence below:
+  //   • Explicit-pair path (AUD-EDIT-02): exactly 2 arbitrary audienceIds, each
+  //     resolved under the session. A bad id is rejected 400 — NO silent General
+  //     fallback for an explicitly-requested pick (that would hide a bad pair).
+  //   • Default path (UNCHANGED, 08-06): primary from thread.active_audience_id,
+  //     optional secondAudienceId from the body, default second = General.
+  let pair: [Audience, Audience];
 
-  // ── (5) Resolve the SECOND audience (default = General) — D-09 default pair ───
-  // The default pair is active-vs-General. An explicit secondAudienceId is honored
-  // ONLY when it resolves under the session (RLS-scoped via getAudience). The cap of
-  // 2 is enforced downstream by runTwoAudienceRead.
-  let secondAudience: Audience = GENERAL_AUDIENCE;
-  if (secondAudienceId && secondAudienceId !== activeAudienceId) {
+  if (audienceIds && audienceIds.length === 2) {
+    // ── Explicit arbitrary-pair path (NEW) ──────────────────────────────────────
+    // Resolve BOTH ids under the session (RLS-scoped). The 2-audience cap (D-09)
+    // is already enforced downstream by runTwoAudienceRead; same-identity pairs
+    // collapse to a single-audience Read there.
+    let firstAudience: Audience | null = null;
+    let secondPick: Audience | null = null;
     try {
-      const loaded = await getAudience(supabase, secondAudienceId);
-      if (loaded) secondAudience = loaded;
+      firstAudience = await getAudience(supabase, audienceIds[0]!);
+      secondPick = await getAudience(supabase, audienceIds[1]!);
     } catch {
-      // Non-fatal: keep General as the comparison pair.
+      // A resolve THROW (not just a missing row) is also a failed pick — reject 400.
+      firstAudience = null;
     }
+    if (!firstAudience || !secondPick) {
+      // An explicitly-requested id did not resolve under the session → reject.
+      // Do NOT silently fall back to General for an explicit pair (CR-01).
+      return Response.json({ error: "audience_not_found" }, { status: 400 });
+    }
+    pair = [firstAudience, secondPick];
+  } else {
+    // ── Default path (UNCHANGED) — active-vs-General (08-06) ─────────────────────
+    // thread.active_audience_id: NULL = General default. Non-null = load the row
+    // (virtual ids short-circuit). Falls back to General on any load failure.
+    let activeAudience: Audience = GENERAL_AUDIENCE;
+    const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
+    const activeAudienceId = rawThread.active_audience_id ?? null;
+    if (activeAudienceId) {
+      try {
+        const loaded = await getAudience(supabase, activeAudienceId);
+        if (loaded) activeAudience = loaded;
+      } catch {
+        // Non-fatal: fall back to General (no regression, D-04).
+      }
+    }
+
+    // Resolve the SECOND audience (default = General) — D-09 default pair.
+    // The default pair is active-vs-General. An explicit secondAudienceId is honored
+    // ONLY when it resolves under the session (RLS-scoped via getAudience). The cap of
+    // 2 is enforced downstream by runTwoAudienceRead.
+    let secondAudience: Audience = GENERAL_AUDIENCE;
+    if (secondAudienceId && secondAudienceId !== activeAudienceId) {
+      try {
+        const loaded = await getAudience(supabase, secondAudienceId);
+        if (loaded) secondAudience = loaded;
+      } catch {
+        // Non-fatal: keep General as the comparison pair.
+      }
+    }
+
+    pair = [activeAudience, secondAudience];
   }
 
   // ── (6) Run the 2-audience Read + persist the block ──────────────────────────
@@ -113,7 +163,7 @@ export async function POST(request: Request): Promise<Response> {
   // and the runner collapses that self-pair to a SINGLE-audience Read instead of a
   // degenerate "General vs General" compare.
   try {
-    const block = await runTwoAudienceRead(concept, [activeAudience, secondAudience]);
+    const block = await runTwoAudienceRead(concept, pair);
 
     // insertMessage re-validates the block at the write boundary (T-03-11) + stamps
     // KC_GEN_VERSION provenance (T-03-12).
