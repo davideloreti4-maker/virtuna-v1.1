@@ -1,22 +1,26 @@
 "use client";
 
 /**
- * AudienceProfileView — read-only Audience Profile + persona display (D-03).
+ * AudienceProfileView — Audience Profile + persona display (D-03), now with per-persona
+ * editing on CALIBRATED audiences (AUD-EDIT-01 / D-06).
  * Hero: PersonaGraph node-cloud.
  * Profile header: StatTileRow (platform / goal / temperature mix / top dispositions).
- * Persona list: DataTable (Name · Temperature Badge · Disposition Badge · Share %).
- * No edit affordances — intentional (D-03). Build so an edit column can be added later.
- * Read-only caption per Copywriting Contract.
+ * Persona list: DataTable (Name · Temperature Badge · Disposition Badge · Share % · Edit).
+ * - Calibrated (personal/target) audiences: each persona row has an Edit affordance that
+ *   opens the PersonaEditForm inline; the display name honors the edited `label`.
+ * - General / preset: NO Edit affordance + the D-06 protected-baseline caption (read-only).
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Audience, CalibratedPersona, Temperature } from "@/lib/audience/audience-types";
 import { PersonaGraph, type PersonaNode } from "@/components/board/_kit/PersonaGraph";
 import { StatTileRow, type StatTileData } from "@/components/board/_kit/StatTile";
 import { DataTable, type DataColumn } from "@/components/board/_kit/DataTable";
 import { Badge } from "@/components/ui/badge";
+import { PersonaEditForm, archetypeDerivedName } from "./persona-edit-form";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
+import { Pencil } from "lucide-react";
 
 const PLATFORM_LABELS: Record<string, string> = {
   tiktok: "TikTok",
@@ -33,23 +37,36 @@ function tempVariant(temperature: Temperature) {
   }
 }
 
+/** Display name: the edited `label`, falling back to the archetype-derived string. */
+function personaDisplayName(p: CalibratedPersona): string {
+  return p.label ?? archetypeDerivedName(p.archetype);
+}
+
 interface AudienceProfileViewProps {
   audience: Audience;
   className?: string;
 }
 
-export function AudienceProfileView({ audience, className }: AudienceProfileViewProps) {
+export function AudienceProfileView({ audience: audienceProp, className }: AudienceProfileViewProps) {
   const reducedMotion = usePrefersReducedMotion();
+
+  // Local copy so a saved persona edit refreshes the display without a hard reload.
+  const [audience, setAudience] = useState<Audience>(audienceProp);
+  // Index of the persona currently being edited (null = no edit open). Calibrated only.
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const personas = audience.personas;
   const profile = audience.profile;
 
-  // Map personas → PersonaNode for the graph
+  // Calibrated personal/target audiences are editable; General + preset are read-only (D-06).
+  const isEditable = !audience.is_general && !audience.is_preset;
+
+  // Map personas → PersonaNode for the graph (honors the edited label)
   const personaNodes: PersonaNode[] = useMemo(
     () =>
       personas.map((p) => ({
         id: p.archetype,
-        label: p.archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+        label: p.label ?? archetypeDerivedName(p.archetype),
         weight: p.share,
         watchThrough: p.share, // use share as proxy for watch-through in read-only v1
         tone: "default" as const, // v1: no coral cluster (values untuned)
@@ -91,15 +108,13 @@ export function AudienceProfileView({ audience, className }: AudienceProfileView
     return result;
   }, [audience, profile]);
 
-  // DataTable columns — no edit column (D-03); structured to add one later
+  // DataTable columns — the trailing Edit column is added only for calibrated audiences (D-06)
   const columns: DataColumn<CalibratedPersona>[] = [
     {
       key: "archetype",
       label: "Persona",
       render: (p) => (
-        <span className="text-[13px] text-foreground">
-          {p.archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-        </span>
+        <span className="text-[13px] text-foreground">{personaDisplayName(p)}</span>
       ),
     },
     {
@@ -126,7 +141,32 @@ export function AudienceProfileView({ audience, className }: AudienceProfileView
       align: "right" as const,
       render: (p) => `${Math.round(p.share * 100)}%`,
     },
+    // Per-persona Edit affordance — calibrated audiences ONLY (D-06).
+    ...(isEditable
+      ? [
+          {
+            key: "edit",
+            label: "",
+            align: "right" as const,
+            render: (p: CalibratedPersona) => {
+              const idx = personas.indexOf(p);
+              return (
+                <button
+                  type="button"
+                  onClick={() => setEditingIndex(idx)}
+                  aria-label={`Edit ${personaDisplayName(p)}`}
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              );
+            },
+          } satisfies DataColumn<CalibratedPersona>,
+        ]
+      : []),
   ];
+
+  const editingPersona = editingIndex !== null ? personas[editingIndex] : undefined;
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
@@ -167,10 +207,26 @@ export function AudienceProfileView({ audience, className }: AudienceProfileView
         </div>
       )}
 
-      {/* Read-only caption (D-03 honesty) */}
-      <p className="text-xs text-foreground-muted text-center pb-2">
-        Read-only for now. Editing arrives once values are tuned.
-      </p>
+      {/* Inline persona-edit form (calibrated only) — opens for the selected persona */}
+      {isEditable && editingPersona && editingIndex !== null && (
+        <PersonaEditForm
+          audience={audience}
+          persona={editingPersona}
+          index={editingIndex}
+          onClose={() => setEditingIndex(null)}
+          onSaved={(updated) => {
+            setAudience(updated);
+            setEditingIndex(null);
+          }}
+        />
+      )}
+
+      {/* Read-only General/preset caption (D-06 protected baseline). Calibrated = no caption. */}
+      {!isEditable && (
+        <p className="text-xs text-foreground-muted text-center pb-2">
+          General is Numen&apos;s protected baseline — read-only. Calibrate a personal or target audience to edit its personas.
+        </p>
+      )}
     </div>
   );
 }
