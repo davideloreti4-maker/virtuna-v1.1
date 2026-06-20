@@ -440,6 +440,17 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **⚠️ Already shipped — do NOT rebuild:** writing-voice sample (N1, merge `d2f121e7`). Surface/extend it here. Confirm P8 W0 removed the persona-value `[ASSUMED]` markers.
 **UI hint:** yes
 
+**Plans:** 4 plans (all Wave 1 — disjoint files, fully parallel)
+
+**Wave 1** *(parallel — zero files_modified overlap)*
+
+- [ ] 12-01-PLAN.md — IA-01: add the Library nav item + relabel the four literal nouns (New Thread / Thread / Audience / Library / Settings) in the active Sidebar.tsx [IA-01]
+- [ ] 12-02-PLAN.md — LIB-01/LIB-03: Library State home (extend SavedShelf → /library, redirect /saved) + complete the save↔use loop (Save the flagship Read card, launch saved Reads/Outliers into the open thread) *(autonomous: false — visual checkpoint)* [LIB-01, LIB-03]
+- [ ] 12-03-PLAN.md — AUD-EDIT-02: multi-select Compare entry on /audience → reuse P8's multi-audience Read against an arbitrary audience pair (extend /api/tools/read) *(autonomous: false — visual checkpoint)* [AUD-EDIT-02]
+- [ ] 12-04-PLAN.md — AUD-EDIT-01: persona editing (Name/Disposition/Temperature/Description) on calibrated audiences only, written to the per-audience override slot; General read-only + regression-gate-safe *(autonomous: false — visual checkpoint)* [AUD-EDIT-01]
+
+> **Deferred (owner-locked, NOT planned this phase):** LIB-02 (tracked-accounts/watchlist → future Channels/Accounts page), AUD-EDIT-03 (compact onboarding redesign), AUD-EDIT-04 (Apify metadata prefill — blocked by GAP-ENV-01).
+
 ---
 
 ### Phase 13: Proactive Numen (Ambient + Initiated) *(EXPANSION — the "ambient audience system" — not yet discussed)*
