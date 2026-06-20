@@ -227,7 +227,7 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 | 8. Discover & Remix→Read | 6/6 | Complete    | 2026-06-19 |
 | 9. Living Audience | ✓ | Complete    | 2026-06-19 |
 | 10. Account Read, Saved Shelf & Flywheel | 7/7 | Complete    | 2026-06-19 |
-| 11. Explore (Audience-Curated Discovery) | 1/8 | In Progress|  |
+| 11. Explore (Audience-Curated Discovery) | 2/8 | In Progress|  |
 | 12. Library & Acts/State IA | — | Planned (expansion) |  |
 | 13. Proactive Numen (Ambient + Initiated) | — | Planned (expansion) |  |
 | 14. KC Grounding & Quality-Loop | 4/4 | Complete ✓ |  |
@@ -402,12 +402,12 @@ Phases 1 → 10 complete (numeric order; Phase 2 ran parallel to Phase 1 as a co
 **Moat verdict (decisive):** competitors model the CREATOR + borrow proof from outliers; they NEVER model the audience and NEVER validate output. We have both layers they structurally lack.
 **UI hint:** yes
 
-**Plans:** 1/8 plans executed
+**Plans:** 2/8 plans executed
 
 **Wave 1** *(parallel — disjoint files)*
 
 - [x] 11-01-PLAN.md — Foundation pure-modules: `explore-rank.ts` audience-fit re-rank (TDD, no SIM call) + extend `OutlierGridBlockSchema` with fit/trackable/trackHandle (no migration) [EXPLORE-03, EXPLORE-05]
-- [ ] 11-02-PLAN.md — Watchlist rail: `tracked_accounts` migration file (flat-typed, RLS own-rows, idempotent UNIQUE — push deferred to 11-08) [EXPLORE-05]
+- [x] 11-02-PLAN.md — Watchlist rail: `tracked_accounts` migration file (flat-typed, RLS own-rows, idempotent UNIQUE — push deferred to 11-08) [EXPLORE-05]
 
 **Wave 2** *(parallel — disjoint files; 11-03 on 11-02, 11-04 on 11-01)*
 
