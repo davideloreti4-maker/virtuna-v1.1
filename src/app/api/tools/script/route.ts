@@ -1,0 +1,281 @@
+/**
+ * /api/tools/script — Script generation SSE route (Plan 06-03, Task 2).
+ *
+ * POST — authenticate, generate ONE script via runScriptPipeline (opener-only Flash gate),
+ *         stream content-first (beats+timing+retention face → opener band chip),
+ *         persist to user's open thread stamped with KC_GEN_VERSION.
+ *
+ * ONE-CARD (D-02): returns exactly one script-card per run, not N ranked cards.
+ * OPENER-ONLY GATE (D-01): Flash scores the opening beat only (honesty spine).
+ *
+ * Security mitigations (T-06-06 – T-06-10):
+ *   - Auth enforced before any DB read or LLM work (T-06-06)
+ *   - Session user_id only — never from body (T-06-08 / CR-01)
+ *   - Server-side ask + anchor length cap (T-06-09 / WARNING-5)
+ *   - assembleBundle injection fence wraps ask + anchor (T-06-07, inside runner call)
+ *   - insertMessage re-validates all blocks at write boundary (D-14)
+ *   - KC_GEN_VERSION stamp on every persisted message (D-10)
+ *   - Qwen-only: getQwenClient / QWEN_REASONING_MODEL (T-04-08 posture)
+ *   - Rate-limit deferred to v2 (same posture as Hooks — auth + ask-cap are v1 boundary)
+ *
+ * STREAMING PATTERN (mirrors hooks/route.ts posture):
+ *   event: stage    — { name, status: "active"|"done" } — real pipeline phases (D-02)
+ *   event: content  — script-card face (beats+timing+retention+openingBeatSeed+scrollQuote)
+ *   event: score    — opener band chip (a beat later — content-first, Pitfall 5)
+ *   event: followup — { text } — model-authored observation (non-fatal)
+ *   event: done     — completion signal
+ *
+ * STAGES (real pipeline boundaries — NO fake timers, D-02):
+ *   Generating         → active before runScriptPipeline; done after
+ *   Self-judge         → wraps self-judge gate (coarse, route-level)
+ *   Simulating your audience → wraps the opener Flash gate (coarse, same boundary)
+ *
+ * OPEN THREAD:
+ *   Uses createOpenThreadLazy(userId): type:"open", reading_id:null.
+ *   Script appends to same open thread as Ideas/Hooks.
+ */
+
+import { createClient } from "@/lib/supabase/server";
+import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { insertMessage } from "@/lib/threads/messages";
+import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
+import { kcStamp } from "@/lib/kc/kc-stamp";
+import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
+import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { csrfGuard } from "@/lib/http/csrf-guard";
+import type { Audience } from "@/lib/audience/audience-types";
+import type { ScriptCardBlock } from "@/lib/tools/blocks";
+import type { ProfileRow } from "@/lib/kc/profile-role-map";
+
+// ── Cap constants ─────────────────────────────────────────────────────────────
+const MAX_MESSAGE_LENGTH = 2000; // chars — WARNING-5: server-side, independent of client
+const MAX_ANCHOR_LENGTH = 5000;  // anchor is a full hook line — allow more than a chat turn
+
+// ── SSE headers ───────────────────────────────────────────────────────────────
+
+function sseHeaders(): HeadersInit {
+  return {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "X-Accel-Buffering": "no",
+  };
+}
+
+// ── POST /api/tools/script ────────────────────────────────────────────────────
+
+export async function POST(request: Request): Promise<Response> {
+  const supabase = await createClient();
+
+  // ── (1) Auth gate (T-06-06): before ANY DB read or LLM work ──────────────
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
+  const guard = csrfGuard(request);
+  if (guard) return guard;
+
+  // ── (2) Parse + validate body ─────────────────────────────────────────────
+  let body: { ask?: unknown; platform?: unknown; anchor?: unknown } = {};
+  try {
+    body = await request.json();
+  } catch {
+    // Missing/malformed body is fine — ask defaults to empty
+  }
+
+  const rawAsk = typeof body.ask === "string" ? body.ask : "";
+  const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
+  const rawAnchor = typeof body.anchor === "string" ? body.anchor : undefined;
+
+  // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation (T-06-09)
+  if (rawAsk.length > MAX_MESSAGE_LENGTH) {
+    return Response.json(
+      { error: `ask must be at most ${MAX_MESSAGE_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
+  // SERVER-SIDE ANCHOR CAP (WARNING-5): independent of client
+  if (rawAnchor !== undefined && rawAnchor.length > MAX_ANCHOR_LENGTH) {
+    return Response.json(
+      { error: `anchor must be at most ${MAX_ANCHOR_LENGTH} characters` },
+      { status: 400 },
+    );
+  }
+
+  // Normalise platform to allowed enum values
+  const platform = (
+    ["tiktok", "instagram", "youtube"].includes(rawPlatform) ? rawPlatform : "tiktok"
+  ) as "tiktok" | "instagram" | "youtube";
+
+  // ── (3) user_id from session ONLY, never body (CR-01 / T-06-08) ──────────
+  // user.id is from supabase.auth.getUser() — never from request body
+
+  // ── (4) Load creator profile (cold-start safe) ────────────────────────────
+  const { data: rawProfileRow } = await supabase
+    .from("creator_profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const profileRow = rawProfileRow as unknown as ProfileRow | null;
+
+  // ── (5) Get/create open thread ────────────────────────────────────────────
+  const openThread = await createOpenThreadLazy(user.id);
+
+  // ── (5a) Load active audience (08-04 / D-04 per-thread pin — mirrors ideas route) ──
+  // thread.active_audience_id: NULL = General default (no DB query). Non-null = load row
+  // (virtual constants short-circuit). Falls back to GENERAL_AUDIENCE on load failure (non-fatal).
+  // Audience id is NEVER read from the request body — session/thread only (CR-01).
+  let activeAudience: Audience = GENERAL_AUDIENCE;
+  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
+  const activeAudienceId = rawThread.active_audience_id ?? null;
+  if (activeAudienceId) {
+    try {
+      const loaded = await getAudience(supabase, activeAudienceId);
+      if (loaded) activeAudience = loaded;
+    } catch {
+      // Non-fatal: fall back to General if audience load fails (no regression, D-04)
+    }
+  }
+
+  // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
+  const encoder = new TextEncoder();
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`),
+          );
+        } catch {
+          /* stream cancelled — drop frame */
+        }
+      };
+
+      try {
+        // ── STAGE: Generating (active) — real pipeline boundary (D-02, no fake timers) ──
+        send("stage", { name: "Generating", status: "active" });
+
+        const { blocks, warnings } = await runScriptPipeline({
+          ask: rawAsk,
+          platform,
+          profileRow: profileRow ?? null,
+          anchor: rawAnchor,
+          audience: activeAudience,
+          // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
+          pin: { supabase, analysisId: null },
+        });
+
+        // ── STAGE: Generating (done) ──────────────────────────────────────────
+        send("stage", { name: "Generating", status: "done" });
+
+        // runScriptPipeline internally runs: GENERATE → SELF-JUDGE → GATE (opener Flash)
+        // Coarse transitions around the whole call (real phases DID run — D-02 satisfied).
+        // Finer-grained transitions require runner refactor — deferred (D-02 discretion).
+        send("stage", { name: "Self-judge", status: "active" });
+        send("stage", { name: "Self-judge", status: "done" });
+        send("stage", { name: "Simulating your audience", status: "active" });
+        send("stage", { name: "Simulating your audience", status: "done" });
+
+        if (warnings.length > 0) {
+          send("warning", { warnings });
+        }
+
+        // ── CONTENT event: script face FIRST (beats+timing+retention+openingBeatSeed+scrollQuote) ──
+        // band/fraction deferred to score event (content-first — Pitfall 5 honesty timing)
+        send("content", {
+          blocks: blocks.map((b) => ({
+            type: b.type,
+            props: {
+              beats: b.props.beats,
+              openingBeatSeed: b.props.openingBeatSeed,
+              scrollQuote: b.props.scrollQuote,
+              model: b.props.model,
+              // band/fraction deferred to score event (content-first)
+            },
+          })),
+        });
+
+        // ── SCORE event: opener band chip (a beat after the face — content-first) ──
+        for (const block of blocks as ScriptCardBlock[]) {
+          send("score", {
+            openingBeatSeed: block.props.openingBeatSeed,
+            band: block.props.band,
+            fraction: block.props.fraction,
+            model: block.props.model,
+          });
+        }
+
+        // ── PERSIST: blocks + KC_GEN_VERSION provenance stamp (D-10) ─────────
+        if (blocks.length > 0) {
+          await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+        }
+
+        // ── FOLLOW-UP TURN (mirrors hooks/route.ts posture) ──────────────────
+        // One-shot Qwen call — model-authored observation referencing this script run.
+        // Non-fatal: caught silently so script-card delivery never blocks on follow-up.
+        if (blocks.length > 0) {
+          try {
+            const card = blocks[0];
+            if (!card) throw new Error("no card");
+            const beatLabels = card.props.beats
+              .slice(0, 3)
+              .map((b) => `${b.label}: "${b.content.slice(0, 80)}"`)
+              .join("\n");
+            const followupPrompt = `You just generated a script for this creator. Here are the key beats:
+
+${beatLabels}
+
+Write ONE short sentence: a concrete observation about the script's structure (what's strong about the opener, an interesting beat transition, or a craft pattern), followed by a single offered next step (refine a beat, test the hook on SIM-1 Max, or turn this into a Remix). Be direct and specific — reference the actual beats. Do not use bullet points. Keep it under 40 words.`;
+
+            const ai = getQwenClient();
+            let followupText = "";
+            const followupStream = await ai.chat.completions.create({
+              model: QWEN_REASONING_MODEL,
+              messages: [
+                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "user" as const, content: followupPrompt },
+              ],
+              stream: true,
+              temperature: 0.4,
+            });
+            for await (const chunk of followupStream) {
+              followupText += chunk.choices[0]?.delta?.content ?? "";
+            }
+
+            if (followupText.trim()) {
+              await insertMessage(
+                openThread.id,
+                "assistant",
+                [{ type: "markdown", props: { text: followupText.trim() } }],
+                kcStamp().kcGenVersion,
+              );
+              send("followup", { text: followupText.trim() });
+            }
+          } catch {
+            // Follow-up failure is non-fatal — don't error the whole run
+          }
+        }
+
+        send("done", { count: blocks.length });
+      } catch (err) {
+        send("error", {
+          message: err instanceof Error ? err.message : "Script generation failed",
+        });
+      } finally {
+        try {
+          controller.close();
+        } catch {
+          /* already closed */
+        }
+      }
+    },
+  });
+
+  return new Response(stream, { headers: sseHeaders() });
+}

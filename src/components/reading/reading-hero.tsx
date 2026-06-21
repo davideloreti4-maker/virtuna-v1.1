@@ -9,10 +9,14 @@ import { ScoreGauge } from './score-gauge';
 import { ReadingSection } from './reading-section';
 import { AudienceBreakout } from './audience-breakout';
 
-// ReadingHero — "THE READ" scorecard (hero v6, LOCKED 2026-06-15). A tight,
+// ReadingHero — "TEST" scorecard (hero v6, D-06 Test reframe 2026-06-18). A tight,
 // centered cluster: the video poster + the score gauge + a 3-stat strip
 // (Watch-through · Biggest drop · Niche rank). Replaces the old gauge | dot-cloud
 // hero (the cloud moves to its own AudienceOrbit card below).
+//
+// D-06 BOUNDED RENAME: hero section label = "Test"; powered-by tag = "powered by SIM-1 Max".
+// Presentation only — score math, ScoreGauge, ENGINE_VERSION, reading_id, route paths
+// are all UNCHANGED. The "SIM-1 Max" tag is chrome, NOT a data import.
 //
 // HONESTY (D-13): every stat omits itself when its value is genuinely underivable
 // — never a fabricated 0 / "Top —%". The poster shows the real first keyframe when
@@ -124,7 +128,21 @@ export function ReadingHero({
     stats.push({ key: 'finish', value: `${finishRate}%`, label: 'Finish rate', testid: 'reading-finish' });
 
   return (
-    <ReadingSection label="The read">
+    <ReadingSection
+      label="Test"
+      labelSuffix={
+        <span
+          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.1em]"
+          style={{
+            borderColor: 'var(--color-accent)',
+            color: 'var(--color-accent)',
+            opacity: 0.75,
+          }}
+        >
+          powered by SIM-1 Max
+        </span>
+      }
+    >
       <div data-testid="reading-hero">
         {/* hero-top: poster + gauge + stats, one centered cluster */}
         <div className="flex flex-col items-stretch gap-0 p-[18px] min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-center min-[520px]:gap-6 min-[520px]:p-6">

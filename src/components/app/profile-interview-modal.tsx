@@ -22,6 +22,7 @@ import { ReferenceCreatorsInput } from "@/components/app/cards/reference-creator
 import { WinsFlopsInput } from "@/components/app/cards/wins-flops-input";
 import { CadencePicker } from "@/components/app/cards/cadence-picker";
 import { PainPointsInput } from "@/components/app/cards/pain-points-input";
+import { VoiceSampleInput } from "@/components/app/cards/voice-sample-input";
 
 import { useProfileInterviewStore } from "@/stores/profile-interview-store";
 
@@ -47,7 +48,7 @@ export interface ProfileInterviewModalProps {
   onClose: () => void;
 }
 
-const TOTAL_CARDS = 9;
+const TOTAL_CARDS = 10;
 const MODAL_TITLE = "Tell us about your content";
 
 interface CardCopy {
@@ -97,6 +98,11 @@ const CARD_COPY: Record<number, CardCopy> = {
     heading: "What's your biggest challenge?",
     description:
       "Freeform. The engine uses this to weight critique framing.",
+  },
+  9: {
+    heading: "Your writing voice",
+    description:
+      "Paste a short script or caption you want to sound like. The engine emulates your style — not the content.",
   },
 };
 
@@ -159,7 +165,7 @@ export function ProfileInterviewModal({
     if (isAdvancing) return;
     setIsAdvancing(true);
     try {
-      if (currentCard === 8) {
+      if (currentCard === 9) {
         await finalize();
       } else {
         await advanceCard();
@@ -283,6 +289,13 @@ export function ProfileInterviewModal({
             onChange={(p) => setDraftField("pain", p)}
           />
         );
+      case 9:
+        return (
+          <VoiceSampleInput
+            value={draft.voice}
+            onChange={(v) => setDraftField("voice", v)}
+          />
+        );
       default:
         return null;
     }
@@ -332,14 +345,14 @@ export function ProfileInterviewModal({
               totalCards={TOTAL_CARDS}
               showBack={currentCard > 0}
               showSkipAll={currentCard === 0}
-              isLastCard={currentCard === 8}
+              isLastCard={currentCard === 9}
               primaryDisabled={card0Invalid}
               primaryLoading={isAdvancing}
               onBack={goBack}
               onContinue={() => {
                 void handleContinue();
               }}
-              onSkipCurrent={currentCard === 8 ? () => { void handleContinue(); } : skipCard}
+              onSkipCurrent={currentCard === 9 ? () => { void handleContinue(); } : skipCard}
               onSkipAll={() => {
                 void handleSkipAll();
               }}

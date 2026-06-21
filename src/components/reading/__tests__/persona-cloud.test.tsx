@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 import type { HeatmapPayload } from '@/lib/engine/types';
 
@@ -98,5 +98,50 @@ describe('PersonaCloud — static dot-cloud, dots only (READ-04, D-02)', () => {
     const results = await axe(container);
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(results).toHaveNoViolations();
+  });
+});
+
+// ── onOpen seam contract (LIVE-01, P9 W1 — Pitfall 1 lock) ────────────────────
+// The onOpen prop is the single entry into the living AudienceLens. When provided
+// the cloud is an interactive ≥44px button (click + Enter/Space fire onOpen); when
+// absent the cloud is inert (no role=button, no tabIndex). This test locks the seam
+// so it can never silently regress back to a dead stub.
+describe('PersonaCloud — onOpen seam (opens the AudienceLens)', () => {
+  function getRoot(container: HTMLElement): HTMLElement {
+    return container.firstChild as HTMLElement;
+  }
+
+  it('with onOpen → interactive button (role=button, tabIndex 0, ≥44px) that fires on click', () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <PersonaCloud heatmap={HEATMAP} simResults={undefined} onOpen={onOpen} />,
+    );
+    const root = getRoot(container);
+    expect(root.getAttribute('role')).toBe('button');
+    expect(root.getAttribute('tabindex')).toBe('0');
+    expect(parseInt(root.style.minHeight || '0', 10)).toBeGreaterThanOrEqual(44);
+
+    fireEvent.click(root);
+    expect(onOpen).toHaveBeenCalledTimes(1);
+  });
+
+  it('with onOpen → fires on Enter and Space (keyboard activatable)', () => {
+    const onOpen = vi.fn();
+    const { container } = render(
+      <PersonaCloud heatmap={HEATMAP} simResults={undefined} onOpen={onOpen} />,
+    );
+    const root = getRoot(container);
+    fireEvent.keyDown(root, { key: 'Enter' });
+    fireEvent.keyDown(root, { key: ' ' });
+    expect(onOpen).toHaveBeenCalledTimes(2);
+  });
+
+  it('without onOpen → inert (no role=button, no tabIndex — not a dead stub affordance)', () => {
+    const { container } = render(
+      <PersonaCloud heatmap={HEATMAP} simResults={undefined} />,
+    );
+    const root = getRoot(container);
+    expect(root.getAttribute('role')).toBeNull();
+    expect(root.getAttribute('tabindex')).toBeNull();
   });
 });

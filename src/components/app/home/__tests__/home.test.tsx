@@ -122,9 +122,16 @@ describe('Home — locked omissions (D-18 / D-25)', () => {
   });
 
   it('shows NO Simulation list under the composer (the sidebar owns history)', () => {
-    render(<Home />);
-    // No history/list region on the home body.
-    expect(screen.queryByRole('list')).toBeNull();
+    const { container } = render(<Home />);
+    // No Simulation HISTORY list region on the home body. The only `list` on the
+    // page is the AmbientPresence's always-present sr-only roster mirror (the
+    // calibrated-people accessibility list — UI-SPEC §Cross-Cutting; the presence
+    // never hides, even idle on empty home, D-01). That is NOT a Simulation history
+    // list, so scope the "no list" invariant to lists OUTSIDE the presence's sr-only
+    // mirror (a `<ul>` whose closest `.sr-only` ancestor is absent).
+    const lists = Array.from(container.querySelectorAll('ul, ol, [role="list"]'));
+    const nonRosterLists = lists.filter((el) => el.closest('.sr-only') === null);
+    expect(nonRosterLists).toHaveLength(0);
     expect(screen.queryByTestId('sidebar-board-label')).toBeNull();
   });
 });

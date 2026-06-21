@@ -1,0 +1,476 @@
+/**
+ * route.test.ts — Hooks API route integration tests (Plan 04-02, Task 2).
+ *
+ * Tests:
+ *   - POST /api/tools/hooks: 401 unauth, 400 over-cap ask/anchor (server-side), content-first
+ *     SSE stream with ranked card faces + lead scrollQuote + audience tag + rank, KC_GEN_VERSION stamp
+ *   - POST /api/tools/ideas/develop: placeholder REMOVED, real ranked hook-card blocks persisted,
+ *     pinned response shape { threadId, messageId, fencedHooksBundle, ideaId } preserved
+ *
+ * Runner unit tests live in: src/lib/tools/runners/__tests__/hooks-runner.test.ts
+ */
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { HookCardBlock } from "@/lib/tools/blocks";
+
+// ─── Mocks ────────────────────────────────────────────────────────────────────
+
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: vi.fn(),
+}));
+
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(),
+}));
+
+vi.mock("@/lib/threads/messages", () => ({
+  insertMessage: vi.fn(),
+}));
+
+vi.mock("@/lib/threads/threads", () => ({
+  createOpenThreadLazy: vi.fn(),
+  getOpenThread: vi.fn(),
+}));
+
+vi.mock("@/lib/tools/runners/hooks-runner", () => ({
+  runHooksPipeline: vi.fn(),
+}));
+
+vi.mock("@/lib/kc/assembler", () => ({
+  assembleBundle: vi.fn(() => "mocked hooks bundle"),
+}));
+
+vi.mock("@/lib/kc/kc-stamp", () => ({
+  withKcStamp: vi.fn((obj: Record<string, unknown>) => ({
+    ...obj,
+    kcGenVersion: "gen.1.0.0",
+  })),
+  KC_PROVENANCE_FIELD: "kcGenVersion",
+  kcStamp: vi.fn(() => ({ kcGenVersion: "gen.1.0.0" })),
+}));
+
+// ─── Fixtures ─────────────────────────────────────────────────────────────────
+
+function makeHookCard(i: number, band: "Strong" | "Mixed" = "Strong"): HookCardBlock {
+  return {
+    type: "hook-card",
+    props: {
+      hookLine: `Executable hook line ${i} — the verbatim text`,
+      audienceArchetype: `Stops the skeptic`,
+      mechanism: `Attention mechanism ${i} — plain prose description`,
+      seedHook: `Seed hook ${i}`,
+      rank: i,
+      band,
+      fraction: `${6 + i}/10 stop`,
+      scrollQuote: `This stopped me because ${i}`,
+      model: "sim1-flash",
+      channel: i % 2 === 0 ? "spoken" : null,
+    },
+  };
+}
+
+function makeHooksRequest(body: unknown) {
+  return new Request("http://localhost/api/tools/hooks", {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+// ─── POST /api/tools/hooks ────────────────────────────────────────────────────
+
+describe("POST /api/tools/hooks (SSE route)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when user is not authenticated", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks" }));
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when ask exceeds MAX_MESSAGE_LENGTH (server-side cap, WARNING-5)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "user-123" } },
+        }),
+      },
+    });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "x".repeat(2001) }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when anchor exceeds MAX_ANCHOR_LENGTH (server-side cap, WARNING-5)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "user-123" } },
+        }),
+      },
+    });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", anchor: "x".repeat(5001) }));
+    expect(res.status).toBe(400);
+  });
+
+  it("generates ranked hook-card blocks, persists KC_GEN_VERSION stamped message, streams SSE content-first", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const mockUser = { id: "user-123" };
+    const mockThread = { id: "thread-hooks-abc", user_id: "user-123" };
+    const mockBlocks = [makeHookCard(1), makeHookCard(2, "Mixed"), makeHookCard(3, "Mixed")];
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockBlocks,
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-hooks-xyz" });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({
+      ask: "hooks for fitness myths idea",
+      platform: "tiktok",
+      anchor: "5 fitness myths that sabotage your gains",
+    }));
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toContain("text/event-stream");
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Must have status → content → score → done events
+    expect(rawOutput).toContain("event: status");
+    expect(rawOutput).toContain("event: content");
+    expect(rawOutput).toContain("event: score");
+    expect(rawOutput).toContain("event: done");
+
+    // insertMessage called once with blocks array + kcGenVersion
+    expect(insertMessage).toHaveBeenCalledTimes(1);
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(threadId).toBe("thread-hooks-abc");
+    expect(role).toBe("assistant");
+    expect(Array.isArray(blocks)).toBe(true);
+    expect((blocks as unknown[]).length).toBe(3);
+    expect(typeof kcGenVersion).toBe("string");
+    expect((kcGenVersion as string)).toMatch(/^gen\./);
+  });
+
+  it("content event carries ranked card face with lead scrollQuote + audienceArchetype + rank (content-first)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const mockBlocks = [makeHookCard(1)];
+    const mockThread = { id: "thread-face-check" };
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockBlocks,
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-1" });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", platform: "tiktok" }));
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Content event must carry scrollQuote, audienceArchetype, and rank on the face
+    expect(rawOutput).toContain("scrollQuote");
+    expect(rawOutput).toContain("This stopped me because 1");
+    expect(rawOutput).toContain("audienceArchetype");
+    expect(rawOutput).toContain("rank");
+  });
+
+  it("score events contain band chip per-card (a beat after the face — content-first)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const mockBlocks = [makeHookCard(1), makeHookCard(2, "Mixed")];
+    const mockThread = { id: "thread-score" };
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-2" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockBlocks,
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-2" });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", platform: "tiktok" }));
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Two score events — one per card
+    const scoreMatches = rawOutput.match(/event: score/g);
+    expect(scoreMatches).not.toBeNull();
+    expect(scoreMatches!.length).toBe(2);
+
+    // score event must carry band/fraction/model
+    expect(rawOutput).toContain("\"band\"");
+    expect(rawOutput).toContain("\"fraction\"");
+    expect(rawOutput).toContain("sim1-flash");
+  });
+});
+
+// ─── POST /api/tools/ideas/develop (REAL generation, D-07) ───────────────────
+
+describe("POST /api/tools/ideas/develop (REPLACED placeholder — real Hooks generation, D-07)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when unauthenticated", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    });
+
+    const req = new Request("http://localhost/api/tools/ideas/develop", {
+      method: "POST",
+      body: JSON.stringify({ anchor: "Fitness idea text", platform: "tiktok" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const { POST: DEVELOP } = await import("@/app/api/tools/ideas/develop/route");
+    const res = await DEVELOP(req);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when anchor exceeds server-side cap (WARNING-5)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1" } } }),
+      },
+    });
+
+    const req = new Request("http://localhost/api/tools/ideas/develop", {
+      method: "POST",
+      body: JSON.stringify({ anchor: "x".repeat(5001), platform: "tiktok" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const { POST: DEVELOP } = await import("@/app/api/tools/ideas/develop/route");
+    const res = await DEVELOP(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("runs real Hooks generation (no placeholder), persists hook-card blocks, PRESERVES pinned response shape (D-07)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+
+    const mockThread = { id: "thread-develop" };
+    const mockMsg = { id: "msg-develop-real" };
+    const mockHookBlocks = [makeHookCard(1), makeHookCard(2, "Mixed")];
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockHookBlocks,
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue(mockMsg);
+
+    const req = new Request("http://localhost/api/tools/ideas/develop", {
+      method: "POST",
+      body: JSON.stringify({
+        anchor: "5 fitness myths that sabotage your gains",
+        platform: "tiktok",
+        ideaId: "idea-123",
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const { POST: DEVELOP } = await import("@/app/api/tools/ideas/develop/route");
+    const res = await DEVELOP(req);
+    expect(res.status).toBe(200);
+
+    const json = await res.json();
+
+    // PINNED response shape must be intact (D-07 — Plan 03's CTA depends on this)
+    expect(json.threadId).toBe("thread-develop");
+    expect(json.messageId).toBe("msg-develop-real");
+    expect(typeof json.fencedHooksBundle).toBe("string");
+    // ideaId must be returned (pass-through for the CTA)
+    expect(json.ideaId).toBe("idea-123");
+
+    // insertMessage called once with hook-card blocks (NOT the placeholder markdown)
+    expect(insertMessage).toHaveBeenCalledTimes(1);
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(threadId).toBe("thread-develop");
+    expect(role).toBe("assistant");
+    expect(Array.isArray(blocks)).toBe(true);
+
+    // VERIFY PLACEHOLDER IS GONE: blocks must NOT contain any markdown type block
+    const blockArr = blocks as unknown[];
+    const hasMarkdownBlock = blockArr.some(
+      (b) => b && typeof b === "object" && (b as { type?: string }).type === "markdown",
+    );
+    expect(hasMarkdownBlock).toBe(false);
+
+    // All blocks must be hook-card type
+    for (const b of blockArr) {
+      expect((b as { type?: string }).type).toBe("hook-card");
+    }
+
+    // KC_GEN_VERSION stamp must be present
+    expect(typeof kcGenVersion).toBe("string");
+    expect((kcGenVersion as string)).toMatch(/^gen\./);
+  });
+
+  it("runHooksPipeline is called (no placeholder path)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-1" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "t1" });
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: [makeHookCard(1)],
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "m1" });
+
+    const req = new Request("http://localhost/api/tools/ideas/develop", {
+      method: "POST",
+      body: JSON.stringify({ anchor: "an idea", platform: "tiktok" }),
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const { POST: DEVELOP } = await import("@/app/api/tools/ideas/develop/route");
+    await DEVELOP(req);
+
+    // runHooksPipeline MUST have been called (D-07 real generation, not placeholder)
+    expect(runHooksPipeline).toHaveBeenCalledTimes(1);
+    const [pipelineInput] = (runHooksPipeline as ReturnType<typeof vi.fn>).mock.calls[0];
+    // anchor must be passed through
+    expect(pipelineInput.anchor).toBe("an idea");
+  });
+});

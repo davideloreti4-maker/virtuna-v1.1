@@ -135,15 +135,16 @@ describe('Sidebar recent boards label', () => {
   });
 });
 
-describe('Sidebar composition — Simulations label + no dead affordances (D-11/D-13)', () => {
-  it('labels the history section "Simulations" (not "Recent")', async () => {
+describe('Sidebar composition — Thread label + no dead affordances (D-11/D-13)', () => {
+  it('labels the history section "Thread" (not "Simulations"/"Recent")', async () => {
     vi.resetModules();
     mockHistory([
       { id: 'abc', content_text: 'A simulated video', overall_score: 80 },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    expect(screen.getByText('Simulations')).toBeInTheDocument();
+    expect(screen.getByText('Thread')).toBeInTheDocument();
+    expect(screen.queryByText('Simulations')).toBeNull();
     expect(screen.queryByText('Recent')).toBeNull();
   });
 
@@ -157,11 +158,11 @@ describe('Sidebar composition — Simulations label + no dead affordances (D-11/
     expect(screen.queryByText('Boards')).toBeNull();
   });
 
-  it('empty state reads "No simulations yet."', async () => {
+  it('empty state reads "No threads yet."', async () => {
     vi.resetModules();
     mockHistory([]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    expect(screen.getByText(/no simulations yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no threads yet/i)).toBeInTheDocument();
   });
 });

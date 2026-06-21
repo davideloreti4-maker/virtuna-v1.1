@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 
 vi.mock('@/hooks/queries', () => ({
@@ -40,5 +40,19 @@ describe('Sidebar a11y', () => {
     const results = await axe(container);
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(results).toHaveNoViolations();
+  });
+
+  it('exposes the four literal nav nouns incl. the new Library item (IA-01)', () => {
+    render(<Sidebar />);
+    // The four literal nouns: New Thread (CTA) + Settings · Audience · Library.
+    // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
+    // anchor on the noun rather than an exact string.
+    expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
+    // The relabeled history section header reads "Thread" (the old "Simulations"
+    // copy is gone — the positive New Thread / Thread assertions above prove it).
+    expect(screen.getByText('Thread')).toBeInTheDocument();
   });
 });

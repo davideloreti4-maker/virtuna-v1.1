@@ -380,6 +380,21 @@ function round(n: number): number {
 // the same numbers that already feed the legacy rows, just reshaped.
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** First real segment-reason note for a persona (verbatim, never fabricated).
+ *  Returns undefined when the persona has no inflection-point notes. */
+function firstSegmentReason(reasons: Record<number, string> | undefined): string | undefined {
+  if (!reasons) return undefined;
+  const keys = Object.keys(reasons)
+    .map((k) => Number(k))
+    .filter((k) => Number.isFinite(k))
+    .sort((a, b) => a - b);
+  for (const k of keys) {
+    const v = reasons[k];
+    if (typeof v === 'string' && v.trim().length > 0) return v.trim();
+  }
+  return undefined;
+}
+
 /** Mean of a persona's per-segment attentions on a 0-1 scale. */
 function personaAttentionMean(attentions: number[]): number {
   if (attentions.length === 0) return 0;
@@ -456,8 +471,99 @@ export function buildPersonaNodes(
       segment: SLOT_LABEL[slot],
       dropAt: p.swipe_predicted_at != null ? formatTime(p.swipe_predicted_at) : undefined,
       tone: badKey != null && slot === badKey ? ('accent' as const) : ('default' as const),
+      // Verbatim reaction to THIS concept for the Lens drill-down (LIVE-02). On the
+      // video surface the only real per-persona reaction text is `segment_reasons`
+      // (sparse inflection-point notes) — pick the first one, never fabricated.
+      quote: firstSegmentReason(p.segment_reasons),
+      // The registry archetype enum (when the heatmap persona carries one) — powers the
+      // "Ask them why →" persona chat grounding (P9 / D-03). Undefined when unknown.
+      archetype: p.archetype ?? undefined,
     };
   });
+}
+
+/**
+ * Flat Shape-B reaction (the text-skill / text-Read persona shape, D-06): a binary
+ * stop/scroll verdict + a verbatim quote, with NO per-segment attention timeline.
+ * Source: PersonasBlock / MultiAudienceReadBlock `{archetype, verdict, quote}`.
+ */
+export interface FlatPersonaReaction {
+  archetype: string;
+  verdict: 'stop' | 'scroll';
+  quote: string;
+}
+
+/**
+ * Adapt flat Shape-B reactions into `PersonaNode[]` so the SAME Lens views (cluster,
+ * cascade reveal, Population swarm, node drill) that the rich video timeline feeds can
+ * also render the text surfaces — degrade-by-feature (D-04/D-06): the only thing flat
+ * data CANNOT do is segment-by-segment replay (no timeline). Pure, no React.
+ *
+ * - watchThrough is BINARY-derived from the real verdict (stop → 1, scroll → 0) — we
+ *   never fabricate a continuous attention number the flat shape never emitted.
+ * - weight is flat (every flat persona equal) since there is no per-segment attention
+ *   mean to size by; radius differences would imply a signal that does not exist.
+ * - slot/segment is mapped from the archetype via the registry slot heuristic so the
+ *   cluster lens (buildSegmentGroups consumes nodes' real slots on the video path; on
+ *   flat surfaces we cluster directly off these nodes — see clusterFlatNodes).
+ * - tone is left 'default'; the worst-cluster coral is applied by the flat clusterer,
+ *   which mirrors worstBadGroupKey's <40%-stop rule.
+ */
+export function buildFlatPersonaNodes(reactions: FlatPersonaReaction[]): PersonaNode[] {
+  return reactions.map((r, i) => {
+    const slot = archetypeToSlot(r.archetype);
+    return {
+      id: `${r.archetype}:${i}`,
+      label: ARCHETYPE_DISPLAY_NAME[r.archetype] ?? r.archetype.replace(/_/g, ' '),
+      weight: 0.5,
+      watchThrough: r.verdict === 'stop' ? 1 : 0,
+      segment: SLOT_LABEL[slot],
+      tone: 'default' as const,
+      quote: r.quote,
+      archetype: r.archetype,
+    };
+  });
+}
+
+/** Best-effort archetype → slot mapping for the flat clusterer (prefix heuristic).
+ *  Exported so the flat cloud (AudienceLens) can decide coral toning by the SAME slot
+ *  identity the cluster table uses, rather than re-running the <40% rule per single node
+ *  (which painted a different "worst cluster" member than ClusterView — WR-02). */
+export function archetypeToSlot(archetype: string): SlotKey {
+  const a = archetype.toLowerCase();
+  if (a.includes('loyal')) return 'loyalist';
+  if (a.includes('cross')) return 'cross_niche';
+  if (a.includes('niche')) return 'niche';
+  return 'fyp';
+}
+
+/**
+ * Cluster flat PersonaNodes into the 4 slot groups by the SAME Temp×Disposition lens
+ * the video path uses (buildSegmentGroups), but driven by the binary verdict — pct is
+ * the % of the group that STOPPED (kept watching). Mirrors worstBadGroupKey's <40%
+ * rule for the single worst (coral) cluster, ≤2 coral marks (UI-SPEC). Pure.
+ */
+export function clusterFlatNodes(nodes: PersonaNode[]): {
+  groups: SegmentGroup[];
+  worstKey: SlotKey | null;
+} {
+  const bySlot = new Map<SlotKey, PersonaNode[]>();
+  for (const n of nodes) {
+    const slot = n.archetype ? archetypeToSlot(n.archetype) : 'fyp';
+    const arr = bySlot.get(slot) ?? [];
+    arr.push(n);
+    bySlot.set(slot, arr);
+  }
+  const groups: SegmentGroup[] = SLOT_GROUPS.map(({ key, label }) => {
+    const members = bySlot.get(key) ?? [];
+    const count = members.length;
+    const stopPct =
+      count > 0
+        ? (members.filter((m) => m.watchThrough >= 0.5).length / count) * 100
+        : 0;
+    return { key, label, pct: stopPct, desc: retentionDesc(stopPct), count };
+  });
+  return { groups, worstKey: worstBadGroupKey(groups) };
 }
 
 /** Mean watch-through across all persona nodes, as a 0-100 int (null when none). */

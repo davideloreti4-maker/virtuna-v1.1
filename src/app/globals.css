@@ -301,6 +301,19 @@
   }
 }
 
+/* Composer popover (UX-01): a quick upward fade-scale from the trigger's bottom-left.
+ * Calm + short (.14s) per the flat-warm taste bar — no bounce, no glow. */
+@keyframes composer-pop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */
@@ -371,6 +384,13 @@ body {
     transform: translateY(calc(-100% - var(--gap)));
     }
   }
+}
+
+/* AudiencePresence — the live "alive" presence dot (P13). Liveness via motion + cream
+ * opacity only (never coral). JS-gated on reducedMotion, so it is absent under reduce. */
+@keyframes audpulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 /* ============================================

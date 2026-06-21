@@ -11,6 +11,11 @@
  *
  * These tests drive analysisId transitions with NO submit (hydration) and WITH
  * a submit, asserting router.push only fires for the submitted run.
+ *
+ * Extended (Plan 01-04 / Pitfall #5): assert that chip selection does NOT arm
+ * navigation — a chip click is NOT a submit; pendingNavRef must stay false after
+ * clicking a chip. A hydration-sourced analysisId that appears AFTER a chip click
+ * must still not navigate.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
@@ -74,6 +79,17 @@ function submitButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: /simulate|submit|send/i }) as HTMLButtonElement;
 }
 
+/** Find the Test chip by its visible label span text. */
+function testChip(): HTMLButtonElement {
+  const btns = screen.getAllByRole('button');
+  const btn = btns.find((b) => {
+    const spans = b.querySelectorAll('span');
+    return spans.length > 0 && spans[0].textContent?.trim() === 'Test';
+  });
+  if (!btn) throw new Error('Test chip not found');
+  return btn as HTMLButtonElement;
+}
+
 beforeEach(() => {
   start.mockClear();
   push.mockClear();
@@ -122,5 +138,42 @@ describe('Composer navigate guard (WR-05)', () => {
     });
 
     expect(push).toHaveBeenCalledWith('/analyze/fresh-submit-id');
+  });
+});
+
+describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)', () => {
+  it('does NOT navigate after clicking the Test chip (chip is not a submit)', () => {
+    // Pinned layout — routeId is set in beforeEach.
+    const { rerender } = render(<Composer />);
+    expect(push).not.toHaveBeenCalled();
+
+    // Click the Test chip — this is purely a tool-selection action, not a submit.
+    fireEvent.click(testChip());
+    expect(push).not.toHaveBeenCalled();
+
+    // Even if a hydration analysisId arrives after the chip click, no navigation.
+    analysisId = 'hydration-after-chip-click';
+    act(() => {
+      rerender(<Composer />);
+    });
+
+    // pendingNavRef was never armed by the chip click, so navigation is suppressed.
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('hydration id does NOT navigate even after a chip interaction followed by no submit', () => {
+    const { rerender } = render(<Composer />);
+
+    // Click chip — not a submit
+    fireEvent.click(testChip());
+
+    // Hydration sets analysisId (simulates the URL on mount)
+    analysisId = 'permalink-xyz';
+    act(() => {
+      rerender(<Composer />);
+    });
+
+    // Guard holds — no navigation
+    expect(push).not.toHaveBeenCalled();
   });
 });

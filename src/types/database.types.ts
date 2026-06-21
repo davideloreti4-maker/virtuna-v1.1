@@ -233,7 +233,6 @@ export type Database = {
           deepseek_model: string | null
           deleted_at: string | null
           emotion_arc: Json | null
-          verbatim: Json | null
           engine_version: string | null
           factors: Json | null
           feature_vector: Json | null
@@ -244,14 +243,14 @@ export type Database = {
           hook_decomposition: Json | null
           id: string
           input_mode: string | null
-          mode: string
-          parent_id: string | null
           insights: string | null
           latency_ms: number | null
           ml_score: number | null
+          mode: string
           optimal_post_override: Json | null
           optimal_post_window: Json | null
           overall_score: number | null
+          parent_id: string | null
           persona_behavioral_aggregate: Json | null
           personas: Json | null
           project_id: string | null
@@ -268,6 +267,7 @@ export type Database = {
           updated_at: string | null
           user_id: string
           variants: Json | null
+          verbatim: Json | null
           video_storage_path: string | null
           warnings: string[] | null
         }
@@ -288,7 +288,6 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
-          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -299,14 +298,14 @@ export type Database = {
           hook_decomposition?: Json | null
           id: string
           input_mode?: string | null
-          mode?: string
-          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          mode?: string
           optimal_post_override?: Json | null
           optimal_post_window?: Json | null
           overall_score?: number | null
+          parent_id?: string | null
           persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
@@ -323,6 +322,7 @@ export type Database = {
           updated_at?: string | null
           user_id: string
           variants?: Json | null
+          verbatim?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
@@ -343,7 +343,6 @@ export type Database = {
           deepseek_model?: string | null
           deleted_at?: string | null
           emotion_arc?: Json | null
-          verbatim?: Json | null
           engine_version?: string | null
           factors?: Json | null
           feature_vector?: Json | null
@@ -354,14 +353,14 @@ export type Database = {
           hook_decomposition?: Json | null
           id?: string
           input_mode?: string | null
-          mode?: string
-          parent_id?: string | null
           insights?: string | null
           latency_ms?: number | null
           ml_score?: number | null
+          mode?: string
           optimal_post_override?: Json | null
           optimal_post_window?: Json | null
           overall_score?: number | null
+          parent_id?: string | null
           persona_behavioral_aggregate?: Json | null
           personas?: Json | null
           project_id?: string | null
@@ -378,10 +377,18 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
           variants?: Json | null
+          verbatim?: Json | null
           video_storage_path?: string | null
           warnings?: string[] | null
         }
         Relationships: [
+          {
+            foreignKeyName: "analysis_results_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "analysis_results_project_id_fkey"
             columns: ["project_id"]
@@ -390,6 +397,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audiences: {
+        Row: {
+          calibration: Json | null
+          created_at: string
+          cross_niche: number
+          fyp: number
+          goal_intent: string | null
+          goal_label: string | null
+          id: string
+          is_general: boolean
+          is_preset: boolean
+          loyalist: number
+          name: string
+          niche: number
+          personas: Json
+          platform: string
+          profile: Json | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          calibration?: Json | null
+          created_at?: string
+          cross_niche?: number
+          fyp?: number
+          goal_intent?: string | null
+          goal_label?: string | null
+          id?: string
+          is_general?: boolean
+          is_preset?: boolean
+          loyalist?: number
+          name: string
+          niche?: number
+          personas?: Json
+          platform: string
+          profile?: Json | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          calibration?: Json | null
+          created_at?: string
+          cross_niche?: number
+          fyp?: number
+          goal_intent?: string | null
+          goal_label?: string | null
+          id?: string
+          is_general?: boolean
+          is_preset?: boolean
+          loyalist?: number
+          name?: string
+          niche?: number
+          personas?: Json
+          platform?: string
+          profile?: Json | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       benchmark_results: {
         Row: {
@@ -1044,6 +1114,38 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          body: Json
+          created_at: string
+          id: string
+          role: string
+          thread_id: string
+        }
+        Insert: {
+          body?: Json
+          created_at?: string
+          id?: string
+          role: string
+          thread_id: string
+        }
+        Update: {
+          body?: Json
+          created_at?: string
+          id?: string
+          role?: string
+          thread_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       niche_post_windows: {
         Row: {
           computed_at: string
@@ -1070,6 +1172,59 @@ export type Database = {
           sample_size?: number
         }
         Relationships: []
+      }
+      outcome_signatures: {
+        Row: {
+          analysis_id: string | null
+          audience_id: string | null
+          created_at: string
+          id: string
+          platform_post_url: string | null
+          posted_at: string | null
+          predicted_vector: Json
+          raw_metrics: Json | null
+          realized_provenance: Json | null
+          realized_vector: Json | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          analysis_id?: string | null
+          audience_id?: string | null
+          created_at?: string
+          id?: string
+          platform_post_url?: string | null
+          posted_at?: string | null
+          predicted_vector: Json
+          raw_metrics?: Json | null
+          realized_provenance?: Json | null
+          realized_vector?: Json | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          analysis_id?: string | null
+          audience_id?: string | null
+          created_at?: string
+          id?: string
+          platform_post_url?: string | null
+          posted_at?: string | null
+          predicted_vector?: Json
+          raw_metrics?: Json | null
+          realized_provenance?: Json | null
+          realized_vector?: Json | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outcome_signatures_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outcomes: {
         Row: {
@@ -1150,6 +1305,75 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      reconciliations: {
+        Row: {
+          audience_id: string | null
+          classification: Json
+          confirmed_at: string | null
+          created_at: string
+          divergence_vector: Json
+          follower_tier: string | null
+          goal_intent: string | null
+          id: string
+          niche: string | null
+          outcome_signature_id: string | null
+          predicted_vector: Json
+          proposal_state: string
+          proposed_delta: Json | null
+          realized_vector: Json
+          user_id: string
+        }
+        Insert: {
+          audience_id?: string | null
+          classification: Json
+          confirmed_at?: string | null
+          created_at?: string
+          divergence_vector: Json
+          follower_tier?: string | null
+          goal_intent?: string | null
+          id?: string
+          niche?: string | null
+          outcome_signature_id?: string | null
+          predicted_vector: Json
+          proposal_state?: string
+          proposed_delta?: Json | null
+          realized_vector: Json
+          user_id: string
+        }
+        Update: {
+          audience_id?: string | null
+          classification?: Json
+          confirmed_at?: string | null
+          created_at?: string
+          divergence_vector?: Json
+          follower_tier?: string | null
+          goal_intent?: string | null
+          id?: string
+          niche?: string | null
+          outcome_signature_id?: string | null
+          predicted_vector?: Json
+          proposal_state?: string
+          proposed_delta?: Json | null
+          realized_vector?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliations_audience_id_fkey"
+            columns: ["audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reconciliations_outcome_signature_id_fkey"
+            columns: ["outcome_signature_id"]
+            isOneToOne: false
+            referencedRelation: "outcome_signatures"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_clicks: {
         Row: {
@@ -1314,6 +1538,47 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_type: string
+          ref_id: string | null
+          snapshot: Json
+          thread_id: string | null
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_type: string
+          ref_id?: string | null
+          snapshot: Json
+          thread_id?: string | null
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_type?: string
+          ref_id?: string | null
+          snapshot?: Json
+          thread_id?: string | null
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_items_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scraped_videos: {
         Row: {
           archived_at: string | null
@@ -1460,6 +1725,51 @@ export type Database = {
         }
         Relationships: []
       }
+      threads: {
+        Row: {
+          active_audience_id: string | null
+          created_at: string
+          id: string
+          reading_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active_audience_id?: string | null
+          created_at?: string
+          id?: string
+          reading_id?: string | null
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active_audience_id?: string | null
+          created_at?: string
+          id?: string
+          reading_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threads_active_audience_id_fkey"
+            columns: ["active_audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "threads_reading_id_fkey"
+            columns: ["reading_id"]
+            isOneToOne: false
+            referencedRelation: "analysis_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tiktok_accounts: {
         Row: {
           created_at: string | null
@@ -1483,6 +1793,33 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           platform?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tracked_accounts: {
+        Row: {
+          created_at: string
+          handle: string
+          id: string
+          platform: string
+          source_video_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          handle: string
+          id?: string
+          platform?: string
+          source_video_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          handle?: string
+          id?: string
+          platform?: string
+          source_video_id?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1801,6 +2138,27 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          source?: string
+        }
+        Relationships: []
+      }
       wallet_transactions: {
         Row: {
           amount_cents: number
@@ -1851,15 +2209,15 @@ export type Database = {
       cleanup_expired_filmstrips: { Args: never; Returns: undefined }
       compute_niche_percentiles: {
         Args: {
-          p_society_id: string
-          p_exclude_user_id?: string | null
+          p_exclude_user_id?: string
           p_min_cohort_size?: number
+          p_society_id: string
         }
         Returns: {
-          median: number
-          p75: number
           count: number
           histogram: number[]
+          median: number
+          p75: number
         }[]
       }
       increment_creator_analysis_count: {
@@ -1936,6 +2294,7 @@ export type Database = {
         }[]
       }
       refresh_niche_post_windows: { Args: never; Returns: undefined }
+      waitlist_count: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
