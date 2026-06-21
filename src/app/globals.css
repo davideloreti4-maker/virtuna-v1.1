@@ -386,6 +386,13 @@ body {
   }
 }
 
+/* AudiencePresence — the live "alive" presence dot (P13). Liveness via motion + cream
+ * opacity only (never coral). JS-gated on reducedMotion, so it is absent under reduce. */
+@keyframes audpulse {
+  0%, 100% { opacity: 0.35; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 /* ============================================
  * REDUCED MOTION (FOUND-04, CONTEXT D-17 layer 2)
  * ============================================

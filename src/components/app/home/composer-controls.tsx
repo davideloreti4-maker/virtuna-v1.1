@@ -23,8 +23,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import type { Audience } from "@/lib/audience/audience-types";
 import { cn } from "@/lib/utils";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
@@ -314,7 +312,7 @@ export function ModelTag({ activeTool, className }: { activeTool: ToolId; classN
 // ─── ComposerControls — the LEFT cluster ([+] · skill · audience · intent) ────
 // "search" added (P11): the Explore-only params popover trigger sits beside the
 // audience control; only mounts when activeTool === "explore".
-type PopId = "attach" | "skill" | "aud" | "intent" | "search" | null;
+type PopId = "attach" | "skill" | "intent" | "search" | null;
 
 /**
  * Params the Explore "Search" popover passes up to onRunExplore (forwarded to
@@ -329,21 +327,12 @@ export interface ExploreParams {
   serendipity?: number;
 }
 
-const PLATFORM_SHORT: Record<string, string> = {
-  tiktok: "TikTok",
-  instagram: "IG",
-  youtube: "YT",
-  custom: "Custom",
-};
-
 export interface ComposerControlsProps {
   activeTool: ToolId;
   onSelectTool: (id: ToolId) => void;
 
-  audiences: Audience[];
-  /** null = General (sentinel). */
-  selectedAudienceId: string | null;
-  onSelectAudience: (audience: Audience) => void;
+  // Audience identity + switching moved to <AudiencePresence> (P13 fork #3) — the
+  // composer's icon-only audience chip retired. These controls no longer take it.
 
   intent: Intent;
   onIntentChange: (intent: Intent) => void;
@@ -366,9 +355,6 @@ export interface ComposerControlsProps {
 export function ComposerControls({
   activeTool,
   onSelectTool,
-  audiences,
-  selectedAudienceId,
-  onSelectAudience,
   intent,
   onIntentChange,
   onUploadClick,
@@ -404,9 +390,6 @@ export function ComposerControls({
   }, [pop]);
 
   const skill = getSkill(activeTool);
-  const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
-  const isGeneral = !selectedAudience || selectedAudience.is_general;
-  const audienceName = isGeneral ? "General" : selectedAudience?.name ?? "General";
 
   const toggle = (id: PopId) => setPop((cur) => (cur === id ? null : id));
 
@@ -498,64 +481,8 @@ export function ComposerControls({
         </Popover>
       </div>
 
-      {/* Audience — icon-only, borderless */}
-      <div className="relative">
-        <button
-          type="button"
-          aria-label={`Audience: ${audienceName}`}
-          title={`Audience · ${audienceName}`}
-          aria-haspopup="menu"
-          aria-expanded={pop === "aud"}
-          onClick={() => toggle("aud")}
-          className={cn(ctl, !isGeneral && "text-[#d97757]")}
-        >
-          <Ico name="people" size={16} />
-        </button>
-        <Popover open={pop === "aud"}>
-          <GroupLabel>Your audience</GroupLabel>
-          {audiences.length === 0 && (
-            <div className="px-2.5 py-2 text-[12px] text-foreground-muted">No audiences yet.</div>
-          )}
-          {audiences.map((a) => {
-            const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
-            const sub = a.is_general
-              ? "Default — keeps the regression gate"
-              : `${PLATFORM_SHORT[a.platform] ?? a.platform}${a.goal_label ? ` · ${a.goal_label}` : ""}`;
-            return (
-              <button
-                key={a.id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={on}
-                onClick={() => {
-                  onSelectAudience(a);
-                  setPop(null);
-                }}
-                className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#2b2926]"
-              >
-                <Ico name="people" size={16} className="text-foreground-secondary" />
-                <span className="min-w-0 flex-1">
-                  <span className={cn("block text-[13.5px] font-medium", on ? "text-[#d97757]" : "text-foreground")}>
-                    {a.name}
-                  </span>
-                  <span className="mt-0.5 block truncate text-[11.5px] text-foreground-muted">{sub}</span>
-                </span>
-                <Ico name="check" size={16} className={cn("text-[#d97757]", on ? "opacity-100" : "opacity-0")} />
-              </button>
-            );
-          })}
-          <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />
-          <Link
-            href="/audience"
-            onClick={() => setPop(null)}
-            className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-[13px] text-foreground-muted transition-colors hover:bg-[#2b2926] hover:text-foreground"
-          >
-            <Ico name="plus" size={16} />
-            <span className="flex-1">Manage audiences</span>
-            <Ico name="chevR" size={14} className="text-foreground-muted/45" />
-          </Link>
-        </Popover>
-      </div>
+      {/* Audience identity + switching live in <AudiencePresence> now (P13 fork #3) —
+          the icon-only audience chip retired from this LEFT cluster. */}
 
       {/* Search — Explore-only params popover (P11 / EXPLORE-01, D-06, UI-SPEC §Surface 4).
           Icon-only borderless control beside the audience picker; mounts ONLY when the

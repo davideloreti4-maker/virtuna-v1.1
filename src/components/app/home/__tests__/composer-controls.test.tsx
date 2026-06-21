@@ -13,7 +13,6 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
-import type { Audience } from "@/lib/audience/audience-types";
 import {
   ComposerControls,
   ModelTag,
@@ -28,29 +27,10 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-const GENERAL: Audience = {
-  id: "general",
-  is_general: true,
-  name: "General",
-  platform: "tiktok",
-  goal_label: null,
-} as unknown as Audience;
-
-const GYM: Audience = {
-  id: "gym",
-  is_general: false,
-  name: "Gym Beginners",
-  platform: "tiktok",
-  goal_label: "grow",
-} as unknown as Audience;
-
 function renderControls(over: Partial<React.ComponentProps<typeof ComposerControls>> = {}) {
   const props: React.ComponentProps<typeof ComposerControls> = {
     activeTool: "test",
     onSelectTool: vi.fn(),
-    audiences: [GENERAL, GYM],
-    selectedAudienceId: null,
-    onSelectAudience: vi.fn(),
     intent: "grow",
     onIntentChange: vi.fn(),
     onUploadClick: vi.fn(),
@@ -144,15 +124,7 @@ describe("ModelTag — read-only model indicator (D-09)", () => {
   });
 });
 
-describe("ComposerControls — audience + intent popovers", () => {
-  it("lists audiences and fires onSelectAudience on pick", () => {
-    const onSelectAudience = vi.fn();
-    renderControls({ onSelectAudience });
-    fireEvent.click(screen.getByRole("button", { name: /audience:/i }));
-    fireEvent.click(screen.getByRole("menuitemradio", { name: /gym beginners/i }));
-    expect(onSelectAudience).toHaveBeenCalledWith(GYM);
-  });
-
+describe("ComposerControls — intent popover (audience switching retired to AudiencePresence)", () => {
   it("fires onIntentChange when Sell is chosen", () => {
     const onIntentChange = vi.fn();
     renderControls({ onIntentChange });
