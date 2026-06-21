@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: milestone
-status: paused
-stopped_at: P13 built (4/4) but ambient UX REJECTED by owner — rebuild required. See 13-HANDOFF.md. Fix generate→render bug first.
-last_updated: "2026-06-21T00:00:00.000Z"
-last_activity: 2026-06-21 -- P13 ambient UX rejected; handoff written, paused for clean-context rebuild
+status: shipped
+stopped_at: v6.0 (P1–14) SHIPPED to main via clean code-only PR 2026-06-21. NOTE the phase tables below LAG — P11 (Explore) and P13 (ambient PANEL redesign) ARE built+verified. All deferred work consolidated in .planning/DEBT-BACKLOG.md (single resume point). This worktree stays live to burn it down.
+last_updated: "2026-06-21T12:00:00.000Z"
+last_activity: 2026-06-21 -- v6.0 shipped to main; DEBT-BACKLOG.md written; worktree retained for P15/16/17 + engine track + cross-milestone branch triage
 progress:
   total_phases: 17
   completed_phases: 14
