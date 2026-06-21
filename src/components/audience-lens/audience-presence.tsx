@@ -1,0 +1,529 @@
+'use client';
+
+/**
+ * AudiencePresence — the persistent, premium living-audience PRESENCE (P13, redesigned
+ * 2026-06-21 per owner feedback). It is the always-on FRONT DOOR to the ONE shipped
+ * AudienceLens, rendered as TWO clean states (NOT a 3-step drawer):
+ *
+ *   • PEEK (at rest) — a matte band docked directly above the composer (it travels with the
+ *     composer; both bottom-pinned on mobile). It carries the audience IDENTITY (name + a small
+ *     live persona constellation that breathes) + a ONE-LINE PULSE: a live read when there's a
+ *     focus ("6 of 10 would stop"), readiness when idle ("General · 10 personas ready") — never
+ *     a stale reaction. Tap to open.
+ *   • PANEL (tap the band) — it expands UPWARD into a panel anchored over the composer field
+ *     (NOT a full-screen drawer, NO scrim): one continuous surface that shows the ONE shipped
+ *     <AudienceLensContent> (The Read + lever, Panel·10 ⇄ Population·1,000, replay/swarm,
+ *     per-persona chat, Rewrite) for the current focus, plus the conversation of asks. The
+ *     COMPOSER FIELD stays the input — when the panel is open, typing + send routes into the
+ *     audience chat (the host drives `asks`/`asking` + `focus`), so there is no second input.
+ *
+ * The PRESENCE owns audience identity + switching (the composer's icon-only audience chip
+ * retired). Honesty spine (binding): exactly ONE labeled concept at a time, idle when nothing is
+ * in focus, never a fabricated reaction or per-persona quote. Coral is reserved for the worst dot
+ * + the Lens's own CTAs; liveness reads via motion + cream opacity only. Deterministic (mulberry32
+ * seeded, no wall-clock / PRNG in render) — SSR-hydration + engine-determinism-gate safe.
+ */
+
+import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import { Users, Check, Plus, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
+import type { Audience } from '@/lib/audience/audience-types';
+import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+import { cardScrollQuoteReactions } from './flat-card-reactions';
+import { AudienceLensContent } from './AudienceLensContent';
+import type { AmbientFocus } from './ambient-presence-types';
+
+// ── Copy ──────────────────────────────────────────────────────────────────────
+const TITLE = 'Your audience';
+const LOADING_COPY = 'Reading the room…';
+const MANAGE_LABEL = 'Manage audiences';
+
+// ── Constellation geometry ──────────────────────────────────────────────────────
+const DEFAULT_ROSTER_DOTS = 10;
+const CREAM = '236, 231, 222'; // --color-cream-primary, used as rgba(CREAM, α) for liveness
+
+/** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
+export interface AudienceAsk {
+  id: string;
+  thought: string;
+  fraction: string;
+  scrollQuote: string;
+  error?: boolean;
+}
+
+/** Deterministic seeded PRNG — verbatim from PersonaGraph (no nondeterministic source). */
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Archetype-derived display fallback when a persona has no creator-set label. */
+function personaName(label: string | undefined, archetype: string, index: number): string {
+  if (label && label.trim().length > 0) return label.trim();
+  if (archetype && archetype.length > 0) {
+    return archetype
+      .split('_')
+      .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+      .join(' ');
+  }
+  return `Persona ${index + 1}`;
+}
+
+/** Parse "6/10 stop" → { stop, total }; null on any unexpected shape (→ readiness copy). */
+function parseStop(fraction: string): { stop: number; total: number } | null {
+  const m = fraction.match(/(\d+)\s*\/\s*(\d+)/);
+  if (!m) return null;
+  const stop = Number(m[1]);
+  const total = Number(m[2]);
+  if (!Number.isFinite(stop) || !Number.isFinite(total) || total <= 0 || stop > total) return null;
+  return { stop, total };
+}
+
+interface ConDot {
+  id: string;
+  cx: number;
+  cy: number;
+  r: number;
+  fill: string;
+  accent: boolean;
+  phase: number;
+  srLabel: string;
+}
+
+/**
+ * Build the constellation dots: one per calibrated persona (or a calm default roster). When a
+ * focus is present each dot is toned from the concept's real verdict (stop brighter cream,
+ * scroll dimmer, the single worst slot coral); idle = one calm uniform cream (no verdict).
+ */
+function buildDots(
+  personas: Audience['personas'],
+  flat: FlatPersonaReaction[],
+  vbW: number,
+  vbH: number,
+): ConDot[] {
+  const count = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
+  const rnd = mulberry32(1013904223 + count * 2654435761);
+  const focused = flat.length > 0;
+  const worstScrollIndex = flat.findIndex((p) => p.verdict === 'scroll');
+  const padX = vbH * 0.5;
+  const usableW = vbW - padX * 2;
+
+  const out: ConDot[] = [];
+  for (let i = 0; i < count; i++) {
+    const t = count === 1 ? 0.5 : i / (count - 1);
+    const cx = padX + t * usableW;
+    const jitter = (rnd() - 0.5) * (vbH * 0.46);
+    const cy = vbH / 2 + jitter;
+
+    const persona = personas[i];
+    const reaction = flat[i];
+    const isWorst = focused && i === worstScrollIndex && worstScrollIndex >= 0;
+
+    let fill: string;
+    let r: number;
+    if (isWorst) {
+      fill = 'var(--color-accent)';
+      r = vbH * 0.17;
+    } else if (focused && reaction) {
+      const alpha = reaction.verdict === 'stop' ? 0.72 : 0.28;
+      fill = `rgba(${CREAM}, ${alpha.toFixed(2)})`;
+      r = reaction.verdict === 'stop' ? vbH * 0.17 : vbH * 0.13;
+    } else {
+      fill = `rgba(${CREAM}, 0.5)`;
+      r = vbH * 0.15;
+    }
+
+    const name = persona ? personaName(persona.label, persona.archetype, i) : `Persona ${i + 1}`;
+    out.push({
+      id: persona?.archetype ? `${persona.archetype}-${i}` : `roster_${i}`,
+      cx,
+      cy,
+      r,
+      fill,
+      accent: isWorst,
+      phase: rnd(),
+      srLabel: focused && reaction ? `${name}: ${reaction.verdict}` : name,
+    });
+  }
+  return out;
+}
+
+/** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
+function Constellation({
+  dots,
+  reducedMotion,
+  width,
+  height,
+  vbW,
+  vbH,
+}: {
+  dots: ConDot[];
+  reducedMotion: boolean;
+  width: number | string;
+  height: number;
+  vbW: number;
+  vbH: number;
+}) {
+  return (
+    <svg
+      viewBox={`0 0 ${vbW} ${vbH}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ width, height }}
+      role="img"
+      aria-label={`Your audience — ${dots.length} people`}
+    >
+      {dots.map((d, i) => (
+        <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
+          {!reducedMotion && (
+            <animateTransform
+              attributeName="transform"
+              type="translate"
+              values="0 0; 0 -1.1; 0 0.9; 0 0"
+              dur={`${(6 + d.phase * 4).toFixed(2)}s`}
+              begin={`${(d.phase * -3).toFixed(2)}s`}
+              repeatCount="indefinite"
+              additive="sum"
+            />
+          )}
+          <circle cx={0} cy={0} r={d.r} fill={d.fill}>
+            {!reducedMotion && !d.accent && (
+              <animate
+                attributeName="opacity"
+                values="0.78;1;0.78"
+                dur={`${(3 + (i % 4)).toFixed(0)}s`}
+                begin={`${(d.phase * -2).toFixed(2)}s`}
+                repeatCount="indefinite"
+              />
+            )}
+          </circle>
+        </g>
+      ))}
+    </svg>
+  );
+}
+
+export interface AudiencePresenceProps {
+  /** The active calibrated audience (null ⇒ treated as General — no crash). */
+  audience: Audience | null;
+  /** All selectable audiences (the PRESENCE owns switching). */
+  audiences: Audience[];
+  /** The selected audience id (or null = General). */
+  selectedAudienceId: string | null;
+  /** Switch the active audience. */
+  onSelectAudience: (audience: Audience) => void;
+  /** The driven in-focus concept (or null = idle). The host owns focus tracking. */
+  focus: AmbientFocus;
+  /** Gates ALL dot motion (hard-stop under reduce). */
+  reducedMotion?: boolean;
+  /** Panel open state — controlled by the host (so the composer can route its input here). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The audience-chat turns the composer field has sent (host-owned). */
+  asks?: AudienceAsk[];
+  /** A room read is in flight (the composer just sent an ask). */
+  asking?: boolean;
+  /** Re-focus the Lens on a past ask (tap a turn in the conversation). */
+  onReask?: (ask: AudienceAsk) => void;
+}
+
+export function AudiencePresence({
+  audience,
+  audiences,
+  selectedAudienceId,
+  onSelectAudience,
+  focus,
+  reducedMotion = false,
+  open,
+  onOpenChange,
+  asks = [],
+  asking = false,
+  onReask,
+}: AudiencePresenceProps) {
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const switcherRef = useRef<HTMLDivElement | null>(null);
+
+  const personas = useMemo(() => audience?.personas ?? [], [audience]);
+  const isGeneral = audience == null || audience.is_general || personas.length === 0;
+  const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
+  const rosterCount = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
+
+  const flatPersonas: FlatPersonaReaction[] = useMemo(
+    () => (focus ? cardScrollQuoteReactions(focus.fraction, focus.scrollQuote) : []),
+    [focus],
+  );
+  const stopRead = useMemo(() => (focus ? parseStop(focus.fraction) : null), [focus]);
+
+  // The one-line pulse: a live read when focused, readiness (never a stale reaction) when idle.
+  const pulseText = stopRead
+    ? `${stopRead.stop} of ${stopRead.total} would stop`
+    : `${audienceName} · ${rosterCount} personas ready`;
+
+  const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
+  const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
+
+  // Esc closes the switcher first, then the panel.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (switcherOpen) setSwitcherOpen(false);
+      else if (open) onOpenChange(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, switcherOpen, onOpenChange]);
+
+  // Outside-click closes the switcher popover (not the panel — the composer must stay typable).
+  useEffect(() => {
+    if (!switcherOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!switcherRef.current?.contains(e.target as Node)) setSwitcherOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [switcherOpen]);
+
+  const handleSelect = (a: Audience) => {
+    onSelectAudience(a);
+    setSwitcherOpen(false);
+  };
+
+  return (
+    <div className="relative w-full" data-testid="audience-presence">
+      {/* ── The content PANEL — expands UPWARD over the composer (anchored above the peek band,
+            flush so peek + panel read as one surface). No scrim, no drawer; the composer below
+            stays the input. ────────────────────────────────────────────────────────────── */}
+      {open && (
+        <div
+          data-testid="audience-panel"
+          role="dialog"
+          aria-label="Your audience"
+          className="absolute bottom-full left-0 right-0 z-[55] flex max-h-[58vh] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-float)]"
+        >
+          <div className="flex shrink-0 items-center justify-between px-4 pb-1.5 pt-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+              The room
+            </span>
+            <button
+              type="button"
+              aria-label="Collapse audience"
+              onClick={() => onOpenChange(false)}
+              className="grid h-7 w-7 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+            {focus ? (
+              <AudienceLensContent
+                heatmap={null}
+                simResults={undefined}
+                flatPersonas={flatPersonas}
+                conceptText={focus.conceptText}
+                reducedMotion={reducedMotion}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 px-5 pb-4 pt-6 text-center">
+                <Constellation
+                  dots={heroDots}
+                  reducedMotion={reducedMotion}
+                  width="100%"
+                  height={110}
+                  vbW={320}
+                  vbH={110}
+                />
+                <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+                <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
+                  Type below to test a thought — your {audienceName} reacts in real time.
+                </p>
+              </div>
+            )}
+
+            {asking && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="px-5 pt-2 text-[13px] font-medium text-[var(--color-foreground-muted)]"
+              >
+                {LOADING_COPY}
+              </p>
+            )}
+
+            {/* The audience-chat conversation — every thought the composer sent + the room's read. */}
+            {asks.length > 0 && (
+              <div className="mt-2 border-t border-[var(--color-border)] px-5 pt-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                  Your asks
+                </p>
+                <ul className="flex flex-col gap-2.5">
+                  {asks.map((a) => {
+                    const read = parseStop(a.fraction);
+                    return (
+                      <li key={a.id}>
+                        <button
+                          type="button"
+                          onClick={() => onReask?.(a)}
+                          className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-border-hover)]"
+                        >
+                          <span className="block truncate text-[13px] text-[var(--color-foreground)]">
+                            “{a.thought}”
+                          </span>
+                          <span className="mt-1 block text-[12px] text-[var(--color-foreground-muted)]">
+                            {a.error
+                              ? "Couldn't reach the room — tap to retry"
+                              : read
+                                ? `${read.stop} of ${read.total} would stop${a.scrollQuote ? ` · “${a.scrollQuote}”` : ''}`
+                                : 'The room reacted'}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── The PEEK band (always the bottom anchor; tap toggles the panel). ── */}
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={open ? 'Collapse your audience' : 'Open your audience'}
+        aria-expanded={open}
+        onClick={() => onOpenChange(!open)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onOpenChange(!open);
+          }
+        }}
+        className={
+          'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
+          (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
+        }
+        style={{ cursor: 'pointer' }}
+      >
+        {/* Identity (name + live constellation) — owns the audience switcher. */}
+        <div className="relative flex min-w-0 items-center" ref={switcherRef}>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={switcherOpen}
+            aria-label={`Audience: ${audienceName}. Switch audience`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSwitcherOpen((v) => !v);
+            }}
+            className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+          >
+            <Constellation
+              dots={peekDots}
+              reducedMotion={reducedMotion}
+              width={56}
+              height={26}
+              vbW={132}
+              vbH={30}
+            />
+            <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
+              <span className="max-w-[120px] truncate">{audienceName}</span>
+              {!reducedMotion && (
+                <span
+                  aria-hidden
+                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
+                  style={{ backgroundColor: `rgba(${CREAM}, 0.85)`, animation: 'audpulse 2.4s ease-in-out infinite' }}
+                />
+              )}
+            </span>
+          </button>
+
+          {/* Switcher popover — opens UPWARD (the presence is bottom-docked). */}
+          {switcherOpen && (
+            <div
+              role="menu"
+              aria-label="Your audiences"
+              className="absolute bottom-full left-0 z-[60] mb-2 max-h-[44vh] w-[280px] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+            >
+              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                {TITLE}
+              </p>
+              {audiences.length === 0 && (
+                <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
+              )}
+              {audiences.map((a) => {
+                const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
+                const sub = a.is_general
+                  ? 'Default — keeps the regression gate'
+                  : `${a.platform}${a.goal_label ? ` · ${a.goal_label}` : ''}`;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={on}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(a);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[var(--color-hover)]"
+                  >
+                    <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-accent)]' : 'text-[var(--color-foreground)]')}>
+                        {a.name}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
+                    </span>
+                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-accent)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                  </button>
+                );
+              })}
+              <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
+              <Link
+                href="/audience"
+                onClick={() => setSwitcherOpen(false)}
+                className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                <span className="flex-1">{MANAGE_LABEL}</span>
+                <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+              </Link>
+            </div>
+          )}
+        </div>
+
+        <div className="mx-1 h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
+        <span
+          data-testid="audience-pulse"
+          className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
+          title={focus?.conceptText}
+        >
+          {pulseText}
+        </span>
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+        ) : (
+          <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+        )}
+      </div>
+
+      {/* sr-only roster mirror — always present (a11y), regardless of motion state. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        <p>
+          {TITLE} — {pulseText}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
+        </p>
+        <ul>
+          {peekDots.map((d) => (
+            <li key={`sr_${d.id}`}>{d.srLabel}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}

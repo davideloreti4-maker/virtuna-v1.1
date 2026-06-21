@@ -36,6 +36,7 @@ export interface InterviewDraft {
   cadence: PostingFrequency | null; // Card 7
   todAware: boolean; // Card 7
   pain: string; // Card 8
+  voice: string; // Card 9
 }
 
 export interface ProfileInterviewState {
@@ -84,6 +85,7 @@ const INITIAL_DRAFT: InterviewDraft = {
   cadence: null,
   todAware: false,
   pain: "",
+  voice: "",
 };
 
 /**
@@ -179,6 +181,8 @@ function serializeCard(
       };
     case 8:
       return { pain_points: draft.pain.trim() || null };
+    case 9:
+      return { writing_voice_sample: draft.voice.trim() || null };
     default:
       return {};
   }
@@ -200,7 +204,8 @@ function serializeAllCards(
     serializeCard(5, draft),
     serializeCard(6, draft),
     serializeCard(7, draft),
-    serializeCard(8, draft)
+    serializeCard(8, draft),
+    serializeCard(9, draft)
   );
 }
 
@@ -284,7 +289,7 @@ export const useProfileInterviewStore = create<ProfileInterviewState>(
     },
 
     skipCard: () => {
-      set((state) => ({ currentCard: Math.min(state.currentCard + 1, 8) }));
+      set((state) => ({ currentCard: Math.min(state.currentCard + 1, 9) }));
     },
 
     goBack: () => {

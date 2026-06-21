@@ -159,3 +159,42 @@ describe("persona-weights precedence resolver (Wave 0 stub)", () => {
     expect(out).toEqual(DEFAULT_PERSONA_WEIGHT_CONFIG.default);
   });
 });
+
+// =====================================================
+// Phase 7 Plan 01 — General-audience identity (AUD-03 regression-gate anchor)
+// =====================================================
+
+describe("General-audience identity (AUD-03 regression-gate anchor)", () => {
+  it("resolveWeights(DEFAULT_PERSONA_WEIGHT_CONFIG, {}) returns the byte-stable DEFAULT mix", () => {
+    // This is the anchor that 07-06 BLOCKING gate re-runs.
+    // Any change to DEFAULT_PERSONA_WEIGHT_CONFIG or resolution for empty context
+    // will immediately surface here, keeping the regression gate free by construction.
+    const { weights, source } = resolveWeights(DEFAULT_PERSONA_WEIGHT_CONFIG, {});
+    expect(source).toBe("default");
+    expect(weights.fyp).toBe(0.65);
+    expect(weights.niche).toBe(0.20);
+    expect(weights.loyalist).toBe(0.10);
+    expect(weights.cross_niche).toBe(0.05);
+  });
+
+  it("empty-context resolution sum is exactly 1.0 (byte-stable precision)", () => {
+    const { weights } = resolveWeights(DEFAULT_PERSONA_WEIGHT_CONFIG, {});
+    const sum = weights.fyp + weights.niche + weights.loyalist + weights.cross_niche;
+    // Exact sum (0.65 + 0.20 + 0.10 + 0.05 = 1.00) — byte-stable by construction.
+    expect(sum).toBe(1.0);
+  });
+
+  it("General resolution does NOT inject an analysis_override (gate-protected)", () => {
+    // If General ever injected an override, source would not be 'default'.
+    // This mirrors the resolveAudienceWeights guard in 07-01.
+    const { source } = resolveWeights(DEFAULT_PERSONA_WEIGHT_CONFIG, {});
+    expect(source).toBe("default");
+    // And passing undefined/null overrides should also be default
+    const { source: s2 } = resolveWeights(DEFAULT_PERSONA_WEIGHT_CONFIG, {
+      analysis_override: undefined,
+      creator_id: undefined,
+      niche: undefined,
+    });
+    expect(s2).toBe("default");
+  });
+});

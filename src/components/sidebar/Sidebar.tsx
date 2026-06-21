@@ -4,9 +4,11 @@
  * Sidebar — lean flat-warm shell (Numen Rework P1, D-10..D-16)
  *
  * Sections (top → bottom):
- *  ⊕ New Simulation — coral primary CTA, ⌘N shortcut, always visible
+ *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
  *  Settings         — settings link + @handle account selector (D-12)
- *  Simulations      — chronological history from useAnalysisHistory (D-13);
+ *  Audience         — audience manager (D-04)
+ *  Library          — saved-content State surface (IA-01 / D-01) → /library
+ *  Thread           — chronological history from useAnalysisHistory (D-13);
  *                     score chips + remix tag; rows route to /analyze/[id]
  *  👤 Account        — bottom-anchored, user avatar + settings/logout
  *
@@ -27,6 +29,8 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
+  UsersThree,
+  Books,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -212,7 +216,7 @@ export function Sidebar() {
     return () => window.removeEventListener("keydown", onKey);
   }, [toggleCollapsed]);
 
-  // Past Simulations (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
+  // Past threads (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
   const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
   const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
     id: string;
@@ -226,6 +230,8 @@ export function Sidebar() {
   const { data: profile } = useProfile();
 
   const isOnSettings = pathname.startsWith("/settings");
+  const isOnAudience = pathname.startsWith("/audience");
+  const isOnLibrary = pathname.startsWith("/library");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -300,11 +306,11 @@ export function Sidebar() {
         {/* Scrollable body — scrollbar hidden for a clean glass edge */}
         <div className="flex flex-1 flex-col overflow-y-auto overflow-x-hidden gap-0.5 px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-          {/* ── ⊕ New Simulation ── */}
+          {/* ── ⊕ New Thread ── */}
           <div className="pb-1">
             <NavItem
               icon={Plus}
-              label="New Simulation"
+              label="New Thread"
               isCollapsed={effectiveCollapsed}
               accent
               onClick={() => { triggerNewAnalysis(); router.push("/home"); }}
@@ -329,13 +335,31 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/settings")}
               />
+              {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
+              <NavItem
+                icon={UsersThree}
+                label="Audience"
+                isActive={isOnAudience}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/audience")}
+              />
+              {/* Library — State surface (IA-01 / D-01). NO accent: its active
+                  state is matte white/[0.06], identical to Settings/Audience —
+                  the nav's one accent belongs to "New Thread". */}
+              <NavItem
+                icon={Books}
+                label="Library"
+                isActive={isOnLibrary}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/library")}
+              />
               <SidebarAccountSelector isCollapsed={effectiveCollapsed} />
             </div>
           </div>
 
-          {/* ── Simulations (D-13) ── */}
+          {/* ── Thread history (D-13) ── */}
           <div className="pt-4 flex-1">
-            {!effectiveCollapsed && <SectionLabel>Simulations</SectionLabel>}
+            {!effectiveCollapsed && <SectionLabel>Thread</SectionLabel>}
             {historyLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-2 px-2.5 pt-1">
                 <Skeleton className="h-3.5 w-full" />
@@ -345,7 +369,7 @@ export function Sidebar() {
             )}
             {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
               <p className="px-2.5 py-1 text-xs text-foreground-muted">
-                No simulations yet.
+                No threads yet.
               </p>
             )}
             {!historyLoading && !effectiveCollapsed && (
@@ -429,12 +453,12 @@ export function Sidebar() {
                     type="button"
                     onClick={() => router.push("/home")}
                     className="w-full flex justify-center py-2 text-foreground-muted hover:text-foreground transition-colors"
-                    aria-label="Simulations"
+                    aria-label="Thread"
                   >
                     <ClockCountdown className="h-5 w-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">Simulations</TooltipContent>
+                <TooltipContent side="right">Thread</TooltipContent>
               </Tooltip>
             )}
           </div>

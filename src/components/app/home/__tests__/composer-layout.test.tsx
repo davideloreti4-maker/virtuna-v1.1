@@ -1,18 +1,16 @@
 /** @vitest-environment happy-dom */
 /**
- * Composer two-layout position (SHELL-04 / D-24).
+ * Composer two-layout position (SHELL-04 / D-24) + thread pin (post-UAT UX fix).
  *
- * The same composer component serves both states; position is driven by
- * whether a Simulation exists (the route id, mirroring ContentForm's
- * isOnResultRoute = !!params.id):
- *  - no id  (empty home)        → data-layout="centered"
- *  - id present (permalink)     → data-layout="pinned"
+ * The same composer component serves three states:
+ *  - no id + no thread   (empty home)      → data-layout="centered"
+ *  - id present          (permalink)       → data-layout="pinned"
+ *  - no id + has thread  (home thread mode)→ data-layout="thread" on the form;
+ *                                            composer-shell data-layout="thread",
+ *                                            scrollable thread-region above, form pinned below.
  *
- * Asserted on a stable data attribute (not styling) so the test is not
- * brittle to flat-warm class changes.
- *
- * Written first (Task 1) — RED until the slim composer (Task 2) exposes the
- * data-layout signal.
+ * Asserted on stable data attributes (not styling classes) so the test is not
+ * brittle to flat-warm design-system changes.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
@@ -62,14 +60,45 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+// ── Ideas stream mock — mutable so we can simulate thread content ─────────
+// ideasMockBlocks controls the value returned by toBlocks().
+let ideasMockBlocks: unknown[] = [];
+let ideasIsStreaming = false;
+vi.mock('@/hooks/queries/use-ideas-stream', () => ({
+  useIdeasStream: () => ({
+    start: vi.fn(),
+    isStreaming: ideasIsStreaming,
+    statusMessage: null,
+    error: null,
+    toBlocks: () => ideasMockBlocks,
+  }),
+}));
+
+// ── Hooks stream mock — mutable similarly ─────────────────────────────────
+let hooksMockBlocks: unknown[] = [];
+let hooksIsStreaming = false;
+vi.mock('@/hooks/queries/use-hooks-stream', () => ({
+  useHooksStream: () => ({
+    start: vi.fn(),
+    isStreaming: hooksIsStreaming,
+    statusMessage: null,
+    error: null,
+    toBlocks: () => hooksMockBlocks,
+  }),
+}));
+
 import { Composer } from '../composer';
 
-function layoutHost(): HTMLElement {
+function composerForm(): HTMLElement {
   return screen.getByTestId('composer');
 }
 
 beforeEach(() => {
   routeId = undefined;
+  ideasMockBlocks = [];
+  ideasIsStreaming = false;
+  hooksMockBlocks = [];
+  hooksIsStreaming = false;
   cleanup();
 });
 
@@ -77,13 +106,13 @@ describe('Composer — two-layout position (SHELL-04 / D-24)', () => {
   it('renders centered when there is no Simulation id (empty home)', () => {
     routeId = undefined;
     render(<Composer />);
-    expect(layoutHost()).toHaveAttribute('data-layout', 'centered');
+    expect(composerForm()).toHaveAttribute('data-layout', 'centered');
   });
 
   it('renders bottom-pinned when a Simulation id is present (permalink route)', () => {
     routeId = 'abc123';
     render(<Composer />);
-    expect(layoutHost()).toHaveAttribute('data-layout', 'pinned');
+    expect(composerForm()).toHaveAttribute('data-layout', 'pinned');
   });
 
   it('switches the active-state placeholder when a Simulation exists', () => {
@@ -92,5 +121,68 @@ describe('Composer — two-layout position (SHELL-04 / D-24)', () => {
     expect(
       screen.getByPlaceholderText(/ask about this simulation/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe('Composer — home thread mode (post-UAT UX pin fix)', () => {
+  it('form gets data-layout="thread" when idea blocks exist on /home', () => {
+    routeId = undefined;
+    // Simulate persisted idea blocks being present (ideas.toBlocks() is non-empty).
+    // activeTool defaults to "test" in the Composer — we exercise the hasThread
+    // signal directly (it checks all block sources, not just the active tool).
+    ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
+    render(<Composer />);
+    expect(composerForm()).toHaveAttribute('data-layout', 'thread');
+  });
+
+  it('form gets data-layout="thread" when hooks are streaming on /home', () => {
+    routeId = undefined;
+    hooksIsStreaming = true;
+    render(<Composer />);
+    expect(composerForm()).toHaveAttribute('data-layout', 'thread');
+  });
+
+  it('renders a scrollable thread-region above the pinned form in thread mode', () => {
+    routeId = undefined;
+    ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
+    render(<Composer />);
+
+    // The composer-shell wraps both regions with data-layout="thread".
+    const shell = screen.getByTestId('composer-shell');
+    expect(shell).toHaveAttribute('data-layout', 'thread');
+
+    // The scrollable thread region sits above the form.
+    const threadRegion = screen.getByTestId('composer-thread-region');
+    expect(threadRegion).toBeInTheDocument();
+    // The form (pinned bottom row) is also present.
+    expect(composerForm()).toBeInTheDocument();
+
+    // Structural order: thread-region precedes the form in the DOM
+    // (thread scrolls above, form pinned below).
+    const shellChildren = Array.from(shell.querySelectorAll('[data-testid]'));
+    const regionIdx = shellChildren.findIndex(
+      (el) => el.getAttribute('data-testid') === 'composer-thread-region',
+    );
+    const formIdx = shellChildren.findIndex(
+      (el) => el.getAttribute('data-testid') === 'composer',
+    );
+    expect(regionIdx).toBeLessThan(formIdx);
+  });
+
+  it('stays centered (no thread shell) when no thread content exists on /home', () => {
+    routeId = undefined;
+    // All blocks empty, no streaming.
+    render(<Composer />);
+    expect(screen.queryByTestId('composer-shell')).toBeNull();
+    expect(composerForm()).toHaveAttribute('data-layout', 'centered');
+  });
+
+  it('does NOT enter thread mode on the permalink route even when blocks exist', () => {
+    routeId = 'abc123';
+    ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
+    render(<Composer />);
+    // Permalink always uses layout="pinned" regardless of thread content.
+    expect(composerForm()).toHaveAttribute('data-layout', 'pinned');
+    expect(screen.queryByTestId('composer-shell')).toBeNull();
   });
 });

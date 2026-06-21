@@ -20,11 +20,23 @@
  * (mirroring ContentForm's isOnResultRoute = !!params.id). What renders ABOVE
  * the pinned composer is Phase 2; the active follow-up BEHAVIOR is Phase 5 —
  * here it is just the input + the active placeholder.
+ *
+ * IDEAS ROUTING (Plan 04, D-12/D-07, Pitfall 5):
+ *   When activeTool === "idea", submit routes to the Ideas pipeline via
+ *   useIdeasStream.start() instead of stream.start. CRITICAL: the Idea path
+ *   MUST NOT set pendingNavRef.current = true and MUST NOT call stream.start —
+ *   those are exclusive to the Test upload/URL paths so an Idea send never
+ *   navigates to /analyze/[id] (T-03-13, WR-05).
+ *   The platform chip (D-07) sets the first-class platform param on the Ideas request.
+ *   Client-side URL relax for the idea tool is UX-only; the server route independently
+ *   validates the ask (WARNING-5, T-03-15).
+ *
+ *   useIdeasStream drives IdeasThreadView rendered above the composer when active.
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Plus, ArrowUp } from "lucide-react";
+import { ArrowUp } from "lucide-react";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -32,6 +44,31 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
+import {
+  ComposerControls,
+  ModelTag,
+  SkillRows,
+  SKILLS,
+  type ToolId,
+  type Intent,
+} from "./composer-controls";
+import type { Platform } from "./platform-chip";
+import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
+import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
+import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
+import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
+import { HooksThreadView } from "@/components/thread/hooks-thread-view";
+import { useChatStream } from "@/hooks/queries/use-chat-stream";
+import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { useScriptStream } from "@/hooks/queries/use-script-stream";
+import { ScriptThreadView } from "@/components/thread/script-thread-view";
+import { useRemixStream } from "@/hooks/queries/use-remix-stream";
+import { RemixThreadView } from "@/components/thread/remix-thread-view";
+import { useExploreStream } from "@/hooks/queries/use-explore-stream";
+import { ExploreThreadView } from "@/components/thread/explore-thread-view";
+import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
+import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
+import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
 // server /api/analyze route, so the fast UX reject can never drift from the
@@ -39,17 +76,47 @@ import { createClient } from "@/lib/supabase/client";
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 
+// Matches a canonical v1–v5 UUID. Used to gate the per-thread audience pin: only a
+// real audience-row UUID (or null=General) may PATCH threads.active_audience_id (uuid
+// column); virtual preset ids like "preset-growth" must never reach it (would 500).
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
 const ERROR_NON_TIKTOK =
   "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
 
-export interface ComposerProps {
-  className?: string;
+// Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
+// Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat — P5. Script/Remix — P6 (06-05).
+const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
+  test: PLACEHOLDER_EMPTY,
+  idea: "What idea or topic do you want to test? (or leave empty for Auto)",
+  hooks: "What topic do you want hooks for? (or leave empty for Auto)",
+  chat: "Ask anything…",
+  script: "Carry a hook in, or type a topic to script…",
+  remix: "Paste a trending or competitor TikTok URL to remix…",
+  // Not-yet-shipped skills (P11/P16) — render as disabled rows in the selector,
+  // so these placeholders are never actually reached (kept for the Record contract).
+  explore: "Explore what's working for your audience…",
+  offer: "Describe a product, price, or positioning to validate…",
+  ad: "Paste an ad concept to pre-flight, ROAS-framed…",
+};
+
+// Map an audience's platform to the composer Platform union (custom → tiktok).
+function audienceToPlatform(p?: AudiencePlatform | null): Platform {
+  return p === "instagram" || p === "youtube" ? p : "tiktok";
 }
 
-export function Composer({ className }: ComposerProps) {
+export interface ComposerProps {
+  className?: string;
+  /** Called whenever the thread-content presence changes (ideas or hooks cards exist/disappear).
+   *  Parent (HomePageLayout) uses this to switch between centered and full-height layout. */
+  onThreadChange?: (hasThread: boolean) => void;
+}
+
+export function Composer({ className, onThreadChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -61,6 +128,165 @@ export function Composer({ className }: ComposerProps) {
 
   const stream = useAnalysisStream();
 
+  // ── Tool chip state (D-06/D-07) ─────────────────────────────────────────────
+  // activeTool drives the placeholder + active-model field (D-09).
+  // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
+  // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
+  const [activeTool, setActiveTool] = useState<ToolId>("test");
+  // Tracks whether the creator has manually picked a tool this mount. Guards the
+  // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
+  // deliberate pick made while the GET /api/threads/open fetch was in flight.
+  const hasUserSelectedToolRef = useRef(false);
+  // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
+  // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
+  // flip it — they are not the creator choosing where to land on reload.
+  const handleUserSelectTool = useCallback((id: ToolId) => {
+    hasUserSelectedToolRef.current = true;
+    setActiveTool(id);
+  }, []);
+
+  // ── Audience + intent state (UX-01) ────────────────────────────────────────
+  // Audience is the shared substrate across skills (the moat). Platform is no
+  // longer a separate control — it is DERIVED from the selected audience
+  // (each audience carries its platform); General → tiktok default (D-07).
+  // Intent (grow ⇄ sell) is surfaced per the locked composer; it is local UI
+  // state for now — the commerce track wires it into scoring later.
+  const [audiences, setAudiences] = useState<Audience[]>([]);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
+  const [intent, setIntent] = useState<Intent>("grow");
+
+  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
+  // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
+  // submit/keydown/placeholder render code below can branch on it). The asks feed + in-flight
+  // flag + the askAudience handler live further down (askAudience needs focusByThought).
+  const [audienceOpen, setAudienceOpen] = useState(false);
+  const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
+  const [asking, setAsking] = useState(false);
+
+  const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
+  // Sent as the first-class platform param to the skill routes (derived, not picked).
+  const platform: Platform = audienceToPlatform(selectedAudience?.platform);
+
+  // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
+  // Captured on mount from GET /api/threads/open (returns threadId).
+  // Null before first thread is created (first Ideas/Hooks send creates it).
+  const [openThreadId, setOpenThreadId] = useState<string | null>(null);
+
+  // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
+  // Loaded on mount from GET /api/threads/open. Declared before the view gates
+  // below so showIdeasView/showHooksView can include them (no TDZ reference).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedIdeaBlocks, setPersistedIdeaBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedRemixBlocks, setPersistedRemixBlocks] = useState<any[]>([]);
+  // Explore persisted grids (Plan 11-07 — filter b.type === 'outlier-grid' on mount).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedExploreBlocks, setPersistedExploreBlocks] = useState<any[]>([]);
+
+  // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
+  // Provides SSE cards rendered above the composer in IdeasThreadView.
+  // CRITICAL: ideas.start() NEVER arms pendingNavRef/stream.start (T-03-13).
+  const ideas = useIdeasStream();
+  const ideasBlocks = ideas.toBlocks();
+  const showIdeasView =
+    activeTool === "idea" &&
+    (ideas.isStreaming || ideasBlocks.length > 0 || ideas.error !== null || persistedIdeaBlocks.length > 0);
+
+  // ── Hooks stream (Plan 04-03, Task 1 — D-09) ──────────────────────────────
+  // Provides SSE hook-card blocks rendered above the composer in HooksThreadView.
+  // CRITICAL: hooks.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-04-13).
+  const hooks = useHooksStream();
+  const hooksBlocks = hooks.toBlocks();
+  const showHooksView =
+    activeTool === "hooks" &&
+    (hooks.isStreaming || hooksBlocks.length > 0 || hooks.error !== null || persistedHookBlocks.length > 0);
+
+  // ── Chat stream (Plan 05-03, Task 2 — D-05/D-08) ─────────────────────────
+  // Provides SSE markdown turns rendered above the composer in ChatThreadView.
+  // CRITICAL: chat.start() NEVER arms pendingNavRef/stream.start — chat send
+  // NEVER navigates to /analyze (D-05, no silent auto-fire).
+  const chat = useChatStream();
+  const chatBlocks = chat.toBlocks();
+  // Chat view always shows when the chat chip is active (it owns its own empty state)
+  const showChatView = activeTool === "chat";
+
+  // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
+  // Provides SSE script-card blocks rendered above the composer in ScriptThreadView.
+  // CRITICAL: script.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  const script = useScriptStream();
+  const scriptBlocks = script.toBlocks();
+  const showScriptView =
+    activeTool === "script" &&
+    (script.isStreaming || scriptBlocks.length > 0 || script.error !== null || persistedScriptBlocks.length > 0);
+
+  // ── Remix stream (Plan 06-05 — REMIX-01) ──────────────────────────────────
+  // Provides SSE remix-card blocks rendered above the composer in RemixThreadView.
+  // CRITICAL: remix.start() NEVER arms pendingNavRef/stream.start (T-03-13/T-06-20).
+  const remix = useRemixStream();
+  const remixBlocks = remix.toBlocks();
+  const showRemixView =
+    activeTool === "remix" &&
+    (remix.isStreaming || remixBlocks.length > 0 || remix.error !== null || persistedRemixBlocks.length > 0);
+
+  // ── Explore stream (Plan 11-07 — EXPLORE-01/02/04) ─────────────────────────
+  // Provides the SSE outlier-grid block rendered above the composer in
+  // ExploreThreadView. CRITICAL: explore.start() NEVER arms pendingNavRef/stream.start
+  // (Pitfall 1 — Explore renders in-thread in /home, NEVER navigates to /analyze/[id]).
+  const explore = useExploreStream();
+  const exploreBlocks = explore.toBlocks();
+  // Explore view ALWAYS shows when the explore chip is active (it owns its idle
+  // quick-actions, exactly like ChatThreadView — D-07/EXPLORE-04, unconditional gate).
+  const showExploreView = activeTool === "explore";
+
+  // ── Tracked accounts presence (Plan 11-07 — drives card-2 honest degrade) ──
+  // Whether the creator has any tracked accounts; gates ExploreThreadView card 2
+  // ("What competitors shipped" → "Track an account first" when false). Fetched on
+  // mount; silent on 401 (mirrors the audiences fetch). Never fabricates a feed (D-02).
+  const [hasTrackedAccounts, setHasTrackedAccounts] = useState(false);
+
+  // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
+  // True when any idea/hook thread content exists to show (streaming or persisted).
+  // Used by page-level layout (HomePageLayout) to switch to the full-height
+  // chat-app layout (thread scrolls above, form pinned at bottom).
+  // Declared AFTER all stream/block/persisted state is live (no TDZ).
+  const hasThread =
+    ideas.isStreaming ||
+    hooks.isStreaming ||
+    chat.isStreaming ||
+    script.isStreaming ||
+    remix.isStreaming ||
+    explore.isStreaming ||
+    ideasBlocks.length > 0 ||
+    hooksBlocks.length > 0 ||
+    chatBlocks.length > 0 ||
+    scriptBlocks.length > 0 ||
+    remixBlocks.length > 0 ||
+    exploreBlocks.length > 0 ||
+    persistedIdeaBlocks.length > 0 ||
+    persistedHookBlocks.length > 0 ||
+    persistedChatBlocks.length > 0 ||
+    persistedScriptBlocks.length > 0 ||
+    persistedRemixBlocks.length > 0 ||
+    persistedExploreBlocks.length > 0 ||
+    showChatView || // chat view always shown when chip is active (owns empty state)
+    showExploreView; // explore view always shown when chip is active (owns idle quick-actions)
+
+  // Notify parent whenever thread presence changes (HomePageLayout uses this).
+  useEffect(() => {
+    onThreadChange?.(hasThread);
+  }, [hasThread, onThreadChange]);
+
+  // ── Test brief state (Task 2 — D-05/D-06 handoff) ─────────────────────────
+  // When "Test full →" is clicked on a hook card, we switch to the Test tool
+  // and store the chosen hook as a visible brief above the upload affordance.
+  const [testBrief, setTestBrief] = useState<{ hookLine: string; audienceArchetype: string } | null>(null);
+
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -71,12 +297,251 @@ export function Composer({ className }: ComposerProps) {
   const trimmedUrl = url.trim();
   const hasUrl = trimmedUrl.length > 0;
   const isValidTikTok = hasUrl && TIKTOK_URL_PATTERN.test(trimmedUrl);
-  const showUrlError = hasUrl && !isValidTikTok;
+  const showUrlError = hasUrl && !isValidTikTok && activeTool === "test";
 
-  // Submit is enabled when there's a valid TikTok URL OR a staged upload, and
-  // we're not mid-submit. (Upload validity is enforced by VideoUpload itself —
-  // it only calls onFileSelect for an accepted MP4/MOV/WebM under 200MB.)
-  const canSubmit = (isValidTikTok || file !== null) && !submitting;
+  // Submit is enabled:
+  //  - Test tool: valid TikTok URL OR staged upload, not mid-submit.
+  //  - Idea tool: always (empty = Auto; typed = seeded). Not mid-submit/streaming.
+  //  - Hooks tool: always (empty = Auto/anchored; typed = seeded — D-09).
+  //    VALIDATION: server independently caps ask length (WARNING-5, T-03-15).
+  const canSubmit = activeTool === "idea"
+    ? !submitting && !ideas.isStreaming
+    : activeTool === "hooks"
+      ? !submitting && !hooks.isStreaming
+      : activeTool === "chat"
+        ? !submitting && !chat.isStreaming && trimmedUrl.length > 0
+        // Script: empty ask allowed when an anchor is carried (hooks→script card-POST seam)
+        : activeTool === "script"
+          ? !submitting && !script.isStreaming
+          // Remix: URL required (canSubmit gates on trimmedUrl.length > 0 per plan spec)
+          : activeTool === "remix"
+            ? !submitting && !remix.isStreaming && trimmedUrl.length > 0
+            // Explore: field-send optional (empty = un-niched pull); gate only on stream state.
+            : activeTool === "explore"
+              ? !submitting && !explore.isStreaming
+              : (isValidTikTok || file !== null) && !submitting;
+
+  // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
+  // On mount, fetch the user's open-thread messages from GET /api/threads/open
+  // and split into idea-card + hook-card blocks for their respective thread views.
+  // Guard: unauthenticated → 401 → silent (no crash; views render nothing extra).
+  // Does NOT block the composer render (views already no-op when idle).
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPersistedBlocks() {
+      try {
+        const res = await fetch('/api/threads/open');
+        if (!res.ok) return; // 401 or other error — silent (user not logged in yet)
+        const data = await res.json() as {
+          threadId?: string;
+          messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+        };
+        if (cancelled) return;
+        // Capture thread id for AudienceChip per-thread pin (07-05 / D-04)
+        if (data.threadId) setOpenThreadId(data.threadId);
+        const messages = data.messages ?? [];
+        // Flatten all blocks across all messages, split by type
+        const allBlocks = messages.flatMap((m) => m.blocks ?? []);
+        const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
+        const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
+        const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
+        const scriptBlocks = allBlocks.filter((b) => b.type === 'script-card');
+        const remixBlocks = allBlocks.filter((b) => b.type === 'remix-card');
+        const outlierGridBlocks = allBlocks.filter((b) => b.type === 'outlier-grid');
+        setPersistedIdeaBlocks(ideaBlocks);
+        setPersistedHookBlocks(hookBlocks);
+        setPersistedChatBlocks(markdownBlocks);
+        setPersistedScriptBlocks(scriptBlocks);
+        setPersistedRemixBlocks(remixBlocks);
+        setPersistedExploreBlocks(outlierGridBlocks);
+
+        // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
+        // activeTool defaults to "test", but every thread-view gate (showHooksView,
+        // showIdeasView, …) requires activeTool === its matching tool. On a reload of
+        // a thread that already holds idea/hook/script/remix/explore cards, hasThread
+        // flips to thread-layout but NO view renders — a blank home with a pinned
+        // composer. Restore the tool of the MOST RECENT persisted card so the creator
+        // lands back where they left off. Guarded by hasUserSelectedToolRef so a pick
+        // made while this fetch was in flight always wins.
+        if (!hasUserSelectedToolRef.current) {
+          const TYPE_TO_TOOL: Record<string, ToolId> = {
+            'idea-card': 'idea',
+            'hook-card': 'hooks',
+            'script-card': 'script',
+            'remix-card': 'remix',
+            'outlier-grid': 'explore',
+          };
+          let restored: ToolId | null = null;
+          for (let i = messages.length - 1; i >= 0 && !restored; i--) {
+            const blocks = messages[i]?.blocks ?? [];
+            for (let j = blocks.length - 1; j >= 0; j--) {
+              const t = blocks[j]?.type;
+              if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
+            }
+          }
+          if (restored && !hasUserSelectedToolRef.current) setActiveTool(restored);
+        }
+      } catch {
+        // Network error or parse error — silent (no crash, views stay idle)
+      }
+    }
+    void loadPersistedBlocks();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // empty dep set — run once on mount
+
+  // ── Audience list fetch (UX-01 — lifted from AudienceChip) ─────────────────
+  // Populates the audience popover. Silent on 401 (not logged in yet).
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchAudiences() {
+      try {
+        const res = await fetch("/api/audiences");
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { audiences?: Audience[] };
+        if (!cancelled) setAudiences(data.audiences ?? []);
+      } catch {
+        // silent — popover renders the empty state
+      }
+    }
+    void fetchAudiences();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Tracked-accounts presence fetch (Plan 11-07 — card-2 honest degrade) ───
+  // GET /api/tracked-accounts → { accounts }. Drives ExploreThreadView card 2.
+  // Silent on 401 (not logged in yet) — mirrors the audiences fetch posture.
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchTrackedAccounts() {
+      try {
+        const res = await fetch("/api/tracked-accounts");
+        if (!res.ok || cancelled) return;
+        const data = (await res.json()) as { accounts?: unknown[] };
+        if (!cancelled) setHasTrackedAccounts((data.accounts ?? []).length > 0);
+      } catch {
+        // silent — card 2 degrades to "Track an account first" (honest, never a fake feed)
+      }
+    }
+    void fetchTrackedAccounts();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ── Audience select (UX-01 — per-thread pin, D-04) ─────────────────────────
+  // null = General (sentinel). Persists to the open thread when one exists.
+  // Non-fatal: the pill reflects optimistic state even if the PATCH fails.
+  const handleSelectAudience = useCallback(async (audience: Audience) => {
+    const newId = audience.is_general ? null : audience.id;
+    setSelectedAudienceId(newId);
+    if (!openThreadId) return;
+    // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
+    // preset ids ("preset-growth"/"preset-conversion") are not UUIDs and threads
+    // .active_audience_id is a uuid column — PATCHing one used to 500. Presets stay
+    // session-local (optimistic pill) until materialized into a real row. (Bug: P13.)
+    if (newId !== null && !UUID_PATTERN.test(newId)) return;
+    try {
+      await fetch(`/api/threads/${openThreadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active_audience_id: newId }),
+      });
+    } catch {
+      // non-fatal — chip reflects optimistic state
+    }
+  }, [openThreadId]);
+
+  // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
+  // Invoked by HookCardRenderer via HookTestContext when the creator clicks
+  // "Test full →". Switches to the Test tool + stores a visible brief above the
+  // upload affordance ("shoot this hook → upload → Max scores the real thing").
+  // CRITICAL: does NOT invoke any model on the hook text (D-05 honesty spine).
+  const handleTestHook = useCallback((hookLine: string, audienceArchetype: string) => {
+    setActiveTool("test");
+    setTestBrief({ hookLine, audienceArchetype });
+  }, []);
+
+  // ── "Write script →" handoff (Plan 06-05 gap-close — CHAIN_HANDOFFS hooks→script) ──
+  // Invoked by HookCardRenderer via HookWriteScriptContext when the creator clicks
+  // "Write script →". Switches to the Script tool and starts a script run anchored on
+  // the chosen hookLine (streams into ScriptThreadView, mirroring the Script-chip path).
+  // The hook is the anchor (PINNED: /api/tools/script accepts { ask?, anchor, platform }).
+  // CRITICAL: NEVER sets pendingNavRef / calls stream.start — Script never navigates to /analyze.
+  const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
+    setActiveTool("script");
+    script.reset();
+    // ask empty — the carried hookLine anchors the script generation.
+    void script.start("", platform, hookLine);
+  }, [script, platform]);
+
+  // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
+  // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
+  // Carries the script opener line as the test brief (D-07 honesty spine).
+  // CRITICAL: does NOT invoke any model on the script text (D-05 honesty spine).
+  const handleTestScript = useCallback((openingBeatLine: string, _scriptBrief: string) => {
+    setActiveTool("test");
+    // Surface the script opener as the hook brief (matches the visual brief posture)
+    setTestBrief({ hookLine: openingBeatLine, audienceArchetype: "script opener" });
+  }, []);
+
+  // ── Remix → Hooks handoff (Plan 06-05 — REMIX-01) ─────────────────────────
+  // Invoked by RemixCardRenderer via RemixDevelopContext when "Develop into hooks →" is clicked.
+  // Card-POST model: POSTs adaptedHook as anchor to /api/tools/ideas/develop (PINNED endpoint).
+  // After develop completes, reloads the open thread to surface the new hook cards.
+  // CRITICAL: this fires ONLY on explicit tap (D-05 honesty spine).
+  // CRITICAL: NEVER arms pendingNavRef / calls stream.start (T-03-13/T-06-20).
+  const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
+    // Switch to hooks view so the user sees the in-progress state
+    setActiveTool("hooks");
+    hooks.reset();
+    try {
+      // POST the adapted hook as the anchor to the PINNED develop endpoint.
+      // ideaId is absent — PINNED CONTRACT: { ideaId?, anchor, platform } → ideaId optional.
+      const res = await fetch('/api/tools/ideas/develop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anchor: adaptedHook, platform: remixPlatform }),
+      });
+      if (!res.ok) return; // silent — SkillRunError would need a separate state gate here
+      // After develop persists the hook cards, reload the open thread so they appear.
+      const threadRes = await fetch('/api/threads/open');
+      if (!threadRes.ok) return;
+      const data = await threadRes.json() as {
+        messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      const allBlocks = messages.flatMap((m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? []);
+      const newHookBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'hook-card');
+      setPersistedHookBlocks(newHookBlocks);
+    } catch {
+      // Network error — silent (user can retry)
+    }
+  }, [hooks]);
+
+  // ── Explore in-place thread reload (Plan 11-07 — RESEARCH Q2) ──────────────
+  // After a tile "Remix → Read" tap, the remix-card persists to the SAME open
+  // thread. Explore renders in-thread in /home, so we refetch GET /api/threads/open
+  // and re-filter the persisted blocks IN PLACE (NEVER router.push — Pitfall 1 sibling).
+  // Re-filtering remix-card is what surfaces the freshly-persisted Read; we also
+  // refresh outlier-grid so the grid stays in sync. Mirrors handleDevelopRemix's shape.
+  const reloadOpenThread = useCallback(async () => {
+    try {
+      const res = await fetch('/api/threads/open');
+      if (!res.ok) return;
+      const data = await res.json() as {
+        messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      const allBlocks = messages.flatMap(
+        (m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? [],
+      );
+      const outlierGridBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'outlier-grid');
+      const remixBlocks = allBlocks.filter((b: { type?: string }) => b.type === 'remix-card');
+      setPersistedExploreBlocks(outlierGridBlocks);
+      setPersistedRemixBlocks(remixBlocks);
+    } catch {
+      // Network error — silent (the grid stays; the user can retry the tap)
+    }
+  }, []);
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -90,6 +555,9 @@ export function Composer({ className }: ComposerProps) {
   // started streaming" from "an id that appeared via hydration" with a ref.
   // We mirror that: navigation is ARMED only when handleSubmit actually calls
   // stream.start (pendingNavRef), so a hydration-sourced id can never navigate.
+  //
+  // CRITICAL (T-03-13): pendingNavRef is EXCLUSIVE to the Test path.
+  // The Idea path never sets it — an Idea send must not navigate to /analyze.
   const prevAnalysisIdRef = useRef<string | null>(stream.analysisId);
   const pendingNavRef = useRef(false);
   useEffect(() => {
@@ -98,14 +566,160 @@ export function Composer({ className }: ComposerProps) {
       pendingNavRef.current = false;
       router.push(`/analyze/${id}`);
     }
-    // Re-arming only happens in handleSubmit; here we just track the value so
-    // the next genuine null->string (after a fresh submit) is detectable.
+    // Re-arming only happens in handleSubmit (Test path); here we just track the
+    // value so the next genuine null->string (after a fresh submit) is detectable.
     prevAnalysisIdRef.current = id;
   }, [stream.analysisId, router]);
 
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
-  // Slim: only the TikTok-URL and video-upload paths (no text mode, no intent).
+  // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
+  // CRITICAL: Idea path NEVER sets pendingNavRef or calls stream.start (T-03-13).
   const handleSubmit = useCallback(async () => {
+
+    // ── Idea tool path (D-12) ───────────────────────────────────────────────
+    // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
+    // Empty ask = Auto mode; typed ask = seeded mode (D-12).
+    if (activeTool === "idea") {
+      const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
+      setUrl(""); // clear input after send
+      // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
+      await ideas.start(ask, platform);
+      return;
+    }
+
+    // ── Hooks tool path (D-09, Plan 04-03 Task 1) ───────────────────────────
+    // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
+    // Empty ask = Auto/anchored mode; typed ask = seeded mode (D-09).
+    // T-03-13/T-04-13: Hook send NEVER navigates to /analyze.
+    if (activeTool === "hooks") {
+      const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
+      setUrl(""); // clear input after send
+      // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
+      await hooks.start(ask, platform);
+      return;
+    }
+
+    // ── Chat tool path (Plan 05-03, D-05) ────────────────────────────────────
+    // CRITICAL: this block MUST NOT set pendingNavRef.current or call stream.start.
+    // Chat send NEVER navigates to /analyze (D-05 — no silent auto-fire).
+    // ask must be non-empty (canSubmit already gates on trimmedUrl.length > 0).
+    if (activeTool === "chat") {
+      const ask = trimmedUrl;
+      setUrl(""); // clear input after send
+
+      // ── Plan 05-05: Refine-intent detection (D-04 / D-05) ──────────────────
+      // Before routing to a plain chat turn, check whether the message is a
+      // bounded refine request ("make hook 1 punchier", "tighten idea 2").
+      // detectRefineIntent requires: refine verb + card noun + ordinal — a plain
+      // question ("what should I post?") returns isRefine: false (D-05 no false positive).
+      // CRITICAL: refine fires because the user EXPLICITLY sent a refine message —
+      // this is an explicit send, not an auto-fire (D-05).
+      // On a refine, routes to /api/tools/refine via hooks.startRefine / ideas.startRefine
+      // (see use-hooks-stream.ts / use-ideas-stream.ts for the SSE consumer).
+      const refineIntent = detectRefineIntent(ask);
+      if (refineIntent.isRefine && refineIntent.skill && refineIntent.cardRef !== undefined) {
+        const { skill, cardRef, instruction } = refineIntent;
+
+        // Look up the original card to build the anchor.
+        // Hooks: merge persisted + streaming (hooks carry a stable rank field).
+        // Ideas: single pool (CR-02) — see idea branch below.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const allHookBlocks: any[] = [...persistedHookBlocks, ...hooksBlocks];
+
+        if (skill === "hooks") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const foundCard = allHookBlocks.find((b: any) => b?.props?.rank === cardRef);
+          // WR-02: only fire refine when the card was actually resolved.
+          // If not found, surface a chat note instead of refining a fallback.
+          if (!foundCard?.props) {
+            await chat.start(
+              `I couldn't find Hook #${cardRef}. Try "make hook 1 punchier" — use the number shown on the card.`,
+              platform,
+            );
+            return;
+          }
+          const { buildRefineAnchor } = await import("@/lib/tools/refine");
+          const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          // Route to hooks stream refine path — error surfaces via hooks.error → SkillRunError
+          hooks.reset();
+          // Switch to hooks view so the new card renders in the hooks thread
+          setActiveTool("hooks");
+          await hooks.startRefine({ skill: "hooks", instruction: instruction ?? ask, anchor, cardRef, platform });
+        } else {
+          // skill === "idea"
+          // CR-02: resolve from a SINGLE non-merged pool — prefer the in-session
+          // streaming cards (ideasBlocks); fall back to persisted when none streaming.
+          // Concatenating both arrays double-counts cards and shifts ordinals, so
+          // the user's "idea 2" would silently refine the wrong card.
+          const ideaPool = ideasBlocks.length > 0 ? ideasBlocks : persistedIdeaBlocks;
+          const foundCard = ideaPool[cardRef - 1]; // 1-based within a single pool
+          // WR-02: only fire refine when the card was actually resolved.
+          if (!foundCard?.props) {
+            await chat.start(
+              `I couldn't find Idea #${cardRef}. Try "tighten idea 1" — use the number shown on the card.`,
+              platform,
+            );
+            return;
+          }
+          const { buildRefineAnchor } = await import("@/lib/tools/refine");
+          const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          // Route to ideas stream refine path — error surfaces via ideas.error → SkillRunError
+          ideas.reset();
+          // Switch to ideas view so the new card renders in the ideas thread
+          setActiveTool("idea");
+          await ideas.startRefine({ skill: "idea", instruction: instruction ?? ask, anchor, cardRef, platform });
+        }
+        return;
+      }
+
+      // ── Plain chat turn (no refine intent detected) ────────────────────────
+      chat.reset(); // clear prior error/coldStart for the new turn
+      // chat.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
+      await chat.start(ask, platform);
+      return;
+    }
+
+    // ── Script tool path (Plan 06-05, D-09) ──────────────────────────────────
+    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // Script send NEVER navigates to /analyze.
+    // ask = typed topic or empty; anchor = carried hookLine from hooks→script seam.
+    if (activeTool === "script") {
+      const ask = trimmedUrl; // topic seed or empty (anchor drives the script when carried)
+      setUrl(""); // clear input after send
+      script.reset();
+      // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
+      await script.start(ask, platform);
+      return;
+    }
+
+    // ── Remix tool path (Plan 06-05, REMIX-01) ────────────────────────────────
+    // CRITICAL: NEVER sets pendingNavRef.current or calls stream.start (T-03-13/T-06-20).
+    // Remix send NEVER navigates to /analyze.
+    // URL is required (canSubmit gates on trimmedUrl.length > 0 for remix).
+    if (activeTool === "remix") {
+      const url = trimmedUrl; // trending/competitor TikTok URL (required)
+      setUrl(""); // clear input after send
+      remix.reset();
+      await remix.start(url, platform);
+      return;
+    }
+
+    // ── Explore tool path (Plan 11-07, EXPLORE-01 — Pitfall 1 CRITICAL) ───────
+    // CRITICAL: this block MUST NOT set pendingNavRef.current and MUST NOT call
+    // stream.start — Explore renders in-thread in /home and NEVER navigates to
+    // /analyze/[id] (Pitfall 1; pendingNavRef/stream.start are Test-exclusive).
+    // A typed field-send maps to the niche param (empty → un-niched pull). The
+    // params popover + quick-actions are the richer entry points (onRunExplore /
+    // onQuickAction → explore.start), but a bare field-send still works.
+    if (activeTool === "explore") {
+      const ask = trimmedUrl; // typed niche/keywords or empty
+      setUrl(""); // clear input after send
+      // explore.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant).
+      await explore.start({ niche: ask || undefined });
+      return;
+    }
+
+    // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
       setSubmitting(true);
@@ -165,104 +779,559 @@ export function Composer({ className }: ComposerProps) {
     } finally {
       setSubmitting(false);
     }
-  }, [file, isValidTikTok, trimmedUrl, stream]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+    // Audience-chat mode: the field sends into the room, not the skill (P13 redesign).
+    if (audienceOpen) {
+      if (url.trim().length > 0) {
+        void askAudience(url);
+        setUrl("");
+      }
+      return;
+    }
     if (!canSubmit) return;
     void handleSubmit();
   };
 
-  return (
+  // ── `/` slash entry (UX-01) ────────────────────────────────────────────────
+  // Typing `/` in the field opens the skill list as a command menu, filterable;
+  // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
+  // this never collides with the Test/Remix URL paths.
+  // In audience-chat mode the field feeds the room — `/` is plain text, not a skill menu.
+  const slashActive = !audienceOpen && url.startsWith("/");
+  const slashQuery = slashActive ? url.slice(1) : "";
+  const firstSlashSkill = () => {
+    const q = slashQuery.trim().toLowerCase();
+    return (
+      SKILLS.find(
+        (s) =>
+          s.enabled &&
+          (!q || s.label.toLowerCase().includes(q) || s.command.includes(q)),
+      ) ?? null
+    );
+  };
+  const selectSkill = (id: ToolId) => {
+    handleUserSelectTool(id);
+    setUrl(""); // clear the `/query` after selection
+  };
+
+  const onFieldKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashActive) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const s = firstSlashSkill();
+        if (s) selectSkill(s.id);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setUrl("");
+        return;
+      }
+      // While the slash menu is open, Enter/Escape are handled above; other keys
+      // keep filtering. Don't fall through to submit-on-Enter.
+      return;
+    }
+    // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      // Audience-chat mode: send the thought into the room (P13 redesign).
+      if (audienceOpen) {
+        if (url.trim().length > 0) {
+          void askAudience(url);
+          setUrl("");
+        }
+        return;
+      }
+      if (canSubmit) void handleSubmit();
+    }
+  };
+
+  // Placeholder follows the active chip; in the pinned state the follow-up copy
+  // takes precedence so it's contextually accurate (D-07 / D-24).
+  const activePlaceholder = audienceOpen
+    ? "Ask your audience…"
+    : hasSimulation
+      ? PLACEHOLDER_ACTIVE
+      : PLACEHOLDER_BY_TOOL[activeTool];
+
+  // Thread mode on /home (no route id): full-height column — thread region
+  // scrolls above the pinned form. This only activates when hasThread is true,
+  // so empty home keeps the existing centered hero layout (no regression).
+  const homeThreadMode = hasThread && !hasSimulation;
+
+  // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
+  // Build the focus descriptors from the VISIBLE tool's already-rendered cards
+  // (persisted + streaming, in render order). Each card already emits its real
+  // { fraction, scrollQuote } + a concept line — the spotlight READS that data,
+  // never re-runs a model (D-03 determinism-gate-safe; zero new model calls).
+  // Only the active tool's view is mounted at a time, so we derive from that set.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const cardDescriptor = (b: any, idx: number, kind: string): AmbientCardDescriptor | null => {
+    const p = b?.props;
+    if (!p) return null;
+    const concept: string | undefined =
+      p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook;
+    const fraction: string | undefined = p.fraction;
+    const scrollQuote: string | undefined = p.scrollQuote;
+    if (typeof concept !== "string" || typeof fraction !== "string") return null;
+    return {
+      id: `${kind}-${idx}`,
+      conceptText: concept,
+      fraction,
+      scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
+    };
+  };
+  const ambientDescriptors: AmbientCardDescriptor[] = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pick = (persisted: any[], streaming: any[], kind: string) =>
+      [...persisted, ...streaming]
+        .map((b, i) => cardDescriptor(b, i, kind))
+        .filter((d): d is AmbientCardDescriptor => d !== null);
+    if (activeTool === "hooks") return pick(persistedHookBlocks, hooksBlocks, "hook");
+    if (activeTool === "idea") return pick(persistedIdeaBlocks, ideasBlocks, "idea");
+    if (activeTool === "script") return pick(persistedScriptBlocks, scriptBlocks, "script");
+    if (activeTool === "remix") return pick(persistedRemixBlocks, remixBlocks, "remix");
+    return [];
+  })();
+
+  const {
+    focus: ambientFocus,
+    focusByTap,
+    focusByThought,
+    registerThreadRegion,
+  } = useAmbientFocus(ambientDescriptors);
+
+  // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
+  // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
+  // open, the COMPOSER FIELD becomes the audience-chat input (no second input): submit routes
+  // to askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows
+  // the room's read. (State declared up top so the render code can branch on `audienceOpen`.)
+  const askInflightRef = useRef<AbortController | null>(null);
+  useEffect(() => () => askInflightRef.current?.abort(), []);
+
+  const askAudience = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (text.length === 0 || asking) return;
+      askInflightRef.current?.abort();
+      const controller = new AbortController();
+      askInflightRef.current = controller;
+      setAsking(true);
+      try {
+        const res = await fetch("/api/tools/react", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error("reaction_failed");
+        const data: { fraction?: string; scrollQuote?: string } = await res.json();
+        if (controller.signal.aborted) return;
+        const fraction = data.fraction ?? "";
+        const scrollQuote = data.scrollQuote ?? "";
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote }]);
+        focusByThought({ conceptText: text, fraction, scrollQuote }); // Lens shows this read
+      } catch (e) {
+        if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
+      } finally {
+        if (askInflightRef.current === controller) setAsking(false);
+      }
+    },
+    [asking, focusByThought],
+  );
+
+  const audiencePresence = (
+    <AudiencePresence
+      audience={selectedAudience}
+      audiences={audiences}
+      selectedAudienceId={selectedAudienceId}
+      onSelectAudience={(a) => void handleSelectAudience(a)}
+      focus={ambientFocus}
+      reducedMotion={reducedMotion}
+      open={audienceOpen}
+      onOpenChange={setAudienceOpen}
+      asks={audienceAsks}
+      asking={asking}
+      onReask={(a) =>
+        focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
+      }
+    />
+  );
+
+  // Per-card focus markers (data-ambient-card) — the scroll-spy + capture-phase tap seam,
+  // kept at the TOP of the thread scroll region so registerThreadRegion's IntersectionObserver
+  // tracks the ledger and a tap re-points the spotlight, WITHOUT forking the shipped card
+  // renderers. sr-only (the visible presence now lives in the bottom dock).
+  const ambientFocusMarkers = ambientDescriptors.length > 0 && (
+    <div data-testid="ambient-focus-markers" className="sr-only flex flex-col">
+      {ambientDescriptors.map((d) => (
+        <div
+          key={d.id}
+          data-ambient-card=""
+          data-card-id={d.id}
+          data-concept={d.conceptText}
+          data-fraction={d.fraction}
+          data-scroll-quote={d.scrollQuote}
+          role="button"
+          tabIndex={0}
+          aria-label={`Focus the audience on: ${d.conceptText}`}
+          onClickCapture={() => focusByTap(d.id)}
+          onKeyDownCapture={(e) => {
+            if (e.key === "Enter" || e.key === " ") focusByTap(d.id);
+          }}
+        />
+      ))}
+    </div>
+  );
+
+  // Shared thread content block (rendered in both mode branches below).
+  const threadContent = (
+    <>
+      {/* Ideas thread view — renders above the composer when the Idea tool is active.
+          Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
+          so the "Develop this →" CTA knows the active platform (D-15).
+          Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
+      {showIdeasView && (
+        <IdeasThreadView
+          persistedBlocks={persistedIdeaBlocks}
+          streamingBlocks={ideasBlocks}
+          statusMessage={ideas.statusMessage}
+          stages={ideas.stages}
+          followupText={ideas.followupText}
+          isStreaming={ideas.isStreaming}
+          error={ideas.error}
+          platform={platform}
+          onRetry={() => void ideas.start("", platform)}
+        />
+      )}
+
+      {/* Hooks thread view — renders above the composer when the Hook tool is active.
+          Consumes useHooksStream state; provides PlatformContext + HookTestContext
+          to HookCardRenderer so the "Test full →" CTA can fire the handoff (D-05).
+          Plan 05-04: stages + followupText + error + onRetry wired (STUDIO-01/02 + W2). */}
+      {showHooksView && (
+        <HooksThreadView
+          persistedBlocks={persistedHookBlocks}
+          streamingBlocks={hooksBlocks}
+          statusMessage={hooks.statusMessage}
+          stages={hooks.stages}
+          followupText={hooks.followupText}
+          isStreaming={hooks.isStreaming}
+          error={hooks.error}
+          platform={platform}
+          onTestHook={handleTestHook}
+          onWriteScriptHook={handleWriteScript}
+          onRetry={() => void hooks.start("", platform)}
+        />
+      )}
+
+      {/* Script thread view — renders above the composer when the Script tool is active.
+          Provides ScriptTestContext so ScriptCardRenderer's "Test full →" can fire.
+          Plan 06-05: script send NEVER navigates; no pendingNavRef (T-06-20). */}
+      {showScriptView && (
+        <ScriptThreadView
+          persistedBlocks={persistedScriptBlocks}
+          streamingBlocks={scriptBlocks}
+          stages={script.stages}
+          followupText={script.followupText}
+          isStreaming={script.isStreaming}
+          error={script.error}
+          platform={platform}
+          onTestScript={handleTestScript}
+          onRetry={() => void script.start("", platform)}
+        />
+      )}
+
+      {/* Remix thread view — renders above the composer when the Remix tool is active.
+          Provides RemixDevelopContext so RemixCardRenderer's "Develop into hooks →" can fire.
+          Plan 06-05: remix send NEVER navigates; no pendingNavRef (T-06-20). */}
+      {showRemixView && (
+        <RemixThreadView
+          persistedBlocks={persistedRemixBlocks}
+          streamingBlocks={remixBlocks}
+          stages={remix.stages}
+          followupText={remix.followupText}
+          isStreaming={remix.isStreaming}
+          error={remix.error}
+          platform={platform}
+          onDevelop={(adaptedHook, remixPlatform) => void handleDevelopRemix(adaptedHook, remixPlatform)}
+          onRetry={() => void remix.start("", platform)}
+        />
+      )}
+
+      {/* Chat thread view — renders above the composer when the Chat tool is active.
+          ChatThreadView owns its own empty state + cold-start nudge + error state.
+          CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05).
+          Plan 05-05: onSuggestChain taps switch the active tool + kick the skill.
+          The CTA tap fires ONLY on onClick — never auto-fires (D-05). */}
+      {showChatView && (
+        <ChatThreadView
+          persistedBlocks={persistedChatBlocks}
+          streamingBlocks={chatBlocks}
+          isStreaming={chat.isStreaming}
+          coldStart={chat.coldStart}
+          nudgeShown={chat.nudgeShown}
+          error={chat.error}
+          niche={undefined}
+          platform={platform}
+          onSuggestChain={(ctaLabel) => {
+            // Map ctaLabel to a tool switch + skill run on explicit tap (D-05).
+            // "Turn this into hooks →" → switch to hooks, run Auto mode.
+            // "Develop this →" → switch to idea, run Auto mode.
+            // This fires ONLY because the user explicitly tapped — not auto-fire.
+            if (ctaLabel.toLowerCase().includes("hook")) {
+              setActiveTool("hooks");
+              void hooks.start("", platform);
+            } else if (ctaLabel.toLowerCase().includes("idea") || ctaLabel.toLowerCase().includes("develop")) {
+              setActiveTool("idea");
+              void ideas.start("", platform);
+            }
+          }}
+        />
+      )}
+
+      {/* Explore thread view — renders above the composer when the Explore tool is active.
+          Owns its idle quick-actions (D-07/EXPLORE-04) so showExploreView is unconditional
+          (mirrors ChatThreadView). The grid taps fire the discover→remix chain internally,
+          surfacing the persisted remix-card via onThreadReload (in-place, RESEARCH Q2).
+          CRITICAL: Explore NEVER navigates to /analyze — onQuickAction/onRetry call
+          explore.start (no pendingNavRef, Pitfall 1). hasTrackedAccounts drives card-2 degrade. */}
+      {showExploreView && (
+        <ExploreThreadView
+          persistedBlocks={persistedExploreBlocks}
+          streamingBlocks={exploreBlocks}
+          stages={explore.stages}
+          isStreaming={explore.isStreaming}
+          error={explore.error}
+          platform={platform}
+          audience={selectedAudience}
+          hasTrackedAccounts={hasTrackedAccounts}
+          onQuickAction={(params) => void explore.start(params)}
+          onRetry={() => void explore.start({})}
+          onThreadReload={() => void reloadOpenThread()}
+        />
+      )}
+    </>
+  );
+
+  // Shared form element (identical markup; referenced by both layout branches).
+  const composerForm = (
     <form
       data-testid="composer"
-      data-layout={layout}
+      data-layout={homeThreadMode ? "thread" : layout}
       onSubmit={onSubmitForm}
-      className={cn(
-        "w-full max-w-[760px]",
-        layout === "pinned"
-          ? "mx-auto"
-          : // Centered/empty: the floating composer carries the lone allowed shadow.
-            "mx-auto",
-        className,
-      )}
+      className="w-full"
     >
-      <div
-        className={cn(
-          "rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
-          // Whisper float ONLY when centered (D-05) — pinned rests on the column.
-          layout === "centered" && "shadow-float",
-          !reducedMotion && "transition-shadow duration-200",
-        )}
-      >
-        {/* Upload drop zone — VideoUpload (bare) is always mounted (so its file
-            input is part of the composer); the + control reveals/hides it. A
-            staged file forces it visible so the preview never hides. */}
         <div
           className={cn(
-            "overflow-hidden",
-            showUpload || file
-              ? "mb-2 border-b border-white/[0.06] pb-2"
-              : "hidden",
+            "relative rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
+            // Whisper float ONLY when centered (D-05) — pinned rests on the column.
+            layout === "centered" && "shadow-float",
+            !reducedMotion && "transition-shadow duration-200",
           )}
         >
-          <VideoUpload bare file={file} onFileSelect={setFile} />
-        </div>
+          {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
+              the field value starts with `/`. Filterable; selecting sets the skill
+              and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
+          {slashActive && (
+            <div
+              role="menu"
+              aria-label="Skills"
+              className={cn(
+                "absolute bottom-[calc(100%+10px)] left-3 z-50",
+                "w-[320px] max-w-[calc(100%-1.5rem)] max-h-[60vh] overflow-y-auto",
+                "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
+                "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
+                "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
+              )}
+            >
+              <SkillRows active={activeTool} filter={slashQuery} onSelect={selectSkill} />
+            </div>
+          )}
 
-        <div className="flex items-end gap-2">
-          {/* + upload toggle (D-22). ≥44px hit area on touch. */}
-          <button
-            type="button"
-            aria-label="Upload a video"
-            aria-expanded={showUpload}
-            onClick={() => setShowUpload((v) => !v)}
+          {/* Test brief banner (Task 2 — D-05/D-06 handoff).
+              Shown when "Test full →" was clicked on a hook card; surfaces the
+              chosen hook as the anchored brief. Reminds the creator to shoot + upload
+              the REAL video — SIM-1 Max scores the real thing, not this text (D-05). */}
+          {activeTool === "test" && testBrief && (
+            <div
+              className="mb-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 flex items-start justify-between gap-2"
+              data-testid="test-brief-banner"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-foreground-muted/60 mb-0.5">
+                  Shoot this hook → upload → SIM-1 Max scores the real thing
+                </p>
+                <p
+                  className="text-sm font-medium text-foreground leading-snug"
+                  style={{ color: 'var(--color-accent)' }}
+                >
+                  &ldquo;{testBrief.hookLine}&rdquo;
+                </p>
+                {testBrief.audienceArchetype && (
+                  <p className="text-xs text-foreground-muted/50 mt-0.5">{testBrief.audienceArchetype}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                aria-label="Dismiss hook brief"
+                onClick={() => setTestBrief(null)}
+                className="shrink-0 text-foreground-muted/40 hover:text-foreground-muted transition-colors text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {/* Upload drop zone — only relevant for the Test tool path.
+              VideoUpload (bare) is always mounted (so its file input is part of
+              the composer); the + control reveals/hides it. A staged file forces
+              it visible so the preview never hides. */}
+          <div
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-              "text-foreground-muted transition-colors hover:bg-white/[0.05] hover:text-foreground",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-              "pointer-coarse:h-11 pointer-coarse:w-11",
-              showUpload && "bg-white/[0.06] text-foreground",
+              "overflow-hidden",
+              showUpload || file
+                ? "mb-2 border-b border-white/[0.06] pb-2"
+                : "hidden",
             )}
           >
-            <Plus className="h-4 w-4" />
-          </button>
+            <VideoUpload bare file={file} onFileSelect={setFile} />
+          </div>
 
-          {/* URL / future-follow-up input. Coral only on the focus ring. */}
-          <input
-            type="text"
-            inputMode="url"
+          {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
+              Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
+              tools it carries a URL; a `/` opens the skill command menu (above). */}
+          <textarea
+            rows={1}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder={hasSimulation ? PLACEHOLDER_ACTIVE : PLACEHOLDER_EMPTY}
-            aria-label={hasSimulation ? "Ask about this simulation" : "Paste a TikTok link"}
+            onKeyDown={onFieldKeyDown}
+            placeholder={activePlaceholder}
+            aria-label={
+              activeTool === "idea"
+                ? "Idea topic or angle (leave empty for Auto)"
+                : activeTool === "hooks"
+                  ? "Hook topic (leave empty for Auto)"
+                  : activeTool === "chat"
+                    ? "Ask anything about your content"
+                    : activeTool === "script"
+                      ? "Script topic or leave empty to carry in a hook"
+                      : activeTool === "remix"
+                        ? "Paste a TikTok URL to decode and remix"
+                        : hasSimulation
+                          ? "Ask about this simulation"
+                          : "Paste a TikTok link"
+            }
             aria-invalid={showUrlError || undefined}
             className={cn(
-              "min-w-0 flex-1 bg-transparent px-1 py-2 text-base text-foreground",
+              "w-full resize-none bg-transparent px-1 pt-1 text-base text-foreground",
               "placeholder:text-foreground-muted focus:outline-none",
+              "min-h-[44px] max-h-[150px] leading-[1.55]",
             )}
           />
 
-          {/* Submit — the lone coral affordance besides the focus ring. */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            aria-label="Simulate"
-            disabled={!canSubmit}
-            loading={submitting}
-            className="shrink-0 rounded-lg"
-          >
-            <ArrowUp className="h-4 w-4" />
-          </Button>
+          {/* Control row (UX-01): [+] [skill ▾] [audience] [intent] ··· [model] [↑].
+              ComposerControls owns the left cluster + every popover; the model is a
+              read-only indicator (the skill decides it); send is the lone coral
+              affordance. Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
+          <div className="mt-3 flex items-center gap-1.5">
+            <ComposerControls
+              activeTool={activeTool}
+              onSelectTool={handleUserSelectTool}
+              intent={intent}
+              onIntentChange={setIntent}
+              onUploadClick={() => setShowUpload(true)}
+              onRunExplore={(params) => void explore.start(params)}
+            />
+
+            <div className="flex-1" />
+
+            {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
+            <ModelTag activeTool={activeTool} />
+
+            {/* Submit — the lone coral affordance besides the focus ring. */}
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              aria-label={audienceOpen ? "Ask your audience" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
+              disabled={audienceOpen ? url.trim().length === 0 || asking : !canSubmit}
+              loading={audienceOpen ? asking : submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+              className="shrink-0 rounded-lg"
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Errors — non-TikTok URL (D-21), Test tool only. Upload-type errors are surfaced by VideoUpload. */}
+        {showUrlError && (
+          <p className="mt-2 px-1 text-sm text-error" role="alert">
+            {ERROR_NON_TIKTOK}
+          </p>
+        )}
+      </form>
+  );
+
+  // ── Layout branches ────────────────────────────────────────────────────────
+  //
+  // Branch A — Home thread mode (hasThread && !hasSimulation):
+  //   Full-height flex column. Thread region scrolls; form row is shrink-0
+  //   (pinned at the bottom of the column). The parent HomePageLayout provides
+  //   the height context (h-full) so this column fills the main area.
+  //
+  // Branch B — All other states (empty home / permalink):
+  //   Original centered layout. Thread views + form inside one flex-col column,
+  //   grows with content. Permalink pinning is handled by the Reading wrapper.
+  //
+  if (homeThreadMode) {
+    return (
+      <div
+        data-testid="composer-shell"
+        data-layout="thread"
+        className={cn(
+          "flex h-full w-full max-w-[760px] mx-auto flex-col",
+          className,
+        )}
+      >
+        {/* Scrollable thread region — fills all available space above the dock.
+            registerThreadRegion roots the scroll-spy IntersectionObserver on this element
+            (Pattern 5); the sr-only focus markers ride at the top so the spotlight tracks
+            the ledger as it scrolls (D-01). */}
+        <div
+          ref={registerThreadRegion}
+          data-testid="composer-thread-region"
+          className="flex-1 min-h-0 overflow-y-auto"
+        >
+          {ambientFocusMarkers}
+          {threadContent}
+        </div>
+
+        {/* Pinned bottom dock — the audience PRESENCE sits ABOVE the composer (fork #1),
+            both bottom-pinned; the thread scrolls above. */}
+        <div className="shrink-0 flex flex-col gap-2 pb-4 pt-2">
+          {audiencePresence}
+          {composerForm}
         </div>
       </div>
+    );
+  }
 
-      {/* Errors — non-TikTok URL (D-21). Upload-type errors are surfaced by VideoUpload. */}
-      {showUrlError && (
-        <p className="mt-2 px-1 text-sm text-error" role="alert">
-          {ERROR_NON_TIKTOK}
-        </p>
-      )}
-    </form>
+  // Branch B: centered / permalink layout. The presence NEVER hides (D-01) and docks
+  // ABOVE the composer (fork #1) — on empty home it rests at PEEK in its readiness state
+  // (identity + "N personas ready", NO stale reaction, NO second input — fork #4). `ambientFocus`
+  // is null here (no thread cards to focus), so the pulse reads readiness.
+  return (
+    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-2", className)}>
+      {threadContent}
+      {audiencePresence}
+      {composerForm}
+    </div>
   );
 }

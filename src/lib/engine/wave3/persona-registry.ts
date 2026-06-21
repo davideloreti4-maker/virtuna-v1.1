@@ -361,6 +361,21 @@ export const NICHE_INSTANTIATION: Record<string, Partial<Record<Archetype, strin
   },
 };
 
+/**
+ * Phase 14 (14-01): read-only view of the NICHE_INSTANTIATION top-level keys + a guard.
+ *
+ * Pure derived export — does NOT change `NICHE_INSTANTIATION`, `selectPersonaSlots`, or
+ * `makeSlot` bytes. Used by `niche-resolver.ts` to resolve a free-text / sub-slug
+ * `niche_primary` to a top-level instantiation key WITHOUT importing the table's prose
+ * (keeps the Max video path's system-prompt prefix byte-stable — no cache invalidation).
+ */
+export const NICHE_INSTANTIATION_KEYS: readonly string[] = Object.keys(NICHE_INSTANTIATION);
+
+/** Read-only guard: is `slug` a top-level NICHE_INSTANTIATION key? Pure, deterministic. */
+export function isNicheInstantiationKey(slug: string): boolean {
+  return Object.prototype.hasOwnProperty.call(NICHE_INSTANTIATION, slug);
+}
+
 /** Phase 7 D-03: cross-niche adjacency edges. Researcher proposed; planner locks. */
 export const CROSS_NICHE_ADJACENCY: Record<string, string> = {
   beauty: "lifestyle",
