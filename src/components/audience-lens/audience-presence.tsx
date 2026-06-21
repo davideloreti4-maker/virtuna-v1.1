@@ -1,35 +1,32 @@
 'use client';
 
 /**
- * AudiencePresence — the persistent, premium living-audience PRESENCE (P13, design LOCKED
- * 2026-06-21). It is the always-on FRONT DOOR to the ONE shipped AudienceLens, built as
- * ONE panel at THREE heights (the iOS sheet-detent model), docked on the composer. Mobile-first.
+ * AudiencePresence — the persistent, premium living-audience PRESENCE (P13, redesigned
+ * 2026-06-21 per owner feedback). It is the always-on FRONT DOOR to the ONE shipped
+ * AudienceLens, rendered as TWO clean states (NOT a 3-step drawer):
  *
- *   • PEEK (at rest) — a real matte band docked directly above the composer (it travels with
- *     the composer; both bottom-pinned on mobile). Carries the audience IDENTITY (name + a
- *     small live persona constellation that breathes/drifts) and a ONE-LINE PULSE: a live read
- *     when there's a focus ("3 of 10 would stop"), readiness when idle ("General · 10 personas
- *     ready") — NEVER a stale reaction. Tap / chevron / drag-up opens further.
- *   • PREVIEW (tap / drag up) — a taller sheet: a slice of the room (the live read + the one
- *     real lead quote + the toned constellation) and a compact "ask your audience…" entry.
- *     A preview + door, not a reimplementation.
- *   • FULL (drag further / "Open the room →") — the SAME sheet renders <AudienceLensContent>
- *     (The Read + lever, Panel·10 ⇄ Population·1,000, replay/swarm, sticky Rewrite). One object
- *     the creator keeps opening — not a modal that jumps in over the top (fork #5).
+ *   • PEEK (at rest) — a matte band docked directly above the composer (it travels with the
+ *     composer; both bottom-pinned on mobile). It carries the audience IDENTITY (name + a small
+ *     live persona constellation that breathes) + a ONE-LINE PULSE: a live read when there's a
+ *     focus ("6 of 10 would stop"), readiness when idle ("General · 10 personas ready") — never
+ *     a stale reaction. Tap to open.
+ *   • PANEL (tap the band) — it expands UPWARD into a panel anchored over the composer field
+ *     (NOT a full-screen drawer, NO scrim): one continuous surface that shows the ONE shipped
+ *     <AudienceLensContent> (The Read + lever, Panel·10 ⇄ Population·1,000, replay/swarm,
+ *     per-persona chat, Rewrite) for the current focus, plus the conversation of asks. The
+ *     COMPOSER FIELD stays the input — when the panel is open, typing + send routes into the
+ *     audience chat (the host drives `asks`/`asking` + `focus`), so there is no second input.
  *
  * The PRESENCE owns audience identity + switching (the composer's icon-only audience chip
- * retires — fork #3). Alive mechanic: it reacts to FOCUS — the card you tapped / the latest
- * card (driven `focus`) or a thought you type (type-to-room → POST /api/tools/react). Honesty
- * spine (binding): exactly ONE labeled concept at a time, idle when nothing is in focus, never
- * a fabricated reaction or per-persona quote. Coral is reserved for the worst dot + the Lens's
- * own CTAs; liveness reads via motion + cream opacity only. Deterministic (mulberry32 seeded,
- * no wall-clock / PRNG in render) — SSR-hydration + engine-determinism-gate safe.
+ * retired). Honesty spine (binding): exactly ONE labeled concept at a time, idle when nothing is
+ * in focus, never a fabricated reaction or per-persona quote. Coral is reserved for the worst dot
+ * + the Lens's own CTAs; liveness reads via motion + cream opacity only. Deterministic (mulberry32
+ * seeded, no wall-clock / PRNG in render) — SSR-hydration + engine-determinism-gate safe.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Users, Check, Plus, ChevronUp, ChevronRight, ArrowUp } from 'lucide-react';
+import { Users, Check, Plus, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Audience } from '@/lib/audience/audience-types';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
@@ -38,27 +35,21 @@ import type { AmbientFocus } from './ambient-presence-types';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
-const ASK_PLACEHOLDER = 'Ask your audience…';
-const OPEN_ROOM_LABEL = 'Open the room →';
 const LOADING_COPY = 'Reading the room…';
-const ERROR_COPY =
-  "Couldn't reach the audience right now. Your thought is saved — try again in a moment.";
 const MANAGE_LABEL = 'Manage audiences';
-
-// ── Detents (one continuous panel — the iOS sheet-detent model) ──────────────────
-type Detent = 'peek' | 'preview' | 'full';
-const FULL_VH = 94;
-const PREVIEW_VH = 56;
-/** translateY of the FULL-height sheet to reveal each detent (0% = fully up). */
-const TRANSLATE_PCT: Record<Detent, number> = {
-  full: 0,
-  preview: (1 - PREVIEW_VH / FULL_VH) * 100,
-  peek: 100,
-};
 
 // ── Constellation geometry ──────────────────────────────────────────────────────
 const DEFAULT_ROSTER_DOTS = 10;
 const CREAM = '236, 231, 222'; // --color-cream-primary, used as rgba(CREAM, α) for liveness
+
+/** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
+export interface AudienceAsk {
+  id: string;
+  thought: string;
+  fraction: string;
+  scrollQuote: string;
+  error?: boolean;
+}
 
 /** Deterministic seeded PRNG — verbatim from PersonaGraph (no nondeterministic source). */
 function mulberry32(seed: number) {
@@ -100,7 +91,6 @@ interface ConDot {
   r: number;
   fill: string;
   accent: boolean;
-  /** SMIL stagger seed (deterministic per index). */
   phase: number;
   srLabel: string;
 }
@@ -163,7 +153,7 @@ function buildDots(
   return out;
 }
 
-/** The breathing/drifting persona constellation (SVG). Liveness via motion + cream opacity. */
+/** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
 function Constellation({
   dots,
   reducedMotion,
@@ -220,18 +210,25 @@ function Constellation({
 export interface AudiencePresenceProps {
   /** The active calibrated audience (null ⇒ treated as General — no crash). */
   audience: Audience | null;
-  /** All selectable audiences (the PRESENCE owns switching — fork #3). */
+  /** All selectable audiences (the PRESENCE owns switching). */
   audiences: Audience[];
   /** The selected audience id (or null = General). */
   selectedAudienceId: string | null;
   /** Switch the active audience. */
   onSelectAudience: (audience: Audience) => void;
-  /** The driven in-focus concept (or null = idle). The composer owns focus tracking. */
+  /** The driven in-focus concept (or null = idle). The host owns focus tracking. */
   focus: AmbientFocus;
   /** Gates ALL dot motion (hard-stop under reduce). */
   reducedMotion?: boolean;
-  /** Type-to-room: notifies the composer's focus state of a just-typed thought's reaction. */
-  onFocusChange?: (focus: AmbientFocus) => void;
+  /** Panel open state — controlled by the host (so the composer can route its input here). */
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** The audience-chat turns the composer field has sent (host-owned). */
+  asks?: AudienceAsk[];
+  /** A room read is in flight (the composer just sent an ask). */
+  asking?: boolean;
+  /** Re-focus the Lens on a past ask (tap a turn in the conversation). */
+  onReask?: (ask: AudienceAsk) => void;
 }
 
 export function AudiencePresence({
@@ -241,422 +238,285 @@ export function AudiencePresence({
   onSelectAudience,
   focus,
   reducedMotion = false,
-  onFocusChange,
+  open,
+  onOpenChange,
+  asks = [],
+  asking = false,
+  onReask,
 }: AudiencePresenceProps) {
-  const [detent, setDetent] = useState<Detent>('peek');
-  // The audience switcher renders in BOTH the peek band and the sheet header (both are
-  // mounted at once), so it is scoped to a LOCATION — only the active one is in the DOM,
-  // and it opens UPWARD from the bottom-docked peek / DOWNWARD from the top-docked sheet.
-  const [switcherAt, setSwitcherAt] = useState<null | 'peek' | 'sheet'>(null);
-  const [mounted, setMounted] = useState(false);
-
-  // Type-to-room (held LOCALLY, ephemeral — a typed thought wins over the driven focus until a
-  // newer tap/scroll re-points it).
-  const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [typedFocus, setTypedFocus] = useState<AmbientFocus>(null);
-  const [lastSubmitted, setLastSubmitted] = useState('');
-
-  // Live drag translate (px) while a pointer-drag is in progress; null = snap to the detent.
-  const [dragTranslate, setDragTranslate] = useState<number | null>(null);
-  const dragRef = useRef<{ startY: number; startTranslate: number; sheetPx: number } | null>(null);
-
-  const rootRef = useRef<HTMLDivElement | null>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement | null>(null);
-  const inflightRef = useRef<AbortController | null>(null);
 
-  const effectiveFocus: AmbientFocus = typedFocus ?? focus;
-  // Stable reference (a fresh `?? []` each render would churn the dot memos below).
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
   const isGeneral = audience == null || audience.is_general || personas.length === 0;
   const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
   const rosterCount = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
 
   const flatPersonas: FlatPersonaReaction[] = useMemo(
-    () =>
-      effectiveFocus
-        ? cardScrollQuoteReactions(effectiveFocus.fraction, effectiveFocus.scrollQuote)
-        : [],
-    [effectiveFocus],
+    () => (focus ? cardScrollQuoteReactions(focus.fraction, focus.scrollQuote) : []),
+    [focus],
   );
+  const stopRead = useMemo(() => (focus ? parseStop(focus.fraction) : null), [focus]);
 
-  const stopRead = useMemo(
-    () => (effectiveFocus ? parseStop(effectiveFocus.fraction) : null),
-    [effectiveFocus],
-  );
-
-  // The one-line pulse: a live read when focused, readiness (NEVER a stale reaction) when idle.
+  // The one-line pulse: a live read when focused, readiness (never a stale reaction) when idle.
   const pulseText = stopRead
     ? `${stopRead.stop} of ${stopRead.total} would stop`
     : `${audienceName} · ${rosterCount} personas ready`;
 
-  const peekDots = useMemo(
-    () => buildDots(personas, flatPersonas, 132, 30),
-    [personas, flatPersonas],
-  );
-  const bigDots = useMemo(
-    () => buildDots(personas, flatPersonas, 320, 96),
-    [personas, flatPersonas],
-  );
+  const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
+  const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
 
-  // ── Focus reconciliation: a new driven focus drops the local typed override. ──
-  useEffect(() => {
-    setTypedFocus(null);
-  }, [focus]);
-
-  // Abort any in-flight type-to-room reaction on unmount.
-  useEffect(() => () => inflightRef.current?.abort(), []);
-
-  // Portal target only exists client-side.
-  useEffect(() => setMounted(true), []);
-
-  const open = detent !== 'peek';
-
-  // Lock body scroll while the sheet is open (mobile sheet idiom).
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
-
-  // Escape closes the switcher first, then collapses the sheet.
+  // Esc closes the switcher first, then the panel.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (switcherAt) setSwitcherAt(null);
-      else if (open) setDetent('peek');
+      if (switcherOpen) setSwitcherOpen(false);
+      else if (open) onOpenChange(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, switcherAt]);
+  }, [open, switcherOpen, onOpenChange]);
 
-  // Outside-click closes the switcher popover (switcherRef wraps the active button + popover).
+  // Outside-click closes the switcher popover (not the panel — the composer must stay typable).
   useEffect(() => {
-    if (!switcherAt) return;
+    if (!switcherOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (!switcherRef.current?.contains(e.target as Node)) setSwitcherAt(null);
+      if (!switcherRef.current?.contains(e.target as Node)) setSwitcherOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
-  }, [switcherAt]);
-
-  // Changing detent closes any open switcher (it belonged to the prior surface).
-  useEffect(() => setSwitcherAt(null), [detent]);
-
-  const goFull = useCallback(() => setDetent('full'), []);
-  const collapse = useCallback(() => setDetent('peek'), []);
-
-  // ── Pointer-drag between detents (grab handle) — snaps to the nearest detent. ──
-  const onDragDown = (e: React.PointerEvent) => {
-    if (typeof window === 'undefined') return;
-    const sheetPx = (window.innerHeight * FULL_VH) / 100;
-    dragRef.current = {
-      startY: e.clientY,
-      startTranslate: (sheetPx * TRANSLATE_PCT[detent]) / 100,
-      sheetPx,
-    };
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-  };
-  const onDragMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    if (!d) return;
-    const next = Math.min(Math.max(d.startTranslate - (d.startY - e.clientY), 0), d.sheetPx);
-    setDragTranslate(next);
-  };
-  const onDragUp = () => {
-    const d = dragRef.current;
-    if (!d) return;
-    const visible = d.sheetPx - (dragTranslate ?? d.startTranslate);
-    const fullV = d.sheetPx;
-    const previewV = (d.sheetPx * PREVIEW_VH) / FULL_VH;
-    // Snap to the nearest of {full, preview, peek(0)}.
-    const targets: Array<[Detent, number]> = [
-      ['full', fullV],
-      ['preview', previewV],
-      ['peek', 0],
-    ];
-    let best: Detent = 'peek';
-    let bestDist = Infinity;
-    for (const [name, v] of targets) {
-      const dist = Math.abs(visible - v);
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = name;
-      }
-    }
-    dragRef.current = null;
-    setDragTranslate(null);
-    setDetent(best);
-  };
-
-  // ── Type-to-room: explicit-submit Flash reaction (no client model call; server route only). ──
-  const submitThought = async (raw: string) => {
-    const text = raw.trim();
-    if (text.length === 0 || loading) return;
-    inflightRef.current?.abort();
-    const controller = new AbortController();
-    inflightRef.current = controller;
-    setLoading(true);
-    setError(false);
-    setLastSubmitted(text);
-    try {
-      const res = await fetch('/api/tools/react', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
-        signal: controller.signal,
-      });
-      if (controller.signal.aborted) return;
-      if (!res.ok) throw new Error('reaction_failed');
-      const data: { fraction?: string; scrollQuote?: string } = await res.json();
-      if (controller.signal.aborted) return;
-      const next: AmbientFocus = {
-        conceptText: text,
-        fraction: data.fraction ?? '',
-        scrollQuote: data.scrollQuote ?? '',
-      };
-      setTypedFocus(next);
-      onFocusChange?.(next);
-      setDraft('');
-      setDetent('full'); // route the typed thought into the room (the shipped Lens)
-    } catch (e) {
-      if (controller.signal.aborted || (e instanceof DOMException && e.name === 'AbortError')) return;
-      setError(true);
-    } finally {
-      if (inflightRef.current === controller) setLoading(false);
-    }
-  };
+  }, [switcherOpen]);
 
   const handleSelect = (a: Audience) => {
     onSelectAudience(a);
-    setSwitcherAt(null);
+    setSwitcherOpen(false);
   };
 
-  // ── Identity (name + live constellation) — shared by the peek band + the sheet header. ──
-  // `location` scopes the single-active switcher; it opens upward from the bottom-docked peek
-  // and downward from the top-docked sheet header.
-  const identity = (location: 'peek' | 'sheet') => {
-    const isActive = switcherAt === location;
-    const up = location === 'peek';
-    return (
-    <div
-      className="relative flex min-w-0 items-center gap-2.5"
-      ref={isActive ? switcherRef : undefined}
-    >
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={isActive}
-        aria-label={`Audience: ${audienceName}. Switch audience`}
-        onClick={(e) => {
-          e.stopPropagation();
-          setSwitcherAt((v) => (v === location ? null : location));
-        }}
-        className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
-      >
-        <Constellation
-          dots={peekDots}
-          reducedMotion={reducedMotion}
-          width={56}
-          height={26}
-          vbW={132}
-          vbH={30}
-        />
-        <span className="flex min-w-0 flex-col items-start leading-tight">
-          <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
-            <span className="truncate">{audienceName}</span>
-            {!reducedMotion && (
-              <span
-                aria-hidden
-                className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
-                style={{
-                  backgroundColor: `rgba(${CREAM}, 0.85)`,
-                  animation: 'audpulse 2.4s ease-in-out infinite',
-                }}
-              />
-            )}
-          </span>
-        </span>
-        <ChevronUp
-          className="h-3.5 w-3.5 shrink-0 text-[var(--color-foreground-muted)]"
-          aria-hidden
-        />
-      </button>
-
-      {/* Switcher popover — UPWARD from the bottom-docked peek, DOWNWARD from the sheet. */}
-      {isActive && (
+  return (
+    <div className="relative w-full" data-testid="audience-presence">
+      {/* ── The content PANEL — expands UPWARD over the composer (anchored above the peek band,
+            flush so peek + panel read as one surface). No scrim, no drawer; the composer below
+            stays the input. ────────────────────────────────────────────────────────────── */}
+      {open && (
         <div
-          role="menu"
-          aria-label="Your audiences"
-          className={
-            'absolute left-0 z-10 max-h-[44vh] w-[280px] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)] ' +
-            (up ? 'bottom-full mb-2' : 'top-full mt-2')
-          }
+          data-testid="audience-panel"
+          role="dialog"
+          aria-label="Your audience"
+          className="absolute bottom-full left-0 right-0 z-[55] flex max-h-[58vh] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-float)]"
         >
-          <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-            {TITLE}
-          </p>
-          {audiences.length === 0 && (
-            <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">
-              No audiences yet.
-            </p>
-          )}
-          {audiences.map((a) => {
-            const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
-            const sub = a.is_general
-              ? 'Default — keeps the regression gate'
-              : `${a.platform}${a.goal_label ? ` · ${a.goal_label}` : ''}`;
-            return (
-              <button
-                key={a.id}
-                type="button"
-                role="menuitemradio"
-                aria-checked={on}
-                onClick={() => handleSelect(a)}
-                className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[var(--color-hover)]"
-              >
-                <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
-                <span className="min-w-0 flex-1">
-                  <span
-                    className={
-                      'block text-[13px] font-medium ' +
-                      (on ? 'text-[var(--color-accent)]' : 'text-[var(--color-foreground)]')
-                    }
-                  >
-                    {a.name}
-                  </span>
-                  <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">
-                    {sub}
-                  </span>
-                </span>
-                <Check
-                  className={
-                    'h-4 w-4 shrink-0 text-[var(--color-accent)] ' + (on ? 'opacity-100' : 'opacity-0')
-                  }
-                  aria-hidden
+          <div className="flex shrink-0 items-center justify-between px-4 pb-1.5 pt-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+              The room
+            </span>
+            <button
+              type="button"
+              aria-label="Collapse audience"
+              onClick={() => onOpenChange(false)}
+              className="grid h-7 w-7 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+            {focus ? (
+              <AudienceLensContent
+                heatmap={null}
+                simResults={undefined}
+                flatPersonas={flatPersonas}
+                conceptText={focus.conceptText}
+                reducedMotion={reducedMotion}
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 px-5 pb-4 pt-6 text-center">
+                <Constellation
+                  dots={heroDots}
+                  reducedMotion={reducedMotion}
+                  width="100%"
+                  height={110}
+                  vbW={320}
+                  vbH={110}
                 />
-              </button>
-            );
-          })}
-          <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
-          <Link
-            href="/audience"
-            onClick={() => setSwitcherAt(null)}
-            className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            <span className="flex-1">{MANAGE_LABEL}</span>
-            <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
-          </Link>
+                <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+                <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
+                  Type below to test a thought — your {audienceName} reacts in real time.
+                </p>
+              </div>
+            )}
+
+            {asking && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="px-5 pt-2 text-[13px] font-medium text-[var(--color-foreground-muted)]"
+              >
+                {LOADING_COPY}
+              </p>
+            )}
+
+            {/* The audience-chat conversation — every thought the composer sent + the room's read. */}
+            {asks.length > 0 && (
+              <div className="mt-2 border-t border-[var(--color-border)] px-5 pt-3">
+                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                  Your asks
+                </p>
+                <ul className="flex flex-col gap-2.5">
+                  {asks.map((a) => {
+                    const read = parseStop(a.fraction);
+                    return (
+                      <li key={a.id}>
+                        <button
+                          type="button"
+                          onClick={() => onReask?.(a)}
+                          className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-border-hover)]"
+                        >
+                          <span className="block truncate text-[13px] text-[var(--color-foreground)]">
+                            “{a.thought}”
+                          </span>
+                          <span className="mt-1 block text-[12px] text-[var(--color-foreground-muted)]">
+                            {a.error
+                              ? "Couldn't reach the room — tap to retry"
+                              : read
+                                ? `${read.stop} of ${read.total} would stop${a.scrollQuote ? ` · “${a.scrollQuote}”` : ''}`
+                                : 'The room reacted'}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </div>
-    );
-  };
 
-  // ── The "ask your audience…" entry (preview) — explicit-submit Flash reaction. ──
-  const askEntry = (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-end gap-2">
-        <textarea
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
-            if (error) setError(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              void submitThought(draft);
-            }
-          }}
-          rows={1}
-          aria-label="Ask your audience — test a thought against the room"
-          placeholder={ASK_PLACEHOLDER}
-          className="min-h-[44px] flex-1 resize-none rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.04)] px-3.5 py-3 text-[14px] text-[var(--color-foreground)] transition-colors placeholder:text-[var(--color-foreground-muted)] focus:border-[var(--color-border-hover)] focus:outline-none"
-        />
-        <button
-          type="button"
-          aria-label="Ask your audience"
-          onClick={() => void submitThought(draft)}
-          disabled={loading || draft.trim().length === 0}
-          className="grid h-[44px] w-[44px] shrink-0 place-items-center rounded-[10px] text-[var(--color-accent-foreground)] transition-opacity disabled:opacity-40"
-          style={{ backgroundColor: 'var(--color-accent)' }}
-        >
-          <ArrowUp className="h-4 w-4" />
-        </button>
-      </div>
-      {loading && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="text-[13px] font-medium text-[var(--color-foreground-muted)]"
-        >
-          {LOADING_COPY}
-        </p>
-      )}
-      {error && !loading && (
-        <div className="flex flex-col gap-1" role="alert">
-          <p className="text-[13px] font-medium" style={{ color: 'var(--color-cream-secondary)' }}>
-            {ERROR_COPY}
-          </p>
-          <button
-            type="button"
-            onClick={() => void submitThought(lastSubmitted)}
-            disabled={loading || lastSubmitted.trim().length === 0}
-            className="self-start text-[13px] font-medium transition-colors disabled:opacity-40"
-            style={{ color: 'var(--color-cream-secondary)' }}
-          >
-            Retry →
-          </button>
-        </div>
-      )}
-    </div>
-  );
-
-  // ── The PEEK band (always inline — the at-rest dock above the composer). ──
-  const peekBand = (
-    <div
-      ref={rootRef}
-      data-testid="audience-presence"
-      className="w-full"
-    >
+      {/* ── The PEEK band (always the bottom anchor; tap toggles the panel). ── */}
       <div
         role="button"
         tabIndex={0}
-        aria-label="Open your audience"
+        aria-label={open ? 'Collapse your audience' : 'Open your audience'}
         aria-expanded={open}
-        onClick={() => setDetent('preview')}
+        onClick={() => onOpenChange(!open)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            setDetent('preview');
+            onOpenChange(!open);
           }
         }}
-        className="flex items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)]"
+        className={
+          'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
+          (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
+        }
         style={{ cursor: 'pointer' }}
       >
-        {identity('peek')}
+        {/* Identity (name + live constellation) — owns the audience switcher. */}
+        <div className="relative flex min-w-0 items-center" ref={switcherRef}>
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={switcherOpen}
+            aria-label={`Audience: ${audienceName}. Switch audience`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSwitcherOpen((v) => !v);
+            }}
+            className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+          >
+            <Constellation
+              dots={peekDots}
+              reducedMotion={reducedMotion}
+              width={56}
+              height={26}
+              vbW={132}
+              vbH={30}
+            />
+            <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
+              <span className="max-w-[120px] truncate">{audienceName}</span>
+              {!reducedMotion && (
+                <span
+                  aria-hidden
+                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
+                  style={{ backgroundColor: `rgba(${CREAM}, 0.85)`, animation: 'audpulse 2.4s ease-in-out infinite' }}
+                />
+              )}
+            </span>
+          </button>
+
+          {/* Switcher popover — opens UPWARD (the presence is bottom-docked). */}
+          {switcherOpen && (
+            <div
+              role="menu"
+              aria-label="Your audiences"
+              className="absolute bottom-full left-0 z-[60] mb-2 max-h-[44vh] w-[280px] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+            >
+              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                {TITLE}
+              </p>
+              {audiences.length === 0 && (
+                <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
+              )}
+              {audiences.map((a) => {
+                const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
+                const sub = a.is_general
+                  ? 'Default — keeps the regression gate'
+                  : `${a.platform}${a.goal_label ? ` · ${a.goal_label}` : ''}`;
+                return (
+                  <button
+                    key={a.id}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={on}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSelect(a);
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[var(--color-hover)]"
+                  >
+                    <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-accent)]' : 'text-[var(--color-foreground)]')}>
+                        {a.name}
+                      </span>
+                      <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
+                    </span>
+                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-accent)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                  </button>
+                );
+              })}
+              <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
+              <Link
+                href="/audience"
+                onClick={() => setSwitcherOpen(false)}
+                className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+              >
+                <Plus className="h-4 w-4" aria-hidden />
+                <span className="flex-1">{MANAGE_LABEL}</span>
+                <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+              </Link>
+            </div>
+          )}
+        </div>
+
         <div className="mx-1 h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
         <span
           data-testid="audience-pulse"
           className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
-          title={effectiveFocus?.conceptText}
+          title={focus?.conceptText}
         >
           {pulseText}
         </span>
-        <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+        ) : (
+          <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+        )}
       </div>
 
       {/* sr-only roster mirror — always present (a11y), regardless of motion state. */}
       <div className="sr-only" role="status" aria-live="polite">
         <p>
-          {TITLE} — {pulseText}.
-          {effectiveFocus ? ` Reacting to: ${effectiveFocus.conceptText}.` : ''}
+          {TITLE} — {pulseText}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
         </p>
         <ul>
           {peekDots.map((d) => (
@@ -665,151 +525,5 @@ export function AudiencePresence({
         </ul>
       </div>
     </div>
-  );
-
-  // ── The overlay sheet (preview / full) — portaled, viewport-bottom-pinned. ──
-  const sheet = mounted
-    ? createPortal(
-        <>
-          {/* Scrim */}
-          <div
-            aria-hidden
-            onClick={collapse}
-            className="fixed inset-0 z-[120] bg-black/50 transition-opacity duration-300"
-            style={{
-              opacity: open ? 1 : 0,
-              pointerEvents: open ? 'auto' : 'none',
-            }}
-          />
-          {/* Sheet — FULL height, translated down to reveal the active detent. */}
-          <div
-            data-testid="audience-presence-sheet"
-            data-detent={detent}
-            role="dialog"
-            aria-modal={open}
-            aria-label="Your audience"
-            className="fixed inset-x-0 bottom-0 z-[121] mx-auto flex w-full max-w-[760px] flex-col rounded-t-[22px] border-t border-[var(--color-border-hover)] bg-[var(--color-background)] shadow-[var(--shadow-float)]"
-            style={{
-              height: `${FULL_VH}vh`,
-              transform:
-                dragTranslate != null
-                  ? `translateY(${dragTranslate}px)`
-                  : `translateY(${TRANSLATE_PCT[detent]}%)`,
-              transition: dragTranslate != null ? 'none' : 'transform 360ms cubic-bezier(.32,.72,0,1)',
-              touchAction: 'none',
-              visibility: open || dragTranslate != null ? 'visible' : 'hidden',
-            }}
-          >
-            {/* Inner content is mounted only while open — at rest the PEEK band is the sole
-                representation (no hidden duplicate identity / ask input behind the scrim). */}
-            {open && (
-            <>
-            {/* Grab handle + header (the drag region) */}
-            <div
-              onPointerDown={onDragDown}
-              onPointerMove={onDragMove}
-              onPointerUp={onDragUp}
-              onPointerCancel={onDragUp}
-              className="shrink-0 cursor-grab touch-none select-none px-4 pb-2 pt-2.5 active:cursor-grabbing"
-            >
-              <div className="mx-auto mb-3 h-1 w-9 rounded-full bg-[var(--color-border-hover)]" />
-              <div className="flex items-center gap-2">
-                {identity('sheet')}
-                <div className="flex-1" />
-                {detent === 'preview' && (
-                  <button
-                    type="button"
-                    onClick={goFull}
-                    className="shrink-0 rounded-[8px] px-2.5 py-1.5 text-[13px] font-medium text-[var(--color-accent)] transition-colors hover:bg-[var(--color-hover)]"
-                  >
-                    {OPEN_ROOM_LABEL}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  aria-label="Close audience"
-                  onClick={collapse}
-                  className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)]"
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                    <path
-                      d="M3 11l8-8M3 3l8 8"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Body — preview slice OR the full shipped Lens content. */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {detent === 'full' ? (
-                <AudienceLensContent
-                  heatmap={null}
-                  simResults={undefined}
-                  flatPersonas={flatPersonas}
-                  conceptText={effectiveFocus?.conceptText}
-                  reducedMotion={reducedMotion}
-                />
-              ) : (
-                <div className="flex flex-col gap-5 px-5 pb-8 pt-3">
-                  {/* The live read (or readiness) + the toned constellation. */}
-                  <div className="flex flex-col gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-                    <p className="text-[15px] font-semibold text-[var(--color-foreground)]">
-                      {pulseText}
-                    </p>
-                    <Constellation
-                      dots={bigDots}
-                      reducedMotion={reducedMotion}
-                      width="100%"
-                      height={96}
-                      vbW={320}
-                      vbH={96}
-                    />
-                    {effectiveFocus && effectiveFocus.scrollQuote ? (
-                      <blockquote className="border-l-2 border-[var(--color-border-hover)] pl-3 text-[13.5px] leading-relaxed text-[var(--color-foreground-secondary)]">
-                        “{effectiveFocus.scrollQuote}”
-                      </blockquote>
-                    ) : (
-                      <p className="text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
-                        {effectiveFocus
-                          ? 'The room reacted — open it to read every persona.'
-                          : 'Type a thought below, or open the room to test your latest idea.'}
-                      </p>
-                    )}
-                    <button
-                      type="button"
-                      onClick={goFull}
-                      className="self-start rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 text-[13px] font-medium text-[var(--color-foreground)] transition-colors hover:border-[var(--color-border-hover)]"
-                    >
-                      {OPEN_ROOM_LABEL}
-                    </button>
-                  </div>
-
-                  {/* The compact "ask your audience…" entry. */}
-                  <div className="flex flex-col gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-                      Ask the room
-                    </p>
-                    {askEntry}
-                  </div>
-                </div>
-              )}
-            </div>
-            </>
-            )}
-          </div>
-        </>,
-        document.body,
-      )
-    : null;
-
-  return (
-    <>
-      {peekBand}
-      {sheet}
-    </>
   );
 }

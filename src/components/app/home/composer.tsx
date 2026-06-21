@@ -66,7 +66,7 @@ import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
-import { AudiencePresence } from "@/components/audience-lens/audience-presence";
+import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -154,6 +154,14 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
   const [intent, setIntent] = useState<Intent>("grow");
+
+  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
+  // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
+  // submit/keydown/placeholder render code below can branch on it). The asks feed + in-flight
+  // flag + the askAudience handler live further down (askAudience needs focusByThought).
+  const [audienceOpen, setAudienceOpen] = useState(false);
+  const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
+  const [asking, setAsking] = useState(false);
 
   const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
   // Sent as the first-class platform param to the skill routes (derived, not picked).
@@ -776,6 +784,14 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
+    // Audience-chat mode: the field sends into the room, not the skill (P13 redesign).
+    if (audienceOpen) {
+      if (url.trim().length > 0) {
+        void askAudience(url);
+        setUrl("");
+      }
+      return;
+    }
     if (!canSubmit) return;
     void handleSubmit();
   };
@@ -784,7 +800,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Typing `/` in the field opens the skill list as a command menu, filterable;
   // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
   // this never collides with the Test/Remix URL paths.
-  const slashActive = url.startsWith("/");
+  // In audience-chat mode the field feeds the room — `/` is plain text, not a skill menu.
+  const slashActive = !audienceOpen && url.startsWith("/");
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
@@ -821,15 +838,25 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // Audience-chat mode: send the thought into the room (P13 redesign).
+      if (audienceOpen) {
+        if (url.trim().length > 0) {
+          void askAudience(url);
+          setUrl("");
+        }
+        return;
+      }
       if (canSubmit) void handleSubmit();
     }
   };
 
   // Placeholder follows the active chip; in the pinned state the follow-up copy
   // takes precedence so it's contextually accurate (D-07 / D-24).
-  const activePlaceholder = hasSimulation
-    ? PLACEHOLDER_ACTIVE
-    : PLACEHOLDER_BY_TOOL[activeTool];
+  const activePlaceholder = audienceOpen
+    ? "Ask your audience…"
+    : hasSimulation
+      ? PLACEHOLDER_ACTIVE
+      : PLACEHOLDER_BY_TOOL[activeTool];
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. This only activates when hasThread is true,
@@ -878,11 +905,47 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     registerThreadRegion,
   } = useAmbientFocus(ambientDescriptors);
 
-  // The persistent audience PRESENCE (P13 detent design) — docked ABOVE the composer
-  // (fork #1), bottom-pinned with it on mobile. It owns audience identity + switching
-  // (fork #3 — the composer's icon-only audience chip retired). Alive via the driven
-  // `ambientFocus` (latest card / tap) + type-to-room (onFocusChange round-trips a typed
-  // thought's reaction back to the composer's focus state).
+  // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
+  // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
+  // open, the COMPOSER FIELD becomes the audience-chat input (no second input): submit routes
+  // to askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows
+  // the room's read. (State declared up top so the render code can branch on `audienceOpen`.)
+  const askInflightRef = useRef<AbortController | null>(null);
+  useEffect(() => () => askInflightRef.current?.abort(), []);
+
+  const askAudience = useCallback(
+    async (raw: string) => {
+      const text = raw.trim();
+      if (text.length === 0 || asking) return;
+      askInflightRef.current?.abort();
+      const controller = new AbortController();
+      askInflightRef.current = controller;
+      setAsking(true);
+      try {
+        const res = await fetch("/api/tools/react", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        if (!res.ok) throw new Error("reaction_failed");
+        const data: { fraction?: string; scrollQuote?: string } = await res.json();
+        if (controller.signal.aborted) return;
+        const fraction = data.fraction ?? "";
+        const scrollQuote = data.scrollQuote ?? "";
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote }]);
+        focusByThought({ conceptText: text, fraction, scrollQuote }); // Lens shows this read
+      } catch (e) {
+        if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
+      } finally {
+        if (askInflightRef.current === controller) setAsking(false);
+      }
+    },
+    [asking, focusByThought],
+  );
+
   const audiencePresence = (
     <AudiencePresence
       audience={selectedAudience}
@@ -891,7 +954,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       onSelectAudience={(a) => void handleSelectAudience(a)}
       focus={ambientFocus}
       reducedMotion={reducedMotion}
-      onFocusChange={focusByThought}
+      open={audienceOpen}
+      onOpenChange={setAudienceOpen}
+      asks={audienceAsks}
+      asking={asking}
+      onReask={(a) =>
+        focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
+      }
     />
   );
 
@@ -1191,9 +1260,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
-              disabled={!canSubmit}
-              loading={submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+              aria-label={audienceOpen ? "Ask your audience" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
+              disabled={audienceOpen ? url.trim().length === 0 || asking : !canSubmit}
+              loading={audienceOpen ? asking : submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />

@@ -1,17 +1,18 @@
 /** @vitest-environment happy-dom */
 /**
- * audience-presence — the persistent detent PRESENCE (P13, design LOCKED 2026-06-21). One
- * panel at three heights (peek → preview → full), docked above the composer, owning audience
- * identity + switching and opening the ONE shipped AudienceLens at its FULL detent.
+ * audience-presence — the persistent living-audience PRESENCE (P13, redesigned 2026-06-21).
+ * TWO clean states (NOT a 3-step drawer): a PEEK band docked above the composer, and a PANEL
+ * that expands UPWARD over the composer field (the composer stays the audience-chat input).
  *
- * These tests lock the LOCKED design + the honesty spine:
- *  - PEEK idle (focus=null): identity + a READINESS pulse ("N personas ready") — NEVER a stale
- *    reaction, and NO second text input at rest (fork #4).
+ * These tests lock the redesign + the honesty spine:
+ *  - PEEK idle (focus=null): identity + a READINESS pulse ("N personas ready"), no stale reaction,
+ *    and NO input of its own (the composer field owns it now).
  *  - PEEK focused: a live read pulse ("6 of 10 would stop"), never an aggregate fabrication.
- *  - The PRESENCE owns switching (fork #3): the switcher lists audiences + fires onSelectAudience.
- *  - peek → preview reveals the room slice + the "ask your audience…" entry + "Open the room →".
- *  - preview → FULL mounts the ONE shipped Lens content (Panel · 10 ⇄ Population) — the door.
- *  - General / null audience: readiness, default roster, no crash; sr-only roster mirror present.
+ *  - Tapping the band toggles the panel via the controlled `onOpenChange`.
+ *  - The PRESENCE owns switching: the switcher lists audiences + fires onSelectAudience.
+ *  - open + focus → the ONE shipped Lens content (Panel · 10 ⇄ Population) mounts in the panel.
+ *  - open + asks → the audience-chat conversation renders; tapping a turn re-asks (onReask).
+ *  - open + idle → the hero prompt ("type below to test a thought"), no fabricated reaction.
  *  - Determinism guards: no Math.random / Date.now / new Date, mulberry32 seeded, reducedMotion gated.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -20,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Audience, CalibratedPersona } from '@/lib/audience/audience-types';
 import { ARCHETYPES } from '@/lib/engine/wave3/persona-registry';
-import { AudiencePresence } from '../audience-presence';
+import { AudiencePresence, type AudienceAsk } from '../audience-presence';
 import type { AmbientFocus } from '../ambient-presence-types';
 
 afterEach(() => {
@@ -29,7 +30,6 @@ afterEach(() => {
 });
 
 const SRC_PATH = join(process.cwd(), 'src/components/audience-lens/audience-presence.tsx');
-/** Strip comments so honesty-framing prose that NAMES a forbidden token can't trip the guards. */
 const readCode = () =>
   readFileSync(SRC_PATH, 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -83,49 +83,52 @@ function setup(over: Partial<React.ComponentProps<typeof AudiencePresence>> = {}
     selectedAudienceId: 'aud-1',
     onSelectAudience: vi.fn(),
     focus: null,
-    reducedMotion: true, // deterministic, no SMIL/CSS motion in the assertions
+    reducedMotion: true,
+    open: false,
+    onOpenChange: vi.fn(),
     ...over,
   };
   return { props, ...render(<AudiencePresence {...props} />) };
 }
 
-// ── PEEK — idle readiness (fork #4: identity + ready, NO stale reaction, NO second input) ──
-describe('AudiencePresence — PEEK idle (readiness, not a stale reaction)', () => {
-  it('shows the audience identity + a readiness pulse, never a fabricated reaction', () => {
+// ── PEEK — readiness (identity + ready, no stale reaction, no own input) ──
+describe('AudiencePresence — PEEK band (readiness)', () => {
+  it('shows the identity + a readiness pulse, never a fabricated reaction', () => {
     setup({ audience: calibrated10(), focus: null });
     expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 personas ready/i);
     expect(screen.getByTestId('audience-pulse').textContent).not.toMatch(/would stop/i);
-    // The presence identity is present.
-    expect(
-      screen.getByRole('button', { name: /audience: growth audience/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /audience: growth audience/i })).toBeInTheDocument();
   });
 
-  it('has NO second text input at rest (peek) — the ask entry only exists once opened', () => {
-    setup({ focus: null });
+  it('owns NO input of its own (the composer field is the audience-chat input)', () => {
+    setup({ focus: null, open: false });
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.queryByPlaceholderText(/ask your audience/i)).toBeNull();
   });
 
-  it('keeps the sr-only roster mirror present (a11y, UI-SPEC §Cross-Cutting)', () => {
+  it('reads "6 of 10 would stop" from the focused concept when focused', () => {
+    setup({ focus: FOCUS });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/6 of 10 would stop/i);
+  });
+
+  it('keeps the sr-only roster mirror present (a11y)', () => {
     const { container } = setup({ focus: null });
     const roster = container.querySelector('.sr-only ul');
     expect(roster).not.toBeNull();
     expect(roster!.querySelectorAll('li').length).toBe(10);
   });
-});
 
-// ── PEEK — focused live read (never an aggregate fabrication) ──
-describe('AudiencePresence — PEEK focused (live read)', () => {
-  it('reads "6 of 10 would stop" from the focused concept, not a fabricated aggregate', () => {
-    setup({ focus: FOCUS });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/6 of 10 would stop/i);
+  it('tapping the band toggles the panel via the controlled onOpenChange', () => {
+    const onOpenChange = vi.fn();
+    setup({ open: false, onOpenChange });
+    fireEvent.click(screen.getByRole('button', { name: /open your audience/i }));
+    expect(onOpenChange).toHaveBeenCalledWith(true);
   });
 });
 
-// ── General / null audience — readiness, default roster, no crash ──
+// ── General / null audience ──
 describe('AudiencePresence — General / null audience (no crash)', () => {
-  it('renders the General readiness pulse + a default roster of 10 when personas are empty', () => {
+  it('renders the General readiness pulse + a default roster of 10', () => {
     const { container } = setup({ audience: general(), focus: null });
     expect(screen.getByTestId('audience-pulse').textContent).toMatch(/general · 10 personas ready/i);
     expect(container.querySelectorAll('.sr-only ul li').length).toBe(10);
@@ -137,8 +140,8 @@ describe('AudiencePresence — General / null audience (no crash)', () => {
   });
 });
 
-// ── Switching — the PRESENCE owns it (fork #3) ──
-describe('AudiencePresence — owns audience switching (fork #3)', () => {
+// ── Switching — the PRESENCE owns it ──
+describe('AudiencePresence — owns audience switching', () => {
   it('lists audiences in the switcher and fires onSelectAudience on pick', () => {
     const onSelectAudience = vi.fn();
     setup({ onSelectAudience });
@@ -151,32 +154,40 @@ describe('AudiencePresence — owns audience switching (fork #3)', () => {
   });
 });
 
-// ── Detents — peek → preview → full opens the ONE shipped Lens (the door) ──
-describe('AudiencePresence — detents (peek → preview → full = the one Lens)', () => {
-  it('opens to PREVIEW with the room slice + the "ask your audience…" entry', () => {
-    setup({ focus: FOCUS });
-    expect(screen.getByTestId('audience-presence-sheet').getAttribute('data-detent')).toBe('peek');
-    fireEvent.click(screen.getByRole('button', { name: /open your audience/i }));
-    const sheet = screen.getByTestId('audience-presence-sheet');
-    expect(sheet.getAttribute('data-detent')).toBe('preview');
-    expect(screen.getByPlaceholderText(/ask your audience/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/open the room/i).length).toBeGreaterThan(0);
-  });
-
-  it('drives PREVIEW → FULL into the ONE shipped Lens content (Panel · 10 ⇄ Population)', () => {
-    setup({ focus: FOCUS });
-    fireEvent.click(screen.getByRole('button', { name: /open your audience/i }));
-    // "Open the room →" advances to the full Lens.
-    fireEvent.click(screen.getAllByRole('button', { name: /open the room/i })[0]!);
-    const sheet = screen.getByTestId('audience-presence-sheet');
-    expect(sheet.getAttribute('data-detent')).toBe('full');
-    // The shipped Lens content is mounted (its scale toggle), not a duplicate surface.
+// ── PANEL (open) — the one Lens + the audience-chat conversation ──
+describe('AudiencePresence — PANEL (expanded over the composer)', () => {
+  it('mounts the ONE shipped Lens content (Panel · 10 ⇄ Population) when open + focused', () => {
+    setup({ open: true, focus: FOCUS });
+    expect(screen.getByTestId('audience-panel')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /panel · 10/i })).toBeInTheDocument();
   });
+
+  it('shows the idle hero prompt (no fabricated reaction) when open + idle', () => {
+    setup({ open: true, focus: null });
+    expect(screen.getByText(/type below to test a thought/i)).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
+  });
+
+  it('renders the audience-chat conversation and re-asks a turn on tap', () => {
+    const onReask = vi.fn();
+    const asks: AudienceAsk[] = [
+      { id: 'a1', thought: 'open with a stat', fraction: '7/10 stop', scrollQuote: 'whoa' },
+    ];
+    setup({ open: true, focus: FOCUS, asks, onReask });
+    const turn = screen.getByRole('button', { name: /open with a stat/i });
+    expect(turn.textContent).toMatch(/7 of 10 would stop/i);
+    fireEvent.click(turn);
+    expect(onReask).toHaveBeenCalledWith(asks[0]);
+  });
+
+  it('surfaces the "Reading the room…" loading state while asking', () => {
+    setup({ open: true, focus: null, asking: true });
+    expect(screen.getByText(/reading the room/i)).toBeInTheDocument();
+  });
 });
 
-// ── Source guards: determinism + colour/motion discipline ──
+// ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {
     const code = readCode();
@@ -185,11 +196,9 @@ describe('AudiencePresence — source guards', () => {
     expect(code).not.toMatch(/new Date\(/);
   });
 
-  it('uses the mulberry32 seeded PRNG for the constellation layout', () => {
-    expect(readCode()).toMatch(/mulberry32/);
-  });
-
-  it('gates motion on reducedMotion', () => {
-    expect(readCode()).toMatch(/reducedMotion/);
+  it('uses the mulberry32 seeded PRNG + gates motion on reducedMotion', () => {
+    const code = readCode();
+    expect(code).toMatch(/mulberry32/);
+    expect(code).toMatch(/reducedMotion/);
   });
 });
