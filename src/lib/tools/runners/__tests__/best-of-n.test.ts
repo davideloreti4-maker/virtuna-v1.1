@@ -17,7 +17,7 @@
  * runner (mechanism-level proof) plus one Hooks assertion for the failure-mode field.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterAll } from "vitest";
 import type { IdeaCardBlock, HookCardBlock } from "@/lib/tools/blocks";
 
 // ─── Mock Qwen client ─────────────────────────────────────────────────────────
@@ -39,6 +39,9 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
 
 vi.mock("@/lib/engine/flash/rubric-critic", () => ({
   critiqueAgainstRubric: vi.fn(),
+  // Mirror the real env-driven switch so this suite can toggle it (beforeEach opts in;
+  // the P13 disabled-path test deletes the var to assert the critic is never consulted).
+  isRubricCriticEnabled: () => process.env.RUBRIC_CRITIC_ENABLED === "true",
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
@@ -92,8 +95,15 @@ function makeStructuredHookResponse(count: number) {
 }
 
 describe("best-of-N + flop pass (14-02)", () => {
+  // These tests exercise the rubric-critic-ENABLED path. The critic is OFF by default
+  // in production (P13 owner decision — see isRubricCriticEnabled), so opt it on here so
+  // the combined-gate + regen contract stays under test for when it is re-enabled.
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.RUBRIC_CRITIC_ENABLED = "true";
+  });
+  afterAll(() => {
+    delete process.env.RUBRIC_CRITIC_ENABLED;
   });
 
   it("COMBINED GATE: a Strong-band candidate that FAILS the rubric is dropped (KCQ-02)", async () => {
@@ -338,5 +348,52 @@ describe("best-of-N + flop pass (14-02)", () => {
     expect(result.blocks.length).toBeGreaterThanOrEqual(1);
     expect(result.warnings.some((w) => /critic unavailable/i.test(w))).toBe(true);
     expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  // ── P13: rubric critic DISABLED (production default) ─────────────────────────
+
+  it("RUBRIC DISABLED (default): critic is never called, gating is band-only (P13)", async () => {
+    // Force the production default (off), overriding the suite's beforeEach opt-in.
+    delete process.env.RUBRIC_CRITIC_ENABLED;
+
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { critiqueAgainstRubric } = await import("@/lib/engine/flash/rubric-critic");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonasStrong() },
+      warnings: [],
+    });
+    // Even though the critic WOULD fail every candidate, it must never be consulted
+    // when disabled — so these Strong-band hooks must still ship (band-only gate).
+    (critiqueAgainstRubric as ReturnType<typeof vi.fn>).mockResolvedValue({
+      pass: false,
+      predictedFailureMode: "would-drop-if-consulted",
+    });
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "hooks",
+      platform: "tiktok",
+      profileRow: null,
+      anchor: "an idea",
+    });
+
+    // Band-only gate → Strong candidates ship despite the (ignored) critic fail.
+    expect(result.blocks.length).toBeGreaterThanOrEqual(1);
+    // The critic was never called — no extra API latency, no regen-on-zero doubling.
+    expect((critiqueAgainstRubric as ReturnType<typeof vi.fn>).mock.calls.length).toBe(0);
+    // Survivors on the first batch → exactly one generation call (no regen).
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    // predictedFailureMode is null on band-only cards (critic produced no verdict).
+    for (const block of result.blocks) {
+      expect((block as HookCardBlock).props.predictedFailureMode).toBeNull();
+    }
   });
 });

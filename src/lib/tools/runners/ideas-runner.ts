@@ -54,7 +54,7 @@ import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
-import { critiqueAgainstRubric } from "@/lib/engine/flash/rubric-critic";
+import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from "@/lib/engine/flash/rubric-critic";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
@@ -315,6 +315,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
    * verdict.predictedFailureMode (KCQ-04, null on pass) for the 14-04 drill-reveal.
    */
   async function gatePass(ideaBatch: StructuredIdea[]): Promise<IdeaCardBlock[]> {
+    // P13: rubric critic OFF by default — skip the call (no extra API hit, no
+    // regen-on-zero doubling) and gate on the SIM band alone. A forced pass verdict
+    // collapses the combined gate below to `band !== "Weak"`.
+    const criticEnabled = isRubricCriticEnabled();
+    const PASS_VERDICT: RubricVerdict = { pass: true, predictedFailureMode: null };
     // Per-candidate parallel pair: [SIM band, rubric verdict]. Both run in parallel;
     // neither throws into the outer Promise.all (each catches → fail-safe).
     const judged = await Promise.all(
@@ -325,7 +330,9 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
             allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
             return null; // null = failed SIM → treat as Weak (drop)
           }),
-          critiqueAgainstRubric(idea.seedHook, "idea", panel), // fail-safe internally (never throws)
+          criticEnabled
+            ? critiqueAgainstRubric(idea.seedHook, "idea", panel) // fail-safe internally (never throws)
+            : Promise.resolve(PASS_VERDICT),
         ]);
         return { idea, simResult, verdict };
       }),

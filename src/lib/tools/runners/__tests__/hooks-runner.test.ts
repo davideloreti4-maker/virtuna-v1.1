@@ -40,6 +40,8 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
 
 vi.mock("@/lib/engine/flash/rubric-critic", () => ({
   critiqueAgainstRubric: vi.fn().mockResolvedValue({ pass: true, predictedFailureMode: null }),
+  // P13: critic OFF (production default) → these tests exercise the band-only gate.
+  isRubricCriticEnabled: () => false,
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────

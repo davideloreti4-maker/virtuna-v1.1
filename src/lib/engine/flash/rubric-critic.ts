@@ -43,6 +43,22 @@ import { getQwenClient, QWEN_SEED, QWEN_FAST_MODEL } from "../qwen/client";
 import { stripModelOutput } from "../utils/strip";
 import type { NichePanel, FlashFraming } from "./flash-prompts";
 
+// ─── Master switch (P13 owner decision — critic DISABLED by default) ─────────
+// The rubric critic is OFF unless RUBRIC_CRITIC_ENABLED="true". Rationale:
+//  1. LATENCY — an over-strict critic failed ~100% of candidates, which tripped the
+//     runners' regen-on-zero path and doubled wall-clock (the ~2-3x the owner felt).
+//     Disabled, the runners skip the critic call entirely (no extra API hit) and gate
+//     on the SIM band alone (band !== "Weak").
+//  2. NO EMPTY OUTPUT — a request must always return something; a second text-only
+//     judge must not be able to zero a thread the synthetic audience said people would
+//     stop on (the SIM is the moat). Hooks grounding has improved, so band-only holds.
+//  3. SIMPLICITY — one fewer moving part while the rubric is (eventually) recalibrated.
+// The critic code + its contract tests stay intact so it can be re-enabled (e.g. to
+// A/B a recalibrated rubric) by flipping the env var — no code change required.
+export function isRubricCriticEnabled(): boolean {
+  return process.env.RUBRIC_CRITIC_ENABLED === "true";
+}
+
 // ─── Model resolution (mirrors run-flash-text-mode.ts FLASH_MODEL seam) ──────
 const FLASH_MODEL = process.env.FLASH_MODEL ?? QWEN_FAST_MODEL;
 
