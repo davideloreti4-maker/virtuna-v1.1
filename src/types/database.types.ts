@@ -402,6 +402,7 @@ export type Database = {
         Row: {
           calibration: Json | null
           created_at: string
+          creator_persona: Json | null
           cross_niche: number
           fyp: number
           goal_intent: string | null
@@ -415,6 +416,7 @@ export type Database = {
           personas: Json
           platform: string
           profile: Json | null
+          signature: Json | null
           type: string
           updated_at: string
           user_id: string
@@ -422,6 +424,7 @@ export type Database = {
         Insert: {
           calibration?: Json | null
           created_at?: string
+          creator_persona?: Json | null
           cross_niche?: number
           fyp?: number
           goal_intent?: string | null
@@ -435,6 +438,7 @@ export type Database = {
           personas?: Json
           platform: string
           profile?: Json | null
+          signature?: Json | null
           type: string
           updated_at?: string
           user_id: string
@@ -442,6 +446,7 @@ export type Database = {
         Update: {
           calibration?: Json | null
           created_at?: string
+          creator_persona?: Json | null
           cross_niche?: number
           fyp?: number
           goal_intent?: string | null
@@ -455,6 +460,7 @@ export type Database = {
           personas?: Json
           platform?: string
           profile?: Json | null
+          signature?: Json | null
           type?: string
           updated_at?: string
           user_id?: string

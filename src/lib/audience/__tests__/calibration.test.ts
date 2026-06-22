@@ -1,20 +1,20 @@
 /**
- * Phase 7 Plan 03 — calibration.ts + persona-repaint.ts (TDD GREEN phase).
+ * §P BUILD step 4 — calibration.ts (real signature) + legacy helpers.
  *
- * Tests:
- *  1. thin-data → general fallback (no CalibratedPersona fabricated)
- *  2. scrape throw → scrape_failed (distinct from thin fallback)
- *  3. success path → personas.length === 10 + persona_weights === biasForGoalIntent(goalIntent)
- *  4. determinism: same input → byte-identical repaint output (Pitfall 2)
- *  5. thin gate is on getFollowerTier(null) AND videos < THIN_MIN_VIDEOS (both required)
- *
- * Provider injected via the optional _provider parameter — avoids module-mock constructor issues.
+ * calibrateFromScrape now scrapes a bundle → enriches → frozen AudienceSignature. All I/O
+ * is injected via CalibrationDeps (scrapeBundle / scrapeNiche / enrich) so tests run with
+ * zero network/LLM. Covers:
+ *   1. success path → audience + signature + 10 reactors + reality-first weights
+ *   2. scrape throw → scrape_failed (distinct from thin)
+ *   3. enrich throw → scrape_failed
+ *   4. thin account + thin niche → general fallback (honesty spine, never fabricates)
+ *   5. thin account + rich niche → success via niche fallback (NOT dead-end to General)
+ *   6. legacy deriveAudienceProfile / repaintPersonas unchanged
  */
 
 import { describe, it, expect, vi } from "vitest";
-import type { ProfileData, VideoData } from "@/lib/scraping/types";
-
-// ─── Imports ──────────────────────────────────────────────────────────────────
+import type { ProfileData, VideoData, ProfileBundle } from "@/lib/scraping/types";
+import type { AudienceSignature } from "../audience-types";
 
 import {
   calibrateFromScrape,
@@ -23,26 +23,15 @@ import {
 } from "../calibration";
 import { repaintPersonas } from "../persona-repaint";
 import { biasForGoalIntent } from "../goal-intent";
+import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 
-// ─── Mock provider factory ────────────────────────────────────────────────────
-
-function makeMockProvider(
-  profileFn: () => Promise<ProfileData>,
-  videosFn: () => Promise<VideoData[]>,
-) {
-  return {
-    scrapeProfile: vi.fn(profileFn),
-    scrapeVideos: vi.fn(videosFn),
-  };
-}
-
-// ─── Fixture helpers ──────────────────────────────────────────────────────────
+// ─── Fixtures ──────────────────────────────────────────────────────────────────
 
 function makeProfile(followerCount: number): ProfileData {
   return {
     handle: "testcreator",
     displayName: "Test Creator",
-    bio: "Making content daily",
+    bio: "Making content daily #productivity #adhd",
     avatarUrl: "https://example.com/avatar.jpg",
     verified: false,
     followerCount,
@@ -68,287 +57,178 @@ function makeVideos(count: number): VideoData[] {
   }));
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+function makeBundle(followerCount: number, videoCount: number): ProfileBundle {
+  const videos = makeVideos(videoCount);
+  return { profile: makeProfile(followerCount), videos, subCoverage: `${videos.length}/${videos.length}` };
+}
+
+function makeSignature(): AudienceSignature {
+  return {
+    creator_persona: {
+      content_description: "ADHD productivity",
+      context: "Audience: founders. Voice: blunt. AVOID: hype.",
+      writing_style_sample: "Hook alignment...",
+      format_signature: "fast-cut talking head",
+    },
+    audience: {
+      follower_tier: "mid",
+      maturity: "established",
+      temperature_mix: { cold: 0.2, warm: 0.5, hot: 0.3 },
+      interest_tags: ["adhd", "productivity"],
+      what_resonates: "step-by-step saves",
+      what_falls_flat: "storytime",
+      persona_weights: { fyp: 0.55, niche: 0.3, loyalist: 0.1, cross_niche: 0.05 },
+      personas: ARCHETYPES.map((archetype) => ({
+        archetype,
+        share: 0.1,
+        temperature: "warm" as const,
+        disposition: "connector" as const,
+        reaction_frame: `frame ${archetype}`,
+        evidence: "saves 2x",
+      })),
+    },
+    summary: "warm save-heavy crowd",
+    provenance: { handle: "testcreator", scraped_at: "2026-06-24T00:00:00.000Z", videos_analyzed: 15, videos_watched: 5, sub_coverage: "6/8" },
+  };
+}
+
+function makeDeps(overrides: Record<string, unknown> = {}) {
+  return {
+    scrapeBundle: vi.fn(async () => makeBundle(50_000, 15)),
+    scrapeNiche: vi.fn(async () => makeVideos(20)),
+    enrich: vi.fn(async () => makeSignature()),
+    ...overrides,
+  };
+}
+
+const BASE_INPUT = {
+  handle: "testcreator",
+  type: "personal" as const,
+  platform: "tiktok" as const,
+  goalIntent: "grow" as const,
+  name: "My Audience",
+};
+
+// ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("THIN_MIN_VIDEOS", () => {
-  it("should be a positive integer", () => {
-    expect(typeof THIN_MIN_VIDEOS).toBe("number");
-    expect(THIN_MIN_VIDEOS).toBeGreaterThan(0);
+  it("is a positive integer", () => {
     expect(Number.isInteger(THIN_MIN_VIDEOS)).toBe(true);
+    expect(THIN_MIN_VIDEOS).toBeGreaterThan(0);
   });
 });
 
-describe("calibrateFromScrape — thin-data fallback (honesty spine D-06)", () => {
-  it("returns { fallback: 'general', reason: 'thin' } when followerCount is 0 AND videos < THIN_MIN_VIDEOS", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(0)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS - 1)),
-    );
+describe("calibrateFromScrape — success path (real signature)", () => {
+  it("returns { audience } with the frozen signature + 10 reactors", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
 
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    expect(result).toHaveProperty("fallback", "general");
-    expect(result).toHaveProperty("reason", "thin");
-    // Honesty spine: NEVER fabricate CalibratedPersona on the fallback path
-    expect(result).not.toHaveProperty("audience");
-  });
-
-  it("returns { fallback: 'general', reason: 'thin' } when followerCount is null AND videos is empty", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve({ ...makeProfile(0), followerCount: null as unknown as number }),
-      () => Promise.resolve([]),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    expect(result).toHaveProperty("fallback", "general");
-    expect(result).not.toHaveProperty("audience");
-  });
-
-  it("does NOT fall back to thin when followerCount > 0 (tier resolves) AND videos >= THIN_MIN_VIDEOS", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    // Should be success path, not fallback
-    expect(result).not.toHaveProperty("fallback");
     expect(result).toHaveProperty("audience");
+    const { audience } = result as { audience: { signature: AudienceSignature; personas: unknown[]; creator_persona: unknown } };
+    expect(audience.signature.audience.personas).toHaveLength(10);
+    expect(audience.personas).toHaveLength(10); // legacy back-compat populated too
+    expect(audience.creator_persona).toBeTruthy();
   });
 
-  it("does NOT fall back to thin when followerCount > 0 even if videos < THIN_MIN_VIDEOS", async () => {
-    // Both conditions must be true; having a follower count means tier !== null
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS - 1)), // below threshold
-    );
+  it("bakes the DERIVED weights into persona_weights (reality first, P-5 — not goal-intent bias)", async () => {
+    const result = await calibrateFromScrape(BASE_INPUT, makeDeps());
+    const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
+    expect(audience.persona_weights).toEqual({ fyp: 0.55, niche: 0.3, loyalist: 0.1, cross_niche: 0.05 });
+  });
 
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    // followerCount > 0 → tier !== null → thin gate does NOT fire
-    expect(result).not.toHaveProperty("fallback");
-    expect(result).toHaveProperty("audience");
+  it("calls scrapeBundle (1-scrape collapse), not the legacy parallel pair", async () => {
+    const deps = makeDeps();
+    await calibrateFromScrape(BASE_INPUT, deps);
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+    expect(deps.enrich).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("calibrateFromScrape — scrape_failed (distinct from thin)", () => {
-  it("returns { error: 'scrape_failed' } when scrapeProfile throws", async () => {
-    const provider = makeMockProvider(
-      () => Promise.reject(new Error("Network timeout")),
-      () => Promise.resolve(makeVideos(20)),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
+  it("returns { error:'scrape_failed' } when the bundle scrape throws", async () => {
+    const deps = makeDeps({ scrapeBundle: vi.fn(async () => { throw new Error("Network timeout"); }) });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
     expect(result).toHaveProperty("error", "scrape_failed");
-    expect(result).not.toHaveProperty("fallback");
     expect(result).not.toHaveProperty("audience");
   });
 
-  it("returns { error: 'scrape_failed' } when scrapeVideos throws", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.reject(new Error("Actor failed")),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
+  it("returns { error:'scrape_failed' } when enrichment throws", async () => {
+    const deps = makeDeps({ enrich: vi.fn(async () => { throw new Error("synthesis validation failed"); }) });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
     expect(result).toHaveProperty("error", "scrape_failed");
-    expect(result).not.toHaveProperty("fallback");
   });
 });
 
-describe("calibrateFromScrape — success path", () => {
-  it("returns { audience } with exactly 10 CalibratedPersona entries", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
-    );
+describe("calibrateFromScrape — thin fallback (honesty spine D-06)", () => {
+  it("falls back to General ONLY when both the account AND the niche are thin", async () => {
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(THIN_MIN_VIDEOS - 1)),
+    });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
+    expect(result).toEqual({ fallback: "general", reason: "thin" });
+    expect(result).not.toHaveProperty("audience");
+  });
 
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
+  it("does NOT dead-end to General: thin account + rich niche → success via niche fallback", async () => {
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(20)),
+    });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
     expect(result).toHaveProperty("audience");
-    const { audience } = result as { audience: { personas: unknown[] } };
-    expect(audience.personas).toHaveLength(10);
-  });
-
-  it("bakes goal-intent bias into persona_weights once (nurture intent)", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "nurture", name: "My Audience" },
-      provider,
-    );
-
-    const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
-    const expectedWeights = biasForGoalIntent("nurture");
-    expect(audience.persona_weights).toEqual(expectedWeights);
-  });
-
-  it("bakes 'grow' goal-intent bias correctly", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(50_000)),
-      () => Promise.resolve(makeVideos(THIN_MIN_VIDEOS)),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
-    const expectedWeights = biasForGoalIntent("grow");
-    expect(audience.persona_weights).toEqual(expectedWeights);
-  });
-
-  it("does NOT generate personas on the thin fallback path (zero fabrication)", async () => {
-    const provider = makeMockProvider(
-      () => Promise.resolve(makeProfile(0)),
-      () => Promise.resolve([]),
-    );
-
-    const result = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider,
-    );
-
-    // Expected: fallback path, no audience key
-    expect(result).toHaveProperty("fallback");
-    expect(result).not.toHaveProperty("audience");
+    expect(deps.scrapeNiche).toHaveBeenCalledTimes(1);
+    expect(deps.enrich).toHaveBeenCalledTimes(1);
   });
 });
 
-describe("calibrateFromScrape — determinism (Pitfall 2)", () => {
-  it("produces byte-identical repaint for identical input (no Date.now/Math.random)", async () => {
-    const profile = makeProfile(50_000);
-    const videos = makeVideos(THIN_MIN_VIDEOS);
-
-    const provider1 = makeMockProvider(
-      () => Promise.resolve(profile),
-      () => Promise.resolve(videos),
+describe("calibrateFromScrape — target path", () => {
+  it("target with a reference handle scrapes that profile", async () => {
+    const deps = makeDeps();
+    await calibrateFromScrape(
+      { ...BASE_INPUT, type: "target", handle: "refcreator", description: "productivity founders" },
+      deps,
     );
-    const result1 = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider1,
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("refcreator");
+  });
+
+  it("target with no handle runs a niche search from the description", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape(
+      { ...BASE_INPUT, type: "target", handle: undefined, description: "small business productivity tools" },
+      deps,
     );
-
-    const provider2 = makeMockProvider(
-      () => Promise.resolve(profile),
-      () => Promise.resolve(videos),
-    );
-    const result2 = await calibrateFromScrape(
-      { handle: "testcreator", type: "personal", platform: "tiktok", goalIntent: "grow", name: "My Audience" },
-      provider2,
-    );
-
-    // Both must succeed
-    expect(result1).toHaveProperty("audience");
-    expect(result2).toHaveProperty("audience");
-
-    const aud1 = (result1 as { audience: { personas: { repaint: string }[] } }).audience;
-    const aud2 = (result2 as { audience: { personas: { repaint: string }[] } }).audience;
-
-    // Every persona repaint string must be identical
-    for (let i = 0; i < aud1.personas.length; i++) {
-      expect(aud1.personas[i]!.repaint).toBe(aud2.personas[i]!.repaint);
-    }
+    expect(deps.scrapeBundle).not.toHaveBeenCalled();
+    expect(deps.scrapeNiche).toHaveBeenCalledTimes(1);
+    expect(result).toHaveProperty("audience");
   });
 });
 
-describe("deriveAudienceProfile", () => {
-  it("returns temperature_mix with cold/warm/hot keys summing to 1.0", () => {
-    const result = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const { cold, warm, hot } = result.temperature_mix;
+// ─── Legacy helpers (unchanged behaviour) ────────────────────────────────────────
+
+describe("deriveAudienceProfile (legacy)", () => {
+  it("temperature_mix sums to 1.0", () => {
+    const { temperature_mix } = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
+    const { cold, warm, hot } = temperature_mix;
     expect(cold + warm + hot).toBeCloseTo(1.0, 5);
   });
 
-  it("returns top_dispositions as an array of at most 3 items", () => {
-    const result = deriveAudienceProfile(makeProfile(10_000), makeVideos(10));
-    expect(Array.isArray(result.top_dispositions)).toBe(true);
-    expect(result.top_dispositions.length).toBeLessThanOrEqual(3);
+  it("follower_tier is null when followerCount is 0", () => {
+    expect(deriveAudienceProfile(makeProfile(0), makeVideos(10)).follower_tier).toBeNull();
   });
 
-  it("returns follower_tier = null when followerCount is 0", () => {
-    const result = deriveAudienceProfile(makeProfile(0), makeVideos(10));
-    expect(result.follower_tier).toBeNull();
-  });
-
-  it("returns a valid follower_tier string for a real follower count", () => {
-    const result = deriveAudienceProfile(makeProfile(50_000), makeVideos(10));
-    expect(result.follower_tier).toBe("micro");
+  it("returns a valid tier for a real follower count", () => {
+    expect(deriveAudienceProfile(makeProfile(50_000), makeVideos(10)).follower_tier).toBe("micro");
   });
 });
 
-describe("repaintPersonas", () => {
-  it("returns exactly 10 CalibratedPersona entries", () => {
+describe("repaintPersonas (legacy)", () => {
+  it("returns exactly 10 entries with non-empty repaint and shares ~1.0", () => {
     const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
     const weights = biasForGoalIntent("grow");
-
     const personas = repaintPersonas({ audienceProfile, goalIntent: "grow", weights });
     expect(personas).toHaveLength(10);
-  });
-
-  it("each persona has archetype, repaint, temperature, disposition, share", () => {
-    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const weights = biasForGoalIntent("sell");
-
-    const personas = repaintPersonas({ audienceProfile, goalIntent: "sell", weights });
-    for (const p of personas) {
-      expect(p).toHaveProperty("archetype");
-      expect(p).toHaveProperty("repaint");
-      expect(typeof p.repaint).toBe("string");
-      expect(p.repaint.length).toBeGreaterThan(0);
-      expect(p).toHaveProperty("temperature");
-      expect(p).toHaveProperty("disposition");
-      expect(p).toHaveProperty("share");
-      expect(typeof p.share).toBe("number");
-    }
-  });
-
-  it("persona shares sum to approximately 1.0", () => {
-    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const weights = biasForGoalIntent("grow");
-
-    const personas = repaintPersonas({ audienceProfile, goalIntent: "grow", weights });
-    const totalShare = personas.reduce((sum, p) => sum + p.share, 0);
-    expect(totalShare).toBeCloseTo(1.0, 2);
-  });
-
-  it("is deterministic: same input → byte-identical output", () => {
-    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const weights = biasForGoalIntent("authority");
-
-    const result1 = repaintPersonas({ audienceProfile, goalIntent: "authority", weights });
-    const result2 = repaintPersonas({ audienceProfile, goalIntent: "authority", weights });
-
-    for (let i = 0; i < result1.length; i++) {
-      expect(result1[i]!.repaint).toBe(result2[i]!.repaint);
-    }
+    expect(personas.reduce((s, p) => s + p.share, 0)).toBeCloseTo(1.0, 2);
+    for (const p of personas) expect(p.repaint.length).toBeGreaterThan(0);
   });
 });

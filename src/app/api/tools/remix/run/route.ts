@@ -40,6 +40,7 @@ import { runRemixPipeline } from "@/lib/tools/runners/remix-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { createLogger } from "@/lib/logger";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { z } from "zod";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -58,6 +59,8 @@ export const maxDuration = 300;
 const RemixRunRequestSchema = z.object({
   url: z.string().min(1).max(2000),
   platform: z.enum(["tiktok", "instagram", "youtube"]).optional().default("tiktok"),
+  // Per-run reaction lens (GAP-C2 / §P.10) — composer override; absent → audience default.
+  intent: z.enum(["grow", "sell"]).optional(),
 });
 
 // ── Rate / cap constants ──────────────────────────────────────────────────────
@@ -109,7 +112,7 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const { url: tiktokUrl, platform } = parsed.data;
+  const { url: tiktokUrl, platform, intent: bodyIntent } = parsed.data;
 
   // ── (5) user_id from session only (CR-01) ────────────────────────────────────
   // Never trust user id from the request body — always from the auth session.
@@ -140,6 +143,11 @@ export async function POST(request: Request): Promise<Response> {
       // Non-fatal: fall back to General if audience load fails (no regression, D-04)
     }
   }
+
+  // ── (7b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────────
+  // Explicit composer override (Zod-validated above) wins; else default from goal_intent (4→2).
+  // The runner gates this to undefined for General/no-audience (no-op, regression gate).
+  const effectiveIntent = bodyIntent ?? goalIntentToLens(activeAudience.goal_intent);
 
   // ── (8) SSE stream: run pipeline + emit events ────────────────────────────────
   const encoder = new TextEncoder();
@@ -177,6 +185,7 @@ export async function POST(request: Request): Promise<Response> {
           profileRow,
           requestId,
           audience: activeAudience,
+          intent: effectiveIntent,
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });

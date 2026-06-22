@@ -30,11 +30,11 @@ import {
   buildFlashUserContent,
   buildNicheAwareSystemPrompt,
 } from "./flash-prompts";
-import type { FlashFraming, NichePanel } from "./flash-prompts";
+import type { FlashFraming, NichePanel, IntentLens } from "./flash-prompts";
 import type { ContentTypeSlug } from "../types";
 
-// Re-export FlashFraming and NichePanel so callers can import them from here
-export type { FlashFraming, NichePanel };
+// Re-export FlashFraming, NichePanel and IntentLens so callers can import them from here
+export type { FlashFraming, NichePanel, IntentLens };
 // Re-export ContentTypeSlug for convenience (D-05 callers need it for the panel)
 export type { ContentTypeSlug };
 
@@ -83,6 +83,10 @@ export interface FlashRunResult {
  *                        When provided (and panel.niche is non-null), folds the stored per-audience
  *                        repaint into buildNicheAwareSystemPrompt — deterministic per audience.
  *                        When absent → byte-identical no-op (General regression gate preserved).
+ * @param intent          Optional per-run reaction lens (GAP-C2 / §P.10). `sell` re-frames the
+ *                        verdict toward purchase intent via a user-message directive; `grow`/undefined
+ *                        → byte-identical no-op. Only the USER message changes — the system-prompt
+ *                        cache prefix (D-17) and ENGINE_VERSION are untouched.
  * @returns FlashRunResult with parsed FlashResult and any warnings.
  * @throws if the model response fails Zod validation after coercion.
  */
@@ -91,6 +95,7 @@ export async function runFlashTextMode(
   framing: FlashFraming,
   panel?: NichePanel,
   audienceRepaint?: Record<string, string>,
+  intent?: IntentLens,
 ): Promise<FlashRunResult> {
   const ai = getQwenClient();
   const warnings: string[] = [];
@@ -113,7 +118,7 @@ export async function runFlashTextMode(
       },
       {
         role: "user" as const,
-        content: buildFlashUserContent(content_text, framing),
+        content: buildFlashUserContent(content_text, framing, intent),
       },
     ],
     response_format: { type: "json_object" as const },

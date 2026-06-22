@@ -56,9 +56,11 @@ import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
 import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from "@/lib/engine/flash/rubric-critic";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { IntentLens } from "@/lib/audience/intent-lens";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
@@ -106,6 +108,11 @@ export interface IdeasPipelineInput {
    * other runners still use buildGroundingLine(profileRow) unchanged.
    */
   audience?: Audience | null;
+  /**
+   * Per-run reaction lens (GAP-C2 / §P.10). `sell` re-frames the SIM verdict toward purchase
+   * intent; `grow`/undefined → byte-identical no-op. Calibrated-audience only (gated below).
+   */
+  intent?: IntentLens;
   /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
    * (lead idea's personas) + audience_id. Non-fatal — never blocks the cards.
@@ -256,8 +263,11 @@ function selectLeadScrollQuote(
  * @param input.profileRow  Creator profile (null = cold-start, never blocks on onboarding).
  */
 export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<IdeasPipelineResult> {
-  const { ask, platform, profileRow, audience = null } = input;
+  const { ask, platform, profileRow, audience = null, intent } = input;
   const allWarnings: string[] = [];
+  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
+  const simIntent: IntentLens | undefined =
+    audience && !audience.is_general ? intent : undefined;
 
   // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
   // This fires only if the import itself resolves a bad value (e.g. undefined/NaN).
@@ -268,10 +278,20 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     );
   }
 
+  // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
+  // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
+  // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
+  const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
-    { ask: ask || "Generate ideas from my profile", platform, mode: "idea" },
-    profileRow,
+    {
+      ask: ask || "Generate ideas from my profile",
+      platform,
+      mode: "idea",
+      ...(creatorSteer ? { overrides: creatorSteer } : {}),
+    },
+    genProfileRow,
   );
 
   // Record which path shipped (Open Q1 resolved decision)
@@ -325,7 +345,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     const judged = await Promise.all(
       ideaBatch.map(async (idea) => {
         const [simResult, verdict] = await Promise.all([
-          runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint).catch((err) => {
+          runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint, simIntent).catch((err) => {
             const msg = err instanceof Error ? err.message : String(err);
             allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
             return null; // null = failed SIM → treat as Weak (drop)

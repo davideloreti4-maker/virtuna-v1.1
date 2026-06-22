@@ -530,6 +530,65 @@ describe("POST /api/audiences/calibrate", () => {
     expect(mocks.mockCreateAudience).toHaveBeenCalledOnce();
   });
 
+  it("A7: updates the draft row (no second insert) when audienceId is supplied", async () => {
+    makeAuthenticatedUser();
+
+    const mockAudienceInput = {
+      user_id: "",
+      name: "My Audience",
+      type: "personal" as const,
+      platform: "tiktok" as const,
+      goal_label: null,
+      goal_intent: "grow" as const,
+      is_general: false,
+      is_preset: false,
+      persona_weights: { fyp: 0.75, niche: 0.15, loyalist: 0.05, cross_niche: 0.05 },
+      personas: [],
+      profile: null,
+      calibration: {
+        source: "scrape" as const,
+        handle: "testcreator",
+        scraped_at: "2026-06-18T00:00:00Z",
+        thin: false,
+      },
+    };
+    mocks.mockCalibrateFromScrape.mockResolvedValue({ audience: mockAudienceInput });
+
+    const draftId = "11111111-1111-4111-8111-111111111111";
+    mocks.mockUpdateAudience.mockResolvedValue({
+      id: draftId,
+      ...mockAudienceInput,
+      user_id: "user-123",
+      created_at: "2026-06-18T00:00:00Z",
+      updated_at: "2026-06-18T00:00:00Z",
+    });
+
+    const req = new Request("http://localhost/api/audiences/calibrate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audienceId: draftId,
+        handle: "testcreator",
+        type: "personal",
+        platform: "tiktok",
+        goalIntent: "grow",
+        name: "My Audience",
+      }),
+    });
+
+    const res = await POST_CALIBRATE(req);
+    expect(res.status).toBe(200);
+
+    const events = await parseSseEvents(res);
+    const doneEvent = events.find((e) => e.event === "done");
+    expect((doneEvent!.data as { audience: { id: string } }).audience.id).toBe(draftId);
+
+    // A7: the draft is enriched in place — UPDATE called, INSERT never (no orphan dupe).
+    expect(mocks.mockUpdateAudience).toHaveBeenCalledOnce();
+    expect(mocks.mockUpdateAudience).toHaveBeenCalledWith(expect.anything(), draftId, mockAudienceInput);
+    expect(mocks.mockCreateAudience).not.toHaveBeenCalled();
+  });
+
   it("returns 400 for invalid input (missing required fields)", async () => {
     makeAuthenticatedUser();
     const req = new Request("http://localhost/api/audiences/calibrate", {

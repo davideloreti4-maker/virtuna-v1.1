@@ -54,6 +54,7 @@ import {
 } from "./composer-controls";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
+import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { useIdeasStream } from "@/hooks/queries/use-ideas-stream";
 import { IdeasThreadView } from "@/components/thread/ideas-thread-view";
 import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
@@ -149,11 +150,13 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Audience is the shared substrate across skills (the moat). Platform is no
   // longer a separate control — it is DERIVED from the selected audience
   // (each audience carries its platform); General → tiktok default (D-07).
-  // Intent (grow ⇄ sell) is surfaced per the locked composer; it is local UI
-  // state for now — the commerce track wires it into scoring later.
+  // Intent (grow ⇄ sell) is the per-run reaction LENS (GAP-C2 / §P.10): defaulted from the
+  // active audience's goal_intent (4→2) and sent to the skill routes, where it re-frames the
+  // SIM verdict (sell → buying lens) for a calibrated audience. General → no-op.
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
-  const [intent, setIntent] = useState<Intent>("grow");
+  // Per-run intent override: null = follow the active audience's goal_intent default (derived below).
+  const [intentOverride, setIntentOverride] = useState<Intent | null>(null);
 
   // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
   // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
@@ -166,6 +169,12 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const selectedAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
   // Sent as the first-class platform param to the skill routes (derived, not picked).
   const platform: Platform = audienceToPlatform(selectedAudience?.platform);
+
+  // GAP-C2 (§P.10): the per-run intent LENS is DERIVED, not synced via effect — the displayed
+  // value is the user's explicit per-run flip (intentOverride) falling back to the active
+  // audience's goal_intent (4→2 lens). Switching audience clears the override in
+  // handleSelectAudience (an event handler, not an effect) → the new audience's default shows.
+  const intent: Intent = intentOverride ?? goalIntentToLens(selectedAudience?.goal_intent ?? null);
 
   // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
   // Captured on mount from GET /api/threads/open (returns threadId).
@@ -433,6 +442,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const handleSelectAudience = useCallback(async (audience: Audience) => {
     const newId = audience.is_general ? null : audience.id;
     setSelectedAudienceId(newId);
+    // GAP-C2: clear any per-run intent flip so the lens falls back to the new audience's default.
+    setIntentOverride(null);
     if (!openThreadId) return;
     // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
     // preset ids ("preset-growth"/"preset-conversion") are not UUIDs and threads
@@ -470,8 +481,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     setActiveTool("script");
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
-    void script.start("", platform, hookLine);
-  }, [script, platform]);
+    void script.start("", platform, hookLine, intent);
+  }, [script, platform, intent]);
 
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.
@@ -583,7 +594,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
       setUrl(""); // clear input after send
       // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
-      await ideas.start(ask, platform);
+      await ideas.start(ask, platform, intent);
       return;
     }
 
@@ -595,7 +606,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
       setUrl(""); // clear input after send
       // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
-      await hooks.start(ask, platform);
+      await hooks.start(ask, platform, intent);
       return;
     }
 
@@ -688,7 +699,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       setUrl(""); // clear input after send
       script.reset();
       // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
-      await script.start(ask, platform);
+      await script.start(ask, platform, undefined, intent);
       return;
     }
 
@@ -700,7 +711,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       const url = trimmedUrl; // trending/competitor TikTok URL (required)
       setUrl(""); // clear input after send
       remix.reset();
-      await remix.start(url, platform);
+      await remix.start(url, platform, intent);
       return;
     }
 
@@ -925,7 +936,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         const res = await fetch("/api/tools/react", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, intent }),
           signal: controller.signal,
         });
         if (controller.signal.aborted) return;
@@ -943,7 +954,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
         if (askInflightRef.current === controller) setAsking(false);
       }
     },
-    [asking, focusByThought],
+    [asking, focusByThought, intent],
   );
 
   const audiencePresence = (
@@ -1245,7 +1256,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               activeTool={activeTool}
               onSelectTool={handleUserSelectTool}
               intent={intent}
-              onIntentChange={setIntent}
+              onIntentChange={setIntentOverride}
               onUploadClick={() => setShowUpload(true)}
               onRunExplore={(params) => void explore.start(params)}
             />

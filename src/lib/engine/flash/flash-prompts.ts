@@ -36,6 +36,24 @@ import type { ContentTypeSlug } from "../types";
 
 export type FlashFraming = "hook" | "idea" | "chat";
 
+// ─── Intent lens (GAP-C2 / §P.10) ──────────────────────────────────────────────
+// Per-run reaction LENS layered onto the volatile user message (NOT the cache-stable
+// system prompt). `grow` is the engine's existing default → byte-identical no-op.
+// `sell` re-frames the SAME stop/scroll verdict as a buying decision (no schema change,
+// no weight/engine change). Lives in the user message so the system-prompt cache prefix
+// (D-17) and ENGINE_VERSION stay untouched. Only fires for a calibrated audience (runner-gated).
+
+export type IntentLens = "grow" | "sell";
+
+// Appended to the user message ONLY when intent === "sell". Verdict tokens stay "stop"/"scroll"
+// (no schema/coercion impact) — the lens only re-aims what they MEAN + what the quote voices.
+const SELL_LENS_DIRECTIVE =
+  "## Buying Lens (this run)\n" +
+  "Judge this AS A POTENTIAL BUYER, not just a viewer. Re-aim the same verdict: " +
+  '"stop" = this makes you want to BUY or seriously consider the offer; ' +
+  '"scroll" = you would not buy. In your quote, voice the BUYING reaction — desire, ' +
+  "the objection holding you back, or your price/value gut-check — not just watch-time.";
+
 // ─── Per-framing question text ─────────────────────────────────────────────────
 
 const FRAMING_QUESTION: Record<FlashFraming, string> = {
@@ -254,8 +272,15 @@ TYPE RULES (STRICT):
  *
  * @param text     The content text to react to (hook copy, idea, chat prompt, etc.)
  * @param framing  Mode framing — swaps only the question + band verbiage (D-04)
+ * @param intent   Optional per-run reaction lens (GAP-C2). `sell` appends the buying-lens
+ *                 directive; `grow`/undefined → byte-identical to the pre-intent output
+ *                 (regression-critical no-op — the General gate exercises this path).
  */
-export function buildFlashUserContent(text: string, framing: FlashFraming): string {
+export function buildFlashUserContent(
+  text: string,
+  framing: FlashFraming,
+  intent?: IntentLens,
+): string {
   const lines: string[] = [];
 
   lines.push("## Content to React To");
@@ -269,6 +294,13 @@ export function buildFlashUserContent(text: string, framing: FlashFraming): stri
   lines.push("## Band Context");
   lines.push(FRAMING_BAND_VERBIAGE[framing]);
   lines.push("");
+
+  // Sell lens: re-aim the verdict toward purchase intent (calibrated audiences only).
+  // grow/undefined → this block is omitted → byte-identical to the pre-intent message.
+  if (intent === "sell") {
+    lines.push(SELL_LENS_DIRECTIVE);
+    lines.push("");
+  }
 
   lines.push(
     "Return a JSON object with EXACTLY 10 personas, one per archetype, in the order listed in the system prompt.",

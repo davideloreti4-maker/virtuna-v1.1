@@ -27,6 +27,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import type { IntentLens } from '@/lib/audience/intent-lens';
 
 // ── Partial remix card (band/fraction absent until score event) ────────────────
 
@@ -65,7 +66,7 @@ export interface UseRemixStreamReturn {
    * Start the Remix stream.
    * url: a trending/competitor TikTok URL to decode + adapt.
    */
-  start: (url: string, platform: string) => Promise<void>;
+  start: (url: string, platform: string, intent?: IntentLens) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -119,7 +120,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (url: string, platform: string) => {
+  const start = useCallback(async (url: string, platform: string, intent?: IntentLens) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -137,7 +138,7 @@ export function useRemixStream(): UseRemixStreamReturn {
       const res = await fetch('/api/tools/remix/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, platform }),
+        body: JSON.stringify({ url, platform, ...(intent ? { intent } : {}) }),
         signal: controller.signal,
       });
 

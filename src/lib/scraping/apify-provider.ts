@@ -10,6 +10,7 @@ import type {
   VideoData,
   ScrapingProvider,
   ResolvedVideo,
+  ProfileBundle,
 } from "./types";
 import { IngestError } from "./types";
 
@@ -179,6 +180,12 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
   }
 
   const v = result.data;
+  // Prefer the no-auth English `tiktokLink` for the free VTT (§P.12); fall back to the
+  // first available subtitle link. Undefined when the video carries no native subs.
+  const subs = v.videoMeta?.subtitleLinks ?? [];
+  const eng = subs.find((s) => s.language?.toLowerCase().startsWith("en"));
+  const subtitleUrl = (eng ?? subs[0])?.tiktokLink ?? (eng ?? subs[0])?.downloadLink;
+
   return {
     platformVideoId: v.id,
     videoUrl: v.webVideoUrl ?? "",
@@ -191,6 +198,9 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
     hashtags: v.hashtags.map((h) => h.name),
     durationSeconds: v.videoMeta?.duration ?? 0,
     postedAt: v.createTime ? new Date(v.createTime * 1000) : new Date(),
+    ...(subtitleUrl ? { subtitleUrl } : {}),
+    ...(v.isPinned !== undefined ? { isPinned: v.isPinned } : {}),
+    ...(v.mediaUrls?.[0] ? { mediaUrl: v.mediaUrls[0] } : {}),
   };
 }
 
@@ -239,6 +249,63 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     }
 
     return remapClockworksProfile(items[0]);
+  }
+
+  /**
+   * §P 1-scrape collapse (BUILD step 2). ONE `tiktok-profile-scraper` run returns the
+   * profile (authorMeta) + N latest videos + free native subtitle links — replacing the
+   * old parallel scrapeProfile(resultsPerPage:1) + scrapeVideos pair on the calibration
+   * path. Config per §P.10b:
+   *   - resultsPerPage: default 12 (10-20 cap) — above the THIN_MIN_VIDEOS=10 engagement
+   *     floor; bounds mp4 download count (download-count = scrape-count, see below).
+   *   - profileSorting:"latest" — current audience + voice (includes flops for what_falls_flat);
+   *     NOT "popular" (stale/biased).
+   *   - excludePinnedPosts:true — pinned skews engagement ratios.
+   *   - shouldDownloadVideos:TRUE — returns the mp4 KV record (`mediaUrls[0]` → `mediaUrl`) per
+   *     video in THIS one reliable run, so the omni-watch reads it directly. Replaces the flaky
+   *     per-video clockworks single-URL rehost (`resolveVideoUrl`) — 6 Apify runs collapse to 1.
+   *   - downloadSubtitlesOptions:"DOWNLOAD_SUBTITLES" — FREE native subs only. AI-transcribe
+   *     ($48/1k) NEVER fires, not even as fallback (§P.4 / P-4).
+   *
+   * The clockworks profile-scraper returns video-level items with profile nested under
+   * authorMeta, so item[0] yields the profile and every item yields a video. Throws when
+   * the handle returns no items (caller maps to scrape_failed).
+   */
+  async scrapeProfileBundle(handle: string, limit = 12): Promise<ProfileBundle> {
+    const capped = Math.min(Math.max(limit, 10), 20); // §P.10b 10-20 cap
+    const run = await this.client.actor(DISCOVER_PROFILE_ACTOR).call(
+      {
+        profiles: [handle],
+        resultsPerPage: capped,
+        profileSorting: "latest",
+        excludePinnedPosts: true,
+        // shouldDownloadVideos:TRUE — one reliable run returns the mp4 KV record per video
+        // (probe 2026-06-24: mediaUrls 6/6) so the omni-watch reads `mediaUrl` directly. This
+        // REPLACES the per-video clockworks single-URL rehost (`resolveVideoUrl`), which was
+        // the flaky step (3/5 scrape_failed in UAT). Download-count = scrape-count, so limit
+        // defaults to 12 (above the THIN_MIN_VIDEOS=10 engagement floor) to bound waste.
+        shouldDownloadVideos: true,
+        shouldDownloadCovers: false,
+        downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
+      },
+      { waitSecs: 240 },
+    );
+
+    const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
+
+    if (!items.length) {
+      throw new Error(`No profile data returned for handle: ${handle}`);
+    }
+
+    const profile = remapClockworksProfile(items[0]);
+    const videos = items
+      .map((item) => remapClockworksVideo(item))
+      .filter((v): v is VideoData => v !== null);
+
+    const withSubs = videos.filter((v) => v.subtitleUrl).length;
+    const subCoverage = `${withSubs}/${videos.length}`;
+
+    return { profile, videos, subCoverage };
   }
 
   /**

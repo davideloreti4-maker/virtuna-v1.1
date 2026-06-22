@@ -50,8 +50,10 @@ import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggreg
 import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from "@/lib/engine/flash/rubric-critic";
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
@@ -105,6 +107,12 @@ export interface HooksPipelineInput {
    * (byte-identical no-op for General — regression gate preserved).
    */
   audience?: Audience | null;
+  /**
+   * Per-run reaction lens (GAP-C2 / §P.10). `sell` re-frames the SIM verdict toward purchase
+   * intent; `grow`/undefined → byte-identical no-op. Only applied for a calibrated audience
+   * (General/no-audience → forced undefined below, regression gate preserved).
+   */
+  intent?: IntentLens;
   /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
    * (rank-1 hook's personas) + audience_id. Non-fatal — never blocks the cards.
@@ -272,8 +280,12 @@ function parseFractionNumerator(fraction: string): number {
  * @param input.anchor      Upstream idea concept (optional; fenced via assembleBundle).
  */
 export async function runHooksPipeline(input: HooksPipelineInput): Promise<HooksPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null } = input;
+  const { ask, platform, profileRow, anchor, audience = null, intent } = input;
   const allWarnings: string[] = [];
+  // GAP-C2: the sell lens only applies for a calibrated audience; General/no-audience → undefined
+  // (byte-identical no-op, regression gate). `grow` is also a no-op in buildFlashUserContent.
+  const simIntent: IntentLens | undefined =
+    audience && !audience.is_general ? intent : undefined;
 
   // ── GATE FLOOR ASSERTION (WARNING-3: fail loud if MIXED_THRESHOLD unreachable) ──
   if (typeof MIXED_THRESHOLD !== "number" || isNaN(MIXED_THRESHOLD)) {
@@ -291,6 +303,12 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
   const audienceOverride = isCalibrated ? `Generate for this audience — ${groundingLine}` : undefined;
 
+  // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
+  // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
+  // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
+  const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
+  const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -298,9 +316,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       platform,
       mode: "hooks",
       ...(anchor ? { anchor } : {}),
-      ...(audienceOverride ? { overrides: audienceOverride } : {}),
+      ...(overrides ? { overrides } : {}),
     },
-    profileRow,
+    genProfileRow,
   );
 
   // Record which path shipped (Open Q1 resolved decision — mirrors ideas-runner)
@@ -354,7 +372,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       hookBatch.map(async (hook, i) => {
         const seed = hook.seedHook ?? hook.hookLine;
         const [simResult, verdict] = await Promise.all([
-          runFlashTextMode(seed, "hook", panel, audienceRepaint).catch((err) => {
+          runFlashTextMode(seed, "hook", panel, audienceRepaint, simIntent).catch((err) => {
             const msg = err instanceof Error ? err.message : String(err);
             allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
             return null; // null = failed SIM → treat as Weak (drop)
