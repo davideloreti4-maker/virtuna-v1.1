@@ -1016,6 +1016,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       onReask={(a) =>
         focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
       }
+      docked
     />
   );
 
@@ -1197,14 +1198,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       onSubmit={onSubmitForm}
       className="w-full"
     >
-        <div
-          className={cn(
-            "relative rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
-            // Whisper float ONLY when centered (D-05) — pinned rests on the column.
-            layout === "centered" && "shadow-float",
-            !reducedMotion && "transition-shadow duration-200",
-          )}
-        >
+        <div className="relative p-3 pt-0">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
               and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
@@ -1347,6 +1341,22 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       </form>
   );
 
+  // Fused bottom dock — audience peek cap + composer field share one matte surface.
+  const composerDock = (
+    <div
+      data-testid="composer-dock"
+      className={cn(
+        "relative w-full rounded-2xl border border-white/[0.06] bg-surface-elevated",
+        !audienceOpen && "overflow-hidden",
+        layout === "centered" && "shadow-float",
+        !reducedMotion && "transition-shadow duration-200",
+      )}
+    >
+      {audiencePresence}
+      {composerForm}
+    </div>
+  );
+
   // ── Layout branches ────────────────────────────────────────────────────────
   //
   // Branch A — Home thread mode (hasThread && !hasSimulation):
@@ -1381,11 +1391,9 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
           {threadContent}
         </div>
 
-        {/* Pinned bottom dock — the audience PRESENCE sits ABOVE the composer (fork #1),
-            both bottom-pinned; the thread scrolls above. */}
-        <div className="shrink-0 flex flex-col gap-2 pb-4">
-          {audiencePresence}
-          {composerForm}
+        {/* Pinned bottom dock — audience + composer fused as one surface. */}
+        <div className="shrink-0 pb-4">
+          {composerDock}
         </div>
       </div>
     );
@@ -1396,10 +1404,9 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // (identity + "N personas ready", NO stale reaction, NO second input — fork #4). `ambientFocus`
   // is null here (no thread cards to focus), so the pulse reads readiness.
   return (
-    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-2", className)}>
+    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col", className)}>
       {threadContent}
-      {audiencePresence}
-      {composerForm}
+      {composerDock}
     </div>
   );
 }
