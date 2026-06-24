@@ -72,9 +72,11 @@ _Deltas logged here as we find them. Empty = nothing traced yet._
 > ∥ download-latest-5 → ~halves wall-clock, downloads only the watched 5, keeps the 12-video signal;
 > cost = +1 Apify run + watched set becomes latest-5 not top-5. NOT built (premature).
 > **Still OPEN:** P-6 (subset-transcribe — verify on first LIVE run; default free-subs-only holds).
-> **DONE 2026-06-24:** step 7 (gen/SIM wiring) + step 8 (composer intent, GAP-C1+C2 — see §P.10).
-> **Still DEFERRED:** step 9 (flywheel/drift re-bake). The enrich/synth LLM calls are unit-mocked,
-> NOT yet run against real DashScope/Apify → needs a live UAT + `supabase` migration apply.
+> **DONE 2026-06-24:** step 7 (gen/SIM wiring) + step 8 (composer intent, GAP-C1+C2 — see §P.10)
+> + step 9 (flywheel/drift re-bake — `cron/audience-drift` now persists the freshly-derived
+> signature/creator_persona/profile/personas/calibration on every clean re-scrape; `persona_weights`
+> stays the flywheel's slot. +5 route tests).
+> **Still DEFERRED:** live UAT of the enrich/synth LLM calls against real DashScope/Apify (unit-mocked).
 >
 > **STATUS 2026-06-22 (design):** design complete, every assumption live-validated (P.12 scrape,
 > P.13 omni-watch, P.14 prompts+schema). Cost ~$0.05–0.15/audience one-time.
@@ -507,7 +509,9 @@ calibrated (non-general) audiences; General still resolves DEFAULT + niche-only 
    `run-flash-text-mode.ts`, runners.
 8. ✎ **Composer intent (C1/C2)** — send per-run intent in all run bodies; layer intent directive
    at SIM; default from audience goal_intent. `composer.tsx`, run routes, `composer-controls.tsx`.
-9. ✎ **Flywheel/drift** — drift cron re-bakes signature; flywheel nudges weights (mostly built).
+9. ✅ **Flywheel/drift** (DONE 2026-06-24) — drift cron re-bakes signature on every clean re-scrape
+   (§P.1: the ONLY re-bake site); flywheel nudges weights via `propose.confirmProposal` (orthogonal —
+   re-bake skips `persona_weights`). `cron/audience-drift/route.ts` + 5 route tests.
 
 **Critical path to a demoable "it's real":** 1 → 2 → 3 → 4 → 5 (scrape→enrich→reveal). Wiring
 (7,8) + feedback (9) follow. Biggest risk = step 1/7 touching the engine's byte-stable Flash

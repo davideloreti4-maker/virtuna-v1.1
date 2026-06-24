@@ -9,6 +9,11 @@
  * For each PERSONAL audience (own-account, has a calibration.handle):
  *   1. Re-scrape the own account (calibrateFromScrape → scrapeProfile + scrapeVideos +
  *      deriveAudienceProfile + repaint) → fresh CalibratedPersona[].
+ *   1b. RE-BAKE the frozen signature (Track B step 9, §P.1): persist the freshly-derived
+ *      signature + creator_persona + legacy profile/personas/calibration back to the row.
+ *      This cron is the ONLY place the frozen §P signature re-bakes (intentional —
+ *      determinism is contained to the bake). persona_weights is NOT written here: it's the
+ *      flywheel's analysis_override slot (propose.ts), kept orthogonal to the reality refresh.
  *   2. Build a fresh COMPOSITION disposition vector (realized) by aggregating the fresh
  *      personas' shares per disposition.
  *   3. The PREDICTED (stored) vector = the same aggregation over the audience's CURRENT
@@ -126,6 +131,7 @@ export async function GET(request: Request) {
 
     let scanned = 0;
     let drifted = 0;
+    let rebaked = 0;
     let skipped = 0;
 
     for (const audience of audiences) {
@@ -162,6 +168,38 @@ export async function GET(request: Request) {
         continue;
       }
 
+      // ── RE-BAKE the frozen signature (Track B step 9) ──────────────────────
+      // §P.1: the weekly drift cron is the ONLY place the frozen signature re-bakes.
+      // Every clean (non-thin) re-scrape refreshes the row's signature + creator_persona
+      // + the derived legacy fields (profile/personas/calibration) to current reality, so
+      // the per-skill hot path reads a fresh-but-still-frozen artifact. persona_weights is
+      // DELIBERATELY NOT written here — it's the flywheel's analysis_override slot
+      // (propose.ts confirmProposal), so the reality-refresh loop (voice/dispositions) stays
+      // orthogonal to the learned-nudge loop (weights). A re-bake failure is logged but never
+      // blocks drift detection below (the two are independent signals).
+      const fresh = result.audience;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: rebakeErr } = await (supabase as any) // TODO(10-07): remove cast after types regen
+        .from("audiences")
+        .update({
+          signature: fresh.signature,
+          creator_persona: fresh.creator_persona,
+          profile: fresh.profile,
+          personas: fresh.personas,
+          calibration: fresh.calibration,
+        })
+        .eq("id", audience.id);
+
+      if (rebakeErr) {
+        log.warn("drift re-bake (signature persist) failed", {
+          audienceId: audience.id,
+          error: rebakeErr.message,
+        });
+      } else {
+        rebaked += 1;
+      }
+
+      // ── Drift detection (predicted = the OLD stored mix, read before the re-bake) ──
       const freshPersonas = result.audience.personas ?? [];
       const storedPersonas = audience.personas ?? [];
 
@@ -232,6 +270,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       success: true,
       scanned,
+      rebaked,
       drifted,
       skipped,
       ranAt: new Date().toISOString(),

@@ -67,6 +67,26 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 ## DONE
 _(move items here with FIXED sha as they land)_
 
+### 2026-06-24 — Track B step-9 (flywheel/drift re-bake) (working tree)
+- **Step 9 DONE — drift cron re-bakes the frozen signature.** Per §P.1 the weekly
+  `cron/audience-drift` is the ONLY place the frozen §P signature re-bakes. It already re-scraped
+  each personal own-account audience (`calibrateFromScrape`) but **discarded** the freshly-derived
+  `result.audience.signature` — using only the personas for drift detection — so the row's frozen
+  signature/creator_persona never refreshed (went stale). FIX: after the honesty gate, persist the
+  fresh `signature` + `creator_persona` + legacy `profile`/`personas`/`calibration` back to the row
+  on **every clean (non-thin) re-scrape** (DECISION: refresh-on-rescrape, not shift-gated).
+- **`persona_weights` deliberately NOT written** by the re-bake (DECISION: orthogonal loops) — it's
+  the flywheel's analysis_override slot (`propose.confirmProposal` → `buildOverride`), so the
+  reality-refresh loop (voice/dispositions) stays separate from the learned-nudge loop (weights).
+  Re-bake runs BEFORE drift detection but uses a service-client raw `.update()` (matching the cron's
+  existing raw inserts — `updateAudience` can't be used: it calls `auth.getUser()`, null under the
+  service role). Drift `predicted` still reads the OLD in-memory stored mix. Re-bake failure is logged,
+  never blocks drift logging (independent signals). Response gains a `rebaked` counter.
+- **Verify:** tsc clean (audience-drift) · eslint 0 issues · 5 new route tests green
+  (no-shift-still-rebakes / shift-rebakes+logs / weights-never-written / thin-skips-both /
+  rebake-failure-doesn't-block-drift) · steer-closure General-regression gate green (11/11) ·
+  ENGINE_VERSION 3.19.0 untouched. **AudienceSignature build (steps 1-9) now COMPLETE.**
+
 ### 2026-06-24 — E1 CSRF guard (§01) (working tree)
 - **E1 FIXED:** `ideas`/`ideas/develop`/`refine`/`react` were state-mutating cookie-auth POSTs with NO
   CSRF guard (ideas doc-header falsely claimed it). Added shared `csrfGuard(request)` immediately after
