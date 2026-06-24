@@ -14,8 +14,9 @@ export const metadata: Metadata = {
  * sidebar. Delegates all layout logic to HomePageLayout (client component) so
  * it can react to thread-presence state:
  *
- *   Empty home: centered greeting + composer hero (original layout, no change).
- *   Thread active: full-height column — thread scrolls, composer pinned bottom.
+ *   Empty home: greeting at fixed hero anchor + composer below.
+ *   Thread active: same greeting anchor — skill content scrolls underneath,
+ *   composer pinned at bottom.
  *
  * LOCKED omissions: NO starter chips (D-18), NO demo affordance (D-25 — the
  * first-run demo is Phase 5), NO Simulation list under the composer (the
