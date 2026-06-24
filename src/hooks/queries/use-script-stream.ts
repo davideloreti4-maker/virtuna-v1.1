@@ -237,8 +237,14 @@ export function useScriptStream(): UseScriptStreamReturn {
             if (isMountedRef.current) setStreamingCards([...patched]);
 
           } else if (eventType === 'done') {
+            // S2: unblock the UI on `done` rather than on stream-close. The server emits
+            // `done` BEFORE the follow-up chat turn, then keeps the SSE open to stream the
+            // followup. Flipping isStreaming here clears the progress checklist + re-enables
+            // the composer immediately; the read loop keeps consuming until the server
+            // closes the stream, so the followup event still lands and renders inline.
             if (isMountedRef.current) {
               setIsDone(true);
+              setIsStreaming(false);
             }
 
           } else if (eventType === 'error') {

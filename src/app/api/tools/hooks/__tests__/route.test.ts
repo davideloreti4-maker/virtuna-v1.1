@@ -40,6 +40,18 @@ vi.mock("@/lib/kc/assembler", () => ({
   assembleBundle: vi.fn(() => "mocked hooks bundle"),
 }));
 
+// Qwen client for the follow-up turn. DEFAULT: create rejects → the route's
+// non-fatal try/catch swallows it → no `followup` event, insertMessage called once
+// (preserves the existing single-persist assertions). The S2 ordering test overrides
+// this once with a working stream to assert `done` precedes `followup`.
+vi.mock("@/lib/engine/qwen/client", () => ({
+  getQwenClient: vi.fn(() => ({
+    chat: { completions: { create: vi.fn().mockRejectedValue(new Error("no qwen in test")) } },
+  })),
+  QWEN_REASONING_MODEL: "qwen-test",
+  QWEN_SEED: 42,
+}));
+
 vi.mock("@/lib/kc/kc-stamp", () => ({
   withKcStamp: vi.fn((obj: Record<string, unknown>) => ({
     ...obj,
@@ -193,6 +205,75 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     expect((blocks as unknown[]).length).toBe(3);
     expect(typeof kcGenVersion).toBe("string");
     expect((kcGenVersion as string)).toMatch(/^gen\./);
+  });
+
+  it("S2: emits `done` BEFORE the follow-up chat turn (chat off the critical path)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+
+    const mockUser = { id: "user-123" };
+    const mockThread = { id: "thread-s2", user_id: "user-123" };
+    const mockBlocks = [makeHookCard(1)];
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: mockBlocks,
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-s2" });
+
+    // Override the default (rejecting) qwen mock with a working follow-up stream — once.
+    const followupStream = {
+      async *[Symbol.asyncIterator]() {
+        yield { choices: [{ delta: { content: "Hook #1 lands hardest" } }] };
+        yield { choices: [{ delta: { content: " — refine it." } }] };
+      },
+    };
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      chat: { completions: { create: vi.fn().mockResolvedValue(followupStream) } },
+    });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", platform: "tiktok" }));
+    expect(res.status).toBe(200);
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // The follow-up DID emit (so the ordering assertion is meaningful)…
+    expect(rawOutput).toContain("event: followup");
+    expect(rawOutput).toContain("event: done");
+    // …and `done` precedes `followup` — the chat turn streams AFTER run completion.
+    const doneIdx = rawOutput.indexOf("event: done");
+    const followupIdx = rawOutput.indexOf("event: followup");
+    expect(doneIdx).toBeLessThan(followupIdx);
+
+    // Both the cards and the follow-up markdown persist (2 inserts, cards first).
+    expect(insertMessage).toHaveBeenCalledTimes(2);
   });
 
   it("content event carries ranked card face with lead scrollQuote + audienceArchetype + rank (content-first)", async () => {
