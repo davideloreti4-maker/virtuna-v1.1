@@ -24,6 +24,16 @@
   --color-coral-800: oklch(0.37 0.08 33);   /* [UAT] Frame A — locks at THEME-06 */
   --color-coral-900: oklch(0.28 0.065 33);  /* [UAT] Frame A — locks at THEME-06 */
 
+  /* --- Signal Red (brand) — the LOGO-MARK red. NEW accent (2026-06-24). --- */
+  /* Replaces terracotta as the brand accent to break the Claude resemblance.    */
+  /* USED SPARINGLY — see "Accent dosage" in docs/DESIGN-SYSTEM.md. Liveness     */
+  /* signals + brand mark only; NEVER flood it across chrome/buttons.            */
+  /* Exact hex (sampled from the logo); L≈0.62 so oklch would be safe, but hex   */
+  /* keeps the mark pixel-exact. Distinct from --color-error-raw (data red).      */
+  --color-signal-400: #ef6e62;  /* legible on dark — text/icons, lit nodes        */
+  --color-signal-500: #e23b2d;  /* base — the logo red; solid fills (send/dot)     */
+  --color-signal-600: #c2301f;  /* pressed/active                                  */
+
   /* --- Gray Scale --- */
   /* Source: raycast.com computed styles extraction (2026-02-05) */
   /* Body: rgb(7,8,10), Muted: rgb(106,107,108), Secondary: rgb(156,156,157) */
@@ -92,11 +102,24 @@
   --color-foreground-secondary: var(--color-cream-secondary);  /* [UAT] Frame A — was var(--color-gray-400) */
   --color-foreground-muted: var(--color-cream-muted);     /* [UAT] Frame A — was var(--color-gray-500) */
 
-  /* --- Accent (Coral) --- */
-  --color-accent: var(--color-coral-500);
-  --color-accent-hover: var(--color-coral-400);
-  --color-accent-active: var(--color-coral-600);
-  --color-accent-foreground: #1a0f0a;  /* [UAT] Frame A — dark brown on terracotta coral; verify AA at THEME-06 (>7:1 on #d97757) */
+  /* --- Accent (Signal Red — logo mark) — RESTRAINED, 2026-06-24 --- */
+  /* DOSAGE RULE: accent = a LIVENESS SIGNAL, not paint. Allowed on: live dots,  */
+  /* the lit constellation node, the brand mark, tiny active-state ticks. NOT on  */
+  /* primary buttons (use --color-action), not on every icon, not on links en    */
+  /* masse. Flooding the accent is the Claude tell we are removing. See           */
+  /* docs/DESIGN-SYSTEM.md "Accent dosage (LOCKED)".                              */
+  --color-accent: var(--color-signal-500);          /* solid fill (live dot / lit node) */
+  --color-accent-hover: var(--color-signal-400);
+  --color-accent-active: var(--color-signal-600);
+  --color-accent-text: var(--color-signal-400);     /* accent as TEXT/icon on dark (legible) */
+  --color-accent-foreground: #f6e9e6;               /* cream glyph on a solid-red fill */
+  --color-accent-soft: rgba(226, 59, 45, 0.16);     /* soft tint bg for the 2 liveness spots */
+
+  /* --- Primary action (NEUTRAL) — the de-Claude move --- */
+  /* Primary buttons (e.g. composer send) are CREAM, not accent. Premium + the   */
+  /* clearest single break from Claude (whose primary action IS the accent).     */
+  --color-action: var(--color-cream-primary);       /* #ece7de */
+  --color-action-foreground: #1c1b19;               /* dark glyph on cream */
 
   /* --- Semantic Status --- */
   --color-success: var(--color-success-raw);
