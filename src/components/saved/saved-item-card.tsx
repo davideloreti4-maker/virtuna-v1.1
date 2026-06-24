@@ -10,7 +10,7 @@
  * Anatomy (10-UI-SPEC §Interaction Contracts + §Color):
  *  - item-type chip (NEUTRAL charcoal-chip + cream text — NEVER coral)
  *  - title (cream-primary) + muted timestamp
- *  - primary "Use in thread →" (accent CTA) — per-type label resolved from
+ *  - primary "Use in thread →" (NEUTRAL cream — dosage rule) — per-type label resolved from
  *    CHAIN_HANDOFFS (saved hook → "Test full →", saved idea → "Develop →")
  *  - overflow "Remove" → "Remove from Library?" confirmation (destructive)
  *
@@ -221,7 +221,8 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
         <span className="text-xs text-foreground-muted">{timestamp}</span>
       </div>
 
-      {/* Primary accent launch — resolved from CHAIN_HANDOFFS */}
+      {/* Primary launch (NEUTRAL — dosage rule: actions are cream, accent is liveness-only) —
+          resolved from CHAIN_HANDOFFS */}
       {handoff && (
         <button
           type="button"
@@ -231,7 +232,7 @@ export function SavedItemCard({ item }: SavedItemCardProps) {
             "inline-flex items-center gap-1 self-start text-sm font-medium transition-colors",
             "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
           )}
-          style={{ color: launching ? "rgba(255,127,80,0.5)" : "var(--color-foreground-secondary)" }}
+          style={{ color: launching ? "var(--color-foreground-muted)" : "var(--color-foreground-secondary)" }}
           aria-label={`Use this ${TYPE_LABEL[item.item_type]} in a thread`}
         >
           {launching ? "Launching…" : launchLabel}
