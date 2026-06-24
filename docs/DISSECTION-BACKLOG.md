@@ -83,7 +83,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | A2 | 🔴→🟢 | ~~`deriveAudienceProfile()` ignores scraped videos~~ — **superseded by `enrichSignature` (§P), already prod-dead.** The constant-lens `deriveAudienceProfile` + its F1 sibling `repaintPersonas` had ZERO prod callers (only their own defs, comments, and one legacy test). CUT: removed `deriveAudienceProfile` from `calibration.ts` (+ orphaned `TEMPERATURE_DISPOSITION`/`ARCHETYPES`/`Archetype`/`Temperature` imports), deleted `persona-repaint.ts` entirely, dropped both legacy test blocks, fixed the stale `audience-drift` cron comment. tsc net-zero (64), eslint clean, affected suites 42/42. | `calibration.ts`, `persona-repaint.ts` (deleted) | FIXED (#31) |
 | A3 | 🟠→✅ | **RESOLVED (intentional, documented in code).** `sell` and `authority` both map to `WEIGHT_PRESETS.niche_heavy` — by design: both are depth plays whose audience lives in-niche (buyer vs scout); the deterministic weight bias is identical and the per-intent flavour is carried by the repaint prose (`GOAL_INTENT_SUFFIX`), NOT the weight mix. Rationale already in `goal-intent.ts:29-31`. No code change needed. | `goal-intent.ts:33` | RESOLVED (by-design) |
 | A4 | 🟠→✅ | **Finding corrected: presets are NOT inert/unwired.** `audience-manager.tsx` lists them, `/api/audiences` returns them, `composer.tsx` handles their virtual ids, `getAudience("preset-growth")` returns the object, flywheel/explore exclude them (`!is_preset`). They ship `personas:[]` BY DESIGN (virtual template — no calibrated repaint personas until materialize-on-customize) but carry real `persona_weights` (`biasForGoalIntent`). With **A1 live**, that weight signal is now CONSUMED (preset is `is_general=false` → weighted band). So presets = functional weight-only templates today. Remaining (lower-pri, separate): persona-level repaint requires materialize-on-customize. | `PRESET_AUDIENCES`, `audience-manager.tsx` | CLARIFIED (weight-functional; persona-repaint deferred) |
-| A5 | 🟡 | Flywheel nudge is 0.05 in code vs ±0.1 in docs | `recalibration.ts:33` | OPEN |
+| A5 | 🟡→✅ | **RESOLVED — reconciled to 0.05 (code is canonical).** Renamed `ASSUMED_STEP` → `RECALIBRATION_STEP`, dropped the `[ASSUMED]` framing, made it env-overridable (`RECALIBRATION_STEP`, range (0,0.5], default 0.05). Kept the conservative 0.05 (not the docs' ±0.1): post-A1 the nudge now moves the SIM band gate, so a smaller step avoids overshoot/flip-flop on sparse early outcome data — raise once outcome data justifies it. Fixed the stale ±0.1 in `PLATFORM-MAP.md §5.7` + atlas/audience.md/ENGINE-ATLAS notes. | `recalibration.ts` | RESOLVED (env-tunable, docs reconciled) |
 | A6 | 🟡 | `(supabase as any)` casts throughout audience repo — type debt | `audience-repo.ts` | OPEN |
 | A7 | 🟠 | **Orphan draft row** — `audience-form` POSTs `/api/audiences` (draft), then `calibrate` route `createAudience`s a SECOND row; `audienceId` sent by client is ignored (not in `CalibrateSchema`). Every calibrated personal/target audience leaks an uncalibrated dupe. Fix: `calibrate` now accepts `audienceId` and `updateAudience`s the draft in place (falls back to insert when absent). Live-verified 2026-06-24: row_count 1, same draft id enriched. +route test. | `calibrate/route.ts` | FIXED (working tree) |
 | A-T | 🎯 | **Implement target 3-position model** (STEER real via attributes; weights → REACT+REFINE) | — | OPEN |
@@ -96,7 +96,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | S2 | 🟠 | Follow-up chat is on the hooks/ideas critical path (blocks `done`) — stream after `done` | hooks-runner / ideas-runner | OPEN |
 | S3 | 🟢 | 8-call SIM fan-out → collapse to one batched simulation call (eval-gated) | `gateHooks` / `runFlashTextMode` | OPEN |
 | S4 | 🟢 | Dead `flashRunner` / `ToolRunner` / `dispatchToolOutput` scaffolding (~200 LOC) | `flash-runner.ts` | OPEN |
-| S5 | 🟡 | Rubric critic infra OFF, ~100% fail — recalibrate or delete (255 LOC + dual-branch gates) | `flash/rubric-critic.ts` | OPEN |
+| S5 | 🟡→🟢 | **DELETED — rubric critic was OFF by default + ~100% fail.** Removed `rubric-critic.ts` (255 LOC) + its test + the obsolete `best-of-n.test.ts` (399 LOC, all critic-specific). Collapsed the dual-branch combined gate in ideas/hooks runners to band-only (`band !== "Weak"`, KCQ-05) — dropped `criticEnabled`/`PASS_VERDICT`/the SIM+critic Promise.all pair/`abstained`+`abstainedKept` warning. `predictedFailureMode` card field kept (nullable, now always null) so persisted blocks + UI stay valid. Net −916 LOC. | `flash/rubric-critic.ts` (deleted), ideas/hooks runners | FIXED (working tree) |
 
 ## The Read — video pipeline (§04)
 
@@ -130,6 +130,39 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-24 — A5 nudge reconcile + dead CI workflow removed (working tree)
+- **A5 RESOLVED — flywheel nudge reconciled to 0.05 (code canonical).** The discrepancy was a
+  doc drift: code `ASSUMED_STEP = 0.05` ([ASSUMED], never validated) vs `±0.1` in
+  `PLATFORM-MAP.md §5.7` + brief. Kept the **conservative 0.05** rather than bumping to 0.1:
+  post-A1 the nudge now moves the SIM band gate, so a larger step would overshoot / flip-flop
+  which candidates survive on sparse, noisy early outcome data. Renamed `ASSUMED_STEP` →
+  `RECALIBRATION_STEP`, dropped the placeholder framing, made it **env-overridable**
+  (`RECALIBRATION_STEP`, accepted range (0, 0.5], default 0.05) so it can be dialled up later
+  without a redeploy. Fixed the stale ±0.1 in PLATFORM-MAP + ENGINE-ATLAS/atlas-02/audience.md
+  notes (+ renamed the test). tsc/eslint clean; recalibration suite green.
+- **CI: removed the dead `claude-pr-review.yml` workflow.** It failed on every PR (no
+  `ANTHROPIC_API_KEY` secret, and the owner has no key) — permanent red noise with no value.
+  The earlier `id-token: write` fix (#33) is moot without a key; deleting the workflow is the
+  clean close. (Re-add later via a Claude-subscription `CLAUDE_CODE_OAUTH_TOKEN` if desired.)
+
+### 2026-06-24 — S5 cut the dead rubric critic (working tree)
+- **S5 FIXED — removed the rubric critic entirely.** It was OFF by default
+  (`RUBRIC_CRITIC_ENABLED` env flag, unset in prod) and ~100% fail in practice (zeroed
+  hook/idea output when on — see [[rubric-critic-deactivated]]). Deleted
+  `flash/rubric-critic.ts` (255 LOC: `isRubricCriticEnabled`/`RubricVerdict`/
+  `critiqueAgainstRubric`) + `rubric-critic.test.ts` + the now-obsolete `best-of-n.test.ts`
+  (399 LOC, entirely critic-specific — the band-only gate + conditional-regen it also
+  touched are covered by `ideas/hooks-runner.test.ts`).
+- **Collapsed the dual-branch gate** in ideas-runner (`gatePass`) + hooks-runner (`gateHooks`)
+  to the SIM band alone (KCQ-05: keep iff `band !== "Weak"`). Dropped `criticEnabled`,
+  `PASS_VERDICT`, the SIM+critic `Promise.all` pair (now a single SIM await), and the
+  `verdict.abstained`/`abstainedKept` WR-01 warning path. The `predictedFailureMode` card
+  field is kept (nullable, now always `null`) so persisted blocks + the card-block UI stay
+  valid without a schema migration; `blocks.ts` comments updated to note it's vestigial.
+- **Verify:** tsc net-zero (64=64 baseline) · eslint clean · full suite **3019 pass / 0 fail /
+  28 skip** · net **−916 LOC** · ENGINE_VERSION 3.19.0 untouched. Follow-up (separate, lower-pri):
+  remove the vestigial `predictedFailureMode` field + its null-guarded card-block UI disclosure.
 
 ### 2026-06-24 — Audience quick-closes A2 (cut) + A3/A4 (resolved/clarified) (working tree)
 - **A2 FIXED — cut the dead F1 legacy derivation pair.** `deriveAudienceProfile` (constant-lens,

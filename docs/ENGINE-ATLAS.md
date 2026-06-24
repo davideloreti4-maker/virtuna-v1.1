@@ -93,7 +93,7 @@ mitigation. Real hole.
 - `FOLD_MODEL` defaults to `omni-flash` (unstable-diversity variant); memory says it
   should be `omni-plus` PAID. Highest-stakes single config. (§04)
 - Flash SIM model is `qwen3.6-flash` — **not** `QWEN_REASONING_MODEL` as the map said. (§03)
-- Flywheel nudge is **0.05** in code vs **±0.1** in docs. (§02)
+- ~~Flywheel nudge is **0.05** in code vs **±0.1** in docs~~ → RESOLVED (A5): docs reconciled to 0.05; `RECALIBRATION_STEP` env-tunable, conservative default. (§02)
 - The Read: `behavioral_score` and `apollo_score` may be **double-counting the same
   Apollo call**; the 0.5/0.5 video blend is asserted, never calibrated. (§04)
 

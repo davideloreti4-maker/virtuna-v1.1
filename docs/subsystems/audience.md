@@ -550,7 +550,7 @@ path — keep `ENGINE_VERSION` untouched; gate the new signature behind non-gene
 
 **Feedback loops (NO LLM)**
 - [ ] H18 — flywheel gate: `n≥5 AND |mean|≥0.12 AND agree≥0.70`; refuses General/preset. `confidence-gate.ts:29`
-- [ ] H19 — ⚠ bounded nudge is `ASSUMED_STEP = 0.05`, NOT ±0.1 as brief/platform-map claim. `recalibration.ts:33`
+- [x] H19 — RESOLVED (A5): bounded nudge reconciled to `RECALIBRATION_STEP = 0.05` (renamed from `ASSUMED_STEP`); brief/platform-map ±0.1 claim fixed. Conservative default, env-overridable. `recalibration.ts`
 - [ ] H20 — audience-drift cron feeds the SAME gate+nudge path (not separate). only `persona_weights` ever written
 
 **Type debt**
