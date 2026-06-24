@@ -116,11 +116,12 @@ describe('AntiViralityHeader — conditional render', () => {
     expect(header.getAttribute('aria-live')).toBe('polite');
   });
 
-  it('uses linear-gradient(90deg, var(--color-accent), var(--color-warning)) background', () => {
+  it('uses neutral linear-gradient(cream-secondary, warning) background — not accent', () => {
     render(<AntiViralityHeader result={fixtures.antiVirality} analysisId="test-g" />);
     const header = screen.getByTestId('av-header');
     const bg = (header as HTMLElement).style.background || (header as HTMLElement).style.cssText;
-    expect(bg).toContain('--color-accent');
+    expect(bg).toContain('--color-cream-secondary');
     expect(bg).toContain('--color-warning');
+    expect(bg).not.toContain('--color-accent');
   });
 });

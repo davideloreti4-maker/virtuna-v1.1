@@ -151,14 +151,14 @@ describe('ContentAnalysisFrame — Content craft', () => {
     expect(tiles[3]).toHaveTextContent('None');
   });
 
-  it('flags the missing CTA as the weak link (accent tile) and shows the no-close end-cap', () => {
+  it('flags the missing CTA as the weak link (neutral emphasis tile) and shows the no-close end-cap', () => {
     mockStream({ result: craftRow() });
     render(<ContentAnalysisFrame camera={camera} layout={layout} />);
 
     const tiles = screen.getAllByTestId('stat-tile');
-    // CTA tile (last) carries the coral accent tone; Hook (first) does not.
-    expect(tiles[3]!.className).toMatch(/accent/);
-    expect(tiles[0]!.className).not.toMatch(/accent/);
+    // CTA tile (last) carries neutral weak-link emphasis; Hook (first) does not.
+    expect(tiles[3]!.className).toMatch(/border-border-hover/);
+    expect(tiles[0]!.className).not.toMatch(/border-border-hover/);
     expect(screen.getByTestId('craft-endcap')).toBeInTheDocument();
     expect(screen.getByTestId('craft-mark-close')).toHaveTextContent(COPY.NO_CLOSE_MARK);
   });

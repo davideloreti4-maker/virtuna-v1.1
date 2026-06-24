@@ -20,7 +20,7 @@ function emptyHeatmap(): HeatmapPayload {
 }
 
 describe('PersonaCloud — static dot-cloud, dots only (READ-04, D-02)', () => {
-  it('4 personas → exactly 4 <circle> dots; worst cluster coral, others cream (not white)', () => {
+  it('4 personas → exactly 4 <circle> dots; worst cluster cream-secondary, others cream rgba (not white)', () => {
     const { container } = render(
       <PersonaCloud heatmap={HEATMAP} simResults={undefined} />,
     );
@@ -28,12 +28,12 @@ describe('PersonaCloud — static dot-cloud, dots only (READ-04, D-02)', () => {
     expect(circles).toHaveLength(4);
 
     const fills = circles.map((c) => c.getAttribute('fill') ?? '');
-    // Exactly one accent (coral) dot = the worst-retention cluster.
-    const accent = fills.filter((f) => f === 'var(--color-accent)');
-    expect(accent).toHaveLength(1);
+    // Exactly one worst-cluster dot = cream-secondary emphasis (neutral dosage, not accent).
+    const worst = fills.filter((f) => f === 'var(--color-cream-secondary)');
+    expect(worst).toHaveLength(1);
 
-    // At least one non-accent dot is the cream rgba(236,231,222,…) form —
-    // never pure white, never coral.
+    // At least one non-worst dot is the cream rgba(236,231,222,…) form —
+    // never pure white, never accent red.
     const cream = fills.filter((f) => /rgba\(\s*236,\s*231,\s*222/.test(f));
     expect(cream.length).toBeGreaterThanOrEqual(1);
     for (const f of fills) {
