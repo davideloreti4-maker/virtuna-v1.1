@@ -53,6 +53,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { HookCardBlock } from "@/lib/tools/blocks";
@@ -92,7 +93,7 @@ export async function POST(request: Request): Promise<Response> {
   if (guard) return guard;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; anchor?: unknown } = {};
+  let body: { ask?: unknown; platform?: unknown; anchor?: unknown; intent?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -155,6 +156,11 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────
+  // Explicit composer override wins; else default from the audience's goal_intent (4→2 lens).
+  // The runner gates this to undefined for General/no-audience (no-op, regression gate).
+  const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -182,6 +188,7 @@ export async function POST(request: Request): Promise<Response> {
           profileRow: profileRow ?? null,
           anchor: rawAnchor,
           audience: activeAudience,
+          intent: effectiveIntent,
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });

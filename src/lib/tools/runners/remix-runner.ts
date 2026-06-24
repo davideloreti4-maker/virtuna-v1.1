@@ -41,9 +41,11 @@ import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -67,6 +69,11 @@ export interface RemixPipelineInput {
    * audienceName surfaces the as-your-{audience} steer tag on the card (D-03).
    */
   audience?: Audience | null;
+  /**
+   * Per-run reaction lens (GAP-C2 / §P.10). `sell` re-frames the adapted-hook-SIM verdict toward
+   * purchase intent; `grow`/undefined → byte-identical no-op. Calibrated-audience only (gated below).
+   */
+  intent?: IntentLens;
   /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
    * adapted hook's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
@@ -121,8 +128,11 @@ function selectLeadScrollQuote(
  * @param input.requestId   Unique ID for the temp rehost path
  */
 export async function runRemixPipeline(input: RemixPipelineInput): Promise<RemixPipelineResult> {
-  const { url, platform, profileRow, requestId, audience = null } = input;
+  const { url, platform, profileRow, requestId, audience = null, intent } = input;
   const allWarnings: string[] = [];
+  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
+  const simIntent: IntentLens | undefined =
+    audience && !audience.is_general ? intent : undefined;
 
   // ── STEER (08-04 / AUD-STEER + REMIX-01): audience-grounding + niche + repaint ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
@@ -134,11 +144,11 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
   void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
 
-  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
-  const audienceRepaint: Record<string, string> | undefined =
-    audience && !audience.is_general && audience.personas && audience.personas.length > 0
-      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-      : undefined;
+  // S1 fix: shared buildReactionPanel resolves niche via resolveNicheKey (was raw
+  // niche_primary at the gate → exact-slug miss → niche-blind "all Mixed"). Matches
+  // hooks/ideas runners; audienceRepaint construction is byte-identical to before.
+  // `panel` is also consumed at the Flash gate (STEP 5) below.
+  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
   // ── STEP 1: RESOLVE — resolveAndRehost wraps temp mp4 rehost ──────────────────
   // cleanup MUST run in finally (T-03-02 — derive-and-drop invariant).
@@ -206,11 +216,11 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
     // ── STEP 5: GATE (D-05 opener-scoped) — Flash on the ADAPTED hook ─────────────
     // This gates the ADAPTED hook text only — never a full-video quality score (Pitfall 5).
-    const panel = { niche: profileRow?.niche_primary ?? null, contentType: null } as const;
+    // `panel` (niche-resolved) + `audienceRepaint` were built up-front via buildReactionPanel.
 
     let simResult: Awaited<ReturnType<typeof runFlashTextMode>>;
     try {
-      simResult = await runFlashTextMode(chosen.hook, "hook", panel, audienceRepaint);
+      simResult = await runFlashTextMode(chosen.hook, "hook", panel, audienceRepaint, simIntent);
     } catch (flashErr) {
       const msg = flashErr instanceof Error ? flashErr.message : String(flashErr);
       allWarnings.push(`Flash gate failed for adapted hook: ${msg}`);

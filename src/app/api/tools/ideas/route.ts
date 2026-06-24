@@ -44,6 +44,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
@@ -51,6 +52,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -83,8 +85,12 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
+  const guard = csrfGuard(request);
+  if (guard) return guard;
+
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown } = {};
+  let body: { ask?: unknown; platform?: unknown; intent?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -151,6 +157,11 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────
+  // Explicit composer override wins; else default from the audience's goal_intent (4→2 lens).
+  // The runner gates this to undefined for General/no-audience (no-op, regression gate).
+  const effectiveIntent = parseIntentLens(body.intent) ?? goalIntentToLens(activeAudience.goal_intent);
+
   // ── (6) SSE stream: run pipeline + emit events ────────────────────────────
   const encoder = new TextEncoder();
 
@@ -177,6 +188,7 @@ export async function POST(request: Request): Promise<Response> {
           platform,
           profileRow: profileRow ?? null,
           audience: activeAudience,
+          intent: effectiveIntent,
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });

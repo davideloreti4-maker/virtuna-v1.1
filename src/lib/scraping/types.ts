@@ -22,6 +22,33 @@ export interface VideoData {
   hashtags: string[];
   durationSeconds: number;
   postedAt: Date;
+  /**
+   * Free native-subtitle WEBVTT URL (§P.12 — `tiktokLink`, no auth). Present only on the
+   * profile-bundle scrape (downloadSubtitlesOptions). Optional/additive — existing
+   * Discover/Explore/single-post paths leave it undefined. Feeds creator-voice synthesis.
+   */
+  subtitleUrl?: string;
+  /** True if the post is pinned (skews engagement ratios — excluded from the bundle). */
+  isPinned?: boolean;
+  /**
+   * Downloadable mp4 URL (private Apify KV-store record) — populated on the profile-bundle
+   * scrape when `shouldDownloadVideos:true`. The omni-flash watch reads this directly (with
+   * the Apify token appended), so calibration needs NO per-video rehost call. Optional —
+   * absent on metadata-only Discover/Explore paths.
+   */
+  mediaUrl?: string;
+}
+
+/**
+ * One `tiktok-profile-scraper` run = profile + N videos + free subtitle links (§P.1
+ * 1-scrape collapse). Replaces the old parallel `scrapeProfile` + `scrapeVideos` pair
+ * for the calibration path.
+ */
+export interface ProfileBundle {
+  profile: ProfileData;
+  videos: VideoData[];
+  /** Native-subtitle coverage, e.g. "6/8" — recorded in signature provenance. */
+  subCoverage: string;
 }
 
 /**
@@ -68,6 +95,14 @@ export class IngestError extends Error {
 export interface ScrapingProvider {
   /** Scrape a single TikTok profile by handle. Throws if profile not found. */
   scrapeProfile(handle: string): Promise<ProfileData>;
+
+  /**
+   * §P 1-scrape collapse: ONE `tiktok-profile-scraper` run returns the profile +
+   * N latest videos (pinned excluded) + free native subtitle links. Replaces the
+   * parallel scrapeProfile + scrapeVideos pair on the calibration path. Throws if
+   * the handle returns no data. Optional so existing mock providers stay valid.
+   */
+  scrapeProfileBundle?(handle: string, limit?: number): Promise<ProfileBundle>;
 
   /**
    * Scrape a result set for Discover/Explore. `query` is a handle (profile mode) or a

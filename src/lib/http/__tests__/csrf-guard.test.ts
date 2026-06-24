@@ -14,6 +14,12 @@ function req(headers: Record<string, string>): Request {
   return new Request(URL_SAME, { method: "POST", headers });
 }
 
+const URL_DEL = "https://app.example.com/api/audiences/abc";
+
+function delReq(headers: Record<string, string>): Request {
+  return new Request(URL_DEL, { method: "DELETE", headers });
+}
+
 describe("csrfGuard (WR-01)", () => {
   it("passes (null) for application/json with no Origin header", () => {
     expect(csrfGuard(req({ "content-type": "application/json" }))).toBeNull();
@@ -55,5 +61,19 @@ describe("csrfGuard (WR-01)", () => {
       req({ "content-type": "text/plain", origin: "https://attacker.example.com" }),
     );
     expect(r!.status).toBe(415);
+  });
+
+  // DELETE exemption: non-simple + bodyless → skip the Content-Type 415, keep Origin.
+  it("passes (null) for a bodyless DELETE with NO Content-Type", () => {
+    expect(csrfGuard(delReq({}))).toBeNull();
+  });
+
+  it("still passes a same-origin DELETE (Origin matches)", () => {
+    expect(csrfGuard(delReq({ origin: "https://app.example.com" }))).toBeNull();
+  });
+
+  it("still returns 403 for a cross-origin DELETE (Origin check survives the exemption)", () => {
+    const r = csrfGuard(delReq({ origin: "https://attacker.example.com" }));
+    expect(r!.status).toBe(403);
   });
 });

@@ -64,8 +64,28 @@ export const apifyVideoSchema = z.object({
     .optional()
     .default([]),
   videoMeta: z
-    .object({ duration: z.coerce.number().optional() })
+    .object({
+      duration: z.coerce.number().optional(),
+      /**
+       * Free native subtitle links (§P.12 live probe — $0, ~6/8 coverage incl. top video).
+       * Populated when `downloadSubtitlesOptions:"DOWNLOAD_SUBTITLES"` is passed. The
+       * `tiktokLink` fetches the WEBVTT transcript with NO auth (downloadLink needs ?token=).
+       * Feeds the Creator Persona voice (`writing_style_sample`), never AI-transcribed.
+       */
+      subtitleLinks: z
+        .array(
+          z.object({
+            language: z.string().optional(),
+            downloadLink: z.string().url().optional(),
+            tiktokLink: z.string().url().optional(),
+          }),
+        )
+        .optional(),
+    })
     .optional(),
+  /** Pinned/ad flags — pinned skews engagement ratios (§P.10b excludePinnedPosts). */
+  isPinned: z.boolean().optional(),
+  isAd: z.boolean().optional(),
   /**
    * Apify KV-store mp4 download URLs.
    * Populated when `shouldDownloadVideos: true` is passed to the actor.

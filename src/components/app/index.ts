@@ -19,17 +19,6 @@ export { VideoUpload } from "./video-upload";
 export { TikTokUrlInput } from "./tiktok-url-input";
 export { SurveyForm } from "./survey-form";
 export type { SurveySubmission } from "./survey-form";
-export { TestCreationFlow } from "./test-creation-flow";
-// Simulation components
-export { LoadingPhases } from "./simulation/loading-phases";
-export { HeroScore, ImpactScore } from "./simulation/impact-score";
-export { FactorBreakdown, AttentionBreakdown } from "./simulation/attention-breakdown";
-export { BehavioralPredictionsSection } from "./simulation/behavioral-predictions";
-export { SuggestionsSection, InsightsSection } from "./simulation/insights-section";
-export { ShareButton } from "./simulation/share-button";
-export { ResultsPanel } from "./simulation/results-panel";
-export { TikTokResultCard } from "./simulation/tiktok-result-card";
-export { AnalysisLoadingSteps } from "./simulation/analysis-loading";
 export { TestHistoryItem } from "./test-history-item";
 export { TestHistoryList } from "./test-history-list";
 export { DeleteTestModal } from "./delete-test-modal";
