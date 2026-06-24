@@ -1,13 +1,15 @@
 /**
  * BLOCK_REGISTRY SSOT — server-importable schema half (no client components).
  *
- * Maps blockType → { schema } so the tool-runner and message rehydration share
+ * Maps blockType → { schema } so block generation and message rehydration share
  * one validation surface (D-14 + THREAD-06).  Renderer components are wired
  * directly in message-blocks.tsx (no separate component-registry module).
  *
  * Consumers:
- *  - tool-runner.ts: assertBlocksInRegistry at structured-output boundary
- *  - message-blocks.tsx: validateBlock per block on rehydration
+ *  - message-blocks.tsx: validateBlock per block on rehydration (the live guard)
+ *  - assertBlocksInRegistry: a registry-subset guard retained for re-use; its former
+ *    caller (the dispatchToolOutput structured-output boundary) was cut in S4, so it
+ *    currently has no production caller (the runners validate via per-block safeParse).
  */
 
 import { type z } from "zod";
@@ -45,7 +47,7 @@ export type BlockType = keyof typeof BLOCK_REGISTRY;
 
 // ─── validateBlock ────────────────────────────────────────────────────────────
 // Never throws — always returns {ok:true, block} | {ok:false}.
-// D-14: called at BOTH the tool-runner output boundary and on message rehydration.
+// D-14: the live block guard — called per block on message rehydration (message-blocks.tsx).
 
 export function validateBlock(
   raw: unknown,
@@ -68,7 +70,8 @@ export function validateBlock(
 
 // ─── assertBlocksInRegistry ──────────────────────────────────────────────────
 // Throws if any block's type is outside the allowed BlockType subset.
-// Called by the tool-runner after structured-output parse (THREAD-06).
+// Registry-subset guard (THREAD-06). Its former caller (dispatchToolOutput) was cut
+// in S4; retained for re-use but currently has no production caller.
 
 export function assertBlocksInRegistry(
   blocks: Array<{ type: BlockType; props: unknown }>,

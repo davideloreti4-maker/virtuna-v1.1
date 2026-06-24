@@ -57,7 +57,7 @@ import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
+import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

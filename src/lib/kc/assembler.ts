@@ -3,9 +3,9 @@
  *
  * ARCHITECTURAL SPLIT (resolves RESEARCH A4 ambiguity):
  * ─────────────────────────────────────────────────────
- * The Phase-1 ToolRunner field `knowledgeBundle` on the static runner const is the
- * STATIC SLICE-BINDING — it identifies which compiled KC slice this tool uses (a
- * build-time, module-level constant). It is NOT the live grounding.
+ * The STATIC SLICE-BINDING (which compiled KC slice a tool uses) is a build-time,
+ * module-level constant — the `KC_<MODE>_SYSTEM_PROMPT` a runner pairs with. It is
+ * NOT the live grounding.
  *
  * THIS MODULE produces the PER-REQUEST LIVE GROUNDING — the VOLATILE USER MESSAGE
  * that feeds the Qwen call alongside the byte-stable cached system prompt (KC_<MODE>_SYSTEM_PROMPT).

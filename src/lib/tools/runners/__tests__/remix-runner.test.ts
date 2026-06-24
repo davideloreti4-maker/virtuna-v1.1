@@ -61,7 +61,7 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
 const mockPinPredictedSignature = vi.fn().mockResolvedValue(true);
-vi.mock("@/lib/tools/runners/flash-runner", () => ({
+vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: (...args: unknown[]) => mockPinPredictedSignature(...args),
 }));
 

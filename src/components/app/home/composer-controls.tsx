@@ -26,9 +26,9 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
-// Extends the ToolRunner id union (tool-runner.ts) with the not-yet-shipped
-// skills: "explore" (P11), "offer" + "ad" (P16). They render as disabled
-// "coming soon" rows so the selector is built once and lights up per phase.
+// The skill id union, including the not-yet-shipped skills: "explore" (P11),
+// "offer" + "ad" (P16). They render as disabled "coming soon" rows so the
+// selector is built once and lights up per phase.
 export type ToolId =
   | "test"
   | "idea"

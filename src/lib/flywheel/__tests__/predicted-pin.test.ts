@@ -20,7 +20,7 @@ vi.mock("@/lib/flywheel/outcome-repo", () => ({
   insertOutcomeSignature: (...args: unknown[]) => insertOutcomeSignature(...args),
 }));
 
-import { pinPredictedSignature } from "@/lib/tools/runners/flash-runner";
+import { pinPredictedSignature } from "@/lib/tools/runners/predicted-pin";
 import { predictedSignature } from "@/lib/flywheel/signature";
 
 // A fake SupabaseClient — never actually used (repo is mocked).

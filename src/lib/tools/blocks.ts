@@ -5,8 +5,7 @@
  * These schemas are the SSOT consumed by:
  *  - block-registry.ts (schema + validation SSOT, server-importable)
  *  - message-blocks.tsx (renderer wiring + re-validate on rehydration, D-14)
- *  - tool-runner.ts (assertBlocksInRegistry at the output boundary)
- *  - message-blocks.tsx (re-validate on rehydration, D-14)
+ *  - the generative runners (per-block safeParse at the build boundary, e.g. HookCardBlockSchema)
  *
  * Design constraints:
  *  - BandBlock carries NO numeric score (D-02/D-11 honesty spine).
