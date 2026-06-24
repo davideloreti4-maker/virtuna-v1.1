@@ -17,7 +17,7 @@ conflict map, screenshots in `.planning/audit/`).
 
 | # | Brief | Scope (presentation-only) | Status |
 |---|-------|---------------------------|--------|
-| **P0** | `.planning/BRIEF-P0-thread-shell.md` | Conversation shell (user-turn echo, framed turns) + shared `SkillResultCard` (contains Explore/outlier overflow) + greeting recede + branded loading (extract+reuse `Constellation`). Fixes chat + all 6 skill outputs + broken home in one move. | **START HERE** |
+| **P0** | `.planning/BRIEF-P0-thread-shell.md` | Conversation shell (user-turn echo, framed turns) + shared `SkillResultCard` (contains Explore/outlier overflow) + greeting recede + branded loading (extract+reuse `Constellation`). Fixes chat + all 6 skill outputs + broken home in one move. | **ON HOLD** — engine merges first (see note) |
 | **P2** | `.planning/BRIEF-P2-library.md` | `/library`: segmented filter + per-type counts, skeleton loading, designed empty state (constellation + CTA), card/grid polish, neutral launch CTA. Respects the LOCKED flat guard (no folders/tags). Reuses P0 loading. | After P0 |
 | **P1** | *(not yet written)* | Audience surface: flagship CRUD-list → rich persona cards. **BLOCKED** — depends on the new persona/signature shape from the engine track; draft only after `rework/engine-core` merges + rebase. | Blocked |
 | — | minor batch | Chart-recolor verify (funnel terracotta), mobile/responsive, settings `text-white` → token. Fold into `/design-check`; batch later. | Low pri |
@@ -26,6 +26,13 @@ conflict map, screenshots in `.planning/audit/`).
 styling. ⛔ Never touch `src/lib/**`, `src/app/api/**`, `supabase/**`, the engine-owned block
 schemas/registry/renderer-props (D-14), or the HOLD files `components/audience/{calibration-flow,
 audience-reveal}.tsx`. Rebase on `origin/main` before each PR to absorb the engine merge cleanly.
+
+**⚠️ Contested files (2026-06-24):** the engine track also edited `src/components/app/home/composer.tsx`
++ `home-page-layout.tsx` (audience-signature wiring, commit `8c9f4111`) — the two files P0 rewrites.
+**Resequenced: engine-rework merges to main FIRST**, then `design/ui-restrained` rebases on main and
+P0 restarts off it (building on engine's greeting-collapse). P0 was cancelled in plan mode (nothing
+committed; shared branches untouched). P1 audience is now near-unblocked — engine's AudienceSignature
+is code-complete; draft P1 after the engine merge + rebase.
 
 **Execution model (one brief = one session = one worktree):** each session runs in a fresh worktree
 forked off `design/ui-restrained` (e.g. Cursor "New Worktree" on that branch). **Plan first** —

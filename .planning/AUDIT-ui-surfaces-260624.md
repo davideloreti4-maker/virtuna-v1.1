@@ -42,6 +42,13 @@ Those two are the ONLY component-layer landmines. The recolor (160 files) did **
 the two tracks merge clean. Block schemas/registry/renderer-props (D-14) and the stream hooks are
 **engine-owned contracts** — UI work is relayout-only.
 
+**Update 2026-06-24:** the contract was breached — engine commit `8c9f4111` (AudienceSignature) also
+edited `src/components/app/home/composer.tsx` (+35) and `home-page-layout.tsx` (+34/−24), the two
+files P0 rewrites (engine replaced the fixed-18vh anchor with a greeting-collapse + two-layout split).
+**Resequenced: engine-rework merges to main first; P0 rebases on top and restarts.** Engine also did
+the `G2` cut (deleted dead `src/components/app/simulation/*` — unused by the UI track) and is
+code-complete on audience (Track A/B + intent lens + drift cron) → P1 audience near-unblocked.
+
 ## Prioritized backlog (full)
 | Pri | Task | Brief | Status |
 |-----|------|-------|--------|

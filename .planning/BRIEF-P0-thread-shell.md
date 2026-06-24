@@ -4,6 +4,15 @@
 > **Read first:** `.planning/HANDOFF-ui-restrained.md` (the de-Claude rules) → this file.
 > **Prereq:** the recolor commit (`923183a3 fix(ui): subtract accent flood`) must be **merged**
 > into `design/ui-restrained` first. Build forward from that base, not from the bare branch.
+>
+> **⛔ ON HOLD until engine-rework merges (2026-06-24).** The engine track (`rework/engine-core`,
+> finishing) modified `composer.tsx` (+35) and `home-page-layout.tsx` (+34/−24) in commit `8c9f4111`
+> — the two core files this brief rewrites. They WILL conflict. **Do not execute P0 until
+> `rework/engine-core` merges to main; then rebase `design/ui-restrained` on main and restart P0 off
+> that.** Engine already replaced the fixed-18vh anchor with a **greeting-collapse-to-top + two-layout
+> split** on `hasThread` — that is the new baseline to BUILD ON (it already does part of item C below),
+> not to fight. The net-new pieces (A `ThreadShell`, B `SkillResultCard`, D loading + `Constellation`
+> extraction) are conflict-free and can be drafted earlier; only the composer/home WIRING waits.
 
 ---
 
