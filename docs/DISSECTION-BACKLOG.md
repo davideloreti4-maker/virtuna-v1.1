@@ -17,9 +17,11 @@ Milestone 1 (AudienceSignature steps 1-9 + G1/G2 cuts + DELETE-CSRF fix) MERGED 
 (PR #24, squash `158a4aea`). Audience is done for the **voice lever**; the **weights lever is
 inert** (A1). Recommended order for the next session:
 
-1. **Validate live what shipped** (~$0.10, owner-driven dev server) — the 2 unobserved E2Es:
-   does generation actually sound like the creator (step 7 voice), and does the `sell` lens
-   shift the SIM to a buying-frame (step 8)? Proves the LIVE half of the moat. "Prove it works."
+1. ~~Validate live what shipped~~ ✅ **DONE 2026-06-24 — both PASS** (synthetic-signature harness
+   vs real Qwen, no calibration spend). Step-7 voice: calibrated gen is blunt/short/no-hype (matches
+   creator_persona), baseline is longer/hedged. Step-8 sell: every SIM persona re-frames watch→BUY
+   ("drop $49", "ready to invest", "early buyer") vs grow's watch/share; verdict tokens + ENGINE_VERSION
+   untouched. The live half of the moat is PROVEN, not just wired.
 2. **A1 DECISION (🔴, strategy not build)** — audience `persona_weights` + the entire
    flywheel/drift loop are read by NOTHING in prod (grounded below). Decide: wire-to-Max /
    wire-to-text / formally dormant + stop the weekly Apify re-scrape cron. Until decided, the
