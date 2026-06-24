@@ -325,8 +325,8 @@ if (id) { loaded = await getAudience(supabase, id); if (loaded) activeAudience =
 - **POST** confirm → `confirmProposal` (propose.ts:139): re-checks the gate, then
   `buildOverride(proposal, audience.persona_weights)` (recalibration.ts:65) →
   `updateAudience({persona_weights})`. Contributing reconciliation rows → `'confirmed'` (no re-nag).
-- **Bounded nudge** (recalibration.ts:33,65-83): `ASSUMED_STEP = 0.05` (⚠ **NOT ±0.1** as the
-  platform map/brief claim). `slot_new = clamp(slot_old + 0.05·sign(mean), 0, 1)` then
+- **Bounded nudge** (recalibration.ts): `RECALIBRATION_STEP = 0.05` (A5: docs reconciled to
+  code; env-tunable via `RECALIBRATION_STEP`, conservative default). `slot_new = clamp(slot_old + 0.05·sign(mean), 0, 1)` then
   `normalizeWeights` re-sums to 1.0. Disposition→slot map (`:43-47`): `collector→fyp`,
   `converter→niche`, `connector→[fyp,loyalist]`. **Only `persona_weights` is ever written** —
   DEFAULT/ARCHETYPE_DEFINITIONS/ENGINE_VERSION untouched (the moat-safety boundary).
@@ -398,9 +398,9 @@ if (id) { loaded = await getAudience(supabase, id); if (loaded) activeAudience =
    stubbed, or is the constant lens the intended v1? (This determines whether the grounding line
    carries any real signal — currently it doesn't.)
 
-2. **±0.1 vs 0.05 nudge.** Brief + `PLATFORM-MAP.md §5.7` say the flywheel writes a **bounded
-   ±0.1** shift; code is `ASSUMED_STEP = 0.05` (recalibration.ts:33). Which is canonical? Doc or
-   code is stale.
+2. ~~**±0.1 vs 0.05 nudge.**~~ RESOLVED (A5): reconciled to **0.05** (code is canonical; the
+   brief + `PLATFORM-MAP.md §5.7` ±0.1 claim was stale and is now fixed). Renamed
+   `ASSUMED_STEP` → `RECALIBRATION_STEP`, conservative default, env-overridable.
 
 3. **Preset materialization** ("customize a preset → real row") is referenced in comments
    (audience-repo.ts:62, repo header) but I found no write path that flips a preset to a row.
