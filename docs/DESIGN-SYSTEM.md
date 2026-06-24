@@ -10,9 +10,13 @@
 > **`globals.css` + this file are the only current references.**
 
 ## The system in one line
-Flat-warm **charcoal** surfaces + **cream** text + **terracotta** accent + **matte** depth
-(no glass gradients, no glow, no white inset-shine). Inter for all chrome; Newsreader serif
-**only** for voice-moments (greeting/hero). The old cold-black `#07080a` Raycast glass system is dead.
+Flat-warm **charcoal** surfaces + **cream** text + a **terracotta accent used sparingly** +
+**matte** depth (no glass gradients, no glow, no white inset-shine). Primary actions are
+**neutral cream**, not accent. Inter for all chrome; serif **only** for voice-moments
+(greeting/hero). The old cold-black `#07080a` Raycast glass system is dead. The de-Claude
+break is the **near-zero dosage**, not the hue — so as of **2026-06-24** the accent hue is
+**terracotta `#d97757`** (signal-red `#e23b2d` was trialed and reverted; dosage rule kept). See
+**"Accent dosage (LOCKED)"** below.
 
 ## Tokens (real values — `globals.css`)
 
@@ -26,8 +30,12 @@ Flat-warm **charcoal** surfaces + **cream** text + **terracotta** accent + **mat
 | Primary text | `--cream-primary` | `#ece7de` (**never `#fff`**) |
 | Secondary text | `--cream-secondary` | `#c2bdb4` |
 | Muted text | `--cream-muted` | `#8a857c` |
-| Accent | `--coral-500` / `--color-accent` | `oklch(0.68 0.13 33)` ≈ `#d97757` terracotta (**not `#FF7F50`**) |
-| Accent foreground | | `#1a0f0a` (dark brown) |
+| Accent (solid) | `--coral-500` / `--color-accent` | `#d97757` terracotta/clay — the brand accent (**not legacy `#FF7F50`**) |
+| Accent (text/icon) | `--color-accent-text` / `--coral-400` | terracotta, legible on dark |
+| Accent soft (tint bg) | `--color-accent-soft` | `oklch(0.68 0.13 33 / 0.16)` (terracotta tint) |
+| Accent foreground | `--color-accent-foreground` | `#f6e9e6` (cream glyph on solid accent) |
+| **Primary action** | `--color-action` | `#ece7de` cream — buttons/send are NEUTRAL, not accent |
+| Action foreground | `--color-action-foreground` | `#1c1b19` (dark glyph on cream) |
 
 ### Border / depth
 - Borders: `rgba(255,255,255,0.06)`, hover `rgba(255,255,255,0.1)`. (6% / 10% — unchanged from before.)
@@ -36,10 +44,47 @@ Flat-warm **charcoal** surfaces + **cream** text + **terracotta** accent + **mat
 
 ### Type
 - Sans: `--font-inter` — all UI chrome, all weights.
-- Serif: `--font-newsreader` — **voice-moments ONLY** (greeting line, hero). Never body/chrome.
+- Serif: `--font-serif` — **voice-moments ONLY** (greeting line, hero). Never body/chrome.
+  Currently wired to **Newsreader**. Candidate swap → **Fraunces** (more optical character,
+  further from Claude's serif feel). Swapping requires `next/font` wiring in the root layout
+  — until then `--font-serif` stays Newsreader. Tracked as a follow-up, not blocking.
 
 ### Radius scale
 `4 / 6 / 8 / 12 / 16 / 20 / 24` px. Cards 12, inputs/buttons 8, header 16, modals 12.
+
+## Accent dosage (LOCKED 2026-06-24)
+**Monochrome by default. Accent is the rare exception — used REALLY sparingly, if at all.**
+The UI is cream-on-charcoal; color is not a styling tool. This is the rule that separates us from
+Claude (which floods its terracotta everywhere). Goal posture: a screen with **zero** accent is the
+norm, not a failure. Pattern is the quiet end of Linear / Vercel / Whop.
+
+**Default = NO accent.** Every accent use must be *justified* and is opt-in, not a default. If you
+can't name the specific high-meaning reason, it gets none. Aim for **at most one** accent element
+visible on a screen at a time; often zero.
+
+**The only sanctioned uses (and even these are optional):**
+- The single live "presence/liveness" signal (e.g. the audience "personas ready" dot) — one per view
+- The lit node in the constellation / SIM mark
+- The brand mark / logo itself
+- (Active-state ticks, selection, focus → prefer NEUTRAL; do not reach for accent here)
+
+**Accent is NEVER allowed on:**
+- Primary buttons / the composer send → `--color-action` (neutral cream)
+- Icon buttons, skill pills, chevrons, placeholders, tabs, toggles → cream / muted
+- Links, borders, large fills, hover states, charts, badges, progress — all neutral
+- Anything "to make it pop" — that instinct is the thing we are removing
+
+**Why this hard line:** at near-zero dosage the *hue* barely registers, so the Claude
+resemblance dies on any color — this is why the hue itself (terracotta vs red) is not the
+de-Claude lever; the dosage is. `--color-error` stays reserved for genuine destructive/error
+states; accent ≠ error, never conflated.
+
+**Emphasis without color:** weight, *italic* (serif voice-moments), size, spacing, and hierarchy —
+never paint.
+
+**Identity load-bearing parts** (the brand lives here, since color is essentially absent): the
+**constellation / SIM motif**, the **serif voice**, copy, and layout. Invest there — that is where
+distinctiveness comes from, not the accent.
 
 ## Hard rules (the guard test enforces these)
 `src/components/reading/__tests__/reskin-matte.test.ts` asserts NO coral-glow / NO glass in

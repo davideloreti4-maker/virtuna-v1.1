@@ -49,6 +49,7 @@ import {
   ModelTag,
   SkillRows,
   SKILLS,
+  getSkill,
   type ToolId,
   type Intent,
 } from "./composer-controls";
@@ -300,6 +301,8 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  /** Optimistic echo of the last submitted composer draft (presentation-only). */
+  const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
 
   // URL validity: empty is "neutral" (no error, just disabled); non-empty +
   // non-TikTok shows the D-21 reject; a valid TikTok URL enables submit.
@@ -586,12 +589,17 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
   // CRITICAL: Idea path NEVER sets pendingNavRef or calls stream.start (T-03-13).
   const handleSubmit = useCallback(async () => {
+    const captureUserTurn = (raw: string) => {
+      const t = raw.trim();
+      setLastUserTurn(t || null);
+    };
 
     // ── Idea tool path (D-12) ───────────────────────────────────────────────
     // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
     // Empty ask = Auto mode; typed ask = seeded mode (D-12).
     if (activeTool === "idea") {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
+      captureUserTurn(ask);
       setUrl(""); // clear input after send
       // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await ideas.start(ask, platform, intent);
@@ -604,6 +612,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // T-03-13/T-04-13: Hook send NEVER navigates to /analyze.
     if (activeTool === "hooks") {
       const ask = trimmedUrl; // empty string → Auto; non-empty → seeded
+      captureUserTurn(ask);
       setUrl(""); // clear input after send
       // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await hooks.start(ask, platform, intent);
@@ -616,6 +625,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // ask must be non-empty (canSubmit already gates on trimmedUrl.length > 0).
     if (activeTool === "chat") {
       const ask = trimmedUrl;
+      captureUserTurn(ask);
       setUrl(""); // clear input after send
 
       // ── Plan 05-05: Refine-intent detection (D-04 / D-05) ──────────────────
@@ -696,6 +706,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // ask = typed topic or empty; anchor = carried hookLine from hooks→script seam.
     if (activeTool === "script") {
       const ask = trimmedUrl; // topic seed or empty (anchor drives the script when carried)
+      captureUserTurn(ask);
       setUrl(""); // clear input after send
       script.reset();
       // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
@@ -709,6 +720,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // URL is required (canSubmit gates on trimmedUrl.length > 0 for remix).
     if (activeTool === "remix") {
       const url = trimmedUrl; // trending/competitor TikTok URL (required)
+      captureUserTurn(url);
       setUrl(""); // clear input after send
       remix.reset();
       await remix.start(url, platform, intent);
@@ -724,6 +736,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
     // onQuickAction → explore.start), but a bare field-send still works.
     if (activeTool === "explore") {
       const ask = trimmedUrl; // typed niche/keywords or empty
+      captureUserTurn(ask);
       setUrl(""); // clear input after send
       // explore.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant).
       await explore.start({ niche: ask || undefined });
@@ -1002,6 +1015,14 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   );
 
   // Shared thread content block (rendered in both mode branches below).
+  const threadSkillLabel = getSkill(activeTool).label;
+  const threadAudienceLabel = selectedAudience?.name ?? "General";
+  const threadPresentation = {
+    userTurn: lastUserTurn,
+    skillLabel: threadSkillLabel,
+    audienceLabel: threadAudienceLabel,
+  };
+
   const threadContent = (
     <>
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
@@ -1019,6 +1040,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           error={ideas.error}
           platform={platform}
           onRetry={() => void ideas.start("", platform)}
+          {...threadPresentation}
         />
       )}
 
@@ -1039,6 +1061,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           onTestHook={handleTestHook}
           onWriteScriptHook={handleWriteScript}
           onRetry={() => void hooks.start("", platform)}
+          {...threadPresentation}
         />
       )}
 
@@ -1056,6 +1079,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           platform={platform}
           onTestScript={handleTestScript}
           onRetry={() => void script.start("", platform)}
+          {...threadPresentation}
         />
       )}
 
@@ -1073,6 +1097,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           platform={platform}
           onDevelop={(adaptedHook, remixPlatform) => void handleDevelopRemix(adaptedHook, remixPlatform)}
           onRetry={() => void remix.start("", platform)}
+          {...threadPresentation}
         />
       )}
 
@@ -1104,6 +1129,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
               void ideas.start("", platform);
             }
           }}
+          {...threadPresentation}
         />
       )}
 
@@ -1126,6 +1152,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           onQuickAction={(params) => void explore.start(params)}
           onRetry={() => void explore.start({})}
           onThreadReload={() => void reloadOpenThread()}
+          {...threadPresentation}
         />
       )}
     </>
@@ -1181,7 +1208,6 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                 </p>
                 <p
                   className="text-sm font-medium text-foreground leading-snug"
-                  style={{ color: 'var(--color-accent)' }}
                 >
                   &ldquo;{testBrief.hookLine}&rdquo;
                 </p>
@@ -1266,7 +1292,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
             {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
             <ModelTag activeTool={activeTool} />
 
-            {/* Submit — the lone coral affordance besides the focus ring. */}
+            {/* Submit — neutral cream action (inherits primary variant). */}
             <Button
               type="submit"
               variant="primary"

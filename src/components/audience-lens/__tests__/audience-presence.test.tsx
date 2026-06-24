@@ -30,10 +30,13 @@ afterEach(() => {
 });
 
 const SRC_PATH = join(process.cwd(), 'src/components/audience-lens/audience-presence.tsx');
-const readCode = () =>
-  readFileSync(SRC_PATH, 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/\/\/.*$/gm, '');
+// The deterministic constellation render (mulberry32 PRNG + reducedMotion gating) was
+// extracted to brand/constellation.tsx (P0 thread-shell). Guard both sources.
+const CONSTELLATION_PATH = join(process.cwd(), 'src/components/brand/constellation.tsx');
+const stripComments = (s: string) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+const readCode = () => stripComments(readFileSync(SRC_PATH, 'utf8'));
+const readConstellationCode = () => stripComments(readFileSync(CONSTELLATION_PATH, 'utf8'));
 
 // ── Fixtures ────────────────────────────────────────────────────────────────────
 function persona(i: number): CalibratedPersona {
@@ -190,14 +193,16 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
 // ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {
-    const code = readCode();
-    expect(code).not.toMatch(/Math\.random/);
-    expect(code).not.toMatch(/Date\.now/);
-    expect(code).not.toMatch(/new Date\(/);
+    for (const code of [readCode(), readConstellationCode()]) {
+      expect(code).not.toMatch(/Math\.random/);
+      expect(code).not.toMatch(/Date\.now/);
+      expect(code).not.toMatch(/new Date\(/);
+    }
   });
 
   it('uses the mulberry32 seeded PRNG + gates motion on reducedMotion', () => {
-    const code = readCode();
+    // Lives in the extracted Constellation component since P0.
+    const code = readConstellationCode();
     expect(code).toMatch(/mulberry32/);
     expect(code).toMatch(/reducedMotion/);
   });

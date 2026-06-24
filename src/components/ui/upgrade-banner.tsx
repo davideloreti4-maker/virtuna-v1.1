@@ -13,8 +13,8 @@ export function UpgradeBanner({ requiredTier, onUpgrade }: UpgradeBannerProps) {
 
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6 text-center">
-      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FF7F50]/10">
-        <Zap className="h-5 w-5 text-[#FF7F50]" />
+      <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--color-foreground-secondary)]/10">
+        <Zap className="h-5 w-5 text-[var(--color-foreground-secondary)]" />
       </div>
       <h3 className="text-sm font-medium text-white">
         {tierLabel} Feature
@@ -25,7 +25,7 @@ export function UpgradeBanner({ requiredTier, onUpgrade }: UpgradeBannerProps) {
       <button
         type="button"
         onClick={() => onUpgrade(requiredTier)}
-        className="mt-4 rounded-lg bg-[#FF7F50] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#FF7F50]/90"
+        className="mt-4 rounded-lg bg-[var(--color-foreground-secondary)] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[var(--color-foreground-secondary)]/90"
       >
         Upgrade to {tierLabel}
       </button>

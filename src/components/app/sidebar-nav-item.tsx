@@ -55,7 +55,7 @@ export function SidebarNavItem({
         {label}
       </Text>
       {badge != null && badge > 0 && (
-        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/20 px-1.5 text-xs font-medium text-accent">
+        <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-surface-elevated px-1.5 text-xs font-medium text-foreground-secondary">
           {badge}
         </span>
       )}

@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  *    (text-foreground-muted) with data-testid="testimonial-handle".
  *
  * Cold-brand LANDMINE (Pitfall 2): DO NOT import or copy from ui/testimonial-card.
- * That component uses oklch, border-accent, and a cold-brand anatomy (no @handle/metric).
+ * That component uses oklch, border-border-hover, and a cold-brand anatomy (no @handle/metric).
  *
  * Token discipline: cream tokens only, NO text-white, NO hex, NO glass/glow/blur,
  * coral NOT used (no CTA in this section). Pure RSC — no "use client".

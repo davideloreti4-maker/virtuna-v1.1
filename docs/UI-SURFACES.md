@@ -1,8 +1,24 @@
 # UI Design Track — Surfaces Plan
 
-> Worktree `virtuna-numen-ui` · branch `design/ui-system` · tool: Cursor.
-> Parallel to the engine rework (`virtuna-engine-rework`). Design rules: `.cursor/rules/ui-design.mdc`.
-> Design SoT: `docs/DESIGN-SYSTEM.md` + `src/app/globals.css` (ignore all other design docs — stale).
+> Worktree `virtuna-ui-restrained` · branch `design/ui-restrained` (off main) · tool: Cursor.
+> Mission: the **restrained signal-red rebrand (de-Claude)** — dose down terracotta usages,
+> switch primary actions to neutral cream, amplify the constellation motif. Token system + LOCKED
+> dosage rule already landed; this is the per-surface application work.
+> Parallel to the engine rework (`virtuna-engine-rework`, `rework/engine-core`). Design rules:
+> `.cursor/rules/ui-design.mdc`. Design SoT: `docs/DESIGN-SYSTEM.md` + `src/app/globals.css`
+> (ignore all other design docs — stale).
+
+## ⛔ Engine-rework HOLD list (do NOT edit — guaranteed merge conflict)
+
+`rework/engine-core` is **8 commits ahead of main, not yet merged**, and is actively rewriting
+these UI-lane files. Editing them here WILL conflict — leave them until that branch merges:
+
+- `src/components/audience/calibration-flow.tsx` (being modified)
+- `src/components/audience/audience-reveal.tsx` (new file on the engine branch)
+
+Everything else in `src/components/**` and all of `globals.css` is conflict-free (engine-rework
+touches `src/lib/**`, `src/app/api/**`, `supabase/**`, `docs/subsystems/**`, types only). Rebase on
+`origin/main` before starting and again before opening a PR to catch the merge when it lands.
 
 ## Coupling status (decides what's safe to build now)
 
@@ -11,7 +27,7 @@ Surfaces split into **free-to-build** (no engine dependency — go now) and **ga
 
 | Surface | Components | Status | Notes |
 |---|---|---|---|
-| **Audience creation flow** | `src/components/audience/` (`audience-form`, `calibration-flow`, `persona-edit-form`, `audience-manager`); routes `src/app/(app)/audience/*` | 🟡 GATED | audience data model is the FIRST engine rework (3-position model). Restyle freely; hold changes to what fields/personas the form captures until model settles. |
+| **Audience creation flow** | `src/components/audience/` (`audience-form`, `calibration-flow`, `persona-edit-form`, `audience-manager`); routes `src/app/(app)/audience/*` | 🔴 HOLD (calibration-flow, audience-reveal) / 🟡 GATED (rest) | `calibration-flow.tsx` + `audience-reveal.tsx` are on the HOLD list above — do not touch. Rest: restyle freely; hold field/persona-shape changes until the 3-position model settles. |
 | **Ambient audience / AudienceLens** | `src/components/audience-lens/` (`AudienceLens`, `audience-presence`, `PopulationSwarm`) | 🟡 GATED | the flagship ambient surface; its data contract changes with the audience rework. Visual/motion polish OK; don't change consumed props. |
 | **Skills UI / thread cards** | `src/components/thread/` (`message-blocks` dispatcher + `*-card-block`) | 🟡 GATED | block schemas owned by engine track. Restyle card faces freely; don't change block shapes. |
 | **Composer** | `src/components/app/home/composer.tsx` + `composer-controls.tsx` | 🟡 GATED | ambient-audience composer is coupled to audience + skills. Restyle OK. |

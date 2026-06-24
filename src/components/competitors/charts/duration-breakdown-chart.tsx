@@ -60,7 +60,7 @@ export function DurationBreakdownChart({ data }: DurationBreakdownChartProps) {
         />
         <Bar
           dataKey="count"
-          fill="var(--color-accent)"
+          fill="var(--color-cream-secondary)"
           barSize={20}
           radius={[0, 6, 6, 0]}
           isAnimationActive={false}

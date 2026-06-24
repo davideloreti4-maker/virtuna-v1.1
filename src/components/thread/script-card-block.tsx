@@ -236,9 +236,9 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           type="button"
           onClick={onTest}
           disabled={!onTest}
-          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{
-            color: onTest ? '#FF7F50' : 'rgba(255,127,80,0.35)',
+            color: onTest ? 'var(--color-foreground-secondary)' : 'rgba(236,231,222,0.35)',
             cursor: onTest ? 'pointer' : 'default',
           }}
           aria-label="Test this script on the full SIM-1 Max pipeline"

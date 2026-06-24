@@ -251,11 +251,11 @@ export function GlassRadioItem({
         !disabled && "cursor-pointer",
         // Border color
         isChecked
-          ? "border-[var(--color-accent)]"
+          ? "border-[var(--color-cream-secondary)]"
           : "border-white/[0.06]",
         // Hover state
         !disabled && !isChecked && "hover:border-white/[0.1]",
-        !disabled && isChecked && "hover:border-[var(--color-accent)]",
+        !disabled && isChecked && "hover:border-[var(--color-cream-secondary)]",
         // Disabled state
         disabled && "opacity-50 cursor-not-allowed",
       )}
@@ -289,7 +289,7 @@ export function GlassRadioItem({
           isChecked ? "scale-100 opacity-100" : "scale-0 opacity-0"
         )}
         style={{
-          backgroundColor: "var(--color-accent)", // Coral dot
+          backgroundColor: "var(--color-cream-secondary)", // Coral dot
           transitionTimingFunction: "var(--ease-spring)",
         }}
       />

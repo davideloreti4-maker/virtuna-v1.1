@@ -214,7 +214,7 @@ export function OutlierTile({
         className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
         style={{
           minHeight: "46px",
-          color: "#FF7F50",
+          color: "var(--color-foreground-secondary)",
           backgroundColor: "rgba(255,127,80,0.08)",
           border: "1px solid rgba(255,127,80,0.30)",
           cursor: onRemix && !remixPending ? "pointer" : "default",

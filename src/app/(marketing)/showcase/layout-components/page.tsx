@@ -41,7 +41,7 @@ export default function LayoutComponentsPage() {
             {/* Default */}
             <div className="relative overflow-hidden rounded-xl">
               <div className="absolute inset-0" aria-hidden="true">
-                <div className="absolute -left-6 top-1/4 h-20 w-20 rounded-full bg-accent/50 blur-xl" />
+                <div className="absolute -left-6 top-1/4 h-20 w-20 rounded-full bg-action/50 blur-xl" />
                 <div className="absolute left-1/3 -top-4 h-16 w-16 rounded-full bg-purple-500/40 blur-xl" />
                 <div className="absolute right-1/4 bottom-0 h-18 w-18 rounded-full bg-cyan-500/35 blur-xl" />
               </div>

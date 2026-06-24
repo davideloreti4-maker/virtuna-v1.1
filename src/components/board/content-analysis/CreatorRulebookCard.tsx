@@ -36,14 +36,14 @@ export interface CreatorRulebookCardProps {
 const STATUS_DOT: Record<RuleStatus, string> = {
   pass: 'bg-success',
   warn: 'bg-warning',
-  fail: 'bg-accent',
+  fail: 'bg-action',
   unknown: 'bg-white/20',
 };
 
 const STATUS_TEXT: Record<RuleStatus, string> = {
   pass: 'text-success',
   warn: 'text-warning',
-  fail: 'text-accent',
+  fail: 'text-foreground-secondary',
   unknown: 'text-white/30',
 };
 
@@ -54,7 +54,7 @@ type SummaryTone = 'good' | 'warn' | 'crit';
 const SUMMARY_TEXT: Record<SummaryTone, string> = {
   good: 'text-success',
   warn: 'text-warning',
-  crit: 'text-accent',
+  crit: 'text-foreground-secondary',
 };
 
 function summaryFromCounts(rb: CreatorRulebook): { tone: SummaryTone; word: string } {

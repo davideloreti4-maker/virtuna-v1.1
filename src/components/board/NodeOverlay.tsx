@@ -39,7 +39,7 @@ export function NodeOverlay({ spec, camera, status, selected, onTap, children, c
       data-status={status}
       className={cn(
         'pointer-events-auto absolute',
-        'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+        'focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2',
         'transition-[background-color] hover:bg-white/[0.02]',
         className,
       )}

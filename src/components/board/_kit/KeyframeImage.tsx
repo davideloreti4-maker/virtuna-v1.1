@@ -53,7 +53,7 @@ export function KeyframeImage({
       className={cn(
         'relative overflow-hidden rounded-[6px] border bg-[var(--color-surface)]',
         RATIO[ratio],
-        marked ? 'border-accent/60' : 'border-[var(--color-border)]',
+        marked ? 'border-border-hover/60' : 'border-[var(--color-border)]',
         className,
       )}
       data-testid="keyframe"
@@ -92,7 +92,7 @@ export function KeyframeImage({
         </div>
       )}
       {label && (
-        <span className="absolute left-1 top-1 rounded-[3px] bg-accent px-1 text-[8px] font-semibold uppercase tracking-wide text-[#1a0f0a]">
+        <span className="absolute left-1 top-1 rounded-[3px] bg-action px-1 text-[8px] font-semibold uppercase tracking-wide text-[#1a0f0a]">
           {label}
         </span>
       )}

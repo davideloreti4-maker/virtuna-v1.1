@@ -108,9 +108,9 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
           <span
             className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border"
             style={{
-              color: '#FF7F50',
-              borderColor: 'rgba(255,127,80,0.3)',
-              backgroundColor: 'rgba(255,127,80,0.08)',
+              color: 'var(--color-foreground-secondary)',
+              borderColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: 'rgba(255,255,255,0.06)',
             }}
             title="The audience persona this hook grabs"
             aria-label={`Audience archetype: ${audienceArchetype}`}
@@ -260,9 +260,9 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
           type="button"
           onClick={onWriteScript}
           disabled={!onWriteScript}
-          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{
-            color: onWriteScript ? '#FF7F50' : 'rgba(255,127,80,0.35)',
+            color: onWriteScript ? 'var(--color-foreground-secondary)' : 'rgba(236,231,222,0.35)',
             cursor: onWriteScript ? 'pointer' : 'default',
           }}
           aria-label="Write a full script from this hook"
@@ -276,9 +276,9 @@ export function HookCardRenderer({ block, onTest: onTestProp, onWriteScript: onW
           type="button"
           onClick={onTest}
           disabled={!onTest}
-          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{
-            color: onTest ? '#FF7F50' : 'rgba(255,127,80,0.35)',
+            color: onTest ? 'var(--color-foreground-secondary)' : 'rgba(236,231,222,0.35)',
             cursor: onTest ? 'pointer' : 'default',
           }}
           aria-label="Test this hook on the full SIM-1 Max pipeline"

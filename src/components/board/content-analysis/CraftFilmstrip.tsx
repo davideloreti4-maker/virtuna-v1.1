@@ -104,7 +104,7 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
         )}
         <div
           className="absolute bottom-0 right-0 text-right text-[10px] font-medium uppercase tracking-[0.13em]"
-          style={{ color: ctaPresent ? 'rgba(255,255,255,0.4)' : 'var(--color-accent)' }}
+          style={{ color: ctaPresent ? 'rgba(255,255,255,0.4)' : 'var(--color-cream-secondary)' }}
           data-testid="craft-mark-close"
         >
           {ctaPresent ? COPY.CLOSE_MARK : COPY.NO_CLOSE_MARK}
@@ -152,7 +152,7 @@ export function CraftFilmstrip({ cells, durationSec, arc, audio, audioCaption, c
           >
             <div
               className="absolute bottom-0 right-0 top-0 w-[2px]"
-              style={{ background: 'var(--color-accent)' }}
+              style={{ background: 'var(--color-cream-secondary)' }}
             />
           </div>
         )}

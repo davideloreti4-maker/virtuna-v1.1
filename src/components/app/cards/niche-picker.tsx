@@ -58,7 +58,7 @@ export function NichePicker({
                 onClick={() => onChange({ primary: branch.slug, sub: null })}
                 className={cn(
                   "flex h-14 items-center justify-center rounded-xl border px-3 text-center transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
                   selected
                     ? "border-white/[0.12] bg-white/[0.08]"
                     : "border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
@@ -101,7 +101,7 @@ export function NichePicker({
                   onClick={() => onChange({ primary, sub: subItem.slug })}
                   className={cn(
                     "flex h-12 items-center justify-center rounded-xl border px-3 text-center transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
                     selected
                       ? "border-white/[0.12] bg-white/[0.08]"
                       : "border-white/[0.06] bg-transparent hover:bg-white/[0.02]"

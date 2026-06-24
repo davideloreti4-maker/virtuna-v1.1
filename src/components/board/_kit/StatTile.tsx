@@ -28,7 +28,7 @@ export function StatTile({ k, v, u, delta, s, em, tone = 'default' }: StatTileDa
       className={cn(
         'flex min-h-[72px] flex-col rounded-[11px] border px-3 py-[11px]',
         tone === 'accent'
-          ? 'border-accent/25 bg-accent/[0.035]'
+          ? 'border-border-hover/25 bg-action/[0.035]'
           : 'border-[var(--color-border)] bg-[var(--color-surface-elevated)]/40',
       )}
       data-testid="stat-tile"

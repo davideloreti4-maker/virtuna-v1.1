@@ -44,7 +44,7 @@ export function TopFixesList({ suggestions, hasVideo = true }: TopFixesListProps
                 className="rounded-[4px] border px-1.5 py-0.5 text-[10px]"
                 style={{
                   borderColor: 'rgba(255, 127, 80, 0.3)', // accent/30
-                  color: 'var(--color-accent)',
+                  color: 'var(--color-cream-secondary)',
                 }}
                 aria-label={`Jump to ${formatTime(fix.timestamp_ms)} on audience filmstrip`}
                 data-testid="top-fix-timestamp"

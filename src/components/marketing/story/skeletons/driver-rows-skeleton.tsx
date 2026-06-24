@@ -63,7 +63,7 @@ export function DriverRowsSkeleton({ className }: { className?: string }) {
               data-bar
               className={cn(
                 "h-full rounded-full",
-                d.weakest ? "bg-accent" : "bg-foreground-secondary"
+                d.weakest ? "bg-action" : "bg-foreground-secondary"
               )}
               style={{ width: `${d.fill}%` }}
               aria-hidden="true"

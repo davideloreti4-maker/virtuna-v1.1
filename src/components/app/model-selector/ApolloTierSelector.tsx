@@ -38,7 +38,7 @@ export function ApolloTierSelector({ className }: ApolloTierSelectorProps) {
             }}
             className={cn(
               "cursor-pointer text-left p-2.5",
-              isSelected && "border-accent bg-white/[0.04]"
+              isSelected && "border-border-hover bg-white/[0.04]"
             )}
           >
             <div className="flex items-center justify-between gap-2">
@@ -47,7 +47,7 @@ export function ApolloTierSelector({ className }: ApolloTierSelectorProps) {
                   {tier.name}
                 </span>
                 {tier.recommended && (
-                  <Badge variant="accent" size="sm">
+                  <Badge variant="default" size="sm">
                     Recommended
                   </Badge>
                 )}

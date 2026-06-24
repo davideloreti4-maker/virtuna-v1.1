@@ -54,7 +54,7 @@ export function AntiViralityHeader({ result, analysisId }: AntiViralityHeaderPro
           : 'flex h-10 items-center justify-between px-2 text-xs'
       }
       style={{
-        background: 'linear-gradient(90deg, var(--color-accent), var(--color-warning))',
+        background: 'linear-gradient(90deg, var(--color-cream-secondary), var(--color-warning))',
         color: 'rgba(255,255,255,0.9)',
         fontWeight: 600,
       }}
@@ -64,7 +64,7 @@ export function AntiViralityHeader({ result, analysisId }: AntiViralityHeaderPro
         type="button"
         onClick={handleOverride}
         className="text-xs font-medium"
-        style={{ color: 'var(--color-accent)', pointerEvents: 'auto' }}
+        style={{ color: 'var(--color-cream-secondary)', pointerEvents: 'auto' }}
         data-testid="av-override-link"
       >
         {COPY.AV_OVERRIDE_LINK}

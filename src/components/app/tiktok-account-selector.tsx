@@ -165,7 +165,7 @@ export function TiktokAccountSelector() {
                   {account.is_active ? (
                     <Check
                       weight="bold"
-                      className="h-3.5 w-3.5 shrink-0 text-accent"
+                      className="h-3.5 w-3.5 shrink-0 text-foreground-secondary"
                     />
                   ) : (
                     <span className="h-3.5 w-3.5 shrink-0" />
@@ -259,7 +259,7 @@ export function TiktokAccountSelector() {
                   type="button"
                   onClick={handleAdd}
                   disabled={!newHandle.trim()}
-                  className="shrink-0 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-accent-foreground transition-opacity disabled:opacity-50"
+                  className="shrink-0 rounded-md bg-action px-2.5 py-1.5 text-xs font-medium text-foreground-secondary-foreground transition-opacity disabled:opacity-50"
                 >
                   Add
                 </button>

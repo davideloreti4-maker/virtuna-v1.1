@@ -38,7 +38,7 @@ export function SidebarNav({ items }: SidebarNavProps) {
                   className={cn(
                     "block rounded-md px-3 py-2 text-sm transition-colors",
                     isActive
-                      ? "bg-accent/10 font-medium text-accent"
+                      ? "bg-hover font-medium text-foreground"
                       : "text-foreground-secondary hover:bg-hover hover:text-foreground"
                   )}
                 >

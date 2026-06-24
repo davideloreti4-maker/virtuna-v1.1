@@ -171,7 +171,7 @@ export function Header({ className }: HeaderProps) {
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-nav-panel"
           aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-          className="inline-flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background-elevated md:hidden"
+          className="inline-flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background-elevated md:hidden"
         >
           {mobileMenuOpen ? (
             <X className="h-5 w-5" aria-hidden="true" />

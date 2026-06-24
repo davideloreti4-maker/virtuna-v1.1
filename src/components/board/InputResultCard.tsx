@@ -165,7 +165,7 @@ export function InputResultCard({
           <span className="flex items-center gap-2 text-[13px] text-white/[0.56]">
             <span
               className={cn(
-                'inline-block h-1.5 w-1.5 rounded-full bg-accent',
+                'inline-block h-1.5 w-1.5 rounded-full bg-action',
                 !reducedMotion && 'animate-pulse',
               )}
             />
@@ -252,7 +252,7 @@ export function InputResultCard({
       {gated && (
         <span
           aria-hidden
-          className="absolute -left-2 bottom-0 top-0 w-[3px] rounded-full bg-accent"
+          className="absolute -left-2 bottom-0 top-0 w-[3px] rounded-full bg-action"
           style={{ boxShadow: '0 0 16px -2px rgba(255,127,80,0.5)' }}
         />
       )}

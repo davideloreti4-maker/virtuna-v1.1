@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Numen Composer — de-Claude'd</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* base — warm charcoal kept (good dark-mode temp; not the Claude tell) */
+    --app: #262624;
+    --stage: #211f1d;
+    --card: #1d1c1a;
+    --chip: #2c2b28;
+    --cream: #ece7de;
+    --cream-2: #c2bdb4;
+    --muted: #8a857c;
+    --border: rgba(255,255,255,.06);
+    --border-hover: rgba(255,255,255,.10);
+
+    /* NEW accent — antique gold (oracle/foresight/celestial), NOT terracotta */
+    --gold: #cda24e;
+    --gold-soft: rgba(205,162,78,.16);
+    --gold-line: rgba(205,162,78,.30);
+    --gold-fg: #1c1509;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Inter, -apple-system, sans-serif;
+    background: #0c0c0b; color: #ddd;
+    padding: 48px 24px 72px; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  .kicker { font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);
+            background:var(--gold-soft);padding:4px 9px;border-radius:6px;display:inline-block; }
+  .lede { color:#888; font-size:13px; margin-top:12px; }
+
+  .stage { background: var(--app); border-radius: 22px; padding: 40px 36px 36px; margin-top: 28px; }
+
+  /* voice moment — characterful serif (Fraunces), used sparingly */
+  .greeting { font-family:"Fraunces", Georgia, serif; font-weight:500; font-size:30px;
+              color:var(--cream); letter-spacing:-.015em; line-height:1.2; margin-bottom:26px; }
+  .greeting .em { color:var(--gold); font-style:italic; }
+
+  /* ── ambient audience panel ── */
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:16px;
+           padding:16px 20px; display:flex; align-items:center; gap:16px; }
+
+  /* SIGNATURE MOTIF — amplified constellation star-map, one node lit */
+  .constel { width:64px; height:40px; flex:none; }
+  .constel line { stroke:var(--gold-line); stroke-width:1; }
+  .constel circle { fill:var(--cream-2); }
+  .constel .dim { fill:var(--cream-2); opacity:.45; }
+  .constel .lit { fill:var(--gold); }
+  .constel .halo { fill:var(--gold); opacity:.18; }
+
+  .aud-name { font-family:"Fraunces", Georgia, serif; font-weight:500; font-size:20px; color:var(--cream); }
+  .aud-badge { font-size:12px;font-weight:500;padding:3px 9px;border-radius:6px;
+               background:var(--gold-soft);color:var(--gold);display:inline-flex;align-items:center;gap:6px; }
+  .aud-badge .g { width:6px;height:6px;border-radius:50%;background:var(--gold);
+                  box-shadow:0 0 0 3px var(--gold-soft); }
+  .spacer { flex:1; }
+  .chev { color:var(--muted); font-size:15px; }
+
+  /* ── composer ── */
+  .composer { background:var(--card); border:1px solid var(--border); border-radius:16px;
+              padding:22px 20px 16px; margin-top:14px; }
+  .placeholder { color:var(--muted); font-size:21px; padding:4px 2px 30px; }
+  .row { display:flex; align-items:center; gap:12px; }
+  .iconbtn { width:34px;height:34px;border-radius:8px;border:none;background:transparent;
+             color:var(--cream-2);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer; }
+  .iconbtn:hover { background:var(--chip); }
+
+  /* skill picker — Radix Select under the hood, themed to brand tokens (data-radix noted) */
+  .skill { position:relative; }
+  .skill-trigger { display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 12px;
+                   border:1px solid var(--border-hover);border-radius:8px;color:var(--cream);
+                   font-size:15px;font-weight:500;background:var(--card);cursor:pointer; }
+  .skill-trigger .compass { color:var(--gold); font-size:16px; }
+  .skill-trigger .cc { color:var(--muted); font-size:12px; }
+  /* open popover (Radix Select.Content, themed) */
+  .popover { position:absolute; bottom:46px; left:0; width:230px; background:var(--chip);
+             border:1px solid var(--border-hover); border-radius:12px; padding:6px; }
+  .popover .item { display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;
+                   font-size:14px;color:var(--cream-2); }
+  .popover .item .i { width:18px;text-align:center;color:var(--muted); }
+  .popover .item.sel { background:var(--gold-soft); color:var(--cream); }
+  .popover .item.sel .i { color:var(--gold); }
+  .popover .item.sel .check { margin-left:auto; color:var(--gold); }
+
+  .engine { color:var(--muted); font-size:15px; display:flex;align-items:center;gap:7px; }
+  .engine .d { width:6px;height:6px;border-radius:50%;background:var(--muted); }
+
+  /* matte gold send — no shadow, no inset shine */
+  .send { width:46px;height:46px;border-radius:12px;background:var(--gold);color:var(--gold-fg);
+          border:none;font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer; }
+
+  /* swatches + notes */
+  .alts { display:flex; align-items:center; gap:14px; margin-top:30px; flex-wrap:wrap; }
+  .alts .lbl { font-size:12px;color:#777;text-transform:uppercase;letter-spacing:.04em; }
+  .sw { display:flex;align-items:center;gap:8px;font-size:13px;color:#aaa; }
+  .sw b { width:18px;height:18px;border-radius:5px;display:inline-block; }
+  .sw.on { color:#eee; }
+  .sw.on b { box-shadow:0 0 0 2px #0c0c0b, 0 0 0 3px #fff3; }
+
+  .notes { margin-top:34px; border-top:1px solid #222; padding-top:22px; }
+  .notes h2 { font-size:12px;font-weight:600;color:#fff;text-transform:uppercase;letter-spacing:.05em;margin-bottom:14px; }
+  .nrow { display:grid;grid-template-columns:130px 1fr;gap:0;font-size:13px; }
+  .nrow > div { padding:9px 14px;border-bottom:1px solid #1c1c1c; }
+  .nrow .k { color:#888;font-weight:500; }
+  .nrow .v { color:#cbb98e; }
+  .nrow .v .x { color:#9b6a5a; text-decoration:line-through; opacity:.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="kicker">Numen · de-Claude'd</span>
+  <div class="lede">Same layout. New accent (antique gold), amplified constellation as the signature mark,
+       Fraunces for voice moments, skill picker on a themed Radix primitive.</div>
+
+  <div class="stage">
+    <div class="greeting">What's <span class="em">working</span> for your audience today?</div>
+
+    <!-- ambient audience -->
+    <div class="panel">
+      <svg class="constel" viewBox="0 0 64 40" aria-hidden="true">
+        <line x1="8" y1="28" x2="20" y2="14"/>
+        <line x1="20" y1="14" x2="34" y2="22"/>
+        <line x1="34" y1="22" x2="48" y2="9"/>
+        <line x1="34" y1="22" x2="46" y2="32"/>
+        <line x1="48" y1="9" x2="58" y2="20"/>
+        <circle class="dim" cx="8" cy="28" r="1.8"/>
+        <circle cx="20" cy="14" r="2.4"/>
+        <circle cx="34" cy="22" r="2"/>
+        <circle class="halo" cx="48" cy="9" r="6.5"/>
+        <circle class="lit" cx="48" cy="9" r="3"/>
+        <circle class="dim" cx="46" cy="32" r="1.8"/>
+        <circle cx="58" cy="20" r="2.2"/>
+      </svg>
+      <span class="aud-name">General</span>
+      <span class="aud-badge"><span class="g"></span> 10 personas ready</span>
+      <span class="spacer"></span>
+      <span class="chev">⌃</span>
+    </div>
+
+    <!-- composer -->
+    <div class="composer">
+      <div class="placeholder">Explore what's working for your audience…</div>
+      <div class="row">
+        <button class="iconbtn">+</button>
+        <span class="skill">
+          <span class="skill-trigger"><span class="compass">◎</span> Explore <span class="cc">▾</span></span>
+          <!-- Radix Select.Content (themed) — shown open to illustrate the primitive -->
+          <span class="popover">
+            <span class="item sel"><span class="i">◎</span> Explore <span class="check">✓</span></span>
+            <span class="item"><span class="i">✎</span> Remix</span>
+            <span class="item"><span class="i">◷</span> Decode</span>
+            <span class="item"><span class="i">⊹</span> Account Read</span>
+          </span>
+        </span>
+        <button class="iconbtn">⌕</button>
+        <button class="iconbtn">◉</button>
+        <span class="spacer"></span>
+        <span class="engine"><span class="d"></span> SIM-1 Flash</span>
+        <button class="send">↑</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- accent alternates -->
+  <div class="alts">
+    <span class="lbl">Accent options</span>
+    <span class="sw on"><b style="background:#cda24e"></b> Antique gold (shown)</span>
+    <span class="sw"><b style="background:#9b3b3b"></b> Oxblood</span>
+    <span class="sw"><b style="background:#4a9e84"></b> Desaturated jade</span>
+    <span class="sw"><b style="background:#d97757"></b> <span class="v"><span class="x">Terracotta (Claude)</span></span></span>
+  </div>
+
+  <!-- what changed -->
+  <div class="notes">
+    <h2>What changed vs current</h2>
+    <div class="nrow">
+      <div class="k">Accent</div>
+      <div class="v">Terracotta <span class="x">#d97757</span> → antique gold #cda24e — kills the Claude tell, reads oracle/foresight</div>
+      <div class="k">Audience mark</div>
+      <div class="v">Tiny dotted row → amplified constellation star-map, one node lit gold. This is the signature Claude doesn't have — lean on it everywhere (loading, empty states, SIM count)</div>
+      <div class="k">Serif</div>
+      <div class="v">Newsreader → Fraunces (optical, more character) for voice moments only — greeting + audience name; chrome stays Inter</div>
+      <div class="k">Base</div>
+      <div class="v">Warm charcoal kept — it's good dark-mode temp, not the resemblance problem</div>
+      <div class="k">Send</div>
+      <div class="v">Gold, matte (no shadow / no inset shine) — honors the matte guard test</div>
+      <div class="k">Skill picker</div>
+      <div class="v">Radix Select under the hood (a11y + keyboard), skinned to brand tokens — Frosted primitive, your look</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

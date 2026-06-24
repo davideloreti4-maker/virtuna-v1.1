@@ -151,7 +151,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
             key={p}
             type="button"
             onClick={() => seedPrompt(p)}
-            className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50"
+            className="rounded-full border border-[var(--color-border)] bg-white/[0.02] px-3 py-1.5 text-[13px] text-foreground-secondary transition-colors hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
           >
             {p}
           </button>
@@ -196,7 +196,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     type="button"
                     onClick={stop}
                     aria-label="Stop"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>
@@ -207,9 +207,9 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     disabled={value.trim().length === 0}
                     aria-label="Send"
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50',
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10',
                       value.trim().length > 0
-                        ? 'bg-accent text-accent-foreground hover:bg-accent/90'
+                        ? 'bg-action text-action-foreground hover:bg-action/90'
                         : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-foreground-muted/50',
                     )}
                   >
@@ -264,7 +264,7 @@ function ChatBubble({
             ol: ({ children }) => <ol className="mb-2 flex list-none flex-col gap-1 pl-0">{children}</ol>,
             li: ({ children }) => (
               <li className="flex gap-2">
-                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-accent/70" />
+                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground-muted/70" />
                 <span className="min-w-0">{children}</span>
               </li>
             ),
@@ -278,7 +278,7 @@ function ChatBubble({
           {content}
         </ReactMarkdown>
         {streaming && (
-          <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-accent/60 align-middle" aria-hidden />
+          <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-foreground-muted/60 align-middle" aria-hidden />
         )}
       </div>
     </div>

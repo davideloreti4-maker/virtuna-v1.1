@@ -49,7 +49,7 @@ export function CardProgressDots({
             className={cn(
               "rounded-full transition-all duration-150 ease-in-out",
               isActive
-                ? "h-2 w-2 bg-accent"
+                ? "h-2 w-2 bg-action"
                 : isCompleted
                   ? "h-1.5 w-1.5 bg-white/30"
                   : "h-1.5 w-1.5 bg-white/[0.12]"

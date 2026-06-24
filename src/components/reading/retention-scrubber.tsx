@@ -361,7 +361,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
                   left: leftPct,
                   top: knobTop,
                   transform: 'translate(-50%, -50%)',
-                  backgroundColor: 'var(--color-accent)',
+                  backgroundColor: 'var(--color-cream-secondary)',
                   boxShadow: '0 0 0 1.5px var(--color-bg)',
                 }}
               />
@@ -378,7 +378,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
               >
                 <span className="text-[11px] font-semibold text-foreground">{formatTime(displayTime)}</span>
                 {normalized.length > 0 && (
-                  <span className="ml-1.5 text-[11px] font-semibold" style={{ color: 'var(--color-accent)' }}>
+                  <span className="ml-1.5 text-[11px] font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
                     {retentionPct}%
                   </span>
                 )}
@@ -389,11 +389,11 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
           {drop && worstCohort && (
             <p className="mt-2 text-[11px] text-foreground-muted">
               Biggest drop{' '}
-              <b className="font-semibold" style={{ color: 'var(--color-accent)' }}>
+              <b className="font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
                 −{Math.round(drop.delta * 100)}%
               </b>{' '}
               at{' '}
-              <b className="font-semibold" style={{ color: 'var(--color-accent)' }}>
+              <b className="font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
                 {formatTime(segments[drop.index]?.t_start ?? 0)}
               </b>{' '}
               — {worstCohort.label.toLowerCase()} leave here.
@@ -431,7 +431,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
           />
           <div
             className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
-            style={{ height: 3, width: leftPct, backgroundColor: 'var(--color-accent)' }}
+            style={{ height: 3, width: leftPct, backgroundColor: 'var(--color-cream-secondary)' }}
           />
           <div
             className="absolute top-1/2 h-[15px] w-[15px] rounded-full"
@@ -454,7 +454,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
           >
             {playing ? <PauseIcon /> : <PlayIcon small />}
           </button>
-          <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+          <span style={{ color: 'var(--color-cream-secondary)', fontWeight: 600 }}>
             {formatTime(displayTime)}
             {normalized.length > 0 && (
               <span style={{ color: 'rgba(236,231,222,0.45)', fontWeight: 500 }}> ({retentionPct}%)</span>
@@ -464,7 +464,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
             {leaving ? (
               <>
                 leaving now{' '}
-                <b className="font-semibold" style={{ color: 'var(--color-accent)' }}>
+                <b className="font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
                   {leaving.label}
                 </b>
               </>
@@ -506,7 +506,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
               {cohorts.map((c) => {
                 const active = c.key === leavingKey;
                 const dotColor = c.worst
-                  ? 'var(--color-accent)'
+                  ? 'var(--color-cream-secondary)'
                   : `rgba(236, 231, 222, ${(0.3 + clamp01(c.pct / 100) * 0.5).toFixed(2)})`;
                 return (
                   <div
@@ -527,13 +527,13 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
                         className="block h-full rounded-full"
                         style={{
                           width: `${Math.max(0, Math.min(100, c.pct))}%`,
-                          background: c.worst ? 'var(--color-accent)' : 'rgba(236,231,222,0.35)',
+                          background: c.worst ? 'var(--color-cream-secondary)' : 'rgba(236,231,222,0.35)',
                         }}
                       />
                     </span>
                     <span
                       className="w-9 shrink-0 text-right text-[13px] font-semibold tabular-nums text-foreground"
-                      style={c.worst ? { color: 'var(--color-accent)' } : undefined}
+                      style={c.worst ? { color: 'var(--color-cream-secondary)' } : undefined}
                     >
                       {c.pct}%
                     </span>

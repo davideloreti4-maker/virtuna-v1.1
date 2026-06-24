@@ -6,9 +6,11 @@ alwaysApply: true
 
 # Numen UI Design Track — rules for this worktree
 
-This worktree (`virtuna-numen-ui`, branch `design/ui-system`) is the **UI design track**.
-It runs in PARALLEL with an engine/backend rework happening in a separate worktree
-(`virtuna-engine-rework`, branch `rework/engine-core`). Stay in your lane to avoid conflicts.
+This worktree (`virtuna-ui-restrained`, branch `design/ui-restrained`) is the **UI design track** —
+the restrained-accent rebrand (de-Claude). It runs in PARALLEL with an engine/backend rework in a
+separate worktree (`virtuna-engine-rework`, branch `rework/engine-core`). Stay in your lane to avoid
+conflicts. The prior design batch (`design/ui-system`) is already merged to `main` — branch off
+`main`, not off the old branch.
 
 ## 1. Design system — trust ONE source
 - The **only** authoritative design references are `src/app/globals.css` (the `@theme` token
@@ -17,14 +19,19 @@ It runs in PARALLEL with an engine/backend rework happening in a separate worktr
   `CLAUDE.md` "Raycast Design Language Rules" section, `BRAND-BIBLE.md`, `docs/tokens.md`,
   `docs/components.md`, `docs/design-specs.json`, `docs/usage-guidelines.md`,
   `docs/motion-guidelines.md`, `docs/brand/`.
-- Current system = **flat-warm charcoal + cream text + terracotta accent + matte**:
+- Current system = **flat-warm charcoal + cream text + MONOCHROME-by-default (accent near-zero) + matte**:
   - bg `#262624` (`--color-background`), cream text `#ece7de` (`--cream-primary`) — **never `#fff`**
-  - accent terracotta `#d97757` (`--color-accent`) — **never `#FF7F50`**
+  - accent = **terracotta `#d97757`** (`--color-accent`), the brand mark (signal-red `#e23b2d` was trialed then reverted 2026-06-24 — the de-Claude lever is the near-zero DOSAGE, not the hue). Never legacy `#FF7F50`.
+  - **ACCENT DOSAGE IS LOCKED — MONOCHROME BY DEFAULT, accent used REALLY sparingly, if at all.** A screen with ZERO accent is the norm, not a failure. Every accent use must be justified; aim for at most ONE accent element per view, often zero. The ONLY sanctioned uses: the single live presence/liveness dot, the lit constellation/SIM node, the brand mark. FORBIDDEN everywhere else — primary buttons, icon buttons, skill pills, chevrons, placeholders, tabs, toggles, links, borders, charts, badges, large fills, hover states, and anything "to make it pop." Read "Accent dosage (LOCKED)" in `docs/DESIGN-SYSTEM.md` before touching color.
+  - **Primary actions are NEUTRAL cream** — use `--color-action` / `--color-action-foreground`, NOT the accent. (Composer send = cream button, dark glyph.)
+  - accent-as-text on dark → `--color-accent-text`; soft tint bg → `--color-accent-soft`. Solid accent fill glyph → `--color-accent-foreground` (cream).
+  - `--color-accent` (brand terracotta) ≠ `--color-error` (data/destructive red). Never conflate.
   - borders 6% (`rgba(255,255,255,0.06)`), hover 10%
   - **matte only**: no glass gradients, no glow, no white inset-shine. Flat + border + (rarely) `--shadow-float`.
-  - Inter for all chrome; Newsreader serif **only** for voice-moments (greeting/hero).
+  - Inter for all chrome; serif (`--font-serif`, Newsreader; Fraunces candidate) **only** for voice-moments (greeting/hero).
   - radius 4/6/8/12/16/20/24 — cards 12, inputs/buttons 8.
-- **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`.
+  - **Identity is carried by the constellation/SIM motif + serif voice + copy**, since color is now quiet. Invest there.
+- **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`, no raw `#d97757`/`#e23b2d` in components (use `--color-accent`).
 - Keep `src/components/reading/__tests__/reskin-matte.test.ts` GREEN (guards against coral/glass).
 
 ## 2. File ownership — DO NOT cross
@@ -40,8 +47,18 @@ It runs in PARALLEL with an engine/backend rework happening in a separate worktr
 props/data contracts** they consume or the block schemas. Structural changes to these wait for
 the engine rework — coordinate first.
 
+### 3a. ⛔ Engine-rework HOLD list — do NOT edit (guaranteed merge conflict)
+`rework/engine-core` (worktree `~/virtuna-engine-rework`) is 8 commits ahead of main, NOT yet
+merged, and is actively rewriting these UI-lane files. Editing them here will conflict:
+- `src/components/audience/calibration-flow.tsx`
+- `src/components/audience/audience-reveal.tsx`
+Leave both untouched until that branch lands on main. Everything else in `src/components/**` and
+all of `globals.css` is conflict-free (engine-rework otherwise stays in `src/lib/**`,
+`src/app/api/**`, `supabase/**`, types). See `docs/UI-SURFACES.md` "Engine-rework HOLD list".
+
 ## 4. Conflict hygiene
-- Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`).
+- Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`) — and again
+  before opening a PR, to catch the engine-rework merge when it lands.
 - Keep PRs small and per-surface; merge often to minimize drift.
 - Commit format `type(surface): description`. Atomic commits.
 

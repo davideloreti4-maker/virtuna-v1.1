@@ -22,8 +22,8 @@ export function EngineStepper({
           <span
             className={cn(
               'block h-[3px] w-full rounded-full transition-colors',
-              s === 'complete' && 'bg-accent/40',
-              s === 'active' && 'bg-accent',
+              s === 'complete' && 'bg-action/40',
+              s === 'active' && 'bg-action',
               s === 'waiting' && 'bg-white/[0.07]',
             )}
             style={

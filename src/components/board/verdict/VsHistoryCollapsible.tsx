@@ -90,7 +90,7 @@ export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryColl
             <button
               type="button"
               onClick={openInputDrawer}
-              className="mt-1 text-xs text-accent hover:text-accent-hover"
+              className="mt-1 text-xs text-foreground-secondary hover:text-foreground"
               data-testid="vs-history-run-another"
             >
               → Run another analysis
@@ -136,7 +136,7 @@ export function VsHistoryCollapsible({ analysisId, currentScore }: VsHistoryColl
                     {[currentScore, ...data.history].map((_v, i) => (
                       <Cell
                         key={i}
-                        fill={i === 0 ? 'var(--color-accent)' : 'rgba(255,255,255,0.30)'}
+                        fill={i === 0 ? 'var(--color-cream-secondary)' : 'rgba(255,255,255,0.30)'}
                       />
                     ))}
                   </Bar>

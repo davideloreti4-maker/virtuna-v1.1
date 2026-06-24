@@ -50,10 +50,9 @@ export function PlatformChip({ value, onChange, className }: PlatformChipProps) 
             className={cn(
               // Base: 8px radius, 6% border (Raycast)
               "rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-              // Active: coral accent
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
               isActive && [
-                "border-accent/60 bg-accent/10 text-accent",
+                "border-border-hover bg-hover text-foreground",
               ],
               // Inactive: 6% border, hover 10%
               !isActive && [

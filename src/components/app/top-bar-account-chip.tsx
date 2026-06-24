@@ -171,7 +171,7 @@ export function TopBarAccountChip() {
                   {account.is_active ? (
                     <Check
                       weight="bold"
-                      className="h-4 w-4 shrink-0 text-accent"
+                      className="h-4 w-4 shrink-0 text-foreground-secondary"
                     />
                   ) : (
                     <span className="h-4 w-4 shrink-0" />
@@ -265,7 +265,7 @@ export function TopBarAccountChip() {
                   type="button"
                   onClick={handleAdd}
                   disabled={!newHandle.trim()}
-                  className="shrink-0 min-h-[44px] rounded-md bg-accent px-3 text-sm font-medium text-accent-foreground transition-opacity disabled:opacity-50"
+                  className="shrink-0 min-h-[44px] rounded-md bg-action px-3 text-sm font-medium text-foreground-secondary-foreground transition-opacity disabled:opacity-50"
                 >
                   Add
                 </button>

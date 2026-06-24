@@ -53,10 +53,10 @@ describe('BoardMobile', () => {
     expect(screen.queryByRole('region', { name: 'Score' })).toBeNull();
   });
 
-  it('applies the anti-virality accent to the affected frames only (verdict/audience/actions)', () => {
+  it('applies neutral border emphasis to anti-virality frames only (verdict/audience/actions)', () => {
     render(<BoardMobile boardMachineState="anti-virality" input={INPUT} hasAnalysis />);
     const accented = (label: string) =>
-      screen.getByRole('region', { name: label }).className.includes('border-accent/30');
+      screen.getByRole('region', { name: label }).className.includes('border-border-hover/30');
 
     // AFFECTED_FRAMES['anti-virality'] = verdict + audience + actions (cross-group-state.ts)
     // (verdict frame's label is "Score")

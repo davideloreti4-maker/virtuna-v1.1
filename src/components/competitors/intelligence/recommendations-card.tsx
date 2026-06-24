@@ -28,7 +28,7 @@ const categoryLabels: Record<string, string> = {
 };
 
 const priorityStyles: Record<string, string> = {
-  high: "bg-[var(--color-accent)]/15 text-[var(--color-accent)]",
+  high: "bg-[var(--color-cream-secondary)]/15 text-[var(--color-cream-secondary)]",
   medium: "bg-amber-500/15 text-amber-400",
   low: "bg-white/[0.06] text-foreground-muted",
 };

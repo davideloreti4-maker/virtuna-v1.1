@@ -51,12 +51,13 @@ describe('FactorBars — reclaims factors[].score (0-10)', () => {
     expect(bars[2]!).toHaveTextContent('Rewatch Potential');
   });
 
-  it('tags the strongest factor "keep" and colors the weakest score coral', () => {
+  it('tags the strongest factor "keep" and emphasizes the weakest score neutrally', () => {
     render(<FactorBars factors={factors} />);
     const bars = screen.getAllByTestId('factor-bar');
     expect(bars[0]!).toHaveTextContent('keep');
-    // weakest (<6) score cell uses the coral accent class
-    expect(bars[2]!.querySelector('.text-accent')).not.toBeNull();
+    // weakest (<6) score cell uses neutral secondary emphasis — not accent
+    expect(bars[2]!.querySelector('.text-foreground-secondary')).not.toBeNull();
+    expect(bars[2]!.querySelector('.text-accent')).toBeNull();
   });
 
   it('renders nothing for an empty factor list', () => {

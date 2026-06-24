@@ -18,7 +18,7 @@
  *
  * Color law (THEME-06 / UI-SPEC §Color): a positive/neutral reaction reads CREAM
  * (`--color-foreground`), never coral. The muted track is `--color-foreground-muted`. Coral
- * (`var(--color-accent)`, NEVER the legacy hardcoded hex) is reserved for a worst-cluster
+ * (`var(--color-cream-secondary)`, NEVER the legacy hardcoded hex) is reserved for a worst-cluster
  * signal only — out of scope for v1, so this ribbon stays cream. The static readout carries no
  * motion (the "alive" dot pulse lives on the persistent presence, not the per-card ribbon).
  */

@@ -32,15 +32,17 @@ import type { FlatPersonaReaction } from '@/components/board/audience/audience-d
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLensContent } from './AudienceLensContent';
 import type { AmbientFocus } from './ambient-presence-types';
+import { ConstellationMark } from '@/components/brand/constellation-mark';
+import {
+  Constellation,
+  buildDots,
+  DEFAULT_ROSTER_DOTS,
+} from '@/components/brand/constellation';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
 const LOADING_COPY = 'Reading the room…';
 const MANAGE_LABEL = 'Manage audiences';
-
-// ── Constellation geometry ──────────────────────────────────────────────────────
-const DEFAULT_ROSTER_DOTS = 10;
-const CREAM = '236, 231, 222'; // --color-cream-primary, used as rgba(CREAM, α) for liveness
 
 /** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
 export interface AudienceAsk {
@@ -51,29 +53,6 @@ export interface AudienceAsk {
   error?: boolean;
 }
 
-/** Deterministic seeded PRNG — verbatim from PersonaGraph (no nondeterministic source). */
-function mulberry32(seed: number) {
-  return function () {
-    seed |= 0;
-    seed = (seed + 0x6d2b79f5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Archetype-derived display fallback when a persona has no creator-set label. */
-function personaName(label: string | undefined, archetype: string, index: number): string {
-  if (label && label.trim().length > 0) return label.trim();
-  if (archetype && archetype.length > 0) {
-    return archetype
-      .split('_')
-      .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
-      .join(' ');
-  }
-  return `Persona ${index + 1}`;
-}
-
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape (→ readiness copy). */
 function parseStop(fraction: string): { stop: number; total: number } | null {
   const m = fraction.match(/(\d+)\s*\/\s*(\d+)/);
@@ -82,129 +61,6 @@ function parseStop(fraction: string): { stop: number; total: number } | null {
   const total = Number(m[2]);
   if (!Number.isFinite(stop) || !Number.isFinite(total) || total <= 0 || stop > total) return null;
   return { stop, total };
-}
-
-interface ConDot {
-  id: string;
-  cx: number;
-  cy: number;
-  r: number;
-  fill: string;
-  accent: boolean;
-  phase: number;
-  srLabel: string;
-}
-
-/**
- * Build the constellation dots: one per calibrated persona (or a calm default roster). When a
- * focus is present each dot is toned from the concept's real verdict (stop brighter cream,
- * scroll dimmer, the single worst slot coral); idle = one calm uniform cream (no verdict).
- */
-function buildDots(
-  personas: Audience['personas'],
-  flat: FlatPersonaReaction[],
-  vbW: number,
-  vbH: number,
-): ConDot[] {
-  const count = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
-  const rnd = mulberry32(1013904223 + count * 2654435761);
-  const focused = flat.length > 0;
-  const worstScrollIndex = flat.findIndex((p) => p.verdict === 'scroll');
-  const padX = vbH * 0.5;
-  const usableW = vbW - padX * 2;
-
-  const out: ConDot[] = [];
-  for (let i = 0; i < count; i++) {
-    const t = count === 1 ? 0.5 : i / (count - 1);
-    const cx = padX + t * usableW;
-    const jitter = (rnd() - 0.5) * (vbH * 0.46);
-    const cy = vbH / 2 + jitter;
-
-    const persona = personas[i];
-    const reaction = flat[i];
-    const isWorst = focused && i === worstScrollIndex && worstScrollIndex >= 0;
-
-    let fill: string;
-    let r: number;
-    if (isWorst) {
-      fill = 'var(--color-accent)';
-      r = vbH * 0.17;
-    } else if (focused && reaction) {
-      const alpha = reaction.verdict === 'stop' ? 0.72 : 0.28;
-      fill = `rgba(${CREAM}, ${alpha.toFixed(2)})`;
-      r = reaction.verdict === 'stop' ? vbH * 0.17 : vbH * 0.13;
-    } else {
-      fill = `rgba(${CREAM}, 0.5)`;
-      r = vbH * 0.15;
-    }
-
-    const name = persona ? personaName(persona.label, persona.archetype, i) : `Persona ${i + 1}`;
-    out.push({
-      id: persona?.archetype ? `${persona.archetype}-${i}` : `roster_${i}`,
-      cx,
-      cy,
-      r,
-      fill,
-      accent: isWorst,
-      phase: rnd(),
-      srLabel: focused && reaction ? `${name}: ${reaction.verdict}` : name,
-    });
-  }
-  return out;
-}
-
-/** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
-function Constellation({
-  dots,
-  reducedMotion,
-  width,
-  height,
-  vbW,
-  vbH,
-}: {
-  dots: ConDot[];
-  reducedMotion: boolean;
-  width: number | string;
-  height: number;
-  vbW: number;
-  vbH: number;
-}) {
-  return (
-    <svg
-      viewBox={`0 0 ${vbW} ${vbH}`}
-      preserveAspectRatio="xMidYMid meet"
-      style={{ width, height }}
-      role="img"
-      aria-label={`Your audience — ${dots.length} people`}
-    >
-      {dots.map((d, i) => (
-        <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
-          {!reducedMotion && (
-            <animateTransform
-              attributeName="transform"
-              type="translate"
-              values="0 0; 0 -1.1; 0 0.9; 0 0"
-              dur={`${(6 + d.phase * 4).toFixed(2)}s`}
-              begin={`${(d.phase * -3).toFixed(2)}s`}
-              repeatCount="indefinite"
-              additive="sum"
-            />
-          )}
-          <circle cx={0} cy={0} r={d.r} fill={d.fill}>
-            {!reducedMotion && !d.accent && (
-              <animate
-                attributeName="opacity"
-                values="0.78;1;0.78"
-                dur={`${(3 + (i % 4)).toFixed(0)}s`}
-                begin={`${(d.phase * -2).toFixed(2)}s`}
-                repeatCount="indefinite"
-              />
-            )}
-          </circle>
-        </g>
-      ))}
-    </svg>
-  );
 }
 
 export interface AudiencePresenceProps {
@@ -423,21 +279,13 @@ export function AudiencePresence({
             }}
             className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
           >
-            <Constellation
-              dots={peekDots}
-              reducedMotion={reducedMotion}
-              width={56}
-              height={26}
-              vbW={132}
-              vbH={30}
-            />
+            <ConstellationMark width={56} />
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
               <span className="max-w-[120px] truncate">{audienceName}</span>
               {!reducedMotion && (
                 <span
                   aria-hidden
-                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
-                  style={{ backgroundColor: `rgba(${CREAM}, 0.85)`, animation: 'audpulse 2.4s ease-in-out infinite' }}
+                  className="inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)]"
                 />
               )}
             </span>
@@ -475,12 +323,12 @@ export function AudiencePresence({
                   >
                     <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-accent)]' : 'text-[var(--color-foreground)]')}>
+                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-foreground)]')}>
                         {a.name}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
                     </span>
-                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-accent)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
                   </button>
                 );
               })}

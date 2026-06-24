@@ -35,7 +35,7 @@ export default function UtilitiesShowcasePage() {
       {/* ===== MOTION SECTION ===== */}
 
       <div className="mb-20">
-        <Heading level={2} className="mb-8 text-accent">
+        <Heading level={2} className="mb-8 text-foreground-secondary">
           Motion
         </Heading>
 
@@ -88,7 +88,7 @@ export default function UtilitiesShowcasePage() {
               </div>
             </FadeInUp>
             <FadeInUp delay={0.15} distance={32} as="section">
-              <div className="rounded-lg border border-accent/20 bg-accent/5 p-6">
+              <div className="rounded-lg border border-border-hover/20 bg-action/5 p-6">
                 <Text size="sm" muted>
                   Custom FadeInUp — delay: 0.15s, distance: 32px, as:
                   &quot;section&quot;
@@ -199,7 +199,7 @@ export default function UtilitiesShowcasePage() {
       {/* ===== EFFECTS SECTION ===== */}
 
       <div className="mb-20">
-        <Heading level={2} className="mb-8 text-accent">
+        <Heading level={2} className="mb-8 text-foreground-secondary">
           Effects
         </Heading>
 
@@ -329,7 +329,7 @@ export default function UtilitiesShowcasePage() {
       {/* ===== PRIMITIVES SECTION ===== */}
 
       <div className="mb-20">
-        <Heading level={2} className="mb-8 text-accent">
+        <Heading level={2} className="mb-8 text-foreground-secondary">
           Primitives
         </Heading>
 

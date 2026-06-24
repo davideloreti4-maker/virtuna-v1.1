@@ -106,9 +106,9 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           <span
             className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border"
             style={{
-              color: '#FF7F50',
-              borderColor: 'rgba(255,127,80,0.3)',
-              backgroundColor: 'rgba(255,127,80,0.08)',
+              color: 'var(--color-foreground-secondary)',
+              borderColor: 'rgba(255,255,255,0.1)',
+              backgroundColor: 'rgba(255,255,255,0.06)',
             }}
             title="The format pattern borrowed from the decoded video"
             aria-label={`Format borrowed: ${formatBorrowed}`}
@@ -260,9 +260,9 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           type="button"
           onClick={onDevelop}
           disabled={!onDevelop}
-          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{
-            color: onDevelop ? '#FF7F50' : 'rgba(255,127,80,0.35)',
+            color: onDevelop ? 'var(--color-foreground-secondary)' : 'rgba(236,231,222,0.35)',
             cursor: onDevelop ? 'pointer' : 'default',
           }}
           aria-label="Develop this remix concept into hooks"

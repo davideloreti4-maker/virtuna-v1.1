@@ -127,9 +127,9 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             <span
               className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border"
               style={{
-                color: '#FF7F50',
-                borderColor: 'rgba(255,127,80,0.3)',
-                backgroundColor: 'rgba(255,127,80,0.08)',
+                color: 'var(--color-foreground-secondary)',
+                borderColor: 'rgba(255,255,255,0.1)',
+                backgroundColor: 'rgba(255,255,255,0.06)',
               }}
               title="This idea leans on a perspective only you can supply"
             >
@@ -299,9 +299,9 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
               type="button"
               onClick={() => void handleDevelop()}
               disabled={developing}
-              className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
               style={{
-                color: developing ? 'rgba(255,127,80,0.5)' : '#FF7F50',
+                color: developing ? 'rgba(236,231,222,0.5)' : 'var(--color-foreground-secondary)',
                 cursor: developing ? 'wait' : 'pointer',
               }}
               aria-label="Develop this idea into hooks"

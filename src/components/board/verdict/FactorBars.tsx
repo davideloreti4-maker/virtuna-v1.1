@@ -42,7 +42,7 @@ export function FactorBars({ factors }: FactorBarsProps) {
                 style={{
                   width: `${pct}%`,
                   background: isFix
-                    ? 'linear-gradient(90deg, #E8703F, #FF7F50)'
+                    ? 'linear-gradient(90deg, #E8703F, var(--color-foreground-secondary))'
                     : isTop
                       ? 'linear-gradient(90deg, rgba(255,255,255,0.30), rgba(255,255,255,0.46))'
                       : 'linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.30))',
@@ -53,7 +53,7 @@ export function FactorBars({ factors }: FactorBarsProps) {
             <div
               className={cn(
                 'text-right text-[13px] font-semibold tabular-nums',
-                isFix ? 'text-accent' : 'text-white/95',
+                isFix ? 'text-foreground-secondary' : 'text-white/95',
               )}
             >
               {f.score}

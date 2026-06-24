@@ -27,6 +27,9 @@
  */
 
 import { MessageBlocks } from '@/components/thread/message-blocks';
+import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
+import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 
@@ -61,6 +64,12 @@ export interface ChatThreadViewProps {
    * CRITICAL: this handler fires ONLY on user tap (onClick), NEVER on render (D-05).
    */
   onSuggestChain?: (ctaLabel: string) => void;
+  /** Optimistic echo of the user's submitted prompt (presentation-only). */
+  userTurn?: string | null;
+  /** Active skill label for result chrome (passed from composer). */
+  skillLabel?: string;
+  /** Active audience name for result chrome (passed from composer). */
+  audienceLabel?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -74,6 +83,9 @@ export function ChatThreadView({
   niche,
   platform,
   onSuggestChain,
+  userTurn,
+  skillLabel = 'Chat',
+  audienceLabel = 'General',
 }: ChatThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
@@ -108,25 +120,22 @@ export function ChatThreadView({
   }));
 
   return (
-    <div className="w-full max-w-[760px] mx-auto flex flex-col gap-6 px-4 py-6">
-
-      {/* ── EMPTY STATE ──────────────────────────────────────────────────────── */}
-      {/* Shown when there are no turns and we're not streaming yet */}
-      {isEmpty && (
-        <div className="flex flex-col gap-3 py-4">
-          <h2 className="text-base font-semibold text-foreground leading-snug">
-            Ask anything about your content.
-          </h2>
-          <p className="text-sm text-foreground-secondary leading-normal">
-            Numen grounds every answer on your niche and your audience — not a generic chatbot.
-            Try &ldquo;what should I post this week?&rdquo; or send an idea to test it.
-          </p>
-        </div>
-      )}
-
-      {/* ── ONE-TIME COLD-START NUDGE (D-08) ─────────────────────────────────── */}
-      {/* Muted/secondary-cream styling only — never coral, no glow.
-          nudgeShown is sticky (set once in useChatStream, never reset) — D-08 gate. */}
+    <ThreadShell
+      userTurn={userTurn}
+      before={
+        isEmpty ? (
+          <div className="flex flex-col gap-3 py-4">
+            <h2 className="text-base font-semibold text-foreground leading-snug">
+              Ask anything about your content.
+            </h2>
+            <p className="text-sm text-foreground-secondary leading-normal">
+              Numen grounds every answer on your niche and your audience — not a generic chatbot.
+              Try &ldquo;what should I post this week?&rdquo; or send an idea to test it.
+            </p>
+          </div>
+        ) : undefined
+      }
+    >
       {nudgeShown && (
         <p
           className="text-xs text-foreground-muted leading-normal py-1"
@@ -137,43 +146,28 @@ export function ChatThreadView({
         </p>
       )}
 
-      {/* ── STREAMING STATUS ─────────────────────────────────────────────────── */}
-      {isStreaming && !hasStreamingContent && (
-        <p
-          className="text-sm text-foreground-muted/70 text-center"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          Thinking…
-        </p>
+      {isStreaming && !hasStreamingContent && <ThreadLoadingSkeleton variant="chat" />}
+
+      {(hasStreamingContent || hasPersistedContent) && (
+        <ThreadAssistantTurn>
+          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+            {hasStreamingContent && (
+              <div aria-live="polite" aria-atomic="false">
+                <MessageBlocks body={streamingBody} />
+              </div>
+            )}
+            {hasPersistedContent && (
+              <>
+                {hasStreamingContent && (
+                  <div className="border-t border-white/[0.06] pt-4" />
+                )}
+                <MessageBlocks body={persistedBody} />
+              </>
+            )}
+          </SkillResultCard>
+        </ThreadAssistantTurn>
       )}
 
-      {/* ── STREAMING TURN ───────────────────────────────────────────────────── */}
-      {/* In-flight assistant turn — streams token-by-token via MarkdownBlockRenderer */}
-      {hasStreamingContent && (
-        <div
-          className="flex flex-col gap-3"
-          aria-live="polite"
-          aria-atomic="false"
-        >
-          <MessageBlocks body={streamingBody} />
-        </div>
-      )}
-
-      {/* ── PERSISTED TURNS ──────────────────────────────────────────────────── */}
-      {/* Rehydrated from the open thread on reload */}
-      {hasPersistedContent && (
-        <div className="flex flex-col gap-3">
-          {hasStreamingContent && (
-            <div className="border-t border-white/[0.06] pt-4" />
-          )}
-          <MessageBlocks body={persistedBody} />
-        </div>
-      )}
-
-      {/* ── SUGGESTED CHAIN-STEP CTA (Plan 05-05 / D-05 / STUDIO-03) ─────────── */}
-      {/* Tappable only — NEVER auto-fires on render. Fires on explicit onClick tap. */}
-      {/* Coral accent per UI-SPEC §Color (coral reserved for chain CTAs). */}
       {suggestedCTAs.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-1">
           {suggestedCTAs.map((handoff) => (
@@ -184,9 +178,9 @@ export function ChatThreadView({
               className={[
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                 "text-xs font-semibold leading-snug",
-                "border border-accent/30 bg-accent/10 text-accent",
-                "transition-colors hover:bg-accent/20 hover:border-accent/50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "border border-border-hover bg-hover text-foreground",
+                "transition-colors hover:bg-active hover:border-border-hover",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               ].join(" ")}
               aria-label={`Suggest: ${handoff.ctaLabel}`}
             >
@@ -196,9 +190,6 @@ export function ChatThreadView({
         </div>
       )}
 
-      {/* ── CHAT-TURN ERROR STATE (W2) ────────────────────────────────────────── */}
-      {/* Rendered below the last turn when error is truthy; clears on next send */}
-      {/* Muted/secondary-cream inline notice — not a card, not coral */}
       {error && (
         <div
           className="flex flex-col gap-1 py-2"
@@ -213,6 +204,6 @@ export function ChatThreadView({
           </p>
         </div>
       )}
-    </div>
+    </ThreadShell>
   );
 }
