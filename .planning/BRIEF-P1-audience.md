@@ -38,6 +38,14 @@ product** (Max-path only — `void resolvedWeights` in the runners). So the audi
 **NOT imply that calibrating changes generation output.** Frame calibration as shaping *who reacts /
 the Read*, not "tunes what Numen writes," until A1 is wired. Confirm copy with the human.
 
+> **LOCKED copy (2026-06-24, A1-coupled):**
+> - List subtitle → **"Who's in the room when you run a Read."**
+> - Calibration / persona-edit line (detail + cards) → **"Shapes who reacts in a Read — not how Numen writes."**
+>
+> **⚠️ A1 revisit trigger:** the "— not how Numen writes" disclaimer is correct ONLY while A1 is
+> unwired (weights inert / Max-path only). **If the engine wires weights→generation (A1), this copy
+> goes stale and MUST change.** Whoever lands A1 must update this line (and re-check the subtitle).
+
 **Flux — don't over-build (engine backlog, may change):**
 - **A-T:** the Target 3-position model is **not yet implemented**. Don't design target-specific
   affordances that assume it; treat "target" audiences like the others for now.

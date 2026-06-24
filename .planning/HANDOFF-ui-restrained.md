@@ -28,6 +28,11 @@ styling. ⛔ Never touch `src/lib/**`, `src/app/api/**`, `supabase/**`, the engi
 schemas/registry/renderer-props (D-14), or the HOLD files `components/audience/{calibration-flow,
 audience-reveal}.tsx`. Rebase on `origin/main` before each PR to absorb the engine merge cleanly.
 
+**⚠️ A1-coupled copy (2026-06-24):** P1 ships two lines that depend on A1 being unwired — list
+subtitle "Who's in the room when you run a Read." + calibration line "Shapes who reacts in a Read —
+not how Numen writes." **If/when the engine wires weights→generation (A1), the "not how Numen writes"
+disclaimer goes stale and must be updated.** Cross-track flag for whoever lands A1. (See BRIEF-P1 §3.)
+
 **⚠️ Contested files (2026-06-24):** the engine track also edited `src/components/app/home/composer.tsx`
 + `home-page-layout.tsx` (audience-signature wiring, commit `8c9f4111`) — the two files P0 rewrites.
 **Resequenced: engine-rework merges to main FIRST**, then `design/ui-restrained` rebases on main and
