@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { READING_CARD } from "@/components/reading/reading-section";
 import { cn } from "@/lib/utils";
 
 // ─── Presentation option lists (UI-SPEC §Persona editing) ─────────────────────
@@ -137,7 +138,8 @@ export function PersonaEditForm({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-white/[0.06] bg-surface px-4 py-4",
+        READING_CARD,
+        "flex flex-col gap-4 px-5 py-4",
         className,
       )}
     >
@@ -192,7 +194,7 @@ export function PersonaEditForm({
           placeholder="How this persona reacts to your content."
         />
         <p className="text-xs text-foreground-muted">
-          How this persona reacts to your content. Used when Numen writes and tests for this audience.
+          How this persona reacts in a Read — shapes who judges your ideas, not what Numen writes.
         </p>
       </div>
 

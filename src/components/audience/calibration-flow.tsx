@@ -15,9 +15,9 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { RevealData } from "@/lib/audience/calibration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Spinner } from "@/components/ui/spinner";
 import { AudienceReveal } from "./audience-reveal";
-import { cn } from "@/lib/utils";
+import { ConstellationMark } from "@/components/brand/constellation-mark";
+import { READING_CARD } from "@/components/reading/reading-section";
 import { WarningCircle } from "@phosphor-icons/react";
 
 interface CalibrationFlowProps {
@@ -158,8 +158,8 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
           <h2 className="text-xl font-semibold text-foreground">Calibrate audience</h2>
           <p className="mt-1 text-sm text-foreground-secondary">
             {isPersonal
-              ? "Numen reads your public follower data to build a calibrated audience model."
-              : "Describe your target audience so Numen can calibrate it."}
+              ? "Numen reads your public follower data to shape who reacts in your Reads."
+              : "Describe your target audience so Numen can build who reacts in your Reads."}
           </p>
         </div>
 
@@ -189,7 +189,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
               className={cn(
                 "w-full rounded-lg border border-white/[0.05] bg-white/[0.05] px-3 py-2.5 text-sm text-foreground",
                 "placeholder:text-foreground-muted/60 resize-none",
-                "focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent/30",
+                "focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-white/[0.1]",
               )}
             />
           </div>
@@ -216,7 +216,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
   if (phase === "streaming") {
     return (
       <div className={cn("flex flex-col items-center gap-4 py-12", className)}>
-        <Spinner size="lg" />
+        <ConstellationMark width={72} className="opacity-80" />
         <p className="text-sm text-foreground-secondary text-center max-w-xs">
           {statusMsg}
         </p>
@@ -229,7 +229,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
     const handleForMsg = isPersonal ? `@${handle.replace(/^@/, "")}` : audience.name;
     return (
       <div className={cn("flex flex-col gap-4", className)}>
-        <div className="rounded-xl border border-warning/20 bg-warning/5 px-5 py-4 flex gap-3">
+        <div className={cn(READING_CARD, "border-warning/20 bg-warning/5 px-5 py-4 flex gap-3")}>
           <WarningCircle
             weight="fill"
             className="shrink-0 w-5 h-5 mt-0.5"
@@ -258,7 +258,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
   if (phase === "error") {
     return (
       <div className={cn("flex flex-col gap-4", className)}>
-        <div className="rounded-xl border border-error/20 bg-error/5 px-5 py-4">
+        <div className={cn(READING_CARD, "border-error/20 bg-error/5 px-5 py-4")}>
           <p className="text-sm font-semibold text-error">Calibration failed</p>
           <p className="text-sm text-foreground-secondary mt-1">
             {errorMsg}
