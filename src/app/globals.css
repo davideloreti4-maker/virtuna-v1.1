@@ -55,10 +55,10 @@
   /* Neutral charcoal, de-blued — NOT warm-brown. Warmth lives in cream text + coral, not the surface. */
   /* MUST be exact HEX: oklch with L<0.15 compiles wrong in Tailwind v4 @theme (CLAUDE.md gotcha). */
   --color-charcoal-app: #1f1f1e;       /* dominant app / main chat surface */
-  --color-charcoal-sidebar: #1a1a18;   /* [UAT] Frame A — sidebar, one tone-step off the app */
-  --color-charcoal-composer: #1e1d1b;  /* [UAT] Frame A — composer card surface */
-  --color-charcoal-chip: #2f2e2b;      /* [UAT] Frame A — chips / lifted matte surfaces */
+  --color-charcoal-chip: #2c2c2b;      /* lifted matte surfaces (composer, cards, modals, sidebar) */
   --color-charcoal-thread: #252524;    /* in-thread skill result cards (SkillResultCard) */
+  --color-charcoal-sidebar: var(--color-charcoal-chip); /* sidebar — same lifted tone */
+  --color-charcoal-composer: #1e1d1b;  /* [UAT] Frame A — composer card surface */
 
   /* --- Cream Text Scale (flat-warm, D-02) — never pure white --- */
   --color-cream-primary: #ece7de;      /* [UAT] Frame A — brightest text (never #fff) */

@@ -116,9 +116,12 @@ export interface ComposerProps {
   /** Called whenever the thread-content presence changes (ideas or hooks cards exist/disappear).
    *  Parent (HomePageLayout) uses this to switch between centered and full-height layout. */
   onThreadChange?: (hasThread: boolean) => void;
+  /** Called when conversation content exists (blocks, streaming, or a submitted turn).
+   *  Parent uses this to hide the empty-state welcome hero. */
+  onConversationChange?: (hasConversation: boolean) => void;
 }
 
-export function Composer({ className, onThreadChange }: ComposerProps) {
+export function Composer({ className, onThreadChange, onConversationChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -303,6 +306,34 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [submitting, setSubmitting] = useState(false);
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
+
+  // True when the user has sent or the model has generated thread content.
+  // Unlike hasThread, does NOT flip on tool selection alone (Explore/Chat idle views).
+  const hasConversationContent =
+    ideas.isStreaming ||
+    hooks.isStreaming ||
+    chat.isStreaming ||
+    script.isStreaming ||
+    remix.isStreaming ||
+    explore.isStreaming ||
+    ideasBlocks.length > 0 ||
+    hooksBlocks.length > 0 ||
+    chatBlocks.length > 0 ||
+    scriptBlocks.length > 0 ||
+    remixBlocks.length > 0 ||
+    exploreBlocks.length > 0 ||
+    persistedIdeaBlocks.length > 0 ||
+    persistedHookBlocks.length > 0 ||
+    persistedChatBlocks.length > 0 ||
+    persistedScriptBlocks.length > 0 ||
+    persistedRemixBlocks.length > 0 ||
+    persistedExploreBlocks.length > 0 ||
+    !!lastUserTurn;
+
+  // Notify parent whenever conversation content changes (welcome hero visibility).
+  useEffect(() => {
+    onConversationChange?.(hasConversationContent);
+  }, [hasConversationContent, onConversationChange]);
 
   // URL validity: empty is "neutral" (no error, just disabled); non-empty +
   // non-TikTok shows the D-21 reject; a valid TikTok URL enables submit.
@@ -1352,7 +1383,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
 
         {/* Pinned bottom dock — the audience PRESENCE sits ABOVE the composer (fork #1),
             both bottom-pinned; the thread scrolls above. */}
-        <div className="shrink-0 flex flex-col gap-2 pb-4 pt-2">
+        <div className="shrink-0 flex flex-col gap-2 pb-4">
           {audiencePresence}
           {composerForm}
         </div>
