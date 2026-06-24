@@ -60,7 +60,7 @@ describe("getPersonaRoster", () => {
           persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
           personas: [
             {
-              archetype: "enthusiast",
+              archetype: "high_engager",
               share: 0.2,
               temperature: "hot",
               disposition: "connector",
@@ -80,7 +80,7 @@ describe("getPersonaRoster", () => {
       },
     });
     expect(getPersonaRoster(audience)).toHaveLength(1);
-    expect(getPersonaRoster(audience)[0]?.archetype).toBe("enthusiast");
+    expect(getPersonaRoster(audience)[0]?.archetype).toBe("high_engager");
   });
 
   it("returns empty for preset with no personas (A4)", () => {
@@ -146,7 +146,7 @@ describe("getTopArchetypes", () => {
           share: 0.1,
         },
         {
-          archetype: "enthusiast",
+          archetype: "high_engager",
           repaint: "",
           temperature: "hot",
           disposition: "connector",
@@ -155,7 +155,7 @@ describe("getTopArchetypes", () => {
       ],
     });
     const top = getTopArchetypes(audience, 2);
-    expect(top[0]).toContain("Enthusiast");
+    expect(top[0]).toContain("High Engager");
     expect(top[0]).toContain("40%");
   });
 });

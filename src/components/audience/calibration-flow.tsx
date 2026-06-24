@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { AudienceReveal } from "./audience-reveal";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
+import { cn } from "@/lib/utils";
 import { WarningCircle } from "@phosphor-icons/react";
 
 interface CalibrationFlowProps {
