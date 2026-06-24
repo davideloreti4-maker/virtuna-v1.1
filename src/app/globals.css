@@ -104,18 +104,19 @@
   --color-foreground-secondary: var(--color-cream-secondary);  /* [UAT] Frame A — was var(--color-gray-400) */
   --color-foreground-muted: var(--color-cream-muted);     /* [UAT] Frame A — was var(--color-gray-500) */
 
-  /* --- Accent (Signal Red — logo mark) — RESTRAINED, 2026-06-24 --- */
+  /* --- Accent (Terracotta/clay #d97757 — brand) — RESTRAINED, 2026-06-24 --- */
+  /* HUE: reverted from signal-red back to terracotta coral (2026-06-24, owner    */
+  /* call) — the restrained DOSAGE is kept; only the hue changed.                  */
   /* DOSAGE RULE: accent = a LIVENESS SIGNAL, not paint. Allowed on: live dots,  */
   /* the lit constellation node, the brand mark, tiny active-state ticks. NOT on  */
   /* primary buttons (use --color-action), not on every icon, not on links en    */
-  /* masse. Flooding the accent is the Claude tell we are removing. See           */
-  /* docs/DESIGN-SYSTEM.md "Accent dosage (LOCKED)".                              */
-  --color-accent: var(--color-signal-500);          /* solid fill (live dot / lit node) */
-  --color-accent-hover: var(--color-signal-400);
-  --color-accent-active: var(--color-signal-600);
-  --color-accent-text: var(--color-signal-400);     /* accent as TEXT/icon on dark (legible) */
-  --color-accent-foreground: #f6e9e6;               /* cream glyph on a solid-red fill */
-  --color-accent-soft: rgba(226, 59, 45, 0.16);     /* soft tint bg for the 2 liveness spots */
+  /* masse. See docs/DESIGN-SYSTEM.md "Accent dosage (LOCKED)".                   */
+  --color-accent: var(--color-coral-500);           /* solid fill (live dot / lit node) ≈ #d97757 */
+  --color-accent-hover: var(--color-coral-400);
+  --color-accent-active: var(--color-coral-600);
+  --color-accent-text: var(--color-coral-400);      /* accent as TEXT/icon on dark (legible) */
+  --color-accent-foreground: #f6e9e6;               /* cream glyph on a solid accent fill */
+  --color-accent-soft: oklch(0.68 0.13 33 / 0.16);  /* soft tint bg for the 2 liveness spots */
 
   /* --- Primary action (NEUTRAL) — the de-Claude move --- */
   /* Primary buttons (e.g. composer send) are CREAM, not accent. Premium + the   */

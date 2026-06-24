@@ -30,7 +30,7 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 | `~/virtuna-viral-remix-adapt/` | `milestone/viral-remix-adapt` | In progress |
 | `~/virtuna-landing/` | `milestone/landing` | In progress |
 | `~/virtuna-engine-rework/` | `rework/engine-core` | **Active (engine track).** Production-readiness dissection/rework (audience signature, calibration, scraping). ~8 commits ahead of main. Stays in `src/lib/**`, `src/app/api/**`, `supabase/**`, `docs/subsystems/**`, types — PLUS 2 UI-lane files (`src/components/audience/calibration-flow.tsx`, `audience-reveal.tsx`). Coordinate before UI edits there. |
-| `~/virtuna-ui-restrained/` | `design/ui-restrained` | **Active (design track, Cursor) — 2026-06-24.** Restrained signal-red rebrand (de-Claude): terracotta RETIRED → `#e23b2d` used sparingly (liveness-only), neutral cream primary actions. Token system + LOCKED dosage rule landed (`docs/DESIGN-SYSTEM.md`). Rules: `.cursor/rules/ui-design.mdc`; plan: `docs/UI-SURFACES.md`. Prior design batch `design/ui-system` merged to main. |
+| `~/virtuna-ui-restrained/` | `design/ui-restrained` | **Active (design track) — 2026-06-24.** Restrained de-Claude rebrand: **near-zero accent DOSAGE** (liveness-only) is the de-Claude lever, neutral cream primary actions. Accent hue = terracotta `#d97757` (signal-red `#e23b2d` was trialed then reverted; dosage kept). P0 thread + P1 audience + P2 library landed. LOCKED dosage rule in `docs/DESIGN-SYSTEM.md`; rules `.cursor/rules/ui-design.mdc`. Prior batch `design/ui-system` merged to main. |
 
 > Keep this table current — it's the map. Last reconciled 2026-06-24 (design/ui-system
 > batch merged to main; new design/ui-restrained worktree for the de-Claude rebrand;

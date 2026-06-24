@@ -21,17 +21,17 @@ conflicts. The prior design batch (`design/ui-system`) is already merged to `mai
   `docs/motion-guidelines.md`, `docs/brand/`.
 - Current system = **flat-warm charcoal + cream text + MONOCHROME-by-default (accent near-zero) + matte**:
   - bg `#262624` (`--color-background`), cream text `#ece7de` (`--cream-primary`) — **never `#fff`**
-  - accent = **signal red `#e23b2d`** (`--color-accent`), the logo mark — **terracotta `#d97757` is RETIRED** (it read too close to Claude). Never `#FF7F50`.
+  - accent = **terracotta `#d97757`** (`--color-accent`), the brand mark (signal-red `#e23b2d` was trialed then reverted 2026-06-24 — the de-Claude lever is the near-zero DOSAGE, not the hue). Never legacy `#FF7F50`.
   - **ACCENT DOSAGE IS LOCKED — MONOCHROME BY DEFAULT, accent used REALLY sparingly, if at all.** A screen with ZERO accent is the norm, not a failure. Every accent use must be justified; aim for at most ONE accent element per view, often zero. The ONLY sanctioned uses: the single live presence/liveness dot, the lit constellation/SIM node, the brand mark. FORBIDDEN everywhere else — primary buttons, icon buttons, skill pills, chevrons, placeholders, tabs, toggles, links, borders, charts, badges, large fills, hover states, and anything "to make it pop." Read "Accent dosage (LOCKED)" in `docs/DESIGN-SYSTEM.md` before touching color.
   - **Primary actions are NEUTRAL cream** — use `--color-action` / `--color-action-foreground`, NOT the accent. (Composer send = cream button, dark glyph.)
-  - accent-as-text on dark → `--color-accent-text` (`#ef6e62`); soft tint bg → `--color-accent-soft`. Solid-red fill glyph → `--color-accent-foreground` (cream).
-  - `--color-accent` (brand red) ≠ `--color-error` (data/destructive red). Never conflate.
+  - accent-as-text on dark → `--color-accent-text`; soft tint bg → `--color-accent-soft`. Solid accent fill glyph → `--color-accent-foreground` (cream).
+  - `--color-accent` (brand terracotta) ≠ `--color-error` (data/destructive red). Never conflate.
   - borders 6% (`rgba(255,255,255,0.06)`), hover 10%
   - **matte only**: no glass gradients, no glow, no white inset-shine. Flat + border + (rarely) `--shadow-float`.
   - Inter for all chrome; serif (`--font-serif`, Newsreader; Fraunces candidate) **only** for voice-moments (greeting/hero).
   - radius 4/6/8/12/16/20/24 — cards 12, inputs/buttons 8.
   - **Identity is carried by the constellation/SIM motif + serif voice + copy**, since color is now quiet. Invest there.
-- **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`, no raw `#d97757`/`#e23b2d` in components.
+- **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`, no raw `#d97757`/`#e23b2d` in components (use `--color-accent`).
 - Keep `src/components/reading/__tests__/reskin-matte.test.ts` GREEN (guards against coral/glass).
 
 ## 2. File ownership — DO NOT cross

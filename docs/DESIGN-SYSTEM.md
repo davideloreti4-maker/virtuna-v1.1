@@ -10,11 +10,12 @@
 > **`globals.css` + this file are the only current references.**
 
 ## The system in one line
-Flat-warm **charcoal** surfaces + **cream** text + a **signal-red accent used sparingly** +
+Flat-warm **charcoal** surfaces + **cream** text + a **terracotta accent used sparingly** +
 **matte** depth (no glass gradients, no glow, no white inset-shine). Primary actions are
 **neutral cream**, not accent. Inter for all chrome; serif **only** for voice-moments
-(greeting/hero). The old cold-black `#07080a` Raycast glass system is dead — and as of
-**2026-06-24** the terracotta accent is retired too (read too close to Claude). See
+(greeting/hero). The old cold-black `#07080a` Raycast glass system is dead. The de-Claude
+break is the **near-zero dosage**, not the hue — so as of **2026-06-24** the accent hue is
+**terracotta `#d97757`** (signal-red `#e23b2d` was trialed and reverted; dosage rule kept). See
 **"Accent dosage (LOCKED)"** below.
 
 ## Tokens (real values — `globals.css`)
@@ -29,10 +30,10 @@ Flat-warm **charcoal** surfaces + **cream** text + a **signal-red accent used sp
 | Primary text | `--cream-primary` | `#ece7de` (**never `#fff`**) |
 | Secondary text | `--cream-secondary` | `#c2bdb4` |
 | Muted text | `--cream-muted` | `#8a857c` |
-| Accent (solid) | `--signal-500` / `--color-accent` | `#e23b2d` signal red — the logo mark (**not terracotta `#d97757`, not `#FF7F50`**) |
-| Accent (text/icon) | `--color-accent-text` / `--signal-400` | `#ef6e62` (legible red on dark) |
-| Accent soft (tint bg) | `--color-accent-soft` | `rgba(226,59,45,0.16)` |
-| Accent foreground | `--color-accent-foreground` | `#f6e9e6` (cream glyph on solid red) |
+| Accent (solid) | `--coral-500` / `--color-accent` | `#d97757` terracotta/clay — the brand accent (**not legacy `#FF7F50`**) |
+| Accent (text/icon) | `--color-accent-text` / `--coral-400` | terracotta, legible on dark |
+| Accent soft (tint bg) | `--color-accent-soft` | `oklch(0.68 0.13 33 / 0.16)` (terracotta tint) |
+| Accent foreground | `--color-accent-foreground` | `#f6e9e6` (cream glyph on solid accent) |
 | **Primary action** | `--color-action` | `#ece7de` cream — buttons/send are NEUTRAL, not accent |
 | Action foreground | `--color-action-foreground` | `#1c1b19` (dark glyph on cream) |
 
@@ -73,9 +74,10 @@ visible on a screen at a time; often zero.
 - Links, borders, large fills, hover states, charts, badges, progress — all neutral
 - Anything "to make it pop" — that instinct is the thing we are removing
 
-**Why this hard line:** at near-zero dosage the *hue* barely registers, so (a) the Claude
-resemblance dies on any color, and (b) red's error/destructive meaning never misfires. `--color-error`
-stays reserved for genuine destructive/error states; accent red ≠ error red, never conflated.
+**Why this hard line:** at near-zero dosage the *hue* barely registers, so the Claude
+resemblance dies on any color — this is why the hue itself (terracotta vs red) is not the
+de-Claude lever; the dosage is. `--color-error` stays reserved for genuine destructive/error
+states; accent ≠ error, never conflated.
 
 **Emphasis without color:** weight, *italic* (serif voice-moments), size, spacing, and hierarchy —
 never paint.
