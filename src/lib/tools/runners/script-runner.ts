@@ -45,7 +45,7 @@ import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
-import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -286,9 +286,10 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     return { blocks: [], warnings: allWarnings };
   }
 
-  // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
-  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
-  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
+  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
+  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
+  const flashWeighting = buildFlashWeighting(audience ?? null);
 
   // ── GATE (D-01 — OPENER ONLY): Flash on the opening beat seed only ───────────
   // S1 fix: route through the shared buildReactionPanel helper so niche resolves via
@@ -306,7 +307,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   }
 
   const personas = simResult.result.personas;
-  const { band, fraction } = aggregateFlash(personas);
+  const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
   // D-04: select lead scrollQuote NOW — ships on the card face
   const scrollQuote = selectLeadScrollQuote(personas);

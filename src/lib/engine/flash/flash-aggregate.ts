@@ -66,6 +66,36 @@ export const STRONG_THRESHOLD = 6;
 /** Minimum stop-count for "Mixed" band (inclusive, below STRONG_THRESHOLD). D-06 gate floor: ≥3 passes, <3 = Weak = drop. */
 export const MIXED_THRESHOLD = 3;
 
+// ─── A1 weighted-band thresholds (calibrated-audience path) ──────────────────────
+//
+// When an audience's persona_weights are supplied, the band is computed from a WEIGHTED
+// stop-MASS fraction (Σ weight of stop-personas / Σ weight of all personas), not a flat
+// stop-count. The fractions mirror the flat thresholds exactly: 6/10 = 0.6, 3/10 = 0.3.
+// With EQUAL per-persona weight (every slot present, populations balanced) the weighted
+// fraction collapses to stop-count/10 → identical bands to the flat path. The General /
+// no-audience path supplies NO weighting → the flat STRONG/MIXED_THRESHOLD path runs →
+// byte-identical to today (ENGINE_VERSION 3.19.0 regression gate).
+
+/** Weighted-mass fraction for "Strong" (inclusive). Mirrors STRONG_THRESHOLD 6/10. */
+export const WEIGHTED_STRONG_FRACTION = 0.6;
+
+/** Weighted-mass fraction for "Mixed" (inclusive). Mirrors MIXED_THRESHOLD 3/10. */
+export const WEIGHTED_MIXED_FRACTION = 0.3;
+
+/**
+ * A1: optional per-persona weighting injected by the runner for CALIBRATED audiences.
+ *
+ * `slotOf(archetype)` returns the weight-bucket key for an archetype (or null if the
+ * archetype is unknown — synthetic/test panels). `weights` maps each bucket key to its
+ * audience-share weight. flash-aggregate stays leaf-isolated: the registry archetype→slot
+ * map and the audience weight resolution both live OUTSIDE this module (see
+ * `flash/persona-weighting.ts`); only this minimal shape crosses the boundary.
+ */
+export interface FlashWeighting {
+  weights: Record<string, number>;
+  slotOf: (archetype: string) => string | null;
+}
+
 // ─── Band type ─────────────────────────────────────────────────────────────────
 
 export type FlashBand = "Strong" | "Mixed" | "Weak";
@@ -91,16 +121,57 @@ export interface FlashAggregate {
  * D-11: the return type contains NO numeric score, percentile, view count, or engagement
  * field — qualitative band + fraction ONLY.
  */
-export function aggregateFlash(personas: FlashPersona[]): FlashAggregate {
+export function aggregateFlash(
+  personas: FlashPersona[],
+  weighting?: FlashWeighting,
+): FlashAggregate {
   const stops = personas.filter((p) => p.verdict === "stop").length;
   const total = personas.length;
+
+  // `fraction` is ALWAYS the honest raw persona count ("N/10 stop") — the weighting
+  // affects only the qualitative band (the gate), never the displayed count. This keeps
+  // the fraction string byte-identical whether or not an audience is weighting the band.
+  const fraction = `${stops}/${total} stop`;
+
+  // A1 weighted-band path (calibrated audience). Per-persona weight = slotWeight / (number
+  // of personas in that slot in THIS panel) — so a slot's total influence equals its
+  // audience-share weight regardless of how many reactor slots represent it. Band uses the
+  // weighted stop-MASS fraction. Falls back to the flat path when no archetype resolves to a
+  // weight (totalMass === 0) — e.g. synthetic test panels — so it can never divide by zero.
+  if (weighting) {
+    const slotPop: Record<string, number> = {};
+    for (const p of personas) {
+      const key = weighting.slotOf(p.archetype);
+      if (key != null) slotPop[key] = (slotPop[key] ?? 0) + 1;
+    }
+
+    let stopMass = 0;
+    let totalMass = 0;
+    for (const p of personas) {
+      const key = weighting.slotOf(p.archetype);
+      if (key == null) continue;
+      const pop = slotPop[key]!;
+      if (pop === 0) continue;
+      const w = (weighting.weights[key] ?? 0) / pop;
+      totalMass += w;
+      if (p.verdict === "stop") stopMass += w;
+    }
+
+    if (totalMass > 0) {
+      const frac = stopMass / totalMass;
+      const band: FlashBand =
+        frac >= WEIGHTED_STRONG_FRACTION ? "Strong"
+        : frac >= WEIGHTED_MIXED_FRACTION ? "Mixed"
+        : "Weak";
+      return { band, fraction };
+    }
+    // totalMass === 0 → no archetype mapped to a weight → fall through to flat.
+  }
 
   const band: FlashBand =
     stops >= STRONG_THRESHOLD ? "Strong"
     : stops >= MIXED_THRESHOLD ? "Mixed"
     : "Weak";
-
-  const fraction = `${stops}/${total} stop`;
 
   return { band, fraction };
 }

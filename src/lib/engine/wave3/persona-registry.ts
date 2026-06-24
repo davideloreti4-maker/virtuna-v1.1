@@ -35,6 +35,28 @@ export type Archetype = (typeof ARCHETYPES)[number];
 
 export type SlotType = "fyp" | "niche_deep" | "loyalist" | "cross_niche";
 
+/**
+ * A1 (weighted SIM aggregation): the static archetype → slot_type map.
+ *
+ * `selectPersonaSlots` assigns slot_type per generated slot at panel-build time; this
+ * is the inverse lookup a CONSUMED FlashPersona needs (it carries only `archetype`).
+ * Used by `flash/persona-weighting.ts` to weight each reactor's verdict by its slot's
+ * audience-share weight. Pure data — must stay in lockstep with `ARCHETYPES` /
+ * `FYP_ARCHETYPE_ORDER` / `NICHE_DEEP_ARCHETYPES` below (every archetype maps once).
+ */
+export const ARCHETYPE_SLOT: Record<Archetype, SlotType> = {
+  high_engager: "fyp",
+  saver: "fyp",
+  lurker: "fyp",
+  sharer: "fyp",
+  tough_crowd: "fyp",
+  purposeful_viewer: "fyp",
+  niche_deep_buyer: "niche_deep",
+  niche_deep_scout: "niche_deep",
+  loyalist: "loyalist",
+  cross_niche_curiosity: "cross_niche",
+};
+
 export const MOTIVATORS = [
   "entertainment-seeker",
   "learner",

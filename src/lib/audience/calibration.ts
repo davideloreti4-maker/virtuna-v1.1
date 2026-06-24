@@ -21,16 +21,13 @@
  * cols are ALSO populated (mapped from the signature) so existing consumers keep working;
  * the new `signature` + `creator_persona` columns are the source of truth going forward.
  *
- * Exports: THIN_MIN_VIDEOS, deriveAudienceProfile (legacy), calibrateFromScrape
+ * Exports: THIN_MIN_VIDEOS, calibrateFromScrape
  */
 
 import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
 import { normalizeHandle } from "@/lib/schemas/competitor";
 import type { ProfileData, VideoData, ProfileBundle } from "@/lib/scraping/types";
 import { getFollowerTier } from "@/lib/engine/corpus/follower-tier";
-import { TEMPERATURE_DISPOSITION } from "./temperature-disposition";
-import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
-import type { Archetype } from "@/lib/engine/wave3/persona-registry";
 import {
   enrichSignature,
   type EnrichInput,
@@ -44,7 +41,6 @@ import type {
   AudienceSignature,
   CalibratedPersona,
   GoalIntent,
-  Temperature,
   Disposition,
 } from "./audience-types";
 
@@ -56,45 +52,6 @@ import type {
  * General — otherwise we niche-fallback rather than dead-end (§P.4).
  */
 export const THIN_MIN_VIDEOS = 10;
-
-// ─── Legacy AudienceProfile derivation (kept for its unit tests; NOT the F1 source) ──
-
-/**
- * @deprecated The real audience now comes from `enrichSignature` (engagement-derived).
- * This constant-lens derivation is retained only for its existing unit tests and is no
- * longer called by calibration. The legacy `profile` field on the row is mapped from the
- * signature instead (see `profileFromSignature`).
- */
-export function deriveAudienceProfile(
-  profile: ProfileData,
-  _videos: VideoData[],
-): AudienceProfile {
-  const follower_tier = getFollowerTier(profile.followerCount) ?? null;
-
-  const temperatureCounts: Record<Temperature, number> = { cold: 0, warm: 0, hot: 0 };
-  for (const archetype of ARCHETYPES) {
-    const { temperature } = TEMPERATURE_DISPOSITION[archetype as Archetype];
-    temperatureCounts[temperature] += 1;
-  }
-  const total = ARCHETYPES.length;
-  const temperature_mix: Record<Temperature, number> = {
-    cold: temperatureCounts.cold / total,
-    warm: temperatureCounts.warm / total,
-    hot: temperatureCounts.hot / total,
-  };
-
-  const dispositionCounts: Partial<Record<Disposition, number>> = {};
-  for (const archetype of ARCHETYPES) {
-    const { disposition } = TEMPERATURE_DISPOSITION[archetype as Archetype];
-    dispositionCounts[disposition] = (dispositionCounts[disposition] ?? 0) + 1;
-  }
-  const top_dispositions = (Object.entries(dispositionCounts) as [Disposition, number][])
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([d]) => d);
-
-  return { temperature_mix, top_dispositions, follower_tier };
-}
 
 // ─── Signature → legacy back-compat mappers ──────────────────────────────────────
 
