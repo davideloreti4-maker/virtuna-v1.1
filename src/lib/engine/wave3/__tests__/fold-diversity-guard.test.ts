@@ -107,7 +107,7 @@ describe("fold diversity guard (D-07)", () => {
       [0.5, 0.5],
       [0.5, 0.5],
     ];
-    const personas = ARCHETYPES.map((a, i) => makePersona(a, attentionSets[i]));
+    const personas = ARCHETYPES.map((a, i) => makePersona(a, attentionSets[i]!));
 
     // Mirror the measure-pipeline.ts formula:
     const ranges: number[] = [];

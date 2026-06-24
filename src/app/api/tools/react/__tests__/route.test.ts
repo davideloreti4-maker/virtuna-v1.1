@@ -201,10 +201,10 @@ describe("POST /api/tools/react", () => {
 
     // getAudience was called with the THREAD's active_audience_id, not the body value.
     expect(getAudience).toHaveBeenCalledTimes(1);
-    expect((getAudience as ReturnType<typeof vi.fn>).mock.calls[0][1]).toBe("aud-server-side");
+    expect((getAudience as ReturnType<typeof vi.fn>).mock.calls[0]![1]).toBe("aud-server-side");
 
     // The resolved audience's repaint reached the Flash call (4th arg).
-    const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0];
+    const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]!;
     const audienceRepaint = call[3];
     expect(audienceRepaint).toEqual({ tough_crowd: "Skeptical regular" });
   });

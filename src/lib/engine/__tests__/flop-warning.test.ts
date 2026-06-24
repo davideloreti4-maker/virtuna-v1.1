@@ -66,11 +66,10 @@ function makeFakePredictionResult(
     reasoning: "Test reasoning.",
     warnings: [],
     predicted_engagement: {
-      views: 10000,
-      likes: 500,
-      shares: 100,
-      comments: 50,
-      saves: 30,
+      lo: 5000,
+      hi: 15000,
+      confidence: 0.65,
+      basis: "test fixture",
     },
     factors: [],
     suggestions: [],
@@ -126,6 +125,8 @@ function makeFakePredictionResult(
     retrieval_score: null,
     retrieval_evidence: [],
     anti_virality_gated: false,
+    analysis_unavailable: false,
+    partial_analysis: false,
     ...overrides,
   };
 }

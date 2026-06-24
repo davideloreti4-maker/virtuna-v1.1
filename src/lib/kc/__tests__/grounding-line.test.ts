@@ -44,8 +44,6 @@ const AUDIENCE_ONLY_PROFILE: ProfileRow = {
   past_wins: null,
 };
 
-const NULL_PROFILE: ProfileRow | null = null;
-
 const EMPTY_PROFILE: ProfileRow = {
   niche_primary: null,
   target_audience: null,

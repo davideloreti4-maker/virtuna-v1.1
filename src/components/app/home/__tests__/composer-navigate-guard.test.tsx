@@ -84,7 +84,7 @@ function testChip(): HTMLButtonElement {
   const btns = screen.getAllByRole('button');
   const btn = btns.find((b) => {
     const spans = b.querySelectorAll('span');
-    return spans.length > 0 && spans[0].textContent?.trim() === 'Test';
+    return spans.length > 0 && spans[0]?.textContent?.trim() === 'Test';
   });
   if (!btn) throw new Error('Test chip not found');
   return btn as HTMLButtonElement;

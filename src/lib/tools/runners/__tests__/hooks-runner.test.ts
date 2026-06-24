@@ -128,7 +128,6 @@ describe("runHooksPipeline (runner)", () => {
         past_wins: null,
         past_flops: null,
         target_platforms: ["tiktok"],
-        user_id: "user-123",
       },
       anchor: "5 fitness myths that sabotage your gains",
     });
@@ -160,7 +159,7 @@ describe("runHooksPipeline (runner)", () => {
     await runHooksPipeline({
       ask: "hooks",
       platform: "tiktok",
-      profileRow: { niche_primary: "fitness", niche_sub: null, target_audience: null, primary_goal: null, past_wins: null, past_flops: null, target_platforms: null, user_id: "u1" },
+      profileRow: { niche_primary: "fitness", niche_sub: null, target_audience: null, primary_goal: null, past_wins: null, past_flops: null, target_platforms: null },
       anchor: "an idea",
     });
 
@@ -564,7 +563,7 @@ describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
     });
 
     expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
-    expect((pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0][2]).toEqual({
+    expect((pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0]![2]).toEqual({
       audienceId: null,
       analysisId: null,
     });

@@ -107,27 +107,27 @@ describe("aggregateFlash — fraction string format", () => {
 
 describe("aggregateFlash — D-11 honesty spine (NO fabricated numeric forecast)", () => {
   it("result has NO score field", () => {
-    const result = aggregateFlash(personas(5)) as Record<string, unknown>;
+    const result = aggregateFlash(personas(5)) as unknown as Record<string, unknown>;
     expect(result).not.toHaveProperty("score");
   });
 
   it("result has NO percentile field", () => {
-    const result = aggregateFlash(personas(5)) as Record<string, unknown>;
+    const result = aggregateFlash(personas(5)) as unknown as Record<string, unknown>;
     expect(result).not.toHaveProperty("percentile");
   });
 
   it("result has NO views field", () => {
-    const result = aggregateFlash(personas(5)) as Record<string, unknown>;
+    const result = aggregateFlash(personas(5)) as unknown as Record<string, unknown>;
     expect(result).not.toHaveProperty("views");
   });
 
   it("result has NO engagement field", () => {
-    const result = aggregateFlash(personas(5)) as Record<string, unknown>;
+    const result = aggregateFlash(personas(5)) as unknown as Record<string, unknown>;
     expect(result).not.toHaveProperty("engagement");
   });
 
   it("result has NO reach field", () => {
-    const result = aggregateFlash(personas(5)) as Record<string, unknown>;
+    const result = aggregateFlash(personas(5)) as unknown as Record<string, unknown>;
     expect(result).not.toHaveProperty("reach");
   });
 

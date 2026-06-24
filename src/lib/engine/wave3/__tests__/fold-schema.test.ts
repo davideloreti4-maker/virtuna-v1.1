@@ -62,7 +62,7 @@ describe("FoldResponseSchema", () => {
 
   it("rejects attention outside [0,1]", () => {
     const data = makeValid10();
-    data.personas[0].segment_reactions[0] = makeSegmentReaction(0, 5, 1.2);
+    data.personas[0]!.segment_reactions[0] = makeSegmentReaction(0, 5, 1.2);
     const result = FoldResponseSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
@@ -87,7 +87,7 @@ describe("FoldResponseSchema", () => {
     // the attention-range guard as the canonical constraint.
     // For the "reactions length != segments" parity test, we inject a value that the
     // schema's per-item validation catches — using a negative attention value:
-    data.personas[2].segment_reactions.push({ t_start: 15, t_end: 20, attention: -0.1, swipe_predicted: false });
+    data.personas[2]!.segment_reactions.push({ t_start: 15, t_end: 20, attention: -0.1, swipe_predicted: false });
     const result = FoldResponseSchema.safeParse(data);
     expect(result.success).toBe(false);
   });
@@ -153,7 +153,7 @@ describe("FoldResponseSchema", () => {
     // rendered nowhere). The schema no longer declares it, so Zod's default object
     // strip drops any stray `reason` — parse still succeeds and reason never surfaces.
     const data = makeValid10();
-    (data.personas[0].segment_reactions[0] as Record<string, unknown>).reason =
+    (data.personas[0]!.segment_reactions[0] as Record<string, unknown>).reason =
       "a".repeat(500); // even an over-long stray reason must not fail parse
     const result = FoldResponseSchema.safeParse(data);
     expect(result.success).toBe(true);

@@ -469,7 +469,7 @@ describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
     });
 
     expect(mockPinPredictedSignature).toHaveBeenCalledTimes(1);
-    expect(mockPinPredictedSignature.mock.calls[0][2]).toEqual({
+    expect(mockPinPredictedSignature.mock.calls[0]![2]).toEqual({
       audienceId: null,
       analysisId: null,
     });
