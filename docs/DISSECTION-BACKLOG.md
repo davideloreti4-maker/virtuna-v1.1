@@ -35,6 +35,43 @@ inert** (A1). Recommended order for the next session:
 Quick closes available anytime: A3 (sell/authority same weights — now documented in code, just
 mark resolved), A2 (cut legacy `deriveAudienceProfile`), A4 (presets `personas:[]` inert).
 
+### A1 — recommended wiring spec (weighted SIM aggregation) [RECOMMENDED, not yet built]
+
+**Decision (recommended):** make `persona_weights` real by weighting the **SIM band aggregation**,
+NOT by touching the prompt or the Max video path.
+
+**The seam:** `src/lib/engine/flash/flash-aggregate.ts:95` computes the band from a FLAT, unweighted
+stop-count: `stops = personas.filter(p => p.verdict === "stop").length` → `Strong ≥6 / Mixed ≥3 / Weak`.
+All 10 reactors count equally regardless of the audience's real composition.
+
+**Change (one seam, post-SIM only):**
+1. Map each of the 10 ARCHETYPES → its slot (`fyp/niche/loyalist/cross_niche`) → that slot's weight
+   (the persona-registry already groups archetypes by slot_type; reuse it).
+2. Replace the flat count with a weighted stop-fraction: `stopMass = Σ(weight of stop-personas) / Σ(all weights)`.
+3. Rescale thresholds to fractions: `Strong ≥ 0.6`, `Mixed ≥ 0.3` (today's 6/10, 3/10 — equal weights reproduce today EXACTLY).
+4. Thread the already-computed `resolvedWeights` (currently `void` in all 5 runners) into `aggregateFlash`.
+   General/no-audience → equal weights → byte-identical band.
+
+**Why this one:** closes the loop end-to-end — weights move the band → which hooks/ideas survive the
+gate → what the user sees; calibration + flywheel nudge + step-9 drift re-bake all become CONSUMED.
+Gate-safe by construction: the SIM call (system prompt cache-prefix D-17 + 10 personas) is UNTOUCHED;
+only post-SIM math changes; ENGINE_VERSION stays 3.19.0; General → equal weights → regression gate green.
+Same discipline that made the step-8 sell lens safe (change the consumer, not the protected bytes).
+Targets the common path (text runs), unlike the Max video path.
+
+**Rejected alternatives:** Max video path (touches protected scoring bytes + ENGINE_VERSION; leaves
+weights dead for text runs) · panel composition (touches the byte-stable system prefix → ENGINE_VERSION
+risk) · generation steering (vague; overlaps the already-live voice/dispositions).
+
+**Trade-off to flag:** weighting the gate CHANGES output (a niche-buyer-heavy audience lets different
+candidates survive than General) — that's the moat, but (a) the General-regression gate must prove
+equal-weight = flat-count byte-identical, and (b) with 10 reactors + a 0.05 slot some personas go
+near-silent (acceptable; it's the audience's real shape) → worth a threshold calibration pass.
+
+**Entry points:** `flash-aggregate.ts` (aggregateFlash) + un-`void` `resolvedWeights` in
+`{ideas,hooks,script,remix,chat}-runner.ts` + thread through `runFlashTextMode`/`gatePass`. Guardrail:
+`node ./node_modules/vitest/vitest.mjs run src/lib/tools/runners/__tests__/steer-closure.test.ts`.
+
 ---
 
 ## Audience (§02) — start here
