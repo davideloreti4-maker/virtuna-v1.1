@@ -4,47 +4,61 @@
  * HomeGreeting — the one serif voice moment on the home (SHELL-01, THEME-04,
  * D-19/D-20).
  *
- * Renders the NumenMark stele glyph (D-20 — coral via the parent text-accent,
- * NOT an asterisk) above a serif (font-serif = Newsreader, wired in 01-01)
- * greeting. The name comes from useProfile(); the name itself is italic
- * (`<em>`) per the UI-SPEC display row.
+ * Renders the NumenMark stele glyph above a serif greeting. The name comes from
+ * useProfile(); the name itself is italic (`<em>`) per the UI-SPEC display row.
  *
- * Loading state (RESEARCH Open Q3): while useProfile is loading we render the
- * name-less form ("Ready to simulate your audience?") — never the "[Name]"
- * placeholder, never a flash of an empty name slot.
- *
- * Copy is [UAT] (D-19) — it locks at the THEME-06 human gate (plan 01-05).
+ * `compact` — receded form when a thread is active (P0 greeting recede).
+ * Empty home keeps the full hero anchor; thread state shrinks + fades.
  */
 
 import { cn } from "@/lib/utils";
 import { NumenMark } from "@/components/brand/numen-logo";
 import { useProfile } from "@/hooks/queries/use-profile";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 export interface HomeGreetingProps {
   className?: string;
+  /** Refined compact form when conversation owns the screen. */
+  compact?: boolean;
 }
 
-export function HomeGreeting({ className }: HomeGreetingProps) {
+export function HomeGreeting({ className, compact = false }: HomeGreetingProps) {
   const { data: profile, isLoading } = useProfile();
   const name = profile?.name?.trim() || null;
+  const reducedMotion = usePrefersReducedMotion();
 
   return (
-    <div className={cn("flex flex-col items-center text-center", className)}>
-      {/* Stele glyph — coral via text-accent on this parent (D-20). */}
-      <span className="mb-5 text-accent" aria-hidden="true">
-        <NumenMark size={40} />
+    <div
+      className={cn(
+        "flex flex-col items-center text-center",
+        !reducedMotion && "transition-all duration-300 ease-out",
+        compact ? "opacity-70" : "opacity-100",
+        className,
+      )}
+    >
+      {/* Brand mark — logo is a sanctioned accent home (dosage LOCKED). */}
+      <span
+        className={cn(
+          "text-accent",
+          compact ? "mb-2" : "mb-5",
+          !reducedMotion && "transition-all duration-300",
+        )}
+        aria-hidden="true"
+      >
+        <NumenMark size={compact ? 24 : 40} />
       </span>
 
-      {/* Serif voice moment. ~38px desktop / ~28-30px mobile (UI-SPEC Typography). */}
       <h1
         className={cn(
           "font-serif font-normal leading-tight tracking-normal text-foreground",
-          "text-[28px] sm:text-[38px]",
+          compact ? "text-lg" : "text-[28px] sm:text-[38px]",
+          !reducedMotion && "transition-all duration-300",
         )}
       >
         {isLoading || !name ? (
-          // No "[Name]" flash while loading or when the profile has no name.
           <>Ready to simulate your audience?</>
+        ) : compact ? (
+          <>Ready, <em>{name}</em>?</>
         ) : (
           <>
             Ready to simulate your audience, <em>{name}</em>?
