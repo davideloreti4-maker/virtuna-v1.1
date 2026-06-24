@@ -8,7 +8,7 @@
  *
  * For each PERSONAL audience (own-account, has a calibration.handle):
  *   1. Re-scrape the own account (calibrateFromScrape → scrapeProfile + scrapeVideos +
- *      deriveAudienceProfile + repaint) → fresh CalibratedPersona[].
+ *      enrichSignature) → fresh CalibratedPersona[].
  *   1b. RE-BAKE the frozen signature (Track B step 9, §P.1): persist the freshly-derived
  *      signature + creator_persona + legacy profile/personas/calibration back to the row.
  *      This cron is the ONLY place the frozen §P signature re-bakes (intentional —
