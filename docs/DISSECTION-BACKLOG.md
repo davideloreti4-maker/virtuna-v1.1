@@ -11,11 +11,35 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 
 ---
 
+## ▶ Recommended next sequence (post-merge, 2026-06-24)
+
+Milestone 1 (AudienceSignature steps 1-9 + G1/G2 cuts + DELETE-CSRF fix) MERGED to main
+(PR #24, squash `158a4aea`). Audience is done for the **voice lever**; the **weights lever is
+inert** (A1). Recommended order for the next session:
+
+1. **Validate live what shipped** (~$0.10, owner-driven dev server) — the 2 unobserved E2Es:
+   does generation actually sound like the creator (step 7 voice), and does the `sell` lens
+   shift the SIM to a buying-frame (step 8)? Proves the LIVE half of the moat. "Prove it works."
+2. **A1 DECISION (🔴, strategy not build)** — audience `persona_weights` + the entire
+   flywheel/drift loop are read by NOTHING in prod (grounded below). Decide: wire-to-Max /
+   wire-to-text / formally dormant + stop the weekly Apify re-scrape cron. Until decided, the
+   flywheel + step-9 drift cron are running infra ($) with no product effect.
+3. **Next subsystem per dissection order — generative skills (§03):** **S2** (chat off the
+   hooks/ideas critical path → stream after `done`; real latency win) + **S5** (delete the
+   ~100%-fail rubric critic, 255 LOC + dual-branch gates).
+4. **Then:** R1 (fold model flip + cost call — [[engine-model-assignment]]), G-D surgery
+   (retrieval/corpus extraction), then backend/grounding subsystems, remaining 🟡/🟢 polish.
+
+Quick closes available anytime: A3 (sell/authority same weights — now documented in code, just
+mark resolved), A2 (cut legacy `deriveAudienceProfile`), A4 (presets `personas:[]` inert).
+
+---
+
 ## Audience (§02) — start here
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| A1 | 🔴 | `resolveAudienceWeights()` computed then `void`-ed in every text runner — numeric calibration influences nothing live | text runners | OPEN |
+| A1 | 🔴 | **Audience `persona_weights` + the WHOLE flywheel/drift loop have ZERO prod consumers.** Grounded 2026-06-24: `resolveAudienceWeights()` is `void`-ed in all 5 text runners (chat/hooks/ideas/script/remix) AND the Max video path doesn't read them either — `pipeline.ts:772 selectPersonaSlots(contentType, niche)` routes by content/niche from the engine registry, not the audience's weights. So calibration DERIVES weights → flywheel `propose.confirmProposal` NUDGES them → step-9 drift cron RE-BAKES them, and **nothing reads them.** Voice/dispositions ARE live (via repaint); only the numeric-weights half is the inert circuit. **DECISION needed:** (a) wire weights into the Max path (touches ENGINE_VERSION-protected bytes — risky), (b) wire into text gen, or (c) formally mark flywheel+weights dormant and stop paying the weekly Apify re-scrape cron until a consumer exists. | text runners + `pipeline.ts:772` | OPEN — decision |
 | A2 | 🔴 | `deriveAudienceProfile()` ignores scraped videos → every audience gets identical profile + grounding line | `calibration.ts` (deriveAudienceProfile) | OPEN |
 | A3 | 🟠 | `goal_intent` `sell` and `authority` map to byte-identical weights | `biasForGoalIntent` | OPEN |
 | A4 | 🟠 | Presets ship `personas:[]` → near-inert; preset materialization appears unwired | PRESET_AUDIENCES | OPEN |

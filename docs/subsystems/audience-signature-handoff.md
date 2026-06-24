@@ -1,5 +1,32 @@
 # AudienceSignature — Fresh-Session Handoff
 
+> ✅ **MILESTONE 1 MERGED to main 2026-06-24** — PR #24, squash `158a4aea`, branch deleted.
+> AudienceSignature build (steps 1–9) COMPLETE + dead-code cuts G1/G2 (−13.6K net LOC) +
+> pre-existing DELETE-CSRF bug fixed. Full suite green (3021/0). The "what's next" below is the
+> post-merge plan; the historical build log is preserved further down. Read `docs/DISSECTION-BACKLOG.md`
+> ("▶ Recommended next sequence") alongside this.
+
+## ▶ Next session — recommended sequence (post-merge)
+
+1. **Validate live what shipped** (~$0.10, owner drives dev server): step-7 creator voice +
+   step-8 `sell` lens — wiring is byte-proven but LLM-honors-behavior is unobserved. Prove it works.
+2. **A1 DECISION (🔴 strategy):** audience `persona_weights` + the whole flywheel/drift loop are
+   read by NOTHING in prod — text runners `void` them AND the Max video path (`pipeline.ts:772
+   selectPersonaSlots(contentType, niche)`) routes by content/niche, not audience weights. The
+   step-9 drift cron + flywheel derive→nudge→re-bake weights with no consumer. Decide: wire-to-Max /
+   wire-to-text / formally dormant + stop the weekly Apify re-scrape cron. (Voice/dispositions half
+   IS live via repaint — only the numeric weights are inert.)
+3. **Next subsystem (§03 generative skills):** S2 (chat off the hooks/ideas critical path) +
+   S5 (delete the dead rubric critic, 255 LOC).
+4. Then R1 (fold model flip + cost), G-D retrieval/corpus surgery, backend/grounding, 🟡/🟢 polish.
+
+> ⚠ This worktree (`~/virtuna-engine-rework`) is on the merged local `rework/engine-core` (remote
+> deleted) — prunable. Next milestone launches a fresh worktree off `main`.
+
+---
+
+## (Historical) original step-9 handoff banner
+
 > Track A (wire-live) + Track B step-7 (gen/SIM) + step-8 (composer intent, GAP-C1/C2) are
 > **DONE, committed, pushed, verified** on `rework/engine-core` (HEAD `0b962d5a`). Plus E1 CSRF
 > fix landed. This is the only file the next session must read first; pull the rest on demand.
