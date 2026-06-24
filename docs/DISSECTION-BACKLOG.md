@@ -22,10 +22,11 @@ inert** (A1). Recommended order for the next session:
    creator_persona), baseline is longer/hedged. Step-8 sell: every SIM persona re-frames watch→BUY
    ("drop $49", "ready to invest", "early buyer") vs grow's watch/share; verdict tokens + ENGINE_VERSION
    untouched. The live half of the moat is PROVEN, not just wired.
-2. **A1 DECISION (🔴, strategy not build)** — audience `persona_weights` + the entire
-   flywheel/drift loop are read by NOTHING in prod (grounded below). Decide: wire-to-Max /
-   wire-to-text / formally dormant + stop the weekly Apify re-scrape cron. Until decided, the
-   flywheel + step-9 drift cron are running infra ($) with no product effect.
+2. ~~**A1 DECISION (🔴)**~~ ✅ **DONE 2026-06-24 (option b — wire-to-text).** `persona_weights`
+   now drive the **weighted SIM band aggregation** for calibrated audiences (gate-safe; General
+   → flat → byte-identical). Built on branch `feat/persona-weights-live` off main; full suite
+   3038 pass, ENGINE_VERSION 3.19.0 untouched. The derive→nudge→rebake loop is now CONSUMED
+   end-to-end → the weekly Apify re-scrape cron earns its keep. (See DONE + A1 row.)
 3. **Next subsystem per dissection order — generative skills (§03):** **S2** (chat off the
    hooks/ideas critical path → stream after `done`; real latency win) + **S5** (delete the
    ~100%-fail rubric critic, 255 LOC + dual-branch gates).
@@ -78,8 +79,8 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| A1 | 🔴 | **Audience `persona_weights` + the WHOLE flywheel/drift loop have ZERO prod consumers.** Grounded 2026-06-24: `resolveAudienceWeights()` is `void`-ed in all 5 text runners (chat/hooks/ideas/script/remix) AND the Max video path doesn't read them either — `pipeline.ts:772 selectPersonaSlots(contentType, niche)` routes by content/niche from the engine registry, not the audience's weights. So calibration DERIVES weights → flywheel `propose.confirmProposal` NUDGES them → step-9 drift cron RE-BAKES them, and **nothing reads them.** Voice/dispositions ARE live (via repaint); only the numeric-weights half is the inert circuit. **DECISION needed:** (a) wire weights into the Max path (touches ENGINE_VERSION-protected bytes — risky), (b) wire into text gen, or (c) formally mark flywheel+weights dormant and stop paying the weekly Apify re-scrape cron until a consumer exists. | text runners + `pipeline.ts:772` | OPEN — decision |
-| A2 | 🔴→🟢 | ~~`deriveAudienceProfile()` ignores scraped videos~~ — **superseded by `enrichSignature` (§P), already prod-dead.** The constant-lens `deriveAudienceProfile` + its F1 sibling `repaintPersonas` had ZERO prod callers (only their own defs, comments, and one legacy test). CUT: removed `deriveAudienceProfile` from `calibration.ts` (+ orphaned `TEMPERATURE_DISPOSITION`/`ARCHETYPES`/`Archetype`/`Temperature` imports), deleted `persona-repaint.ts` entirely, dropped both legacy test blocks, fixed the stale `audience-drift` cron comment. tsc net-zero (64), eslint clean, affected suites 42/42. | `calibration.ts`, `persona-repaint.ts` (deleted) | FIXED (working tree) |
+| A1 | 🔴 | **Audience `persona_weights` now CONSUMED — weighted SIM band aggregation.** Was: weights `void`-ed in all 5 runners, Max path niche-only → derive→nudge→rebake loop read by NOTHING. FIX (option b, text-gen): `aggregateFlash(personas, weighting?)` gains an optional per-slot weighting; the 4 Flash runners (ideas/hooks/script/remix) build it via new `buildFlashWeighting(audience)` (calibrated → per-slot weights; **General/null → `undefined` → flat path byte-identical**). Band = weighted stop-MASS fraction (Strong ≥0.6 / Mixed ≥0.3, mirroring 6/3 ÷10), per-persona weight = slotWeight ÷ slot population; unknown archetypes → flat fallback. SIM call + system-prompt cache prefix + ENGINE_VERSION 3.19.0 all UNTOUCHED. Closes calibration→flywheel-nudge→step-9-drift-rebake end-to-end. | `flash-aggregate.ts`, `flash/persona-weighting.ts`, 4 runners | FIXED `e648525a` (#30) |
+| A2 | 🔴→🟢 | ~~`deriveAudienceProfile()` ignores scraped videos~~ — **superseded by `enrichSignature` (§P), already prod-dead.** The constant-lens `deriveAudienceProfile` + its F1 sibling `repaintPersonas` had ZERO prod callers (only their own defs, comments, and one legacy test). CUT: removed `deriveAudienceProfile` from `calibration.ts` (+ orphaned `TEMPERATURE_DISPOSITION`/`ARCHETYPES`/`Archetype`/`Temperature` imports), deleted `persona-repaint.ts` entirely, dropped both legacy test blocks, fixed the stale `audience-drift` cron comment. tsc net-zero (64), eslint clean, affected suites 42/42. | `calibration.ts`, `persona-repaint.ts` (deleted) | FIXED (#31) |
 | A3 | 🟠→✅ | **RESOLVED (intentional, documented in code).** `sell` and `authority` both map to `WEIGHT_PRESETS.niche_heavy` — by design: both are depth plays whose audience lives in-niche (buyer vs scout); the deterministic weight bias is identical and the per-intent flavour is carried by the repaint prose (`GOAL_INTENT_SUFFIX`), NOT the weight mix. Rationale already in `goal-intent.ts:29-31`. No code change needed. | `goal-intent.ts:33` | RESOLVED (by-design) |
 | A4 | 🟠→✅ | **Finding corrected: presets are NOT inert/unwired.** `audience-manager.tsx` lists them, `/api/audiences` returns them, `composer.tsx` handles their virtual ids, `getAudience("preset-growth")` returns the object, flywheel/explore exclude them (`!is_preset`). They ship `personas:[]` BY DESIGN (virtual template — no calibrated repaint personas until materialize-on-customize) but carry real `persona_weights` (`biasForGoalIntent`). With **A1 live**, that weight signal is now CONSUMED (preset is `is_general=false` → weighted band). So presets = functional weight-only templates today. Remaining (lower-pri, separate): persona-level repaint requires materialize-on-customize. | `PRESET_AUDIENCES`, `audience-manager.tsx` | CLARIFIED (weight-functional; persona-repaint deferred) |
 | A5 | 🟡 | Flywheel nudge is 0.05 in code vs ±0.1 in docs | `recalibration.ts:33` | OPEN |
@@ -148,6 +149,32 @@ _(move items here with FIXED sha as they land)_
   for a virtual template; their real `persona_weights` are now CONSUMED via A1's weighted band
   (preset `is_general=false`). Functional weight-only templates today; persona-level repaint via
   materialize-on-customize is a separate lower-pri item.
+### 2026-06-24 — A1 weighted SIM aggregation (persona_weights now LIVE) (working tree)
+- **A1 FIXED — the weights half of the moat is no longer inert.** `aggregateFlash(personas, weighting?)`
+  gains an optional `FlashWeighting` ({weights, slotOf}); the band for a CALIBRATED audience is now a
+  weighted stop-MASS fraction (`Σ stop-weight / Σ weight`), thresholds `Strong ≥0.6 / Mixed ≥0.3`
+  (mirror the flat 6/3 ÷10). Per-persona weight = slotWeight ÷ that slot's panel population (so a
+  slot's influence = its audience-share weight regardless of how many reactor slots represent it).
+- **New bridge `flash/persona-weighting.ts`** (`buildFlashWeighting`): General/null/no-override →
+  `undefined` (→ flat path, byte-identical regression gate); calibrated → weights mirror the pre-baked
+  `persona_weights`, slotOf maps registry archetypes → bucket (`niche_deep` → `niche`), unknown → null.
+  New static `ARCHETYPE_SLOT` map added to `persona-registry.ts`. `flash-aggregate.ts` stays
+  leaf-isolated (registry + audience imports live in the bridge, not the aggregator).
+- **Wired into the 4 Flash runners** (ideas/hooks/script/remix): the previously-`void`-ed
+  `resolveAudienceWeights` is replaced by `buildFlashWeighting(audience)` threaded into the
+  `aggregateFlash` call. chat (no Flash gate) + the `react` route (uses only `fraction`, which is
+  weighting-invariant) unchanged.
+- **Spec correction logged:** the written A1 spec said "General = equal weights = byte-identical";
+  reality = `resolveAudienceWeights` returns the DEFAULT mix (0.65/0.20/0.10/0.05) for General, which
+  would have CHANGED the band. Gate-safe fix instead = General passes `undefined` → flat count
+  (matches the existing non-general-only gating discipline). Strictly safer, same guarantee.
+- **Verify:** flash-aggregate weighted (8 new) + persona-weighting (10 new) tests green ·
+  steer-closure General-regression gate + audience-regression-gate green · tsc net-zero (64=64
+  baseline) · eslint clean · **full suite 3038 pass / 0 fail / 28 skip** · ENGINE_VERSION 3.19.0
+  untouched · SIM system-prompt cache prefix untouched. **Trade-off (flagged):** weighting the gate
+  changes calibrated output (a niche-buyer-heavy audience lets different candidates survive) — that's
+  the moat; worth a later threshold-calibration pass + a live E2E that a calibrated audience's band
+  visibly diverges from General on the same content.
 
 ### 2026-06-24 — G1 + G2 dead-code cuts + G-D verdict
 - **G2 FIXED bbee1774** — deleted `src/components/app/simulation/` (14 components + 5 tests, ~1.8K LOC)

@@ -51,7 +51,7 @@ import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
-import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -333,12 +333,11 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // POST /api/tools/react reuses the SAME helper (RESEARCH Open Q1 / Pitfall 2).
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
-  // ── REACT path (08-04 / AUD-STEER): resolve audience weights ──
-  // resolveAudienceWeights([]) / is_general → DEFAULT mix (no override).
-  // void: weights are dead-wired for the future Max-path integration; the Flash text path
-  // uses the repaint (built above), NOT the weights — so this stays OUT of buildReactionPanel.
-  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
-  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
+  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
+  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
+  // SIM call + repaint (built above) UNTOUCHED — only the post-SIM band math is weighted.
+  const flashWeighting = buildFlashWeighting(audience ?? null);
 
   // ── GATE: a survivor candidate carries everything the rank+build need ──────
   // personas travel ON the candidate (not via a parallel simResults array) so the
@@ -392,7 +391,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
       const personas = simResult.result.personas;
-      const { band, fraction } = aggregateFlash(personas);
+      const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
       // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
       if (band === "Weak") continue;

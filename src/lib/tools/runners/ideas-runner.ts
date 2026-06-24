@@ -58,7 +58,7 @@ import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
-import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
@@ -307,13 +307,13 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // by niche exactly like a card reaction (RESEARCH Open Q1 / Pitfall 2).
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
-  // ── REACT path (07-04 / AUD-04): resolve audience weights ──
-  // resolveAudienceWeights([]) or audience.is_general → DEFAULT mix (no override).
-  // Calibrated audience → pre-baked persona_weights via analysis_override slot.
-  // void: weights are dead-wired for the future Max-path integration; the Flash text path
-  // uses the repaint (built above), NOT the weights — so this stays OUT of buildReactionPanel.
-  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
-  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
+  // General / null / no-override audience → undefined → aggregateFlash takes its flat path
+  // (byte-identical band, ENGINE_VERSION 3.19.0 regression gate). Calibrated audience →
+  // per-slot persona_weights bias the weighted stop-MASS band gate (which candidates survive).
+  // The SIM call + repaint (built above) are UNTOUCHED — only the post-SIM band math is
+  // weighted. This is what finally CONSUMES audience.persona_weights (void before A1).
+  const flashWeighting = buildFlashWeighting(audience ?? null);
 
   // ── STEER path (07-04 / AUD-05): audience-grounding line replaces buildGroundingLine ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (AUD-08
@@ -367,7 +367,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
       const personas = simResult.result.personas;
       if (!firstSimPersonas) firstSimPersonas = personas;
-      const { band, fraction } = aggregateFlash(personas);
+      const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
       // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
       if (band === "Weak") continue;
