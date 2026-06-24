@@ -19,6 +19,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+      id-token: write # required by claude-code-action@v1 to mint its GitHub token via OIDC
     steps:
       - name: Checkout
         uses: actions/checkout@v4
