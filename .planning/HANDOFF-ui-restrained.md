@@ -6,6 +6,25 @@
 > `.cursor/rules/ui-design.mdc` → `docs/UI-SURFACES.md` → the sketches in `.planning/sketches/`
 > (`composer-numen-restrained.html` is the locked direction).
 
+## 0. START HERE — delegated backlog (post-audit, 2026-06-24)
+
+The recolor flood-subtraction **shipped and is merged** (`48ed16f1`, into `design/ui-restrained`).
+A live visual audit then found the recolor succeeded but **only the Reading surface is actually
+designed** — chat, skill outputs, home, library, and the audience surface are v1-draft scaffolds.
+The work now is a **design/UX pass**, scoped into self-contained briefs. Execute in this order:
+
+| # | Brief | Scope (presentation-only) | Status |
+|---|-------|---------------------------|--------|
+| **P0** | `.planning/BRIEF-P0-thread-shell.md` | Conversation shell (user-turn echo, framed turns) + shared `SkillResultCard` (contains Explore/outlier overflow) + greeting recede + branded loading (extract+reuse `Constellation`). Fixes chat + all 6 skill outputs + broken home in one move. | **START HERE** |
+| **P2** | `.planning/BRIEF-P2-library.md` | `/library`: segmented filter + per-type counts, skeleton loading, designed empty state (constellation + CTA), card/grid polish, neutral launch CTA. Respects the LOCKED flat guard (no folders/tags). Reuses P0 loading. | After P0 |
+| **P1** | *(not yet written)* | Audience surface: flagship CRUD-list → rich persona cards. **BLOCKED** — depends on the new persona/signature shape from the engine track; draft only after `rework/engine-core` merges + rebase. | Blocked |
+| — | minor batch | Chart-recolor verify (funnel terracotta), mobile/responsive, settings `text-white` → token. Fold into `/design-check`; batch later. | Low pri |
+
+**Two-lane contract (engine-rework runs in parallel):** stay in `src/components/**` + `app/(app)/**`
+styling. ⛔ Never touch `src/lib/**`, `src/app/api/**`, `supabase/**`, the engine-owned block
+schemas/registry/renderer-props (D-14), or the HOLD files `components/audience/{calibration-flow,
+audience-reveal}.tsx`. Rebase on `origin/main` before each PR to absorb the engine merge cleanly.
+
 ## 1. Mission (one line)
 Strip the app back to a **monochrome cream-on-charcoal** system where the brand accent (signal red
 `#e23b2d`) appears **really sparingly, if at all** — and let identity come from the **constellation/SIM
