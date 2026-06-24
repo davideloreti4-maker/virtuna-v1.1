@@ -1,9 +1,8 @@
 "use client";
 
 /**
- * AudienceManager — fetches + renders the audience list.
- * Flat-warm semantic tokens ONLY (no zinc-*).
- * General = coral badge, no delete. Presets + user audiences = ⋯ overflow menu.
+ * AudienceManager — fetches + renders the audience list as rich persona cards.
+ * Flat-warm semantic tokens only. General = baseline card; presets + user = cards with menu.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,7 +12,10 @@ import { listAudiences } from "@/lib/audience/audience-repo";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { MultiAudienceReadBlock } from "@/lib/tools/blocks";
 import { MultiAudienceReadBlockRenderer } from "@/components/thread/multi-audience-read-block";
-import { Badge } from "@/components/ui/badge";
+import { AudienceCard } from "./audience-card";
+import { groupAudiences } from "./audience-display";
+import { ConstellationMark } from "@/components/brand/constellation-mark";
+import { READING_CARD } from "@/components/reading/reading-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -28,10 +30,37 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { DotsThree, Scales, Check } from "@phosphor-icons/react";
+import { Scales } from "@phosphor-icons/react";
 
 interface AudienceManagerProps {
   className?: string;
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-2 ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+      {children}
+    </p>
+  );
+}
+
+function AudienceListSkeleton() {
+  return (
+    <div className="flex flex-col gap-3">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className={cn(READING_CARD, "flex items-center gap-4 p-4 animate-pulse")}
+        >
+          <ConstellationMark width={56} litNodeIndex={-1} className="shrink-0 opacity-40" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-32 rounded bg-white/[0.06]" />
+            <div className="h-3 w-48 rounded bg-white/[0.04]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function AudienceManager({ className }: AudienceManagerProps) {
@@ -44,17 +73,11 @@ export function AudienceManager({ className }: AudienceManagerProps) {
   const [deleteTarget, setDeleteTarget] = useState<Audience | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // ── Compare selection mode (AUD-EDIT-02 / D-05) ───────────────────────────────
-  // The flagship audience action: pick ANY two saved audiences and run P8's existing
-  // multi-audience Read (08-06) against the arbitrary pair. The Read render is REUSED
-  // verbatim (MultiAudienceReadBlockRenderer) — the only net-new build is this entry.
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [compareConcept, setCompareConcept] = useState("");
   const [comparing, setComparing] = useState(false);
   const [compareBlock, setCompareBlock] = useState<MultiAudienceReadBlock | null>(null);
-  // Honest warning-tone note (never error-red, never coral) for an under-calibrated
-  // pair or a transient launch failure (UI-SPEC §degraded states).
   const [compareNote, setCompareNote] = useState<string | null>(null);
 
   function exitSelectionMode() {
@@ -65,21 +88,16 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     setCompareNote(null);
   }
 
-  // Toggle an audience into/out of the compare selection. Cap at 2 — selecting a
-  // third drops the OLDEST pick (replace-oldest keeps the count ≤ 2, D-05/D-09).
   function toggleSelection(id: string) {
     setCompareBlock(null);
     setCompareNote(null);
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((x) => x !== id);
       if (prev.length < 2) return [...prev, id];
-      // already 2 → drop the oldest, append the new pick (stays ≤ 2)
       return [prev[1]!, id];
     });
   }
 
-  // Launch the arbitrary-pair compare: POST { concept, audienceIds } → /api/tools/read,
-  // then surface the returned multi-audience-read block via the REUSED P8 renderer.
   async function handleCompare() {
     if (selectedIds.length !== 2) return;
     const concept = compareConcept.trim();
@@ -97,7 +115,6 @@ export function AudienceManager({ className }: AudienceManagerProps) {
         body: JSON.stringify({ concept, audienceIds: selectedIds }),
       });
       if (!res.ok) {
-        // Honest warning tone — an under-calibrated pick or a bad pair, never error-red.
         setCompareNote("This audience isn't calibrated enough to compare yet.");
         return;
       }
@@ -131,7 +148,6 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     void fetchAudiences();
   }, [fetchAudiences]);
 
-  // Close menu on outside click
   useEffect(() => {
     if (!menuOpen) return;
     const handler = (e: MouseEvent) => {
@@ -158,16 +174,55 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     }
   }
 
-  const userAudienceCount = audiences.filter((a) => !a.is_general && !a.is_preset).length;
+  const { baseline, templates, yours } = groupAudiences(audiences);
+  const userAudienceCount = yours.length;
+
+  function renderAudienceCard(audience: Audience) {
+    const isUserOwned = !audience.is_general && !audience.is_preset;
+    const isSelected = selectedIds.includes(audience.id);
+
+    return (
+      <AudienceCard
+        key={audience.id}
+        audience={audience}
+        selectionMode={selectionMode}
+        isSelected={isSelected}
+        onSelect={() => toggleSelection(audience.id)}
+        onNavigate={() => router.push(`/audience/${audience.id}`)}
+        showMenu={!audience.is_general}
+        menuOpen={menuOpen === audience.id}
+        onMenuToggle={(e) => {
+          e.stopPropagation();
+          setMenuOpen((prev) => (prev === audience.id ? null : audience.id));
+        }}
+        onMenuEdit={
+          isUserOwned
+            ? (e) => {
+                e.stopPropagation();
+                setMenuOpen(null);
+                router.push(`/audience/${audience.id}`);
+              }
+            : undefined
+        }
+        onMenuDelete={(e) => {
+          e.stopPropagation();
+          setMenuOpen(null);
+          setDeleteTarget(audience);
+        }}
+      />
+    );
+  }
 
   return (
-    <div className={cn("flex flex-col gap-4", className)}>
-      {/* Header — mirrors the competitors page pattern (text-2xl font-medium) */}
+    <div className={cn("flex flex-col gap-6", className)}>
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-medium text-foreground">Your audiences</h1>
+          {/* A1-COUPLED-COPY: revise if weights→generation wires */}
           <p className="mt-1 text-sm text-foreground-secondary">
-            {selectionMode ? "Pick two audiences to compare." : "Who Numen writes and tests for."}
+            {selectionMode
+              ? "Pick two audiences to compare."
+              : "Who's in the room when you run a Read."}
           </p>
         </div>
         {selectionMode ? (
@@ -227,8 +282,6 @@ export function AudienceManager({ className }: AudienceManagerProps) {
         )}
       </div>
 
-      {/* Selection-mode concept input — the concept the chosen pair is read against
-          (REQUIRED by /api/tools/read). Shown only in selection mode. */}
       {selectionMode && (
         <div className="flex flex-col gap-2">
           <Input
@@ -239,33 +292,25 @@ export function AudienceManager({ className }: AudienceManagerProps) {
             aria-label="Concept to compare"
             className="pointer-coarse:h-11"
           />
-          {compareNote && (
-            <p className="text-xs text-warning">{compareNote}</p>
-          )}
+          {compareNote && <p className="text-xs text-warning">{compareNote}</p>}
         </div>
       )}
 
-      {/* Compare result — the REUSED P8 multi-audience Read (08-06), rendered inline.
-          The render COMPONENT is fixed (MultiAudienceReadBlockRenderer) — not redesigned. */}
       {selectionMode && compareBlock && (
-        <div className="rounded-xl border border-white/[0.06] bg-surface p-4">
+        <div className={cn(READING_CARD, "p-4")}>
           <MultiAudienceReadBlockRenderer block={compareBlock} />
         </div>
       )}
 
-      {/* List */}
-      {loading && (
-        <div className="flex justify-center py-12">
-          <Spinner size="md" />
-        </div>
-      )}
+      {loading && <AudienceListSkeleton />}
 
       {!loading && error && (
         <p className="text-sm text-error py-8 text-center">{error}</p>
       )}
 
       {!loading && !error && audiences.length === 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-surface px-6 py-10 text-center">
+        <div className={cn(READING_CARD, "flex flex-col items-center px-6 py-12 text-center")}>
+          <ConstellationMark width={80} litNodeIndex={-1} className="mb-5 opacity-80" />
           <p className="text-base font-semibold text-foreground mb-2">No custom audiences yet</p>
           <p className="text-sm text-foreground-secondary max-w-md mx-auto mb-5">
             {`You're using `}
@@ -279,157 +324,42 @@ export function AudienceManager({ className }: AudienceManagerProps) {
       )}
 
       {!loading && !error && audiences.length > 0 && (
-        <div className="flex flex-col gap-2">
-          {/* Section: built-in */}
-          <div className="flex flex-col gap-1">
-            {audiences.map((audience) => {
-              const isGeneral = audience.is_general;
-              const isUserOwned = !isGeneral && !audience.is_preset;
-              const isSelected = selectedIds.includes(audience.id);
-              const platformLabel =
-                audience.platform.charAt(0).toUpperCase() + audience.platform.slice(1);
-              const typeLabel = audience.type === "personal" ? "Personal" : "Target";
-              // In selection mode the WHOLE row toggles selection (any saved audience
-              // may be picked); normal navigation is suppressed. Outside selection mode
-              // the shipped behavior is unchanged (user-owned rows navigate to detail).
-              const rowOnClick = selectionMode
-                ? () => toggleSelection(audience.id)
-                : isUserOwned
-                  ? () => router.push(`/audience/${audience.id}`)
-                  : undefined;
-              return (
-                <div
-                  key={audience.id}
-                  className={cn(
-                    "group relative flex items-center gap-3 rounded-xl border bg-surface px-4 min-h-[56px] pointer-coarse:min-h-[64px]",
-                    "transition-colors",
-                    // Selection state is NEUTRAL (charcoal-chip / white-[0.06] + cream
-                    // check) — NOT coral. Coral stays on the Compare-launch CTA only.
-                    selectionMode && isSelected
-                      ? "border-white/[0.06] bg-white/[0.06]"
-                      : "border-white/[0.06] hover:bg-white/[0.02]",
-                    (selectionMode || isUserOwned) && "cursor-pointer",
-                  )}
-                  onClick={rowOnClick}
-                  role={selectionMode ? "checkbox" : undefined}
-                  aria-checked={selectionMode ? isSelected : undefined}
-                  aria-label={selectionMode ? `Select ${audience.name}` : undefined}
-                >
-                  {/* Selection checkbox — neutral box, cream check when selected. */}
-                  {selectionMode && (
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "flex shrink-0 items-center justify-center rounded-md border w-5 h-5 pointer-coarse:w-6 pointer-coarse:h-6 transition-colors",
-                        isSelected
-                          ? "border-white/[0.12] bg-white/[0.06]"
-                          : "border-white/[0.12] bg-transparent",
-                      )}
-                    >
-                      {isSelected && (
-                        <Check weight="bold" className="w-3.5 h-3.5 text-cream-secondary" />
-                      )}
-                    </span>
-                  )}
+        <div className="flex flex-col gap-6">
+          {baseline.length > 0 && (
+            <section>
+              <SectionLabel>Baseline</SectionLabel>
+              <div className="flex flex-col gap-3">
+                {baseline.map(renderAudienceCard)}
+              </div>
+            </section>
+          )}
 
-                  {/* Name + sub-label */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-base font-medium text-foreground truncate">
-                      {audience.name}
-                    </p>
-                    <p className="text-xs text-foreground-secondary truncate">
-                      {isGeneral
-                        ? "Universal baseline"
-                        : audience.is_preset
-                          ? `${platformLabel} · Template`
-                          : `${platformLabel} · ${typeLabel}`}
-                    </p>
-                  </div>
+          {templates.length > 0 && (
+            <section>
+              <SectionLabel>Templates</SectionLabel>
+              <div className="flex flex-col gap-3">
+                {templates.map(renderAudienceCard)}
+              </div>
+            </section>
+          )}
 
-                  {/* Trailing: General badge or ⋯ menu (hidden in selection mode so the
-                      row reads as a single selection target). */}
-                  {!selectionMode && isGeneral && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span>
-                          <Badge variant="default" size="sm">General</Badge>
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-[200px] text-xs text-center">
-                        {"Numen's universal audience — the protected baseline. Can't be edited or deleted."}
-                      </TooltipContent>
-                    </Tooltip>
-                  )}
+          {yours.length > 0 && (
+            <section>
+              <SectionLabel>Yours</SectionLabel>
+              <div className="flex flex-col gap-3">
+                {yours.map(renderAudienceCard)}
+              </div>
+            </section>
+          )}
 
-                  {!selectionMode && (audience.is_preset || isUserOwned) && (
-                    <div className="relative" data-audience-menu>
-                      <button
-                        type="button"
-                        aria-label="Audience options"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMenuOpen((prev) => (prev === audience.id ? null : audience.id));
-                        }}
-                        className={cn(
-                          "flex items-center justify-center w-8 h-8 rounded-lg pointer-coarse:w-10 pointer-coarse:h-10",
-                          "text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
-                        )}
-                      >
-                        <DotsThree weight="bold" className="w-4 h-4" />
-                      </button>
-
-                      {menuOpen === audience.id && (
-                        <div
-                          role="menu"
-                          className="absolute right-0 top-full mt-1 z-10 w-36 rounded-lg border border-white/[0.06] bg-surface-elevated shadow-float overflow-hidden"
-                          data-audience-menu
-                        >
-                          {isUserOwned && (
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setMenuOpen(null);
-                                router.push(`/audience/${audience.id}`);
-                              }}
-                              className="w-full flex items-center px-3 min-h-[40px] text-sm text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground transition-colors"
-                            >
-                              Edit
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setMenuOpen(null);
-                              setDeleteTarget(audience);
-                            }}
-                            className="w-full flex items-center px-3 min-h-[40px] text-sm text-error hover:bg-white/[0.05] transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Summary line */}
           {userAudienceCount === 0 && (
-            <p className="text-xs text-foreground-muted px-1 mt-1">
-              {`No custom audiences yet. Create one to calibrate from your @handle.`}
+            <p className="text-xs text-foreground-muted px-1">
+              No custom audiences yet. Create one to calibrate from your @handle.
             </p>
           )}
         </div>
       )}
 
-      {/* Delete confirmation dialog */}
       <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <DialogContent size="sm">
           <DialogHeader>

@@ -8,7 +8,7 @@
 export interface ConstellationMarkProps {
   /** SVG width (height scales from viewBox aspect). */
   width?: number;
-  /** Which node index is lit (0-based, default 3 = top-right in sketch layout). */
+  /** Which node index is lit (0-based, default 3 = top-right in sketch layout). Pass -1 for all-neutral (no accent). */
   litNodeIndex?: number;
   className?: string;
   'aria-hidden'?: boolean;
@@ -61,7 +61,7 @@ export function ConstellationMark({
         />
       ))}
       {NODES.map((node, i) => {
-        const isLit = i === litNodeIndex;
+        const isLit = litNodeIndex >= 0 && i === litNodeIndex;
         if (isLit) {
           return (
             <g key={`node-${i}`}>

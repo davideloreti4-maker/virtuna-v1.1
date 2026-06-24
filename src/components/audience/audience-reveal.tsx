@@ -13,6 +13,7 @@ import Image from "next/image";
 import { SealCheck } from "@phosphor-icons/react";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { RevealData } from "@/lib/audience/calibration";
+import { READING_CARD } from "@/components/reading/reading-section";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -39,15 +40,13 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
-      {/* ── We read @handle ─────────────────────────────────────────────── */}
       <p className="text-sm text-foreground-secondary">
         ✓ We read{" "}
         <span className="font-medium text-foreground">@{handle}</span>
       </p>
 
-      {/* ── Real scraped account header ──────────────────────────────────── */}
       {profile && (
-        <div className="flex items-center gap-4 rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
+        <div className={cn(READING_CARD, "flex items-center gap-4 px-5 py-4")}>
           {profile.avatarUrl ? (
             <Image
               src={profile.avatarUrl}
@@ -66,7 +65,7 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
             <div className="flex items-center gap-1.5">
               <span className="truncate font-semibold text-foreground">{profile.displayName}</span>
               {profile.verified && (
-                <SealCheck weight="fill" className="h-4 w-4 shrink-0" style={{ color: "var(--color-accent)" }} />
+                <SealCheck weight="fill" className="h-4 w-4 shrink-0 text-cream-secondary" />
               )}
             </div>
             <p className="mt-0.5 text-xs text-foreground-secondary">
@@ -78,15 +77,14 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         </div>
       )}
 
-      {/* ── Real posts grid (engagement is the proof) ────────────────────── */}
       {posts.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-muted">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
             Your posts we read
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {posts.map((p, i) => (
-              <div key={i} className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+              <div key={i} className={cn(READING_CARD, "px-3 py-2.5")}>
                 <p className="text-sm font-semibold text-foreground">{compactNumber(p.plays)} plays</p>
                 <p className="mt-0.5 text-xs text-foreground-secondary">
                   {p.saveRate}% save · {p.shareRate}% share
@@ -97,7 +95,6 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         </div>
       )}
 
-      {/* ── Here's your audience ─────────────────────────────────────────── */}
       {sig && (
         <div className="flex flex-col gap-3">
           <h3 className="text-base font-semibold text-foreground">Here&apos;s your audience</h3>
@@ -123,7 +120,6 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
             </p>
           )}
 
-          {/* 10 reactor chips */}
           <div className="flex flex-wrap gap-1.5">
             {sig.audience.personas.map((p) => (
               <span
@@ -138,7 +134,6 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
         </div>
       )}
 
-      {/* ── Provenance + CTA ─────────────────────────────────────────────── */}
       {sig && (
         <p className="text-xs text-foreground-muted">
           Read {sig.provenance.videos_analyzed} posts · watched {sig.provenance.videos_watched} ·

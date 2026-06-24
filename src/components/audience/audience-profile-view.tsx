@@ -1,14 +1,9 @@
 "use client";
 
 /**
- * AudienceProfileView — Audience Profile + persona display (D-03), now with per-persona
- * editing on CALIBRATED audiences (AUD-EDIT-01 / D-06).
- * Hero: PersonaGraph node-cloud.
- * Profile header: StatTileRow (platform / goal / temperature mix / top dispositions).
- * Persona list: DataTable (Name · Temperature Badge · Disposition Badge · Share % · Edit).
- * - Calibrated (personal/target) audiences: each persona row has an Edit affordance that
- *   opens the PersonaEditForm inline; the display name honors the edited `label`.
- * - General / preset: NO Edit affordance + the D-06 protected-baseline caption (read-only).
+ * AudienceProfileView — rich detail surface for a single audience.
+ * Hero constellation, signature summary, creator voice, persona roster.
+ * A1 honesty: calibration shapes who reacts in a Read, not generation output.
  */
 
 import { useMemo, useState } from "react";
@@ -16,18 +11,19 @@ import type { Audience, CalibratedPersona, Temperature } from "@/lib/audience/au
 import { PersonaGraph, type PersonaNode } from "@/components/board/_kit/PersonaGraph";
 import { StatTileRow, type StatTileData } from "@/components/board/_kit/StatTile";
 import { DataTable, type DataColumn } from "@/components/board/_kit/DataTable";
+import { ReadingSection } from "@/components/reading/reading-section";
+import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { Badge } from "@/components/ui/badge";
 import { PersonaEditForm, archetypeDerivedName } from "./persona-edit-form";
+import {
+  getCreatorPersona,
+  getPersonaRoster,
+  getPlatformLabel,
+  formatArchetype,
+} from "./audience-display";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 import { Pencil } from "lucide-react";
-
-const PLATFORM_LABELS: Record<string, string> = {
-  tiktok: "TikTok",
-  instagram: "Instagram",
-  youtube: "YouTube",
-  custom: "Custom",
-};
 
 function tempVariant(temperature: Temperature) {
   switch (temperature) {
@@ -37,9 +33,13 @@ function tempVariant(temperature: Temperature) {
   }
 }
 
-/** Display name: the edited `label`, falling back to the archetype-derived string. */
 function personaDisplayName(p: CalibratedPersona): string {
   return p.label ?? archetypeDerivedName(p.archetype);
+}
+
+function truncate(text: string, max = 200): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}…`;
 }
 
 interface AudienceProfileViewProps {
@@ -49,66 +49,67 @@ interface AudienceProfileViewProps {
 
 export function AudienceProfileView({ audience: audienceProp, className }: AudienceProfileViewProps) {
   const reducedMotion = usePrefersReducedMotion();
-
-  // Local copy so a saved persona edit refreshes the display without a hard reload.
   const [audience, setAudience] = useState<Audience>(audienceProp);
-  // Index of the persona currently being edited (null = no edit open). Calibrated only.
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
+  const roster = getPersonaRoster(audience);
   const personas = audience.personas;
   const profile = audience.profile;
-
-  // Calibrated personal/target audiences are editable; General + preset are read-only (D-06).
+  const signature = audience.signature ?? null;
+  const creatorPersona = getCreatorPersona(audience);
   const isEditable = !audience.is_general && !audience.is_preset;
 
-  // Map personas → PersonaNode for the graph (honors the edited label)
   const personaNodes: PersonaNode[] = useMemo(
     () =>
-      personas.map((p) => ({
+      roster.map((p) => ({
         id: p.archetype,
-        label: p.label ?? archetypeDerivedName(p.archetype),
+        label: "label" in p && p.label ? p.label : formatArchetype(p.archetype),
         weight: p.share,
-        watchThrough: p.share, // use share as proxy for watch-through in read-only v1
-        tone: "default" as const, // v1: no coral cluster (values untuned)
+        watchThrough: p.share,
+        tone: "default" as const,
+        archetype: p.archetype,
       })),
-    [personas],
+    [roster],
   );
 
-  // StatTiles: platform, goal, temperature mix, top dispositions
   const tiles: StatTileData[] = useMemo(() => {
     const result: StatTileData[] = [];
-
-    result.push({
-      k: "Platform",
-      v: PLATFORM_LABELS[audience.platform] ?? audience.platform,
-    });
+    result.push({ k: "Platform", v: getPlatformLabel(audience) });
 
     if (audience.goal_label) {
       result.push({ k: "Goal", v: audience.goal_label, s: audience.goal_intent ?? undefined });
     }
 
-    if (profile?.temperature_mix) {
-      const { cold, warm, hot } = profile.temperature_mix;
+    const tempMix =
+      signature?.audience.temperature_mix ?? profile?.temperature_mix;
+    if (tempMix) {
       const pct = (n: number) => `${Math.round(n * 100)}%`;
       result.push({
         k: "Temp mix",
-        v: `${pct(warm)} warm`,
-        s: `${pct(cold)} cold · ${pct(hot)} hot`,
+        v: `${pct(tempMix.warm)} warm`,
+        s: `${pct(tempMix.cold)} cold · ${pct(tempMix.hot)} hot`,
       });
     }
 
-    if (profile?.top_dispositions && profile.top_dispositions.length > 0) {
+    const dispositions =
+      profile?.top_dispositions ??
+      (signature
+        ? [...roster]
+            .sort((a, b) => b.share - a.share)
+            .slice(0, 3)
+            .map((p) => p.disposition)
+        : []);
+    if (dispositions.length > 0) {
       result.push({
         k: "Top dispositions",
-        v: profile.top_dispositions[0] ?? "—",
-        s: profile.top_dispositions.slice(1).join(" · ") || undefined,
+        v: dispositions[0] ?? "—",
+        s: dispositions.slice(1).join(" · ") || undefined,
       });
     }
 
     return result;
-  }, [audience, profile]);
+  }, [audience, profile, roster, signature]);
 
-  // DataTable columns — the trailing Edit column is added only for calibrated audiences (D-06)
   const columns: DataColumn<CalibratedPersona>[] = [
     {
       key: "archetype",
@@ -141,7 +142,6 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
       align: "right" as const,
       render: (p) => `${Math.round(p.share * 100)}%`,
     },
-    // Per-persona Edit affordance — calibrated audiences ONLY (D-06).
     ...(isEditable
       ? [
           {
@@ -167,47 +167,116 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
   ];
 
   const editingPersona = editingIndex !== null ? personas[editingIndex] : undefined;
+  const provenanceHandle =
+    signature?.provenance.handle ?? audience.calibration?.handle;
 
   return (
     <div className={cn("flex flex-col gap-6", className)}>
-      {/* PersonaGraph hero */}
-      {personaNodes.length > 0 ? (
-        <div className="rounded-xl border border-white/[0.06] bg-surface px-4 py-4">
-          <p className="text-xs text-foreground-muted mb-3 uppercase tracking-wider">
-            Audience map
-          </p>
-          <PersonaGraph
-            personas={personaNodes}
-            height={220}
-            reducedMotion={reducedMotion}
-          />
-        </div>
-      ) : (
-        <div className="rounded-xl border border-white/[0.06] bg-surface px-4 py-8 text-center">
-          <p className="text-sm text-foreground-secondary">
-            No calibrated audience data yet.
-          </p>
+      <ReadingSection label="Audience map">
+        {personaNodes.length > 0 ? (
+          <div className="px-4 py-4">
+            <PersonaGraph
+              personas={personaNodes}
+              height={220}
+              reducedMotion={reducedMotion}
+            />
+          </div>
+        ) : (
+          <div className="flex flex-col items-center px-4 py-10 text-center">
+            <ConstellationMark width={72} litNodeIndex={-1} className="mb-4 opacity-80" />
+            <p className="text-sm text-foreground-secondary">
+              {audience.is_general
+                ? "General — Numen's universal baseline with 10 personas."
+                : audience.is_preset
+                  ? "Template audience — ready-made weight mix."
+                  : "No calibrated audience data yet."}
+            </p>
+          </div>
+        )}
+      </ReadingSection>
+
+      {signature?.summary && (
+        <ReadingSection label="Summary">
+          <div className="px-5 py-4">
+            <p className="text-[13px] leading-relaxed text-foreground-secondary">
+              {signature.summary}
+            </p>
+            {signature.audience.interest_tags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {signature.audience.interest_tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-xs text-foreground-secondary"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        </ReadingSection>
+      )}
+
+      {creatorPersona && (
+        <ReadingSection label="Your voice">
+          <div className="px-5 py-4 space-y-3">
+            {creatorPersona.content_description && (
+              <p className="text-[13px] font-medium text-foreground">
+                {creatorPersona.content_description}
+              </p>
+            )}
+            {creatorPersona.context && (
+              <p className="text-[12px] leading-relaxed text-foreground-secondary">
+                {truncate(creatorPersona.context, 280)}
+              </p>
+            )}
+          </div>
+        </ReadingSection>
+      )}
+
+      {tiles.length > 0 && (
+        <div className="px-0.5">
+          <StatTileRow tiles={tiles} />
         </div>
       )}
 
-      {/* StatTileRow */}
-      {tiles.length > 0 && <StatTileRow tiles={tiles} />}
+      {personas.length > 0 ? (
+        <ReadingSection label="Who reacts">
+          <div className="px-4 py-4">
+            {/* A1-COUPLED-COPY: revise "not how Numen writes" when weights→generation wires */}
+            <p className="mb-3 text-[11px] text-foreground-muted">
+              Shapes who reacts in a Read — not how Numen writes.
+            </p>
+            <DataTable<CalibratedPersona>
+              columns={columns}
+              rows={personas}
+              rowKey={(p) => p.archetype}
+            />
+          </div>
+        </ReadingSection>
+      ) : roster.length > 0 ? (
+        <ReadingSection label="Who reacts">
+          <div className="px-5 py-4">
+            <p className="mb-3 text-[11px] text-foreground-muted">
+              Shapes who reacts in a Read — not how Numen writes.
+            </p>
+            <ul className="flex flex-col gap-2">
+              {roster.map((p) => (
+                <li
+                  key={p.archetype}
+                  className="flex items-center justify-between gap-3 text-[13px]"
+                >
+                  <span className="text-foreground">{formatArchetype(p.archetype)}</span>
+                  <span className="text-foreground-muted tabular-nums">
+                    {Math.round(p.share * 100)}% · {p.temperature}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </ReadingSection>
+      ) : null}
 
-      {/* Persona DataTable */}
-      {personas.length > 0 && (
-        <div className="rounded-xl border border-white/[0.06] bg-surface px-4 py-4">
-          <p className="text-xs text-foreground-muted mb-3 uppercase tracking-wider">
-            Personas
-          </p>
-          <DataTable<CalibratedPersona>
-            columns={columns}
-            rows={personas}
-            rowKey={(p) => p.archetype}
-          />
-        </div>
-      )}
-
-      {/* Inline persona-edit form (calibrated only) — opens for the selected persona */}
       {isEditable && editingPersona && editingIndex !== null && (
         <PersonaEditForm
           audience={audience}
@@ -221,7 +290,21 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
         />
       )}
 
-      {/* Read-only General/preset caption (D-06 protected baseline). Calibrated = no caption. */}
+      {(signature?.provenance || provenanceHandle) && (
+        <p className="text-[11px] text-foreground-muted px-0.5">
+          {signature?.provenance ? (
+            <>
+              Read {signature.provenance.videos_analyzed} posts · watched{" "}
+              {signature.provenance.videos_watched} · subtitles{" "}
+              {signature.provenance.sub_coverage}
+              {provenanceHandle ? ` · @${provenanceHandle}` : ""}
+            </>
+          ) : (
+            provenanceHandle && `@${provenanceHandle}`
+          )}
+        </p>
+      )}
+
       {!isEditable && (
         <p className="text-xs text-foreground-muted text-center pb-2">
           General is Numen&apos;s protected baseline — read-only. Calibrate a personal or target audience to edit its personas.
