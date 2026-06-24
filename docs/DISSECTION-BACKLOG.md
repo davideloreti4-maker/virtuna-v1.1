@@ -93,7 +93,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
 | S1 | 🟠 | `script` + `remix` build SIM panel without `resolveNicheKey` → niche-blind "all Mixed" reactions. FIX: both now route through shared `buildReactionPanel(profileRow, audience)` (resolveNicheKey + byte-identical repaint), matching hooks/ideas. tsc clean, runner suites 26/26, audience-regression gate green. | script-runner:273, remix-runner:209 | FIXED (working tree) |
-| S2 | 🟠 | Follow-up chat is on the hooks/ideas critical path (blocks `done`) — stream after `done` | hooks-runner / ideas-runner | OPEN |
+| S2 | 🟠 | **FIXED — follow-up chat now streams AFTER `done`.** Was: the follow-up Qwen turn ran synchronously BEFORE `send("done")` in the ideas/hooks/script/refine SSE routes, holding the stream open + the client in `isStreaming` (progress checklist spinning, composer locked, follow-up itself un-renderable) for the seconds the reasoning call takes. FIX (2 coordinated halves): (1) routes emit `done` immediately after cards persist, then run the follow-up + emit `followup` on the still-open SSE; (2) the 3 client stream hooks flip `isStreaming=false` on `done` (decoupled from stream-close) — the read loop keeps consuming until the server closes, so `followup` still lands + renders inline (`followupText && !isStreaming`). Remix left as-is (its route emits no follow-up). +ordering regression test (`done` precedes `followup`). | ideas/hooks/script/refine routes + use-{ideas,hooks,script}-stream | FIXED (working tree) |
 | S3 | 🟢 | 8-call SIM fan-out → collapse to one batched simulation call (eval-gated) | `gateHooks` / `runFlashTextMode` | OPEN |
 | S4 | 🟢 | Dead `flashRunner` / `ToolRunner` / `dispatchToolOutput` scaffolding (~200 LOC) | `flash-runner.ts` | OPEN |
 | S5 | 🟡→🟢 | **DELETED — rubric critic was OFF by default + ~100% fail.** Removed `rubric-critic.ts` (255 LOC) + its test + the obsolete `best-of-n.test.ts` (399 LOC, all critic-specific). Collapsed the dual-branch combined gate in ideas/hooks runners to band-only (`band !== "Weak"`, KCQ-05) — dropped `criticEnabled`/`PASS_VERDICT`/the SIM+critic Promise.all pair/`abstained`+`abstainedKept` warning. `predictedFailureMode` card field kept (nullable, now always null) so persisted blocks + UI stay valid. Net −916 LOC. | `flash/rubric-critic.ts` (deleted), ideas/hooks runners | FIXED (working tree) |
@@ -130,6 +130,30 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-24 — S2 follow-up chat off the generative critical path (working tree)
+- **S2 FIXED — the follow-up chat turn no longer blocks `done`.** Across the 4 generative SSE
+  routes that emit a model-authored follow-up (`ideas`, `hooks`, `script`, `refine`) the
+  follow-up Qwen call ran synchronously **before** `send("done")`. Because the client read loop
+  doesn't break on `done` (it runs until the server closes the stream), `isStreaming` stayed
+  true for the whole follow-up — so the progress checklist kept spinning, the composer stayed
+  locked, and the follow-up itself couldn't render (it's gated `followupText && !isStreaming`).
+  The user stared at scored cards + a spinner for the several seconds the reasoning call took.
+- **Two coordinated halves:** (1) **server** — each route emits `done` right after the cards are
+  scored + persisted (the real critical path), then runs the follow-up and emits `followup` on
+  the still-open SSE; the `finally` closes the stream. (2) **client** — `use-{ideas,hooks,script}-stream`
+  flip `setIsStreaming(false)` in the `done` handler (decoupled from stream-close). The read loop
+  keeps consuming → the `followup` event still lands and renders inline a beat later.
+- **Scope:** remix left unchanged (its `remix/run` route emits no follow-up → no critical-path
+  issue; touching its hook would add an inaccurate comment for zero behavior change). `refine`
+  restructured so `done` fires inside the `if (topBlock)` path (count 1) with a no-card `else`
+  branch (count 0).
+- **Verify:** new ordering regression test in the hooks route suite (mocks the qwen follow-up
+  stream once → asserts `event: done` precedes `event: followup` + both cards & follow-up persist;
+  default qwen mock rejects so existing single-persist tests are untouched). tsc net-zero
+  (64=64 baseline) · eslint clean (touched src + test) · full suite **3020 pass / 0 fail / 28 skip**
+  (3019 baseline + 1 new) · ENGINE_VERSION 3.19.0 untouched. **Deferred:** live browser UX
+  confirmation (real Qwen spend) — behavior is deterministically test-locked.
 
 ### 2026-06-24 — A5 nudge reconcile + dead CI workflow removed (working tree)
 - **A5 RESOLVED — flywheel nudge reconciled to 0.05 (code canonical).** The discrepancy was a

@@ -31,8 +31,9 @@
  *   event: stage    — { name, status: "active"|"done" } — real pipeline phases
  *   event: content  — the new card block (content-first, band deferred to score)
  *   event: score    — { band, fraction, model } — per-card band chip a beat later
- *   event: followup — { text } — one-line model-authored chat note
- *   event: done     — { count: 1 }
+ *   event: done     — { count: 1 } (S2: emitted BEFORE followup — off critical path)
+ *   event: followup — { text } — one-line model-authored chat note; streamed AFTER done
+ *                     so the chat turn never blocks run completion
  *   event: error    — { message } on pipeline failure → client renders Plan-04 retry surface
  */
 
@@ -285,7 +286,15 @@ export async function POST(request: Request): Promise<Response> {
             kcStamp().kcGenVersion,
           );
 
-          // ── ONE-LINE CHAT NOTE (D-04 / D-08 co-pilot voice) ─────────────
+          // ── DONE (S2): emit BEFORE the one-line chat note ───────────────
+          // The refreshed card is scored + persisted — the refine's critical path is
+          // complete. The chat note below (a streamed Qwen call) used to block `done`,
+          // holding the SSE open and the UI in "streaming" for the seconds it takes.
+          // Emit `done` now; the note streams in afterward (client read loop runs until
+          // the server closes the stream).
+          send("done", { count: 1 });
+
+          // ── ONE-LINE CHAT NOTE (D-04 / D-08 co-pilot voice) — off critical path (S2) ──
           // A short model-authored note confirms the refine completed and references
           // the specific result. Generated with KC_CHAT_SYSTEM_PROMPT (Numen voice).
           // Persisted as a second markdown message (append-only).
@@ -322,9 +331,10 @@ export async function POST(request: Request): Promise<Response> {
           } catch {
             // Note failure is non-fatal — card delivery was already successful
           }
+        } else {
+          // No card produced — still signal completion (S2: done is the run terminator).
+          send("done", { count: 0 });
         }
-
-        send("done", { count: topBlock ? 1 : 0 });
       } catch (err) {
         // Pipeline failure — emit error frame so the client renders the Plan-04
         // skill-run error/retry surface (same event shape as hooks/ideas routes).

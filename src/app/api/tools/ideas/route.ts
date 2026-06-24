@@ -20,8 +20,9 @@
  *   event: status  — "Generating ideas…" / "Scoring on your audience…"
  *   event: content — card faces WITH lead scroll-quote (WARNING-4: quote is on the face)
  *   event: score   — per-card band + fraction (band chip, a beat later)
- *   event: FOLLOWUP — { text: string } — model-authored turn referencing this run (D-03)
- *   event: done    — signal completion
+ *   event: done    — signal completion (S2: emitted BEFORE followup — off critical path)
+ *   event: FOLLOWUP — { text: string } — model-authored turn referencing this run (D-03);
+ *                     streamed AFTER done so the chat turn never blocks run completion
  *
  * STAGES (real pipeline boundaries — NO fake timers, D-02):
  *   Generating          → active before runIdeasPipeline; done after
@@ -253,7 +254,16 @@ export async function POST(request: Request): Promise<Response> {
           await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
         }
 
-        // ── FOLLOW-UP TURN (D-03 / STUDIO-02) ────────────────────────────────
+        // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────
+        // The cards are scored + persisted here — that's the run's critical path.
+        // The follow-up chat turn (a streamed Qwen call below) used to block `done`,
+        // keeping the client stream open and the UI in its "streaming" state for the
+        // several seconds the follow-up takes. Emitting `done` now lets the client
+        // unblock immediately; the follow-up streams in afterward on the still-open
+        // SSE (the client read loop keeps consuming until the server closes it).
+        send("done", { count: blocks.length });
+
+        // ── FOLLOW-UP TURN (D-03 / STUDIO-02) — off the critical path (S2) ───
         // Generate ONE short model-authored observation referencing this ideas run.
         // Uses KC_CHAT_SYSTEM_PROMPT (Numen co-pilot voice) + a compact run summary.
         // Persisted as a second message (markdown block) in the open thread.
@@ -301,8 +311,6 @@ Write ONE short sentence: a concrete observation about the strongest idea (what 
             // Follow-up failure is non-fatal — don't error the whole run
           }
         }
-
-        send("done", { count: blocks.length });
       } catch (err) {
         send("error", {
           message: err instanceof Error ? err.message : "Ideas generation failed",

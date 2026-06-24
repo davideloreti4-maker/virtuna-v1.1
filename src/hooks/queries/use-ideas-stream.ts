@@ -293,9 +293,16 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             if (isMountedRef.current) setStreamingCards([...patched]);
 
           } else if (eventType === 'done') {
+            // S2: unblock the UI on `done` rather than on stream-close. The server now
+            // emits `done` BEFORE the follow-up chat turn, then keeps the SSE open to
+            // stream the followup. Flipping isStreaming here clears the progress checklist
+            // + re-enables the composer immediately; the read loop below keeps consuming
+            // until the server closes the stream, so the followup event still lands and
+            // renders inline (gated on followupText && !isStreaming).
             if (isMountedRef.current) {
               setIsDone(true);
               setStatusMessage(null);
+              setIsStreaming(false);
             }
 
           } else if (eventType === 'error') {
@@ -449,9 +456,16 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             cardsRef.current = patched;
             if (isMountedRef.current) setStreamingCards([...patched]);
           } else if (eventType === 'done') {
+            // S2: unblock the UI on `done` rather than on stream-close. The server now
+            // emits `done` BEFORE the follow-up chat turn, then keeps the SSE open to
+            // stream the followup. Flipping isStreaming here clears the progress checklist
+            // + re-enables the composer immediately; the read loop below keeps consuming
+            // until the server closes the stream, so the followup event still lands and
+            // renders inline (gated on followupText && !isStreaming).
             if (isMountedRef.current) {
               setIsDone(true);
               setStatusMessage(null);
+              setIsStreaming(false);
             }
           } else if (eventType === 'error') {
             const msg = typeof data.message === 'string' ? data.message : 'Refine error';

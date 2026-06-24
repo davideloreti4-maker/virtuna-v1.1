@@ -22,8 +22,9 @@
  *   event: stage    — { name, status: "active"|"done" } — real pipeline phases (D-02)
  *   event: content  — script-card face (beats+timing+retention+openingBeatSeed+scrollQuote)
  *   event: score    — opener band chip (a beat later — content-first, Pitfall 5)
- *   event: followup — { text } — model-authored observation (non-fatal)
- *   event: done     — completion signal
+ *   event: done     — completion signal (S2: emitted BEFORE followup — off critical path)
+ *   event: followup — { text } — model-authored observation (non-fatal); streamed AFTER
+ *                     done so the chat turn never blocks run completion
  *
  * STAGES (real pipeline boundaries — NO fake timers, D-02):
  *   Generating         → active before runScriptPipeline; done after
@@ -223,7 +224,14 @@ export async function POST(request: Request): Promise<Response> {
           await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
         }
 
-        // ── FOLLOW-UP TURN (mirrors hooks/route.ts posture) ──────────────────
+        // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────
+        // Cards are scored + persisted — the run's critical path is complete. The
+        // follow-up chat turn below used to block `done`, holding the SSE open and the
+        // UI in "streaming" for the seconds the follow-up takes. Emit `done` now; the
+        // follow-up streams in afterward (client read loop runs until the server closes).
+        send("done", { count: blocks.length });
+
+        // ── FOLLOW-UP TURN (mirrors hooks/route.ts posture) — off critical path (S2) ──
         // One-shot Qwen call — model-authored observation referencing this script run.
         // Non-fatal: caught silently so script-card delivery never blocks on follow-up.
         if (blocks.length > 0) {
@@ -268,8 +276,6 @@ Write ONE short sentence: a concrete observation about the script's structure (w
             // Follow-up failure is non-fatal — don't error the whole run
           }
         }
-
-        send("done", { count: blocks.length });
       } catch (err) {
         send("error", {
           message: err instanceof Error ? err.message : "Script generation failed",
