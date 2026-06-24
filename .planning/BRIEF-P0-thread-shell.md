@@ -25,8 +25,8 @@ Fixing the shell repairs **chat + all six skill outputs + the broken home** in o
 This is the single highest-leverage UI task in the backlog.
 
 **Reference bar:** the Reading surface (`src/components/reading/`). Match its density, framing, and
-hierarchy. Screenshots of the current broken state are in `~/virtuna-ui-restrained/audit-*.png`
-(`audit-06-chat-loading`, `audit-07-chat-result`, `audit-01-home`).
+hierarchy. Full audit + screenshots: `.planning/AUDIT-ui-surfaces-260624.md` and `.planning/audit/`
+(`audit-06-chat-loading.png`, `audit-07-chat-result.png`, `audit-01-home.png`).
 
 ---
 

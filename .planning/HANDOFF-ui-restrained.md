@@ -11,7 +11,9 @@
 The recolor flood-subtraction **shipped and is merged** (`48ed16f1`, into `design/ui-restrained`).
 A live visual audit then found the recolor succeeded but **only the Reading surface is actually
 designed** — chat, skill outputs, home, library, and the audience surface are v1-draft scaffolds.
-The work now is a **design/UX pass**, scoped into self-contained briefs. Execute in this order:
+The work now is a **design/UX pass**, scoped into self-contained briefs. Execute in this order.
+**Full evidence:** `.planning/AUDIT-ui-surfaces-260624.md` (per-surface findings, systemic patterns,
+conflict map, screenshots in `.planning/audit/`).
 
 | # | Brief | Scope (presentation-only) | Status |
 |---|-------|---------------------------|--------|
