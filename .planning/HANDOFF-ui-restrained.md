@@ -17,9 +17,10 @@ conflict map, screenshots in `.planning/audit/`).
 
 | # | Brief | Scope (presentation-only) | Status |
 |---|-------|---------------------------|--------|
-| **P0** | `.planning/BRIEF-P0-thread-shell.md` | Conversation shell (user-turn echo, framed turns) + shared `SkillResultCard` (contains Explore/outlier overflow) + greeting recede + branded loading (extract+reuse `Constellation`). Fixes chat + all 6 skill outputs + broken home in one move. | **ON HOLD** — engine merges first (see note) |
+| **P0** | `.planning/BRIEF-P0-thread-shell.md` | Conversation shell (user-turn echo, framed turns) + shared `SkillResultCard` (contains Explore/outlier overflow) + greeting recede + branded loading (extract+reuse `Constellation`). Fixes chat + all 6 skill outputs + broken home in one move. | **✅ START HERE** — engine merged + integrated |
 | **P2** | `.planning/BRIEF-P2-library.md` | `/library`: segmented filter + per-type counts, skeleton loading, designed empty state (constellation + CTA), card/grid polish, neutral launch CTA. Respects the LOCKED flat guard (no folders/tags). Reuses P0 loading. | After P0 |
-| **P1** | *(not yet written)* | Audience surface: flagship CRUD-list → rich persona cards. **BLOCKED** — depends on the new persona/signature shape from the engine track; draft only after `rework/engine-core` merges + rebase. | Blocked |
+| **P1** | `.planning/BRIEF-P1-audience.md` | Audience surface: flagship CRUD-list → rich persona cards (signature data: persona count/archetype/temperature + constellation). | **✅ Unblocked** — engine merged; run after/parallel to P0 |
+| **T** | recolor test reconciliation | **5 suite failures** (pre-existing recolor debt, NOT engine): color-assertion tests still expect retired *coral* — `reading/persona-cloud` (worst-cluster), `board/verdict/{verdict-viz FactorBars, AntiViralityHeader}`, `board/content-analysis/ContentAnalysisFrame`, `board/BoardMobile`. Update to the neutral dosage (or confirm intent per "accent=alive only"); the dead `board/*` ones die with the P7 deletion. | Do early — restores green gate |
 | — | minor batch | Chart-recolor verify (funnel terracotta), mobile/responsive, settings `text-white` → token. Fold into `/design-check`; batch later. | Low pri |
 
 **Two-lane contract (engine-rework runs in parallel):** stay in `src/components/**` + `app/(app)/**`

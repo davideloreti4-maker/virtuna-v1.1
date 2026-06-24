@@ -5,14 +5,13 @@
 > **Prereq:** the recolor commit (`923183a3 fix(ui): subtract accent flood`) must be **merged**
 > into `design/ui-restrained` first. Build forward from that base, not from the bare branch.
 >
-> **⛔ ON HOLD until engine-rework merges (2026-06-24).** The engine track (`rework/engine-core`,
-> finishing) modified `composer.tsx` (+35) and `home-page-layout.tsx` (+34/−24) in commit `8c9f4111`
-> — the two core files this brief rewrites. They WILL conflict. **Do not execute P0 until
-> `rework/engine-core` merges to main; then rebase `design/ui-restrained` on main and restart P0 off
-> that.** Engine already replaced the fixed-18vh anchor with a **greeting-collapse-to-top + two-layout
-> split** on `hasThread` — that is the new baseline to BUILD ON (it already does part of item C below),
-> not to fight. The net-new pieces (A `ThreadShell`, B `SkillResultCard`, D loading + `Constellation`
-> extraction) are conflict-free and can be drafted earlier; only the composer/home WIRING waits.
+> **✅ UNBLOCKED — ready to start (2026-06-24).** Engine-rework merged to main (PR #24 `158a4aea`)
+> and is **integrated into `design/ui-restrained`** (merge `f450b268`). The contested files are
+> reconciled: `composer.tsx` carries engine's audience-signature wiring + the recolor's neutral colors;
+> `home-page-layout.tsx` now uses engine's **greeting-collapse-to-top + two-layout split** on
+> `hasThread`. **Build item C (greeting recede) ON TOP of that — engine already does the collapse; P0
+> refines it into the thread shell, doesn't replace it.** Branch is even with main; just rebase your
+> leaf PR branch on `origin/main` before the PR as usual.
 
 ---
 
