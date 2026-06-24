@@ -131,7 +131,6 @@ describe("runIdeasPipeline (runner)", () => {
         past_wins: null,
         past_flops: null,
         target_platforms: ["tiktok"],
-        user_id: "user-123",
       },
     });
 
@@ -413,7 +412,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
     });
 
     expect(pinPredictedSignature).toHaveBeenCalledTimes(1);
-    expect((pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0][2]).toEqual({
+    expect((pinPredictedSignature as ReturnType<typeof vi.fn>).mock.calls[0]![2]).toEqual({
       audienceId: null,
       analysisId: null,
     });

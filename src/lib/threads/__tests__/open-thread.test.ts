@@ -77,7 +77,7 @@ describe("createOpenThreadLazy", () => {
     expect(result).toEqual(row);
     expect(chain.insert).toHaveBeenCalledTimes(1);
     // insert should set type:"open" and reading_id:null
-    const insertArg = chain.insert.mock.calls[0][0];
+    const insertArg = chain.insert.mock.calls[0]![0];
     expect(insertArg.type).toBe("open");
     expect(insertArg.reading_id).toBeNull();
     expect(insertArg.user_id).toBe(USER_A);

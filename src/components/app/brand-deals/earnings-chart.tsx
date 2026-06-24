@@ -26,7 +26,7 @@ function EarningsTooltip({
   active,
   payload,
   label,
-}: TooltipContentProps<number, string>): React.JSX.Element | null {
+}: TooltipContentProps): React.JSX.Element | null {
   if (!active || !payload?.length) return null;
 
   return (
@@ -40,7 +40,7 @@ function EarningsTooltip({
     >
       <p className="text-xs text-foreground-muted">{label}</p>
       <p className="text-sm font-semibold text-foreground">
-        {formatCurrency(payload[0].value ?? 0)}
+        {formatCurrency(Number(payload[0]?.value ?? 0))}
       </p>
     </div>
   );

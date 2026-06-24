@@ -61,21 +61,21 @@ describe("FlashResultSchema", () => {
 
   it("rejects a quote that is empty string", () => {
     const personas = make10Personas();
-    personas[0] = { ...personas[0], quote: "" };
+    personas[0] = { ...personas[0]!, quote: "" };
     const result = FlashResultSchema.safeParse({ personas });
     expect(result.success).toBe(false);
   });
 
   it("rejects a quote longer than 160 characters", () => {
     const personas = make10Personas();
-    personas[0] = { ...personas[0], quote: "x".repeat(161) };
+    personas[0] = { ...personas[0]!, quote: "x".repeat(161) };
     const result = FlashResultSchema.safeParse({ personas });
     expect(result.success).toBe(false);
   });
 
   it("accepts a quote that is exactly 160 characters", () => {
     const personas = make10Personas();
-    personas[0] = { ...personas[0], quote: "x".repeat(160) };
+    personas[0] = { ...personas[0]!, quote: "x".repeat(160) };
     const result = FlashResultSchema.safeParse({ personas });
     expect(result.success).toBe(true);
   });

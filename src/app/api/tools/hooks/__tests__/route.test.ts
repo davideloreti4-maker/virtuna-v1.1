@@ -186,7 +186,7 @@ describe("POST /api/tools/hooks (SSE route)", () => {
 
     // insertMessage called once with blocks array + kcGenVersion
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(threadId).toBe("thread-hooks-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
@@ -406,7 +406,7 @@ describe("POST /api/tools/ideas/develop (REPLACED placeholder — real Hooks gen
 
     // insertMessage called once with hook-card blocks (NOT the placeholder markdown)
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(threadId).toBe("thread-develop");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
@@ -469,7 +469,7 @@ describe("POST /api/tools/ideas/develop (REPLACED placeholder — real Hooks gen
 
     // runHooksPipeline MUST have been called (D-07 real generation, not placeholder)
     expect(runHooksPipeline).toHaveBeenCalledTimes(1);
-    const [pipelineInput] = (runHooksPipeline as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [pipelineInput] = (runHooksPipeline as ReturnType<typeof vi.fn>).mock.calls[0]!;
     // anchor must be passed through
     expect(pipelineInput.anchor).toBe("an idea");
   });

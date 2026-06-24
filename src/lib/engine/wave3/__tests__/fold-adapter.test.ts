@@ -32,9 +32,9 @@ function makeSegmentReaction(_t_start: number, _t_end: number, attention = 0.8) 
 /** Segment grid matching the 3 reactions in makeFoldResponse (timing source for the adapter). */
 function makeSegments() {
   return [
-    { t_start: 0, t_end: 5, is_hook_zone: true, visual_event: "" },
-    { t_start: 5, t_end: 10, is_hook_zone: false, visual_event: "" },
-    { t_start: 10, t_end: 15, is_hook_zone: false, visual_event: "" },
+    { t_start: 0, t_end: 5, is_hook_zone: true, visual_event: "", audio_event: "" },
+    { t_start: 5, t_end: 10, is_hook_zone: false, visual_event: "", audio_event: "" },
+    { t_start: 10, t_end: 15, is_hook_zone: false, visual_event: "", audio_event: "" },
   ];
 }
 
@@ -65,7 +65,7 @@ function makeSlots() {
     persona_id: `${archetype}_01`,
     slot_type: SLOT_TYPES[i % SLOT_TYPES.length],
     weight: 1 / ARCHETYPES.length,
-  }));
+  })) as unknown as import("../persona-registry").PersonaSlot[];
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +109,6 @@ describe("fold output adapter", () => {
       expect(validSlotTypes).toContain(r.slot_type);
     }
     // The specifically overridden persona must map to "niche", never "niche_deep"
-    expect(pass2Results[0].slot_type).toBe("niche");
+    expect(pass2Results[0]!.slot_type).toBe("niche");
   });
 });

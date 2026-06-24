@@ -14,6 +14,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { runEngineOnTrainingVideo, type BlindEnginePrediction } from "./predict";
 import type { Niche } from "../corpus/eval-config";
+import type { Database } from "@/types/database.types";
 
 const log = createLogger({ module: "learning/predict-sweep" });
 
@@ -107,7 +108,7 @@ export async function runPredictSweep(
       const update = buildPredictedUpdate(prediction, nowIso());
       const { error: upErr } = await supabase
         .from("engine_training_videos")
-        .update(update)
+        .update(update as Database["public"]["Tables"]["engine_training_videos"]["Update"])
         .eq("id", row.id);
       if (upErr) throw new Error(upErr.message);
       predicted++;

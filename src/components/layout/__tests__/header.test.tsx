@@ -153,8 +153,8 @@ describe("<Header>", () => {
         panel.querySelectorAll<HTMLElement>("a[href], button")
       );
       expect(focusables.length).toBeGreaterThan(1);
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
 
       // Park focus on the last focusable, then Tab — focus must wrap to the first
       // and never escape the panel container.
