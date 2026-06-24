@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
  * Phase 2.5 — sidebar-store tests
  *
  * Covers:
- * - Initial state (isOpen: true, isCollapsed: false)
+ * - Initial state (isOpen: false, isCollapsed: false)
  * - toggle / open / close
  * - toggleCollapsed / setCollapsed (new in plan 2.5)
  * - State independence (collapsed does not affect open)
@@ -30,19 +30,19 @@ beforeEach(() => {
 });
 
 describe("sidebar-store — open/close", () => {
-  it("initial state: isOpen=true, isCollapsed=false", async () => {
+  it("initial state: isOpen=false, isCollapsed=false", async () => {
     const { useSidebarStore } = await import("@/stores/sidebar-store");
     const state = useSidebarStore.getState();
-    expect(state.isOpen).toBe(true);
+    expect(state.isOpen).toBe(false);
     expect(state.isCollapsed).toBe(false);
   });
 
   it("toggle() flips isOpen", async () => {
     const { useSidebarStore } = await import("@/stores/sidebar-store");
     useSidebarStore.getState().toggle();
-    expect(useSidebarStore.getState().isOpen).toBe(false);
-    useSidebarStore.getState().toggle();
     expect(useSidebarStore.getState().isOpen).toBe(true);
+    useSidebarStore.getState().toggle();
+    expect(useSidebarStore.getState().isOpen).toBe(false);
   });
 
   it("open() sets isOpen=true", async () => {
@@ -113,17 +113,17 @@ describe("sidebar-store — persistence (WR-02)", () => {
     expect(persisted.state.isCollapsed).toBe(true);
   });
 
-  it("a rehydrated store defaults isOpen back to true even if a prior session left it false", async () => {
+  it("a rehydrated store defaults isOpen back to false even if a prior session left it open", async () => {
     // Simulate a stale persisted blob that (under the old bug) carried isOpen.
     mockStorage["virtuna-sidebar"] = JSON.stringify({
-      state: { isOpen: false, isCollapsed: true },
+      state: { isOpen: true, isCollapsed: true },
       version: 0,
     });
     vi.resetModules();
     const { useSidebarStore } = await import("@/stores/sidebar-store");
     const state = useSidebarStore.getState();
-    // isOpen is NOT in partialize → rehydrate ignores the stale value, keeps default true.
-    expect(state.isOpen).toBe(true);
+    // isOpen is NOT in partialize → rehydrate ignores the stale value, keeps default false.
+    expect(state.isOpen).toBe(false);
     // isCollapsed IS persisted → rehydrates from the stored blob.
     expect(state.isCollapsed).toBe(true);
   });
