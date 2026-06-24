@@ -95,8 +95,9 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | S1 | 🟠 | `script` + `remix` build SIM panel without `resolveNicheKey` → niche-blind "all Mixed" reactions. FIX: both now route through shared `buildReactionPanel(profileRow, audience)` (resolveNicheKey + byte-identical repaint), matching hooks/ideas. tsc clean, runner suites 26/26, audience-regression gate green. | script-runner:273, remix-runner:209 | FIXED (working tree) |
 | S2 | 🟠 | **FIXED — follow-up chat now streams AFTER `done`.** Was: the follow-up Qwen turn ran synchronously BEFORE `send("done")` in the ideas/hooks/script/refine SSE routes, holding the stream open + the client in `isStreaming` (progress checklist spinning, composer locked, follow-up itself un-renderable) for the seconds the reasoning call takes. FIX (2 coordinated halves): (1) routes emit `done` immediately after cards persist, then run the follow-up + emit `followup` on the still-open SSE; (2) the 3 client stream hooks flip `isStreaming=false` on `done` (decoupled from stream-close) — the read loop keeps consuming until the server closes, so `followup` still lands + renders inline (`followupText && !isStreaming`). Remix left as-is (its route emits no follow-up). +ordering regression test (`done` precedes `followup`). | ideas/hooks/script/refine routes + use-{ideas,hooks,script}-stream | FIXED (working tree) |
 | S3 | 🟢 | 8-call SIM fan-out → collapse to one batched simulation call (eval-gated) | `gateHooks` / `runFlashTextMode` | OPEN |
-| S4 | 🟢 | Dead `flashRunner` / `ToolRunner` / `dispatchToolOutput` scaffolding (~200 LOC) | `flash-runner.ts` | OPEN |
+| S4 | 🟢 | **CUT — the never-wired ToolRunner/dispatch scaffolding is gone.** The 4 generative runners call `runFlashTextMode` + `aggregateFlash` directly; nothing ever used the `flashRunner` const, `runFlashRunner`, `mapFlashResultToBlocks`, or `dispatchToolOutput`. Deleted `tools/tool-runner.ts` (`ToolRunner` + `dispatchToolOutput`) + its test; gutted `flash-runner.ts` down to the one live export (`pinPredictedSignature` + pin-context types) and **renamed it `predicted-pin.ts`** to match its sole purpose (its test was already `predicted-pin.test.ts`). Updated import paths in the 4 runners + 4 runner tests + predicted-pin.test.ts; fixed stale `ToolRunner`/`flash-runner` comments in `assembler.ts`, `composer-controls.tsx`, `blocks.ts`, `block-registry.ts`, `messages.ts`. Net ~−290 LOC. | `predicted-pin.ts` (was flash-runner.ts), `tool-runner.ts` (deleted) | FIXED (working tree) |
 | S5 | 🟡→🟢 | **DELETED — rubric critic was OFF by default + ~100% fail.** Removed `rubric-critic.ts` (255 LOC) + its test + the obsolete `best-of-n.test.ts` (399 LOC, all critic-specific). Collapsed the dual-branch combined gate in ideas/hooks runners to band-only (`band !== "Weak"`, KCQ-05) — dropped `criticEnabled`/`PASS_VERDICT`/the SIM+critic Promise.all pair/`abstained`+`abstainedKept` warning. `predictedFailureMode` card field kept (nullable, now always null) so persisted blocks + UI stay valid. Net −916 LOC. | `flash/rubric-critic.ts` (deleted), ideas/hooks runners | FIXED (working tree) |
+| S6 | 🟢 | **Surfaced by the S4 cut:** `assertBlocksInRegistry` (block-registry.ts) now has NO production caller — its only consumer was the deleted `dispatchToolOutput` structured-output boundary. The live block guard is `validateBlock` (message rehydration) + per-block `safeParse` in the runners. Retained for now (well-tested registry-subset guard, defensibly re-usable; cutting it cascades into 4 block test files). Decide: re-wire as a runner-side guard, or cut + fold its coverage into the block-schema tests. | `block-registry.ts` | OPEN |
 
 ## The Read — video pipeline (§04)
 
@@ -154,6 +155,25 @@ _(move items here with FIXED sha as they land)_
   (64=64 baseline) · eslint clean (touched src + test) · full suite **3020 pass / 0 fail / 28 skip**
   (3019 baseline + 1 new) · ENGINE_VERSION 3.19.0 untouched. **Deferred:** live browser UX
   confirmation (real Qwen spend) — behavior is deterministically test-locked.
+### 2026-06-24 — S4 cut the never-wired ToolRunner/dispatch scaffolding (working tree)
+- **S4 FIXED — removed the dead `ToolRunner`/`dispatchToolOutput`/`flashRunner` abstraction.**
+  Grounded the cut first: the 4 generative runners import ONLY `pinPredictedSignature` +
+  `RunnerPinContext` from `flash-runner.ts`; `flashRunner` (the `ToolRunner<FlashOutput>` const),
+  `runFlashRunner`, and `mapFlashResultToBlocks` had ZERO non-test/non-def consumers, and once
+  `flashRunner` is gone `tools/tool-runner.ts` (`ToolRunner` + `dispatchToolOutput`, 122 LOC) loses
+  its only prod consumer (the runners call `runFlashTextMode` + `aggregateFlash` directly).
+- **Deleted** `tools/tool-runner.ts` + `tools/__tests__/tool-runner.test.ts`. **Gutted**
+  `flash-runner.ts` to its one live export and **renamed → `runners/predicted-pin.ts`** (the test
+  was already named `predicted-pin.test.ts` — the rename just makes the home honest; a file called
+  "flash-runner" with no runner in it is exactly the misleading residue the dissection targets).
+- **Rewired** the `./flash-runner` import in all 4 runners + the path in 4 runner tests +
+  predicted-pin.test.ts; fixed now-false `ToolRunner`/`flash-runner` comments in `assembler.ts`,
+  `composer-controls.tsx`, `blocks.ts`, `block-registry.ts`, `messages.ts`.
+- **New finding logged (S6):** `assertBlocksInRegistry` is now caller-less in prod (was called by
+  the deleted `dispatchToolOutput`). Left in place (well-tested guard) + flagged for a decision.
+- **Verify:** tsc net-zero (64=64 baseline — no new errors) · eslint clean (touched src) · full
+  suite **3025 pass / 0 fail / 28 skip** (baseline minus the ~6 intentionally-deleted tool-runner
+  tests; zero failures) · net ~−290 LOC · ENGINE_VERSION 3.19.0 untouched.
 
 ### 2026-06-24 — A5 nudge reconcile + dead CI workflow removed (working tree)
 - **A5 RESOLVED — flywheel nudge reconciled to 0.05 (code canonical).** The discrepancy was a

@@ -63,8 +63,8 @@ export interface HydratedMessage {
  * message row with body = blocks array.
  *
  * Throws if any block fails validation — the caller must only pass
- * registry-valid blocks (tool-runner boundary enforces this via
- * assertBlocksInRegistry; insertMessage is the belt-and-suspenders check).
+ * registry-valid blocks (the runners validate via per-block safeParse at the
+ * build boundary; insertMessage is the belt-and-suspenders check).
  *
  * Uses createServiceClient: the caller is responsible for verifying thread
  * ownership before invoking this (e.g. verify readingId belongs to the

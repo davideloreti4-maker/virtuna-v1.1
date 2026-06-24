@@ -30,10 +30,10 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
-// The runner imports it from flash-runner; mock the leaf so we assert the call
-// (personas + ctx) without touching the outcome repo. Other flash-runner exports
-// are unused by ideas-runner, so a partial mock is safe.
-vi.mock("@/lib/tools/runners/flash-runner", () => ({
+// The runner imports it from predicted-pin; mock the leaf so we assert the call
+// (personas + ctx) without touching the outcome repo. The module's only other
+// exports are the pin-context types, so a partial mock is safe.
+vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: vi.fn().mockResolvedValue(true),
 }));
 
@@ -350,7 +350,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
   it("pins the lead idea's personas with the run's audience_id + analysis_id", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
@@ -387,7 +387,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
   it("pins audience_id null for a General audience", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
@@ -422,7 +422,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
   it("does NOT pin when no pin context is passed", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {

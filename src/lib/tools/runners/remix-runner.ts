@@ -49,7 +49,7 @@ import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
-import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
+import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Input / Output types ─────────────────────────────────────────────────────
 

@@ -63,7 +63,7 @@ import { IdeaCardBlockSchema } from "@/lib/tools/blocks";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
+import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ const IDEA_BUFFER = 5;
 /** Max survivors to keep after gating (D-13). */
 const MAX_SURVIVORS = 3;
 
-/** Generation call timeout (mirrors flash-runner; ideas generate is heavier). */
+/** Generation call timeout (mirrors hooks-runner; ideas generate is heavier). */
 const GENERATE_TIMEOUT_MS = 300_000;
 
 /**

@@ -51,7 +51,7 @@ import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
-import { pinPredictedSignature, type RunnerPinContext } from "./flash-runner";
+import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

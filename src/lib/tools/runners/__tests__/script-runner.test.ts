@@ -30,7 +30,7 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
-vi.mock("@/lib/tools/runners/flash-runner", () => ({
+vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: vi.fn().mockResolvedValue(true),
 }));
 
@@ -395,7 +395,7 @@ describe("runScriptPipeline — FLYWHEEL-02 predicted pin", () => {
   it("pins the opener's personas with the run's audience_id + analysis_id", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
@@ -432,7 +432,7 @@ describe("runScriptPipeline — FLYWHEEL-02 predicted pin", () => {
   it("pins audience_id null for a General audience", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
@@ -467,7 +467,7 @@ describe("runScriptPipeline — FLYWHEEL-02 predicted pin", () => {
   it("does NOT pin when no pin context is passed", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { pinPredictedSignature } = await import("@/lib/tools/runners/flash-runner");
+    const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
