@@ -43,7 +43,7 @@ import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
-import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
@@ -136,13 +136,14 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
   // ── STEER (08-04 / AUD-STEER + REMIX-01): audience-grounding + niche + repaint ──
   // buildAudienceGroundingLine delegates to buildGroundingLine for General/null (no-op).
-  // resolveAudienceWeights([]) / is_general → DEFAULT mix (no analysis_override injected).
   const isCalibrated = Boolean(audience && !audience.is_general);
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
   void groundingLine; // grounding folds into the adapt niche + card steer tag below
 
-  const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
-  void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
+  // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
+  // General / null / no-override → undefined → flat band (byte-identical, regression gate).
+  // Calibrated audience → per-slot persona_weights bias the weighted stop-MASS band gate.
+  const flashWeighting = buildFlashWeighting(audience ?? null);
 
   // S1 fix: shared buildReactionPanel resolves niche via resolveNicheKey (was raw
   // niche_primary at the gate → exact-slug miss → niche-blind "all Mixed"). Matches
@@ -228,7 +229,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     }
 
     const personas = simResult.result.personas;
-    const { band, fraction } = aggregateFlash(personas);
+    const { band, fraction } = aggregateFlash(personas, flashWeighting);
     const scrollQuote = selectLeadScrollQuote(personas);
 
     // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
