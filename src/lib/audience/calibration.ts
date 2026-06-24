@@ -1,34 +1,48 @@
 /**
- * Phase 7 Plan 03 — Calibration pipeline (AUD-02).
+ * §P BUILD step 4 — Calibration pipeline (real AudienceSignature).
  *
- * Turns a handle (Personal) or description (Target) into a persisted, goal-biased Audience.
+ * Turns a handle (Personal) or description/reference (Target) into a persisted, REAL
+ * audience: ONE `tiktok-profile-scraper` bundle → omni-flash enrichment → frozen
+ * `AudienceSignature` on the row (§P.1 bake-once). Replaces the old constant
+ * `deriveAudienceProfile` + static `repaintPersonas` weight bias (F1 / P-5: reality first).
  *
- * Honesty spine (D-06 / Pitfall 3):
- *   - An explicit thin-data gate (getFollowerTier === null AND videos < THIN_MIN_VIDEOS)
- *     returns { fallback: 'general', reason: 'thin' } — NEVER fabricates personas.
- *   - A scrape error returns { error: 'scrape_failed' } — distinct from the thin fallback.
- *     UI-SPEC distinguishes "couldn't read enough" vs "calibration failed".
+ * Paths (§P.4):
+ *   - Personal: scrape own account; if thin → niche fallback (NOT a dead-end to General).
+ *   - Target:   profile-first (scrape the named/reference handle) → else niche search.
  *
- * Goal bias (Pitfall 2):
- *   - biasForGoalIntent(goalIntent) is applied ONCE at calibration time and stored on the row.
- *   - The resolver NEVER re-applies the bias per-request.
+ * Honesty spine (D-06): scrape error → { error:'scrape_failed' }; only when BOTH the
+ * account AND the niche fallback are too thin → { fallback:'general', reason:'thin' }.
+ * Never fabricates an audience from nothing.
  *
- * Exports: THIN_MIN_VIDEOS, deriveAudienceProfile, calibrateFromScrape
+ * Determinism (P.7): enrichment runs temp 0 + seed once; the output is frozen on the row.
+ * General/presets never reach this module → regression gate free by construction (D-17).
+ *
+ * Back-compat: the row's legacy `profile` + `personas` (CalibratedPersona[]) + 4 weight
+ * cols are ALSO populated (mapped from the signature) so existing consumers keep working;
+ * the new `signature` + `creator_persona` columns are the source of truth going forward.
+ *
+ * Exports: THIN_MIN_VIDEOS, deriveAudienceProfile (legacy), calibrateFromScrape
  */
 
 import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
-import type { ProfileData, VideoData } from "@/lib/scraping/types";
+import { normalizeHandle } from "@/lib/schemas/competitor";
+import type { ProfileData, VideoData, ProfileBundle } from "@/lib/scraping/types";
 import { getFollowerTier } from "@/lib/engine/corpus/follower-tier";
-import { biasForGoalIntent } from "./goal-intent";
-import { repaintPersonas } from "./persona-repaint";
 import { TEMPERATURE_DISPOSITION } from "./temperature-disposition";
 import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 import type { Archetype } from "@/lib/engine/wave3/persona-registry";
+import {
+  enrichSignature,
+  type EnrichInput,
+  type EnrichDeps,
+} from "./enrich-signature";
 import type {
   Audience,
   AudienceProfile,
   AudienceType,
   AudiencePlatform,
+  AudienceSignature,
+  CalibratedPersona,
   GoalIntent,
   Temperature,
   Disposition,
@@ -37,31 +51,19 @@ import type {
 // ─── Thin-data gate constant ──────────────────────────────────────────────────
 
 /**
- * Minimum number of scraped videos required to proceed with calibration.
- * Chosen strict (10) to avoid building an audience profile from a handful of posts.
- * See Assumptions A4 in 07-RESEARCH.md.
- *
- * Both conditions must be true for the thin gate to fire:
- *   1. getFollowerTier(followerCount) === null (followerCount missing or 0)
- *   2. scrapeVideos returned < THIN_MIN_VIDEOS
+ * Minimum number of scraped videos required to enrich honestly. Both the account AND
+ * the niche fallback must fall below this (with no follower tier) before we degrade to
+ * General — otherwise we niche-fallback rather than dead-end (§P.4).
  */
 export const THIN_MIN_VIDEOS = 10;
 
-// ─── Audience Profile derivation ──────────────────────────────────────────────
+// ─── Legacy AudienceProfile derivation (kept for its unit tests; NOT the F1 source) ──
 
 /**
- * Derive an AudienceProfile from scraped signals.
- * Purely deterministic given (profile, videos) — no external calls.
- *
- * temperature_mix: derived from the TEMPERATURE_DISPOSITION lens applied to the
- *   DEFAULT_PERSONA_WEIGHT_CONFIG (cold/warm/hot proportions). This is profile-agnostic
- *   in v1 — the DEFAULT_PERSONA_WEIGHT_CONFIG is used since calibrated weights are computed
- *   from the goalIntent bias. The profile provides the follower_tier signal.
- *
- * top_dispositions: derived from the 10 archetypes, ranked by DEFAULT weight then
- *   aggregated by disposition. Top 3 returned.
- *
- * follower_tier: getFollowerTier(followerCount) — null when count unavailable.
+ * @deprecated The real audience now comes from `enrichSignature` (engagement-derived).
+ * This constant-lens derivation is retained only for its existing unit tests and is no
+ * longer called by calibration. The legacy `profile` field on the row is mapped from the
+ * signature instead (see `profileFromSignature`).
  */
 export function deriveAudienceProfile(
   profile: ProfileData,
@@ -69,9 +71,6 @@ export function deriveAudienceProfile(
 ): AudienceProfile {
   const follower_tier = getFollowerTier(profile.followerCount) ?? null;
 
-  // Temperature mix: aggregate temperature fractions from the DEFAULT 10-archetype distribution.
-  // Each archetype has an equal 0.1 weight in the DEFAULT distribution (10 archetypes, sum=1.0).
-  // This is the baseline profile — weight bias gets applied via biasForGoalIntent at calibration.
   const temperatureCounts: Record<Temperature, number> = { cold: 0, warm: 0, hot: 0 };
   for (const archetype of ARCHETYPES) {
     const { temperature } = TEMPERATURE_DISPOSITION[archetype as Archetype];
@@ -84,160 +83,260 @@ export function deriveAudienceProfile(
     hot: temperatureCounts.hot / total,
   };
 
-  // Top dispositions: count archetype occurrences per disposition, return top 3
   const dispositionCounts: Partial<Record<Disposition, number>> = {};
   for (const archetype of ARCHETYPES) {
     const { disposition } = TEMPERATURE_DISPOSITION[archetype as Archetype];
     dispositionCounts[disposition] = (dispositionCounts[disposition] ?? 0) + 1;
   }
+  const top_dispositions = (Object.entries(dispositionCounts) as [Disposition, number][])
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([d]) => d);
 
-  const top_dispositions = (
-    Object.entries(dispositionCounts) as [Disposition, number][]
-  )
+  return { temperature_mix, top_dispositions, follower_tier };
+}
+
+// ─── Signature → legacy back-compat mappers ──────────────────────────────────────
+
+/** Map the signature's reactors → legacy CalibratedPersona[] (repaint = reaction_frame). */
+function personasFromSignature(sig: AudienceSignature): CalibratedPersona[] {
+  return sig.audience.personas.map((p) => ({
+    archetype: p.archetype,
+    repaint: p.reaction_frame,
+    temperature: p.temperature,
+    disposition: p.disposition,
+    share: p.share,
+  }));
+}
+
+/** Map the signature → legacy AudienceProfile (real temperature_mix + top dispositions). */
+function profileFromSignature(sig: AudienceSignature): AudienceProfile {
+  const byDisposition: Partial<Record<Disposition, number>> = {};
+  for (const p of sig.audience.personas) {
+    byDisposition[p.disposition] = (byDisposition[p.disposition] ?? 0) + p.share;
+  }
+  const top_dispositions = (Object.entries(byDisposition) as [Disposition, number][])
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([d]) => d);
 
   return {
-    temperature_mix,
+    temperature_mix: sig.audience.temperature_mix,
     top_dispositions,
-    follower_tier,
+    follower_tier: sig.audience.follower_tier,
   };
 }
 
-// ─── Calibration input types ──────────────────────────────────────────────────
+// ─── Input / result types ────────────────────────────────────────────────────────
 
 export interface CalibrationInput {
-  /** @handle for Personal audiences (required for scrape). */
+  /** @handle — required for Personal; optional reference profile for Target. */
   handle?: string;
-  /** Audience type — 'personal' triggers scrape, 'target' is description-only. */
   type: AudienceType;
-  /** Platform (tiktok/instagram/youtube/custom). */
   platform: AudiencePlatform;
-  /** Creator's goal intent (deterministic weight bias). */
   goalIntent: GoalIntent;
-  /** Display name for the audience. */
   name: string;
-  /** Optional description for Target audiences. */
   description?: string;
 }
 
-// ─── Return types ──────────────────────────────────────────────────────────────
+/** Injection points for tests — defaults wire to the real Apify + enrichment stack. */
+export interface CalibrationDeps {
+  scrapeBundle?: (handle: string, limit?: number) => Promise<ProfileBundle>;
+  scrapeNiche?: (query: string, limit?: number) => Promise<VideoData[]>;
+  enrich?: (input: EnrichInput, deps?: EnrichDeps) => Promise<AudienceSignature>;
+}
 
-/** Thin fallback — scrape succeeded but data too sparse to calibrate honestly. */
 export interface CalibrationFallback {
   fallback: "general";
   reason: "thin";
 }
-
-/** Scrape error — network failure or Apify actor crash. Distinct from thin fallback. */
 export interface CalibrationError {
   error: "scrape_failed";
   message?: string;
 }
-
-/** Successful calibration — Audience-shaped object (no id — repo assigns). */
-export interface CalibrationSuccess {
-  audience: Omit<Audience, "id" | "created_at" | "updated_at">;
+/**
+ * Lightweight "it's real" reveal payload (§P.5) — the actual scraped account + its top
+ * posts by engagement, shown on the reveal screen as proof. Derived from the scrape; never
+ * fabricated. Empty `posts` on the niche/target-no-handle path (no single account).
+ */
+export interface RevealData {
+  profile: {
+    handle: string;
+    displayName: string;
+    bio: string;
+    avatarUrl: string;
+    verified: boolean;
+    followerCount: number;
+    heartCount: number;
+    videoCount: number;
+  };
+  posts: Array<{ plays: number; saveRate: number; shareRate: number; caption: string }>;
 }
 
+export interface CalibrationSuccess {
+  audience: Omit<Audience, "id" | "created_at" | "updated_at">;
+  /** Reveal showcase (§P.5) — present on the account-scrape path; posts empty for niche. */
+  reveal?: RevealData;
+}
 export type CalibrationResult =
   | CalibrationSuccess
   | CalibrationFallback
   | CalibrationError;
 
-// ─── Main calibration function ─────────────────────────────────────────────────
+// ─── Helpers ───────────────────────────────────────────────────────────────────
+
+/** A bundle is "thin" when there's no follower tier AND too few videos to read. */
+function isThin(profile: ProfileData, videos: VideoData[]): boolean {
+  return getFollowerTier(profile.followerCount) === null && videos.length < THIN_MIN_VIDEOS;
+}
+
+/** Derive a niche search query from hashtags → bio → name (for the fallback path). */
+function nicheQuery(profile: ProfileData, videos: VideoData[], name: string, description?: string): string {
+  const tags = [...new Set(videos.flatMap((v) => v.hashtags))].filter(Boolean).slice(0, 3);
+  if (tags.length) return tags.join(" ");
+  const text = (description ?? profile.bio ?? name).trim();
+  return text.split(/\s+/).slice(0, 5).join(" ");
+}
+
+/** A synthetic profile for niche/target paths that have no single scraped account. */
+function syntheticProfile(name: string, handle: string | undefined, description: string | undefined, videos: VideoData[]): ProfileData {
+  return {
+    handle: handle ?? normalizeHandle(name),
+    displayName: name,
+    bio: description ?? "",
+    avatarUrl: "",
+    verified: false,
+    followerCount: 0,
+    followingCount: 0,
+    heartCount: 0,
+    videoCount: videos.length,
+  };
+}
+
+// ─── Main calibration ──────────────────────────────────────────────────────────
 
 /**
- * Calibrate an audience from a handle (Personal) or description (Target).
- *
- * Personal path:
- *   1. Scrape profile + videos via ApifyScrapingProvider.
- *   2. Apply thin gate (D-06): getFollowerTier === null AND videos < THIN_MIN_VIDEOS → fallback.
- *   3. Derive AudienceProfile (temp mix, dispositions, follower tier).
- *   4. Bake goal-intent bias into persona_weights (ONCE — Pitfall 2).
- *   5. Repaint 10 personas (deterministic).
- *   6. Return CalibrationSuccess { audience } — caller persists via createAudience.
- *
- * Target path (no scrape):
- *   1. Derive a profile from the description (no Apify call).
- *   2. Apply goal bias + repaint.
- *   3. Return CalibrationSuccess.
- *
- * Never throws — all errors are typed returns.
- *
- * @param input CalibrationInput
- * @param _provider Optional ScrapingProvider (injection point for tests)
+ * Calibrate an audience into a real, signature-backed Audience object (no id — caller
+ * persists via createAudience). Never throws — all failures are typed returns.
  */
 export async function calibrateFromScrape(
   input: CalibrationInput,
-  _provider?: {
-    scrapeProfile(handle: string): Promise<ProfileData>;
-    scrapeVideos(handle: string, limit?: number): Promise<VideoData[]>;
-  },
+  deps: CalibrationDeps = {},
 ): Promise<CalibrationResult> {
   const { handle, type, platform, goalIntent, name, description } = input;
 
-  let profile: ProfileData | null = null;
-  let videos: VideoData[] = [];
+  const scrapeBundle =
+    deps.scrapeBundle ?? ((h: string, limit?: number) => new ApifyScrapingProvider().scrapeProfileBundle(h, limit));
+  const scrapeNiche =
+    deps.scrapeNiche ?? ((q: string, limit?: number) => new ApifyScrapingProvider().scrapeVideos(q, limit ?? 20, "search"));
+  const enrich = deps.enrich ?? enrichSignature;
 
-  // ── Personal path: scrape ──────────────────────────────────────────────────
-  if (type === "personal") {
-    if (!handle) {
-      return { error: "scrape_failed", message: "handle required for personal audience" };
+  // Resolved by the path below into { profile, videos, subCoverage, source, scrapedHandle }.
+  let profile: ProfileData;
+  let videos: VideoData[];
+  let subCoverage: string;
+  let source: "scrape" | "niche";
+  let scrapedHandle: string | undefined;
+
+  try {
+    // ── Profile-first: Personal always, Target when a reference handle is given ──
+    if (handle) {
+      const bundle = await scrapeBundle(handle);
+
+      if (isThin(bundle.profile, bundle.videos)) {
+        // Thin account → niche fallback (§P.4 — never dead-end to General yet).
+        const query = nicheQuery(bundle.profile, bundle.videos, name, description);
+        const nicheVideos = query ? await scrapeNiche(query) : [];
+        if (nicheVideos.length < THIN_MIN_VIDEOS) {
+          return { fallback: "general", reason: "thin" }; // both too thin → honest General
+        }
+        profile = syntheticProfile(name, handle, description, nicheVideos);
+        videos = nicheVideos;
+        subCoverage = "0/0";
+        source = "niche";
+        scrapedHandle = handle;
+      } else {
+        profile = bundle.profile;
+        videos = bundle.videos;
+        subCoverage = bundle.subCoverage;
+        source = "scrape";
+        scrapedHandle = bundle.profile.handle || handle;
+      }
+    } else {
+      // ── Target with no reference handle → niche search from the description ──
+      const query = nicheQuery(
+        { bio: description ?? "" } as ProfileData,
+        [],
+        name,
+        description,
+      );
+      const nicheVideos = query ? await scrapeNiche(query) : [];
+      if (nicheVideos.length < THIN_MIN_VIDEOS) {
+        return { fallback: "general", reason: "thin" };
+      }
+      profile = syntheticProfile(name, undefined, description, nicheVideos);
+      videos = nicheVideos;
+      subCoverage = "0/0";
+      source = "niche";
     }
-
-    const provider = _provider ?? new ApifyScrapingProvider();
-
-    try {
-      // Parallel scrape (profile + videos) — Apify runs are independent
-      [profile, videos] = await Promise.all([
-        provider.scrapeProfile(handle),
-        provider.scrapeVideos(handle, 30),
-      ]);
-    } catch (err) {
-      // Scrape failure is distinct from thin-data (D-06 / UI-SPEC)
-      return {
-        error: "scrape_failed",
-        message: err instanceof Error ? err.message : "scrape failed",
-      };
-    }
-
-    // ── Thin-data gate (D-06 / Pitfall 3) ─────────────────────────────────
-    // Both conditions required:
-    //   1. Follower count missing/zero → getFollowerTier returns null
-    //   2. Video count below threshold
-    const tier = getFollowerTier(profile.followerCount);
-    if (tier === null && videos.length < THIN_MIN_VIDEOS) {
-      // Honest fallback — NEVER return fabricated personas
-      return { fallback: "general", reason: "thin" };
-    }
+  } catch (err) {
+    return {
+      error: "scrape_failed",
+      message: err instanceof Error ? err.message : "scrape failed",
+    };
   }
 
-  // ── Profile derivation (Personal uses scraped; Target uses a mock profile) ─
-  const scrapeProfile: ProfileData =
-    profile ??
-    ({
-      handle: handle ?? name,
-      displayName: name,
-      bio: description ?? "",
-      avatarUrl: "",
-      verified: false,
-      followerCount: 0,
-      followingCount: 0,
-      heartCount: 0,
-      videoCount: 0,
-    } as ProfileData);
+  // ── Enrich → frozen signature (one-time, temp 0 + seed) ────────────────────────
+  let signature: AudienceSignature;
+  try {
+    signature = await enrich({
+      handle: scrapedHandle ?? normalizeHandle(name),
+      profile,
+      videos,
+      subCoverage,
+      goalIntent,
+    });
+  } catch (err) {
+    return {
+      error: "scrape_failed",
+      message: err instanceof Error ? err.message : "enrichment failed",
+    };
+  }
 
-  const audienceProfile = deriveAudienceProfile(scrapeProfile, videos);
+  // ── Reveal payload (§P.5) — the real account + its top posts by engagement ────────
+  const topPosts = [...videos]
+    .sort((a, b) => {
+      const ea = (a.saves + a.shares) / (a.views > 0 ? a.views : 1);
+      const eb = (b.saves + b.shares) / (b.views > 0 ? b.views : 1);
+      return eb - ea;
+    })
+    .slice(0, 6)
+    .map((v) => {
+      const plays = v.views > 0 ? v.views : 1;
+      return {
+        plays: v.views,
+        saveRate: Number(((v.saves / plays) * 100).toFixed(2)),
+        shareRate: Number(((v.shares / plays) * 100).toFixed(2)),
+        caption: v.caption,
+      };
+    });
+  const reveal: RevealData = {
+    profile: {
+      handle: profile.handle,
+      displayName: profile.displayName,
+      bio: profile.bio,
+      avatarUrl: profile.avatarUrl,
+      verified: profile.verified,
+      followerCount: profile.followerCount,
+      heartCount: profile.heartCount,
+      videoCount: profile.videoCount,
+    },
+    posts: source === "scrape" ? topPosts : [], // niche has no single account to show
+  };
 
-  // ── Goal-intent bias (baked ONCE here — Pitfall 2) ─────────────────────────
-  const persona_weights = biasForGoalIntent(goalIntent);
+  // ── Reality-first weights (P-5): the DERIVED mix becomes the row's 4 weight cols ──
+  const persona_weights = signature.audience.persona_weights;
 
-  // ── Persona repaint (deterministic — stored on row, not generated per-request) ─
-  const personas = repaintPersonas({ audienceProfile, goalIntent, weights: persona_weights });
-
-  // ── Return Audience-shaped object (no id — caller passes to createAudience) ─
   const audience: Omit<Audience, "id" | "created_at" | "updated_at"> = {
     user_id: "", // injected by the route from the session (CR-01)
     name,
@@ -248,15 +347,17 @@ export async function calibrateFromScrape(
     is_general: false,
     is_preset: false,
     persona_weights,
-    personas,
-    profile: audienceProfile,
+    personas: personasFromSignature(signature), // legacy back-compat
+    profile: profileFromSignature(signature), // legacy back-compat
+    creator_persona: signature.creator_persona,
+    signature,
     calibration: {
-      source: type === "personal" ? "scrape" : "description",
-      handle: type === "personal" ? handle : undefined,
-      scraped_at: type === "personal" ? new Date().toISOString() : undefined,
+      source: source === "scrape" ? "scrape" : "description",
+      handle: scrapedHandle,
+      scraped_at: signature.provenance.scraped_at,
       thin: false,
     },
   };
 
-  return { audience };
+  return { audience, reveal };
 }

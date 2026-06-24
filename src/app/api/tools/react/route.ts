@@ -28,8 +28,11 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { goalIntentToLens } from "@/lib/audience/intent-lens";
+import type { IntentLens } from "@/lib/audience/intent-lens";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
@@ -44,6 +47,8 @@ import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 const ReactBodySchema = z.object({
   text: z.string().trim().min(1, "text must be a non-empty thought"),
   framing: z.enum(["hook", "idea"]).optional(),
+  // Per-run reaction lens (GAP-C2 / §P.10) — composer override; absent → audience default.
+  intent: z.enum(["grow", "sell"]).optional(),
 });
 
 // ── Lead scroll-quote selector ─────────────────────────────────────────────────
@@ -70,6 +75,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
+  const guard = csrfGuard(request);
+  if (guard) return guard;
+
   // ── (2) Parse + Zod-validate body (CLAUDE.md boundary) ─────────────────────
   let rawBody: unknown = {};
   try {
@@ -84,7 +93,7 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const { text, framing } = parsed.data;
+  const { text, framing, intent: bodyIntent } = parsed.data;
 
   // ── (3) Load creator profile (cold-start safe — null profile is valid) ─────
   // Same select the ideas route uses; the runtime shape matches ProfileRow.
@@ -116,13 +125,21 @@ export async function POST(request: Request): Promise<Response> {
   // discriminates by niche exactly like a card reaction (RESEARCH Open Q1 / Pitfall 2).
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
+  // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ───────────────────────────
+  // Override wins; else default from goal_intent (4→2). Gated to calibrated audiences only
+  // (General/no-audience → undefined no-op, regression gate). grow is also a no-op in the SIM.
+  const simIntent: IntentLens | undefined =
+    audience && !audience.is_general
+      ? bodyIntent ?? goalIntentToLens(audience.goal_intent)
+      : undefined;
+
   // ── (6) Fire ONE Flash text-mode reaction (whole, no streaming) ────────────
   // default framing "hook" (first-2s "do you stop?" — RESEARCH A1). The client shows
   // "Reading the room…" for the one ~8-17s call. On failure → honest 502 (the client
   // renders the retry copy, never error-red).
   let personas: FlashPersona[];
   try {
-    const { result } = await runFlashTextMode(text, framing ?? "hook", panel, audienceRepaint);
+    const { result } = await runFlashTextMode(text, framing ?? "hook", panel, audienceRepaint, simIntent);
     personas = result.personas;
   } catch {
     return Response.json({ error: "reaction_failed" }, { status: 502 });

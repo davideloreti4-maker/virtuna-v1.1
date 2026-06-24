@@ -14,6 +14,7 @@ import { describe, it, expect } from "vitest";
 import {
   STABLE_FLASH_SYSTEM_PROMPT,
   buildNicheAwareSystemPrompt,
+  buildFlashUserContent,
 } from "../flash-prompts";
 import { NICHE_INSTANTIATION } from "../../wave3/persona-registry";
 import type { ContentTypeSlug } from "../../types";
@@ -106,5 +107,42 @@ describe("buildNicheAwareSystemPrompt — niche panel (D-05)", () => {
     // Both should be valid niche-aware prompts
     expect(withType).toContain("fitness");
     expect(withoutType).toContain("fitness");
+  });
+});
+
+// ─── buildFlashUserContent — intent lens (GAP-C2 / §P.10) ────────────────────────
+// grow/undefined → byte-identical (regression-critical no-op); sell → appends buying lens.
+describe("buildFlashUserContent — intent lens (GAP-C2)", () => {
+  it("undefined intent === grow intent (no-op default)", () => {
+    expect(buildFlashUserContent("hook copy", "hook")).toBe(
+      buildFlashUserContent("hook copy", "hook", "grow"),
+    );
+  });
+
+  it("grow is byte-identical to the pre-intent message (regression gate)", () => {
+    // The pre-intent output had no buying-lens block — assert grow never introduces one.
+    const grow = buildFlashUserContent("hook copy", "hook", "grow");
+    expect(grow).not.toContain("Buying Lens");
+    expect(grow).not.toContain("POTENTIAL BUYER");
+  });
+
+  it("sell appends the buying-lens directive", () => {
+    const sell = buildFlashUserContent("hook copy", "hook", "sell");
+    expect(sell).toContain("Buying Lens");
+    expect(sell).toContain("POTENTIAL BUYER");
+  });
+
+  it("sell is a strict superset of grow (only adds the directive)", () => {
+    const grow = buildFlashUserContent("same text", "idea", "grow");
+    const sell = buildFlashUserContent("same text", "idea", "sell");
+    expect(sell.length).toBeGreaterThan(grow.length);
+    // The content + framing question survive unchanged in the sell variant.
+    expect(sell).toContain("same text");
+  });
+
+  it("sell keeps the verdict tokens (stop/scroll) — no schema drift", () => {
+    const sell = buildFlashUserContent("x", "hook", "sell");
+    expect(sell).toContain('"stop"');
+    expect(sell).toContain('"scroll"');
   });
 });

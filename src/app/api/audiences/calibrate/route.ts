@@ -22,7 +22,7 @@
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { calibrateFromScrape } from "@/lib/audience/calibration";
-import { createAudience } from "@/lib/audience/audience-repo";
+import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -35,6 +35,9 @@ function sanitizeText(s: string): string {
 }
 
 const CalibrateSchema = z.object({
+  // A7: the draft audience the form already created. When present, calibration
+  // UPDATEs this row instead of inserting a second one (no orphan dupe).
+  audienceId: z.string().uuid().optional(),
   handle: z.string().max(50).transform(sanitizeText).optional(),
   type: z.enum(["personal", "target"]),
   platform: z.enum(["tiktok", "instagram", "youtube", "custom"]),
@@ -80,7 +83,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "invalid_calibration_input" }, { status: 400 });
   }
 
-  const { handle, type, platform, goalIntent, name, description } = parsed.data;
+  const { audienceId, handle, type, platform, goalIntent, name, description } = parsed.data;
 
   // ── (3) SSE stream ────────────────────────────────────────────────────────
   const encoder = new TextEncoder();
@@ -136,16 +139,20 @@ export async function POST(request: Request): Promise<Response> {
         }
 
         // ── Success path: persist + emit done ────────────────────────────
-        const { audience: audienceInput } = calibrationResult;
+        const { audience: audienceInput, reveal } = calibrationResult;
 
-        // user_id is injected from session inside createAudience (CR-01)
-        // Pass the calibrated audience data; repo sets user_id from session.
+        // user_id is injected from session inside the repo (CR-01).
+        // A7: if the form already created a draft (audienceId), UPDATE it in place
+        // so calibration enriches the existing row instead of leaving an orphan dupe.
+        // Falls back to insert when no draft id is supplied (back-compat / API callers).
         let persistedAudience;
         try {
-          persistedAudience = await createAudience(supabase, {
-            ...audienceInput,
-            user_id: user.id, // pre-fill for the repo validation step
-          });
+          persistedAudience = audienceId
+            ? await updateAudience(supabase, audienceId, audienceInput)
+            : await createAudience(supabase, {
+                ...audienceInput,
+                user_id: user.id, // pre-fill for the repo validation step
+              });
         } catch {
           // Persist failure is non-fatal in the same style as other routes
           // (the calibration succeeded — best effort persist)
@@ -153,7 +160,8 @@ export async function POST(request: Request): Promise<Response> {
           return;
         }
 
-        send("done", { audience: persistedAudience });
+        // reveal = the "it's real" showcase (§P.5): real scraped account + top posts.
+        send("done", { audience: persistedAudience, reveal });
       } catch (err) {
         send("error", {
           message: err instanceof Error ? err.message : "Calibration failed. Check the handle and try again.",

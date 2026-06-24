@@ -11,7 +11,11 @@
  * and creator-profile (T-04-07 / T-06-14):
  *   1. Content-Type must be exactly `application/json` (415 otherwise) — blocks the
  *      simple-request CSRF vector (form posts cannot set application/json without a
- *      preflight, and a mismatched content-type is rejected outright).
+ *      preflight, and a mismatched content-type is rejected outright). EXEMPT for
+ *      bodyless `DELETE`: DELETE is a non-simple method (always CORS-preflighted
+ *      cross-origin) and carries no body, so requiring application/json on it adds zero
+ *      CSRF protection while 415-ing legitimate bodyless deletes. The Origin check (2)
+ *      still guards DELETE.
  *   2. If an `Origin` header is present, it must match the request's own origin
  *      (403 otherwise) — blocks cross-origin fetch/XHR.
  *
@@ -24,13 +28,18 @@
  */
 export function csrfGuard(request: Request): Response | null {
   // ── Content-Type 415 guard ──────────────────────────────────────────────────
-  const contentType = request.headers
-    .get("content-type")
-    ?.split(";")[0]
-    ?.trim()
-    ?.toLowerCase();
-  if (contentType !== "application/json") {
-    return Response.json({ error: "Unsupported Media Type" }, { status: 415 });
+  // Skip for DELETE: non-simple method (preflighted) + bodyless, so the content-type
+  // requirement only blocks legitimate deletes without adding CSRF protection. The
+  // Origin check below still guards it. Body-carrying methods (POST/PUT/PATCH) keep it.
+  if (request.method.toUpperCase() !== "DELETE") {
+    const contentType = request.headers
+      .get("content-type")
+      ?.split(";")[0]
+      ?.trim()
+      ?.toLowerCase();
+    if (contentType !== "application/json") {
+      return Response.json({ error: "Unsupported Media Type" }, { status: 415 });
+    }
   }
 
   // ── Cross-origin 403 guard ──────────────────────────────────────────────────

@@ -12,10 +12,11 @@
 
 import { useState, useRef } from "react";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { RevealData } from "@/lib/audience/calibration";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { AudienceProfileView } from "./audience-profile-view";
+import { AudienceReveal } from "./audience-reveal";
 import { cn } from "@/lib/utils";
 import { WarningCircle } from "@phosphor-icons/react";
 
@@ -44,6 +45,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
   const [fallbackMsg, setFallbackMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [calibratedAudience, setCalibratedAudience] = useState<Audience | null>(null);
+  const [revealData, setRevealData] = useState<RevealData | null>(null);
   const readerRef = useRef<ReadableStreamDefaultReader<string> | null>(null);
 
   async function startCalibration() {
@@ -85,6 +87,10 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
       readerRef.current = reader;
 
       let buffer = "";
+      // Track the SSE event name from `event:` lines — the route emits proper
+      // `event: <name>\ndata: <json>` frames (it does NOT put a `type` field in data),
+      // so the event name MUST come from the event line (was the stuck-on-streaming bug).
+      let currentEvent = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -95,18 +101,26 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
           if (!raw || raw === "[DONE]") continue;
 
-          let parsed: { type?: string; message?: string; reason?: string; retry?: boolean; audience?: Audience };
+          let parsed: { type?: string; message?: string; reason?: string; retry?: boolean; audience?: Audience; reveal?: RevealData };
           try {
             parsed = JSON.parse(raw) as typeof parsed;
           } catch {
             continue;
           }
 
-          switch (parsed.type) {
+          // Tolerate both: prefer the SSE event name, fall back to a `type` field.
+          const evt = currentEvent || parsed.type;
+          currentEvent = ""; // consumed
+
+          switch (evt) {
             case "status":
               setStatusMsg(parsed.message ?? "");
               break;
@@ -120,9 +134,11 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
               return;
             case "done":
               if (parsed.audience) {
+                // Show the reveal showcase (§P.5) and WAIT — onDone (which navigates
+                // away) fires only when the user confirms via "Use this audience".
                 setCalibratedAudience(parsed.audience);
+                setRevealData(parsed.reveal ?? null);
                 setPhase("done");
-                onDone(parsed.audience);
               }
               return;
           }
@@ -267,17 +283,15 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
     );
   }
 
-  // Done: show read-only profile
+  // Done: the "it's real" reveal showcase (§P.5) — real account + derived audience.
   if (phase === "done" && calibratedAudience) {
     return (
       <div className={cn("flex flex-col gap-4", className)}>
-        <div>
-          <h2 className="text-xl font-semibold text-foreground">Your audience</h2>
-          <p className="mt-1 text-sm text-foreground-secondary">
-            Calibration complete. Here is your audience.
-          </p>
-        </div>
-        <AudienceProfileView audience={calibratedAudience} />
+        <AudienceReveal
+          audience={calibratedAudience}
+          reveal={revealData}
+          onUse={() => onDone(calibratedAudience)}
+        />
       </div>
     );
   }

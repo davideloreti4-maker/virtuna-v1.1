@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import type { IntentLens } from '@/lib/audience/intent-lens';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -68,7 +69,7 @@ export interface UseHooksStreamReturn {
    * ask: empty string → Auto mode (anchored idea); non-empty → seeded mode (D-09).
    * Re-expose as the retry entry point for the skill-run error state (W2).
    */
-  start: (ask: string, platform: string) => Promise<void>;
+  start: (ask: string, platform: string, intent?: IntentLens) => Promise<void>;
   /**
    * Start a scoped refine re-run via /api/tools/refine (Plan 05-05 / D-04).
    * Consumes the refine SSE into the same streaming state as start() so the new
@@ -138,7 +139,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string) => {
+  const start = useCallback(async (ask: string, platform: string, intent?: IntentLens) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -160,7 +161,7 @@ export function useHooksStream(): UseHooksStreamReturn {
       const res = await fetch('/api/tools/hooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ask, platform }),
+        body: JSON.stringify({ ask, platform, ...(intent ? { intent } : {}) }),
         signal: controller.signal,
       });
 

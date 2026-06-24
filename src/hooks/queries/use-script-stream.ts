@@ -28,6 +28,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import type { IntentLens } from '@/lib/audience/intent-lens';
 
 // ── Partial script card (band/fraction absent until score event) ───────────────
 
@@ -58,7 +59,7 @@ export interface UseScriptStreamReturn {
    * Start the Script stream.
    * ask: topic/topic-seed or empty; anchor: hookLine from hooks→script handoff (optional).
    */
-  start: (ask: string, platform: string, anchor?: string) => Promise<void>;
+  start: (ask: string, platform: string, anchor?: string, intent?: IntentLens) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -112,7 +113,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string, anchor?: string) => {
+  const start = useCallback(async (ask: string, platform: string, anchor?: string, intent?: IntentLens) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -129,6 +130,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     try {
       const body: Record<string, unknown> = { ask, platform };
       if (anchor) body.anchor = anchor;
+      if (intent) body.intent = intent;
 
       const res = await fetch('/api/tools/script', {
         method: 'POST',

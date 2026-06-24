@@ -42,9 +42,12 @@ import { KC_SCRIPT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
+import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
+import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
@@ -85,6 +88,11 @@ export interface ScriptPipelineInput {
    * null or is_general → profile-based grounding + DEFAULT weights (byte-identical no-op).
    */
   audience?: Audience | null;
+  /**
+   * Per-run reaction lens (GAP-C2 / §P.10). `sell` re-frames the opener-SIM verdict toward
+   * purchase intent; `grow`/undefined → byte-identical no-op. Calibrated-audience only (gated below).
+   */
+  intent?: IntentLens;
   /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
    * opener's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
@@ -232,7 +240,10 @@ function selectLeadScrollQuote(
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null } = input;
+  const { ask, platform, profileRow, anchor, audience = null, intent } = input;
+  // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
+  const simIntent: IntentLens | undefined =
+    audience && !audience.is_general ? intent : undefined;
   const allWarnings: string[] = [];
 
   // ── STEER (08-04 / AUD-STEER): audience-grounding line replaces buildGroundingLine ──
@@ -242,6 +253,12 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
   const audienceOverride = isCalibrated ? `Write for this audience — ${groundingLine}` : undefined;
 
+  // ── §P step-7: creator voice (fallback) + steer from the per-audience creator_persona ──
+  // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
+  // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
+  const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
+  const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -249,9 +266,9 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       platform,
       mode: "script",
       ...(anchor ? { anchor } : {}),
-      ...(audienceOverride ? { overrides: audienceOverride } : {}),
+      ...(overrides ? { overrides } : {}),
     },
-    profileRow,
+    genProfileRow,
   );
 
   let script: StructuredScript | null;
@@ -269,23 +286,19 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     return { blocks: [], warnings: allWarnings };
   }
 
-  // ── GATE (D-01 — OPENER ONLY): Flash on the opening beat seed only ───────────
-  const niche = profileRow?.niche_primary ?? null;
-  const panel = { niche, contentType: null } as const;
-
   // ── REACT path (08-04 / AUD-STEER): resolve audience weights + persona repaint ──
   const resolvedWeights = resolveAudienceWeights(audience ? [audience] : []);
   void resolvedWeights; // weights wired for future Max-path integration; Flash uses the repaint
 
-  // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
-  const audienceRepaint: Record<string, string> | undefined =
-    audience && !audience.is_general && audience.personas && audience.personas.length > 0
-      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-      : undefined;
+  // ── GATE (D-01 — OPENER ONLY): Flash on the opening beat seed only ───────────
+  // S1 fix: route through the shared buildReactionPanel helper so niche resolves via
+  // resolveNicheKey (was raw niche_primary → exact-slug miss → niche-blind "all Mixed").
+  // Matches hooks/ideas runners; audienceRepaint construction is byte-identical to before.
+  const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
   let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
   try {
-    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel, audienceRepaint);
+    simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel, audienceRepaint, simIntent);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);

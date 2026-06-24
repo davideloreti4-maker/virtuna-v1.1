@@ -90,6 +90,88 @@ export interface AudienceProfile {
   follower_tier: string | null;
 }
 
+// ─── Real AudienceSignature (§P) — scrape-derived, frozen, read everywhere ────
+
+/**
+ * Creator persona (§P.6 — Sandcastles' PROVEN 3 fields + 1 video-derived).
+ * PER-AUDIENCE (§P.8), auto-derived at calibration from scrape + transcripts +
+ * omni-flash watchNotes, fully editable. Drives GENERATION (outputs sound like
+ * the creator) — it is NOT a reactor. Stored in the `creator_persona` column.
+ */
+export interface CreatorPersona {
+  /** Niche descriptor, 1 line → STEER (discovery / idea analysis). */
+  content_description: string;
+  /** Audience · voice · formats · expertise · AVOID list → generation (all skills). */
+  context: string;
+  /** Verbatim transcript/caption of the top video → generation voice. */
+  writing_style_sample: string;
+  /** Video format/style synthesised from omni-flash watchNotes (NEW, video-derived). */
+  format_signature: string;
+}
+
+/**
+ * One of the 10 fixed-archetype REACTORS in the signature (§P.6 behavioural 3).
+ * No voice/bio — reactors judge content, they don't speak as the creator.
+ * `archetype` is the immutable engine slug; engine reads archetype + reaction_frame.
+ */
+export interface SignaturePersona {
+  archetype: Archetype;
+  /** Share of the audience (0..1, all 10 sum to 1.0). Data-derived. */
+  share: number;
+  temperature: Temperature;
+  disposition: Disposition;
+  /** How THIS audience's segment judges content → folds into the SIM (REACT). */
+  reaction_frame: string;
+  /** Engagement-ratio proof (e.g. "saves 2.1× category") — the data receipt. */
+  evidence: string;
+}
+
+/**
+ * The engagement-derived audience block of the signature. `temperature_mix` +
+ * `persona_weights` are DERIVED from real engagement ratios (kills F1's constant
+ * lens). `persona_weights` is also baked into the row's 4 weight cols at calibration.
+ */
+export interface SignatureAudience {
+  follower_tier: string | null;
+  maturity: "new" | "growing" | "established";
+  /** Data-derived cold/warm/hot mix (sums to 1.0) — fixes F1. */
+  temperature_mix: Record<Temperature, number>;
+  interest_tags: string[];
+  what_resonates: string;
+  what_falls_flat: string;
+  /** Derived weight mix (Σ=1) — reality first, goal_intent only a lens (P-5). */
+  persona_weights: PersonaWeights;
+  /** Exactly 10 reactors, fixed archetype slugs, shares Σ=1. */
+  personas: SignaturePersona[];
+}
+
+/**
+ * Provenance of the bake — what was scraped/watched. Reveal + drift-cron read this.
+ */
+export interface SignatureProvenance {
+  handle: string;
+  scraped_at: string;
+  videos_analyzed: number;
+  videos_watched: number;
+  /** e.g. "6/8" — native-subtitle coverage from the scrape. */
+  sub_coverage: string;
+}
+
+/**
+ * The frozen AudienceSignature (§P.14) — the real, scrape-derived audience model.
+ * Baked ONCE at calibration (temp 0 + seed), stored on the `signature` column, read
+ * on every skill run, NEVER re-derived on the hot path (P.7 determinism contract).
+ * Present ONLY for calibrated non-general audiences — General/presets keep it null so
+ * the regression gate stays free by construction (D-17).
+ */
+export interface AudienceSignature {
+  creator_persona: CreatorPersona;
+  audience: SignatureAudience;
+  /** Reveal-screen copy. */
+  summary: string;
+  provenance: SignatureProvenance;
+}
+
 // ─── Audience domain object ───────────────────────────────────────────────────
 
 /**
@@ -126,8 +208,22 @@ export interface Audience {
   persona_weights: PersonaWeights;
   /** 10 calibrated, per-audience archetype presentations (repaint + temp/disposition). */
   personas: CalibratedPersona[];
-  /** Aggregate audience profile derived at calibration. */
+  /** Aggregate audience profile derived at calibration (LEGACY — superseded by `signature`). */
   profile: AudienceProfile | null;
+  /**
+   * PER-AUDIENCE editable creator card (§P.8). Stored in the `creator_persona` column.
+   * Null/absent for General/presets/legacy rows. Mirrors `signature.creator_persona` at
+   * bake time; the column is the editable source of truth (persona edits write here).
+   * Optional so every existing Audience literal stays valid (additive — guardrail).
+   */
+  creator_persona?: CreatorPersona | null;
+  /**
+   * The frozen real AudienceSignature (§P). Stored in the `signature` column. Present
+   * ONLY for calibrated non-general audiences — null/absent for General/presets/legacy
+   * so the regression gate stays free by construction (D-17). Read on every skill run.
+   * Optional so every existing Audience literal stays valid (additive — guardrail).
+   */
+  signature?: AudienceSignature | null;
   /** Calibration metadata (source, handle for personal, scraped_at, thin flag). */
   calibration: {
     source: "scrape" | "description";

@@ -144,6 +144,9 @@ const WritableAudienceSchema = z.object({
   personas: z.array(z.unknown()).optional(),
   profile: z.unknown().nullable().optional(),
   calibration: z.unknown().nullable().optional(),
+  // §P real signature — opaque JSONB at the repo boundary (shape validated by enrich's Zod).
+  creator_persona: z.unknown().nullable().optional(),
+  signature: z.unknown().nullable().optional(),
 });
 
 // ─── Row ↔ Domain mapping ──────────────────────────────────────────────────────
@@ -166,6 +169,8 @@ interface AudienceRow {
   personas: unknown[];
   profile: unknown | null;
   calibration: unknown | null;
+  creator_persona: unknown | null;
+  signature: unknown | null;
   created_at: string;
   updated_at: string;
 }
@@ -191,6 +196,8 @@ function rowToAudience(row: AudienceRow): Audience {
     personas: (row.personas as Audience["personas"]) ?? [],
     profile: (row.profile as Audience["profile"]) ?? null,
     calibration: (row.calibration as Audience["calibration"]) ?? null,
+    creator_persona: (row.creator_persona as Audience["creator_persona"]) ?? null,
+    signature: (row.signature as Audience["signature"]) ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -221,6 +228,8 @@ function audienceToRow(
   if (a.personas !== undefined) row.personas = a.personas;
   if ("profile" in a) row.profile = a.profile ?? null;
   if ("calibration" in a) row.calibration = a.calibration ?? null;
+  if ("creator_persona" in a) row.creator_persona = a.creator_persona ?? null;
+  if ("signature" in a) row.signature = a.signature ?? null;
 
   return row;
 }
