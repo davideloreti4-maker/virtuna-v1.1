@@ -25,6 +25,13 @@ styling. ⛔ Never touch `src/lib/**`, `src/app/api/**`, `supabase/**`, the engi
 schemas/registry/renderer-props (D-14), or the HOLD files `components/audience/{calibration-flow,
 audience-reveal}.tsx`. Rebase on `origin/main` before each PR to absorb the engine merge cleanly.
 
+**Execution model (one brief = one session = one worktree):** each session runs in a fresh worktree
+forked off `design/ui-restrained` (e.g. Cursor "New Worktree" on that branch). **Plan first** —
+produce the phased plan and get approval before executing. Work the ONE brief for this session, then
+open a PR back into `design/ui-restrained` (not main; that's the design track's integration branch).
+After it merges, the next session forks a new worktree for the next brief — so P2 inherits P0's
+`Constellation` + loading work. Don't start P2's worktree until P0 has merged.
+
 ## 1. Mission (one line)
 Strip the app back to a **monochrome cream-on-charcoal** system where the brand accent (signal red
 `#e23b2d`) appears **really sparingly, if at all** — and let identity come from the **constellation/SIM
