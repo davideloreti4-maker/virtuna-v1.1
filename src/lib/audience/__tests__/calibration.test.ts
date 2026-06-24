@@ -18,11 +18,8 @@ import type { AudienceSignature } from "../audience-types";
 
 import {
   calibrateFromScrape,
-  deriveAudienceProfile,
   THIN_MIN_VIDEOS,
 } from "../calibration";
-import { repaintPersonas } from "../persona-repaint";
-import { biasForGoalIntent } from "../goal-intent";
 import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 
 // ─── Fixtures ──────────────────────────────────────────────────────────────────
@@ -201,34 +198,5 @@ describe("calibrateFromScrape — target path", () => {
     expect(deps.scrapeBundle).not.toHaveBeenCalled();
     expect(deps.scrapeNiche).toHaveBeenCalledTimes(1);
     expect(result).toHaveProperty("audience");
-  });
-});
-
-// ─── Legacy helpers (unchanged behaviour) ────────────────────────────────────────
-
-describe("deriveAudienceProfile (legacy)", () => {
-  it("temperature_mix sums to 1.0", () => {
-    const { temperature_mix } = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const { cold, warm, hot } = temperature_mix;
-    expect(cold + warm + hot).toBeCloseTo(1.0, 5);
-  });
-
-  it("follower_tier is null when followerCount is 0", () => {
-    expect(deriveAudienceProfile(makeProfile(0), makeVideos(10)).follower_tier).toBeNull();
-  });
-
-  it("returns a valid tier for a real follower count", () => {
-    expect(deriveAudienceProfile(makeProfile(50_000), makeVideos(10)).follower_tier).toBe("micro");
-  });
-});
-
-describe("repaintPersonas (legacy)", () => {
-  it("returns exactly 10 entries with non-empty repaint and shares ~1.0", () => {
-    const audienceProfile = deriveAudienceProfile(makeProfile(50_000), makeVideos(15));
-    const weights = biasForGoalIntent("grow");
-    const personas = repaintPersonas({ audienceProfile, goalIntent: "grow", weights });
-    expect(personas).toHaveLength(10);
-    expect(personas.reduce((s, p) => s + p.share, 0)).toBeCloseTo(1.0, 2);
-    for (const p of personas) expect(p.repaint.length).toBeGreaterThan(0);
   });
 });

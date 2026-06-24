@@ -79,10 +79,10 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| A1 | 🔴 | **Audience `persona_weights` now CONSUMED — weighted SIM band aggregation.** Was: weights `void`-ed in all 5 runners, Max path niche-only → derive→nudge→rebake loop read by NOTHING. FIX (option b, text-gen): `aggregateFlash(personas, weighting?)` gains an optional per-slot weighting; the 4 Flash runners (ideas/hooks/script/remix) build it via new `buildFlashWeighting(audience)` (calibrated → per-slot weights; **General/null → `undefined` → flat path byte-identical**). Band = weighted stop-MASS fraction (Strong ≥0.6 / Mixed ≥0.3, mirroring 6/3 ÷10), per-persona weight = slotWeight ÷ slot population; unknown archetypes → flat fallback. SIM call + system-prompt cache prefix + ENGINE_VERSION 3.19.0 all UNTOUCHED. **Spec correction:** the written spec claimed "General = equal weights = byte-identical"; reality = General resolves the DEFAULT mix (0.65/0.20/0.10/0.05), so General passes `undefined` (flat) instead — strictly safer, same gate guarantee. Closes calibration→flywheel-nudge→step-9-drift-rebake end-to-end. | `flash-aggregate.ts`, `flash/persona-weighting.ts`, 4 runners | FIXED (working tree, branch `feat/persona-weights-live`) |
-| A2 | 🔴 | `deriveAudienceProfile()` ignores scraped videos → every audience gets identical profile + grounding line | `calibration.ts` (deriveAudienceProfile) | OPEN |
-| A3 | 🟠 | `goal_intent` `sell` and `authority` map to byte-identical weights | `biasForGoalIntent` | OPEN |
-| A4 | 🟠 | Presets ship `personas:[]` → near-inert; preset materialization appears unwired | PRESET_AUDIENCES | OPEN |
+| A1 | 🔴 | **Audience `persona_weights` now CONSUMED — weighted SIM band aggregation.** Was: weights `void`-ed in all 5 runners, Max path niche-only → derive→nudge→rebake loop read by NOTHING. FIX (option b, text-gen): `aggregateFlash(personas, weighting?)` gains an optional per-slot weighting; the 4 Flash runners (ideas/hooks/script/remix) build it via new `buildFlashWeighting(audience)` (calibrated → per-slot weights; **General/null → `undefined` → flat path byte-identical**). Band = weighted stop-MASS fraction (Strong ≥0.6 / Mixed ≥0.3, mirroring 6/3 ÷10), per-persona weight = slotWeight ÷ slot population; unknown archetypes → flat fallback. SIM call + system-prompt cache prefix + ENGINE_VERSION 3.19.0 all UNTOUCHED. Closes calibration→flywheel-nudge→step-9-drift-rebake end-to-end. | `flash-aggregate.ts`, `flash/persona-weighting.ts`, 4 runners | FIXED `e648525a` (#30) |
+| A2 | 🔴→🟢 | ~~`deriveAudienceProfile()` ignores scraped videos~~ — **superseded by `enrichSignature` (§P), already prod-dead.** The constant-lens `deriveAudienceProfile` + its F1 sibling `repaintPersonas` had ZERO prod callers (only their own defs, comments, and one legacy test). CUT: removed `deriveAudienceProfile` from `calibration.ts` (+ orphaned `TEMPERATURE_DISPOSITION`/`ARCHETYPES`/`Archetype`/`Temperature` imports), deleted `persona-repaint.ts` entirely, dropped both legacy test blocks, fixed the stale `audience-drift` cron comment. tsc net-zero (64), eslint clean, affected suites 42/42. | `calibration.ts`, `persona-repaint.ts` (deleted) | FIXED (#31) |
+| A3 | 🟠→✅ | **RESOLVED (intentional, documented in code).** `sell` and `authority` both map to `WEIGHT_PRESETS.niche_heavy` — by design: both are depth plays whose audience lives in-niche (buyer vs scout); the deterministic weight bias is identical and the per-intent flavour is carried by the repaint prose (`GOAL_INTENT_SUFFIX`), NOT the weight mix. Rationale already in `goal-intent.ts:29-31`. No code change needed. | `goal-intent.ts:33` | RESOLVED (by-design) |
+| A4 | 🟠→✅ | **Finding corrected: presets are NOT inert/unwired.** `audience-manager.tsx` lists them, `/api/audiences` returns them, `composer.tsx` handles their virtual ids, `getAudience("preset-growth")` returns the object, flywheel/explore exclude them (`!is_preset`). They ship `personas:[]` BY DESIGN (virtual template — no calibrated repaint personas until materialize-on-customize) but carry real `persona_weights` (`biasForGoalIntent`). With **A1 live**, that weight signal is now CONSUMED (preset is `is_general=false` → weighted band). So presets = functional weight-only templates today. Remaining (lower-pri, separate): persona-level repaint requires materialize-on-customize. | `PRESET_AUDIENCES`, `audience-manager.tsx` | CLARIFIED (weight-functional; persona-repaint deferred) |
 | A5 | 🟡 | Flywheel nudge is 0.05 in code vs ±0.1 in docs | `recalibration.ts:33` | OPEN |
 | A6 | 🟡 | `(supabase as any)` casts throughout audience repo — type debt | `audience-repo.ts` | OPEN |
 | A7 | 🟠 | **Orphan draft row** — `audience-form` POSTs `/api/audiences` (draft), then `calibrate` route `createAudience`s a SECOND row; `audienceId` sent by client is ignored (not in `CalibrateSchema`). Every calibrated personal/target audience leaks an uncalibrated dupe. Fix: `calibrate` now accepts `audienceId` and `updateAudience`s the draft in place (falls back to insert when absent). Live-verified 2026-06-24: row_count 1, same draft id enriched. +route test. | `calibrate/route.ts` | FIXED (working tree) |
@@ -131,6 +131,24 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 ## DONE
 _(move items here with FIXED sha as they land)_
 
+### 2026-06-24 — Audience quick-closes A2 (cut) + A3/A4 (resolved/clarified) (working tree)
+- **A2 FIXED — cut the dead F1 legacy derivation pair.** `deriveAudienceProfile` (constant-lens,
+  `_videos` ignored) + `repaintPersonas` were both superseded by `enrichSignature` (§P, reality-first)
+  and had ZERO prod callers — only their own defs, doc comments, and one legacy test exercised them.
+  Removed `deriveAudienceProfile` from `calibration.ts` (+ now-orphaned `TEMPERATURE_DISPOSITION` /
+  `ARCHETYPES` / `Archetype` / `Temperature` imports), **deleted `persona-repaint.ts`** (sole exports
+  were the dead fn + its input type), dropped both "(legacy)" describe blocks from `calibration.test.ts`
+  (+ their imports), and fixed the stale `audience-drift` cron header comment (named the cut fns).
+  Verify: tsc net-zero (64=64 baseline) · eslint clean · affected suites 42/42 (calibration +
+  audience-repo + propose) · ENGINE_VERSION 3.19.0 untouched.
+- **A3 RESOLVED (by-design, no code).** `sell` + `authority` → identical `WEIGHT_PRESETS.niche_heavy`
+  is intentional (both depth plays; per-intent flavour carried by `GOAL_INTENT_SUFFIX` repaint prose,
+  not weights). Rationale already documented at `goal-intent.ts:29-31`.
+- **A4 CLARIFIED — premise was wrong.** Presets are surfaced (audience-manager list, `/api/audiences`,
+  composer id-handling, `getAudience`) and flywheel/explore exclude them. `personas:[]` is by-design
+  for a virtual template; their real `persona_weights` are now CONSUMED via A1's weighted band
+  (preset `is_general=false`). Functional weight-only templates today; persona-level repaint via
+  materialize-on-customize is a separate lower-pri item.
 ### 2026-06-24 — A1 weighted SIM aggregation (persona_weights now LIVE) (working tree)
 - **A1 FIXED — the weights half of the moat is no longer inert.** `aggregateFlash(personas, weighting?)`
   gains an optional `FlashWeighting` ({weights, slotOf}); the band for a CALIBRATED audience is now a
