@@ -1,0 +1,51 @@
+---
+description: UI design track rules — design system, file ownership, conflict hygiene
+globs:
+alwaysApply: true
+---
+
+# Numen UI Design Track — rules for this worktree
+
+This worktree (`virtuna-numen-ui`, branch `design/ui-system`) is the **UI design track**.
+It runs in PARALLEL with an engine/backend rework happening in a separate worktree
+(`virtuna-engine-rework`, branch `rework/engine-core`). Stay in your lane to avoid conflicts.
+
+## 1. Design system — trust ONE source
+- The **only** authoritative design references are `src/app/globals.css` (the `@theme` token
+  block) and `docs/DESIGN-SYSTEM.md`. Read `docs/DESIGN-SYSTEM.md` before any visual work.
+- **IGNORE these — they are STALE** (they describe the retired Raycast/coral/glass system):
+  `CLAUDE.md` "Raycast Design Language Rules" section, `BRAND-BIBLE.md`, `docs/tokens.md`,
+  `docs/components.md`, `docs/design-specs.json`, `docs/usage-guidelines.md`,
+  `docs/motion-guidelines.md`, `docs/brand/`.
+- Current system = **flat-warm charcoal + cream text + terracotta accent + matte**:
+  - bg `#262624` (`--color-background`), cream text `#ece7de` (`--cream-primary`) — **never `#fff`**
+  - accent terracotta `#d97757` (`--color-accent`) — **never `#FF7F50`**
+  - borders 6% (`rgba(255,255,255,0.06)`), hover 10%
+  - **matte only**: no glass gradients, no glow, no white inset-shine. Flat + border + (rarely) `--shadow-float`.
+  - Inter for all chrome; Newsreader serif **only** for voice-moments (greeting/hero).
+  - radius 4/6/8/12/16/20/24 — cards 12, inputs/buttons 8.
+- **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`.
+- Keep `src/components/reading/__tests__/reskin-matte.test.ts` GREEN (guards against coral/glass).
+
+## 2. File ownership — DO NOT cross
+- ✅ **You own:** `src/components/**`, page-level styling/layout in `src/app/(app)/**` (NON-api),
+  `src/app/globals.css`, design tokens, `src/types/design-tokens.ts`.
+- ⛔ **Do NOT touch (engine track owns these):** `src/lib/**`, `src/app/api/**`, runners,
+  engine, `supabase/**`, prompt/KC files. If a UI change seems to need a backend change,
+  STOP and flag it — don't edit backend here.
+
+## 3. Coupled surfaces — visual-only, don't change contracts
+`AudienceLens`, the composer, and the thread skill-cards are being reworked on the engine side
+(their data shape/props may change). For these you MAY restyle/relayout, but **do NOT change the
+props/data contracts** they consume or the block schemas. Structural changes to these wait for
+the engine rework — coordinate first.
+
+## 4. Conflict hygiene
+- Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`).
+- Keep PRs small and per-surface; merge often to minimize drift.
+- Commit format `type(surface): description`. Atomic commits.
+
+## 5. Verify before done
+- `npm run lint` + typecheck clean.
+- Visual check in the browser (or screenshot) for any surface you change.
+- Don't say "should work" — show it.

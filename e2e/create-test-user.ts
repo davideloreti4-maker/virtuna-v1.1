@@ -34,7 +34,17 @@ async function main() {
   if (existingUser) {
     console.log(`Test user already exists: ${TEST_EMAIL} (${existingUser.id})`);
 
-    // Ensure profile exists with onboarding completed
+    // Reset password so credentials stay in sync with this script
+    const { error: resetError } = await supabase.auth.admin.updateUserById(
+      existingUser.id,
+      { password: TEST_PASSWORD, email_confirm: true }
+    );
+    if (resetError) {
+      console.error('Failed to reset password:', resetError.message);
+      process.exit(1);
+    }
+    console.log('Reset password to known test value');
+
     await ensureProfile(supabase, existingUser.id);
     printEnvVars();
     return;

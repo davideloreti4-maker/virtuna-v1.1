@@ -5,7 +5,6 @@
  *
  * Sections (top → bottom):
  *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
- *  Settings         — settings link + @handle account selector (D-12)
  *  Audience         — audience manager (D-04)
  *  Library          — saved-content State surface (IA-01 / D-01) → /library
  *  Thread           — chronological history from useAnalysisHistory (D-13);
@@ -99,7 +98,6 @@ const focusRing =
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
-import { SidebarAccountSelector } from "./SidebarAccountSelector";
 
 // ─── sub-components ──────────────────────────────────────────────
 
@@ -229,7 +227,6 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-  const isOnSettings = pathname.startsWith("/settings");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
 
@@ -325,16 +322,9 @@ export function Sidebar() {
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Settings + @handle account selector (D-12) ── */}
+          {/* ── Audience + Library ── */}
           <div className="pt-3">
             <div className="flex flex-col gap-0.5">
-              <NavItem
-                icon={SlidersHorizontal}
-                label="Settings"
-                isActive={isOnSettings}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/settings")}
-              />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem
                 icon={UsersThree}
@@ -344,8 +334,8 @@ export function Sidebar() {
                 onClick={() => router.push("/audience")}
               />
               {/* Library — State surface (IA-01 / D-01). NO accent: its active
-                  state is matte white/[0.06], identical to Settings/Audience —
-                  the nav's one accent belongs to "New Thread". */}
+                  state is matte white/[0.06] — the nav's one accent belongs to
+                  "New Thread". */}
               <NavItem
                 icon={Books}
                 label="Library"
@@ -353,7 +343,6 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/library")}
               />
-              <SidebarAccountSelector isCollapsed={effectiveCollapsed} />
             </div>
           </div>
 
