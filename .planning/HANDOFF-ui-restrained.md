@@ -29,8 +29,9 @@ These are settled (see `docs/DESIGN-SYSTEM.md`). Plan within them; don't reopen:
 2. **Hue = signal red `#e23b2d`** (the logo mark). Terracotta is retired. Don't propose other hues.
 3. **Primary actions are neutral cream** — `--color-action` / `--color-action-foreground`. The composer
    send button is a cream button with a dark glyph, NOT accent.
-4. **The only sanctioned accent uses:** the single live presence/liveness dot, the lit constellation/SIM
-   node, the brand mark. Prefer neutral even for selection/active/focus.
+4. **Accent = "alive" only (RESOLVED).** Red has exactly two homes: the live presence / lit
+   constellation node (dynamic liveness signal — same idea, one per view) and the brand mark / logo
+   (static). If an element is not signaling liveness, it is neutral. Selection/active/focus → neutral.
 5. **accent red ≠ error red.** `--color-error` stays for destructive/error only. Never conflate.
 6. **Emphasis without color:** weight, *italic* serif voice-moments, size, spacing.
 7. **Matte only** (unchanged): no glass, no glow, no inset-shine. Keep `reskin-matte.test.ts` green.
@@ -109,8 +110,8 @@ The 203 hits span both live and likely-dormant areas. **Do not assume — confir
   layout; currently Newsreader.) Affects voice-moments only.
 - **Constellation motif:** how far to amplify, and where it appears (audience id only, or also loading /
   empty / brand mark)? Does a real component exist or is it net-new?
-- **Truly zero, or one dot?** Confirm the live presence dot is wanted at all, or whether even that goes
-  neutral and accent lives ONLY in the logo mark.
+- ~~Truly zero, or one dot?~~ **RESOLVED: keep the single live presence dot.** Accent = "alive" only —
+  the live/lit node + the logo mark are red; everything else neutral.
 - **Dead code:** confirm `board/**` and `primitives/Glass*` are dormant → delete vs leave.
 
 ---
