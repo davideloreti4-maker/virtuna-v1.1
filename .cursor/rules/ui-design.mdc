@@ -19,10 +19,10 @@ conflicts. The prior design batch (`design/ui-system`) is already merged to `mai
   `CLAUDE.md` "Raycast Design Language Rules" section, `BRAND-BIBLE.md`, `docs/tokens.md`,
   `docs/components.md`, `docs/design-specs.json`, `docs/usage-guidelines.md`,
   `docs/motion-guidelines.md`, `docs/brand/`.
-- Current system = **flat-warm charcoal + cream text + RESTRAINED signal-red accent + matte**:
+- Current system = **flat-warm charcoal + cream text + MONOCHROME-by-default (accent near-zero) + matte**:
   - bg `#262624` (`--color-background`), cream text `#ece7de` (`--cream-primary`) — **never `#fff`**
   - accent = **signal red `#e23b2d`** (`--color-accent`), the logo mark — **terracotta `#d97757` is RETIRED** (it read too close to Claude). Never `#FF7F50`.
-  - **ACCENT DOSAGE IS LOCKED — accent is a liveness signal, not paint.** Allowed: live dots, the lit constellation node, the brand mark, tiny active ticks. FORBIDDEN: primary buttons, icon buttons, skill pills, chevrons, placeholders, link floods, large fills. Read "Accent dosage (LOCKED)" in `docs/DESIGN-SYSTEM.md` before touching color.
+  - **ACCENT DOSAGE IS LOCKED — MONOCHROME BY DEFAULT, accent used REALLY sparingly, if at all.** A screen with ZERO accent is the norm, not a failure. Every accent use must be justified; aim for at most ONE accent element per view, often zero. The ONLY sanctioned uses: the single live presence/liveness dot, the lit constellation/SIM node, the brand mark. FORBIDDEN everywhere else — primary buttons, icon buttons, skill pills, chevrons, placeholders, tabs, toggles, links, borders, charts, badges, large fills, hover states, and anything "to make it pop." Read "Accent dosage (LOCKED)" in `docs/DESIGN-SYSTEM.md` before touching color.
   - **Primary actions are NEUTRAL cream** — use `--color-action` / `--color-action-foreground`, NOT the accent. (Composer send = cream button, dark glyph.)
   - accent-as-text on dark → `--color-accent-text` (`#ef6e62`); soft tint bg → `--color-accent-soft`. Solid-red fill glyph → `--color-accent-foreground` (cream).
   - `--color-accent` (brand red) ≠ `--color-error` (data/destructive red). Never conflate.

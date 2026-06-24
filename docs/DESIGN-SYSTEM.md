@@ -52,30 +52,37 @@ Flat-warm **charcoal** surfaces + **cream** text + a **signal-red accent used sp
 `4 / 6 / 8 / 12 / 16 / 20 / 24` px. Cards 12, inputs/buttons 8, header 16, modals 12.
 
 ## Accent dosage (LOCKED 2026-06-24)
-**The accent is a seasoning, not the paint.** This is the rule that separates us from Claude —
-Claude floods its terracotta everywhere; we starve ours. Pattern follows Linear / Vercel / Whop:
-near-monochrome cream-on-charcoal UI, accent reserved for a few high-meaning moments.
+**Monochrome by default. Accent is the rare exception — used REALLY sparingly, if at all.**
+The UI is cream-on-charcoal; color is not a styling tool. This is the rule that separates us from
+Claude (which floods its terracotta everywhere). Goal posture: a screen with **zero** accent is the
+norm, not a failure. Pattern is the quiet end of Linear / Vercel / Whop.
 
-**Accent = liveness / identity signal.** Allowed uses:
-- Live status dots (e.g. the audience "personas ready" dot)
+**Default = NO accent.** Every accent use must be *justified* and is opt-in, not a default. If you
+can't name the specific high-meaning reason, it gets none. Aim for **at most one** accent element
+visible on a screen at a time; often zero.
+
+**The only sanctioned uses (and even these are optional):**
+- The single live "presence/liveness" signal (e.g. the audience "personas ready" dot) — one per view
 - The lit node in the constellation / SIM mark
-- The brand mark itself
-- Tiny active-state ticks (e.g. selected item check) — prefer neutral even here
+- The brand mark / logo itself
+- (Active-state ticks, selection, focus → prefer NEUTRAL; do not reach for accent here)
 
-**Accent is NOT allowed on:**
-- Primary buttons / the composer send → use `--color-action` (neutral cream)
-- Icon buttons, skill pills, chevrons, placeholders → cream / muted
-- Links en masse, borders, large fills, hover states across chrome
+**Accent is NEVER allowed on:**
+- Primary buttons / the composer send → `--color-action` (neutral cream)
+- Icon buttons, skill pills, chevrons, placeholders, tabs, toggles → cream / muted
+- Links, borders, large fills, hover states, charts, badges, progress — all neutral
+- Anything "to make it pop" — that instinct is the thing we are removing
 
-**Why it works:** at this dosage the *hue* barely shows, so (a) the Claude resemblance dies on
-any color, and (b) red's error/destructive connotation never triggers — a 6px dot never reads
-"danger." `--color-error` stays reserved for genuine destructive/error states; the accent red and
-the error red are different tokens and must not be conflated.
+**Why this hard line:** at near-zero dosage the *hue* barely registers, so (a) the Claude
+resemblance dies on any color, and (b) red's error/destructive meaning never misfires. `--color-error`
+stays reserved for genuine destructive/error states; accent red ≠ error red, never conflated.
 
-**Emphasis without color:** use weight, *italic* (serif voice-moments), and spacing — not paint.
+**Emphasis without color:** weight, *italic* (serif voice-moments), size, spacing, and hierarchy —
+never paint.
 
-**Identity load-bearing parts** (the brand lives here, since color is quiet): the **constellation
-/ SIM motif**, the **serif voice**, copy, and layout. Invest there.
+**Identity load-bearing parts** (the brand lives here, since color is essentially absent): the
+**constellation / SIM motif**, the **serif voice**, copy, and layout. Invest there — that is where
+distinctiveness comes from, not the accent.
 
 ## Hard rules (the guard test enforces these)
 `src/components/reading/__tests__/reskin-matte.test.ts` asserts NO coral-glow / NO glass in

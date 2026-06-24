@@ -26,8 +26,10 @@
 
   /* --- Signal Red (brand) — the LOGO-MARK red. NEW accent (2026-06-24). --- */
   /* Replaces terracotta as the brand accent to break the Claude resemblance.    */
-  /* USED SPARINGLY — see "Accent dosage" in docs/DESIGN-SYSTEM.md. Liveness     */
-  /* signals + brand mark only; NEVER flood it across chrome/buttons.            */
+  /* MONOCHROME BY DEFAULT — use REALLY sparingly, if at all. A screen with ZERO  */
+  /* accent is the norm. Only sanctioned uses: the single live presence dot, the  */
+  /* lit constellation/SIM node, the brand mark. See "Accent dosage (LOCKED)" in  */
+  /* docs/DESIGN-SYSTEM.md. NEVER on buttons/chrome/charts/"to make it pop".      */
   /* Exact hex (sampled from the logo); L≈0.62 so oklch would be safe, but hex   */
   /* keeps the mark pixel-exact. Distinct from --color-error-raw (data red).      */
   --color-signal-400: #ef6e62;  /* legible on dark — text/icons, lit nodes        */
