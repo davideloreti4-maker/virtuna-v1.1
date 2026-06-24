@@ -184,7 +184,7 @@ export function RetentionChart({
             />
           )}
           {/* single coral mark at the drop */}
-          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="var(--color-accent)" />}
+          {dropGeo && <circle cx={dropGeo.x} cy={dropGeo.y} r="3.5" fill="var(--color-cream-secondary)" />}
         </svg>
 
         {/* drop delta label (coral), positioned above the dot */}
@@ -193,7 +193,7 @@ export function RetentionChart({
             className="absolute tabular-nums"
             style={{
               fontSize: 11,
-              color: 'var(--color-accent)',
+              color: 'var(--color-cream-secondary)',
               fontWeight: 600,
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
@@ -271,7 +271,7 @@ export function RetentionChart({
             style={{
               left: `${dropGeo.xPct * 100}%`,
               transform: 'translateX(-50%)',
-              color: 'var(--color-accent)',
+              color: 'var(--color-cream-secondary)',
               fontWeight: 600,
             }}
           >

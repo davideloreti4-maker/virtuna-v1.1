@@ -22,7 +22,7 @@ export default function ComingSoonPage() {
         </p>
         <Link
           href="/"
-          className="mt-8 inline-block rounded bg-accent px-6 py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+          className="mt-8 inline-block rounded bg-action px-6 py-3 text-sm font-medium text-foreground-secondary-foreground transition-colors hover:bg-action/90"
         >
           Go back home
         </Link>

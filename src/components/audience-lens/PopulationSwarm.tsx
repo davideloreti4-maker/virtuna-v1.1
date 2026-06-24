@@ -149,7 +149,7 @@ export function PopulationSwarm({
         y: anchor.ay + Math.sin(angle) * mag,
         // Cream-alpha for all; coral ONLY for the worst cluster's dots (UI-SPEC).
         fill: anchor.accent
-          ? 'var(--color-accent)'
+          ? 'rgba(236, 231, 222, 0.35)'
           : `rgba(236, 231, 222, ${(0.2 + wt * 0.5).toFixed(2)})`,
         // Cascade reveal rank 0..1 by dot index (stable, deterministic order).
         rank: idx / len,

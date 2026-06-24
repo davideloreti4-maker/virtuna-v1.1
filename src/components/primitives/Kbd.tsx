@@ -93,7 +93,7 @@ export function Kbd({
         config.wrapper,
         config.rounded,
         // Highlighted state (coral glow)
-        highlighted && "ring-1 ring-[var(--color-accent)]",
+        highlighted && "ring-1 ring-[var(--color-cream-secondary)]",
         className
       )}
       style={{

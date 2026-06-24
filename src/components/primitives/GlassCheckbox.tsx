@@ -203,7 +203,7 @@ export const GlassCheckbox = forwardRef<HTMLInputElement, GlassCheckboxProps>(
             !checked &&
               !indeterminate &&
               "border-white/[0.06] hover:border-white/[0.1]",
-            (checked || indeterminate) && "border-[var(--color-accent)]",
+            (checked || indeterminate) && "border-[var(--color-cream-secondary)]",
 
             // Background states
             (checked || indeterminate) && "bg-[var(--color-accent-transparent)]",
@@ -234,7 +234,7 @@ export const GlassCheckbox = forwardRef<HTMLInputElement, GlassCheckboxProps>(
               size={config.icon}
               weight="bold"
               className={cn(
-                "text-[var(--color-accent)]",
+                "text-[var(--color-cream-secondary)]",
                 "animate-scale-in",
                 "transition-all duration-[var(--duration-fast)]"
               )}

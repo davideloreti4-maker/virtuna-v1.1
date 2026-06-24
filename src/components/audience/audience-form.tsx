@@ -174,9 +174,9 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
               onClick={() => setType(t)}
               className={cn(
                 "flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
                 type === t
-                  ? "border-accent/60 bg-accent/10 text-accent"
+                  ? "border-border-hover bg-hover text-foreground"
                   : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:bg-white/[0.03] hover:text-foreground",
               )}
             >

@@ -96,7 +96,7 @@ export function ScoreGauge({ score, size = 120, stroke = 8, onOpen }: ScoreGauge
       }
       className={
         interactive
-          ? 'relative inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-accent/50'
+          ? 'relative inline-flex items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/10'
           : 'relative inline-flex items-center justify-center'
       }
       style={{ width: size, height: size, cursor: interactive ? 'pointer' : undefined }}

@@ -25,7 +25,7 @@ export function Node({ spec, status, selected, onTap }: Props) {
         width={spec.bounds.width}
         height={spec.bounds.height}
         cornerRadius={FRAME_CORNER_RADIUS - 4 /* 8px — UI-SPEC §Spacing thumbnail radius */}
-        stroke={selected ? '#FF7F50' : STATUS_STROKE[status]}
+        stroke={selected ? 'var(--color-foreground-secondary)' : STATUS_STROKE[status]}
         strokeWidth={selected ? 2 : 1}
         fill="transparent" // body is rendered in DOM overlay
         onClick={onTap}

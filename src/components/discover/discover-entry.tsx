@@ -51,7 +51,7 @@ export function DiscoverEntry({ onSubmit, disabled = false }: DiscoverEntryProps
           disabled={disabled}
           placeholder="Paste a @handle or URL, or type a niche…"
           aria-label="Discover input — paste a handle or URL, or type a niche"
-          className="flex-1 rounded-lg bg-white/[0.05] border border-white/[0.05] px-3 text-sm text-foreground placeholder:text-foreground-muted outline-none focus-visible:border-[#FF7F50]/50 focus-visible:ring-1 focus-visible:ring-[#FF7F50]/50 disabled:opacity-50 transition-colors"
+          className="flex-1 rounded-lg bg-white/[0.05] border border-white/[0.05] px-3 text-sm text-foreground placeholder:text-foreground-muted outline-none focus-visible:border-[var(--color-foreground-secondary)]/50 focus-visible:ring-1 focus-visible:ring-[var(--color-foreground-secondary)]/50 disabled:opacity-50 transition-colors"
           style={{ height: "44px" }}
         />
         <button
@@ -60,7 +60,7 @@ export function DiscoverEntry({ onSubmit, disabled = false }: DiscoverEntryProps
           className="inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 transition-opacity disabled:opacity-50"
           style={{
             height: "44px",
-            color: "#FF7F50",
+            color: "var(--color-foreground-secondary)",
             backgroundColor: "rgba(255,127,80,0.08)",
             border: "1px solid rgba(255,127,80,0.30)",
             cursor: trimmed && !disabled ? "pointer" : "default",

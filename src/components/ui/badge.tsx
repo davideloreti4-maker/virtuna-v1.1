@@ -51,7 +51,7 @@ const badgeVariants = cva(
         secondary:
           "bg-surface-elevated text-foreground-secondary border border-border",
         accent:
-          "bg-accent/15 text-accent border border-accent/25",
+          "bg-surface text-foreground-secondary border border-border",
         success:
           "bg-success/10 text-success border border-success/20",
         warning:

@@ -176,7 +176,7 @@ export function GlassToggle({
         )}
         style={{
           backgroundColor: checked
-            ? "var(--color-accent)" // Coral when checked
+            ? "var(--color-cream-secondary)" // Coral when checked
             : "var(--color-fg)", // White when unchecked
           transitionTimingFunction: "var(--ease-spring)",
           boxShadow: checked

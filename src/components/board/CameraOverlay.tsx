@@ -40,7 +40,7 @@ function Kbd({ glyph }: { glyph: string }) {
 }
 
 const TAB_BASE =
-  'flex items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 motion-reduce:transition-none pointer-coarse:min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]';
+  'flex items-center whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors duration-150 motion-reduce:transition-none pointer-coarse:min-h-11 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-foreground-secondary)]';
 
 /**
  * Top-center view switcher. Tabs are clean text at rest — the keyboard shortcut

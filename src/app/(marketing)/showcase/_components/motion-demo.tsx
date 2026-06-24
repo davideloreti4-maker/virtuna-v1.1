@@ -17,7 +17,7 @@ export function HoverScaleDemo() {
 
       {/* Dramatic scale */}
       <HoverScale scale={1.05} tapScale={0.95}>
-        <div className="flex h-28 w-44 items-center justify-center rounded-lg border border-accent/20 bg-accent/5 text-sm font-medium text-foreground-secondary transition-colors">
+        <div className="flex h-28 w-44 items-center justify-center rounded-lg border border-border-hover/20 bg-action/5 text-sm font-medium text-foreground-secondary transition-colors">
           <div className="text-center">
             <p>Hover me</p>
             <p className="mt-1 text-xs text-foreground-muted">scale: 1.05</p>

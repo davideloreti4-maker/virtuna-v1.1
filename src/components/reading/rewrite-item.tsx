@@ -63,7 +63,7 @@ export function RewriteItem({ rewrite }: RewriteItemProps) {
           onClick={handleCopy}
           // Sanctioned coral surface: coral bg + dark-brown accent-foreground text.
           // Matte (no glow). Focus ring is the accent (also a reserved coral use).
-          className="shrink-0 rounded-[6px] bg-[var(--color-accent)] px-2 py-1 text-[11px] font-medium text-[var(--color-accent-foreground)] transition-colors hover:bg-[var(--color-accent-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-accent)]"
+          className="shrink-0 rounded-[6px] bg-action px-2 py-1 text-[11px] font-medium text-action-foreground transition-colors hover:bg-action/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
         >
           {copied ? 'Copied' : 'Copy'}
         </button>

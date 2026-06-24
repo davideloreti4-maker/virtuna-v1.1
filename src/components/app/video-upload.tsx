@@ -190,7 +190,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
             "relative rounded-xl transition-colors duration-150",
             bare
               ? isDragging
-                ? "bg-[#FF7F50]/[0.07] ring-1 ring-inset ring-[#FF7F50]/30"
+                ? "bg-[var(--color-foreground-secondary)]/[0.07] ring-1 ring-inset ring-[var(--color-foreground-secondary)]/30"
                 : ""
               : cn(
                   "border bg-white/[0.03]",
@@ -232,7 +232,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors",
                       isDragging
-                        ? "bg-[#FF7F50]/15 text-[#FF7F50]"
+                        ? "bg-[var(--color-foreground-secondary)]/15 text-[var(--color-foreground-secondary)]"
                         : "bg-white/[0.05] text-foreground-muted group-hover/drop:bg-white/[0.08]",
                     )}
                   >
@@ -295,7 +295,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
               {/* Progress bar overlay at bottom */}
               <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/[0.06] rounded-b-xl overflow-hidden">
                 <div
-                  className="h-full bg-accent transition-all duration-300"
+                  className="h-full bg-action transition-all duration-300"
                   style={{ width: `${Math.min(100, Math.max(0, uploadProgress))}%` }}
                 />
               </div>

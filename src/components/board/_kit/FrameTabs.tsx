@@ -48,7 +48,7 @@ export function FrameTabs({
             className={cn(
               'relative -mb-px whitespace-nowrap border-b-[1.5px] border-transparent pb-2 text-[12px] font-medium transition-colors',
               'text-white/45 hover:text-white/75',
-              'data-[state=active]:border-accent data-[state=active]:text-white',
+              'data-[state=active]:border-border-hover data-[state=active]:text-white',
               'focus-visible:text-white focus-visible:outline-none',
             )}
           >

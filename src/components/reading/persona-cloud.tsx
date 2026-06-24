@@ -15,7 +15,7 @@ import {
  * (those belong to the Phase-3 PersonaGraph drill-down this cloud opens).
  *
  * Dots only: each persona is a `<circle>` sized by weight; the single
- * worst-retention cluster reads coral (`var(--color-accent)`), all others a
+ * worst-retention cluster reads coral (`var(--color-cream-secondary)`), all others a
  * neutral cream (never pure white). The per-persona watch-through drives fill
  * opacity and the sr-only mirror, but this component renders NO aggregate
  * "{n}% watch" caption — watch% is the hero-owned field rendered ONCE by the
@@ -105,7 +105,7 @@ export function PersonaCloud({ heatmap, simResults, onOpen }: PersonaCloudProps)
           const accent = nd.tone === 'accent';
           // Coral worst cluster; otherwise CREAM (never pure white — D-02).
           const fill = accent
-            ? 'var(--color-accent)'
+            ? 'var(--color-cream-secondary)'
             : `rgba(236, 231, 222, ${(0.2 + clamp01(nd.watchThrough) * 0.5).toFixed(2)})`;
           return <circle key={nd.id} cx={nd.x} cy={nd.y} r={nd.rad} fill={fill} />;
         })}

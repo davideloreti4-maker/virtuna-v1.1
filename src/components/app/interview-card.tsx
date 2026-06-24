@@ -94,7 +94,7 @@ export function InterviewCard({
           type="button"
           onClick={onSkipCurrent}
           data-testid={`interview-card-${cardIndex}-skip-current`}
-          className="text-xs text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm px-1 py-0.5"
+          className="text-xs text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 rounded-sm px-1 py-0.5"
         >
           Skip this question
         </button>
@@ -103,7 +103,7 @@ export function InterviewCard({
             type="button"
             onClick={onSkipAll}
             data-testid={`interview-card-${cardIndex}-skip-all`}
-            className="text-xs text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 rounded-sm px-1 py-0.5"
+            className="text-xs text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 rounded-sm px-1 py-0.5"
           >
             I&apos;ll do this later
           </button>

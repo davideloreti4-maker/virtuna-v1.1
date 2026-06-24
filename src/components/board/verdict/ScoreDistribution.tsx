@@ -93,7 +93,7 @@ export function ScoreDistribution({
         )}
         {showRangeText && (
           <span
-            className="absolute top-[9px] -translate-x-1/2 whitespace-nowrap text-accent/70"
+            className="absolute top-[9px] -translate-x-1/2 whitespace-nowrap text-foreground-secondary/70"
             style={{ left: `${clampPct((lo + hi) / 2)}%` }}
           >
             likely&nbsp;{Math.round(lo)}–{Math.round(hi)}
@@ -305,7 +305,7 @@ function YouMarker({ left, label = 'you' }: { left: number; label?: string }) {
           top: -2,
           height: BASE + 2,
           width: 1.5,
-          background: 'var(--color-accent)',
+          background: 'var(--color-cream-secondary)',
           transform: 'translateX(-0.75px)',
         }}
         aria-hidden
@@ -316,14 +316,14 @@ function YouMarker({ left, label = 'you' }: { left: number; label?: string }) {
         style={{
           left: `${left}%`,
           top: BASE,
-          background: 'var(--color-accent)',
+          background: 'var(--color-cream-secondary)',
           border: '1.5px solid var(--color-surface)',
         }}
         aria-hidden
       />
       {/* chip */}
       <div
-        className="absolute -translate-x-1/2 whitespace-nowrap rounded-[7px] border px-2 py-[3px] text-[10px] font-semibold text-accent"
+        className="absolute -translate-x-1/2 whitespace-nowrap rounded-[7px] border px-2 py-[3px] text-[10px] font-semibold text-foreground-secondary"
         style={{
           left: `${left}%`,
           top: -8,

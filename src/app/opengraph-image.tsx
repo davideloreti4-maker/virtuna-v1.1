@@ -65,7 +65,7 @@ export default async function Image() {
         <div
           style={{
             fontSize: 20,
-            color: "#FF7F50",
+            color: "var(--color-foreground-secondary)",
             marginTop: 20,
           }}
         >

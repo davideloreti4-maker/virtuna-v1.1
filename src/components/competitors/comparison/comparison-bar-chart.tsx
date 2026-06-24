@@ -72,7 +72,7 @@ export function ComparisonBarChart({
           <Bar
             dataKey="valueA"
             name={`@${handleA}`}
-            fill="var(--color-accent)"
+            fill="var(--color-cream-secondary)"
             isAnimationActive={false}
             radius={[4, 4, 0, 0]}
           />
@@ -90,7 +90,7 @@ export function ComparisonBarChart({
         <div className="flex items-center gap-2">
           <span
             className="inline-block w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: "var(--color-accent)" }}
+            style={{ backgroundColor: "var(--color-cream-secondary)" }}
           />
           <span className="text-xs text-foreground-muted">@{handleA}</span>
         </div>

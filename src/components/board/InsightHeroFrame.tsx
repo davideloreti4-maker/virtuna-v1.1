@@ -139,7 +139,7 @@ function RewriteItem({ rewrite, dropLabel }: RewriteItemProps) {
       {dropLabel && (
         <span
           data-testid="insight-rewrite-drop-label"
-          className="text-[11px] text-accent"
+          className="text-[11px] text-foreground-secondary"
         >
           {dropLabel}
         </span>

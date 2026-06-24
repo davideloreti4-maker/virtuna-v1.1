@@ -75,7 +75,7 @@ export default function AudienceDetailPage() {
           type="button"
           onClick={() => router.push("/audience")}
           aria-label="Back to audiences"
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>

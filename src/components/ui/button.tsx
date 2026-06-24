@@ -35,7 +35,7 @@ const buttonVariants = cva(
     "inline-flex items-center justify-center gap-2",
     "font-medium transition-colors",
     // Focus ring using semantic tokens
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     // Disabled state
     "disabled:pointer-events-none disabled:opacity-50",
     // Ensure cursor pointer for interactive element
@@ -52,7 +52,7 @@ const buttonVariants = cva(
        */
       variant: {
         primary:
-          "bg-accent text-accent-foreground shadow-button hover:bg-accent-hover active:bg-accent-active",
+          "bg-action text-action-foreground shadow-button hover:bg-action/90 active:bg-action/80",
         secondary:
           "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15]",
         ghost:

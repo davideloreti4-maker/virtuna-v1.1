@@ -184,9 +184,9 @@ export function ChatThreadView({
               className={[
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                 "text-xs font-semibold leading-snug",
-                "border border-accent/30 bg-accent/10 text-accent",
-                "transition-colors hover:bg-accent/20 hover:border-accent/50",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                "border border-border-hover bg-hover text-foreground",
+                "transition-colors hover:bg-active hover:border-border-hover",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               ].join(" ")}
               aria-label={`Suggest: ${handoff.ctaLabel}`}
             >

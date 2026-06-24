@@ -126,7 +126,7 @@ export function SignupForm({ error, next }: SignupFormProps) {
 
       <Text size="sm" muted className="mt-8 text-center">
         Already have an account?{" "}
-        <Link href="/login" className="text-accent hover:underline">
+        <Link href="/login" className="text-foreground-secondary hover:underline">
           Sign in
         </Link>
       </Text>

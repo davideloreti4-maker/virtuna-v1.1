@@ -72,10 +72,10 @@ export function HeroScore({
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-baseline gap-1">
-            <span className="text-6xl font-bold text-accent">{overall_score}</span>
+            <span className="text-6xl font-bold text-foreground-secondary">{overall_score}</span>
             <Text as="span" size="lg" muted>/100</Text>
           </div>
-          <Text as="p" size="sm" className="font-medium text-accent mt-1">
+          <Text as="p" size="sm" className="font-medium text-foreground-secondary mt-1">
             {getScoreLabel(overall_score)}
           </Text>
         </div>

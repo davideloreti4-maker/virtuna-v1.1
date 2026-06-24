@@ -118,7 +118,7 @@ export function FactorBreakdown({ factors }: FactorBreakdownProps) {
                       as="p"
                       size="sm"
                       muted
-                      className="border-l-2 border-accent/30 pl-3 pt-1"
+                      className="border-l-2 border-border-hover/30 pl-3 pt-1"
                     >
                       {factor.improvement_tip}
                     </Text>

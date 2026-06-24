@@ -40,7 +40,7 @@ export function ReferralStatsCard({
         </div>
 
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
-          <div className="text-2xl font-bold text-accent">
+          <div className="text-2xl font-bold text-foreground-secondary">
             ${earningsDollars}
           </div>
           <div className="text-xs text-muted mt-1">Total Earnings</div>

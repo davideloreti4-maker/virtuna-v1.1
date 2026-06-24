@@ -69,8 +69,8 @@ export function EarningsChart({ data }: EarningsChartProps): React.JSX.Element {
             x2="0"
             y2="1"
           >
-            <stop offset="5%" stopColor="#FF7F50" stopOpacity={0.3} />
-            <stop offset="95%" stopColor="#FF7F50" stopOpacity={0.02} />
+            <stop offset="5%" stopColor="var(--color-foreground-secondary)" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="var(--color-foreground-secondary)" stopOpacity={0.02} />
           </linearGradient>
         </defs>
 
@@ -100,7 +100,7 @@ export function EarningsChart({ data }: EarningsChartProps): React.JSX.Element {
         <Area
           type="monotone"
           dataKey="amount"
-          stroke="#FF7F50"
+          stroke="var(--color-foreground-secondary)"
           strokeWidth={2}
           fillOpacity={1}
           fill="url(#earnings-area-gradient)"

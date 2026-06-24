@@ -73,20 +73,20 @@ export function EngagementBarChart({ data }: EngagementBarChartProps) {
         <Bar
           dataKey="likes"
           stackId="engagement"
-          fill="var(--color-accent)"
+          fill="var(--color-cream-secondary)"
           isAnimationActive={false}
         />
         <Bar
           dataKey="comments"
           stackId="engagement"
-          fill="var(--color-accent)"
+          fill="var(--color-cream-secondary)"
           fillOpacity={0.6}
           isAnimationActive={false}
         />
         <Bar
           dataKey="shares"
           stackId="engagement"
-          fill="var(--color-accent)"
+          fill="var(--color-cream-secondary)"
           fillOpacity={0.3}
           isAnimationActive={false}
         />

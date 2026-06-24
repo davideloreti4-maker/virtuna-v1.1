@@ -60,7 +60,7 @@ export interface SpinnerProps
  * <Spinner value={75} />
  *
  * // With color inheritance
- * <div className="text-accent">
+ * <div className="text-foreground-secondary">
  *   <Spinner />
  * </div>
  *

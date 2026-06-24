@@ -17,7 +17,7 @@ interface CompetitorSparklineProps {
  */
 export function CompetitorSparkline({
   data,
-  color = "var(--color-accent)",
+  color = "var(--color-cream-secondary)",
   width = 80,
   height = 32,
 }: CompetitorSparklineProps) {

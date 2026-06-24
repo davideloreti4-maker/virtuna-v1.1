@@ -37,7 +37,7 @@ interface OutcomeSignatureFormProps {
 const FIELD_LABEL =
   "block text-xs font-normal text-[var(--color-cream-muted)] mb-1";
 const INPUT_CLASS =
-  "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-charcoal-chip)] px-3 py-2 text-sm text-[var(--color-cream-primary)] placeholder:text-[var(--color-cream-muted)] focus:border-[var(--color-border-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]";
+  "w-full rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-charcoal-chip)] px-3 py-2 text-sm text-[var(--color-cream-primary)] placeholder:text-[var(--color-cream-muted)] focus:border-[var(--color-border-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-cream-secondary)]";
 
 /** Neutral cream provenance tag — NEVER coral (UI-SPEC §Color). */
 function ProvenanceTag({ children }: { children: React.ReactNode }) {

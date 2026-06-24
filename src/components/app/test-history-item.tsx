@@ -54,7 +54,7 @@ export function TestHistoryItem({
     >
       {/* Left border indicator - coral accent (brand color) */}
       {isActive && (
-        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-accent" />
+        <div className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-action" />
       )}
 
       {/* Dashed circle icon */}

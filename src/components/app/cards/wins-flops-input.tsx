@@ -156,7 +156,7 @@ function UrlColumn({
               className={cn(
                 "flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-[8px] border border-white/[0.06] text-foreground-muted transition-colors",
                 "hover:bg-white/[0.1] hover:text-foreground",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
               )}
             >
               <X size={16} aria-hidden="true" />
@@ -172,7 +172,7 @@ function UrlColumn({
           className={cn(
             "inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium text-foreground-secondary transition-colors",
             "hover:bg-white/[0.05] hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
           )}
         >
           {addLabel}

@@ -38,7 +38,7 @@ export function GoalRecheckBanner({
     >
       <p className="text-sm text-foreground flex-1">
         Quick check — is your goal still{' '}
-        <span className="text-accent font-medium">{goal}</span>?
+        <span className="text-foreground-secondary font-medium">{goal}</span>?
       </p>
       <button
         type="button"

@@ -99,7 +99,7 @@ const TestimonialCard = React.forwardRef<HTMLDivElement, TestimonialCardProps>(
         className={cn(
           "relative rounded-[12px] border bg-transparent p-6 transition-colors duration-150 hover:bg-white/[0.02]",
           featured
-            ? "border-accent/20 shadow-[0_0_20px_oklch(0.72_0.16_40_/_0.05)]"
+            ? "border-border-hover"
             : "border-border",
           className,
         )}

@@ -32,6 +32,7 @@ import type { FlatPersonaReaction } from '@/components/board/audience/audience-d
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLensContent } from './AudienceLensContent';
 import type { AmbientFocus } from './ambient-presence-types';
+import { ConstellationMark } from '@/components/brand/constellation-mark';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
@@ -109,7 +110,6 @@ function buildDots(
   const count = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
   const rnd = mulberry32(1013904223 + count * 2654435761);
   const focused = flat.length > 0;
-  const worstScrollIndex = flat.findIndex((p) => p.verdict === 'scroll');
   const padX = vbH * 0.5;
   const usableW = vbW - padX * 2;
 
@@ -122,14 +122,10 @@ function buildDots(
 
     const persona = personas[i];
     const reaction = flat[i];
-    const isWorst = focused && i === worstScrollIndex && worstScrollIndex >= 0;
 
     let fill: string;
     let r: number;
-    if (isWorst) {
-      fill = 'var(--color-accent)';
-      r = vbH * 0.17;
-    } else if (focused && reaction) {
+    if (focused && reaction) {
       const alpha = reaction.verdict === 'stop' ? 0.72 : 0.28;
       fill = `rgba(${CREAM}, ${alpha.toFixed(2)})`;
       r = reaction.verdict === 'stop' ? vbH * 0.17 : vbH * 0.13;
@@ -145,7 +141,7 @@ function buildDots(
       cy,
       r,
       fill,
-      accent: isWorst,
+      accent: false,
       phase: rnd(),
       srLabel: focused && reaction ? `${name}: ${reaction.verdict}` : name,
     });
@@ -423,21 +419,13 @@ export function AudiencePresence({
             }}
             className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
           >
-            <Constellation
-              dots={peekDots}
-              reducedMotion={reducedMotion}
-              width={56}
-              height={26}
-              vbW={132}
-              vbH={30}
-            />
+            <ConstellationMark width={56} />
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
               <span className="max-w-[120px] truncate">{audienceName}</span>
               {!reducedMotion && (
                 <span
                   aria-hidden
-                  className="inline-block h-[5px] w-[5px] shrink-0 rounded-full"
-                  style={{ backgroundColor: `rgba(${CREAM}, 0.85)`, animation: 'audpulse 2.4s ease-in-out infinite' }}
+                  className="inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)]"
                 />
               )}
             </span>
@@ -475,12 +463,12 @@ export function AudiencePresence({
                   >
                     <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-accent)]' : 'text-[var(--color-foreground)]')}>
+                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-foreground)]')}>
                         {a.name}
                       </span>
                       <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
                     </span>
-                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-accent)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
                   </button>
                 );
               })}

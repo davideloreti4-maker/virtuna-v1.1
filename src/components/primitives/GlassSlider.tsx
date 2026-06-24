@@ -313,7 +313,7 @@ export const GlassSlider = forwardRef<HTMLDivElement, GlassSliderProps>(
             )}
             style={{
               width: `${percentage}%`,
-              backgroundColor: "var(--color-accent)", // Coral
+              backgroundColor: "var(--color-cream-secondary)", // Coral
               boxShadow: "none",
             }}
           />

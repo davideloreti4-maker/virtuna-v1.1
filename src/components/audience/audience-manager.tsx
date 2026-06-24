@@ -352,7 +352,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span>
-                          <Badge variant="accent" size="sm">General</Badge>
+                          <Badge variant="default" size="sm">General</Badge>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent side="left" className="max-w-[200px] text-xs text-center">
@@ -373,7 +373,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
                         className={cn(
                           "flex items-center justify-center w-8 h-8 rounded-lg pointer-coarse:w-10 pointer-coarse:h-10",
                           "text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
                         )}
                       >
                         <DotsThree weight="bold" className="w-4 h-4" />

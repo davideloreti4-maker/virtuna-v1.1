@@ -95,7 +95,7 @@ function scoreTone(score: number | null | undefined): string {
 // Branded keyboard-focus ring — replaces the browser-default blue outline on
 // raw <button>s. Inset so it never spills past the panel's rounded clip.
 const focusRing =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/50";
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { createClient } from "@/lib/supabase/client";
 
@@ -123,7 +123,6 @@ interface NavItemProps {
   isCollapsed?: boolean;
   onClick?: () => void;
   badge?: React.ReactNode;
-  accent?: boolean;
   className?: string;
 }
 
@@ -135,7 +134,6 @@ function NavItem({
   isCollapsed = false,
   onClick,
   badge,
-  accent = false,
   className,
 }: NavItemProps) {
   const item = (
@@ -149,9 +147,7 @@ function NavItem({
         isCollapsed && "justify-center px-0",
         isActive
           ? "bg-white/[0.06] text-foreground shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]"
-          : accent
-            ? "text-accent hover:bg-accent/[0.08]"
-            : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
+          : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
         className,
       )}
       aria-current={isActive ? "page" : undefined}
@@ -161,8 +157,7 @@ function NavItem({
         size={20}
         weight={isActive ? "fill" : "regular"}
         className={cn(
-          accent && "text-accent",
-          isActive && !accent && "text-foreground",
+          isActive && "text-foreground",
         )}
       />
       {!isCollapsed && (
@@ -283,7 +278,7 @@ export function Sidebar() {
           )}
         >
           {!effectiveCollapsed && (
-            <Link href="/" className="group text-foreground pl-2" aria-label="Numen home">
+            <Link href="/" className="group text-accent pl-2" aria-label="Numen home">
               <NumenMark size={26} />
             </Link>
           )}
@@ -309,7 +304,6 @@ export function Sidebar() {
               icon={Plus}
               label="New Thread"
               isCollapsed={effectiveCollapsed}
-              accent
               onClick={() => { triggerNewAnalysis(); router.push("/home"); }}
               badge={
                 !effectiveCollapsed && (
