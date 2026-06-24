@@ -28,6 +28,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
@@ -73,6 +74,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
+  const guard = csrfGuard(request);
+  if (guard) return guard;
 
   // ── (2) Parse + Zod-validate body (CLAUDE.md boundary) ─────────────────────
   let rawBody: unknown = {};

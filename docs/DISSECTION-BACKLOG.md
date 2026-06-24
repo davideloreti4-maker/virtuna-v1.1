@@ -48,7 +48,7 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| E1 | 🟠 | CSRF guard missing on `ideas`, `ideas/develop`, `refine`, `react` (ideas header falsely claims it) | tool routes | OPEN |
+| E1 | 🟠 | CSRF guard missing on `ideas`, `ideas/develop`, `refine`, `react` (ideas header falsely claims it). FIX: added shared `csrfGuard(request)` right after the auth gate in all 4 (415 Content-Type + 403 cross-origin), matching hooks/script/remix/chat. tsc+eslint clean; 18 route tests green (clients already send `application/json`). | tool routes | FIXED (working tree) |
 | E2 | 🟢 | 10-line audience-resolve block copy-pasted into ~7 routes → extract one helper | tool routes | OPEN |
 | E3 | 🟡 | Grounded-thread machinery has no production writer (`createGroundedThreadLazy` test-only) | `threads.ts` | OPEN |
 
@@ -66,6 +66,13 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-24 — E1 CSRF guard (§01) (working tree)
+- **E1 FIXED:** `ideas`/`ideas/develop`/`refine`/`react` were state-mutating cookie-auth POSTs with NO
+  CSRF guard (ideas doc-header falsely claimed it). Added shared `csrfGuard(request)` immediately after
+  the auth gate in all 4 (415 on non-`application/json` + 403 on cross-origin Origin mismatch), identical
+  to the hooks/script/remix/chat pattern. Production clients (stream hooks + composer react fetch) already
+  send `application/json` → no behavior change for them. tsc + eslint clean; 18 route tests green.
 
 ### 2026-06-24 — Track B step-8 (composer intent · GAP-C1 + C2) (working tree)
 - **GAP-C2 DECIDED: "keep 2, derive down."** Composer keeps the 2-value per-run lens (`grow|sell`);
