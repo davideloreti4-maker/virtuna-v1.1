@@ -47,8 +47,18 @@ conflicts. The prior design batch (`design/ui-system`) is already merged to `mai
 props/data contracts** they consume or the block schemas. Structural changes to these wait for
 the engine rework — coordinate first.
 
+### 3a. ⛔ Engine-rework HOLD list — do NOT edit (guaranteed merge conflict)
+`rework/engine-core` (worktree `~/virtuna-engine-rework`) is 8 commits ahead of main, NOT yet
+merged, and is actively rewriting these UI-lane files. Editing them here will conflict:
+- `src/components/audience/calibration-flow.tsx`
+- `src/components/audience/audience-reveal.tsx`
+Leave both untouched until that branch lands on main. Everything else in `src/components/**` and
+all of `globals.css` is conflict-free (engine-rework otherwise stays in `src/lib/**`,
+`src/app/api/**`, `supabase/**`, types). See `docs/UI-SURFACES.md` "Engine-rework HOLD list".
+
 ## 4. Conflict hygiene
-- Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`).
+- Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`) — and again
+  before opening a PR, to catch the engine-rework merge when it lands.
 - Keep PRs small and per-surface; merge often to minimize drift.
 - Commit format `type(surface): description`. Atomic commits.
 
