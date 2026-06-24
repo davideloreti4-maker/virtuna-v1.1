@@ -56,16 +56,34 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| G1 | 🟢 | `_dormant/` tree ~7.3K LOC, zero real imports | `src/lib/engine/_dormant/` | OPEN |
-| G2 | 🟢 | Dead-shipped simulation UI (14 files) | `src/components/app/simulation/*` | OPEN |
+| G1 | 🟢 | `_dormant/` tree (80 files, 6.3K prod + 6.4K test LOC), zero hot-path imports | `src/lib/engine/_dormant/` | FIXED 8e84b201 |
+| G2 | 🟢 | Dead-shipped simulation UI (14 comp + test-creation-flow, ~1.8K LOC) | `src/components/app/simulation/*` | FIXED bbee1774 |
 | G3 | 🟢 | `refresh-corpus` cron stub (no-op) | `cron/refresh-corpus/route.ts:23` | OPEN |
 | G4 | 🟡 | Fake §N chat citations (no real RAG) — fix taxonomy or drop | `chat/seed-context.ts:90-106` | OPEN |
-| G-D | 🎯 | **Decide: is M2 RAG alive?** gates ~2K LOC of cuts (pgvector + corpus scripts) | `engine/retrieval/` | OPEN |
+| G-D | 🎯 | **DECIDED: M2 RAG is NOT alive** — query path stubbed (`pipeline.ts:34` uses `createEmptyRetrievalResult`; `runBenchmarkRetrieval`/`retrieval-stage`/`pgvector` never called in prod). Cut DEFERRED: `engine/retrieval/` (888+1495 test LOC) is entangled with the MIXED `engine/corpus/` dir (live utils `follower-tier`/`embedder`/`thresholds` + dead eval/RAG harness) → needs a per-module surgical pass w/ cascade check, NOT a wholesale delete. | `engine/retrieval/`, `engine/corpus/` | DEFERRED (verdict logged) |
 
 ---
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-24 — G1 + G2 dead-code cuts + G-D verdict
+- **G2 FIXED bbee1774** — deleted `src/components/app/simulation/` (14 components + 5 tests, ~1.8K LOC)
+  + `test-creation-flow.tsx` (its only sim consumer, itself dead — only a comment + the barrel referenced
+  it). Pruned the dead simulation/test-creation re-export block from `components/app/index.ts`. Zero prod
+  consumers (the sole barrel importer, `layout.tsx`, uses only `AppShell`). Test-file "simulation/" matches
+  are string placeholders, not imports.
+- **G1 FIXED 8e84b201** — deleted `src/lib/engine/_dormant/` (80 files, 6.3K prod + 6.4K test LOC) +
+  `engine/__tests__/creator-rules.test.ts` (the one external test importing dormant). Every other external
+  ref was a historical-move comment. Live pipeline uses the `retrieval-empty` stub, never dormant modules.
+- **G-D DECIDED: M2 RAG is NOT alive.** Live `pipeline.ts:34` imports `createEmptyRetrievalResult`; the real
+  retrieval query path (`runBenchmarkRetrieval`/`retrieval-stage`/`pgvector-client`) has zero prod callers —
+  only dead orchestrators (`engine/corpus/orchestrator.ts`, no prod importer) + tests import `engine/retrieval/`.
+  **Cut deferred** (entangled): `engine/corpus/` is MIXED — live utils (`follower-tier` → account-read +
+  audience/calibration; `embedder` → apify webhook; `thresholds` → retrieval) tangled with the dead eval/RAG
+  harness. Needs a surgical per-module pass + dependency-cascade check, not a wholesale delete. ~2.4K+ LOC.
+- **Verify (both cuts):** tsc error count held at baseline 65 (zero new errors) after each delete · full suite
+  3018 pass (only the 3 pre-existing DELETE-415 CSRF quirks fail) · ENGINE_VERSION 3.19.0 untouched.
 
 ### 2026-06-24 — Track B step-9 (flywheel/drift re-bake) (working tree)
 - **Step 9 DONE — drift cron re-bakes the frozen signature.** Per §P.1 the weekly
