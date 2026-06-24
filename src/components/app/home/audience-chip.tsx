@@ -143,10 +143,10 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
           "pointer-coarse:min-h-[44px] pointer-coarse:px-3",
           chipActive
-            ? "border-accent/60 bg-accent/10 text-accent"
+            ? "border-border-hover bg-hover text-foreground"
             : "border-white/[0.06] text-foreground-muted/60 hover:border-white/[0.1] hover:bg-white/[0.03] hover:text-foreground-muted",
         )}
       >
@@ -194,13 +194,13 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
                       className={cn(
                         "w-full flex items-center gap-2 px-3 min-h-[38px] text-sm transition-colors text-left",
                         isActive
-                          ? "text-accent bg-accent/[0.06]"
+                          ? "text-foreground bg-hover"
                           : "text-foreground-secondary hover:bg-white/[0.05] hover:text-foreground",
                       )}
                     >
                       <span className="flex-1 truncate">{audience.name}</span>
                       {isActive && (
-                        <span className="text-accent text-xs">✓</span>
+                        <span className="text-foreground-secondary text-xs">✓</span>
                       )}
                     </button>
                   );
@@ -250,12 +250,12 @@ export function AudienceChip({ threadId, onAudienceChange, className }: Audience
                       className={cn(
                         "w-full flex items-center gap-3 px-4 min-h-[52px] text-base transition-colors text-left",
                         isActive
-                          ? "text-accent bg-accent/[0.06]"
+                          ? "text-foreground bg-hover"
                           : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
                       )}
                     >
                       <span className="flex-1 truncate">{audience.name}</span>
-                      {isActive && <span className="text-accent">✓</span>}
+                      {isActive && <span className="text-foreground-secondary">✓</span>}
                     </button>
                   );
                 })

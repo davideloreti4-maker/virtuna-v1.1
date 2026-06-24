@@ -67,7 +67,7 @@ const tabsTriggerVariants = cva(
     "inline-flex items-center justify-center whitespace-nowrap rounded-full",
     "font-medium transition-all duration-200",
     // Focus
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
     // Disabled
     "disabled:pointer-events-none disabled:opacity-50",
     // Inactive state (default)
@@ -131,7 +131,7 @@ const TabsContent = React.forwardRef<
     ref={ref}
     className={cn(
       "mt-4",
-      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
       className,
     )}
     {...props}

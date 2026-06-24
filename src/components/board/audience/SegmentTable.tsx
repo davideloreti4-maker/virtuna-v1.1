@@ -60,7 +60,7 @@ export function SegmentTable({ groups, badKey, cohortFrames, isLoading }: Segmen
               />
             )}
             <div className="min-w-0">
-              <div className={bad ? 'truncate text-accent' : 'truncate text-foreground'}>
+              <div className={bad ? 'truncate text-foreground-secondary' : 'truncate text-foreground'}>
                 {g.label}
               </div>
               <div className="truncate text-[11px] text-foreground-muted">{g.desc}</div>
@@ -76,7 +76,7 @@ export function SegmentTable({ groups, badKey, cohortFrames, isLoading }: Segmen
       render: (g) => {
         const bad = g.key === badKey;
         return (
-          <span className={bad ? 'tabular-nums text-accent' : 'tabular-nums text-foreground'}>
+          <span className={bad ? 'tabular-nums text-foreground-secondary' : 'tabular-nums text-foreground'}>
             {Math.round(g.pct)}%
           </span>
         );

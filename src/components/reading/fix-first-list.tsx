@@ -134,7 +134,7 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
           data-testid="fix-first-more"
           onClick={() => setExpanded(true)}
           aria-expanded={false}
-          className="self-start text-xs text-foreground-secondary underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-accent)]"
+          className="self-start text-xs text-foreground-secondary underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/10"
         >
           {overflow} more fixes &rarr;
         </button>

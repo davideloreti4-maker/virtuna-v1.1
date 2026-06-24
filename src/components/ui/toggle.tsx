@@ -18,13 +18,13 @@ const toggleTrackVariants = cva(
     "peer inline-flex shrink-0 cursor-pointer items-center rounded-full border",
     "transition-all duration-200",
     // Focus ring
-    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
     // Disabled
     "disabled:cursor-not-allowed disabled:opacity-50",
     // Unchecked state
     "data-[state=unchecked]:bg-surface data-[state=unchecked]:border-border-glass",
-    // Checked state — coral accent tint
-    "data-[state=checked]:bg-accent/20 data-[state=checked]:border-accent/30",
+    // Checked state — neutral active track
+    "data-[state=checked]:bg-active data-[state=checked]:border-border-hover",
   ],
   {
     variants: {
@@ -59,9 +59,8 @@ const toggleThumbVariants = cva(
     "transition-all duration-200",
     // Unchecked: secondary foreground, slight offset
     "data-[state=unchecked]:bg-foreground-secondary data-[state=unchecked]:translate-x-0.5",
-    // Checked: coral accent with glow
-    "data-[state=checked]:bg-accent",
-    "data-[state=checked]:shadow-[0_0_8px_oklch(0.72_0.16_40_/_0.4)]",
+    // Checked: neutral foreground thumb
+    "data-[state=checked]:bg-foreground",
   ],
   {
     variants: {

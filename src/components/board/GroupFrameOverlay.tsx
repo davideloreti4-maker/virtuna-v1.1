@@ -120,7 +120,7 @@ export const GroupFrameOverlay = forwardRef<HTMLDivElement, Props>(function Grou
       tabIndex={tabIndex}
       onFocus={onFocus}
       className={cn(
-        'pointer-events-auto absolute focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2',
+        'pointer-events-auto absolute focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2',
         // Auto-height frames render their full content (no clip); fixed frames
         // clip their bounded body. overflow-visible also avoids a one-frame clip
         // flash before the measured height propagates back from Board.

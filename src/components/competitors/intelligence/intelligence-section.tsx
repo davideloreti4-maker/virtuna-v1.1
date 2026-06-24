@@ -133,7 +133,7 @@ export function IntelligenceSection({
       {/* Section header */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <div className="flex items-center gap-2">
-          <Sparkle size={20} className="text-[var(--color-accent)]" />
+          <Sparkle size={20} className="text-[var(--color-cream-secondary)]" />
           <h2 className="text-lg font-semibold text-foreground">
             AI Intelligence
           </h2>
@@ -143,7 +143,7 @@ export function IntelligenceSection({
           <button
             onClick={handleGenerateAll}
             disabled={isAnyGenerating}
-            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="text-xs font-medium px-3 py-1.5 rounded-lg bg-[var(--color-cream-secondary)] text-[var(--color-action-foreground)] hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {isAnyGenerating ? "Generating..." : "Generate All"}
           </button>
@@ -256,13 +256,13 @@ function GenerateCTA({
       </p>
       {loading ? (
         <div className="flex items-center gap-2 text-sm text-foreground-muted">
-          <Spinner size="sm" className="text-[var(--color-accent)]" />
+          <Spinner size="sm" className="text-[var(--color-cream-secondary)]" />
           <span>Analyzing...</span>
         </div>
       ) : (
         <button
           onClick={onGenerate}
-          className="text-xs font-medium px-4 py-2 rounded-lg bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:opacity-90 transition-opacity"
+          className="text-xs font-medium px-4 py-2 rounded-lg bg-[var(--color-cream-secondary)] text-[var(--color-action-foreground)] hover:opacity-90 transition-opacity"
         >
           Generate Analysis
         </button>

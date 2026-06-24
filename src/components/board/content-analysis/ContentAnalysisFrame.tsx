@@ -237,7 +237,7 @@ export function ContentAnalysisFrame({ camera: _camera, layout: _layout }: Conte
                     return (
                       <span key={i}>
                         {sep}
-                        <span className={c.weak ? 'text-accent' : undefined}>{c.text}</span>
+                        <span className={c.weak ? 'text-foreground-secondary' : undefined}>{c.text}</span>
                       </span>
                     );
                   })}

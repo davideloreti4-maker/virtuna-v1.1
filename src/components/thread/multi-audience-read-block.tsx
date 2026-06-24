@@ -55,7 +55,7 @@ const GRADE_GLYPH: Record<Band, string> = {
 // inline keeps the coral border/bg exact).
 const READ_PANEL_STYLE: React.CSSProperties = {
   border: '1px solid rgba(255,127,80,0.30)',
-  background: 'rgba(255,127,80,0.08)',
+  background: 'rgba(255,255,255,0.06)',
   borderRadius: 12,
 };
 
@@ -102,8 +102,8 @@ function AudienceRead({
         </span>
         <div className="text-[13px] leading-relaxed">
           {/* Interpretation — coral highlight reserved for this + the Lever.
-              Uses the canonical --color-accent (coral-500) token via text-accent. */}
-          <span className="font-semibold text-accent">{band} Read.</span>{' '}
+              Uses the canonical --color-accent (coral-500) token via text-foreground-secondary. */}
+          <span className="font-semibold text-foreground">{band} Read.</span>{' '}
           <span className="text-foreground">{interpretation}</span>
           {/* Lever — the one thing to act on. */}
           <span className="mt-1.5 block text-xs text-muted">

@@ -134,8 +134,8 @@ export function ReadingHero({
         <span
           className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.1em]"
           style={{
-            borderColor: 'var(--color-accent)',
-            color: 'var(--color-accent)',
+            borderColor: 'var(--color-cream-secondary)',
+            color: 'var(--color-cream-secondary)',
             opacity: 0.75,
           }}
         >

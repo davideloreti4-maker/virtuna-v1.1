@@ -53,7 +53,7 @@ export function AnalysisLoadingSteps() {
             >
               <Icon
                 className={`h-4 w-4 shrink-0 ${
-                  isActive ? 'text-accent animate-pulse' : 'text-foreground-muted'
+                  isActive ? 'text-foreground animate-pulse' : 'text-foreground-muted'
                 }`}
               />
               <Text

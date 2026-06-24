@@ -53,7 +53,7 @@ export default async function Image() {
           style={{
             fontSize: 32,
             fontWeight: 600,
-            color: "#FF7F50",
+            color: "var(--color-foreground-secondary)",
             marginBottom: 16,
           }}
         >

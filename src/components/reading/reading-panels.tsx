@@ -278,7 +278,7 @@ function AudienceList({
           const accent = n.tone === 'accent';
           const pct = Math.round(clamp01(n.watchThrough) * 100);
           const dotFill = accent
-            ? 'var(--color-accent)'
+            ? 'var(--color-cream-secondary)'
             : `rgba(236, 231, 222, ${(0.3 + clamp01(n.watchThrough) * 0.5).toFixed(2)})`;
           return (
             <li
@@ -302,13 +302,13 @@ function AudienceList({
                   className="block h-full rounded-full"
                   style={{
                     width: `${pct}%`,
-                    background: accent ? 'var(--color-accent)' : 'rgba(236,231,222,0.35)',
+                    background: accent ? 'var(--color-cream-secondary)' : 'rgba(236,231,222,0.35)',
                   }}
                 />
               </span>
               <span
                 className="w-10 shrink-0 text-right text-[13px] font-semibold tabular-nums text-foreground"
-                style={accent ? { color: 'var(--color-accent)' } : undefined}
+                style={accent ? { color: 'var(--color-cream-secondary)' } : undefined}
               >
                 {pct}%
               </span>

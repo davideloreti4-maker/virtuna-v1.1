@@ -146,7 +146,7 @@ function HeroRewrite({
       <button
         type="button"
         onClick={onCopy}
-        className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold tracking-[-0.005em] text-accent hover:opacity-80 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
+        className="mt-2.5 inline-flex items-center gap-1.5 text-[12.5px] font-semibold tracking-[-0.005em] text-foreground-secondary hover:opacity-80 focus:outline-2 focus:outline-offset-2 focus:outline-white/40"
       >
         {copied ? (
           <>

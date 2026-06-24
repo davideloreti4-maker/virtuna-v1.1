@@ -417,7 +417,7 @@ function OptionItem({
         // Highlighted (keyboard / hover)
         !option.disabled && isHighlighted && "bg-white/5 text-foreground",
         // Selected
-        isSelected && "text-accent",
+        isSelected && "text-foreground",
         // Disabled
         option.disabled && "opacity-50 cursor-not-allowed",
       )}
@@ -426,7 +426,7 @@ function OptionItem({
       {isSelected && (
         <Check
           weight="bold"
-          className="flex-shrink-0 w-4 h-4 text-accent"
+          className="flex-shrink-0 w-4 h-4 text-foreground-secondary"
           aria-hidden="true"
         />
       )}
@@ -668,7 +668,7 @@ const Select = React.forwardRef<HTMLDivElement, SelectProps>(
             // Open state
             state.isOpen &&
               !error &&
-              "border-accent/50 ring-2 ring-accent/20",
+              "border-border-hover ring-2 ring-white/10",
             // Error state
             error && "border-error/50",
             // Disabled
@@ -833,7 +833,7 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
             "focus:outline-none",
             state.isOpen &&
               !error &&
-              "border-accent/50 ring-2 ring-accent/20",
+              "border-border-hover ring-2 ring-white/10",
             error && "border-error/50",
             disabled && "opacity-50 cursor-not-allowed",
           )}
@@ -893,7 +893,7 @@ const SearchableSelect = React.forwardRef<HTMLDivElement, SearchableSelectProps>
                     "w-full rounded-md pl-10 pr-8 h-9",
                     "bg-surface border border-border-glass",
                     "text-foreground text-sm placeholder:text-foreground-muted",
-                    "focus:outline-none focus:ring-2 focus:ring-accent/30",
+                    "focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-border-hover",
                     "transition-colors duration-fast",
                   )}
                   onClick={(e) => e.stopPropagation()}

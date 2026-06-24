@@ -65,7 +65,7 @@ export function SaveAffordance({
       disabled={saved || save.isPending}
       className={cn(
         "inline-flex items-center gap-1.5 text-sm font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
         // Cream chrome — NEVER coral, in either state (UI-SPEC §Color).
         "text-foreground-secondary hover:text-foreground",
         (saved || save.isPending) && "cursor-default",

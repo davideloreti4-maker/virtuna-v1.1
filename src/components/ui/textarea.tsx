@@ -148,7 +148,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           // Focus
           !disabled &&
             !error &&
-            "focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent",
+            "focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-border-hover",
           // Error
           error &&
             "border-[var(--color-red)] focus:outline-none focus:ring-2 focus:ring-[var(--color-red-transparent)] focus:border-[var(--color-red)]",

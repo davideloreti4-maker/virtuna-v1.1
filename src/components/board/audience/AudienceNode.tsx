@@ -149,7 +149,7 @@ export function AudienceNode(props: AudienceNodeProps) {
     <>
       {insightParts.lead}
       {insightParts.time != null && (
-        <span className="font-semibold text-accent">{insightParts.time}</span>
+        <span className="font-semibold text-foreground-secondary">{insightParts.time}</span>
       )}
       {insightParts.tail}
       {insightParts.addendum}

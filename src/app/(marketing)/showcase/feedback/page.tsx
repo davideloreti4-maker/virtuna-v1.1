@@ -241,7 +241,7 @@ function MyComponent() {
                   Default
                 </Text>
               </div>
-              <div className="flex flex-col items-center gap-2 text-accent">
+              <div className="flex flex-col items-center gap-2 text-foreground-secondary">
                 <Spinner size="md" />
                 <Text size="sm" muted>
                   Accent
@@ -277,7 +277,7 @@ function MyComponent() {
 <Spinner value={100} size="lg" />
 
 {/* Color inheritance */}
-<div className="text-accent">
+<div className="text-foreground-secondary">
   <Spinner />  {/* coral spinner */}
 </div>
 

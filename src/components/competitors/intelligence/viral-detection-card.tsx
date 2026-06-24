@@ -41,7 +41,7 @@ export function ViralDetectionCard({
                   : video.caption}
               </p>
               <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)]">
+                <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[var(--color-cream-secondary)]/15 text-[var(--color-cream-secondary)]">
                   {video.viral_multiplier}x avg
                 </span>
                 <span className="text-xs text-foreground-muted">
@@ -63,7 +63,7 @@ export function ViralDetectionCard({
                     key={j}
                     className="text-xs text-foreground-muted flex gap-2"
                   >
-                    <span className="text-[var(--color-accent)] shrink-0">
+                    <span className="text-[var(--color-cream-secondary)] shrink-0">
                       *
                     </span>
                     {factor}

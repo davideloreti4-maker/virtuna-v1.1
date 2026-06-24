@@ -94,7 +94,7 @@ export function VideoCard({ video }: { video: VideoCardData }) {
         {video.engagementRate !== null && (
           <span
             className="px-2 py-0.5 rounded-full text-[11px] font-medium"
-            style={{ backgroundColor: "oklch(0.72 0.16 40 / 0.1)", color: "#FF7F50" }}
+            style={{ backgroundColor: "oklch(0.72 0.16 40 / 0.1)", color: "var(--color-foreground-secondary)" }}
           >
             {video.engagementRate}%
           </span>

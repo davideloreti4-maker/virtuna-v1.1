@@ -326,7 +326,7 @@ export default function DataDisplayPage() {
               <div key={blur} className="relative overflow-hidden rounded-xl">
                 {/* Colorful background to demonstrate blur */}
                 <div className="absolute inset-0" aria-hidden="true">
-                  <div className="absolute -left-4 -top-4 h-24 w-24 rounded-full bg-accent/40 blur-xl" />
+                  <div className="absolute -left-4 -top-4 h-24 w-24 rounded-full bg-action/40 blur-xl" />
                   <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-purple-500/30 blur-xl" />
                   <div className="absolute left-1/2 top-1/2 h-16 w-16 -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-500/25 blur-lg" />
                 </div>

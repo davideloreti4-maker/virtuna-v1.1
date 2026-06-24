@@ -29,7 +29,7 @@ const features: PricingFeature[] = [
 
 function FeatureValue({ value }: { value: boolean | string }) {
   if (value === true) {
-    return <Check size={18} weight="bold" className="text-accent mx-auto" />;
+    return <Check size={18} weight="bold" className="text-foreground-secondary mx-auto" />;
   }
   if (value === false) {
     return <X size={18} weight="bold" className="text-foreground-muted/50 mx-auto" />;
@@ -110,7 +110,7 @@ export function PricingSection() {
         {/* Post-checkout feedback */}
         {isPolling && (
           <div className="mb-8 flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
             <span className="text-sm text-foreground-secondary">Confirming your subscription...</span>
           </div>
         )}
@@ -148,13 +148,13 @@ export function PricingSection() {
 
             {/* Pro */}
             <div
-              className="relative rounded-[12px] border border-accent/30 p-8"
+              className="relative rounded-[12px] border border-border-hover/30 p-8"
               style={{
                 boxShadow: "rgba(255, 127, 80, 0.1) 0px 1px 0px 0px inset",
               }}
             >
               <div className="absolute -top-3 left-8">
-                <span className="rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground">
+                <span className="rounded-full bg-action px-3 py-1 text-xs font-medium text-foreground-secondary-foreground">
                   Most popular
                 </span>
               </div>
@@ -185,7 +185,7 @@ export function PricingSection() {
                   <th className="py-4 px-6 text-center text-sm font-medium text-white w-32">
                     Starter
                   </th>
-                  <th className="py-4 px-6 text-center text-sm font-medium text-accent w-32">
+                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground-secondary w-32">
                     Pro
                   </th>
                 </tr>

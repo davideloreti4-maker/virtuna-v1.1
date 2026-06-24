@@ -49,7 +49,7 @@ export function ClusterView({ groups, worstKey }: ClusterViewProps) {
                 <span className="text-[14px] font-medium text-foreground">{g.label}</span>
                 <span
                   className="text-[13px] tabular-nums"
-                  style={{ color: isWorst ? 'var(--color-accent)' : 'var(--color-cream-muted)' }}
+                  style={{ color: 'var(--color-cream-muted)' }}
                 >
                   {pct}%
                 </span>
@@ -62,7 +62,7 @@ export function ClusterView({ groups, worstKey }: ClusterViewProps) {
                   style={{
                     width: `${Math.max(0, Math.min(100, pct))}%`,
                     backgroundColor: isWorst
-                      ? 'var(--color-accent)'
+                      ? 'rgba(236, 231, 222, 0.65)'
                       : 'rgba(236, 231, 222, 0.45)',
                   }}
                 />

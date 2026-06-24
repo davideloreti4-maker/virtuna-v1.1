@@ -1170,7 +1170,6 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
                 </p>
                 <p
                   className="text-sm font-medium text-foreground leading-snug"
-                  style={{ color: 'var(--color-accent)' }}
                 >
                   &ldquo;{testBrief.hookLine}&rdquo;
                 </p>
@@ -1255,7 +1254,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
             {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
             <ModelTag activeTool={activeTool} />
 
-            {/* Submit — the lone coral affordance besides the focus ring. */}
+            {/* Submit — neutral cream action (inherits primary variant). */}
             <Button
               type="submit"
               variant="primary"

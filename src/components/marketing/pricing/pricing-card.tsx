@@ -53,7 +53,7 @@ export function PricingCard({
       className={cn(
         "flex flex-col rounded-[--radius-lg] border bg-transparent p-8",
         highlighted
-          ? "border-accent/25 ring-1 ring-accent/20"
+          ? "border-border-hover/25 ring-1 ring-accent/20"
           : "border-border"
       )}
       style={{ boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset" }}

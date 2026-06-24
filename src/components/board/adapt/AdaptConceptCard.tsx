@@ -36,7 +36,7 @@ export function AdaptConceptCard({ concept, onDevelop, isPending }: AdaptConcept
       <p className="text-base font-semibold text-foreground">{concept.hook}</p>
 
       {/* 2. format_borrowed chip — coral, pill, "Borrowed:" prefix */}
-      <span className="inline-flex w-fit text-xs font-medium text-accent bg-accent/[0.12] rounded-full px-2 py-0.5">
+      <span className="inline-flex w-fit text-xs font-medium text-foreground-secondary bg-action/[0.12] rounded-full px-2 py-0.5">
         Borrowed: {concept.format_borrowed}
       </span>
 

@@ -45,7 +45,7 @@ export function LegendKey({
 }) {
   const color =
     tone === 'accent'
-      ? 'var(--color-accent)'
+      ? 'var(--color-cream-secondary)'
       : tone === 'amber'
         ? 'var(--color-warning)'
         : 'rgba(236, 231, 222, 0.5)';

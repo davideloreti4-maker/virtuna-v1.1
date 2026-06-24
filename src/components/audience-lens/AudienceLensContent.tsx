@@ -338,9 +338,8 @@ function RewriteCta({
         type="button"
         onClick={onRewrite}
         disabled={rewriting}
-        className="w-full rounded-[8px] px-4 py-2.5 text-[14px] font-medium text-[var(--color-accent-foreground)] transition-opacity disabled:opacity-60"
+        className="w-full rounded-[8px] bg-action px-4 py-2.5 text-[14px] font-medium text-action-foreground transition-opacity hover:bg-action/90 disabled:opacity-60"
         style={{
-          backgroundColor: 'var(--color-accent)',
           boxShadow: 'var(--shadow-button)',
         }}
         aria-label="Rewrite this concept steered by the audience's lever"

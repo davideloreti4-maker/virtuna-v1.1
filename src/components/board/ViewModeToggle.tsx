@@ -45,7 +45,7 @@ export function ViewModeToggle({ mode, onSelect }: Props) {
             aria-label={`${label} view`}
             data-testid={`view-mode-${value}`}
             onClick={() => onSelect(value)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50] ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150 motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-foreground-secondary)] ${
               isActive
                 ? 'bg-white/[0.08] text-foreground'
                 : 'text-foreground/50 hover:bg-white/[0.04] hover:text-foreground/90'

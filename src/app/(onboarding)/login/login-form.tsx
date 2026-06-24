@@ -124,7 +124,7 @@ export function LoginForm({ error, expired, next, message }: LoginFormProps) {
 
       <Text size="sm" muted className="mt-8 text-center">
         Don&apos;t have an account?{" "}
-        <Link href="/signup" className="text-accent hover:underline">
+        <Link href="/signup" className="text-foreground-secondary hover:underline">
           Sign up
         </Link>
       </Text>

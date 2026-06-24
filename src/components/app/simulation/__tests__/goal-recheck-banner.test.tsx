@@ -12,10 +12,10 @@ describe("GoalRecheckBanner", () => {
     expect(screen.getByText(defaultGoal)).toBeInTheDocument();
   });
 
-  it("renders the goal text with accent color", () => {
+  it("renders the goal text with emphasis styling", () => {
     render(<GoalRecheckBanner goal={defaultGoal} onDismiss={() => {}} />);
     const goalSpan = screen.getByText(defaultGoal);
-    expect(goalSpan.className).toContain("text-accent");
+    expect(goalSpan.className).toContain("text-foreground-secondary");
     expect(goalSpan.className).toContain("font-medium");
   });
 

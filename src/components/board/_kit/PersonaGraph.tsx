@@ -122,7 +122,7 @@ export function PersonaGraph({
           x: nd.x + Math.cos(angle) * mag,
           y: nd.y + Math.sin(angle) * mag,
           // Cream-alpha (matches persona-cloud), coral for the worst cluster.
-          fill: accent ? 'var(--color-accent)' : `rgba(236, 231, 222, ${(0.2 + wt * 0.5).toFixed(2)})`,
+          fill: accent ? 'rgba(236, 231, 222, 0.35)' : `rgba(236, 231, 222, ${(0.2 + wt * 0.5).toFixed(2)})`,
           opacity: 0.35 + rnd() * 0.5,
         });
       }
@@ -194,7 +194,7 @@ export function PersonaGraph({
               ? Math.max(0, Math.min(1, attentionOverride[i] ?? 0))
               : Math.max(0, Math.min(1, nd.watchThrough));
           const fill = accent
-            ? 'var(--color-accent)'
+            ? 'rgba(236, 231, 222, 0.55)'
             : `rgba(236, 231, 222, ${(0.28 + intensity * 0.5).toFixed(2)})`;
           return (
             <g
@@ -215,7 +215,7 @@ export function PersonaGraph({
                   cy={nd.y}
                   r={nd.rad + 4}
                   fill="none"
-                  stroke={accent ? 'var(--color-accent)' : 'rgba(236, 231, 222, 0.4)'}
+                  stroke={accent ? 'rgba(236, 231, 222, 0.5)' : 'rgba(236, 231, 222, 0.4)'}
                   strokeWidth={1}
                 />
               )}
@@ -224,9 +224,9 @@ export function PersonaGraph({
                 cy={nd.y}
                 r={nd.rad}
                 fill={fill}
-                stroke={accent ? 'var(--color-accent)' : 'rgba(236, 231, 222, 0.12)'}
-                strokeOpacity={accent ? 0.6 : 1}
-                strokeWidth={accent ? 1.2 : 0.6}
+                stroke={accent ? 'rgba(236, 231, 222, 0.35)' : 'rgba(236, 231, 222, 0.12)'}
+                strokeOpacity={accent ? 0.8 : 1}
+                strokeWidth={accent ? 1 : 0.6}
               >
                 {!reducedMotion && (
                   <animate

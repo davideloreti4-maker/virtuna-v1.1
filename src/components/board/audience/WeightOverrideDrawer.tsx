@@ -105,7 +105,7 @@ export function WeightOverrideDrawer({
           type="button"
           aria-label="Close audience mix override"
           onClick={() => onOpenChange(false)}
-          className="rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+          className="rounded-md p-1 text-white/40 transition-colors hover:bg-white/[0.05] hover:text-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-foreground-secondary)]"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -122,7 +122,7 @@ export function WeightOverrideDrawer({
             className={[
               'rounded-[6px] border px-2 py-0.5 text-[11px] transition-colors',
               activePreset === key
-                ? 'border-[#FF7F50] text-[#FF7F50] bg-[rgba(255,127,80,0.08)]'
+                ? 'border-[var(--color-foreground-secondary)] text-[var(--color-foreground-secondary)] bg-[rgba(255,127,80,0.08)]'
                 : 'border-white/[0.06] text-white/70 bg-transparent hover:bg-white/[0.05]',
             ].join(' ')}
           >
@@ -134,7 +134,7 @@ export function WeightOverrideDrawer({
           className={[
             'rounded-[6px] border px-2 py-0.5 text-[11px]',
             activePreset === 'custom'
-              ? 'border-[#FF7F50] text-[#FF7F50] bg-[rgba(255,127,80,0.08)]'
+              ? 'border-[var(--color-foreground-secondary)] text-[var(--color-foreground-secondary)] bg-[rgba(255,127,80,0.08)]'
               : 'border-white/[0.06] text-white/40 bg-transparent',
           ].join(' ')}
         >
@@ -167,12 +167,12 @@ export function WeightOverrideDrawer({
                 aria-valuemax={100}
                 aria-valuenow={pct}
                 onChange={(e) => handleSliderChange(key, e.target.value)}
-                className="flex-1 cursor-pointer accent-[#FF7F50]"
+                className="flex-1 cursor-pointer accent-[var(--color-foreground-secondary)]"
                 style={{
                   WebkitAppearance: 'none',
                   appearance: 'none',
                   height: '4px',
-                  background: `linear-gradient(to right, #FF7F50 ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
+                  background: `linear-gradient(to right, var(--color-foreground-secondary) ${pct}%, rgba(255,255,255,0.10) ${pct}%)`,
                   borderRadius: '9999px',
                 }}
               />
@@ -199,7 +199,7 @@ export function WeightOverrideDrawer({
             checked={saveAsDefault}
             onChange={(e) => setSaveAsDefault(e.target.checked)}
             aria-label="Save as my default for future analyses"
-            className="rounded border-white/[0.06] accent-[#FF7F50]"
+            className="rounded border-white/[0.06] accent-[var(--color-foreground-secondary)]"
           />
           Save as my default for future analyses
         </label>
@@ -218,7 +218,7 @@ export function WeightOverrideDrawer({
             onClick={handleApply}
             disabled={!isDirty || isApplying}
             aria-label="Apply Audience Mix"
-            className="rounded-md border border-[#FF7F50] bg-[rgba(255,127,80,0.12)] px-3 py-1 text-[11px] text-[#FF7F50] transition-colors hover:bg-[rgba(255,127,80,0.20)] disabled:cursor-not-allowed disabled:opacity-40"
+            className="rounded-md border border-[var(--color-foreground-secondary)] bg-[rgba(255,127,80,0.12)] px-3 py-1 text-[11px] text-[var(--color-foreground-secondary)] transition-colors hover:bg-[rgba(255,127,80,0.20)] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isApplying ? 'Applying…' : 'Apply mix'}
           </button>

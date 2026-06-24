@@ -147,7 +147,7 @@ export default function WelcomePage() {
         {STEPS.map((s) => (
           <div
             key={s}
-            className="h-1.5 w-8 rounded-full bg-accent transition-colors"
+            className="h-1.5 w-8 rounded-full bg-action transition-colors"
           />
         ))}
       </div>

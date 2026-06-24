@@ -531,7 +531,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
                   )}
                 >
                   <span className="font-medium capitalize">{tier.name}</span>
-                  {apolloTier === tier.id && <Check className="h-3 w-3 text-accent" />}
+                  {apolloTier === tier.id && <Check className="h-3 w-3 text-foreground-secondary" />}
                 </button>
               ))}
             </PopoverContent>
@@ -545,7 +545,7 @@ export function ContentForm({ onSubmit, className }: ContentFormProps) {
               "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-150 motion-reduce:transition-none pointer-coarse:h-11 pointer-coarse:w-11",
               isSubmitDisabled
                 ? "bg-white/[0.07] text-foreground-muted cursor-not-allowed"
-                : "bg-accent text-accent-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] hover:bg-accent-hover active:scale-95 motion-reduce:active:scale-100 cursor-pointer"
+                : "bg-action text-action-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] hover:bg-action/90 active:scale-95 motion-reduce:active:scale-100 cursor-pointer"
             )}
             aria-label="Submit test"
           >

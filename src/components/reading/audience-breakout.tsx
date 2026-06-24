@@ -187,7 +187,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
           <>
             {' '}
             Lift the{' '}
-            <b className="font-semibold" style={{ color: 'var(--color-accent)' }}>
+            <b className="font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
               {dropTime}
             </b>{' '}
             drop to get it moving.
@@ -204,7 +204,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
           <>
             {' '}
             — then the{' '}
-            <b className="font-semibold" style={{ color: 'var(--color-accent)' }}>
+            <b className="font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
               {dropTime}
             </b>{' '}
             drop loses too many and it stalls before viral.
@@ -330,7 +330,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
           <div key={s.stage} className="flex-1 text-center">
             <div
               className="text-[15px] font-bold tabular-nums"
-              style={{ color: s.cleared ? 'var(--color-foreground)' : 'var(--color-accent)' }}
+              style={{ color: s.cleared ? 'var(--color-foreground)' : 'var(--color-cream-secondary)' }}
             >
               {s.rate}%
             </div>

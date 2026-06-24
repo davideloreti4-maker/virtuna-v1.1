@@ -13,7 +13,7 @@ export interface GlassProgressProps {
 }
 
 const colorMap: Record<ProgressVariant, string> = {
-  coral: "bg-accent",
+  coral: "bg-action",
   blue: "bg-blue-500",
   purple: "bg-purple-500",
   default: "bg-white/20",

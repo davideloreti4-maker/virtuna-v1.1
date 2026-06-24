@@ -31,7 +31,7 @@ export function MixFooter({ label, open, onToggle }: MixFooterProps) {
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="ml-auto cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#FF7F50]"
+        className="ml-auto cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-foreground-secondary)]"
         style={{ color: 'rgba(255,255,255,0.34)', fontWeight: 500 }}
       >
         {open ? 'Done' : 'Adjust'}

@@ -65,7 +65,7 @@ export function SavedShelf() {
               onClick={() => setFilter(f.id)}
               className={cn(
                 "rounded-[var(--radius-sm)] px-3 py-1 text-xs font-medium transition-colors",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent",
+                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
                 active
                   ? "text-foreground"
                   : "text-foreground-muted hover:text-foreground-secondary",

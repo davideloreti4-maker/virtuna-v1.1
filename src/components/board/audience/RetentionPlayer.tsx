@@ -201,7 +201,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
                 left: leftPct,
                 top: knobTop,
                 transform: 'translate(-50%, -50%)',
-                backgroundColor: 'var(--color-accent)',
+                backgroundColor: 'var(--color-cream-secondary)',
                 boxShadow: '0 0 0 1px oklch(0.68 0.13 33 / 0.4)',
               }}
             />
@@ -220,7 +220,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
                 {formatTime(displayTime)}
               </div>
               {normalized.length > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 600 }}>{retentionPct}%</div>
+                <div style={{ fontSize: 11, color: 'var(--color-cream-secondary)', fontWeight: 600 }}>{retentionPct}%</div>
               )}
             </div>
           </div>
@@ -249,7 +249,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
         {/* filled */}
         <div
           className="absolute left-0 top-1/2 -translate-y-1/2 rounded-full"
-          style={{ height: 3, width: leftPct, backgroundColor: 'var(--color-accent)' }}
+          style={{ height: 3, width: leftPct, backgroundColor: 'var(--color-cream-secondary)' }}
         />
         {/* handle */}
         <div
@@ -273,7 +273,7 @@ export function RetentionPlayer({ videoSrc, ...chartProps }: RetentionPlayerProp
         >
           {playing ? <PauseIcon /> : <PlayIcon small />}
         </button>
-        <span style={{ color: 'var(--color-accent)', fontWeight: 600 }}>
+        <span style={{ color: 'var(--color-cream-secondary)', fontWeight: 600 }}>
           {formatTime(displayTime)}
           {normalized.length > 0 && (
             <span style={{ color: 'rgba(236,231,222,0.45)', fontWeight: 500 }}> ({retentionPct}%)</span>

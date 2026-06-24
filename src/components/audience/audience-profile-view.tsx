@@ -155,7 +155,7 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
                   type="button"
                   onClick={() => setEditingIndex(idx)}
                   aria-label={`Edit ${personaDisplayName(p)}`}
-                  className="flex items-center justify-center w-7 h-7 rounded-md text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+                  className="flex items-center justify-center w-7 h-7 rounded-md text-foreground-secondary hover:bg-white/[0.06] hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>

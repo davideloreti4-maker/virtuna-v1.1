@@ -7,7 +7,7 @@ export type HeroTone = 'good' | 'warn' | 'crit' | 'neutral';
 const TONE_TEXT: Record<HeroTone, string> = {
   good: 'text-success',
   warn: 'text-warning',
-  crit: 'text-accent',
+  crit: 'text-foreground-secondary',
   neutral: 'text-white/70',
 };
 

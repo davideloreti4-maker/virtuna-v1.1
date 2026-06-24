@@ -19,10 +19,10 @@ import { logger } from '@/lib/logger';
  * `board/verdict/AntiViralityHeader.tsx`, NOT a verbatim re-export and NOT a
  * restyle. The phase mounts this banner above the gauge, so its styling is now
  * part of The Reading's surface. The board source colors the "Post anyway →"
- * override link `var(--color-accent)` (coral) — and that link sits on the LEFT
- * edge of a gradient that STARTS at `var(--color-accent)`, i.e. coral-text-on-
+ * override link `var(--color-cream-secondary)` (coral) — and that link sits on the LEFT
+ * edge of a gradient that STARTS at `var(--color-cream-secondary)`, i.e. coral-text-on-
  * coral, effectively invisible / failing contrast. The ONLY change here vs the
- * board source is the override link's foreground: `var(--color-accent-foreground)`
+ * board source is the override link's foreground: `var(--color-action-foreground)`
  * (the locked dark-brown text-on-coral token, >7:1 on coral) so the control is
  * readable. The gradient + body copy are byte-identical to the board; the shared
  * board source is deliberately left untouched (it still serves the dormant board).
@@ -78,7 +78,7 @@ export function AntiViralityHeader({ result, analysisId }: AntiViralityHeaderPro
           : 'flex h-10 items-center justify-between px-2 text-xs'
       }
       style={{
-        background: 'linear-gradient(90deg, var(--color-accent), var(--color-warning))',
+        background: 'linear-gradient(90deg, var(--color-cream-secondary), var(--color-warning))',
         color: 'rgba(255,255,255,0.9)',
         fontWeight: 600,
       }}
@@ -89,8 +89,8 @@ export function AntiViralityHeader({ result, analysisId }: AntiViralityHeaderPro
         onClick={handleOverride}
         className="text-xs font-medium"
         // WR-04: dark-brown text-on-coral token (readable on the coral gradient
-        // edge), NOT var(--color-accent) (coral-on-coral, invisible).
-        style={{ color: 'var(--color-accent-foreground)', pointerEvents: 'auto' }}
+        // edge), NOT var(--color-cream-secondary) (coral-on-coral, invisible).
+        style={{ color: 'var(--color-action-foreground)', pointerEvents: 'auto' }}
         data-testid="av-override-link"
       >
         {COPY.AV_OVERRIDE_LINK}

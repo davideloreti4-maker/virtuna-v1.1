@@ -11,7 +11,7 @@
  * SkillRows list (reused by the composer's `/` slash menu) + the read-only ModelTag.
  *
  * Design (flat-warm THEME-06): warm charcoal surfaces, cream text, matured terracotta
- * (#d97757) accent ONLY on the skill pill icon / active row / MAX badge. Premium line-icon
+ * (var(--color-foreground-secondary)) accent ONLY on the skill pill icon / active row / MAX badge. Premium line-icon
  * SVGs — NO emoji. Popover everywhere (desktop AND mobile — no bottom sheet); popovers
  * open UPWARD with max-height + scroll so 9 skills never clip.
  *
@@ -186,7 +186,7 @@ function GroupLabel({ children, badge }: { children: React.ReactNode; badge?: bo
     <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-foreground-muted/70">
       {children}
       {badge && (
-        <span className="rounded-full border border-[rgba(217,119,87,0.34)] px-1.5 text-[9px] tracking-[0.04em] text-[#d97757]">
+        <span className="rounded-full border border-border px-1.5 text-[9px] tracking-[0.04em] text-foreground-secondary">
           MARKETING
         </span>
       )}
@@ -234,12 +234,12 @@ export function SkillRows({
         <span
           className={cn(
             "flex items-center gap-1.5 text-[13.5px] font-medium",
-            s.id === active ? "text-[#d97757]" : "text-foreground",
+            s.id === active ? "text-foreground bg-white/[0.06]" : "text-foreground",
           )}
         >
           {s.label}
           {s.model === "Max" && (
-            <span className="rounded bg-[rgba(217,119,87,0.14)] px-1.5 py-px text-[9px] font-semibold tracking-[0.03em] text-[#d97757]">
+            <span className="rounded bg-surface-elevated border border-border px-1.5 py-px text-[9px] font-semibold tracking-[0.03em] text-foreground-secondary">
               MAX
             </span>
           )}
@@ -258,7 +258,7 @@ export function SkillRows({
       <Ico
         name="check"
         size={16}
-        className={cn("text-[#d97757]", s.id === active ? "opacity-100" : "opacity-0")}
+        className={cn("text-foreground-secondary", s.id === active ? "opacity-100" : "opacity-0")}
       />
     </button>
   );
@@ -287,23 +287,17 @@ export function SkillRows({
 
 // ─── ModelTag — read-only SIM-1 indicator (the skill decides it) ─────────────
 export function ModelTag({ activeTool, className }: { activeTool: ToolId; className?: string }) {
-  const isMax = getSkill(activeTool).model === "Max";
   return (
     <span
       data-testid="active-model-label"
       title="The skill decides the model — Max for video, Flash for text"
       className={cn(
         "inline-flex select-none items-center gap-1.5 px-2 text-[12.5px]",
-        isMax ? "text-[#d97757]" : "text-foreground-muted",
+        "text-foreground-muted",
         className,
       )}
     >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 rounded-full",
-          isMax ? "bg-[#d97757]" : "bg-foreground-muted",
-        )}
-      />
+      <span className="h-1.5 w-1.5 rounded-full bg-foreground-muted" />
       <span className="font-medium">{MODEL_LABEL[activeTool]}</span>
     </span>
   );
@@ -466,7 +460,7 @@ export function ComposerControls({
             "text-[13.5px] font-medium text-foreground transition-colors hover:border-white/[0.1]",
           )}
         >
-          <Ico name={SKILL_ICON[activeTool]} className="text-[#d97757]" />
+          <Ico name={SKILL_ICON[activeTool]} className="text-foreground-secondary" />
           <span>{skill.label}</span>
           <Ico name="chev" size={14} className="text-foreground-muted" />
         </button>
@@ -498,7 +492,7 @@ export function ComposerControls({
             aria-haspopup="menu"
             aria-expanded={pop === "search"}
             onClick={() => toggle("search")}
-            className={cn(ctl, pop === "search" && "text-[#d97757]")}
+            className={cn(ctl, pop === "search" && "text-foreground")}
           >
             <Ico name="search" size={16} />
           </button>
@@ -549,7 +543,7 @@ export function ComposerControls({
                         className={cn(
                           "flex-1 rounded-lg border px-2 py-1.5 text-[12.5px] transition-colors",
                           on
-                            ? "border-[rgba(217,119,87,0.34)] bg-[rgba(217,119,87,0.14)] text-[#d97757]"
+                            ? "border-border-hover bg-hover text-foreground"
                             : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
                         )}
                       >
@@ -572,7 +566,7 @@ export function ComposerControls({
                   value={exSerendipity}
                   onChange={(e) => setExSerendipity(Number(e.target.value))}
                   aria-label="Serendipity — on-niche to surprise me"
-                  className="w-full accent-[#d97757]"
+                  className="w-full accent-foreground-muted"
                 />
                 <div className="flex justify-between text-[11px] text-foreground-muted">
                   <span>On-niche</span>
@@ -595,7 +589,7 @@ export function ComposerControls({
                   });
                   setPop(null);
                 }}
-                className="mt-0.5 rounded-lg border border-[rgba(217,119,87,0.34)] bg-[rgba(217,119,87,0.14)] px-3 py-2 text-[13px] font-medium text-[#d97757] transition-colors hover:bg-[rgba(217,119,87,0.2)]"
+                className="mt-0.5 rounded-lg bg-action px-3 py-2 text-[13px] font-medium text-action-foreground transition-colors hover:bg-action/90"
               >
                 Run Explore
               </button>
@@ -641,13 +635,13 @@ export function ComposerControls({
                   className={cn(
                     "flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-[13px] transition-colors",
                     on
-                      ? "border-[rgba(217,119,87,0.34)] bg-[rgba(217,119,87,0.14)] text-[#d97757]"
+                      ? "border-border-hover bg-hover text-foreground"
                       : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
                   )}
                 >
                   <Ico name={o.icon} size={16} />
                   <span className="font-medium">{o.label}</span>
-                  <span className={cn("text-[10.5px]", on ? "text-[#d97757]" : "text-foreground-muted")}>
+                  <span className={cn("text-[10.5px]", on ? "text-foreground-secondary" : "text-foreground-muted")}>
                     {o.sub}
                   </span>
                 </button>

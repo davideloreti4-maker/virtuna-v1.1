@@ -14,7 +14,7 @@ const CORAL_SCALE = [
   { name: "coral-200", cssVar: "color-coral-200" },
   { name: "coral-300", cssVar: "color-coral-300" },
   { name: "coral-400", cssVar: "color-coral-400" },
-  { name: "coral-500", cssVar: "color-coral-500", semantic: "Base #FF7F50" },
+  { name: "coral-500", cssVar: "color-coral-500", semantic: "Base var(--color-foreground-secondary)" },
   { name: "coral-600", cssVar: "color-coral-600" },
   { name: "coral-700", cssVar: "color-coral-700" },
   { name: "coral-800", cssVar: "color-coral-800" },
@@ -234,7 +234,7 @@ export default function ShowcasePage() {
           Numen uses a two-tier token architecture. Primitive tokens (Layer 1)
           define raw color scales and values. Semantic tokens (Layer 2)
           reference primitives via{" "}
-          <code className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-sm text-accent">
+          <code className="rounded bg-surface-elevated px-1.5 py-0.5 font-mono text-sm text-foreground-secondary">
             var()
           </code>{" "}
           to provide contextual meaning — background, foreground, accent, etc.
@@ -245,7 +245,7 @@ export default function ShowcasePage() {
       <ShowcaseSection
         id="coral"
         title="Coral Scale"
-        description="Brand color palette replacing Raycast red. 9 steps from light to dark, with coral-500 as the base (#FF7F50)."
+        description="Brand color palette replacing Raycast red. 9 steps from light to dark, with coral-500 as the base (var(--color-foreground-secondary))."
       >
         <ComponentGrid columns={3}>
           {CORAL_SCALE.map((token) => (
@@ -429,7 +429,7 @@ export default function ShowcasePage() {
 --color-accent: var(--color-coral-500);
 
 /* Component usage */
-<Button className="bg-accent text-accent-foreground">
+<Button className="bg-action text-action-foreground">
   Uses semantic token
 </Button>`}
           />
@@ -549,7 +549,7 @@ export default function ShowcasePage() {
                 {space.value}
               </span>
               <div
-                className="h-3 rounded-sm bg-accent"
+                className="h-3 rounded-sm bg-action"
                 style={{ width: `${Math.max(space.size, 1)}px` }}
               />
             </div>
@@ -624,7 +624,7 @@ export default function ShowcasePage() {
               className="flex items-center gap-3"
             >
               <div
-                className="h-12 w-12 shrink-0 border-2 border-accent bg-accent/10"
+                className="h-12 w-12 shrink-0 border-2 border-border-hover bg-action/10"
                 style={{ borderRadius: `var(--radius-${r.css.replace("rounded-", "")})` }}
               />
               <div>
@@ -667,7 +667,7 @@ export default function ShowcasePage() {
                   value={d.value}
                   preview={
                     <div
-                      className="h-3 rounded-full bg-accent"
+                      className="h-3 rounded-full bg-action"
                       style={{
                         width: `${parseInt(d.value)}px`,
                       }}
@@ -703,7 +703,7 @@ export default function ShowcasePage() {
                   value={z.value}
                   preview={
                     <div
-                      className="h-3 rounded-full bg-accent/60"
+                      className="h-3 rounded-full bg-action/60"
                       style={{
                         width: `${Math.max(parseInt(z.value) / 5, 4)}px`,
                       }}

@@ -13,7 +13,7 @@ const ICON: Record<EngineStageStatus, PhosphorIcon> = {
 
 const ICON_COLOR: Record<EngineStageStatus, string> = {
   waiting: 'text-foreground-muted',
-  active: 'text-accent',
+  active: 'text-foreground-secondary',
   complete: 'text-success',
 };
 

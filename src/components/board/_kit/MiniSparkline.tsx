@@ -28,7 +28,7 @@ export function MiniSparkline({
       return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
     })
     .join(' ');
-  const stroke = tone === 'accent' ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)';
+  const stroke = tone === 'accent' ? 'var(--color-cream-secondary)' : 'rgba(255,255,255,0.4)';
   return (
     <svg
       width={w}

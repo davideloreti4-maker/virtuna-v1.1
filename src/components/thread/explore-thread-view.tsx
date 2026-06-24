@@ -373,7 +373,7 @@ function QuickActionCard({ icon, title, sub, onClick, disabled = false }: QuickA
       className={[
         'group flex flex-col items-start gap-2 text-left',
         'rounded-xl border p-5 transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10',
         disabled
           ? 'border-white/[0.06] opacity-60 cursor-default'
           : [
@@ -422,7 +422,7 @@ function SkillRunError({ onRetry }: SkillRunErrorProps) {
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{ color: 'var(--color-cream-secondary)' }}
           aria-label="Retry the Explore pull"
         >

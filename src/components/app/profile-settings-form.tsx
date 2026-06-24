@@ -340,7 +340,7 @@ export function ProfileSettingsForm(): React.JSX.Element {
           className={cn(
             "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20",
             storageRetentionOptedIn
-              ? "bg-accent"
+              ? "bg-action"
               : "bg-white/[0.08]",
             updateMutation.isPending && "opacity-50 cursor-not-allowed"
           )}

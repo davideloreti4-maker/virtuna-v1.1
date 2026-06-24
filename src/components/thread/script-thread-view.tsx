@@ -172,7 +172,7 @@ function SkillRunError({ onRetry }: SkillRunErrorProps) {
         <button
           type="button"
           onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
           style={{ color: 'var(--color-cream-secondary)' }}
           aria-label="Retry the script run"
         >

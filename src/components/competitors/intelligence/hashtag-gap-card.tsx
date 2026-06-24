@@ -51,7 +51,7 @@ export function HashtagGapCard({ data }: HashtagGapCardProps) {
                   key={i}
                   className="flex items-start gap-3 py-2 border-b border-white/[0.04] last:border-b-0"
                 >
-                  <span className="text-sm font-medium text-[var(--color-accent)] shrink-0">
+                  <span className="text-sm font-medium text-[var(--color-cream-secondary)] shrink-0">
                     #{h.tag}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.06] text-foreground-muted shrink-0">

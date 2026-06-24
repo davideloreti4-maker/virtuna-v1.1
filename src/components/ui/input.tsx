@@ -122,7 +122,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           // Focus
           !disabled &&
             !hasError &&
-            "focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent",
+            "focus:outline-none focus:ring-2 focus:ring-white/10 focus:border-border-hover",
           // Disabled
           disabled && "opacity-50 cursor-not-allowed",
           // Loading

@@ -188,10 +188,10 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
               <g key={n.group.key}>
                 {n.bad && (
                   reduced ? (
-                    <circle cx={n.x} cy={n.y} r={n.r + 6} fill="none" stroke="var(--color-accent)"
+                    <circle cx={n.x} cy={n.y} r={n.r + 6} fill="none" stroke="var(--color-cream-secondary)"
                       strokeWidth={1.5} opacity={0.4} />
                   ) : (
-                    <circle cx={n.x} cy={n.y} fill="none" stroke="var(--color-accent)" strokeWidth={1.5}>
+                    <circle cx={n.x} cy={n.y} fill="none" stroke="var(--color-cream-secondary)" strokeWidth={1.5}>
                       <animate attributeName="r" values={`${n.r};${n.r + 12};${n.r}`} dur="2.6s" repeatCount="indefinite" />
                       <animate attributeName="opacity" values="0.5;0;0.5" dur="2.6s" repeatCount="indefinite" />
                     </circle>
@@ -199,7 +199,7 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
                 )}
                 <circle cx={n.x} cy={n.y} r={n.r} fill={fill} />
                 <text x={labelX} y={n.y - 4} textAnchor={anchor}
-                  style={{ fontSize: 12.5, fontWeight: 600, fill: n.bad ? 'var(--color-accent)' : 'var(--color-foreground)' }}>
+                  style={{ fontSize: 12.5, fontWeight: 600, fill: n.bad ? 'var(--color-cream-secondary)' : 'var(--color-foreground)' }}>
                   {n.group.label}
                 </text>
                 <text x={labelX} y={n.y + 12} textAnchor={anchor}
@@ -212,7 +212,7 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
         </svg>
 
         <div className="mt-3.5 flex items-start gap-2.5 border-t border-[var(--color-border)] pt-3.5 text-[13px] leading-snug text-foreground-secondary">
-          <span className="mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: 'var(--color-accent)' }} />
+          <span className="mt-[5px] h-[7px] w-[7px] shrink-0 rounded-full" style={{ background: 'var(--color-cream-secondary)' }} />
           <span data-testid="audience-orbit-takeaway">{takeaway}</span>
         </div>
       </div>

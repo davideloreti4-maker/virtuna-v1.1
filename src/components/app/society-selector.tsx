@@ -210,7 +210,7 @@ function PersonalSocietyCard({
       className={cn(
         "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
         isSelected
-          ? "border border-solid border-accent bg-white/[0.04] ring-2 ring-accent/50"
+          ? "border border-solid border-border-hover bg-white/[0.04] ring-2 ring-accent/50"
           : "border border-dashed border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
       )}
       style={{
@@ -221,7 +221,7 @@ function PersonalSocietyCard({
       <div className="flex h-full flex-col text-left">
         {/* Setup badge */}
         {society.needsSetup && (
-          <Badge variant="accent" size="sm" className="mb-4 w-fit rounded-md">
+          <Badge variant="default" size="sm" className="mb-4 w-fit rounded-md">
             Setup
           </Badge>
         )}
@@ -269,7 +269,7 @@ function TargetSocietyCard({
       className={cn(
         "group min-h-[180px] cursor-pointer rounded-[12px] p-6 transition-all duration-200",
         isSelected
-          ? "border border-accent bg-white/[0.04] ring-2 ring-accent/50"
+          ? "border border-border-hover bg-white/[0.04] ring-2 ring-accent/50"
           : "border border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
       )}
       style={{

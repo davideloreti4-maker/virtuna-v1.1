@@ -82,12 +82,12 @@ export function ComparisonGrowthChart({
             <linearGradient id="compGradA" x1="0" y1="0" x2="0" y2="1">
               <stop
                 offset="5%"
-                stopColor="var(--color-accent)"
+                stopColor="var(--color-cream-secondary)"
                 stopOpacity={0.3}
               />
               <stop
                 offset="95%"
-                stopColor="var(--color-accent)"
+                stopColor="var(--color-cream-secondary)"
                 stopOpacity={0}
               />
             </linearGradient>
@@ -122,7 +122,7 @@ export function ComparisonGrowthChart({
             type="monotone"
             dataKey="followersA"
             name={`@${handleA}`}
-            stroke="var(--color-accent)"
+            stroke="var(--color-cream-secondary)"
             fill="url(#compGradA)"
             strokeWidth={2}
             isAnimationActive={false}
@@ -145,7 +145,7 @@ export function ComparisonGrowthChart({
         <div className="flex items-center gap-2">
           <span
             className="inline-block w-2.5 h-2.5 rounded-full"
-            style={{ backgroundColor: "var(--color-accent)" }}
+            style={{ backgroundColor: "var(--color-cream-secondary)" }}
           />
           <span className="text-xs text-foreground-muted">@{handleA}</span>
         </div>

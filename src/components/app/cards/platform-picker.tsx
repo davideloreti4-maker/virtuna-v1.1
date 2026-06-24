@@ -59,7 +59,7 @@ export function PlatformPicker({ value, onChange }: PlatformPickerProps): React.
             onClick={() => toggle(id)}
             className={cn(
               "flex h-20 flex-col items-center justify-center gap-2 rounded-xl border p-3 text-center transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
               selected
                 ? "border-white/[0.12] bg-white/[0.08]"
                 : "border-white/[0.06] bg-transparent hover:bg-white/[0.02]"
