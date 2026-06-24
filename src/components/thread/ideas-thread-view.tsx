@@ -36,6 +36,9 @@ import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
 import { PlatformContext } from '@/lib/platform-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
+import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
+import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
@@ -62,6 +65,9 @@ export interface IdeasThreadViewProps {
    * Called only on explicit tap (W2). Never fires on render.
    */
   onRetry?: () => void;
+  userTurn?: string | null;
+  skillLabel?: string;
+  audienceLabel?: string;
 }
 
 export function IdeasThreadView({
@@ -74,6 +80,9 @@ export function IdeasThreadView({
   error,
   platform,
   onRetry,
+  userTurn,
+  skillLabel = 'Ideas',
+  audienceLabel = 'General',
 }: IdeasThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
@@ -97,67 +106,59 @@ export function IdeasThreadView({
     (p) => p === platform,
   ) ?? 'tiktok';
 
+  const hasAssistantContent =
+    hasStreamingContent || hasPersistedContent || !!followupText || isStreaming;
+
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
-      <div className="w-full max-w-[760px] mx-auto flex flex-col gap-6 px-4 py-6">
+      <ThreadShell userTurn={userTurn}>
+        {isStreaming && stages.length > 0 && <ProgressChecklist stages={stages} />}
 
-        {/* Progress checklist — replaces the bare status line during streaming (STUDIO-01) */}
-        {isStreaming && stages.length > 0 && (
-          <ProgressChecklist stages={stages} />
+        {isStreaming && stages.length === 0 && (
+          <ThreadLoadingSkeleton variant="skill" caption={statusMessage ?? undefined} />
         )}
 
-        {/* Fallback status text when no stage events have arrived yet */}
-        {isStreaming && stages.length === 0 && statusMessage && (
-          <p
-            className="text-sm text-foreground-muted/70 text-center"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {statusMessage}
-          </p>
-        )}
+        {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 
-        {/* Skill-run error block with tap-to-retry (W2) */}
-        {error && !isStreaming && (
-          <SkillRunError onRetry={onRetry} />
-        )}
+        {hasAssistantContent && (
+          <ThreadAssistantTurn>
+            <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+              {hasStreamingContent && (
+                <div className="flex flex-col gap-4">
+                  <p className="text-xs text-foreground-muted/50 uppercase tracking-wide">
+                    New ideas
+                  </p>
+                  <MessageBlocks body={streamingBody} />
+                </div>
+              )}
 
-        {/* Streaming cards — in-flight (content-first: face + quote appears, band fills in) */}
-        {hasStreamingContent && (
-          <div className="flex flex-col gap-4">
-            <p className="text-xs text-foreground-muted/50 uppercase tracking-wide">
-              New ideas
-            </p>
-            <MessageBlocks body={streamingBody} />
-          </div>
-        )}
+              {followupText && !isStreaming && (
+                <div
+                  className="prose prose-invert prose-sm max-w-none"
+                  aria-label="Model follow-up"
+                >
+                  <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                    {followupText}
+                  </ReactMarkdown>
+                </div>
+              )}
 
-        {/* Model-authored follow-up turn (D-03 / STUDIO-02) */}
-        {followupText && !isStreaming && (
-          <div
-            className="prose prose-invert prose-sm max-w-none"
-            aria-label="Model follow-up"
-          >
-            <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-              {followupText}
-            </ReactMarkdown>
-          </div>
+              {hasPersistedContent && (
+                <div className="flex flex-col gap-4">
+                  {hasStreamingContent && (
+                    <div className="border-t border-white/[0.06] pt-4">
+                      <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
+                        Previous ideas
+                      </p>
+                    </div>
+                  )}
+                  <MessageBlocks body={persistedBody} />
+                </div>
+              )}
+            </SkillResultCard>
+          </ThreadAssistantTurn>
         )}
-
-        {/* Persisted cards — rehydrated from the open thread on reload */}
-        {hasPersistedContent && (
-          <div className="flex flex-col gap-4">
-            {hasStreamingContent && (
-              <div className="border-t border-white/[0.06] pt-4">
-                <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
-                  Previous ideas
-                </p>
-              </div>
-            )}
-            <MessageBlocks body={persistedBody} />
-          </div>
-        )}
-      </div>
+      </ThreadShell>
     </PlatformContext.Provider>
   );
 }

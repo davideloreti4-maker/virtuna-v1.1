@@ -35,6 +35,9 @@ import { PlatformContext } from '@/lib/platform-context';
 import { RemixDevelopContext } from '@/lib/remix-develop-context';
 import type { OnDevelopRemixFn } from '@/lib/remix-develop-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
+import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
+import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
@@ -61,6 +64,9 @@ export interface RemixThreadViewProps {
    * Called only on explicit tap (W2). Never fires on render.
    */
   onRetry?: () => void;
+  userTurn?: string | null;
+  skillLabel?: string;
+  audienceLabel?: string;
 }
 
 export function RemixThreadView({
@@ -73,6 +79,9 @@ export function RemixThreadView({
   platform,
   onDevelop,
   onRetry,
+  userTurn,
+  skillLabel = 'Remix',
+  audienceLabel = 'General',
 }: RemixThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
@@ -94,57 +103,58 @@ export function RemixThreadView({
     (p) => p === platform,
   ) ?? 'tiktok';
 
+  const hasAssistantContent =
+    hasStreamingContent || hasPersistedContent || !!followupText || isStreaming;
+
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <RemixDevelopContext.Provider value={onDevelop ?? null}>
-        <div className="w-full max-w-[760px] mx-auto flex flex-col gap-6 px-4 py-6">
+        <ThreadShell userTurn={userTurn}>
+          {isStreaming && stages.length > 0 && <ProgressChecklist stages={stages} />}
 
-          {/* Progress checklist — real pipeline stages during streaming (STUDIO-01) */}
-          {isStreaming && stages.length > 0 && (
-            <ProgressChecklist stages={stages} />
-          )}
+          {isStreaming && stages.length === 0 && <ThreadLoadingSkeleton variant="skill" />}
 
-          {/* Skill-run error block with tap-to-retry (W2) */}
-          {error && !isStreaming && (
-            <SkillRunError onRetry={onRetry} />
-          )}
+          {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 
-          {/* Streaming cards — in-flight (content-first) */}
-          {hasStreamingContent && (
-            <div className="flex flex-col gap-4">
-              <p className="text-xs text-foreground-muted/50 uppercase tracking-wide">
-                New remix
-              </p>
-              <MessageBlocks body={streamingBody} />
-            </div>
-          )}
+          {hasAssistantContent && (
+            <ThreadAssistantTurn>
+              <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+                {hasStreamingContent && (
+                  <div className="flex flex-col gap-4">
+                    <p className="text-xs text-foreground-muted/50 uppercase tracking-wide">
+                      New remix
+                    </p>
+                    <MessageBlocks body={streamingBody} />
+                  </div>
+                )}
 
-          {/* Model-authored follow-up turn */}
-          {followupText && !isStreaming && (
-            <div
-              className="prose prose-invert prose-sm max-w-none"
-              aria-label="Model follow-up"
-            >
-              <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                {followupText}
-              </ReactMarkdown>
-            </div>
-          )}
+                {followupText && !isStreaming && (
+                  <div
+                    className="prose prose-invert prose-sm max-w-none"
+                    aria-label="Model follow-up"
+                  >
+                    <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
+                      {followupText}
+                    </ReactMarkdown>
+                  </div>
+                )}
 
-          {/* Persisted cards — rehydrated from the open thread on reload (Pitfall 1 closed) */}
-          {hasPersistedContent && (
-            <div className="flex flex-col gap-4">
-              {hasStreamingContent && (
-                <div className="border-t border-white/[0.06] pt-4">
-                  <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
-                    Previous remix
-                  </p>
-                </div>
-              )}
-              <MessageBlocks body={persistedBody} />
-            </div>
+                {hasPersistedContent && (
+                  <div className="flex flex-col gap-4">
+                    {hasStreamingContent && (
+                      <div className="border-t border-white/[0.06] pt-4">
+                        <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
+                          Previous remix
+                        </p>
+                      </div>
+                    )}
+                    <MessageBlocks body={persistedBody} />
+                  </div>
+                )}
+              </SkillResultCard>
+            </ThreadAssistantTurn>
           )}
-        </div>
+        </ThreadShell>
       </RemixDevelopContext.Provider>
     </PlatformContext.Provider>
   );
