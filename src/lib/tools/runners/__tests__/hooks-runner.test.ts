@@ -32,18 +32,6 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
-// ─── Mock rubric-critic (14-02 best-of-N) ──────────────────────────────────────
-// Default: every candidate PASSES the Value Bar so the SIM band stays the sole
-// discriminator in these pre-14-02 gate/rank tests. Combined gate is
-// `band !== "Weak" AND verdict.pass`; pass:true makes the band the gate. The
-// 14-02-specific combined-gate + regen tests live in best-of-n.test.ts.
-
-vi.mock("@/lib/engine/flash/rubric-critic", () => ({
-  critiqueAgainstRubric: vi.fn().mockResolvedValue({ pass: true, predictedFailureMode: null }),
-  // P13: critic OFF (production default) → these tests exercise the band-only gate.
-  isRubricCriticEnabled: () => false,
-}));
-
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
 vi.mock("@/lib/tools/runners/flash-runner", () => ({
   pinPredictedSignature: vi.fn().mockResolvedValue(true),

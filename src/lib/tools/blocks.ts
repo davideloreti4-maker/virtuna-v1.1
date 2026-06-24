@@ -92,10 +92,10 @@ export const IdeaCardBlockSchema = z.object({
     fraction: z.string(),           // e.g. "6/10 stop"
     scrollQuote: z.string(),        // lead per-persona scroll quote (D-04)
     model: z.literal("sim1-flash"), // provenance tag — always Flash for idea cards
-    // KCQ-04 (Plan 14-02): the rubric-critic's "if this flops, here's why" texture.
-    // Populated for the opt-in drill-reveal (built in 14-04); null when the item
-    // passes the Value Bar cleanly. OPTIONAL → existing persisted blocks + rehydration
-    // stay valid (no migration). Absent ≡ null for older cards.
+    // predictedFailureMode: retained nullable field. Originally the rubric-critic's
+    // "if this flops, here's why" texture (Plan 14-02); the critic was removed in S5
+    // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
+    // existing persisted blocks + rehydration stay valid (no migration).
     predictedFailureMode: z.string().nullable().optional(),
   }),
 });
@@ -137,10 +137,10 @@ export const HookCardBlockSchema = z.object({
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
     // Multi-modal hint (corpus/hooks.md) — nullable
     channel: z.string().nullable(),    // e.g. "spoken", "visual", "caption", "edit", "audio"
-    // KCQ-04 (Plan 14-02): the rubric-critic's "if this flops, here's why" texture.
-    // Populated for the opt-in drill-reveal (built in 14-04); null when the item
-    // passes the Value Bar cleanly. OPTIONAL → existing persisted blocks + rehydration
-    // stay valid (no migration). Absent ≡ null for older cards.
+    // predictedFailureMode: retained nullable field. Originally the rubric-critic's
+    // "if this flops, here's why" texture (Plan 14-02); the critic was removed in S5
+    // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
+    // existing persisted blocks + rehydration stay valid (no migration).
     predictedFailureMode: z.string().nullable().optional(),
   }),
 });

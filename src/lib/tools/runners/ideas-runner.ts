@@ -36,7 +36,6 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
- *   - flash/rubric-critic.ts (critiqueAgainstRubric) — 14-02 best-of-N + flop pass (KCQ-02/04/07)
  *   - audience/audience-grounding.ts (buildAudienceGroundingLine) — 07-04 steer (AUD-05/AUD-08)
  *   - audience/resolve-audience-weights.ts (resolveAudienceWeights) — 07-04 react (AUD-04)
  *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
@@ -54,7 +53,6 @@ import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
-import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from "@/lib/engine/flash/rubric-critic";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -327,41 +325,34 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   let firstSimPersonas: FlashPersona[] | null = null;
 
   /**
-   * 14-02 best-of-N + flop pass: over-generate → PARALLEL { SIM band + rubric
-   * critic } per candidate → combined gate. The SIM call and the critic call run
-   * in the SAME Promise.all entry (Promise.all on a pair), so wall-clock stays ~1x
-   * (D-05 — never serial). Combined gate (KCQ-05 formalized in 14-01 + KCQ-02):
-   * keep a candidate iff band !== "Weak" AND verdict.pass. The card carries
-   * verdict.predictedFailureMode (KCQ-04, null on pass) for the 14-04 drill-reveal.
+   * 14-02 best-of-N + flop pass: over-generate → PARALLEL SIM band per candidate →
+   * band gate. S5: the rubric critic (Phase-14 best-of-N second opinion) was OFF by
+   * default and ~100% fail in practice — removed entirely. The gate is now the SIM
+   * band alone (KCQ-05): keep a candidate iff band !== "Weak".
    */
   async function gatePass(ideaBatch: StructuredIdea[]): Promise<IdeaCardBlock[]> {
-    // P13: rubric critic OFF by default — skip the call (no extra API hit, no
-    // regen-on-zero doubling) and gate on the SIM band alone. A forced pass verdict
-    // collapses the combined gate below to `band !== "Weak"`.
-    const criticEnabled = isRubricCriticEnabled();
-    const PASS_VERDICT: RubricVerdict = { pass: true, predictedFailureMode: null };
-    // Per-candidate parallel pair: [SIM band, rubric verdict]. Both run in parallel;
-    // neither throws into the outer Promise.all (each catches → fail-safe).
+    // Per-candidate SIM band, all in parallel (D-05 — never serial). A failed SIM
+    // resolves to null and is treated as Weak (dropped).
     const judged = await Promise.all(
       ideaBatch.map(async (idea) => {
-        const [simResult, verdict] = await Promise.all([
-          runFlashTextMode(idea.seedHook, "idea", panel, audienceRepaint, simIntent).catch((err) => {
-            const msg = err instanceof Error ? err.message : String(err);
-            allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
-            return null; // null = failed SIM → treat as Weak (drop)
-          }),
-          criticEnabled
-            ? critiqueAgainstRubric(idea.seedHook, "idea", panel) // fail-safe internally (never throws)
-            : Promise.resolve(PASS_VERDICT),
-        ]);
-        return { idea, simResult, verdict };
+        const simResult = await runFlashTextMode(
+          idea.seedHook,
+          "idea",
+          panel,
+          audienceRepaint,
+          simIntent,
+        ).catch((err) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
+          return null; // null = failed SIM → treat as Weak (drop)
+        });
+        return { idea, simResult };
       }),
     );
 
     const passed: IdeaCardBlock[] = [];
-    let abstainedKept = 0; // WR-01: candidates kept on band-only because the critic abstained
 
-    for (const { idea, simResult, verdict } of judged) {
+    for (const { idea, simResult } of judged) {
       if (passed.length >= MAX_SURVIVORS) break;
       if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
@@ -369,25 +360,16 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       if (!firstSimPersonas) firstSimPersonas = personas;
       const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
-      // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
+      // GATE (KCQ-05): keep iff band !== "Weak".
       if (band === "Weak") continue;
-      // WR-01: a critic ABSTENTION (infra failure — timeout/429/parse) is NOT a quality
-      // FAIL. Hard-dropping both identically lets a transient critic outage silently zero
-      // a SIM-Strong thread with no diagnostic. On abstention, degrade to the band-only
-      // gate (the candidate already cleared band !== "Weak") and surface a warning.
-      if (verdict.abstained) {
-        abstainedKept++;
-      } else if (!verdict.pass) {
-        continue;
-      }
 
-      // First combined-gate survivor → the lead card; pin its personas (FLYWHEEL-02).
+      // First survivor → the lead card; pin its personas (FLYWHEEL-02).
       if (!leadPersonas) leadPersonas = personas;
 
       // D-04 WARNING-4: select lead scrollQuote NOW — ships on the card face
       const scrollQuote = selectLeadScrollQuote(personas);
 
-      // BUILD: validated idea-card block (Plan 02 prop names + KCQ-04 failure mode)
+      // BUILD: validated idea-card block (Plan 02 prop names)
       const blockData = {
         type: "idea-card" as const,
         props: {
@@ -404,7 +386,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
           fraction,
           scrollQuote,
           model: "sim1-flash" as const,
-          predictedFailureMode: verdict.predictedFailureMode, // KCQ-04 (null on clean pass)
+          predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         },
       };
 
@@ -418,14 +400,6 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       }
 
       passed.push(validated.data as IdeaCardBlock);
-    }
-
-    // WR-01: one aggregated warning when the critic was unavailable, so a degraded
-    // run is observable (not a silent band-only pass mislabelled as a quality pass).
-    if (abstainedKept > 0) {
-      allWarnings.push(
-        `Quality critic unavailable for ${abstainedKept} idea candidate(s) — kept on SIM band only (critic degraded, not a quality pass).`,
-      );
     }
 
     return passed;

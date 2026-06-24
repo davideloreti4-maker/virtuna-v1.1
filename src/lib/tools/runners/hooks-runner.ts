@@ -35,7 +35,6 @@
  *   - qwen/client.ts (getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED)
  *   - flash/run-flash-text-mode.ts (runFlashTextMode)
  *   - flash/flash-aggregate.ts (aggregateFlash, MIXED_THRESHOLD)
- *   - flash/rubric-critic.ts (critiqueAgainstRubric) — 14-02 best-of-N + flop pass (KCQ-02/04/07)
  *   - engine/wave3/niche-resolver.ts (resolveNicheKey) — 14-01 niche-layer fix (KCQ-06/KCQ-01)
  *   - tools/hooks/audience-archetype.ts (deriveAudienceArchetype)
  *   - tools/blocks.ts (HookCardBlockSchema, HookCardBlock)
@@ -47,7 +46,6 @@ import { KC_HOOKS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
-import { critiqueAgainstRubric, isRubricCriticEnabled, type RubricVerdict } from "@/lib/engine/flash/rubric-critic";
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
@@ -354,56 +352,36 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   }
 
   /**
-   * 14-02 best-of-N + flop pass: over-generate → PARALLEL { SIM band + rubric
-   * critic } per candidate → combined gate. SIM + critic run in the SAME Promise.all
-   * entry so wall-clock stays ~1x (D-05 — never serial). Combined gate (KCQ-05 +
-   * KCQ-02): keep iff band !== "Weak" AND verdict.pass. predictedFailureMode (KCQ-04)
-   * rides onto each survivor for the 14-04 drill-reveal. Ranking happens AFTER, on the
-   * returned survivors (D-01 gate-then-rank preserved).
+   * 14-02 best-of-N + flop pass: over-generate → PARALLEL SIM band per candidate →
+   * band gate. S5: the rubric critic was OFF by default and ~100% fail — removed; the
+   * gate is the SIM band alone (KCQ-05): keep iff band !== "Weak". Ranking happens AFTER,
+   * on the returned survivors (D-01 gate-then-rank preserved).
    */
   async function gateHooks(hookBatch: StructuredHook[]): Promise<SurvivorCandidate[]> {
-    // P13: when the rubric critic is OFF (default), skip the call entirely — no extra
-    // API hit, no regen-on-zero doubling — and gate on the SIM band alone. A forced
-    // pass verdict makes the combined gate below collapse to `band !== "Weak"`.
-    const criticEnabled = isRubricCriticEnabled();
-    const PASS_VERDICT: RubricVerdict = { pass: true, predictedFailureMode: null };
     const judged = await Promise.all(
       hookBatch.map(async (hook, i) => {
         const seed = hook.seedHook ?? hook.hookLine;
-        const [simResult, verdict] = await Promise.all([
-          runFlashTextMode(seed, "hook", panel, audienceRepaint, simIntent).catch((err) => {
+        const simResult = await runFlashTextMode(seed, "hook", panel, audienceRepaint, simIntent).catch(
+          (err) => {
             const msg = err instanceof Error ? err.message : String(err);
             allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
             return null; // null = failed SIM → treat as Weak (drop)
-          }),
-          criticEnabled
-            ? critiqueAgainstRubric(seed, "hook", panel) // fail-safe internally (never throws)
-            : Promise.resolve(PASS_VERDICT),
-        ]);
-        return { hook, simResult, verdict, generationIndex: i };
+          },
+        );
+        return { hook, simResult, generationIndex: i };
       }),
     );
 
     const out: SurvivorCandidate[] = [];
-    let abstainedKept = 0; // WR-01: candidates kept on band-only because the critic abstained
 
-    for (const { hook, simResult, verdict, generationIndex } of judged) {
+    for (const { hook, simResult, generationIndex } of judged) {
       if (simResult === null || simResult === undefined) continue; // SIM failed → drop
 
       const personas = simResult.result.personas;
       const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
-      // COMBINED GATE (KCQ-05 + KCQ-02): band !== "Weak" AND the rubric critic passed.
+      // GATE (KCQ-05): keep iff band !== "Weak".
       if (band === "Weak") continue;
-      // WR-01: a critic ABSTENTION (infra failure — timeout/429/parse) is NOT a quality
-      // FAIL. Hard-dropping both identically lets a transient critic outage silently zero
-      // a SIM-Strong thread with no diagnostic. On abstention, degrade to the band-only
-      // gate (the candidate already cleared band !== "Weak") and surface a warning.
-      if (verdict.abstained) {
-        abstainedKept++;
-      } else if (!verdict.pass) {
-        continue;
-      }
 
       // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
       const scrollQuote = selectLeadScrollQuote(personas);
@@ -423,18 +401,10 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         fraction,
         scrollQuote,
         audienceArchetype,
-        predictedFailureMode: verdict.predictedFailureMode,
+        predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas,
         generationIndex,
       });
-    }
-
-    // WR-01: one aggregated warning when the critic was unavailable, so a degraded
-    // run is observable (not a silent band-only pass mislabelled as a quality pass).
-    if (abstainedKept > 0) {
-      allWarnings.push(
-        `Quality critic unavailable for ${abstainedKept} hook candidate(s) — kept on SIM band only (critic degraded, not a quality pass).`,
-      );
     }
 
     return out;
@@ -449,8 +419,8 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   let survivors = await gateHooks(firstBatch);
 
   // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
-  // Never an unbounded serial loop — one extra parallel over-generate + critique
-  // pass, then proceed with whatever survives (may still be 0 — "0 blocks is valid").
+  // Never an unbounded serial loop — one extra parallel over-generate pass, then
+  // proceed with whatever survives (may still be 0 — "0 blocks is valid").
   if (survivors.length === 0) {
     const secondBatch = await generateHooksStructured(userMessage);
     if (secondBatch.length > 0) {
