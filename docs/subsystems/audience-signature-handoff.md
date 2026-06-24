@@ -1,36 +1,62 @@
 # AudienceSignature — Fresh-Session Handoff
 
-> Track A (wire-live) + Track B step-7 (generation/SIM wiring) are **DONE, committed, and
-> verified** on `rework/engine-core`. This is the only file the next session must read first;
-> pull the rest on demand. Supersedes the prior "pick track A or B" version.
+> Track A (wire-live) + Track B step-7 (gen/SIM) + step-8 (composer intent, GAP-C1/C2) are
+> **DONE, committed, pushed, verified** on `rework/engine-core` (HEAD `0b962d5a`). Plus E1 CSRF
+> fix landed. This is the only file the next session must read first; pull the rest on demand.
 
 ---
 
 ## Paste this as the opening prompt
 
 ```
-Read docs/subsystems/audience-signature-handoff.md. The real AudienceSignature path is
-live: migration applied, calibration persists signature+creator_persona, reveal works,
-and step-7 generation+SIM wiring is done (creator voice fallback + reaction_frame SIM).
-Pick up at "What's next" = Track B step 8 (composer intent). FIRST resolve the GAP-C2
-vocab decision (composer grow|sell vs audience's 4 intents), THEN build. Do NOT touch
-ENGINE_VERSION; keep signature gated behind non-general; keep the General-regression gate
-green. Confirm the C2 decision before building.
+Read docs/subsystems/audience-signature-handoff.md + docs/DISSECTION-BACKLOG.md. The
+AudienceSignature build is done through step-8 (intent lens GAP-C1/C2 wired to all 5 skills);
+E1 CSRF gap fixed. Branch rework/engine-core, HEAD 0b962d5a, origin synced. Guardrails: do NOT
+touch ENGINE_VERSION (3.19.0); keep signature gated behind non-general; keep the
+General-regression gate green (run: node ./node_modules/vitest/vitest.mjs run
+src/lib/tools/runners/__tests__/steer-closure.test.ts).
+
+Pick up at Track B step 9 (flywheel/drift re-bake) — re-bake the frozen signature on the
+weekly drift cron (the ONLY place it re-bakes, per audience.md §P). FIRST trace the existing
+recalibration/drift path (src/lib/flywheel/* + cron/audience-drift) and confirm scope with me
+before building. After step 9, the milestone continues with the dissection backlog cuts (see
+that file's "next-session sequence").
 ```
 
 ---
 
 ## State of the world (2026-06-24, end of session)
 
-- **Worktree:** `~/virtuna-engine-rework`, branch `rework/engine-core`. Clean tree, auto-wip
-  committed (HEAD `b792a77b`).
+- **Worktree:** `~/virtuna-engine-rework`, branch `rework/engine-core`. **HEAD `0b962d5a`,
+  origin synced (`0 0`).** Working tree clean.
+- **Done this session:** step-8 composer intent (GAP-C1+C2, "keep 2 derive down" — see
+  `audience.md` §P.10 + `intent-lens.ts`) · E1 CSRF guard on ideas/ideas-develop/refine/react.
 - **DB:** migration `20260624000000_audience_signature.sql` **APPLIED** to project
   `qyxvxleheckijapurisj` (virtuna-v1.1, = `.env.local`). `audiences.creator_persona` +
-  `audiences.signature` jsonb cols live. Generated types match the hand-added cols (no drift).
+  `audiences.signature` jsonb cols live. Generated types match (no drift).
 - **Design SSOT:** `docs/subsystems/audience.md` §P. Backlog: `docs/DISSECTION-BACKLOG.md`
-  (A7 + S1 = FIXED; DONE section has the 2026-06-24 session log).
+  (A7·S1·E1 FIXED; DONE section has the full 2026-06-24 session log).
 - **Guardrails HELD:** `ENGINE_VERSION` 3.19.0 untouched · signature gates behind non-general
   ONLY · General-regression gate green (prompt-level byte-identical proven).
+- **⚠ Auto-wip hook caveat:** the post-commit auto-wip/auto-push hook bundles uncommitted work
+  + races explicit commits. Commit promptly with a real message (or consider disabling the hook
+  for focused build sessions: it lives in `.githooks/`).
+
+## Next-session sequence (highest value first — full detail in DISSECTION-BACKLOG.md)
+
+1. **Step 9** — flywheel/drift re-bake (closes the AudienceSignature build).
+2. **G-D decision + G1/G2 cuts** — `_dormant/` ~7.3K LOC + dead simulation UI (14 files); G-D
+   ("is M2 RAG alive?") gates ~2K more. Verify zero real imports BEFORE deleting.
+3. **S5** (rubric critic OFF ~100% fail — recalibrate or delete 255 LOC) · **S2** (chat off the
+   hooks/ideas critical path).
+4. **R1** (fold model omni-flash→omni-plus flip + cost call — see memory engine-model-assignment).
+5. Squash auto-wip noise (`/gsd-pr-branch`) → PR → squash-merge to main.
+
+### Audience loose ends (lower priority, after step 9)
+- Remix generation-voice not wired (adapt path skips `assembleBundle`).
+- 2× ~$0.05 live E2Es: LLM honors step-7 creator voice + step-8 sell buying-frame (unobserved live).
+- Backlog A1/A2 (legacy profile/weights paths now superseded by §P — decide cut vs leave additive),
+  A3 (sell/authority same weights — intentional, document), A4 presets inert, A-T target 3-position.
 
 ---
 
