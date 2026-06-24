@@ -96,7 +96,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | S2 | 🟠 | Follow-up chat is on the hooks/ideas critical path (blocks `done`) — stream after `done` | hooks-runner / ideas-runner | OPEN |
 | S3 | 🟢 | 8-call SIM fan-out → collapse to one batched simulation call (eval-gated) | `gateHooks` / `runFlashTextMode` | OPEN |
 | S4 | 🟢 | Dead `flashRunner` / `ToolRunner` / `dispatchToolOutput` scaffolding (~200 LOC) | `flash-runner.ts` | OPEN |
-| S5 | 🟡 | Rubric critic infra OFF, ~100% fail — recalibrate or delete (255 LOC + dual-branch gates) | `flash/rubric-critic.ts` | OPEN |
+| S5 | 🟡→🟢 | **DELETED — rubric critic was OFF by default + ~100% fail.** Removed `rubric-critic.ts` (255 LOC) + its test + the obsolete `best-of-n.test.ts` (399 LOC, all critic-specific). Collapsed the dual-branch combined gate in ideas/hooks runners to band-only (`band !== "Weak"`, KCQ-05) — dropped `criticEnabled`/`PASS_VERDICT`/the SIM+critic Promise.all pair/`abstained`+`abstainedKept` warning. `predictedFailureMode` card field kept (nullable, now always null) so persisted blocks + UI stay valid. Net −916 LOC. | `flash/rubric-critic.ts` (deleted), ideas/hooks runners | FIXED (working tree) |
 
 ## The Read — video pipeline (§04)
 
@@ -130,6 +130,24 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-24 — S5 cut the dead rubric critic (working tree)
+- **S5 FIXED — removed the rubric critic entirely.** It was OFF by default
+  (`RUBRIC_CRITIC_ENABLED` env flag, unset in prod) and ~100% fail in practice (zeroed
+  hook/idea output when on — see [[rubric-critic-deactivated]]). Deleted
+  `flash/rubric-critic.ts` (255 LOC: `isRubricCriticEnabled`/`RubricVerdict`/
+  `critiqueAgainstRubric`) + `rubric-critic.test.ts` + the now-obsolete `best-of-n.test.ts`
+  (399 LOC, entirely critic-specific — the band-only gate + conditional-regen it also
+  touched are covered by `ideas/hooks-runner.test.ts`).
+- **Collapsed the dual-branch gate** in ideas-runner (`gatePass`) + hooks-runner (`gateHooks`)
+  to the SIM band alone (KCQ-05: keep iff `band !== "Weak"`). Dropped `criticEnabled`,
+  `PASS_VERDICT`, the SIM+critic `Promise.all` pair (now a single SIM await), and the
+  `verdict.abstained`/`abstainedKept` WR-01 warning path. The `predictedFailureMode` card
+  field is kept (nullable, now always `null`) so persisted blocks + the card-block UI stay
+  valid without a schema migration; `blocks.ts` comments updated to note it's vestigial.
+- **Verify:** tsc net-zero (64=64 baseline) · eslint clean · full suite **3019 pass / 0 fail /
+  28 skip** · net **−916 LOC** · ENGINE_VERSION 3.19.0 untouched. Follow-up (separate, lower-pri):
+  remove the vestigial `predictedFailureMode` field + its null-guarded card-block UI disclosure.
 
 ### 2026-06-24 — Audience quick-closes A2 (cut) + A3/A4 (resolved/clarified) (working tree)
 - **A2 FIXED — cut the dead F1 legacy derivation pair.** `deriveAudienceProfile` (constant-lens,

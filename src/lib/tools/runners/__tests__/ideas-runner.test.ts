@@ -29,18 +29,6 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
-// ─── Mock rubric-critic (14-02 best-of-N) ──────────────────────────────────────
-// Default: every candidate PASSES the Value Bar (pass:true, null failureMode) so
-// the SIM band remains the sole discriminator in these pre-14-02 gate tests. The
-// combined gate is `band !== "Weak" AND verdict.pass`; pass:true makes the band the
-// gate. Individual 14-02 tests live in best-of-n.test.ts.
-
-vi.mock("@/lib/engine/flash/rubric-critic", () => ({
-  critiqueAgainstRubric: vi.fn().mockResolvedValue({ pass: true, predictedFailureMode: null }),
-  // P13: critic OFF (production default) → these tests exercise the band-only gate.
-  isRubricCriticEnabled: () => false,
-}));
-
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
 // The runner imports it from flash-runner; mock the leaf so we assert the call
 // (personas + ctx) without touching the outcome repo. Other flash-runner exports
