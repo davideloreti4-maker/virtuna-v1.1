@@ -263,7 +263,7 @@ Scrapes creator's own handle → deterministic pattern extraction (recurring hoo
 Takes `decode` + `niche` from the wire (does NOT read DB — structural guard), `generateAdaptConcepts()` → 3 concepts → persists to `variants.remix.adapt`.
 
 ### 5.7 Flywheel — `/api/flywheel/proposals` (NO LLM)
-Reconciliation divergences → `evaluateGate()` (confidence gate) → `buildOverride()` (bounded ±0.1 weight shift) → updates `audience.persona_weights` on confirm. Refuses General/preset.
+Reconciliation divergences → `evaluateGate()` (confidence gate) → `buildOverride()` (bounded `RECALIBRATION_STEP` = 0.05 weight shift, env-tunable) → updates `audience.persona_weights` on confirm. Refuses General/preset.
 
 ### 5.8 Scraping & crons — `src/lib/scraping/apify-provider.ts`
 Apify actors: `clockworks/tiktok-profile-scraper`, `clockworks/tiktok-scraper`, `apidojo/tiktok-scraper-api` (paid single-post). SSRF allowlists on mp4/post hosts. Crons: scrape-trending, calculate-trends, refresh-competitors, **refresh-corpus (STUB)**, **audience-drift** (weekly re-scrape → drift detection → reconciliation rows), delete/sweep retained videos, sync-whop.

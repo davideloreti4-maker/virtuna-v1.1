@@ -10,7 +10,7 @@
  *      collector → fyp        (saver lives in the fyp slot group)
  *      converter → niche      (niche_deep_buyer lives in the niche slot group)
  *      connector → fyp + loyalist  (high_engager/sharer in fyp, loyalist in its own slot)
- *  - Bounded nudge: slot_new = clamp(slot_old + ASSUMED_STEP * sign(mean), 0, 1).
+ *  - Bounded nudge: slot_new = clamp(slot_old + RECALIBRATION_STEP * sign(mean), 0, 1).
  *  - Re-normalize all four weights via normalizeWeights() so they always sum to 1.0.
  *
  * Safety (D-03 / Pitfall 5): the only weights touched are the passed-in CURRENT audience
@@ -30,8 +30,21 @@ import {
 } from "@/lib/engine/persona-weights";
 import type { Proposal } from "./confidence-gate";
 
-/** [ASSUMED] A3 — bounded per-recalibration nudge size (owner-tunable). */
-export const ASSUMED_STEP = 0.05;
+/**
+ * Bounded per-recalibration nudge size — the current tuned default (was the [ASSUMED] A3
+ * placeholder; A5). Provisional-conservative: 0.05 keeps a calibrated audience's weights —
+ * and, post-A1, its SIM band gate — stable while outcome data is still sparse. Each confirmed
+ * proposal still compounds; a smaller step just avoids overshooting / flip-flopping which
+ * candidates survive the gate on thin, noisy early outcomes. Raise it once there's enough
+ * outcome data to measure how many confirmations meaningfully move a band.
+ *
+ * Owner-tunable at deploy time via the RECALIBRATION_STEP env var (accepted range (0, 0.5];
+ * anything outside that — or unset — falls back to 0.05).
+ */
+export const RECALIBRATION_STEP = ((): number => {
+  const raw = Number(process.env.RECALIBRATION_STEP);
+  return Number.isFinite(raw) && raw > 0 && raw <= 0.5 ? raw : 0.05;
+})();
 
 type WeightKey = keyof PersonaWeights;
 
@@ -55,7 +68,7 @@ function clamp(x: number, lo: number, hi: number): number {
  * Build a normalized PersonaWeights override from one confirmed proposal.
  *
  * - Map proposal.disposition → its slot(s).
- * - Nudge each slot by ASSUMED_STEP in the direction of sign(proposal.mean), clamped to [0,1].
+ * - Nudge each slot by RECALIBRATION_STEP in the direction of sign(proposal.mean), clamped to [0,1].
  * - Re-normalize the four weights to sum 1.0.
  *
  * Pure + deterministic. If the disposition has no slot mapping (defensive — should never
@@ -74,7 +87,7 @@ export function buildOverride(
 
   if (slots && direction !== 0) {
     for (const slot of slots) {
-      next[slot] = clamp(next[slot] + ASSUMED_STEP * direction, 0, 1);
+      next[slot] = clamp(next[slot] + RECALIBRATION_STEP * direction, 0, 1);
     }
   }
 

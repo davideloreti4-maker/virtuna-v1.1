@@ -6,7 +6,7 @@
  * current audience weights — NEVER DEFAULT_PERSONA_WEIGHT_CONFIG / ARCHETYPE_DEFINITIONS.
  *
  * Covers:
- *  - ASSUMED_STEP is the locked [ASSUMED] A3 value
+ *  - RECALIBRATION_STEP defaults to the conservative 0.05 (A5; env-overridable)
  *  - output always sums to 1.0 (±0.01) and every weight in [0,1]
  *  - positive mean nudges the disposition's slot UP; negative nudges DOWN
  *  - collector → fyp slot; converter → niche slot; connector → fyp+loyalist
@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { buildOverride, ASSUMED_STEP } from "../recalibration";
+import { buildOverride, RECALIBRATION_STEP } from "../recalibration";
 import type { Proposal } from "../confidence-gate";
 import type { PersonaWeights } from "@/lib/engine/persona-weights";
 
@@ -30,9 +30,9 @@ const sum = (w: PersonaWeights) => w.fyp + w.niche + w.loyalist + w.cross_niche;
 const inRange = (w: PersonaWeights) =>
   [w.fyp, w.niche, w.loyalist, w.cross_niche].every((v) => v >= 0 && v <= 1);
 
-describe("ASSUMED_STEP ([ASSUMED] A3)", () => {
-  it("is the locked bounded-nudge size", () => {
-    expect(ASSUMED_STEP).toBeCloseTo(0.05, 10);
+describe("RECALIBRATION_STEP (A5 — conservative default, env-overridable)", () => {
+  it("defaults to the conservative 0.05 bounded-nudge size", () => {
+    expect(RECALIBRATION_STEP).toBeCloseTo(0.05, 10);
   });
 });
 
