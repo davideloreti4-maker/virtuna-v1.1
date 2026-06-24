@@ -46,6 +46,9 @@
 import { useCallback, useState } from 'react';
 import { Compass, UsersThree, Sparkle } from '@phosphor-icons/react';
 import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
+import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
+import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
@@ -113,6 +116,9 @@ export interface ExploreThreadViewProps {
    * rather than navigating). Called by handleRemix on a successful remix launch.
    */
   onThreadReload?: () => void;
+  userTurn?: string | null;
+  skillLabel?: string;
+  audienceLabel?: string;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -129,6 +135,9 @@ export function ExploreThreadView({
   onQuickAction,
   onRetry,
   onThreadReload,
+  userTurn,
+  skillLabel = 'Explore',
+  audienceLabel = 'General',
 }: ExploreThreadViewProps) {
   // Per-tile transient state (mirrors DiscoverClient — local to this view).
   const [remixPendingId, setRemixPendingId] = useState<string | null>(null);
@@ -212,134 +221,118 @@ export function ExploreThreadView({
   );
 
   return (
-    <div className="w-full max-w-[760px] mx-auto flex flex-col gap-6 px-4 py-6">
+    <ThreadShell
+      userTurn={userTurn}
+      before={
+        isIdle ? (
+          <div className="flex flex-col gap-6 pt-2">
+            <div className="flex flex-col gap-3">
+              <h2 className="text-base font-semibold text-foreground leading-snug">
+                Find what your audience would actually bite on.
+              </h2>
+              <p className="text-sm text-foreground-secondary leading-normal">
+                Numen pulls outliers from your niche and competitors, then scores each
+                for <em>your</em> people — not borrowed view counts. Pick a starting
+                point, or set your own search.
+              </p>
+            </div>
 
-      {/* ── IDLE STATE (D-07 / EXPLORE-04) ────────────────────────────────────── */}
-      {/* Heading + body + 3 audience-derived quick-action cards. The cards run a
-          preset pull ONLY on tap — they NEVER auto-fire on render. */}
-      {isIdle && (
-        <div className="flex flex-col gap-6 pt-2">
-          <div className="flex flex-col gap-3">
-            <h2 className="text-base font-semibold text-foreground leading-snug">
-              Find what your audience would actually bite on.
-            </h2>
-            <p className="text-sm text-foreground-secondary leading-normal">
-              Numen pulls outliers from your niche and competitors, then scores each
-              for <em>your</em> people — not borrowed view counts. Pick a starting
-              point, or set your own search.
-            </p>
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
+              <QuickActionCard
+                icon={<Compass size={20} weight="regular" aria-hidden="true" />}
+                title="Top performers in my niche today"
+                sub="Fresh outliers, scored for your audience"
+                onClick={() =>
+                  onQuickAction({ niche: audienceNiche, timeWindow: 'today' })
+                }
+              />
+
+              <QuickActionCard
+                icon={<UsersThree size={20} weight="regular" aria-hidden="true" />}
+                title="What competitors shipped"
+                sub={
+                  hasTrackedAccounts
+                    ? 'Recent posts from accounts you track'
+                    : 'Track an account first'
+                }
+                disabled={!hasTrackedAccounts}
+                onClick={
+                  hasTrackedAccounts
+                    ? () => onQuickAction({ tracked: true, timeWindow: 'week' })
+                    : undefined
+                }
+              />
+
+              <QuickActionCard
+                icon={<Sparkle size={20} weight="regular" aria-hidden="true" />}
+                title="Surprise me"
+                sub="Widen beyond your niche — something unexpected"
+                onClick={() =>
+                  onQuickAction({ niche: audienceNiche, serendipity: 1 })
+                }
+              />
+            </div>
           </div>
-
-          {/* Cards stack 1-up ≤640px, 2–3-up wider via the auto-fill minmax pattern. */}
-          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
-            {/* Card 1 — always enabled. */}
-            <QuickActionCard
-              icon={<Compass size={20} weight="regular" aria-hidden="true" />}
-              title="Top performers in my niche today"
-              sub="Fresh outliers, scored for your audience"
-              onClick={() =>
-                onQuickAction({ niche: audienceNiche, timeWindow: 'today' })
-              }
-            />
-
-            {/* Card 2 — degrades to a disabled "Track an account first" sub-state when
-                no tracked accounts exist (honesty — never a fabricated competitor feed). */}
-            <QuickActionCard
-              icon={<UsersThree size={20} weight="regular" aria-hidden="true" />}
-              title="What competitors shipped"
-              sub={
-                hasTrackedAccounts
-                  ? 'Recent posts from accounts you track'
-                  : 'Track an account first'
-              }
-              disabled={!hasTrackedAccounts}
-              onClick={
-                hasTrackedAccounts
-                  ? // CR-02: signal the route to resolve the session user's tracked accounts
-                    // server-side (no handles sent from the client — CR-01 invariant).
-                    () => onQuickAction({ tracked: true, timeWindow: 'week' })
-                  : undefined
-              }
-            />
-
-            {/* Card 3 — always enabled (serendipity widen). */}
-            <QuickActionCard
-              icon={<Sparkle size={20} weight="regular" aria-hidden="true" />}
-              title="Surprise me"
-              sub="Widen beyond your niche — something unexpected"
-              onClick={() =>
-                onQuickAction({ niche: audienceNiche, serendipity: 1 })
-              }
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ── STREAMING PROGRESS ────────────────────────────────────────────────── */}
-      {/* ProgressChecklist while stages stream; the loading lead line names the
-          scoring step. NO fake % — the apidojo pull is genuinely minutes (UI-SPEC §5). */}
+        ) : undefined
+      }
+    >
       {isStreaming && (
         <div className="flex flex-col gap-3">
           {stages.length > 0 && <ProgressChecklist stages={stages} />}
-          <p
-            className="text-sm text-foreground-muted/70"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            Pulling outliers and scoring them for your audience… this can take a few
-            minutes.
-          </p>
+          <ThreadLoadingSkeleton
+            variant="skill"
+            caption="Pulling outliers and scoring them for your audience… this can take a few minutes."
+          />
         </div>
       )}
 
-      {/* ── SKILL-RUN ERROR (tap-to-retry) ────────────────────────────────────── */}
       {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 
-      {/* ── STREAMING GRID ────────────────────────────────────────────────────── */}
-      {/* Rendered via OutlierGridBlockRenderer DIRECTLY so the onRemix / onTrack +
-          per-tile pending / tracked state reach the tiles (MessageBlocks does not
-          forward handlers). One grid block per run. */}
-      {hasStreamingContent && (
-        <div className="flex flex-col gap-4">
-          {streamingBlocks.map((block, index) => (
-            <OutlierGridBlockRenderer
-              key={`stream-${index}`}
-              block={block}
-              onRemix={handleRemix}
-              onTrack={handleTrack}
-              remixPendingId={remixPendingId}
-              trackPendingId={trackPendingId}
-              trackedIds={trackedIds}
-            />
-          ))}
-        </div>
-      )}
+      {(hasStreamingContent || hasPersistedContent) && (
+        <ThreadAssistantTurn>
+          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+            {hasStreamingContent && (
+              <div className="flex flex-col gap-4">
+                {streamingBlocks.map((block, index) => (
+                  <OutlierGridBlockRenderer
+                    key={`stream-${index}`}
+                    block={block}
+                    onRemix={handleRemix}
+                    onTrack={handleTrack}
+                    remixPendingId={remixPendingId}
+                    trackPendingId={trackPendingId}
+                    trackedIds={trackedIds}
+                  />
+                ))}
+              </div>
+            )}
 
-      {/* ── PERSISTED GRID ────────────────────────────────────────────────────── */}
-      {/* Rehydrated from the open thread on reload. Same live handlers. */}
-      {hasPersistedContent && (
-        <div className="flex flex-col gap-4">
-          {hasStreamingContent && (
-            <div className="border-t border-white/[0.06] pt-4">
-              <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
-                Earlier
-              </p>
-            </div>
-          )}
-          {persistedBlocks.map((block, index) => (
-            <OutlierGridBlockRenderer
-              key={`persisted-${index}`}
-              block={block}
-              onRemix={handleRemix}
-              onTrack={handleTrack}
-              remixPendingId={remixPendingId}
-              trackPendingId={trackPendingId}
-              trackedIds={trackedIds}
-            />
-          ))}
-        </div>
+            {hasPersistedContent && (
+              <div className="flex flex-col gap-4">
+                {hasStreamingContent && (
+                  <div className="border-t border-white/[0.06] pt-4">
+                    <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
+                      Earlier
+                    </p>
+                  </div>
+                )}
+                {persistedBlocks.map((block, index) => (
+                  <OutlierGridBlockRenderer
+                    key={`persisted-${index}`}
+                    block={block}
+                    onRemix={handleRemix}
+                    onTrack={handleTrack}
+                    remixPendingId={remixPendingId}
+                    trackPendingId={trackPendingId}
+                    trackedIds={trackedIds}
+                  />
+                ))}
+              </div>
+            )}
+          </SkillResultCard>
+        </ThreadAssistantTurn>
       )}
-    </div>
+    </ThreadShell>
   );
 }
 
@@ -379,7 +372,7 @@ function QuickActionCard({ icon, title, sub, onClick, disabled = false }: QuickA
           : [
               'border-white/[0.06] cursor-pointer',
               'hover:bg-white/[0.02]',
-              'active:border-[rgba(217,119,87,0.34)] active:bg-[rgba(217,119,87,0.14)]',
+              'active:border-white/10 active:bg-white/[0.04]',
             ].join(' '),
       ].join(' ')}
     >
