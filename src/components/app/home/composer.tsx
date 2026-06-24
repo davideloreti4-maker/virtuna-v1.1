@@ -116,9 +116,12 @@ export interface ComposerProps {
   /** Called whenever the thread-content presence changes (ideas or hooks cards exist/disappear).
    *  Parent (HomePageLayout) uses this to switch between centered and full-height layout. */
   onThreadChange?: (hasThread: boolean) => void;
+  /** Called when conversation content exists (blocks, streaming, or a submitted turn).
+   *  Parent uses this to hide the empty-state welcome hero. */
+  onConversationChange?: (hasConversation: boolean) => void;
 }
 
-export function Composer({ className, onThreadChange }: ComposerProps) {
+export function Composer({ className, onThreadChange, onConversationChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -303,6 +306,34 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   const [submitting, setSubmitting] = useState(false);
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
+
+  // True when the user has sent or the model has generated thread content.
+  // Unlike hasThread, does NOT flip on tool selection alone (Explore/Chat idle views).
+  const hasConversationContent =
+    ideas.isStreaming ||
+    hooks.isStreaming ||
+    chat.isStreaming ||
+    script.isStreaming ||
+    remix.isStreaming ||
+    explore.isStreaming ||
+    ideasBlocks.length > 0 ||
+    hooksBlocks.length > 0 ||
+    chatBlocks.length > 0 ||
+    scriptBlocks.length > 0 ||
+    remixBlocks.length > 0 ||
+    exploreBlocks.length > 0 ||
+    persistedIdeaBlocks.length > 0 ||
+    persistedHookBlocks.length > 0 ||
+    persistedChatBlocks.length > 0 ||
+    persistedScriptBlocks.length > 0 ||
+    persistedRemixBlocks.length > 0 ||
+    persistedExploreBlocks.length > 0 ||
+    !!lastUserTurn;
+
+  // Notify parent whenever conversation content changes (welcome hero visibility).
+  useEffect(() => {
+    onConversationChange?.(hasConversationContent);
+  }, [hasConversationContent, onConversationChange]);
 
   // URL validity: empty is "neutral" (no error, just disabled); non-empty +
   // non-TikTok shows the D-21 reject; a valid TikTok URL enables submit.
@@ -985,6 +1016,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       onReask={(a) =>
         focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
       }
+      docked
     />
   );
 
@@ -1166,14 +1198,7 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       onSubmit={onSubmitForm}
       className="w-full"
     >
-        <div
-          className={cn(
-            "relative rounded-2xl border border-white/[0.06] bg-surface-elevated p-3",
-            // Whisper float ONLY when centered (D-05) — pinned rests on the column.
-            layout === "centered" && "shadow-float",
-            !reducedMotion && "transition-shadow duration-200",
-          )}
-        >
+        <div className="relative p-3 pt-0">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
               and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
@@ -1316,6 +1341,22 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
       </form>
   );
 
+  // Fused bottom dock — audience peek cap + composer field share one matte surface.
+  const composerDock = (
+    <div
+      data-testid="composer-dock"
+      className={cn(
+        "relative w-full rounded-2xl border border-white/[0.06] bg-surface-elevated",
+        !audienceOpen && "overflow-hidden",
+        layout === "centered" && "shadow-float",
+        !reducedMotion && "transition-shadow duration-200",
+      )}
+    >
+      {audiencePresence}
+      {composerForm}
+    </div>
+  );
+
   // ── Layout branches ────────────────────────────────────────────────────────
   //
   // Branch A — Home thread mode (hasThread && !hasSimulation):
@@ -1350,11 +1391,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
           {threadContent}
         </div>
 
-        {/* Pinned bottom dock — the audience PRESENCE sits ABOVE the composer (fork #1),
-            both bottom-pinned; the thread scrolls above. */}
-        <div className="shrink-0 flex flex-col gap-2 pb-4 pt-2">
-          {audiencePresence}
-          {composerForm}
+        {/* Pinned bottom dock — audience + composer fused as one surface. */}
+        <div className="shrink-0 pb-4">
+          {composerDock}
         </div>
       </div>
     );
@@ -1365,10 +1404,9 @@ export function Composer({ className, onThreadChange }: ComposerProps) {
   // (identity + "N personas ready", NO stale reaction, NO second input — fork #4). `ambientFocus`
   // is null here (no thread cards to focus), so the pulse reads readiness.
   return (
-    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col gap-2", className)}>
+    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col", className)}>
       {threadContent}
-      {audiencePresence}
-      {composerForm}
+      {composerDock}
     </div>
   );
 }

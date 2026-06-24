@@ -25,7 +25,7 @@ export function SkillResultCard({
   return (
     <div
       className={cn(
-        'min-w-0 overflow-hidden rounded-xl border border-white/[0.06] bg-surface-elevated',
+        'min-w-0 overflow-hidden rounded-xl border border-white/[0.06] bg-surface-thread',
         className,
       )}
     >

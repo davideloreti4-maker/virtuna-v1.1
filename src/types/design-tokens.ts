@@ -17,6 +17,7 @@ export type SemanticColor =
   | 'background-elevated'
   | 'surface'
   | 'surface-elevated'
+  | 'surface-thread'
   | 'foreground'
   | 'foreground-secondary'
   | 'foreground-muted'
