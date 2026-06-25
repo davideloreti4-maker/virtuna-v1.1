@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { createClient } from "@/lib/supabase/client";
+import type { Database } from "@/types/database.types";
 
 /**
  * Welcome-flow state machine. D-03 / INT-04 trimmed the union to two members:
@@ -57,7 +58,7 @@ async function persistToSupabase(updates: Record<string, unknown>) {
 
   await supabase
     .from("creator_profiles")
-    .update(updates)
+    .update(updates as Database["public"]["Tables"]["creator_profiles"]["Update"])
     .eq("user_id", user.id);
 }
 

@@ -85,6 +85,8 @@ export interface AudiencePresenceProps {
   asking?: boolean;
   /** Re-focus the Lens on a past ask (tap a turn in the conversation). */
   onReask?: (ask: AudienceAsk) => void;
+  /** When true, the peek band is the top cap of a fused composer dock (no own border/shadow). */
+  docked?: boolean;
 }
 
 export function AudiencePresence({
@@ -99,6 +101,7 @@ export function AudiencePresence({
   asks = [],
   asking = false,
   onReask,
+  docked = false,
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement | null>(null);
@@ -158,7 +161,12 @@ export function AudiencePresence({
           data-testid="audience-panel"
           role="dialog"
           aria-label="Your audience"
-          className="absolute bottom-full left-0 right-0 z-[55] flex max-h-[58vh] flex-col overflow-hidden rounded-t-[16px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-float)]"
+          className={
+            'absolute bottom-full left-0 right-0 z-[55] flex max-h-[58vh] flex-col overflow-hidden border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+            (docked
+              ? 'rounded-t-2xl shadow-none'
+              : 'rounded-t-[16px] shadow-[var(--shadow-float)]')
+          }
         >
           <div className="flex shrink-0 items-center justify-between px-4 pb-1.5 pt-3">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
@@ -261,8 +269,13 @@ export function AudiencePresence({
           }
         }}
         className={
-          'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
-          (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
+          docked
+            ? 'flex items-center gap-2 px-3 py-2.5 transition-colors ' +
+              (open
+                ? 'border-t border-[var(--color-border)]'
+                : 'border-b border-[var(--color-border)] hover:bg-[var(--color-hover)]')
+            : 'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
+              (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
         }
         style={{ cursor: 'pointer' }}
       >

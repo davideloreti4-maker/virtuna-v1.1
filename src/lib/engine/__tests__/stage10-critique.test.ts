@@ -59,7 +59,7 @@ function makeFakePredictionResult(overrides?: Partial<PredictionResult>): Predic
     } as PredictionResult["feature_vector"],
     reasoning: "test reasoning",
     warnings: [],
-    predicted_engagement: { views: 10000, likes: 500, shares: 100, comments: 50, saves: 25 },
+    predicted_engagement: { lo: 5000, hi: 15000, confidence: 0.65, basis: "test fixture" },
     factors: [
       { id: "hook-power", name: "Hook Power", score: 8, max_score: 10, rationale: "Strong opening", improvement_tip: "Add visual surprise" },
       { id: "retention-pull", name: "Retention Pull", score: 6, max_score: 10, rationale: "Decent narrative", improvement_tip: "Tease earlier" },
@@ -100,6 +100,8 @@ function makeFakePredictionResult(overrides?: Partial<PredictionResult>): Predic
     retrieval_score: null,
     retrieval_evidence: [],
     anti_virality_gated: false,
+    analysis_unavailable: false,
+    partial_analysis: false,
     ...overrides,
   };
 }

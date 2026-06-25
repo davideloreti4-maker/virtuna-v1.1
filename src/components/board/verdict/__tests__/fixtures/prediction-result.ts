@@ -52,13 +52,12 @@ const base: PredictionResult = {
     'Strong hook in first 2 seconds, clear narrative arc, niche-aligned visual style. **Hook works** because the visual stop power is high (8.2/10). Could be improved by tightening the text overlay timing.',
   warnings: [],
 
-  // Predicted engagement
+  // Predicted engagement (EngagementRange — lo/hi/confidence/basis)
   predicted_engagement: {
-    likes: 4200,
-    comments: 310,
-    shares: 580,
-    saves: 420,
-    views: 52000,
+    lo: 20000,
+    hi: 80000,
+    confidence: 0.82,
+    basis: 'creator_baseline',
   },
 
   // Factors
@@ -85,6 +84,7 @@ const base: PredictionResult = {
   // Anti-virality
   anti_virality_gated: false,
   analysis_unavailable: false,
+  partial_analysis: false,
 
   // Hook decomposition
   hook_decomposition: {

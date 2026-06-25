@@ -33,20 +33,6 @@ import type { MessageRow } from "../messages";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Build a minimal Supabase query-builder mock. */
-function buildQueryMock(overrides: Record<string, unknown> = {}) {
-  const chain = {
-    from: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    single: vi.fn(),
-    ...overrides,
-  };
-  return chain;
-}
-
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 const THREAD_ID = "00000000-0000-0000-0000-000000000001";
@@ -139,11 +125,11 @@ describe("loadMessages — rehydration with re-validation (D-14)", () => {
     const messages = await loadMessages(THREAD_ID);
 
     expect(messages).toHaveLength(1);
-    expect(messages[0].blocks).toHaveLength(2);
+    expect(messages[0]!.blocks).toHaveLength(2);
 
     // Both valid blocks come back intact.
-    expect(messages[0].blocks[0]).toMatchObject({ type: "markdown", props: { text: "Hello world" } });
-    expect(messages[0].blocks[1]).toMatchObject({ type: "band", props: { band: "Strong" } });
+    expect(messages[0]!.blocks[0]).toMatchObject({ type: "markdown", props: { text: "Hello world" } });
+    expect(messages[0]!.blocks[1]).toMatchObject({ type: "band", props: { band: "Strong" } });
   });
 
   it("maps invalid blocks to UnsupportedBlock sentinel — no data loss, no crash (Pitfall #4)", async () => {
@@ -169,19 +155,19 @@ describe("loadMessages — rehydration with re-validation (D-14)", () => {
 
     expect(messages).toHaveLength(1);
     // All three blocks present — no data loss.
-    expect(messages[0].blocks).toHaveLength(3);
+    expect(messages[0]!.blocks).toHaveLength(3);
 
     // Block 0: valid markdown — passes through intact.
-    expect(messages[0].blocks[0]).toMatchObject({ type: "markdown" });
+    expect(messages[0]!.blocks[0]).toMatchObject({ type: "markdown" });
 
     // Block 1: invalid type — becomes UnsupportedBlock sentinel.
-    expect(messages[0].blocks[1]).toMatchObject({
+    expect(messages[0]!.blocks[1]).toMatchObject({
       type: "__unsupported__",
       props: { raw: INVALID_BLOCK },
     });
 
     // Block 2: valid band — passes through intact.
-    expect(messages[0].blocks[2]).toMatchObject({ type: "band" });
+    expect(messages[0]!.blocks[2]).toMatchObject({ type: "band" });
   });
 
   it("returns empty array for a thread with no messages", async () => {
@@ -230,11 +216,11 @@ describe("loadMessages — validateBlock called on EVERY block of EVERY message"
 
     expect(messages).toHaveLength(3);
     // m1: valid markdown
-    expect(messages[0].blocks[0]).toMatchObject({ type: "markdown" });
+    expect(messages[0]!.blocks[0]).toMatchObject({ type: "markdown" });
     // m2: unsupported
-    expect(messages[1].blocks[0]).toMatchObject({ type: "__unsupported__" });
+    expect(messages[1]!.blocks[0]).toMatchObject({ type: "__unsupported__" });
     // m3: valid band + unsupported
-    expect(messages[2].blocks[0]).toMatchObject({ type: "band" });
-    expect(messages[2].blocks[1]).toMatchObject({ type: "__unsupported__" });
+    expect(messages[2]!.blocks[0]).toMatchObject({ type: "band" });
+    expect(messages[2]!.blocks[1]).toMatchObject({ type: "__unsupported__" });
   });
 });
