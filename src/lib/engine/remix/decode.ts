@@ -80,8 +80,7 @@ export async function runDecode(
           temperature: 0,
           seed: QWEN_SEED,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types
-          enable_thinking: true,
-          thinking_budget: 2000,
+          enable_thinking: false,
         },
         { signal: controller.signal },
       );

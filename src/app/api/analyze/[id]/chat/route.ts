@@ -207,12 +207,15 @@ export async function POST(
       let fullContent = "";
       try {
         const qwen = getQwenClient();
-        const stream = await qwen.chat.completions.create({
+        const chatParams = {
           model: QWEN_REASONING_MODEL,
           messages,
-          stream: true,
+          stream: true as const,
           temperature: 0.3,
-        });
+          max_tokens: 2000, // safety ceiling: bound runaway streamed answer
+        };
+        (chatParams as Record<string, unknown>).enable_thinking = false; // DashScope extension: thinking-off
+        const stream = await qwen.chat.completions.create(chatParams);
 
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content ?? "";

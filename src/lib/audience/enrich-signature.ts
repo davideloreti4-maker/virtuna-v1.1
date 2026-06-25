@@ -27,7 +27,7 @@ import { createLogger } from "@/lib/logger";
 import {
   getQwenClient,
   QWEN_OMNI_MODEL,
-  QWEN_FAST_MODEL,
+  QWEN_REASONING_MODEL,
   QWEN_SEED,
 } from "@/lib/engine/qwen/client";
 import { calculateCost } from "@/lib/engine/qwen/cost";
@@ -52,7 +52,7 @@ const MIN_WATCH = 3;
 const MAX_TRANSCRIPTS = 5;
 const OMNI_TIMEOUT_MS = 60_000;
 const SYNTH_TIMEOUT_MS = 60_000;
-const SYNTH_MAX_TOKENS = 4000;
+const SYNTH_MAX_TOKENS = 6000; // thinking ON: thinking_budget(2000) + persona output(~2.5k) + headroom
 const SUBTITLE_FETCH_TIMEOUT_MS = 8_000;
 const SUBTITLE_MAX_CHARS = 2_000;
 
@@ -339,7 +339,7 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
   try {
     const completion = await ai.chat.completions.create(
       {
-        model: QWEN_FAST_MODEL,
+        model: QWEN_REASONING_MODEL, // CALIBRATE: bake-once, judgment-heavy → thinking ON
         messages: [
           { role: "system", content: SYNTH_SYSTEM },
           { role: "user", content: JSON.stringify(payload) },
@@ -347,8 +347,10 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
-        max_tokens: SYNTH_MAX_TOKENS,
-      },
+        max_tokens: SYNTH_MAX_TOKENS, // 6000: thinking_budget(2000) + output(~2.5k) + headroom
+        enable_thinking: true,        // DashScope extension — suppressed by `as never` cast below
+        thinking_budget: 2000,
+      } as never,
       { signal: controller.signal },
     );
     const raw = completion.choices[0]?.message?.content ?? "";

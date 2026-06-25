@@ -276,16 +276,19 @@ export async function runChatPipeline(
   let fullContent = "";
   try {
     const ai = getQwenClient();
+    const chatParams = {
+      model: QWEN_REASONING_MODEL,
+      messages: [
+        { role: "system" as const, content: systemContent },
+        { role: "user" as const, content: userMessage },
+      ],
+      stream: true as const,
+      temperature: 0.3,
+      max_tokens: 2000, // safety ceiling: bound runaway streamed answer
+    };
+    (chatParams as Record<string, unknown>).enable_thinking = false; // DashScope extension: thinking-off
     const stream = await ai.chat.completions.create(
-      {
-        model: QWEN_REASONING_MODEL,
-        messages: [
-          { role: "system" as const, content: systemContent },
-          { role: "user" as const, content: userMessage },
-        ],
-        stream: true,
-        temperature: 0.3,
-      },
+      chatParams,
       { signal: controller.signal },
     );
 
