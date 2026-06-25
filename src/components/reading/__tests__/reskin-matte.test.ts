@@ -29,13 +29,10 @@ const SRC = join(__dirname, '..', '..', '..'); // …/src
 const TRANSPLANT_FILES = [
   'components/board/verdict/ScoreDistribution.tsx',
   'components/board/audience/RetentionChart.tsx',
-  'components/board/content-analysis/CraftFilmstrip.tsx',
-  'components/board/audience/SegmentTable.tsx',
   'components/board/_kit/PersonaGraph.tsx',
   'components/board/_kit/StatTile.tsx',
   'components/board/_kit/DataTable.tsx',
   'components/board/_kit/KeyframeImage.tsx',
-  'components/board/audience/RetentionPlayer.tsx',
 ] as const;
 
 /**
