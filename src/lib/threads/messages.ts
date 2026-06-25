@@ -67,8 +67,8 @@ export interface HydratedMessage {
  * build boundary; insertMessage is the belt-and-suspenders check).
  *
  * Uses createServiceClient: the caller is responsible for verifying thread
- * ownership before invoking this (e.g. verify readingId belongs to the
- * authenticated user before calling createGroundedThreadLazy).
+ * ownership before invoking this (e.g. the open thread from createOpenThreadLazy,
+ * whose user_id comes from the authenticated session — never the request body).
  */
 export async function insertMessage(
   threadId: string,
