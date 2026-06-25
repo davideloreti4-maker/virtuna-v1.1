@@ -123,5 +123,12 @@
  *
  * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION; this bump auto-invalidates
  * all `3.18.0` cached rows on next analyze-route call (L1 in-memory + L2 Supabase filter).
+ *
+ * 3.19.0 → 3.20.0 (S3′ — generate-rate-rank): the hooks/ideas/remix SIM moved from a
+ * per-candidate Promise.all fan-out to ONE batched flash call (all candidates scored in a
+ * single request). Batching CAN shift a given candidate's verdicts vs the old isolated call,
+ * AND the gate changed from cut-Weak-and-trim to keep-all-ranked — a deliberate scoring-path
+ * change, so the version bumps and the determinism/regression gates rebaseline to the batched
+ * path (steer-closure + audience-regression-gate). The N=1 react/script paths are unchanged.
  */
-export const ENGINE_VERSION = "3.19.0";
+export const ENGINE_VERSION = "3.20.0";

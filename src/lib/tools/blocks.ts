@@ -46,16 +46,22 @@ export type BandBlock = z.infer<typeof BandBlockSchema>;
 // D-03: each persona returns a stop/scroll verdict + a first-person voice quote.
 // This is also the exact data shape custom personas will emit later (v6.1+, D-05).
 
+// Shared reaction-persona shape (D-03) — the exact {archetype, verdict, quote} a SIM
+// emits. Reused by PersonasBlock AND the per-card optional `personas` field (S3′) so a
+// generated card carries its own 10-persona reaction → the ambient modal reads it with
+// NO extra /api/tools/react call (modal wiring lands in PR-2, UI lane).
+export const ReactionPersonaSchema = z.object({
+  archetype: z.string(),
+  verdict: z.enum(["stop", "scroll"]),
+  quote: z.string().min(1).max(160),
+});
+
+export type ReactionPersona = z.infer<typeof ReactionPersonaSchema>;
+
 export const PersonasBlockSchema = z.object({
   type: z.literal("personas"),
   props: z.object({
-    personas: z.array(
-      z.object({
-        archetype: z.string(),
-        verdict: z.enum(["stop", "scroll"]),
-        quote: z.string().min(1).max(160),
-      }),
-    ),
+    personas: z.array(ReactionPersonaSchema),
   }),
 });
 
@@ -96,6 +102,10 @@ export const IdeaCardBlockSchema = z.object({
     // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
     // existing persisted blocks + rehydration stay valid (no migration).
     predictedFailureMode: z.string().nullable().optional(),
+    // S3′: the card's own 10-persona reaction (generate-rate-rank — keep-all). OPTIONAL so
+    // pre-S3′ persisted blocks + rehydration stay valid. The ambient modal reads this (PR-2)
+    // instead of re-calling /api/tools/react for a generated card.
+    personas: z.array(ReactionPersonaSchema).optional(),
   }),
 });
 
@@ -141,6 +151,10 @@ export const HookCardBlockSchema = z.object({
     // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
     // existing persisted blocks + rehydration stay valid (no migration).
     predictedFailureMode: z.string().nullable().optional(),
+    // S3′: the card's own 10-persona reaction (generate-rate-rank — keep-all). OPTIONAL so
+    // pre-S3′ persisted blocks + rehydration stay valid. The ambient modal reads this (PR-2)
+    // instead of re-calling /api/tools/react for a generated card.
+    personas: z.array(ReactionPersonaSchema).optional(),
   }),
 });
 
@@ -178,6 +192,8 @@ export const ScriptCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "7/10 stop" — opener audience fraction only
     scrollQuote: z.string(),           // lead per-persona scroll quote for the opener (D-04)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for script cards (D-10)
+    // S3′: the opener's 10-persona reaction. OPTIONAL (back-compat). Ambient modal reads it (PR-2).
+    personas: z.array(ReactionPersonaSchema).optional(),
   }),
 });
 
@@ -227,6 +243,8 @@ export const RemixCardBlockSchema = z.object({
     // Absent/empty = General (no steer) → renderer shows NO tag (regression-safe no-op).
     // Populated only when a non-general audience is active (remix-runner Task 1).
     audienceName: z.string().min(1).optional(),
+    // S3′: the adapted hook's 10-persona reaction. OPTIONAL (back-compat). Modal reads it (PR-2).
+    personas: z.array(ReactionPersonaSchema).optional(),
   }),
 });
 

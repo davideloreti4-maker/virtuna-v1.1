@@ -306,15 +306,18 @@ export async function POST(request: Request): Promise<Response> {
 
             const ai = getQwenClient();
             let noteText = "";
-            const noteStream = await ai.chat.completions.create({
+            const noteParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
                 { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
                 { role: "user" as const, content: notePrompt },
               ],
-              stream: true,
+              stream: true as const,
               temperature: 0.4,
-            });
+              max_tokens: 2000, // safety ceiling: short follow-up, bound runaway
+            };
+            (noteParams as Record<string, unknown>).enable_thinking = false; // DashScope extension: thinking-off
+            const noteStream = await ai.chat.completions.create(noteParams);
             for await (const chunk of noteStream) {
               noteText += chunk.choices[0]?.delta?.content ?? "";
             }

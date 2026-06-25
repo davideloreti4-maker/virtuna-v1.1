@@ -37,6 +37,27 @@ export const FlashResultSchema = z.object({
 
 export type FlashResult = z.infer<typeof FlashResultSchema>;
 
+// ─── Batched result schema (S3′ — generate-rate-rank) ───────────────────────────
+// One batched SIM call scores N unrelated candidates, each by all 10 archetypes.
+// Per-candidate salvage (coerceFlashBatchResponse + per-candidate safeParse in the
+// call fn) means a single malformed candidate drops ITSELF — never nukes the batch.
+// Shape is domain-general (candidates[] → reactions[]) so the GSI DomainPack seam
+// stays clean (memory numen-gsi-vision): only the persona/verdict/band specifics
+// (socials Pack #1) live in FlashPersonaSchema above.
+
+export const FlashBatchCandidateSchema = z.object({
+  id: z.string(),
+  personas: z.array(FlashPersonaSchema).length(10),
+});
+
+export type FlashBatchCandidate = z.infer<typeof FlashBatchCandidateSchema>;
+
+export const FlashBatchResultSchema = z.object({
+  candidates: z.array(FlashBatchCandidateSchema),
+});
+
+export type FlashBatchResult = z.infer<typeof FlashBatchResultSchema>;
+
 // ─── Coercion layer ────────────────────────────────────────────────────────────
 // Salvages small-model (qwen3.6-flash) FORMAT sloppiness WITHOUT fabricating signal.
 // Mirrors coerceFoldResponse pattern from wave3/fold-prompts.ts.
@@ -88,4 +109,63 @@ export function coerceFlashResponse(raw: unknown): unknown {
       };
     }),
   };
+}
+
+// ─── Batched coercion (S3′) ──────────────────────────────────────────────────────
+// Normalizes a raw batched response into one entry per EXPECTED id, resolving by the
+// echoed id and falling back to positional order if ids drift. Each entry's personas
+// stay raw here (verdict casing etc. are normalized per-candidate by coerceFlashResponse
+// in the call fn) so the existing single-candidate salvage path is reused verbatim.
+//
+// Tolerates: fenced JSON string · bare top-level array · {candidates:[…]} · {results:[…]} ·
+// a candidate that is itself a bare personas array. A missing/unparseable candidate yields
+// { id, personas: undefined } → fails the per-candidate safeParse → dropped (not the batch).
+export function coerceFlashBatchResponse(
+  raw: unknown,
+  expectedIds: string[],
+): { id: string; personas: unknown }[] {
+  let r = raw;
+
+  // Fenced/string JSON → parse (mirrors coerceFlashResponse).
+  if (typeof r === "string") {
+    const stripped = stripModelOutput(r);
+    try {
+      r = JSON.parse(stripped);
+    } catch {
+      return expectedIds.map((id) => ({ id, personas: undefined }));
+    }
+  }
+
+  // Locate the candidates array: bare array | {candidates} | {results}.
+  let arr: unknown[] = [];
+  if (Array.isArray(r)) {
+    arr = r;
+  } else if (r && typeof r === "object") {
+    const o = r as { candidates?: unknown; results?: unknown };
+    if (Array.isArray(o.candidates)) arr = o.candidates;
+    else if (Array.isArray(o.results)) arr = o.results;
+  }
+
+  // Index entries by echoed id + keep positional order for fallback.
+  const byId = new Map<string, unknown>();
+  const positional: unknown[] = [];
+  for (const entry of arr) {
+    let id: string | undefined;
+    let personas: unknown;
+    if (Array.isArray(entry)) {
+      personas = entry; // candidate emitted as a bare personas array
+    } else if (entry && typeof entry === "object") {
+      const e = entry as Record<string, unknown>;
+      if (typeof e.id === "string") id = e.id;
+      personas = e.personas ?? e.reactions;
+    }
+    if (id != null) byId.set(id, personas);
+    positional.push(personas);
+  }
+
+  // Resolve each expected id: by id, else positional fallback.
+  return expectedIds.map((id, i) => ({
+    id,
+    personas: byId.has(id) ? byId.get(id) : positional[i],
+  }));
 }

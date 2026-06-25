@@ -4,17 +4,18 @@
  * Formalizes the prototype's (scripts/ideas-sim-rank.ts) generate→SIM→gate stages:
  *
  * 1. GENERATE: assembleBundle(mode:"idea") → user message; system = KC_IDEAS_SYSTEM_PROMPT.
- *    Structured json_object generation of ~5 ideas (Open Q1 RESOLVED — see seedHookPath).
+ *    Structured json_object generation of exactly IDEA_COUNT (4) ideas (Open Q1 — seedHookPath).
  *    Each idea carries: title, angle, mechanism, seedHook, needsTake, topic, take, format.
  *
- * 2. SIM (gate): runFlashTextMode(seedHook, "idea", { niche, contentType: null }) per candidate,
- *    in Promise.all (parallel — RESEARCH Pitfall 4 / Open Q2). aggregateFlash → {band, fraction}.
+ * 2. RATE (S3′): ONE batched runFlashTextModeBatch(candidates, "idea", { niche, contentType: null })
+ *    scores ALL candidates in a single call. aggregateFlash → {band, fraction} per candidate.
  *    Lead scrollQuote selected NOW from stop-verdicted personas (D-04, WARNING-4).
  *
- * 3. GATE + TRIM: drop candidates where band === "Weak" (Plan-01 GATE FLOOR: band !== "Weak",
- *    i.e., stops >= MIXED_THRESHOLD = 3). Keep up to 3 survivors (D-13). No regen loop (D-03).
+ * 3. KEEP-ALL + RANK (S3′): NO Weak cut. Every rated idea is kept and RANKED (band tier →
+ *    stop-count → generation order). slice(IDEA_COUNT) is a safety bound only. No regen (D-03).
+ *    The only drop is a candidate with no reaction (un-scorable — never fabricate a band).
  *
- * 4. BUILD: assemble validated idea-card blocks (IdeaCardBlockSchema, Plan 02 prop names).
+ * 4. BUILD: assemble validated idea-card blocks (incl. per-card personas for the modal, PR-2).
  *    whyItFits = buildGroundingLine(profileRow, platform).line (Plan 02).
  *    Each block passes validateBlock (re-validated at insertMessage boundary too).
  *
@@ -51,7 +52,7 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_IDEAS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
-import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
@@ -67,14 +68,30 @@ import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Over-generate buffer: ~5 ideas to get N=3 survivors (D-13, D-03). */
-const IDEA_BUFFER = 5;
-
-/** Max survivors to keep after gating (D-13). */
-const MAX_SURVIVORS = 3;
+/**
+ * Generate-and-rate (S3′): generate exactly IDEA_COUNT ideas, batch-rate ALL, RANK them,
+ * and KEEP them all — no Weak cut, no over-gen buffer, no top-N trim. Generation count ==
+ * display count (the user always gets a full shelf). The slice at IDEA_COUNT is a safety
+ * bound only (model occasionally over-emits).
+ */
+const IDEA_COUNT = 4;
 
 /** Generation call timeout (mirrors hooks-runner; ideas generate is heavier). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+// ─── Rank helpers (S3′ — mirrors hooks-runner) ──────────────────────────────────
+/** Band tier ordinal for ranking: Strong=0 > Mixed=1 > Weak=2 (keep-all, Weak ranked last). */
+function bandOrdinal(band: "Strong" | "Mixed" | "Weak"): number {
+  if (band === "Strong") return 0;
+  if (band === "Mixed") return 1;
+  return 2;
+}
+
+/** Parse the stop-count numerator from a fraction string (e.g. "6/10 stop" → 6); NaN-safe → 0. */
+function parseFractionNumerator(fraction: string): number {
+  const n = parseInt(fraction, 10);
+  return Number.isNaN(n) ? 0 : n;
+}
 
 /**
  * Output-serialization contract — owned by the runner because the runner owns
@@ -90,7 +107,7 @@ const IDEAS_OUTPUT_CONTRACT = `
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null } ] }
-Return an "ideas" array of distinct idea objects. Every field is required (use "" or null where empty); "seedHook" must be non-empty.`;
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty.`;
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -121,7 +138,7 @@ export interface IdeasPipelineInput {
 // ─── Output type ─────────────────────────────────────────────────────────────
 
 export interface IdeasPipelineResult {
-  /** Up to MAX_SURVIVORS validated idea-card blocks (may be 0 if all sub-floor). */
+  /** Up to IDEA_COUNT (4) ranked idea-card blocks, keep-all (0 only on generation/SIM failure). */
   blocks: IdeaCardBlock[];
   /** Warnings from Flash SIM calls. */
   warnings: string[];
@@ -149,7 +166,7 @@ interface StructuredIdea {
 // ─── Qwen generation call ────────────────────────────────────────────────────
 
 /**
- * Call Qwen in json_object mode to generate ~IDEA_BUFFER structured ideas.
+ * Call Qwen in json_object mode to generate IDEA_COUNT structured ideas.
  * System = KC_IDEAS_SYSTEM_PROMPT (byte-stable warm cache prefix).
  * User = assembleBundle output (volatile per-request).
  */
@@ -171,6 +188,8 @@ async function generateIdeasStructured(userMessage: string): Promise<StructuredI
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
+        enable_thinking: false, // DashScope extension — cast via `as never` below
+        max_tokens: 2000,       // safety rail: est. richer × 4 ideas
       } as never,
       { signal: controller.signal },
     );
@@ -224,7 +243,7 @@ async function generateIdeasStructured(userMessage: string): Promise<StructuredI
       format:
         typeof r.format === "string" && r.format.trim().length > 0 ? r.format : null,
     });
-    if (ideas.length >= IDEA_BUFFER) break;
+    if (ideas.length >= IDEA_COUNT) break;
   }
 
   return ideas;
@@ -253,7 +272,7 @@ function selectLeadScrollQuote(
 /**
  * Full Ideas pipeline: generate → SIM gate → build idea-card blocks.
  *
- * Returns up to MAX_SURVIVORS validated idea-card blocks.
+ * Returns up to IDEA_COUNT (4) ranked idea-card blocks (keep-all — Weak kept, ranked last).
  * Returns 0 blocks if all ideas score Weak (valid, no regen — D-03).
  *
  * @param input.ask         Creator's ask (seeded or defaulted to empty → route handles default).
@@ -295,7 +314,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // Record which path shipped (Open Q1 resolved decision)
   const seedHookPath: "structured" | "markered" = "structured";
 
-  // ── SIM (gate): parallel Flash per candidate ──────────────────────────────
+  // ── RATE (S3′): ONE batched Flash call scores all candidates ───────────────
   // Niche panel + audience repaint via the shared buildReactionPanel helper (Plan 13-01):
   // resolveNicheKey normalizes free-text/sub-slug niche_primary to a top-level
   // NICHE_INSTANTIATION key BEFORE the panel (14-01 — otherwise selectPersonaSlots' exact-slug
@@ -318,121 +337,124 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // blast-radius gate: only ideas-runner uses audience-grounding in P7).
   const { line: groundingLine } = buildAudienceGroundingLine(audience, platform, profileRow);
 
-  // FLYWHEEL-02: capture the personas to pin — the lead survivor (the idea most
-  // likely posted), falling back to the first SIM that resolved so a run that
-  // fired the SIM always pins a vector.
-  let leadPersonas: FlashPersona[] | null = null;
-  let firstSimPersonas: FlashPersona[] | null = null;
-
-  /**
-   * 14-02 best-of-N + flop pass: over-generate → PARALLEL SIM band per candidate →
-   * band gate. S5: the rubric critic (Phase-14 best-of-N second opinion) was OFF by
-   * default and ~100% fail in practice — removed entirely. The gate is now the SIM
-   * band alone (KCQ-05): keep a candidate iff band !== "Weak".
-   */
-  async function gatePass(ideaBatch: StructuredIdea[]): Promise<IdeaCardBlock[]> {
-    // Per-candidate SIM band, all in parallel (D-05 — never serial). A failed SIM
-    // resolves to null and is treated as Weak (dropped).
-    const judged = await Promise.all(
-      ideaBatch.map(async (idea) => {
-        const simResult = await runFlashTextMode(
-          idea.seedHook,
-          "idea",
-          panel,
-          audienceRepaint,
-          simIntent,
-        ).catch((err) => {
-          const msg = err instanceof Error ? err.message : String(err);
-          allWarnings.push(`SIM failed for idea "${idea.title}": ${msg}`);
-          return null; // null = failed SIM → treat as Weak (drop)
-        });
-        return { idea, simResult };
-      }),
-    );
-
-    const passed: IdeaCardBlock[] = [];
-
-    for (const { idea, simResult } of judged) {
-      if (passed.length >= MAX_SURVIVORS) break;
-      if (simResult === null || simResult === undefined) continue; // SIM failed → drop
-
-      const personas = simResult.result.personas;
-      if (!firstSimPersonas) firstSimPersonas = personas;
-      const { band, fraction } = aggregateFlash(personas, flashWeighting);
-
-      // GATE (KCQ-05): keep iff band !== "Weak".
-      if (band === "Weak") continue;
-
-      // First survivor → the lead card; pin its personas (FLYWHEEL-02).
-      if (!leadPersonas) leadPersonas = personas;
-
-      // D-04 WARNING-4: select lead scrollQuote NOW — ships on the card face
-      const scrollQuote = selectLeadScrollQuote(personas);
-
-      // BUILD: validated idea-card block (Plan 02 prop names)
-      const blockData = {
-        type: "idea-card" as const,
-        props: {
-          title: idea.title,
-          angle: idea.angle,
-          whyItFits: groundingLine,   // GROUND-03 (Plan 02)
-          mechanism: idea.mechanism,
-          seedHook: idea.seedHook,
-          needsTake: idea.needsTake,
-          topic: idea.topic,
-          take: idea.take,
-          format: idea.format,
-          band,
-          fraction,
-          scrollQuote,
-          model: "sim1-flash" as const,
-          predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
-        },
-      };
-
-      // Validate at the runner boundary (D-14 belt-and-suspenders)
-      const validated = IdeaCardBlockSchema.safeParse(blockData);
-      if (!validated.success) {
-        allWarnings.push(
-          `idea-card block validation failed for "${idea.title}": ${validated.error.message}`,
-        );
-        continue;
-      }
-
-      passed.push(validated.data as IdeaCardBlock);
-    }
-
-    return passed;
+  // S3′ generate-rate-rank: a rated idea carries everything the rank+build need;
+  // personas travel ON it for the FLYWHEEL pin + the per-card modal feed (PR-2).
+  interface RatedIdea {
+    idea: StructuredIdea;
+    band: "Strong" | "Mixed" | "Weak";
+    fraction: string;
+    scrollQuote: string;
+    personas: FlashPersona[];
+    generationIndex: number;
   }
 
-  // First over-generate batch.
+  /**
+   * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
+   * (ranked) — no Weak cut, no trim. The ONLY drop is a candidate with a missing/invalid
+   * reaction (honesty spine — we never fabricate a band). Ranking happens AFTER (D-01 order).
+   */
+  async function ratePass(ideaBatch: StructuredIdea[]): Promise<RatedIdea[]> {
+    // Stable ids = generation index (echoed by the model, mapped back; positional fallback).
+    const candidates = ideaBatch.map((idea, i) => ({ id: String(i), text: idea.seedHook }));
+
+    const batch = await runFlashTextModeBatch(
+      candidates,
+      "idea",
+      panel,
+      audienceRepaint,
+      simIntent,
+    ).catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      allWarnings.push(`Batched SIM failed for ideas: ${msg}`);
+      return null; // hard failure → no cards (no auto-regen; user-pressed rewrite handles retry)
+    });
+    if (!batch) return [];
+    allWarnings.push(...batch.warnings);
+
+    const out: RatedIdea[] = [];
+
+    ideaBatch.forEach((idea, i) => {
+      const sim = batch.results.get(String(i));
+      if (!sim) {
+        allWarnings.push(`SIM produced no reaction for idea "${idea.title}" — dropped`);
+        return; // un-scorable → drop (can't show a card with no reaction)
+      }
+
+      const personas = sim.personas;
+      const { band, fraction } = aggregateFlash(personas, flashWeighting);
+      // S3′: NO Weak gate — keep ALL rated bands (rank handles ordering).
+      const scrollQuote = selectLeadScrollQuote(personas);
+
+      out.push({ idea, band, fraction, scrollQuote, personas, generationIndex: i });
+    });
+
+    return out;
+  }
+
+  // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown).
   const firstBatch = await generateIdeasStructured(userMessage);
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
   }
 
-  let survivors = await gatePass(firstBatch);
+  // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
+  // keep-all + user-pressed rewrite (PR-3) replaces the auto-regenerate-on-zero loop.
+  const rated = await ratePass(firstBatch);
 
-  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
-  // Never an unbounded serial loop — one extra parallel over-generate + critique
-  // pass, then proceed with whatever survives (may still be 0 — "0 blocks is valid").
-  if (survivors.length === 0) {
-    const secondBatch = await generateIdeasStructured(userMessage);
-    if (secondBatch.length > 0) {
-      survivors = await gatePass(secondBatch);
+  // ── RANK (keep-all): band tier → fraction → generation order. No Weak cut, no trim
+  //    below what was generated; slice(IDEA_COUNT) is a safety bound only. ──
+  rated.sort((a, b) => {
+    const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
+    if (bandDiff !== 0) return bandDiff;
+    const fractionDiff =
+      parseFractionNumerator(b.fraction) - parseFractionNumerator(a.fraction); // descending
+    if (fractionDiff !== 0) return fractionDiff;
+    return a.generationIndex - b.generationIndex; // preserve generation order
+  });
+  const ranked = rated.slice(0, IDEA_COUNT);
+
+  // ── BUILD: assemble idea-card blocks in ranked order ────────────────────────
+  const blocks: IdeaCardBlock[] = [];
+  for (const candidate of ranked) {
+    const blockData = {
+      type: "idea-card" as const,
+      props: {
+        title: candidate.idea.title,
+        angle: candidate.idea.angle,
+        whyItFits: groundingLine,   // GROUND-03 (Plan 02)
+        mechanism: candidate.idea.mechanism,
+        seedHook: candidate.idea.seedHook,
+        needsTake: candidate.idea.needsTake,
+        topic: candidate.idea.topic,
+        take: candidate.idea.take,
+        format: candidate.idea.format,
+        band: candidate.band,
+        fraction: candidate.fraction,
+        scrollQuote: candidate.scrollQuote,
+        model: "sim1-flash" as const,
+        predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
+        personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
+      },
+    };
+
+    // Validate at the runner boundary (D-14 belt-and-suspenders)
+    const validated = IdeaCardBlockSchema.safeParse(blockData);
+    if (!validated.success) {
+      allWarnings.push(
+        `idea-card block validation failed for "${candidate.idea.title}": ${validated.error.message}`,
+      );
+      continue;
     }
+
+    blocks.push(validated.data as IdeaCardBlock);
   }
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
-  // The predicted vector is computed ONCE here from the lead idea's personas and
-  // persisted with the run's audience_id — the "predict" half of the moat loop.
-  // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
+  // The predicted vector is computed ONCE from the rank-1 idea's personas (falling back
+  // to the first rated idea) and persisted with the run's audience_id — the "predict"
+  // half of the moat loop. void (not awaited): never delays card render.
   if (input.pin) {
-    // leadPersonas/firstSimPersonas are mutated INSIDE the gatePass closure. TS
-    // control-flow analysis narrows the outer `let`s to their initializer (`null`)
-    // because it does not track closure assignments, so a direct read infers `never`.
-    // Re-widen explicitly to the declared union before the runtime null-check.
-    const pinnedPersonas = (leadPersonas ?? firstSimPersonas) as FlashPersona[] | null;
+    const pinnedPersonas = ranked[0]?.personas ?? rated[0]?.personas ?? null;
     if (pinnedPersonas && pinnedPersonas.length > 0) {
       const audienceId = audience && !audience.is_general ? audience.id : null;
       void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
@@ -442,5 +464,5 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     }
   }
 
-  return { blocks: survivors, warnings: allWarnings, seedHookPath };
+  return { blocks, warnings: allWarnings, seedHookPath };
 }

@@ -93,12 +93,18 @@ const FRAMING_BAND_VERBIAGE: Record<FlashFraming, string> = {
 // Forked from STABLE_FOLD_SYSTEM_PROMPT — TEXT input, no video, no segments.
 // No `scroll_past_second`, `watch_through_pct`, `segment_reactions` — those are video fields.
 
-function buildSystemPrompt(): string {
-  const archetypeBlock = ARCHETYPES.map((a: Archetype) => {
+// Pure archetype-block builders, shared by the single AND batched system prompts so
+// the population definition (socials Pack #1) is byte-identical across both output shapes.
+function buildGenericArchetypeBlock(): string {
+  return ARCHETYPES.map((a: Archetype) => {
     const def = ARCHETYPE_DEFINITIONS[a];
     const triggers = ARCHETYPE_TRIGGERS[a];
     return `### ${a}\n${def}\n\nScrolls past when: ${triggers.scroll_past.join(", ")}.\nStops for: ${triggers.stop.join(", ")}.`;
   }).join("\n\n");
+}
+
+function buildSystemPrompt(): string {
+  const archetypeBlock = buildGenericArchetypeBlock();
 
   return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
 
@@ -187,14 +193,13 @@ export interface NichePanel {
  * MUTATION GUARD: ARCHETYPE_DEFINITIONS is never mutated by this function.
  * The repaint substitutes only the description fragment in the built string, not the source data.
  */
-export function buildNicheAwareSystemPrompt(
+// Niche-instantiated archetype block (slots + optional per-audience repaint). Shared by
+// the single AND batched niche system prompts. Byte-identical to the pre-extraction inline
+// expression (regression-critical no-op for the single/react path).
+function buildNicheArchetypeBlock(
   panel: NichePanel,
   audienceRepaint?: Record<string, string>,
 ): string {
-  if (panel.niche === null) {
-    return STABLE_FLASH_SYSTEM_PROMPT;
-  }
-
   const slots: PersonaSlot[] = selectPersonaSlots(panel.contentType, panel.niche);
 
   // Build the archetype block from niche-instantiated slots.
@@ -204,7 +209,7 @@ export function buildNicheAwareSystemPrompt(
   // Audience repaint: when audienceRepaint is provided, substitute the per-audience description
   // for the slot's niche_instantiation — skeleton (triggers, schema, rules) stays byte-stable.
   // When undefined → unchanged path, byte-identical to pre-P7 output.
-  const archetypeBlock = slots
+  return slots
     .map((s) => {
       // Repaint: use stored audience description if available, else fall back to niche_instantiation.
       // audienceRepaint[s.archetype] is the deterministic stored text (never per-request LLM output).
@@ -219,6 +224,17 @@ export function buildNicheAwareSystemPrompt(
       );
     })
     .join("\n\n");
+}
+
+export function buildNicheAwareSystemPrompt(
+  panel: NichePanel,
+  audienceRepaint?: Record<string, string>,
+): string {
+  if (panel.niche === null) {
+    return STABLE_FLASH_SYSTEM_PROMPT;
+  }
+
+  const archetypeBlock = buildNicheArchetypeBlock(panel, audienceRepaint);
 
   return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
 
@@ -304,6 +320,130 @@ export function buildFlashUserContent(
 
   lines.push(
     "Return a JSON object with EXACTLY 10 personas, one per archetype, in the order listed in the system prompt.",
+  );
+
+  return lines.join("\n");
+}
+
+// ─── BATCHED system prompt (S3′ — generate-rate-rank) ────────────────────────────
+// Reuses the SAME archetype block builders (population definition byte-identical to the
+// single path) and swaps ONLY the output-schema section → batched. This is a SEPARATE
+// byte-stable cache prefix from the single-candidate prompts (hooks/ideas/remix use it;
+// script/react keep the single prompt) — D-17 holds: no per-request data interpolated.
+// Validated live in scripts/s3-batch-spike.ts (N=8: parses, 10/candidate, independence held).
+
+const BATCH_OUTPUT_SCHEMA_BLOCK = `## Output Schema (BATCHED — multiple candidates)
+
+You will be given N unrelated candidate drafts, each with an "id". For EACH candidate,
+feed all 10 archetypes and return their verdicts. Return ONLY a JSON object of this EXACT shape:
+
+{
+  "candidates": [
+    {
+      "id": "<echo the candidate id exactly>",
+      "personas": [
+        { "archetype": "tough_crowd", "verdict": "scroll", "quote": "The hook was weak, I'm not stopping." },
+        { "archetype": "loyalist", "verdict": "stop", "quote": "I'd watch anything from this creator." }
+        // ... exactly 10 entries, one per archetype, IN THE SAME ORDER ...
+      ]
+    }
+    // ... one object per candidate id provided ...
+  ]
+}
+
+TYPE RULES (STRICT):
+- One candidates entry per input id; echo the "id" exactly.
+- EXACTLY 10 persona entries per candidate — one per archetype listed above, same order.
+- "verdict" MUST be exactly "stop" or "scroll" — lowercase, no other values, no null.
+- "quote" MUST be a non-empty string, max 160 characters, first-person voice.
+- Output strict JSON only — no markdown, no code fences, no explanatory text.`;
+
+function wrapBatchSystemPrompt(archetypeBlock: string): string {
+  return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
+
+Your task: for EACH candidate draft provided, and for each of the 10 archetypes defined below, produce:
+- A verdict: "stop" (would stop and engage) or "scroll" (would scroll past)
+- A one-line first-person voice quote (max 160 characters) capturing WHY — the audience texture the creator needs to hear
+
+## Archetype Definitions (feed ALL 10 per candidate — verdicts MUST diverge based on their profiles)
+
+${archetypeBlock}
+
+## Critical Divergence Requirement
+
+These 10 archetypes have FUNDAMENTALLY different tolerances. Near-identical verdicts across all archetypes is a FAILURE — tough_crowd is the hardest to stop; loyalist is the easiest. Apply this per candidate.
+
+${BATCH_OUTPUT_SCHEMA_BLOCK}`;
+}
+
+/**
+ * Build the BATCHED Flash system prompt (S3′).
+ * - No panel / panel.niche === null → generic archetype block (General path).
+ * - panel.niche set → niche-instantiated block (+ optional per-audience repaint),
+ *   identical population bytes to buildNicheAwareSystemPrompt.
+ */
+export function buildFlashBatchSystemPrompt(
+  panel?: NichePanel,
+  audienceRepaint?: Record<string, string>,
+): string {
+  const archetypeBlock =
+    panel && panel.niche !== null
+      ? buildNicheArchetypeBlock(panel, audienceRepaint)
+      : buildGenericArchetypeBlock();
+  return wrapBatchSystemPrompt(archetypeBlock);
+}
+
+// The independence directive — the single most important quality lever for the batched
+// call (proven in the spike). Keeps candidate-level verdicts honest + un-normalized.
+const BATCH_INDEPENDENCE_DIRECTIVE =
+  "## Independence (critical)\n" +
+  "Judge each candidate strictly on its own merits. These are unrelated drafts — do NOT let " +
+  "one bias another, do NOT rank them against each other, do NOT normalize across them. A weak " +
+  "candidate sitting next to a strong one must still receive its own honest verdicts.";
+
+/**
+ * Build the volatile BATCHED user message (S3′).
+ *
+ * @param candidates  The drafts to react to, each with a stable id (echoed back by the model).
+ * @param framing     Mode framing — swaps the per-candidate question + band verbiage (D-04).
+ * @param intent      Optional per-run lens (`sell` appends the buying directive; grow/undefined no-op).
+ */
+export function buildFlashBatchUserContent(
+  candidates: { id: string; text: string }[],
+  framing: FlashFraming,
+  intent?: IntentLens,
+): string {
+  const lines: string[] = [];
+
+  lines.push(`## Candidates to React To (${candidates.length} unrelated drafts)`);
+  lines.push("");
+  for (const c of candidates) {
+    lines.push(`### id: ${c.id}`);
+    lines.push(c.text || "(no content provided)");
+    lines.push("");
+  }
+
+  lines.push("## Your Task");
+  lines.push(`For EACH candidate above, judged on its own: ${FRAMING_QUESTION[framing]}`);
+  lines.push("");
+
+  lines.push(BATCH_INDEPENDENCE_DIRECTIVE);
+  lines.push("");
+
+  lines.push("## Band Context");
+  lines.push(FRAMING_BAND_VERBIAGE[framing]);
+  lines.push("");
+
+  // Sell lens: re-aim verdicts toward purchase intent (calibrated audiences only).
+  // grow/undefined → omitted → byte-identical to the pre-intent message.
+  if (intent === "sell") {
+    lines.push(SELL_LENS_DIRECTIVE);
+    lines.push("");
+  }
+
+  lines.push(
+    "Return a JSON object with a \"candidates\" array — one entry per id above, each echoing its id " +
+      "and carrying EXACTLY 10 personas in the system-prompt archetype order.",
   );
 
   return lines.join("\n");

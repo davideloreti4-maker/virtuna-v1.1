@@ -250,15 +250,18 @@ Write ONE short sentence: a concrete observation about the script's structure (w
 
             const ai = getQwenClient();
             let followupText = "";
-            const followupStream = await ai.chat.completions.create({
+            const followupParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
                 { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
                 { role: "user" as const, content: followupPrompt },
               ],
-              stream: true,
+              stream: true as const,
               temperature: 0.4,
-            });
+              max_tokens: 2000, // safety ceiling: short follow-up, bound runaway
+            };
+            (followupParams as Record<string, unknown>).enable_thinking = false; // DashScope extension: thinking-off
+            const followupStream = await ai.chat.completions.create(followupParams);
             for await (const chunk of followupStream) {
               followupText += chunk.choices[0]?.delta?.content ?? "";
             }

@@ -15,8 +15,14 @@
  *     (remix / hooks / script) runFlashTextMode receives a per-archetype audienceRepaint map.
  *
  * This mirrors the shipped 07-04 ideas-runner shape replicated across the four runners.
- * The General path MUST stay byte-identical (ENGINE_VERSION 3.19.0 — see
+ * The General path MUST stay deterministic + weighting-free (ENGINE_VERSION 3.20.0 — see
  * audience-regression-gate.test.ts).
+ *
+ * S3′ rebaseline: hooks/remix now SIM via the batched runFlashTextModeBatch (script stays
+ * N=1 runFlashTextMode). The steer invariant is PRESERVED — repaint is still the 4th
+ * positional arg of the flash call (candidates, framing, panel, audienceRepaint, intent),
+ * so the General no-op (arg[3] === undefined) vs calibrated (arg[3] = repaint map) gate is
+ * unchanged; only the call mechanism (batch vs N=1) differs.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -32,8 +38,10 @@ vi.mock("@/lib/engine/qwen/client", () => ({
   QWEN_FAST_MODEL: "qwen3.6-flash",
 }));
 
+// Both exports mocked: hooks/remix use the batched fn; script keeps the N=1 fn.
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
+  runFlashTextModeBatch: vi.fn(),
 }));
 
 // assembleBundle is spied so we can assert the steer is folded in (script/chat path)
@@ -150,6 +158,17 @@ function mockFlashReturn() {
   return { result: { personas: makePersonasStrong() }, warnings: [] };
 }
 
+// Batched flash mock impl: every candidate gets a Strong reaction, keyed by its id
+// (the runner builds ids = String(generationIndex)). Mirrors runFlashTextModeBatch's
+// Promise<{ results: Map<id, { personas }>, warnings }> contract — async because the
+// runners call `.catch()` on the returned promise before awaiting.
+async function mockFlashBatchImpl(candidates: { id: string; text: string }[]) {
+  return {
+    results: new Map(candidates.map((c) => [c.id, { personas: makePersonasStrong() }])),
+    warnings: [] as string[],
+  };
+}
+
 function mockQwenStructured(content: unknown) {
   return {
     chat: {
@@ -190,7 +209,7 @@ describe("steer-closure: hooks-runner", () => {
 
   async function run(audience?: Audience | null) {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
       mockQwenStructured({
         hooks: Array.from({ length: 3 }, (_, i) => ({
@@ -202,7 +221,7 @@ describe("steer-closure: hooks-runner", () => {
         })),
       }),
     );
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue(mockFlashReturn());
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(mockFlashBatchImpl);
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
       ask: "Hooks",
@@ -210,21 +229,22 @@ describe("steer-closure: hooks-runner", () => {
       profileRow: { niche_primary: "fitness" } as never,
       audience,
     });
-    return { result, runFlashTextMode };
+    return { result, runFlashTextModeBatch };
   }
 
-  it("General/null no-op: runFlashTextMode called WITHOUT an audienceRepaint arg", async () => {
-    const { runFlashTextMode } = await run(generalAudience);
-    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
-    for (const call of (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls) {
-      // 4th positional arg (audienceRepaint) must be undefined for General
+  it("General/null no-op: batched SIM called WITHOUT an audienceRepaint arg", async () => {
+    const { runFlashTextModeBatch } = await run(generalAudience);
+    expect((runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+    for (const call of (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls) {
+      // 4th positional arg (audienceRepaint) must be undefined for General — same arg slot
+      // as the old N=1 call (candidates, framing, panel, audienceRepaint, intent).
       expect(call[3]).toBeUndefined();
     }
   });
 
-  it("calibrated steer: runFlashTextMode receives a per-archetype audienceRepaint map", async () => {
-    const { runFlashTextMode } = await run(calibratedAudience);
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+  it("calibrated steer: batched SIM receives a per-archetype audienceRepaint map", async () => {
+    const { runFlashTextModeBatch } = await run(calibratedAudience);
+    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls.length).toBeGreaterThan(0);
     const repaint = calls[0]![3] as Record<string, string> | undefined;
     expect(repaint).toBeDefined();
@@ -337,8 +357,8 @@ describe("steer-closure: remix-runner", () => {
   beforeEach(() => vi.clearAllMocks());
 
   async function run(audience?: Audience | null) {
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue(mockFlashReturn());
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(mockFlashBatchImpl);
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
     const result = await runRemixPipeline({
       url: "https://tiktok.com/@x/video/1",
@@ -347,14 +367,15 @@ describe("steer-closure: remix-runner", () => {
       requestId: "req-1",
       audience,
     });
-    return { result, runFlashTextMode };
+    return { result, runFlashTextModeBatch };
   }
 
-  it("General/null no-op: Flash called WITHOUT an audienceRepaint arg; no audienceName on card", async () => {
-    const { result, runFlashTextMode } = await run(generalAudience);
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+  it("General/null no-op: batched SIM called WITHOUT an audienceRepaint arg; no audienceName on card", async () => {
+    const { result, runFlashTextModeBatch } = await run(generalAudience);
+    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls.length).toBe(1);
     expect(calls[0]![3]).toBeUndefined();
+    // adapt mock returns 1 concept → 1 ranked card (keep-all ships all rated concepts)
     expect(result.blocks.length).toBe(1);
     // General → no steer tag on the card (regression-safe no-op)
     expect(
@@ -362,9 +383,9 @@ describe("steer-closure: remix-runner", () => {
     ).toBeUndefined();
   });
 
-  it("calibrated steer: Flash gets repaint, panel niche from audience, card carries audienceName", async () => {
-    const { result, runFlashTextMode } = await run(calibratedAudience);
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+  it("calibrated steer: batched SIM gets repaint, panel niche from audience, card carries audienceName", async () => {
+    const { result, runFlashTextModeBatch } = await run(calibratedAudience);
+    const calls = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls;
     expect(calls.length).toBe(1);
     const repaint = calls[0]![3] as Record<string, string> | undefined;
     expect(repaint).toBeDefined();

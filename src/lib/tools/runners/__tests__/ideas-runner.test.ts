@@ -1,14 +1,12 @@
 /**
- * ideas-runner.test.ts — runIdeasPipeline unit tests (Task 1, plan 03-03).
+ * ideas-runner.test.ts — runIdeasPipeline unit tests (S3′ generate-rate-rank rebaseline).
  *
- * Tests (tagged "runner"):
- *   - over-generate → gate → ≤3 idea-card blocks
- *   - D-04 lead-quote-on-face invariant (scrollQuote on every card)
- *   - cold-start behavior (null profile → honest baseline grounding line)
- *   - sub-floor (Weak band) cards dropped; all-fail → exactly ONE bounded regen (14-02 D-06)
- *   - cap at 3 survivors even when all 5 pass
- *   - mixed results (only survivors above gate floor returned)
- *   - band/fraction/model embedded in each card block (D-04/D-10)
+ * Contract changes from previous version:
+ *   - runFlashTextMode (N=1 per candidate) → runFlashTextModeBatch (single batch call)
+ *   - IDEA_COUNT = 4 (was over-gen 5 → keep-3)
+ *   - GATE REMOVED → KEEP-ALL: Weak ideas kept, ranked last (band desc → fraction desc → gen order)
+ *   - D-06 conditional regen REMOVED: batch fail → 0 cards + warning, no second generate call
+ *   - Each idea-card block carries `props.personas` (10-persona array)
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -23,16 +21,15 @@ vi.mock("@/lib/engine/qwen/client", () => ({
   QWEN_FAST_MODEL: "qwen3.6-flash",
 }));
 
-// ─── Mock runFlashTextMode ────────────────────────────────────────────────────
+// ─── Mock runFlashTextModeBatch ───────────────────────────────────────────────
+// S3′: runner calls runFlashTextModeBatch, NOT the old per-candidate runFlashTextMode.
 
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
-  runFlashTextMode: vi.fn(),
+  runFlashTextModeBatch: vi.fn(),
 }));
 
-// ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
-// The runner imports it from predicted-pin; mock the leaf so we assert the call
-// (personas + ctx) without touching the outcome repo. The module's only other
-// exports are the pin-context types, so a partial mock is safe.
+// ─── Mock predicted-pin (FLYWHEEL-02) ────────────────────────────────────────
+
 vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: vi.fn().mockResolvedValue(true),
 }));
@@ -43,18 +40,40 @@ vi.mock("@/lib/kc/assembler", () => ({
   assembleBundle: vi.fn(() => "mock assembled bundle"),
 }));
 
-// ─── Mock buildGroundingLine ──────────────────────────────────────────────────
+// ─── Mock audience-grounding (replaces old grounding-line mock) ───────────────
+// Runner now calls buildAudienceGroundingLine (not buildGroundingLine directly).
 
-vi.mock("@/lib/kc/grounding-line", () => ({
-  buildGroundingLine: vi.fn(() => ({
+vi.mock("@/lib/audience/audience-grounding", () => ({
+  buildAudienceGroundingLine: vi.fn(() => ({
     line: "Because: fitness · 18-25",
     coldStart: false,
   })),
 }));
 
+// ─── Mock apply-creator-persona ───────────────────────────────────────────────
+
+vi.mock("@/lib/audience/apply-creator-persona", () => ({
+  applyCreatorPersona: vi.fn((profileRow: unknown) => ({
+    profileRow,
+    creatorSteer: null,
+  })),
+}));
+
+// ─── Mock build-reaction-panel ────────────────────────────────────────────────
+
+vi.mock("@/lib/engine/flash/build-reaction-panel", () => ({
+  buildReactionPanel: vi.fn(() => ({ panel: undefined, audienceRepaint: undefined })),
+}));
+
+// ─── Mock persona-weighting ───────────────────────────────────────────────────
+
+vi.mock("@/lib/engine/flash/persona-weighting", () => ({
+  buildFlashWeighting: vi.fn(() => undefined),
+}));
+
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-/** 10 personas: 6 stop → Mixed band (above gate floor) */
+/** 10 personas: 6 stop → Mixed band */
 function makePersonasMixed() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: `arch_${i}`,
@@ -63,7 +82,7 @@ function makePersonasMixed() {
   }));
 }
 
-/** 10 personas: 2 stop → Weak band (sub-floor, dropped) */
+/** 10 personas: 2 stop → Weak band (ranked last under keep-all) */
 function makePersonasWeak() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: `arch_${i}`,
@@ -81,8 +100,21 @@ function makePersonasStrong() {
   }));
 }
 
+/**
+ * Build a batch mock resolved value from a per-candidate personas array.
+ * candidates: [{id, text}, ...] (mirror of what ratePass builds: id=String(i)).
+ * personasPerCandidate: array indexed by generation position.
+ * Returns a Promise (runner calls .catch() on the result).
+ */
+function makeBatchResult(personasPerCandidate: ReturnType<typeof makePersonasStrong>[]) {
+  const results = new Map(
+    personasPerCandidate.map((personas, i) => [String(i), { personas }]),
+  );
+  return Promise.resolve({ results, warnings: [] });
+}
+
 /** Structured JSON generation response with `count` ideas */
-function makeStructuredIdeaResponse(count = 5) {
+function makeStructuredIdeaResponse(count = 4) {
   return {
     ideas: Array.from({ length: count }, (_, i) => ({
       title: `Idea ${i + 1}`,
@@ -104,20 +136,22 @@ describe("runIdeasPipeline (runner)", () => {
     vi.clearAllMocks();
   });
 
-  it("over-generates ~5 concepts, SIMs in parallel, returns ≤3 cards above gate floor", async () => {
+  it("generates IDEA_COUNT=4 concepts, ONE batched SIM call, returns ≤4 cards (keep-all)", async () => {
+    // OLD: "over-generates ~5 concepts, SIMs in parallel, returns ≤3 cards above gate floor"
+    // NEW: generates exactly 4, single batch call, all rated ideas kept (no gate), capped at IDEA_COUNT=4
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(5)) } }],
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(4)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    // All 4 ideas rated Mixed — all kept
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasMixed())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     const result = await runIdeasPipeline({
@@ -134,17 +168,51 @@ describe("runIdeasPipeline (runner)", () => {
       },
     });
 
-    expect(result.blocks.length).toBeLessThanOrEqual(3);
+    // S3′: keep-all, up to IDEA_COUNT=4
+    expect(result.blocks.length).toBeLessThanOrEqual(4);
     expect(result.blocks.length).toBeGreaterThanOrEqual(1);
     expect(result.seedHookPath).toBe("structured");
     for (const block of result.blocks) {
       expect(block.type).toBe("idea-card");
     }
+    // ONE batched SIM call (not N per-candidate calls)
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    // ONE generation call (no regen)
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("batched SIM called with correct candidates (id=String(i), text=seedHook) + framing args", async () => {
+    // NEW: asserts the batch call shape — candidates indexed by generation position
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(2)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    await runIdeasPipeline({ ask: "Ideas", platform: "tiktok", profileRow: null });
+
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    const [candidates, framing] = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    // Candidates: id = "0", "1", ...; text = seedHook
+    expect(candidates).toEqual([
+      { id: "0", text: "Seed hook for idea 1" },
+      { id: "1", text: "Seed hook for idea 2" },
+    ]);
+    // Framing = "idea"
+    expect(framing).toBe("idea");
   });
 
   it("D-04 LEAD-QUOTE INVARIANT: every returned idea-card has scrollQuote populated on the block", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(3)) } }],
@@ -152,10 +220,9 @@ describe("runIdeasPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     const result = await runIdeasPipeline({
@@ -171,20 +238,23 @@ describe("runIdeasPipeline (runner)", () => {
     }
   });
 
-  it("drops Weak-band candidates (sub-floor); all-fail triggers exactly ONE bounded regen (14-02 D-06)", async () => {
+  it("Weak-band ideas KEPT, ranked last (keep-all); all-Weak → 4 Weak cards, no regen", async () => {
+    // OLD: "drops Weak-band candidates; all-fail triggers exactly ONE bounded regen (14-02 D-06)"
+    // NEW: D-06 removed; Weak ideas are kept, ranked last. All-Weak → 4 Weak cards (still shown).
+    //      No regen — batch fail is the ONLY path to 0 cards.
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(5)) } }],
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(4)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasWeak() },
-      warnings: [],
-    });
+    // All ideas rate Weak — keep-all means all 4 come back ranked last
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasWeak())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     const result = await runIdeasPipeline({
@@ -193,21 +263,55 @@ describe("runIdeasPipeline (runner)", () => {
       profileRow: null,
     });
 
-    // All dropped → 0 blocks (0 survivors is valid — never an unbounded loop)
+    // Keep-all: 4 Weak cards returned (no gate drop)
+    expect(result.blocks.length).toBe(4);
+    for (const block of result.blocks) {
+      expect((block as IdeaCardBlock).props.band).toBe("Weak");
+    }
+    // ONE batched call — no regen
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    // ONE generation call — no regen
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("batch SIM hard failure → 0 cards + warning, no regen (D-06 removed)", async () => {
+    // NEW: replaces the regen test's "all-fail" path. Hard SIM failure → 0 cards, not a retry.
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(4)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("SIM timeout"),
+    );
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const result = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+    });
+
+    // Hard failure → 0 cards
     expect(result.blocks.length).toBe(0);
-    // 14-02 D-06: zero passers triggers ONE conditional regen → two over-generate
-    // batches of 5 SIM calls each (10), then STOP. Bounded — never unbounded serial.
-    expect(runFlashTextMode).toHaveBeenCalledTimes(10);
-    // Exactly two generation calls (initial + one regen).
-    expect(mockCreate).toHaveBeenCalledTimes(2);
+    // Warning forwarded
+    expect(result.warnings.some((w) => w.includes("SIM timeout"))).toBe(true);
+    // ONE batch call — no regen
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    // ONE generation call — no regen
+    expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
   it("cold-start (null profile) produces cards with honest baseline grounding line", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { buildGroundingLine } = await import("@/lib/kc/grounding-line");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { buildAudienceGroundingLine } = await import("@/lib/audience/audience-grounding");
 
-    (buildGroundingLine as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+    (buildAudienceGroundingLine as ReturnType<typeof vi.fn>).mockReturnValueOnce({
       line: "Based on TikTok baselines — add your profile for tailored ideas",
       coldStart: true,
     });
@@ -218,10 +322,9 @@ describe("runIdeasPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasMixed())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     const result = await runIdeasPipeline({
@@ -235,19 +338,58 @@ describe("runIdeasPipeline (runner)", () => {
     expect(firstCard.props.whyItFits).toContain("baselines");
   });
 
-  it("caps at 3 survivors even if more than 3 pass the gate", async () => {
+  it("caps at IDEA_COUNT=4 even when model over-emits", async () => {
+    // OLD: "caps at 3 survivors even if more than 3 pass the gate"
+    // NEW: IDEA_COUNT=4; slice(IDEA_COUNT) is a safety bound; 5 ideas generated → 4 returned
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
+      // Model over-emits 5; runner caps at IDEA_COUNT=4 via slice
       choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(5)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
+    // generateIdeasStructured itself caps the parse loop at IDEA_COUNT=4, so batch receives 4 candidates
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const result = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+    });
+
+    expect(result.blocks.length).toBe(4);
+  });
+
+  it("mixed bands: Strong cards ranked before Weak; all kept (keep-all)", async () => {
+    // OLD: "mixed results: returns only survivors (≥3 stops) up to 3"
+    // NEW: no gate — Strong + Weak all kept, ranked by band (Strong first). 4 candidates, 4 cards.
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(4)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+
+    // ideas 0,2 → Strong; ideas 1,3 → Weak — batch result keyed by String(i)
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) => {
+      const results = new Map(
+        candidates.map(
+          (c: { id: string; text: string }, idx: number) => [
+            c.id,
+            { personas: idx % 2 === 0 ? makePersonasStrong() : makePersonasWeak() },
+          ],
+        ),
+      );
+      return Promise.resolve({ results, warnings: [] });
     });
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
@@ -257,40 +399,19 @@ describe("runIdeasPipeline (runner)", () => {
       profileRow: null,
     });
 
-    expect(result.blocks.length).toBe(3);
+    // All 4 kept (keep-all)
+    expect(result.blocks.length).toBe(4);
+    // Strong cards ranked before Weak
+    const bands = result.blocks.map((b) => (b as IdeaCardBlock).props.band);
+    const strongIdx = bands.indexOf("Strong");
+    const weakIdx = bands.indexOf("Weak");
+    expect(strongIdx).toBeLessThan(weakIdx);
   });
 
-  it("mixed results: returns only survivors (≥3 stops) up to 3", async () => {
+  it("band, fraction, model, and personas[10] embedded in each card block (D-04/D-10 + S3′ PR-2)", async () => {
+    // NEW: adds `personas` length assertion (S3′ PR-2 — per-card reaction for ambient modal)
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-
-    const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(5)) } }],
-    });
-    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
-      chat: { completions: { create: mockCreate } },
-    });
-
-    (runFlashTextMode as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ result: { personas: makePersonasStrong() }, warnings: [] })
-      .mockResolvedValueOnce({ result: { personas: makePersonasWeak() }, warnings: [] })
-      .mockResolvedValueOnce({ result: { personas: makePersonasStrong() }, warnings: [] })
-      .mockResolvedValueOnce({ result: { personas: makePersonasWeak() }, warnings: [] })
-      .mockResolvedValueOnce({ result: { personas: makePersonasWeak() }, warnings: [] });
-
-    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
-    const result = await runIdeasPipeline({
-      ask: "Ideas",
-      platform: "tiktok",
-      profileRow: null,
-    });
-
-    expect(result.blocks.length).toBe(2);
-  });
-
-  it("band, fraction, and model are embedded in each card block (D-04/D-10)", async () => {
-    const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredIdeaResponse(2)) } }],
@@ -298,10 +419,9 @@ describe("runIdeasPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     const result = await runIdeasPipeline({
@@ -315,6 +435,9 @@ describe("runIdeasPipeline (runner)", () => {
       expect(["Strong", "Mixed", "Weak"]).toContain(card.props.band);
       expect(card.props.fraction).toMatch(/\d+\/10 stop/);
       expect(card.props.model).toBe("sim1-flash");
+      // S3′ PR-2: personas travel on the card
+      expect(Array.isArray(card.props.personas)).toBe(true);
+      expect(card.props.personas!.length).toBe(10);
     }
   });
 });
@@ -348,7 +471,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("pins the lead idea's personas with the run's audience_id + analysis_id", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -361,10 +484,10 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
       },
     });
     const leadPersonas = makePersonasStrong();
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: leadPersonas },
-      warnings: [],
-    });
+    // All candidates return the same personas; rank-1 = idea "0" (Strong, gen 0)
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => leadPersonas)),
+    );
 
     const supabase = {} as never;
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
@@ -385,7 +508,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("pins audience_id null for a General audience", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -397,10 +520,9 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
         },
       },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     await runIdeasPipeline({
@@ -420,7 +542,7 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("does NOT pin when no pin context is passed", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
@@ -432,10 +554,9 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
         },
       },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation((candidates) =>
+      makeBatchResult(candidates.map(() => makePersonasStrong())),
+    );
 
     const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
     await runIdeasPipeline({ ask: "Ideas", platform: "tiktok", profileRow: null });

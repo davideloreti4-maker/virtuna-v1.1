@@ -23,12 +23,15 @@ import { stripModelOutput } from "../utils/strip";
 import {
   FlashResultSchema,
   coerceFlashResponse,
+  coerceFlashBatchResponse,
 } from "./flash-schema";
 import type { FlashResult } from "./flash-schema";
 import {
   STABLE_FLASH_SYSTEM_PROMPT,
   buildFlashUserContent,
   buildNicheAwareSystemPrompt,
+  buildFlashBatchSystemPrompt,
+  buildFlashBatchUserContent,
 } from "./flash-prompts";
 import type { FlashFraming, NichePanel, IntentLens } from "./flash-prompts";
 import type { ContentTypeSlug } from "../types";
@@ -128,6 +131,12 @@ export async function runFlashTextMode(
   callParams.temperature = 0;
   // @ts-expect-error — seed pins residual nondeterminism (R8)
   callParams.seed = QWEN_SEED;
+  // @ts-expect-error — DashScope extension: disable chain-of-thought. The SIM is a scoring
+  // task (verdict + quote), NOT reasoning — thinking added ~37s of fixed latency (live-measured
+  // ~55s→~15s on the batched path) with no diversity/independence gain. Keeps determinism.
+  callParams.enable_thinking = false;
+  // @ts-expect-error — max_tokens not in the inferred callParams literal type; standard OpenAI field
+  callParams.max_tokens = 1000; // safety rail: measured ~400–500 output, ×2 headroom
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PER_CALL_TIMEOUT_MS);
@@ -170,4 +179,120 @@ export async function runFlashTextMode(
   }
 
   return { result: validated.data, warnings };
+}
+
+// ─── runFlashTextModeBatch (S3′ — generate-rate-rank) ────────────────────────────
+
+export interface FlashBatchRunResult {
+  /** Per-candidate FlashResult, keyed by the candidate id. A candidate that fails
+   *  validation is ABSENT from the map (per-candidate salvage — never nukes the batch). */
+  results: Map<string, FlashResult>;
+  warnings: string[];
+}
+
+// With enable_thinking:false the batched call is ~15s live-measured (N=5 → 14–18s; thinking
+// ON was ~55s). 90s is a generous ceiling, not an expected wait — it bounds a stalled call.
+const BATCH_TIMEOUT_MS = 90_000;
+
+/**
+ * Fire ONE bounded Qwen json_object call that scores ALL candidates (each by the 10
+ * archetypes) in a single response. Same determinism envelope as runFlashTextMode
+ * (temp:0 + seed + json_object + strip + coerce + zod), but per-candidate salvage:
+ * a malformed/short candidate drops ITSELF (absent from the returned map) rather than
+ * failing the whole batch (mirrors the per-call `.catch(() => null)` of the old fan-out).
+ *
+ * The N=1 runFlashTextMode is kept as-is for the react modal + script + the single paths.
+ *
+ * @param candidates  Drafts to score — each needs a STABLE id (echoed by the model, used to map back).
+ * @param framing     hook | idea | chat (D-04 — swaps the per-candidate question + band verbiage).
+ * @param panel       Optional niche panel (D-05). niche !== null → niche-instantiated batched prompt.
+ * @param audienceRepaint  Optional per-audience archetype overrides (07-04 / AUD-04).
+ * @param intent      Optional per-run lens (`sell`); grow/undefined → byte-identical no-op.
+ */
+export async function runFlashTextModeBatch(
+  candidates: { id: string; text: string }[],
+  framing: FlashFraming,
+  panel?: NichePanel,
+  audienceRepaint?: Record<string, string>,
+  intent?: IntentLens,
+): Promise<FlashBatchRunResult> {
+  const warnings: string[] = [];
+  const results = new Map<string, FlashResult>();
+
+  // Empty batch → nothing to call (defensive; runners never pass [] but keep it total).
+  if (candidates.length === 0) return { results, warnings };
+
+  const ai = getQwenClient();
+
+  // Batched system prompt — same population block as the single path, batched output schema.
+  // niche === null → generic block (General regression path); D-17 cache prefix preserved.
+  const systemPrompt = buildFlashBatchSystemPrompt(panel, audienceRepaint);
+
+  const callParams = {
+    model: FLASH_MODEL,
+    messages: [
+      { role: "system" as const, content: systemPrompt },
+      { role: "user" as const, content: buildFlashBatchUserContent(candidates, framing, intent) },
+    ],
+    response_format: { type: "json_object" as const },
+  };
+
+  // @ts-expect-error — temperature:0 + seed = reproducible results (R8, mirrors runFlashTextMode)
+  callParams.temperature = 0;
+  // @ts-expect-error — seed pins residual nondeterminism (R8)
+  callParams.seed = QWEN_SEED;
+  // @ts-expect-error — DashScope extension: disable chain-of-thought (scoring task, not reasoning).
+  // Live-measured ~55s→~15s with same/better diversity + independence. Determinism preserved.
+  callParams.enable_thinking = false;
+  // @ts-expect-error — max_tokens not in the inferred callParams literal type; standard OpenAI field
+  callParams.max_tokens = 3500; // safety rail: measured ~1.9k @ N=5, ×~1.8 headroom
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), BATCH_TIMEOUT_MS);
+
+  let response;
+  try {
+    response = await ai.chat.completions.create(callParams as never, { signal: controller.signal });
+  } catch (err) {
+    clearTimeout(timer);
+    const error = err instanceof Error ? err : new Error(String(err));
+    const isTimeout = error.name === "AbortError";
+    throw new Error(
+      isTimeout
+        ? `runFlashTextModeBatch: call aborted (timeout ${BATCH_TIMEOUT_MS}ms)`
+        : `runFlashTextModeBatch: call failed — ${error.message}`,
+    );
+  }
+  clearTimeout(timer);
+
+  const raw = response.choices[0]?.message?.content ?? "{}";
+  const text = stripModelOutput(raw);
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // Whole-response parse failure → no candidate survives (all dropped → runners treat as failed SIM).
+    warnings.push(
+      `runFlashTextModeBatch: JSON.parse failed on model output: ${text.slice(0, 200)}`,
+    );
+    return { results, warnings };
+  }
+
+  // Normalize to one entry per expected id (id-echo, positional fallback), then validate EACH
+  // candidate independently so one bad candidate drops itself (not the batch).
+  const ids = candidates.map((c) => c.id);
+  const perCandidate = coerceFlashBatchResponse(parsed, ids);
+
+  for (const { id, personas } of perCandidate) {
+    const coerced = coerceFlashResponse({ personas });
+    const validated = FlashResultSchema.safeParse(coerced);
+    if (validated.success) {
+      results.set(id, validated.data);
+    } else {
+      warnings.push(`runFlashTextModeBatch: candidate "${id}" failed validation — dropped`);
+    }
+  }
+
+  return { results, warnings };
 }
