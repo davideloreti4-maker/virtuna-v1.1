@@ -168,6 +168,20 @@ _(move items here with FIXED sha as they land)_
   holds). Full suite **3046 pass / 0 fail / 28 skip**; tsc **62** (≤64 baseline, source delta 0); eslint
   clean. **Deferred:** PR-2 ambient-modal read (UI lane) · PR-3 user-pressed rewrite loop.
 
+### 2026-06-25 — S3′ rebased onto main (merge `ee40c898`) + lint regression FINDING
+- **PR #49 conflict-resolved against main.** Main moved under the branch (the UI merge: glass
+  primitives removed, konva board dropped, ui-deadcode #45/46/47). One trivial conflict —
+  `hooks-runner.test.ts` profileRow fixture (`user_id: "u1"`) — kept ours. PR now CLEAN/MERGEABLE.
+- **Suite re-verified on the merge commit: 2738 pass / 0 fail / 28 skip.** Count fell from 3046
+  because main *deleted* the glass+konva code (legit, not lost coverage). tsc **64 → 15** (main
+  removed error-prone test files). Our S3 engine/tools files unchanged + green.
+- **FINDING — `main` has a pre-existing eslint regression: 39 errors / 66 warnings in 67 files.**
+  ALL in UI-lane code main brought in (`competitor-table` 6, `reading.tsx` 3, `use-analysis-stream` 3,
+  `composer`/`use-ambient-focus`/`CommandBar`/`ExpertChatThread`/`CommandPalette`/`use-subscription` 2 each,
+  + ~15 single-error files). **ZERO in engine/tools.** Not from #49 — surfaced by the merge. **Owner =
+  UI worktree.** Do NOT fix from the engine lane (cross-lane edit). Recommend a `fix/eslint-main-regression`
+  branch off main next time the UI worktree is active.
+
 ### 2026-06-24 — S2 follow-up chat off the generative critical path (working tree)
 - **S2 FIXED — the follow-up chat turn no longer blocks `done`.** Across the 4 generative SSE
   routes that emit a model-authored follow-up (`ideas`, `hooks`, `script`, `refine`) the
