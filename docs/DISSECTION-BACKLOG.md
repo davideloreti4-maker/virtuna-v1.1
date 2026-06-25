@@ -181,6 +181,14 @@ _(move items here with FIXED sha as they land)_
   + ~15 single-error files). **ZERO in engine/tools.** Not from #49 — surfaced by the merge. **Owner =
   UI worktree.** Do NOT fix from the engine lane (cross-lane edit). Recommend a `fix/eslint-main-regression`
   branch off main next time the UI worktree is active.
+- **CORRECTION — PR-3 "user-pressed rewrite for audience" is ALREADY LIVE, not deferred.** The
+  removed D-06 auto-regen's intended replacement already ships end-to-end: server `/api/tools/refine`
+  (re-runs the pipeline with `instruction + anchor`, fresh SIM, append-only — D-04 moat honesty, D-05
+  no-silent-auto-fire) ← `startRefine` in `use-hooks-stream.ts:326` + `use-ideas-stream.ts:332` ←
+  `composer.tsx:699/722` via `detectRefineIntent`; lever auto-derived in `card-rewrite.ts`
+  (`scrollQuote` → instruction, `fraction` → prior count). **Only remaining = optional UI polish:** a
+  per-card explicit "Rewrite for this audience" button (today the path is composer intent-detection),
+  UI-lane. **Net: no engine-lane work left in PR-3.**
 
 ### 2026-06-24 — S2 follow-up chat off the generative critical path (working tree)
 - **S2 FIXED — the follow-up chat turn no longer blocks `done`.** Across the 4 generative SSE
