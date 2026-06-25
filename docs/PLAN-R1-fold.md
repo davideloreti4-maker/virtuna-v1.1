@@ -1,9 +1,20 @@
-# PLAN — R1′: Modernize + cheapen the Read fold (make sighted-deaf flash work)
+# PLAN — R1′: Modernize the Read fold + consolidate the model stack
 
-> Status: **DESIGN — A/B gated by user spend approval.** Working branch `fix/r1-fold-modernize`.
-> Goal (user-set): keep the Read (creator-vertical flagship), but **make the fold cheap + fast on
-> flash** — do NOT flip to the paid `omni-plus`. Reframe R1 from "pay for a better model" to
-> "stabilize + modernize the fold so flash is enough."
+> Status (2026-06-25): **PART A SHIPPED** on `fix/r1-fold-modernize`; **PART B (audience unify) = follow-up.**
+> Decision evolved during design (the analysis below is kept as reference):
+> - A/B testing **skipped** (user call: "no testing, make it work").
+> - Model = **`qwen3.7-plus`, NOT flash** — pricing showed plus ≈ flash for text + cheaper output, and a
+>   smarter model fixes the diversity collapse more robustly than flash + temperature hacks. `omni-plus`
+>   (the paid audio model) was never in play. 3.6-flash retired platform-wide → see `docs/MODEL-POLICY.md`.
+>
+> **Part A — SHIPPED (commits on this branch):** SIM + fold → 3.7-plus; fold thinking-off + independence
+> directive + real (temperature-perturbing) diversity retry + max_tokens 8000; no-video text-analyze gaps
+> fixed; dead `wave3.ts` cut; `QWEN_FAST_MODEL` retired. MODEL-POLICY.md rewritten.
+>
+> **Part B — NOT yet built (the audience unification):** repaint the fold's 10 archetypes with the
+> calibrated `AudienceSignature` (General → no repaint → byte-identical) so the Read simulates the user's
+> real audience, and surface the Read audience reaction on the thread with the `SIM-1 Max` badge. Needs
+> the Read pipeline to load the active audience. See §"The decision" + §"R1′ implementation" below.
 
 ## TL;DR
 
