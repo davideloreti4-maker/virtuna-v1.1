@@ -1,8 +1,6 @@
 /**
  * open-thread.test.ts — createOpenThreadLazy idempotency + ownership tests.
  *
- * Mirrors the createGroundedThreadLazy test pattern from threads.test.ts.
- *
  * Covers:
  *   - First-open: inserts and returns a new open thread (type:"open", reading_id:null).
  *   - Idempotent re-open: 23505 unique_violation → re-select returns existing thread.

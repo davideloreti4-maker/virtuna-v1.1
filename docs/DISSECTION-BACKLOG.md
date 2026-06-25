@@ -115,7 +115,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 |---|-----|------|-----------|--------|
 | E1 | 🟠 | CSRF guard missing on `ideas`, `ideas/develop`, `refine`, `react` (ideas header falsely claims it). FIX: added shared `csrfGuard(request)` right after the auth gate in all 4 (415 Content-Type + 403 cross-origin), matching hooks/script/remix/chat. tsc+eslint clean; 18 route tests green (clients already send `application/json`). | tool routes | FIXED (working tree) |
 | E2 | 🟢 | 10-line audience-resolve block copy-pasted into ~7 routes → extract one helper | tool routes | OPEN |
-| E3 | 🟡 | Grounded-thread machinery has no production writer (`createGroundedThreadLazy` test-only) | `threads.ts` | OPEN |
+| E3 | 🟡→🟢 | **CUT — dead grounded-thread machinery removed.** `createGroundedThreadLazy` (type:"grounded", reading_id set) had ZERO prod callers (only its own test + a doc-comment in messages.ts); chat-on-a-reading uses the separate `analysis_chats` table, everything else uses **open** threads (`createOpenThreadLazy`, wired in all ~11 tool routes). `getThread(id)` was also dead (no prod caller) — cut too. Removed both fns + the grounded-only `threads.test.ts` + now-unused `createClient` import; repointed stale doc-comments (messages.ts, open-thread.test.ts) to the open-thread pattern. DB index left untouched (no migration). threads suite 16/16, tsc unchanged (15). | `threads.ts`, `threads.test.ts` (deleted) | FIXED (working tree) |
 
 ## Grounding / KC + cross-cutting cuts (§05)
 
