@@ -39,7 +39,8 @@ import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
 import { omniOutputToStructuralInput, runDecode } from "@/lib/engine/remix/decode";
 import { decodeResultToAdaptInput } from "@/lib/engine/remix/decode-types";
 import { generateAdaptConcepts } from "@/lib/engine/remix/adapt";
-import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
+import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
@@ -212,81 +213,134 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
     }
 
-    // Cardinality A3/scout: pick ONE concept — concepts[0] (studio one-card aesthetic)
-    const chosen = concepts[0]!;
+    // ── STEP 5: RATE (D-05 opener-scoped) — ONE batched Flash call on ALL adapted hooks ──
+    // S3′ generate-rate-rank: KEEP all adapted concepts (was concepts[0] only). Each concept
+    // is a distinct adaptation of the SAME decoded source, so sourceDecode is shared across the
+    // cards. This rates the ADAPTED hook text only — never a full-video score (Pitfall 5).
+    const candidates = concepts.map((c, i) => ({ id: String(i), text: c.hook }));
 
-    // ── STEP 5: GATE (D-05 opener-scoped) — Flash on the ADAPTED hook ─────────────
-    // This gates the ADAPTED hook text only — never a full-video quality score (Pitfall 5).
-    // `panel` (niche-resolved) + `audienceRepaint` were built up-front via buildReactionPanel.
-
-    let simResult: Awaited<ReturnType<typeof runFlashTextMode>>;
-    try {
-      simResult = await runFlashTextMode(chosen.hook, "hook", panel, audienceRepaint, simIntent);
-    } catch (flashErr) {
+    const batch = await runFlashTextModeBatch(
+      candidates,
+      "hook",
+      panel,
+      audienceRepaint,
+      simIntent,
+    ).catch((flashErr) => {
       const msg = flashErr instanceof Error ? flashErr.message : String(flashErr);
-      allWarnings.push(`Flash gate failed for adapted hook: ${msg}`);
+      allWarnings.push(`Batched Flash gate failed for adapted hooks: ${msg}`);
+      return null;
+    });
+    if (!batch) {
+      return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
+    }
+    allWarnings.push(...batch.warnings);
+
+    // Rank helpers (S3′): band tier → stop-count.
+    const bandOrdinal = (b: "Strong" | "Mixed" | "Weak") =>
+      b === "Strong" ? 0 : b === "Mixed" ? 1 : 2;
+    const fractionNumerator = (f: string) => {
+      const n = parseInt(f, 10);
+      return Number.isNaN(n) ? 0 : n;
+    };
+
+    interface RatedConcept {
+      concept: (typeof concepts)[number];
+      band: "Strong" | "Mixed" | "Weak";
+      fraction: string;
+      scrollQuote: string;
+      personas: FlashPersona[];
+      generationIndex: number;
+    }
+
+    const rated: RatedConcept[] = [];
+    concepts.forEach((concept, i) => {
+      const sim = batch.results.get(String(i));
+      if (!sim) {
+        allWarnings.push(
+          `SIM produced no reaction for adapted hook "${concept.hook.slice(0, 60)}" — dropped`,
+        );
+        return; // un-scorable → drop (honesty spine — never fabricate a band)
+      }
+      const personas = sim.personas;
+      const { band, fraction } = aggregateFlash(personas, flashWeighting);
+      const scrollQuote = selectLeadScrollQuote(personas);
+      rated.push({ concept, band, fraction, scrollQuote, personas, generationIndex: i });
+    });
+
+    if (rated.length === 0) {
       return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
     }
 
-    const personas = simResult.result.personas;
-    const { band, fraction } = aggregateFlash(personas, flashWeighting);
-    const scrollQuote = selectLeadScrollQuote(personas);
+    // RANK (keep-all): band tier → stop-count → generation order.
+    rated.sort((a, b) => {
+      const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
+      if (bandDiff !== 0) return bandDiff;
+      const fractionDiff = fractionNumerator(b.fraction) - fractionNumerator(a.fraction);
+      if (fractionDiff !== 0) return fractionDiff;
+      return a.generationIndex - b.generationIndex;
+    });
 
-    // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
-    // The adapted hook's personas ARE the run's prediction (opener-scoped SIM, D-05).
+    // ── FLYWHEEL-02: pin the rank-1 adapted hook's personas (the run's prediction, D-05) ──
     // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
-    if (input.pin && personas.length > 0) {
+    if (input.pin && rated[0] && rated[0].personas.length > 0) {
       const audienceId = audience && !audience.is_general ? audience.id : null;
-      void pinPredictedSignature(input.pin.supabase, personas, {
+      void pinPredictedSignature(input.pin.supabase, rated[0].personas, {
         audienceId,
         analysisId: input.pin.analysisId ?? null,
       });
     }
 
-    // ── STEP 6: BUILD — assemble remix-card block (D-05 moat: real 4-beat decode anatomy) ──
-    // sourceDecode carries the REAL structural decode output — NOT a metadata guess.
+    // ── STEP 6: BUILD — one remix-card per ranked concept (D-05 moat: real 4-beat decode) ──
+    // sourceDecode is the SAME real structural decode for every card (shared source video).
     // Beat order: hook_pattern → structure_pacing → the_turn → emotional_beat (D-06)
-    const beatBody = (id: string) =>
-      decode.beats.find((b) => b.id === id)?.body ?? "";
-
-    const blockData = {
-      type: "remix-card" as const,
-      props: {
-        // Adapt output — the niche-adapted concept anatomy (AdaptConcept UI mapping D-09)
-        adaptedHook: chosen.hook,
-        angle: chosen.angle,
-        whoItsFor: chosen.who_its_for,
-        formatBorrowed: chosen.format_borrowed,
-
-        // Source decode anatomy — REAL 4-beat structural decode (D-05 moat)
-        sourceDecode: {
-          hookPattern:  beatBody("hook_pattern"),
-          structure:    beatBody("structure_pacing"),
-          theTurn:      beatBody("the_turn"),
-          emotionalBeat: beatBody("emotional_beat"),
-        },
-
-        // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
-        band,
-        fraction,
-        scrollQuote,
-        model: "sim1-flash" as const,
-
-        // 08-04 / D-03 STEER tag — populated only for a calibrated audience (General → omitted).
-        ...(isCalibrated && audience ? { audienceName: audience.name } : {}),
-      },
+    const beatBody = (id: string) => decode.beats.find((b) => b.id === id)?.body ?? "";
+    const sourceDecode = {
+      hookPattern: beatBody("hook_pattern"),
+      structure: beatBody("structure_pacing"),
+      theTurn: beatBody("the_turn"),
+      emotionalBeat: beatBody("emotional_beat"),
     };
 
-    // D-14 belt-and-suspenders validation at the runner boundary
-    const validated = RemixCardBlockSchema.safeParse(blockData);
-    if (!validated.success) {
-      allWarnings.push(
-        `remix-card block validation failed — dropped: ${validated.error.message}`,
-      );
-      return { blocks: [], warnings: allWarnings };
+    const blocks: RemixCardBlock[] = [];
+    for (const r of rated) {
+      const blockData = {
+        type: "remix-card" as const,
+        props: {
+          // Adapt output — the niche-adapted concept anatomy (AdaptConcept UI mapping D-09)
+          adaptedHook: r.concept.hook,
+          angle: r.concept.angle,
+          whoItsFor: r.concept.who_its_for,
+          formatBorrowed: r.concept.format_borrowed,
+
+          // Source decode anatomy — REAL 4-beat structural decode (D-05 moat)
+          sourceDecode,
+
+          // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
+          band: r.band,
+          fraction: r.fraction,
+          scrollQuote: r.scrollQuote,
+          model: "sim1-flash" as const,
+
+          // 08-04 / D-03 STEER tag — populated only for a calibrated audience (General → omitted).
+          ...(isCalibrated && audience ? { audienceName: audience.name } : {}),
+
+          // S3′: per-card reaction for the ambient modal (PR-2)
+          personas: r.personas,
+        },
+      };
+
+      // D-14 belt-and-suspenders validation at the runner boundary
+      const validated = RemixCardBlockSchema.safeParse(blockData);
+      if (!validated.success) {
+        allWarnings.push(
+          `remix-card block validation failed — dropped: ${validated.error.message}`,
+        );
+        continue;
+      }
+      blocks.push(validated.data as RemixCardBlock);
     }
 
-    return { blocks: [validated.data as RemixCardBlock], warnings: allWarnings };
+    return { blocks, warnings: allWarnings };
 
   } finally {
     // T-03-02: cleanup() MUST run unconditionally — temp mp4 removed regardless of outcome

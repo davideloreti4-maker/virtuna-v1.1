@@ -1,5 +1,5 @@
 /**
- * remix-runner.test.ts — runRemixPipeline unit tests (Task 1, plan 06-04).
+ * remix-runner.test.ts — runRemixPipeline unit tests (S3′ generate-rate-rank rebaseline).
  *
  * Tests:
  *   - runRemixPipeline calls the full chain in order: resolveAndRehost → analyzeVideoWithOmni
@@ -8,10 +8,11 @@
  *   - cleanup() is called in finally even when decode returns null (T-03-02)
  *   - cleanup() is called in finally even when adapt throws (T-03-02)
  *   - a null decode returns result with error:"decode_failed" and no throw (Pitfall 6 graceful)
- *   - exactly ONE remix-card returned (cardinality A3/scout — concepts[0])
- *   - Flash gate scores the ADAPTED hook with framing "hook" (D-05 opener-scoped)
+ *   - S3′: SIM ONE batched call for ALL 3 concepts; ships ALL rated cards ranked by band→stop-count
+ *   - Flash gate scores ALL ADAPTED hooks with framing "hook" (D-05 opener-scoped)
  *   - runRemixPipeline does NOT import runPredictionPipeline or touch ENGINE_VERSION (D-05a)
  *   - null/empty adapt concepts returns error:"adapt_failed"
+ *   - each card carries personas (length 10) + shared sourceDecode 4-beat anatomy
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -25,7 +26,7 @@ const mockAnalyzeVideoWithOmni = vi.fn();
 const mockOmniOutputToStructuralInput = vi.fn();
 const mockRunDecode = vi.fn();
 const mockGenerateAdaptConcepts = vi.fn();
-const mockRunFlashTextMode = vi.fn();
+const mockRunFlashTextModeBatch = vi.fn();
 
 vi.mock("@/lib/engine/remix/resolve-and-rehost", () => ({
   resolveAndRehost: (...args: unknown[]) => mockResolveAndRehost(...args),
@@ -55,8 +56,9 @@ vi.mock("@/lib/engine/remix/adapt", () => ({
   generateAdaptConcepts: (...args: unknown[]) => mockGenerateAdaptConcepts(...args),
 }));
 
+// S3′: runner now calls runFlashTextModeBatch (batched), not runFlashTextMode (N=1).
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
-  runFlashTextMode: (...args: unknown[]) => mockRunFlashTextMode(...args),
+  runFlashTextModeBatch: (...args: unknown[]) => mockRunFlashTextModeBatch(...args),
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
@@ -119,11 +121,21 @@ function makeAdaptConcepts() {
   ];
 }
 
+/** 10-persona array: 7 stop → Strong, "7/10 stop". */
 function makeStrongPersonas() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: i === 0 ? "tough_crowd" : `arch_${i}`,
     verdict: i < 7 ? "stop" : "scroll",
     quote: `Strong quote from persona ${i}`,
+  }));
+}
+
+/** 10-persona array: 4 stop → Mixed, "4/10 stop". */
+function makeMixedPersonas() {
+  return Array.from({ length: 10 }, (_, i) => ({
+    archetype: `arch_${i}`,
+    verdict: i < 4 ? "stop" : "scroll",
+    quote: `Mixed quote from persona ${i}`,
   }));
 }
 
@@ -140,6 +152,23 @@ function makeProfileRow() {
   };
 }
 
+/**
+ * Build a batch mock return value: Map keyed by candidate id "0","1","2",
+ * each mapped to a personas array. Pass an array of persona arrays (length 3).
+ */
+function makeBatchResult(
+  personasPerConcept: Array<ReturnType<typeof makeStrongPersonas>>,
+) {
+  const results = new Map(
+    personasPerConcept.map((personas, i) => [String(i), { personas }]),
+  );
+  return { results, warnings: [] as string[] };
+}
+
+/**
+ * Default happy-path setup — all 3 concepts get Strong reactions.
+ * S3′: mockRunFlashTextModeBatch resolves once with a Map for all 3 candidates.
+ */
 function setupHappyPath() {
   mockResolveAndRehost.mockResolvedValue({
     signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
@@ -149,10 +178,10 @@ function setupHappyPath() {
   mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInput());
   mockRunDecode.mockResolvedValue(makeDecodeResult());
   mockGenerateAdaptConcepts.mockResolvedValue(makeAdaptConcepts());
-  mockRunFlashTextMode.mockResolvedValue({
-    result: { personas: makeStrongPersonas() },
-    warnings: [],
-  });
+  // All 3 concepts rated Strong
+  mockRunFlashTextModeBatch.mockResolvedValue(
+    makeBatchResult([makeStrongPersonas(), makeStrongPersonas(), makeStrongPersonas()]),
+  );
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
@@ -269,7 +298,12 @@ describe("runRemixPipeline (runner)", () => {
     expect(result.error).toBe("decode_failed");
   });
 
-  it("returns exactly ONE remix-card block from 3 adapt concepts (cardinality A3 — concepts[0])", async () => {
+  /**
+   * S3′ cardinality: was "exactly 1 remix-card (concepts[0])".
+   * Now: ships ALL rated concepts (up to 3), ranked Strong→Mixed→Weak.
+   * 3 concepts all Strong → 3 cards, ranked by stop-count then generation order.
+   */
+  it("S3′: ships ALL rated remix-card blocks (up to 3), ranked by band→stop-count", async () => {
     setupHappyPath();
 
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
@@ -280,11 +314,60 @@ describe("runRemixPipeline (runner)", () => {
       requestId: "req-cardinality",
     });
 
-    expect(result.blocks.length).toBe(1);
-    expect(result.blocks[0]!.type).toBe("remix-card");
+    expect(result.error).toBeUndefined();
+    // All 3 concepts rated Strong → all 3 cards returned
+    expect(result.blocks.length).toBe(3);
+    for (const block of result.blocks) {
+      expect(block.type).toBe("remix-card");
+    }
   });
 
-  it("Flash gate is called with the ADAPTED hook + framing:'hook' (D-05 opener-scoped)", async () => {
+  /**
+   * S3′ ranking: mixed bands → Strong cards sort before Mixed cards.
+   * Concepts: 0=Mixed(4 stop), 1=Strong(7 stop), 2=Mixed(4 stop).
+   * Expected rank order: concept 1 (Strong) → concept 0 (Mixed, lower gen index) → concept 2.
+   */
+  it("S3′: ranks cards Strong before Mixed; among same band by stop-count then generation order", async () => {
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+    });
+    mockAnalyzeVideoWithOmni.mockResolvedValue(makeOmniOutput());
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInput());
+    mockRunDecode.mockResolvedValue(makeDecodeResult());
+    mockGenerateAdaptConcepts.mockResolvedValue(makeAdaptConcepts());
+    // concept 0 → Mixed(4 stop), concept 1 → Strong(7 stop), concept 2 → Mixed(4 stop)
+    mockRunFlashTextModeBatch.mockResolvedValue(
+      makeBatchResult([makeMixedPersonas(), makeStrongPersonas(), makeMixedPersonas()]),
+    );
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-ranking",
+    });
+
+    expect(result.blocks.length).toBe(3);
+    const cards = result.blocks as RemixCardBlock[];
+    // Rank-1 card must be Strong (concept index 1)
+    expect(cards[0]!.props.band).toBe("Strong");
+    expect(cards[0]!.props.adaptedHook).toBe(makeAdaptConcepts()[1]!.hook);
+    // Remaining two are Mixed
+    expect(cards[1]!.props.band).toBe("Mixed");
+    expect(cards[2]!.props.band).toBe("Mixed");
+    // Among Mixed, generation order preserved (concept 0 before concept 2)
+    expect(cards[1]!.props.adaptedHook).toBe(makeAdaptConcepts()[0]!.hook);
+    expect(cards[2]!.props.adaptedHook).toBe(makeAdaptConcepts()[2]!.hook);
+  });
+
+  /**
+   * S3′ SIM call count: ONE batched call for ALL 3 concepts (not 1 call per concept).
+   * The candidates array must contain all 3 hooks with ids "0","1","2".
+   * Framing must be "hook" (D-05 opener-scoped, Pitfall 5).
+   */
+  it("S3′: Flash gate calls runFlashTextModeBatch ONCE with all 3 candidates + framing:'hook'", async () => {
     setupHappyPath();
 
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
@@ -295,15 +378,26 @@ describe("runRemixPipeline (runner)", () => {
       requestId: "req-flash-gate",
     });
 
-    expect(mockRunFlashTextMode).toHaveBeenCalledTimes(1);
-    const flashCall = mockRunFlashTextMode.mock.calls[0] as [string, string, unknown];
-    const [callContent, callFraming] = flashCall;
-    // The content passed to Flash must be the adapted hook (concepts[0].hook)
-    expect(callContent).toBe(makeAdaptConcepts()[0]!.hook);
-    expect(callFraming).toBe("hook");
+    // ONE batched call (not N=3 individual calls)
+    expect(mockRunFlashTextModeBatch).toHaveBeenCalledTimes(1);
+
+    const [candidates, framing] = mockRunFlashTextModeBatch.mock.calls[0] as [
+      Array<{ id: string; text: string }>,
+      string,
+    ];
+
+    // All 3 adapted hooks submitted as candidates
+    expect(candidates).toHaveLength(3);
+    const concepts = makeAdaptConcepts();
+    expect(candidates[0]).toEqual({ id: "0", text: concepts[0]!.hook });
+    expect(candidates[1]).toEqual({ id: "1", text: concepts[1]!.hook });
+    expect(candidates[2]).toEqual({ id: "2", text: concepts[2]!.hook });
+
+    // Opener-scoped framing (D-05 Pitfall 5 — adapted hook only, never full-video)
+    expect(framing).toBe("hook");
   });
 
-  it("remix-card block contains sourceDecode with REAL 4-beat anatomy (D-05 moat)", async () => {
+  it("each remix-card block contains sourceDecode with REAL 4-beat anatomy (D-05 moat), shared across all cards", async () => {
     setupHappyPath();
 
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
@@ -314,14 +408,21 @@ describe("runRemixPipeline (runner)", () => {
       requestId: "req-decode-anatomy",
     });
 
-    expect(result.blocks.length).toBe(1);
-    const card = result.blocks[0] as RemixCardBlock;
-    expect(card.props.sourceDecode).toBeDefined();
-    expect(typeof card.props.sourceDecode.hookPattern).toBe("string");
-    expect(card.props.sourceDecode.hookPattern.length).toBeGreaterThan(0);
-    expect(typeof card.props.sourceDecode.structure).toBe("string");
-    expect(typeof card.props.sourceDecode.theTurn).toBe("string");
-    expect(typeof card.props.sourceDecode.emotionalBeat).toBe("string");
+    expect(result.blocks.length).toBeGreaterThan(0);
+    for (const block of result.blocks) {
+      const card = block as RemixCardBlock;
+      expect(card.props.sourceDecode).toBeDefined();
+      expect(typeof card.props.sourceDecode.hookPattern).toBe("string");
+      expect(card.props.sourceDecode.hookPattern.length).toBeGreaterThan(0);
+      expect(typeof card.props.sourceDecode.structure).toBe("string");
+      expect(typeof card.props.sourceDecode.theTurn).toBe("string");
+      expect(typeof card.props.sourceDecode.emotionalBeat).toBe("string");
+    }
+    // All cards share the SAME sourceDecode object (same source video)
+    const cards = result.blocks as RemixCardBlock[];
+    if (cards.length > 1) {
+      expect(cards[1]!.props.sourceDecode).toEqual(cards[0]!.props.sourceDecode);
+    }
   });
 
   it("null/empty adapt concepts returns error:'adapt_failed' with blocks:[]", async () => {
@@ -347,13 +448,24 @@ describe("runRemixPipeline (runner)", () => {
     expect(result.error).toBe("adapt_failed");
   });
 
-  it("remix-card band/fraction come from aggregateFlash of the adapted hook SIM (Pitfall 5 opener-scoped)", async () => {
-    setupHappyPath();
-    // Override with known personas: 7 stop → Strong, 7/10 stop
-    mockRunFlashTextMode.mockResolvedValue({
-      result: { personas: makeStrongPersonas() },
-      warnings: [],
+  /**
+   * Band/fraction come from aggregateFlash of the ADAPTED hook SIM (Pitfall 5 — opener-scoped).
+   * S3′: each card carries its own band/fraction from the batched SIM result.
+   * rank-1 card: Strong, "7/10 stop" (makeStrongPersonas = 7 stop out of 10).
+   */
+  it("each card's band/fraction come from aggregateFlash of its adapted hook SIM (Pitfall 5 opener-scoped)", async () => {
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
     });
+    mockAnalyzeVideoWithOmni.mockResolvedValue(makeOmniOutput());
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInput());
+    mockRunDecode.mockResolvedValue(makeDecodeResult());
+    mockGenerateAdaptConcepts.mockResolvedValue(makeAdaptConcepts());
+    // concept 0 → Strong(7 stop), concept 1 → Mixed(4 stop), concept 2 → Mixed(4 stop)
+    mockRunFlashTextModeBatch.mockResolvedValue(
+      makeBatchResult([makeStrongPersonas(), makeMixedPersonas(), makeMixedPersonas()]),
+    );
 
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
     const result = await runRemixPipeline({
@@ -363,23 +475,43 @@ describe("runRemixPipeline (runner)", () => {
       requestId: "req-band",
     });
 
-    expect(result.blocks.length).toBe(1);
-    const card = result.blocks[0] as RemixCardBlock;
-    expect(card.props.band).toBe("Strong");
-    expect(card.props.fraction).toBe("7/10 stop");
-    expect(card.props.model).toBe("sim1-flash");
+    expect(result.blocks.length).toBe(3);
+    const cards = result.blocks as RemixCardBlock[];
+    // Rank-1 (concept 0, Strong)
+    expect(cards[0]!.props.band).toBe("Strong");
+    expect(cards[0]!.props.fraction).toBe("7/10 stop");
+    expect(cards[0]!.props.model).toBe("sim1-flash");
+    // Rank-2/3 (Mixed)
+    expect(cards[1]!.props.band).toBe("Mixed");
+    expect(cards[1]!.props.fraction).toBe("4/10 stop");
+  });
+
+  /**
+   * S3′: each card carries props.personas (10-persona array from the batched SIM).
+   */
+  it("S3′: each remix-card carries props.personas with 10 entries from the batched SIM", async () => {
+    setupHappyPath();
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-personas",
+    });
+
+    expect(result.blocks.length).toBeGreaterThan(0);
+    for (const block of result.blocks) {
+      const card = block as RemixCardBlock;
+      expect(card.props.personas).toBeDefined();
+      expect(card.props.personas!.length).toBe(10);
+    }
   });
 
   it("module does NOT import runPredictionPipeline or ENGINE_VERSION (D-05a guard)", async () => {
-    // Import the module and inspect it — cannot directly assert at import level in TS,
-    // so we verify that calling runRemixPipeline with our mocks (which do NOT include
-    // those forbidden imports) works without errors. The structural guarantee is in the
-    // source file itself (no such imports). Here we assert the mock surface is not extended.
     setupHappyPath();
 
     const remixRunner = await import("@/lib/tools/runners/remix-runner");
-    // The exported surface must only be runRemixPipeline, RemixPipelineInput (type), RemixPipelineResult (type)
-    // No runPredictionPipeline or ENGINE_VERSION should be re-exported
     expect("runPredictionPipeline" in remixRunner).toBe(false);
     expect("ENGINE_VERSION" in remixRunner).toBe(false);
     expect("aggregateScores" in remixRunner).toBe(false);
@@ -399,6 +531,34 @@ describe("runRemixPipeline (runner)", () => {
     expect(result.error).toBe("resolve_failed");
     expect(result.blocks).toEqual([]);
     expect(mockAnalyzeVideoWithOmni).not.toHaveBeenCalled();
+  });
+
+  /**
+   * adapt_failed when batch call throws: runner catches the flash error,
+   * pushes warning, returns adapt_failed + empty blocks.
+   */
+  it("batched Flash gate throw → adapt_failed graceful, cleanup still runs", async () => {
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+    });
+    mockAnalyzeVideoWithOmni.mockResolvedValue(makeOmniOutput());
+    mockOmniOutputToStructuralInput.mockReturnValue(makeStructuralInput());
+    mockRunDecode.mockResolvedValue(makeDecodeResult());
+    mockGenerateAdaptConcepts.mockResolvedValue(makeAdaptConcepts());
+    mockRunFlashTextModeBatch.mockRejectedValue(new Error("Flash batch failed"));
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-flash-throw",
+    });
+
+    expect(result.error).toBe("adapt_failed");
+    expect(result.blocks).toEqual([]);
+    expect(mockCleanup).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -430,13 +590,17 @@ describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
     mockCleanup.mockResolvedValue(undefined);
   });
 
-  it("pins the adapted hook's personas with the run's audience_id + analysis_id", async () => {
+  /**
+   * S3′: pin uses the RANK-1 concept's personas (not a fixed concepts[0]).
+   * When all concepts are Strong, rank-1 = generation index 0 = concept 0.
+   */
+  it("pins the rank-1 adapted hook's personas with the run's audience_id + analysis_id", async () => {
     setupHappyPath();
-    const adaptedHookPersonas = makeStrongPersonas();
-    mockRunFlashTextMode.mockResolvedValue({
-      result: { personas: adaptedHookPersonas },
-      warnings: [],
-    });
+    const rank1Personas = makeStrongPersonas();
+    // concept 0 is rank-1 (all Strong → generation order → index 0 wins)
+    mockRunFlashTextModeBatch.mockResolvedValue(
+      makeBatchResult([rank1Personas, makeStrongPersonas(), makeStrongPersonas()]),
+    );
 
     const supabase = {} as never;
     const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
@@ -450,7 +614,7 @@ describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
     });
 
     expect(mockPinPredictedSignature).toHaveBeenCalledTimes(1);
-    expect(mockPinPredictedSignature).toHaveBeenCalledWith(supabase, adaptedHookPersonas, {
+    expect(mockPinPredictedSignature).toHaveBeenCalledWith(supabase, rank1Personas, {
       audienceId: "aud-calibrated",
       analysisId: "an-1",
     });
@@ -469,7 +633,7 @@ describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
     });
 
     expect(mockPinPredictedSignature).toHaveBeenCalledTimes(1);
-    expect(mockPinPredictedSignature.mock.calls[0][2]).toEqual({
+    expect(mockPinPredictedSignature.mock.calls[0]![2]).toEqual({
       audienceId: null,
       analysisId: null,
     });

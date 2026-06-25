@@ -6,8 +6,9 @@
  * path. The phase CANNOT pass with this red.
  *
  * Three protected invariants:
- *  1. ENGINE_VERSION === "3.19.0" — no deliberate video-scoring change shipped this phase
- *     (the audience layer is a text/generation-path weight channel, additive only).
+ *  1. ENGINE_VERSION === "3.20.0" — bumped by S3′ (batched text SIM + generate-rate-rank).
+ *     S3′ is a deliberate TEXT-path scoring change; the MAX VIDEO path is untouched, so
+ *     invariants 2 & 3 below (the video-path protections this gate actually guards) remain green.
  *  2. The General audience reproduces the byte-stable DEFAULT_PERSONA_WEIGHT_CONFIG mix
  *     via BOTH resolveWeights and resolveAudienceWeights → source 'default'.
  *  3. The Max video path is untouched: General never injects an analysis_override, so the
@@ -44,8 +45,8 @@ const generalAudience: Audience = {
 };
 
 describe("audience regression gate (AUD-03) — BLOCKING", () => {
-  it("ENGINE_VERSION is still exactly '3.19.0' (no video-scoring change this phase)", () => {
-    expect(ENGINE_VERSION).toBe("3.19.0");
+  it("ENGINE_VERSION is exactly '3.20.0' (S3′ text-SIM change; video path untouched)", () => {
+    expect(ENGINE_VERSION).toBe("3.20.0");
   });
 
   it("resolveWeights(DEFAULT, {}) reproduces the DEFAULT mix at source 'default'", () => {

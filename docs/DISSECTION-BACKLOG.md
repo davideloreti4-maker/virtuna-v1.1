@@ -94,7 +94,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 |---|-----|------|-----------|--------|
 | S1 | 🟠 | `script` + `remix` build SIM panel without `resolveNicheKey` → niche-blind "all Mixed" reactions. FIX: both now route through shared `buildReactionPanel(profileRow, audience)` (resolveNicheKey + byte-identical repaint), matching hooks/ideas. tsc clean, runner suites 26/26, audience-regression gate green. | script-runner:273, remix-runner:209 | FIXED (working tree) |
 | S2 | 🟠 | **FIXED — follow-up chat now streams AFTER `done`.** Was: the follow-up Qwen turn ran synchronously BEFORE `send("done")` in the ideas/hooks/script/refine SSE routes, holding the stream open + the client in `isStreaming` (progress checklist spinning, composer locked, follow-up itself un-renderable) for the seconds the reasoning call takes. FIX (2 coordinated halves): (1) routes emit `done` immediately after cards persist, then run the follow-up + emit `followup` on the still-open SSE; (2) the 3 client stream hooks flip `isStreaming=false` on `done` (decoupled from stream-close) — the read loop keeps consuming until the server closes, so `followup` still lands + renders inline (`followupText && !isStreaming`). Remix left as-is (its route emits no follow-up). +ordering regression test (`done` precedes `followup`). | ideas/hooks/script/refine routes + use-{ideas,hooks,script}-stream | FIXED (working tree) |
-| S3 | 🟢 | 8-call SIM fan-out → collapse to one batched simulation call (eval-gated) | `gateHooks` / `runFlashTextMode` | OPEN |
+| S3 | 🟢→🎯 | **S3′ — DONE (working tree): batched SIM + generate-rate-rank-keep.** Scope GREW from "collapse the fan-out" to a behavior redesign (user call): the per-candidate `Promise.all(runFlashTextMode)` fan-out in hooks/ideas (+ remix's hidden 3→1 cut) → ONE `runFlashTextModeBatch` call; AND gate-and-cut → **keep-all-ranked** (no Weak cut, no auto-regen — D-06 removed; rewrite is user-pressed, PR-3). Counts locked: hooks 5 / ideas 4 / remix 3 / script 1. Each card now carries its 10 personas (modal feed, PR-2). New `FlashBatchResultSchema` + `coerceFlashBatchResponse` (per-candidate salvage) + `buildFlashBatchSystemPrompt`/`buildFlashBatchUserContent` (independence directive; reuses the single-path archetype block → react N=1 untouched). ENGINE_VERSION 3.19.0→**3.20.0**; steer-closure + version + regression gates rebaselined. Live-validated (real `runFlashTextModeBatch`, N=8: parses, 10/candidate, diversity 7/8, STRONG 6 vs WEAK 2). Suite 3046/0/28; tsc 62 (≤64); eslint clean. | `flash-schema.ts`, `flash-prompts.ts`, `run-flash-text-mode.ts`, `blocks.ts`, hooks/ideas/remix/script runners | FIXED (working tree) |
 | S4 | 🟢 | **CUT — the never-wired ToolRunner/dispatch scaffolding is gone.** The 4 generative runners call `runFlashTextMode` + `aggregateFlash` directly; nothing ever used the `flashRunner` const, `runFlashRunner`, `mapFlashResultToBlocks`, or `dispatchToolOutput`. Deleted `tools/tool-runner.ts` (`ToolRunner` + `dispatchToolOutput`) + its test; gutted `flash-runner.ts` down to the one live export (`pinPredictedSignature` + pin-context types) and **renamed it `predicted-pin.ts`** to match its sole purpose (its test was already `predicted-pin.test.ts`). Updated import paths in the 4 runners + 4 runner tests + predicted-pin.test.ts; fixed stale `ToolRunner`/`flash-runner` comments in `assembler.ts`, `composer-controls.tsx`, `blocks.ts`, `block-registry.ts`, `messages.ts`. Net ~−290 LOC. | `predicted-pin.ts` (was flash-runner.ts), `tool-runner.ts` (deleted) | FIXED (working tree) |
 | S5 | 🟡→🟢 | **DELETED — rubric critic was OFF by default + ~100% fail.** Removed `rubric-critic.ts` (255 LOC) + its test + the obsolete `best-of-n.test.ts` (399 LOC, all critic-specific). Collapsed the dual-branch combined gate in ideas/hooks runners to band-only (`band !== "Weak"`, KCQ-05) — dropped `criticEnabled`/`PASS_VERDICT`/the SIM+critic Promise.all pair/`abstained`+`abstainedKept` warning. `predictedFailureMode` card field kept (nullable, now always null) so persisted blocks + UI stay valid. Net −916 LOC. | `flash/rubric-critic.ts` (deleted), ideas/hooks runners | FIXED (working tree) |
 | S6 | 🟢 | **Surfaced by the S4 cut:** `assertBlocksInRegistry` (block-registry.ts) now has NO production caller — its only consumer was the deleted `dispatchToolOutput` structured-output boundary. The live block guard is `validateBlock` (message rehydration) + per-block `safeParse` in the runners. Retained for now (well-tested registry-subset guard, defensibly re-usable; cutting it cascades into 4 block test files). Decide: re-wire as a runner-side guard, or cut + fold its coverage into the block-schema tests. | `block-registry.ts` | OPEN |
@@ -131,6 +131,42 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 ## DONE
 _(move items here with FIXED sha as they land)_
+
+### 2026-06-25 — S3′ batched SIM + generate-rate-rank-keep (working tree)
+- **S3′ FIXED — the hooks/ideas/remix SIM moved from a per-candidate fan-out to ONE batched
+  flash call, and the gate moved from cut-and-trim to keep-all-ranked.** The handoff's S3
+  ("collapse the 8× fan-out") grew (user call) into a behavior redesign: a user requesting hooks
+  used to wait ~1min and could get **0–2** cards (over-generate ~8 → SIM each → drop Weak → trim
+  5). Now: generate exactly the display count, **rate ALL in one batched `qwen3.6-flash` call,
+  keep them all ranked** → always a full shelf. Counts: **hooks 5 · ideas 4 · remix 3 · script 1**.
+- **GSI-aligned (memory `numen-gsi-vision`):** keep-all/rate-rank is the domain-general SIMULATE
+  behavior (never silently cut the user's stimulus). The batched call is shaped as a domain-general
+  `candidates[] → reactions[]` primitive; socials specifics (10 archetypes / verdict / band) stay
+  where they live → pluggable-scoring seam left clean for the GSI milestone.
+- **Primitive:** `FlashBatchResultSchema` + `coerceFlashBatchResponse` (per-candidate salvage — a
+  short/malformed candidate drops ITSELF, never the batch; id-echo + positional fallback);
+  `buildFlashBatchSystemPrompt`/`buildFlashBatchUserContent` (reuse the single-path archetype block
+  via extracted builders → react N=1 path byte-unchanged; add the independence directive that the
+  spike proved holds diversity); `runFlashTextModeBatch` (same temp0+seed+json_object envelope, 90s
+  timeout, per-candidate zod). The N=1 `runFlashTextMode` is kept for react + script.
+- **Runners:** hooks/ideas/remix rewired to rate-rank-keep (no Weak cut, no D-06 auto-regen — a
+  user-pressed "rewrite for audience" replaces it, PR-3). remix's hidden 3-concepts→ship-1 cut is
+  gone — it now SIMs + ships all 3. Every card carries its 10 personas (optional block field) so the
+  ambient modal reads the reaction with NO extra `/api/tools/react` call (modal wiring = PR-2, UI lane).
+- **Constraints honored:** ENGINE_VERSION 3.19.0 → **3.20.0**; steer-closure gate rebaselined to the
+  batched path (General-determinism + audience-divergence invariants PRESERVED — repaint still arg[3]);
+  version + audience-regression + aggregator version-pins updated; D-17 cache discipline (candidate text
+  in USER msg only); honesty spine (band+fraction only). Plan: `docs/PLAN-S3-generate-rate-rank.md`.
+- **Latency (enable_thinking:false):** the SIM is a scoring task (verdict+quote), not reasoning —
+  qwen3.6-flash defaulted to chain-of-thought, costing ~37s of fixed latency. Disabling it
+  (`enable_thinking:false` on BOTH the batched + N=1 react/script calls) cut the SIM **~55s → ~15s**
+  live-measured (N=5: 14–18s), with **same/better** diversity + independence (STRONG 6/10 vs WEAK
+  1/10). NOTE: generation still runs on `qwen3.7-plus` (reasoning) — it is now the E2E bottleneck,
+  tracked separately (generation-latency follow-up).
+- **Verify:** live E2E through the REAL `runFlashTextModeBatch` (N=8: 8/8 mapped by id, 10 personas
+  each, 7/8 unique verdict vectors, injected STRONG 6/10 Strong vs injected WEAK 2/10 Weak → independence
+  holds). Full suite **3046 pass / 0 fail / 28 skip**; tsc **62** (≤64 baseline, source delta 0); eslint
+  clean. **Deferred:** PR-2 ambient-modal read (UI lane) · PR-3 user-pressed rewrite loop.
 
 ### 2026-06-24 — S2 follow-up chat off the generative critical path (working tree)
 - **S2 FIXED — the follow-up chat turn no longer blocks `done`.** Across the 4 generative SSE

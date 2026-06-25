@@ -1,17 +1,20 @@
 /**
- * hooks-runner.test.ts — runHooksPipeline unit tests (Task 1, plan 04-02).
+ * hooks-runner.test.ts — runHooksPipeline unit tests (S3′ generate-rate-rank rebaseline).
  *
- * Tests:
- *   - over-generate (~8) → parallel niche SIM → gate (band !== "Weak") → rank → ≤5 hook-card blocks
- *   - RANK INVARIANT (D-01/D-02): block[0].rank===1, bands non-increasing (Strong before Mixed)
+ * Contract under test (S3′):
+ *   - generate exactly HOOK_COUNT (5) hooks, ONE batched SIM call, KEEP-ALL (rank), ≤5 cards
+ *   - RANK INVARIANT (D-01/D-02): block[0].rank===1, bands non-increasing (Strong>Mixed>Weak)
  *   - fraction tie-break within same band tier
- *   - D-04 LEAD-QUOTE INVARIANT: every returned hook-card has scrollQuote populated on the face
+ *   - D-04 LEAD-QUOTE INVARIANT: every returned hook-card has scrollQuote on the face
  *   - audience-archetype tag present (D-03) and never a craft slug (D-04)
- *   - drops Weak-band hooks (sub-floor); zero survivors is valid (no regen — D-03)
- *   - caps at 5 survivors (D-08) even if more than 5 pass
- *   - cold-start (null profile) / anchor-only produces ranked hooks (niche falls back to null)
- *   - SIM called with "hook" framing + { niche, contentType: null } panel
- *   - bounded regen (14-02 D-06): all-fail triggers exactly ONE regen batch, never unbounded
+ *   - Weak-band hooks are KEPT and ranked last (keep-all); NOT dropped
+ *   - all-Weak input → still returns 5 cards ranked by fraction (keep-all, no regen)
+ *   - hard batch failure (throws) → 0 cards + warning (no regen — D-06 removed)
+ *   - caps at 5 survivors even if model over-emits (D-08 safety bound)
+ *   - cold-start (null profile) / anchor-only produces ranked hooks
+ *   - runFlashTextModeBatch called ONCE per pipeline run (not N parallel calls)
+ *   - batch receives candidates ids "0","1",... and correct framing/panel/intent
+ *   - each card carries props.personas (length 10) — S3′ per-card reaction
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -26,10 +29,10 @@ vi.mock("@/lib/engine/qwen/client", () => ({
   QWEN_FAST_MODEL: "qwen3.6-flash",
 }));
 
-// ─── Mock runFlashTextMode ────────────────────────────────────────────────────
+// ─── Mock runFlashTextModeBatch (S3′ — batch SIM) ────────────────────────────
 
 vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
-  runFlashTextMode: vi.fn(),
+  runFlashTextModeBatch: vi.fn(),
 }));
 
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
@@ -45,7 +48,7 @@ vi.mock("@/lib/kc/assembler", () => ({
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
-/** 10 personas: 8 stop → Strong band */
+/** 10 personas: 8 stop → Strong band (8/10 stop) */
 function makePersonasStrong() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: i === 0 ? "tough_crowd" : `arch_${i}`,
@@ -54,7 +57,7 @@ function makePersonasStrong() {
   }));
 }
 
-/** 10 personas: 5 stop → Mixed band (above gate floor) */
+/** 10 personas: 5 stop → Mixed band (5/10 stop) */
 function makePersonasMixed() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: i === 0 ? "niche_deep_buyer" : `arch_${i}`,
@@ -63,7 +66,7 @@ function makePersonasMixed() {
   }));
 }
 
-/** 10 personas: 4 stop → Mixed band (just above gate floor: MIXED_THRESHOLD=3) */
+/** 10 personas: 4 stop → Mixed band (4/10 stop, just above MIXED_THRESHOLD=3) */
 function makePersonasMixedLow() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: `arch_${i}`,
@@ -72,7 +75,7 @@ function makePersonasMixedLow() {
   }));
 }
 
-/** 10 personas: 2 stop → Weak band (sub-floor, dropped) */
+/** 10 personas: 2 stop → Weak band (2/10 stop, sub-floor) */
 function makePersonasWeak() {
   return Array.from({ length: 10 }, (_, i) => ({
     archetype: `arch_${i}`,
@@ -81,8 +84,11 @@ function makePersonasWeak() {
   }));
 }
 
-/** Structured JSON generation response with `count` hooks */
-function makeStructuredHookResponse(count = 8) {
+/**
+ * Structured JSON generation response with `count` hooks.
+ * S3′: generate exactly HOOK_COUNT (5) by default.
+ */
+function makeStructuredHookResponse(count = 5) {
   return {
     hooks: Array.from({ length: count }, (_, i) => ({
       hookLine: `Executable hook line ${i + 1} — the verbatim text`,
@@ -94,27 +100,55 @@ function makeStructuredHookResponse(count = 8) {
   };
 }
 
+/**
+ * Build a batch result Map where every candidate gets the same personas.
+ * candidates is the array passed to runFlashTextModeBatch by the runner.
+ */
+function makeBatchResult(
+  candidates: { id: string; text: string }[],
+  personas: ReturnType<typeof makePersonasStrong>,
+) {
+  return {
+    results: new Map(candidates.map((c) => [c.id, { personas }])),
+    warnings: [] as string[],
+  };
+}
+
+/**
+ * Build a batch result Map with per-candidate personas arrays.
+ * personasForIndex maps index (number) → personas array.
+ */
+function makeBatchResultPerCandidate(
+  candidates: { id: string; text: string }[],
+  personasForIndex: (idx: number) => ReturnType<typeof makePersonasStrong>,
+) {
+  return {
+    results: new Map(candidates.map((c, i) => [c.id, { personas: personasForIndex(i) }])),
+    warnings: [] as string[],
+  };
+}
+
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("runHooksPipeline (runner)", () => {
+describe("runHooksPipeline (runner — S3′ generate-rate-rank)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("over-generates ~8 hooks, SIMs in parallel with 'hook' framing, returns ≤5 ranked cards", async () => {
+  it("generates 5 hooks, calls runFlashTextModeBatch ONCE, returns ≤5 ranked cards", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -133,6 +167,11 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "5 fitness myths that sabotage your gains",
     });
 
+    // ONE batched SIM call per pipeline run (not N parallel calls)
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    // Exactly one generation call
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+
     expect(result.blocks.length).toBeLessThanOrEqual(5);
     expect(result.blocks.length).toBeGreaterThanOrEqual(1);
     expect(result.seedHookPath).toBe("structured");
@@ -141,9 +180,9 @@ describe("runHooksPipeline (runner)", () => {
     }
   });
 
-  it("SIM is called with 'hook' framing and { niche, contentType: null } panel (HOOKS-02)", async () => {
+  it("runFlashTextModeBatch receives 'hook' framing, correct panel, and candidate ids '0','1',... (HOOKS-02)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
@@ -151,30 +190,49 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     await runHooksPipeline({
       ask: "hooks",
       platform: "tiktok",
-      profileRow: { niche_primary: "fitness", niche_sub: null, target_audience: null, primary_goal: null, past_wins: null, past_flops: null, target_platforms: null, user_id: "u1" },
+      profileRow: {
+        niche_primary: "fitness",
+        niche_sub: null,
+        target_audience: null,
+        primary_goal: null,
+        past_wins: null,
+        past_flops: null,
+        target_platforms: null,
+        user_id: "u1",
+      },
       anchor: "an idea",
     });
 
-    // Each SIM call must use the "hook" framing
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
-    for (const call of calls) {
-      expect(call[1]).toBe("hook"); // framing arg
-      expect(call[2]).toMatchObject({ contentType: null });
-    }
+    // Exactly ONE batch call
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    const [candidates, framing, panel] = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls[0]!;
+
+    // framing arg = "hook"
+    expect(framing).toBe("hook");
+    // panel must carry contentType: null
+    expect(panel).toMatchObject({ contentType: null });
+    // candidate ids must be "0", "1", "2" (generation-index strings)
+    expect(candidates).toHaveLength(3);
+    expect(candidates[0].id).toBe("0");
+    expect(candidates[1].id).toBe("1");
+    expect(candidates[2].id).toBe("2");
   });
 
-  it("RANK INVARIANT (D-01/D-02): rank 1 first, bands non-increasing, Strong ranks above Mixed", async () => {
+  it("RANK INVARIANT (D-01/D-02): rank 1 first, Strong ranks above Mixed, Weak kept and ranked last", async () => {
+    // S3′ KEEP-ALL: Weak is no longer dropped — it stays in the result, ranked last.
+    // Old behavior: 4 hooks → 3 survivors (Weak dropped) → 3 cards.
+    // New behavior: 4 hooks → 4 survivors (Weak kept, ranked after Mixed) → 4 cards.
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(4)) } }],
@@ -183,12 +241,18 @@ describe("runHooksPipeline (runner)", () => {
       chat: { completions: { create: mockCreate } },
     });
 
-    // hook 0: Mixed, hook 1: Strong, hook 2: Mixed, hook 3: Weak (dropped)
-    (runFlashTextMode as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ result: { personas: makePersonasMixed() }, warnings: [] })  // Mixed 5/10
-      .mockResolvedValueOnce({ result: { personas: makePersonasStrong() }, warnings: [] }) // Strong 8/10
-      .mockResolvedValueOnce({ result: { personas: makePersonasMixed() }, warnings: [] })  // Mixed 5/10
-      .mockResolvedValueOnce({ result: { personas: makePersonasWeak() }, warnings: [] });  // Weak → dropped
+    // hook 0: Mixed, hook 1: Strong, hook 2: Mixed, hook 3: Weak (kept, ranked last)
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(
+          makeBatchResultPerCandidate(candidates, (i) => {
+            if (i === 0) return makePersonasMixed();   // Mixed 5/10
+            if (i === 1) return makePersonasStrong();  // Strong 8/10
+            if (i === 2) return makePersonasMixed();   // Mixed 5/10
+            return makePersonasWeak();                  // Weak 2/10 — kept, ranked last
+          }),
+        ),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -198,16 +262,18 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "fitness idea",
     });
 
-    // 3 survivors (1 Weak dropped): rank 1 = Strong, rank 2 + 3 = Mixed
-    expect(result.blocks.length).toBe(3);
+    // 4 survivors (all kept — keep-all): rank 1=Strong, rank 2+3=Mixed, rank 4=Weak
+    expect(result.blocks.length).toBe(4);
     expect(result.blocks[0]!.props.rank).toBe(1);
     expect(result.blocks[0]!.props.band).toBe("Strong");
     expect(result.blocks[1]!.props.rank).toBe(2);
     expect(result.blocks[1]!.props.band).toBe("Mixed");
     expect(result.blocks[2]!.props.rank).toBe(3);
     expect(result.blocks[2]!.props.band).toBe("Mixed");
+    expect(result.blocks[3]!.props.rank).toBe(4);
+    expect(result.blocks[3]!.props.band).toBe("Weak");
 
-    // Ranks must be consecutive starting at 1
+    // Ranks consecutive starting at 1
     for (let i = 0; i < result.blocks.length; i++) {
       expect(result.blocks[i]!.props.rank).toBe(i + 1);
     }
@@ -215,7 +281,7 @@ describe("runHooksPipeline (runner)", () => {
 
   it("fraction tie-break: higher stop-count ranks first within same band tier", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
@@ -224,11 +290,16 @@ describe("runHooksPipeline (runner)", () => {
       chat: { completions: { create: mockCreate } },
     });
 
-    // All Mixed, but different stop counts: hook1=4 stops, hook2=5 stops, hook3=4 stops
-    (runFlashTextMode as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce({ result: { personas: makePersonasMixedLow() }, warnings: [] }) // 4/10
-      .mockResolvedValueOnce({ result: { personas: makePersonasMixed() }, warnings: [] })    // 5/10
-      .mockResolvedValueOnce({ result: { personas: makePersonasMixedLow() }, warnings: [] }); // 4/10
+    // All Mixed, different stop counts: hook0=4 stops, hook1=5 stops, hook2=4 stops
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(
+          makeBatchResultPerCandidate(candidates, (i) => {
+            if (i === 1) return makePersonasMixed();    // 5/10
+            return makePersonasMixedLow();               // 4/10
+          }),
+        ),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -238,7 +309,7 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "idea",
     });
 
-    // hook2 (5 stops) ranks #1, the 4-stop ones rank #2 and #3
+    // hook1 (5 stops) ranks #1, 4-stop ones rank #2 and #3
     expect(result.blocks.length).toBe(3);
     expect(result.blocks[0]!.props.fraction).toBe("5/10 stop");
     expect(result.blocks[0]!.props.rank).toBe(1);
@@ -246,7 +317,7 @@ describe("runHooksPipeline (runner)", () => {
 
   it("D-04 LEAD-QUOTE INVARIANT: every returned hook-card has scrollQuote populated on the face", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
@@ -254,10 +325,10 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasStrong())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -276,7 +347,7 @@ describe("runHooksPipeline (runner)", () => {
 
   it("audience-archetype tag present (D-03), never a craft slug (D-04)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(2)) } }],
@@ -284,10 +355,10 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -314,20 +385,22 @@ describe("runHooksPipeline (runner)", () => {
     }
   });
 
-  it("drops all Weak-band hooks; all-fail triggers exactly ONE bounded regen (14-02 D-06)", async () => {
+  it("keep-all: all-Weak input → 5 cards ranked by fraction (Weak kept, no regen)", async () => {
+    // S3′ behavior: Weak is no longer dropped. All 5 candidates rate Weak → 5 Weak cards returned.
+    // No regen (D-06 removed). ONE batch call total.
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasWeak() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasWeak())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -337,29 +410,35 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "an idea",
     });
 
-    // 0 survivors is valid (never an unbounded loop).
-    expect(result.blocks.length).toBe(0);
-    // 14-02 D-06: zero passers triggers ONE conditional regen → two over-generate
-    // batches of 8 SIM calls each (16), then STOP. Bounded — never unbounded serial.
-    expect(runFlashTextMode).toHaveBeenCalledTimes(16);
-    // Exactly two generation calls (initial + one regen).
-    expect(mockCreate).toHaveBeenCalledTimes(2);
+    // All 5 Weak hooks kept — 5 cards returned (keep-all, no regen)
+    expect(result.blocks.length).toBe(5);
+    for (const block of result.blocks) {
+      expect(block.props.band).toBe("Weak");
+    }
+    // Ranks still consecutive 1-5
+    for (let i = 0; i < result.blocks.length; i++) {
+      expect(result.blocks[i]!.props.rank).toBe(i + 1);
+    }
+    // Exactly ONE batch call, ONE generation call — no regen
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    expect(mockCreate).toHaveBeenCalledTimes(1);
   });
 
-  it("caps at MAX_HOOKS (5) even if more than 5 pass the gate (D-08)", async () => {
+  it("hard batch failure (throws) → 0 cards + warning in result (no regen — D-06 removed)", async () => {
+    // When runFlashTextModeBatch throws, the runner catches → returns [] with a warning.
+    // No second generation call, no retry loop.
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
     });
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("DashScope timeout"),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -369,8 +448,43 @@ describe("runHooksPipeline (runner)", () => {
       anchor: "an idea",
     });
 
+    // Hard failure → 0 cards
+    expect(result.blocks.length).toBe(0);
+    // Warning must mention the failure
+    expect(result.warnings.some((w) => w.includes("Batched SIM failed"))).toBe(true);
+    // ONE batch attempt only — no retry
+    expect(runFlashTextModeBatch).toHaveBeenCalledTimes(1);
+    // ONE generation call — no regen
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("caps at MAX_HOOKS (5) even if model over-emits (D-08 safety bound)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    // Model returns 7 hooks (over-emit)
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(7)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasStrong())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "hooks",
+      platform: "tiktok",
+      profileRow: null,
+      anchor: "an idea",
+    });
+
+    // Safety bound: never more than 5 cards
     expect(result.blocks.length).toBe(5);
-    // All 5 must be Strong (best ranked are taken first)
+    // All 5 must be Strong (best ranked taken first)
     for (const block of result.blocks) {
       expect(block.props.band).toBe("Strong");
     }
@@ -378,7 +492,7 @@ describe("runHooksPipeline (runner)", () => {
 
   it("cold-start (null profile) / anchor-only still produces ranked hooks (D-09)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
@@ -386,10 +500,10 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -402,16 +516,14 @@ describe("runHooksPipeline (runner)", () => {
     expect(result.blocks.length).toBeGreaterThan(0);
     // First block must have rank 1
     expect(result.blocks[0]!.props.rank).toBe(1);
-    // SIM must be called with niche: null (cold-start niche falls back)
-    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
-    for (const call of calls) {
-      expect(call[2]).toMatchObject({ niche: null, contentType: null });
-    }
+    // Panel passed to batch must carry niche: null (cold-start niche falls back)
+    const [, , panel] = (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(panel).toMatchObject({ niche: null, contentType: null });
   });
 
   it("band/fraction/model embedded in each hook-card block (D-02/D-04/D-10)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(2)) } }],
@@ -419,10 +531,10 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasMixed() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const result = await runHooksPipeline({
@@ -442,7 +554,7 @@ describe("runHooksPipeline (runner)", () => {
 
   it("each block passes HookCardBlockSchema validation (D-14 belt-and-suspenders)", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
 
     const mockCreate = vi.fn().mockResolvedValue({
       choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
@@ -450,10 +562,10 @@ describe("runHooksPipeline (runner)", () => {
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: { completions: { create: mockCreate } },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasStrong())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     const { HookCardBlockSchema } = await import("@/lib/tools/blocks");
@@ -467,6 +579,37 @@ describe("runHooksPipeline (runner)", () => {
     for (const block of result.blocks) {
       const validation = HookCardBlockSchema.safeParse(block);
       expect(validation.success).toBe(true);
+    }
+  });
+
+  it("S3′: each hook-card carries props.personas (length 10) — per-card reaction modal", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const mockCreate = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(3)) } }],
+    });
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: { completions: { create: mockCreate } },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const result = await runHooksPipeline({
+      ask: "hooks",
+      platform: "tiktok",
+      profileRow: null,
+      anchor: "an idea",
+    });
+
+    expect(result.blocks.length).toBeGreaterThan(0);
+    for (const block of result.blocks) {
+      const card = block as HookCardBlock;
+      expect(Array.isArray(card.props.personas)).toBe(true);
+      expect(card.props.personas!.length).toBe(10);
     }
   });
 });
@@ -500,23 +643,23 @@ describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("pins the rank-1 hook's personas with the run's audience_id + analysis_id", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
         completions: {
           create: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
           }),
         },
       },
     });
     const leadPersonas = makePersonasStrong();
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: leadPersonas },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, leadPersonas)),
+    );
 
     const supabase = {} as never;
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
@@ -537,22 +680,22 @@ describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("pins audience_id null for a General audience", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
         completions: {
           create: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
           }),
         },
       },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasStrong())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     await runHooksPipeline({
@@ -572,22 +715,22 @@ describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
 
   it("does NOT pin when no pin context is passed", async () => {
     const { getQwenClient } = await import("@/lib/engine/qwen/client");
-    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
     const { pinPredictedSignature } = await import("@/lib/tools/runners/predicted-pin");
 
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
       chat: {
         completions: {
           create: vi.fn().mockResolvedValue({
-            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(8)) } }],
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
           }),
         },
       },
     });
-    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
-      result: { personas: makePersonasStrong() },
-      warnings: [],
-    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasStrong())),
+    );
 
     const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
     await runHooksPipeline({ ask: "Hooks", platform: "tiktok", profileRow: null });

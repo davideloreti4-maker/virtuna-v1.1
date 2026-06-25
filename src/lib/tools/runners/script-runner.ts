@@ -148,6 +148,8 @@ async function generateScriptStructured(userMessage: string): Promise<Structured
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
+        enable_thinking: false, // DashScope extension — cast via `as never` below
+        max_tokens: 2000,       // safety rail: script beats est.
       } as never,
       { signal: controller.signal },
     );
@@ -334,6 +336,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       fraction,
       scrollQuote,
       model: "sim1-flash" as const,
+      personas, // S3′: opener reaction for the ambient modal (PR-2)
     },
   };
 

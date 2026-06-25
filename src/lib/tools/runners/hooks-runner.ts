@@ -8,23 +8,24 @@
  * Pipeline stages:
  *
  * 1. GENERATE: assembleBundle(mode:"hooks", anchor) → user message; system = KC_HOOKS_SYSTEM_PROMPT.
- *    Structured json_object generation of ~8 distinct-mechanism hooks (HOOKS_OUTPUT_CONTRACT).
- *    Each hook carries: hookLine, mechanism, seedHook, channel?, needsTake?
+ *    Structured json_object generation of exactly HOOK_COUNT (5) distinct-mechanism hooks
+ *    (HOOKS_OUTPUT_CONTRACT). Each hook carries: hookLine, mechanism, seedHook, channel?, needsTake?
  *
- * 2. SIM (gate): runFlashTextMode(seedHook ?? hookLine, "hook", { niche, contentType: null })
- *    per candidate in Promise.all (parallel). aggregateFlash → {band, fraction}.
+ * 2. RATE (S3′): ONE batched runFlashTextModeBatch(candidates, "hook", { niche, contentType: null })
+ *    scores ALL candidates in a single call. aggregateFlash → {band, fraction} per candidate.
  *    Lead scrollQuote + audienceArchetype selected NOW (D-02/D-03, WARNING-4).
  *
- * 3. GATE: drop candidates where band === "Weak" (Plan-01 GATE FLOOR — band !== "Weak").
+ * 3. KEEP-ALL (S3′): NO Weak cut. Every rated candidate is kept. The only drop is a candidate
+ *    with no reaction (un-scorable) — we never fabricate a band (honesty spine).
  *
- * 4. RANK + TRIM (D-01 addition): order survivors by:
- *    - Primary: band tier (Strong > Mixed; ordinal: Strong=0, Mixed=1)
+ * 4. RANK (D-01): order ALL rated by:
+ *    - Primary: band tier (Strong > Mixed > Weak; ordinal: Strong=0, Mixed=1, Weak=2)
  *    - Secondary: audience-fraction stop-count descending (parse "N/10 stop" numerator)
- *    - Tie-break beyond: preserve generation order (first generated = first ranked)
- *    Assign rank = index + 1 after sort. Keep top MAX_HOOKS (= 5, D-08).
+ *    - Tie-break: preserve generation order (first generated = first ranked)
+ *    Assign rank = index + 1 after sort. slice(HOOK_COUNT) is a safety bound only (keep-all).
  *
- * 5. BUILD: assemble hook-card blocks (Plan 01 prop names). Validate via
- *    HookCardBlockSchema.safeParse (D-14 belt-and-suspenders).
+ * 5. BUILD: assemble hook-card blocks (incl. per-card personas for the ambient modal, PR-2).
+ *    Validate via HookCardBlockSchema.safeParse (D-14 belt-and-suspenders).
  *
  * RANKING IS QUALITATIVE (D-02): band word + fraction + sim1-flash tag ONLY.
  * NO fabricated numeric pull-score, NO view-count promise (ENGINE-03).
@@ -44,7 +45,7 @@ import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_HOOKS_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
-import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import { runFlashTextModeBatch } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggregate";
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
@@ -61,11 +62,13 @@ import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Over-generate buffer: ~8 hooks to get N=5 survivors (D-08, D-03). */
-const HOOK_BUFFER = 8;
-
-/** Max survivors to keep after gate + rank (D-08). */
-const MAX_HOOKS = 5;
+/**
+ * Generate-and-rate (S3′): generate exactly HOOK_COUNT hooks, batch-rate ALL by the audience,
+ * RANK them, and KEEP them all — no Weak cut, no over-gen buffer, no top-N trim. Generation
+ * count == display count, so the user always gets a full shelf (never the old "waited 1min,
+ * got 0–2"). The slice at HOOK_COUNT below is a safety bound only (model occasionally over-emits).
+ */
+const HOOK_COUNT = 5;
 
 /** Generation call timeout (mirrors ideas-runner). */
 const GENERATE_TIMEOUT_MS = 300_000;
@@ -89,7 +92,7 @@ const HOOKS_OUTPUT_CONTRACT = `
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean } ] }
-Return a "hooks" array of approximately ${HOOK_BUFFER} objects, each using a DISTINCT attention mechanism. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.`;
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.`;
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -121,7 +124,7 @@ export interface HooksPipelineInput {
 // ─── Output type ─────────────────────────────────────────────────────────────
 
 export interface HooksPipelineResult {
-  /** Up to MAX_HOOKS (5) validated hook-card blocks (may be 0 if all sub-floor). */
+  /** Up to HOOK_COUNT (5) ranked hook-card blocks, keep-all (0 only on generation/SIM failure). */
   blocks: HookCardBlock[];
   /** Warnings from Flash SIM calls or validation. */
   warnings: string[];
@@ -146,7 +149,7 @@ interface StructuredHook {
 // ─── Qwen generation call ─────────────────────────────────────────────────────
 
 /**
- * Call Qwen in json_object mode to generate ~HOOK_BUFFER structured hooks.
+ * Call Qwen in json_object mode to generate HOOK_COUNT structured hooks.
  * System = KC_HOOKS_SYSTEM_PROMPT (byte-stable warm cache prefix).
  * User = assembleBundle output (volatile per-request).
  */
@@ -168,6 +171,8 @@ async function generateHooksStructured(userMessage: string): Promise<StructuredH
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
+        enable_thinking: false, // DashScope extension — cast via `as never` below
+        max_tokens: 1500,       // safety rail: measured 587/791 output, ×~2 headroom
       } as never,
       { signal: controller.signal },
     );
@@ -219,7 +224,7 @@ async function generateHooksStructured(userMessage: string): Promise<StructuredH
         typeof r.channel === "string" && r.channel.trim().length > 0 ? r.channel : null,
       needsTake: typeof r.needsTake === "boolean" ? r.needsTake : false,
     });
-    if (hooks.length >= HOOK_BUFFER) break;
+    if (hooks.length >= HOOK_COUNT) break;
   }
 
   return hooks;
@@ -250,7 +255,7 @@ function selectLeadScrollQuote(
 function bandOrdinal(band: "Strong" | "Mixed" | "Weak"): number {
   if (band === "Strong") return 0;
   if (band === "Mixed") return 1;
-  return 2; // Weak — should not reach here after gate
+  return 2; // Weak — S3′ keeps Weak cards (ranked last), so this IS reached
 }
 
 /**
@@ -267,10 +272,10 @@ function parseFractionNumerator(fraction: string): number {
 // ─── runHooksPipeline ─────────────────────────────────────────────────────────
 
 /**
- * Full Hooks pipeline: over-generate → parallel niche SIM → gate → rank → top-5 hook-card blocks.
+ * Full Hooks pipeline (S3′): generate 5 → ONE batched niche SIM → rate → rank → keep ALL.
  *
- * Returns up to MAX_HOOKS (5) validated hook-card blocks ranked by band tier → fraction.
- * Returns 0 blocks if all hooks score Weak (valid, no regen — D-03).
+ * Returns up to HOOK_COUNT (5) ranked hook-card blocks (keep-all — Weak kept, ranked last).
+ * Returns 0 blocks only if generation or the batched SIM hard-fails (no auto-regen — D-03).
  *
  * @param input.ask         Creator's ask (seeded topic; defaults to anchor-only mode when empty).
  * @param input.platform    Target platform.
@@ -337,51 +342,65 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // SIM call + repaint (built above) UNTOUCHED — only the post-SIM band math is weighted.
   const flashWeighting = buildFlashWeighting(audience ?? null);
 
-  // ── GATE: a survivor candidate carries everything the rank+build need ──────
-  // personas travel ON the candidate (not via a parallel simResults array) so the
-  // FLYWHEEL pin survives the conditional regeneration without index bookkeeping.
-  interface SurvivorCandidate {
+  // ── RATE: a rated candidate carries everything the rank+build need ─────────
+  // personas travel ON the candidate so the FLYWHEEL pin + the per-card modal feed
+  // (S3′) read them directly without index bookkeeping.
+  interface RatedCandidate {
     hook: StructuredHook;
     band: "Strong" | "Mixed" | "Weak";
     fraction: string;
     scrollQuote: string;
     audienceArchetype: string;
     predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
-    personas: FlashPersona[];             // for the FLYWHEEL-02 pin
+    personas: FlashPersona[];             // for the FLYWHEEL-02 pin + per-card modal feed (S3′)
     generationIndex: number;              // preserves generation order for tie-break
   }
 
   /**
-   * 14-02 best-of-N + flop pass: over-generate → PARALLEL SIM band per candidate →
-   * band gate. S5: the rubric critic was OFF by default and ~100% fail — removed; the
-   * gate is the SIM band alone (KCQ-05): keep iff band !== "Weak". Ranking happens AFTER,
-   * on the returned survivors (D-01 gate-then-rank preserved).
+   * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
+   * (ranked) — no Weak cut, no trim. The ONLY drop is a candidate with a missing/invalid
+   * reaction (rare — whole-batch parse failure, or a single malformed candidate): it can't
+   * be shown without a real reaction (honesty spine — we never fabricate a band). Ranking
+   * happens AFTER, on the returned rated candidates (D-01 order preserved).
    */
-  async function gateHooks(hookBatch: StructuredHook[]): Promise<SurvivorCandidate[]> {
-    const judged = await Promise.all(
-      hookBatch.map(async (hook, i) => {
-        const seed = hook.seedHook ?? hook.hookLine;
-        const simResult = await runFlashTextMode(seed, "hook", panel, audienceRepaint, simIntent).catch(
-          (err) => {
-            const msg = err instanceof Error ? err.message : String(err);
-            allWarnings.push(`SIM failed for hook "${hook.hookLine.slice(0, 60)}": ${msg}`);
-            return null; // null = failed SIM → treat as Weak (drop)
-          },
+  async function rateHooks(hookBatch: StructuredHook[]): Promise<RatedCandidate[]> {
+    // Stable ids = generation index (echoed by the model, mapped back; positional fallback).
+    const candidates = hookBatch.map((hook, i) => ({
+      id: String(i),
+      text: hook.seedHook ?? hook.hookLine,
+    }));
+
+    const batch = await runFlashTextModeBatch(
+      candidates,
+      "hook",
+      panel,
+      audienceRepaint,
+      simIntent,
+    ).catch((err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      allWarnings.push(`Batched SIM failed for hooks: ${msg}`);
+      return null; // hard failure → no cards (no auto-regen; user-pressed rewrite handles retry)
+    });
+    if (!batch) return [];
+    allWarnings.push(...batch.warnings);
+
+    const out: RatedCandidate[] = [];
+
+    hookBatch.forEach((hook, i) => {
+      const sim = batch.results.get(String(i));
+      if (!sim) {
+        // Un-scorable candidate → drop (can't show a card with no reaction). Keep-all
+        // never fabricates a band; a missing reaction is the only reason a hook drops.
+        allWarnings.push(
+          `SIM produced no reaction for hook "${hook.hookLine.slice(0, 60)}" — dropped`,
         );
-        return { hook, simResult, generationIndex: i };
-      }),
-    );
+        return;
+      }
 
-    const out: SurvivorCandidate[] = [];
-
-    for (const { hook, simResult, generationIndex } of judged) {
-      if (simResult === null || simResult === undefined) continue; // SIM failed → drop
-
-      const personas = simResult.result.personas;
+      const personas = sim.personas;
       const { band, fraction } = aggregateFlash(personas, flashWeighting);
 
-      // GATE (KCQ-05): keep iff band !== "Weak".
-      if (band === "Weak") continue;
+      // S3′: NO Weak gate — keep ALL rated bands (rank handles ordering).
 
       // D-02: select lead scrollQuote NOW — ships on the card face (WARNING-4)
       const scrollQuote = selectLeadScrollQuote(personas);
@@ -403,36 +422,29 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         audienceArchetype,
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas,
-        generationIndex,
+        generationIndex: i,
       });
-    }
+    });
 
     return out;
   }
 
-  // First over-generate batch.
+  // Generate exactly HOOK_COUNT hooks (no over-gen buffer — all are shown).
   const firstBatch = await generateHooksStructured(userMessage);
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
   }
 
-  let survivors = await gateHooks(firstBatch);
+  // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
+  // keep-all + user-pressed rewrite (PR-3) replaces the auto-regenerate-on-zero loop.
+  const rated = await rateHooks(firstBatch);
 
-  // ── CONDITIONAL REGEN (D-06): regenerate ONCE only when ZERO candidates pass ──
-  // Never an unbounded serial loop — one extra parallel over-generate pass, then
-  // proceed with whatever survives (may still be 0 — "0 blocks is valid").
-  if (survivors.length === 0) {
-    const secondBatch = await generateHooksStructured(userMessage);
-    if (secondBatch.length > 0) {
-      survivors = await gateHooks(secondBatch);
-    }
-  }
-
-  // ── RANK + TRIM (D-01): order by band tier → fraction, keep top MAX_HOOKS ──
-  // Primary: band tier (Strong=0 > Mixed=1)
+  // ── RANK (keep-all): order by band tier → fraction → generation order. No Weak cut,
+  //    no trim below what was generated; slice(HOOK_COUNT) is a safety bound only. ──
+  // Primary: band tier (Strong=0 > Mixed=1 > Weak=2)
   // Secondary: stop-count descending (numerator of fraction string)
   // Tie-break: preserve generation order (lower generationIndex ranks first)
-  survivors.sort((a, b) => {
+  rated.sort((a, b) => {
     const bandDiff = bandOrdinal(a.band) - bandOrdinal(b.band);
     if (bandDiff !== 0) return bandDiff;
     const fractionDiff =
@@ -441,7 +453,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     return a.generationIndex - b.generationIndex; // preserve generation order
   });
 
-  const ranked = survivors.slice(0, MAX_HOOKS);
+  const ranked = rated.slice(0, HOOK_COUNT);
 
   // ── BUILD: assemble hook-card blocks with rank ──────────────────────────────
   const blocks: HookCardBlock[] = [];
@@ -464,6 +476,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         model: "sim1-flash" as const,
         channel: candidate.hook.channel,
         predictedFailureMode: candidate.predictedFailureMode, // KCQ-04 (null on clean pass)
+        personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
       },
     };
 
@@ -481,10 +494,10 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
   // Pin the rank-1 hook's personas (the hook most likely posted), falling back to
-  // the first survivor that resolved so a run that produced any survivor pins a vector.
+  // the first rated candidate so a run that produced any reaction pins a vector.
   // void (not awaited): never delays card render; pinPredictedSignature swallows errors.
   if (input.pin) {
-    const pinnedPersonas = ranked[0]?.personas ?? survivors[0]?.personas ?? null;
+    const pinnedPersonas = ranked[0]?.personas ?? rated[0]?.personas ?? null;
     if (pinnedPersonas && pinnedPersonas.length > 0) {
       const audienceId = audience && !audience.is_general ? audience.id : null;
       void pinPredictedSignature(input.pin.supabase, pinnedPersonas, {
