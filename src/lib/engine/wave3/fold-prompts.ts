@@ -5,9 +5,10 @@
  * - `STABLE_FOLD_SYSTEM_PROMPT` — byte-identical across every video (cache prefix, D-17 + D-03).
  *   Contains ALL 10 ARCHETYPE_DEFINITIONS verbatim + the Critical Divergence Requirement (D-06).
  *   Never interpolates Date.now() / Math.random() / request IDs.
- * - `buildFoldUserContent(slots, segments, verbatim, emotionArc)` — OpenAI content array with a
- *   single text block. Fold reasons over Omni's TEXT (verbatim + segments + emotion arc); it does
- *   NOT consume video frames (the keyframe-read path was dead — filmstrip lands async, after fold).
+ * - `buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl)` — OpenAI content array:
+ *   the video (when present) + a text block (verbatim + segment grid + emotion arc + slot niche).
+ *   The fold runs on qwen3.7-plus — SIGHTED (watches the video) but DEAF; audio arrives as text via
+ *   each segment's `audio_event` (omni runs only as the Wave 0 sensor). 2026-06-25.
  * - `FoldResponseSchema` — Zod validates the 20→1 fold output at the model boundary:
  *   exactly 10 archetypes (.length(10), D-01), attention clamped [0,1]. Per-segment
  *   `reason` was dropped 2026-06-05 (dead weight) — any stray reason is Zod-stripped.
@@ -78,7 +79,12 @@ Require relative drop-point ordering grounded in the definitions above:
 - loyalist stays latest (gives the creator benefit of the doubt, watches longer)
 - All other archetypes fall between these extremes according to their definitions
 
-Do NOT homogenize curves. Each archetype MUST behave distinctly per its profile.
+## Independence (critical)
+
+Simulate each archetype strictly on its OWN profile, independently. Do NOT let one archetype's
+curve bias another, do NOT average or normalize attention across the 10, do NOT copy a shape from
+one persona to the next. Each archetype reaches its own attention level and its own swipe moment
+based solely on its definition. Near-identical curves across archetypes is a FAILURE.
 
 ## Output Schema
 
@@ -134,10 +140,10 @@ TYPE RULES (STRICT — a wrong type breaks parsing and discards the whole result
 
 // =====================================================
 // Volatile per-request user content builder.
-// Returns OpenAI content array: an optional video item + one text block. The fold now
-// runs on a sense-complete omni model (qwen3.5-omni-plus) and WATCHES the video directly
-// (video+audio) — the text block (verbatim + segments + emotion arc) is the shared
-// skeleton from the read that keeps the fold's curves aligned to the canonical timeline.
+// Returns OpenAI content array: an optional video item + one text block. The fold runs on
+// qwen3.7-plus and WATCHES the video (sighted; deaf — audio is in the text block's audio_event).
+// The text block (verbatim + segments + emotion arc) is the shared skeleton from the Wave 0
+// read that keeps the fold's curves aligned to the canonical timeline.
 // =====================================================
 
 type ContentItem =

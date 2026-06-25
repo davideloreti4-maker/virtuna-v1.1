@@ -8,7 +8,7 @@
  * This module imports ONLY from:
  *   - flash/* (flash-schema.ts, flash-prompts.ts)
  *   - wave3/persona-registry.ts (D-05 — data-driven personas)
- *   - qwen/client.ts (getQwenClient, QWEN_SEED, QWEN_FAST_MODEL)
+ *   - qwen/client.ts (getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL)
  *   - utils/strip (stripModelOutput)
  * It MUST NOT import pipeline.ts, aggregator.ts, version.ts, or any wave3/fold*.ts.
  *

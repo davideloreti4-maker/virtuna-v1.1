@@ -15,9 +15,9 @@
  * Diversity guard utility functions (computeAvgCurveRange, checkDiversityGuard) live here
  * as pure helpers used by this orchestrator post-parse, per PATTERNS.md §fold.ts.
  *
- * D-08 bounds: FOLD_THINKING_BUDGET=4000 (2× pass2's 2000), FOLD_MAX_TOKENS=8000.
+ * D-08 bounds: FOLD_MAX_TOKENS=8000 (thinking OFF — the fold is a simulation, not reasoning).
  * T-04-01 mitigation: FoldResponseSchema.safeParse + segment-count guard at model boundary.
- * T-04-02 mitigation: thinking_budget + max_tokens + AbortController PER_CALL_TIMEOUT_MS.
+ * T-04-02 mitigation: max_tokens + AbortController PER_CALL_TIMEOUT_MS.
  * T-04-03 mitigation: STABLE_FOLD_SYSTEM_PROMPT byte-stable (verified: no Date.now/Math.random calls).
  */
 
@@ -33,7 +33,7 @@ import {
   type FoldResponse,
 } from "./fold-prompts";
 import type { PersonaSlot } from "./persona-registry";
-import { getQwenClient, QWEN_REASONING_MODEL, QWEN_FAST_MODEL, QWEN_SEED } from "../qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "../qwen/client";
 import { stripModelOutput } from "../utils/strip";
 import type { PersonaSimulationResult, SegmentGrid, EmotionArcPoint } from "../types";
 import type { Pass2PersonaResult } from "./weighted-aggregator";
@@ -43,60 +43,44 @@ const log = createLogger({ module: "wave3.fold" });
 // =====================================================
 // D-08 bounds — env-overridable for latency tuning.
 // PER_CALL_TIMEOUT_MS mirrors pass2.ts:36 (CR-03 tail latency lesson).
-// 90s is also the fold's LATENCY BUDGET: the fold only earns the flip if its
-// single call beats the 10-pass on wall-clock, so the cap is a hard ceiling,
-// not a soft limit to be raised. If the fold can't fit, make it cheaper
-// (lower FOLD_THINKING_BUDGET), don't extend the timeout.
-// FOLD_THINKING_BUDGET: 2× pass2's 2000 (single call outputs 10 archetypes).
+// 90s is also the fold's LATENCY BUDGET: a hard ceiling, not a soft limit to be raised.
+// If the fold can't fit, make the call cheaper (lower FOLD_MAX_TOKENS), don't extend it.
 // FOLD_MAX_TOKENS: sized for 10-archetype × N-segment output.
 // =====================================================
 
 const PER_CALL_TIMEOUT_MS = 90_000;
-// FOLD_THINKING_BUDGET default 1000: A/B-validated (2026-06-05) — budget=1000 returned
-// in 89.9s (just under PER_CALL_TIMEOUT_MS=90s) with diverse curves on the good video.
-// Margin is thin; future work may trim FOLD_MAX_TOKENS for additional headroom.
-// Do NOT raise PER_CALL_TIMEOUT_MS — the fold only earns the flip if it beats the 10-pass.
-const FOLD_THINKING_BUDGET = Number(process.env.FOLD_THINKING_BUDGET) || 1000;
-// FOLD_MAX_TOKENS default 4000 (was 8000, trimmed 2026-06-05): with per-segment
-// `reason` dropped, the output is smaller + tighter — 4000 covers 10-archetype ×
-// N-segment numeric output and buys headroom against the thin 90s timeout. Override
-// via env if a long video truncates (→ Zod fail → graceful deepseek fallback).
-const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 4000;
-// Sense-complete fold: the fold runs on an OMNI model and WATCHES the video directly
-// (video+audio) — it simulates moment-to-moment viewer attention, driven by what's seen
-// AND heard, and only omni hears.
-// DEFAULT FLIPPED omni-plus → omni-FLASH 2026-06-11 (harness A/B, scripts/fold-audio-ab.ts,
-// 2 clean videos: 29s comedy + 13s booth): omni-flash is 5–6× FASTER (8s vs 40–52s on the
-// gating call) + ~3.5× cheaper, with diversity tracking omni-plus within ±0.04 (0.27–0.41,
-// PASS) and audio retained. The OLD fold-vision-spike claim that omni-flash "collapses to
-// ~0.0" did NOT reproduce on the current prompt — it was the bare-JSON.parse bug (omni-flash
-// wraps output in fences / a stray trailing ```), now fixed via stripModelOutput above.
-// Drop-off-moment fidelity vs omni-plus diverged on 1 video, but is unprovable either way
-// without retention ground truth (deferred outcome model). DEFERRED (noted, not built):
-// persona-split into 2 calls + a segment cap for long-video output robustness (a 79s video
-// → ~20 segments → fold output may exceed FOLD_MAX_TOKENS; revisit if a long video truncates).
-// Escape hatches:
-//   FOLD_MODEL=omni-plus → qwen3.5-omni-plus (the pre-2026-06-11 sense-complete default — ROLLBACK)
-//   FOLD_MODEL=plus      → qwen3.6-plus reasoning model (deaf, ~88s — diagnostic only)
-//   FOLD_MODEL=flash     → qwen3.6-flash (the deaf+blind text fold — pre-2026-06-06 default)
-//   FOLD_THINKING=1      → enable_thinking + thinking_budget (omni does not think — no-op unless FOLD_MODEL=plus)
-const FOLD_MODEL =
-  process.env.FOLD_MODEL === "plus"      ? QWEN_REASONING_MODEL
-  : process.env.FOLD_MODEL === "flash"   ? QWEN_FAST_MODEL
-  : process.env.FOLD_MODEL === "omni-plus" ? "qwen3.5-omni-plus"
-  : (process.env.FOLD_MODEL ?? "qwen3.5-omni-flash");
-const FOLD_USE_THINKING = process.env.FOLD_THINKING === "1";
+// FOLD_MAX_TOKENS default 8000 (reconciled to MODEL-POLICY 2026-06-25): output scales with
+// segment count (10 personas × N segments × {attention,swipe} + 6 intents each); 4000 risked
+// truncation → Zod fail → silent audience-half drop on long videos. Unused max_tokens isn't
+// billed (rail, not lever) — a tight cap is the only real risk. Override via env.
+const FOLD_MAX_TOKENS = Number(process.env.FOLD_MAX_TOKENS) || 8000;
+// Model (2026-06-25): qwen3.7-plus — SIGHTED (watches the video) but DEAF; audio arrives as
+// text via Wave 0's per-segment `audio_event`. omni-flash retired from the fold — omni now runs
+// ONLY as the Wave 0 sensor (the one place audio is ingested). plus is smart enough to keep the
+// 10 personas DISTINCT: the old diversity collapse was a small-model + greedy + single-call
+// artifact, not a model-capability limit. thinking stays OFF — this is a SIMULATION, not a
+// reasoning task; the independence directive in fold-prompts.ts is the divergence lever.
+// Env override: FOLD_MODEL=<raw model id> for experiments.
+const FOLD_MODEL = process.env.FOLD_MODEL ?? QWEN_REASONING_MODEL;
+// FOLD_TEMPERATURE default 0 (greedy = reproducible scores). Reproducibility is no longer a
+// HARD requirement (2026-06-25); the diversity retry below auto-perturbs temperature on a
+// collapse, and this env lets the operator raise the BASE temperature if needed.
+const FOLD_TEMPERATURE = Number(process.env.FOLD_TEMPERATURE) || 0;
+// On a diversity-collapse retry, PERTURB temperature so the re-attempt can actually diverge.
+// (The old retry re-ran the identical deterministic call → byte-identical collapse = a no-op.)
+const FOLD_DIVERSITY_RETRY_TEMP = Number(process.env.FOLD_DIVERSITY_RETRY_TEMP) || 0.7;
 const COST_ALERT_THRESHOLD_CENTS = 50; // D-24 pattern from pass2.ts
 
-// F18/F19/F20 (plan 01-05) — bounded fold retry. The default fold (omni-flash, no thinking) is
-// ~8s, so it gets ONE re-attempt on a transient parse/validation/timeout failure (and one
-// diversity retry-nudge), each bounded by FOLD_ATTEMPT_TIMEOUT_MS — 2 × 40s = 80s < the 90s
-// PER_CALL_TIMEOUT_MS HARD ceiling, which is NEVER raised (PITFALL 2). The thinking/plus
-// diagnostic path (a single legit ~88s call) keeps its prior single-attempt 90s budget so the
-// retry never aborts a legitimately-slow plus call.
-const FOLD_RETRY_ATTEMPTS = FOLD_USE_THINKING ? 1 : 2;
+// F18/F19/F20 (plan 01-05) — bounded fold retry: ONE re-attempt on a transient parse/
+// validation/timeout failure (F18; salvage valid personas, F20) + one diversity retry-nudge
+// (F19) that now PERTURBS temperature (FOLD_DIVERSITY_RETRY_TEMP) so it is no longer a no-op.
+// Each attempt bounded by FOLD_ATTEMPT_TIMEOUT_MS; 2 × 45s = 90s = the PER_CALL_TIMEOUT_MS
+// HARD ceiling, which is NEVER raised (PITFALL 2 — make the call cheaper, not the timeout).
+const FOLD_RETRY_ATTEMPTS = 2;
+// The 2 attempts share the 90s ceiling (45s each) — derived so the ceiling stays the single
+// source of truth (never raise PER_CALL_TIMEOUT_MS; make the call cheaper instead).
 const FOLD_ATTEMPT_TIMEOUT_MS =
-  Number(process.env.FOLD_ATTEMPT_TIMEOUT_MS) || (FOLD_USE_THINKING ? PER_CALL_TIMEOUT_MS : 40_000);
+  Number(process.env.FOLD_ATTEMPT_TIMEOUT_MS) || Math.floor(PER_CALL_TIMEOUT_MS / FOLD_RETRY_ATTEMPTS);
 // F20 salvage floor — keep the audience read meaningful: succeed when ≥6 of 10 archetype personas
 // have a valid segment-reaction count, dropping only the mismatched ones (was all-or-nothing).
 const MIN_VALID_PERSONAS = 6;
@@ -291,14 +275,14 @@ export function adaptFoldToPass2Results(
 // =====================================================
 
 /**
- * Fire ONE bounded qwen3.6-plus thinking call to produce behavioral intents + segment
- * reactions for all 10 archetypes simultaneously (the 20→1 fold).
+ * Fire ONE bounded qwen3.7-plus call (sighted, deaf, thinking OFF) to produce behavioral
+ * intents + segment reactions for all 10 archetypes simultaneously (the 20→1 fold).
  *
  * The call pattern mirrors pass2.ts:134-300 with these deltas:
  * - No 10× loop — single call covers all archetypes
- * - FOLD_THINKING_BUDGET (4000) vs PASS2_THINKING_BUDGET (2000): larger output shape
+ * - thinking OFF — a simulation, not a reasoning task (independence directive is the lever)
  * - FOLD_MAX_TOKENS (8000) caps the 10-archetype × N-segment response
- * - No retry loop — one attempt + validate + segment-count guard
+ * - Bounded retry (2× 45s): parse/validation salvage + a temperature-perturbing diversity nudge
  *
  * Emits wave_3_fold stage events so the referee can assert exactly 1 audience-sim call.
  */
@@ -313,7 +297,7 @@ export async function runFold(
   const stageStart = emitStageStart(onStageEvent, "wave_3_fold", 4);
 
   const ai = getQwenClient();
-  log.info("fold start", { model: FOLD_MODEL, thinking: FOLD_USE_THINKING, segments: segments.length });
+  log.info("fold start", { model: FOLD_MODEL, segments: segments.length });
   const warnings: string[] = [];
   let fold_success = false;
   let costCents = 0;
@@ -334,18 +318,15 @@ export async function runFold(
     ],
     response_format: { type: "json_object" as const },
   };
-  if (FOLD_USE_THINKING) {
-    // @ts-expect-error — DashScope extension: enable_thinking not in OpenAI types
-    callParams.enable_thinking = true;
-    // @ts-expect-error — DashScope extension: thinking_budget not in OpenAI types (D-08)
-    callParams.thinking_budget = FOLD_THINKING_BUDGET;
-  }
-  // @ts-expect-error — temperature:0 + seed = reproducible fold scores (R8)
-  callParams.temperature = 0;
-  // @ts-expect-error — seed pins residual nondeterminism in thinking mode (R8)
+  // @ts-expect-error — DashScope extension: thinking OFF (simulation, not reasoning)
+  callParams.enable_thinking = false;
+  // @ts-expect-error — seed pins residual sampling nondeterminism
   callParams.seed = QWEN_SEED;
   // @ts-expect-error — max_tokens caps the 10-archetype × N-segment output (D-08)
   callParams.max_tokens = FOLD_MAX_TOKENS;
+  // temperature is set PER-ATTEMPT in the loop below: base FOLD_TEMPERATURE, then perturbed to
+  // FOLD_DIVERSITY_RETRY_TEMP on a diversity-collapse retry (so the re-attempt can diverge).
+  let attemptTemperature = FOLD_TEMPERATURE;
 
   // F18/F19/F20 (plan 01-05) — bounded retry loop. ONE re-attempt on a transient
   // parse/validation/timeout failure (F18) so a single hiccup no longer silently drops the
@@ -355,6 +336,8 @@ export async function runFold(
   for (let attempt = 1; attempt <= FOLD_RETRY_ATTEMPTS; attempt++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), FOLD_ATTEMPT_TIMEOUT_MS);
+    // @ts-expect-error — DashScope temperature; perturbed on a diversity-collapse retry
+    callParams.temperature = attemptTemperature;
     try {
       const response = await ai.chat.completions.create(callParams as never, { signal: controller.signal });
       clearTimeout(timer);
@@ -419,14 +402,16 @@ export async function runFold(
       const salvaged: FoldResponse = { ...validated.data, personas: validPersonas };
 
       // F19 diversity nudge: below DIVERSITY_FLOOR the curves are homogenized. Keep this result as
-      // a fallback, then nudge ONE retry (cheap on flash) before accepting; on the final attempt,
-      // accept with the warn-only fallback (never throw — D-07).
+      // a fallback, then nudge ONE retry before accepting; on the final attempt, accept with the
+      // warn-only fallback (never throw — D-07). The retry PERTURBS temperature so it can actually
+      // diverge (a same-temp re-run of a deterministic call would just reproduce the collapse).
       const avgRange = computeAvgCurveRange(validPersonas);
       const { warn } = checkDiversityGuard(avgRange);
       if (warn && attempt < FOLD_RETRY_ATTEMPTS) {
         bestEffort = salvaged;
+        attemptTemperature = FOLD_DIVERSITY_RETRY_TEMP;
         warnings.push(
-          `fold diversity retry-nudge: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (attempt ${attempt}) — retrying for diversity (D-07/F19)`,
+          `fold diversity retry-nudge: avgCurveRange=${avgRange} below DIVERSITY_FLOOR=${DIVERSITY_FLOOR} (attempt ${attempt}) — retrying at temperature=${attemptTemperature} for diversity (D-07/F19)`,
         );
         continue;
       }
