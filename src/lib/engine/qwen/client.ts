@@ -39,7 +39,10 @@ export const QWEN_OMNI_MODEL      = process.env.QWEN_OMNI_MODEL      ?? "qwen3.5
 // is newer, faster + cheaper at equal insight, and accepts the same DashScope params.
 // Not separately A/B'd on chat/decode/adapt this session. Rollback: QWEN_REASONING_MODEL=qwen3.6-plus.
 export const QWEN_REASONING_MODEL = process.env.QWEN_REASONING_MODEL ?? "qwen3.7-plus";
-export const QWEN_FAST_MODEL      = process.env.QWEN_FAST_MODEL      ?? "qwen3.6-flash";
+// QWEN_FAST_MODEL (qwen3.6-flash) RETIRED 2026-06-25 — the platform runs on two models only:
+// QWEN_OMNI_MODEL (the Wave 0 / audience-bake sensor) + QWEN_REASONING_MODEL (everything else).
+// With thinking OFF the plus/flash latency gap is small while plus holds outputs far more
+// distinct (the SIM + fold both moved off flash). See docs/MODEL-POLICY.md.
 // Apollo reasoner model (the score-mode judge in deepseek.ts) — SCOPED separately from
 // QWEN_REASONING_MODEL so Apollo can move independently of chat/decode/adapt/text-mode.
 // Flipped 3.6-plus → 3.7-plus 2026-06-11 (harness A/B, scripts/apollo-cite-harness.ts):

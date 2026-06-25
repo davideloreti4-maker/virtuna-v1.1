@@ -8,17 +8,17 @@
  * This module imports ONLY from:
  *   - flash/* (flash-schema.ts, flash-prompts.ts)
  *   - wave3/persona-registry.ts (D-05 — data-driven personas)
- *   - qwen/client.ts (getQwenClient, QWEN_SEED, QWEN_FAST_MODEL)
+ *   - qwen/client.ts (getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL)
  *   - utils/strip (stripModelOutput)
  * It MUST NOT import pipeline.ts, aggregator.ts, version.ts, or any wave3/fold*.ts.
  *
  * Call envelope mirrors runFold (wave3/fold.ts):
  *   getQwenClient + AbortController + temperature:0 + seed:QWEN_SEED +
  *   response_format:json_object + stripModelOutput → coerceFlashResponse → safeParse.
- * Model is resolved behind FLASH_MODEL env, defaulting to QWEN_FAST_MODEL (qwen3.6-flash).
+ * Model is resolved behind FLASH_MODEL env, defaulting to QWEN_REASONING_MODEL (qwen3.7-plus).
  */
 
-import { getQwenClient, QWEN_SEED, QWEN_FAST_MODEL } from "../qwen/client";
+import { getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL } from "../qwen/client";
 import { stripModelOutput } from "../utils/strip";
 import {
   FlashResultSchema,
@@ -42,12 +42,13 @@ export type { FlashFraming, NichePanel, IntentLens };
 export type { ContentTypeSlug };
 
 // ─── Model resolution (FLASH_MODEL env seam — Open Q1 / A2) ──────────────────
-// FLASH_MODEL env lets the operator substitute a different flash model for testing.
-// Defaults to QWEN_FAST_MODEL (qwen3.6-flash) — the flash-tier inference model.
-// NOTE: the model label "sim1-flash" is a PRODUCT label (D-09/D-10); the underlying
-// model is resolved here at the infrastructure layer.
+// FLASH_MODEL env lets the operator substitute a different model for testing.
+// Defaults to QWEN_REASONING_MODEL (qwen3.7-plus). 3.6-flash was retired platform-wide
+// (2026-06-25): with thinking OFF the plus/flash latency gap is small while plus holds
+// persona reactions far more distinct. The SIM badge "sim1-flash" stays a PRODUCT label
+// (flash = text-only call; max = with-video) — it is NOT the underlying model id (D-09/D-10).
 
-const FLASH_MODEL = process.env.FLASH_MODEL ?? QWEN_FAST_MODEL;
+const FLASH_MODEL = process.env.FLASH_MODEL ?? QWEN_REASONING_MODEL;
 
 // ─── Timeout (mirrors fold.ts PER_CALL_TIMEOUT_MS) ───────────────────────────
 // Flash is a single bounded JSON call (~8–17s on flash models).
