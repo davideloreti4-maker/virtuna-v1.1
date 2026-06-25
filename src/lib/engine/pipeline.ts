@@ -18,7 +18,7 @@ import {
 } from "./types";
 import { normalizeInput } from "./normalize";
 import { analyzeVideoWithOmni } from "./qwen/omni-analysis";
-import { getQwenClient, QWEN_REASONING_MODEL } from "./qwen/client";
+import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "./qwen/client";
 import { calculateCost } from "./qwen/cost";
 import { stripModelOutput } from "./utils/strip";
 import { reasonWithDeepSeek } from "./deepseek";
@@ -602,14 +602,25 @@ export async function runPredictionPipeline(
       return await timed("gemini_analysis", timings, async () => {
         const ai    = getQwenClient();
         const model = QWEN_REASONING_MODEL;
-        const completion = await ai.chat.completions.create({
+        // Text-only analysis (no-video path). Reviewed 2026-06-25 (model policy): pin
+        // determinism (temperature:0 + seed) + thinking OFF (3.7-plus defaults thinking ON →
+        // latency) + a max_tokens rail (was unbounded → runaway risk). 5 factors + summaries
+        // measure ~600-900 output → 2000 is ~2× headroom (rail, not lever).
+        const geminiParams = {
           model,
           messages: [
             { role: "system", content: "You are a TikTok content analyst. Analyze the provided content and return a JSON object with fields: factors (array of 5 with name, score 0-10, rationale, improvement_tip), overall_impression (string), content_summary (string). Factor names must be exactly: Scroll-Stop Power, Completion Pull, Rewatch Potential, Share Trigger, Emotional Charge." },
             { role: "user",   content: `Analyze this TikTok content:\n\n${validated.content_text ?? "(no text provided)"}` },
           ],
-          response_format: { type: "json_object" },
-        });
+          response_format: { type: "json_object" as const },
+          temperature: 0,
+          max_tokens: 2000,
+        };
+        // @ts-expect-error — DashScope extensions not in OpenAI types
+        geminiParams.seed = QWEN_SEED;
+        // @ts-expect-error — DashScope extension: thinking-off
+        geminiParams.enable_thinking = false;
+        const completion = await ai.chat.completions.create(geminiParams as never);
         const raw    = completion.choices[0]?.message?.content ?? "{}";
         const text   = stripModelOutput(raw);
         const parsed = JSON.parse(text);
