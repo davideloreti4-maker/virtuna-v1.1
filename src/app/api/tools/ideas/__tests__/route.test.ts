@@ -193,7 +193,7 @@ describe("POST /api/tools/ideas (route)", () => {
     // KC_GEN_VERSION stamp persisted via insertMessage: blocks array is the 3rd arg
     // (canonical body), kcGenVersion the 4th arg (insertMessage stores the wrapper).
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(threadId).toBe("thread-abc");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);
@@ -343,7 +343,7 @@ describe("POST /api/tools/ideas/develop (chain-anchor route)", () => {
     expect(json.messageId).toBe("msg-hooks");
 
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(threadId).toBe("thread-hooks");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);

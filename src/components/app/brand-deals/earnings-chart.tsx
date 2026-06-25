@@ -26,7 +26,7 @@ function EarningsTooltip({
   active,
   payload,
   label,
-}: TooltipContentProps): React.JSX.Element | null {
+}: TooltipContentProps<number, string>): React.JSX.Element | null {
   if (!active || !payload?.length) return null;
 
   return (
