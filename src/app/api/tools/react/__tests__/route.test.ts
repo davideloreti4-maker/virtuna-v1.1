@@ -162,7 +162,7 @@ describe("POST /api/tools/react", () => {
     await POST(makeRequest({ text: "5 myths about protein, busted" }));
 
     expect(runFlashTextMode).toHaveBeenCalledTimes(1);
-    const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0];
+    const call = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]!;
     const [text, framing, panel] = call;
     expect(text).toBe("5 myths about protein, busted");
     expect(framing).toBe("hook"); // default framing (RESEARCH A1)
