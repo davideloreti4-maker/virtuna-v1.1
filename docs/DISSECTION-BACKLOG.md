@@ -124,7 +124,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 | G1 | 🟢 | `_dormant/` tree (80 files, 6.3K prod + 6.4K test LOC), zero hot-path imports | `src/lib/engine/_dormant/` | FIXED 8e84b201 |
 | G2 | 🟢 | Dead-shipped simulation UI (14 comp + test-creation-flow, ~1.8K LOC) | `src/components/app/simulation/*` | FIXED bbee1774 |
 | G3 | 🟢 | `refresh-corpus` cron stub (no-op) | `cron/refresh-corpus/route.ts:23` | OPEN |
-| G4 | 🟡 | Fake §N chat citations (no real RAG) — fix taxonomy or drop | `chat/seed-context.ts:90-106` | OPEN |
+| G4 | 🟡→🟢 | **DROPPED — fake §N chat citations removed.** Apollo's chat system prompt instructed the model to "cite a corpus section as §N" + carried a 10-line CORPUS SECTION MAP (§1–§10) — but there is NO retrieval behind it (G-D: M2 RAG stubbed/dead), so every §N was theater. No UI consumed it (ExpertChatThread parses only `FRAME:<name>`, a separate real mechanism — left intact). FIX: removed the §-citation RULE line + the entire section map from `seed-context.ts` (prompt-only, engine-lane, no UI). Apollo stays expert + grounded-in-the-analysis-data, just no fake corpus refs. Chat suite 101/101 green; tsc unchanged (15). | `chat/seed-context.ts` | FIXED (working tree) |
 | G-D | 🎯 | **DECIDED: M2 RAG is NOT alive** — query path stubbed (`pipeline.ts:34` uses `createEmptyRetrievalResult`; `runBenchmarkRetrieval`/`retrieval-stage`/`pgvector` never called in prod). Cut DEFERRED: `engine/retrieval/` (888+1495 test LOC) is entangled with the MIXED `engine/corpus/` dir (live utils `follower-tier`/`embedder`/`thresholds` + dead eval/RAG harness) → needs a per-module surgical pass w/ cascade check, NOT a wholesale delete. | `engine/retrieval/`, `engine/corpus/` | DEFERRED (verdict logged) |
 
 ---
