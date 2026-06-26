@@ -54,13 +54,15 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 
 | Debt source | Location | Scope |
 |---|---|---|
-| **Engine dissection** | `docs/DISSECTION-BACKLOG.md` (main) | engine refinements/cuts. R1/Part B/omni/R2/R4 DONE; OPEN = R3 (post-launch A/B), R5, E2, G3, A6, A-T, S6 — all lower-value |
-| **v6.0 deferred work** | `~/virtuna-numen-tools/.planning/DEBT-BACKLOG.md` | gen reliability, latency, P15/16/17, rebrand sweep |
+| **Engine dissection** | `docs/DISSECTION-BACKLOG.md` (main) | scope-COMPLETE (§01–§05, 16 FIXED + 5 RESOLVED). OPEN = low-value polish only: R3, R5, E2, G3, A6, A-T, S6. |
+| **Production-readiness / hardening** | `DISSECTION-BACKLOG.md` TOP table (added 2026-06-26) + GitHub **#7–12, #41** | items OUTSIDE the dissection scope: route RLS/concurrency (un-audited), rate-limit HARDEN-01, SSRF #9, `/api/outcomes` #41, GAP-REMIX-01 — all UNVERIFIED on main; spot-check before trusting. |
+| **v6.0 deferred work** | `~/virtuna-numen-tools/.planning/DEBT-BACKLOG.md` ⚠ **STALE — OVER-REPORTS** | gen latency, P13 finish, P15/16/17→v6.1, rebrand sweep. A 2026-06-26 spot-check DISPROVED its flywheel-dormant + gen-retry-needed + rubric-critic claims (already resolved on main). |
 | **GSI vision** | `.planning/NUMEN-GSI-VISION.md` (main) | the horizontal milestone (next big build) |
 | **Parked decisions** | memory: `engine-model-assignment`, `chat-citations-not-grounded`, `rubric-critic-deactivated` | model stack (now 2-model + validated), fake §pills (dropped #51), critic (cut #...) |
 
 **Cross-cutting (not yet fully in any SSOT):**
-- `feat/creator-voice-sample` merge/abandon decision (§1).
+- ⚠ **Pre-GSI production-readiness pass** (spot-verified 2026-06-26 — see DISSECTION-BACKLOG TOP table): the FEW genuine items = `/api/outcomes` cols (#41), SSRF allowlist (#9), GAP-REMIX-01, route RLS/concurrency audit, rate-limit HARDEN-01. None confirmed-blocking; verify on `main` before relying on the engine for a horizontal launch. The raw backlogs OVER-REPORT (flywheel pin wired, gen-retry by-design, rubric-critic resolved).
+- `feat/creator-voice-sample` → now **PR #60 OPEN** (rebase + review).
 - main eslint regression (UI-lane) — **count UNVERIFIED 2026-06-26** (was reported 39err/66warn at the UI merge); re-check on `main`, owned by UI worktree.
 - Part B per-persona reaction MODAL on the Read hero — UI-lane (the SIM-1 Max badge already ships; only the modal remains).
 - Competitor-intelligence (`src/lib/ai/*`) on deepseek-chat + gemini-2.5-flash-lite — provider-consolidation decision.
