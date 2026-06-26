@@ -29,13 +29,13 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 | `~/virtuna-viral-remix/` | `milestone/viral-remix` | In progress (v3.2) |
 | `~/virtuna-viral-remix-adapt/` | `milestone/viral-remix-adapt` | In progress |
 | `~/virtuna-landing/` | `milestone/landing` | In progress |
-| `~/virtuna-engine-rework/` | `rework/engine-core` | **Active (engine track).** Production-readiness dissection/rework (audience signature, calibration, scraping). ~8 commits ahead of main. Stays in `src/lib/**`, `src/app/api/**`, `supabase/**`, `docs/subsystems/**`, types — PLUS 2 UI-lane files (`src/components/audience/calibration-flow.tsx`, `audience-reveal.tsx`). Coordinate before UI edits there. |
+| `~/virtuna-engine-rework/` | idle (was `rework/engine-core`) | **Track COMPLETE 2026-06-26 — all merged to main.** Production-readiness dissection/rework (audience signature, calibration, fold/model consolidation). Headline work landed via PRs #53–#58 (R1′ 2-model stack + live-validated fold, fold↔calibrated-audience unify, omni null-coercion, R2/R4 closes, tracked ledger). Worktree now idle; remaining engine debt is all lower-value (see `docs/WORKTREE-DEBT-LEDGER.md` §0 + `docs/DISSECTION-BACKLOG.md`: R3/R5/E2/G3/A6/A-T/S6). |
 | `~/virtuna-ui-restrained/` | `design/ui-restrained` (merged) · `fix/tsc-clean-gate` (superseded) | **RETIRED 2026-06-25 — mission complete, worktree safe to remove.** Restrained de-Claude rebrand merged to main (PR #36, squash `46912461`): near-zero accent DOSAGE (liveness-only) lever, terracotta `#d97757`. Follow-ups ALL landed: P7 dead-code deletion (#45) + konva/react-konva dep removal (#46) + tsc gate→0 (#47). `fix/tsc-clean-gate` is fully superseded — every change landed via #43/#44/#45–47; verified branch-behind with zero stranded work — safe to `git worktree remove ~/virtuna-ui-restrained` + delete branch. LOCKED dosage rule in `docs/DESIGN-SYSTEM.md`; rules `.cursor/rules/ui-design.mdc`. |
 
-> Keep this table current — it's the map. Last reconciled 2026-06-25 (ui-restrained
-> RETIRED — P7 deadcode #45 + konva dep drop #46 + tsc gate→0 #47 all merged to main;
-> `fix/tsc-clean-gate` verified fully superseded, worktree safe to remove; engine-rework
-> active in parallel — see its UI-lane HOLD files above).
+> Keep this table current — but the **canonical map is now `docs/WORKTREE-DEBT-LEDGER.md`**
+> (tracked, full branch survey). Last reconciled 2026-06-26 (engine-rework track COMPLETE,
+> PRs #53–#58 merged; branch-cleanup pass — stale PR #42 closed + 18 merged-safe branches
+> pruned, 63→44 remote; ui-restrained still RETIRED, worktree safe to remove).
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 
