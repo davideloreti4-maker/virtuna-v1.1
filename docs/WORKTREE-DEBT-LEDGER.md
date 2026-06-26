@@ -3,9 +3,11 @@
 # Worktree + Branch + Debt Ledger
 
 > **The map.** Status of every branch/worktree + an index to the debt SSOTs (§3).
-> **Refreshed 2026-06-26** from a live `git` survey: **61 remote branches** — 21 merged
-> into `origin/main` (delete-safe by ancestry), 40 unmerged (most are squash-dangling or
-> active-worktree). Pointer/triage doc — indexes the detailed SSOTs, does not duplicate them.
+> **Refreshed 2026-06-26** from a live `git` survey, then a **cleanup pass same day**: stale
+> PR #42 closed + 18 merged-safe (no-worktree) branches pruned + `docs/s3-handoff` deleted →
+> **63→44 remote branches**. The 2 remaining merged-by-ancestry branches stayed ONLY because
+> they still have live worktrees (remove the worktree first — see §5). Pointer/triage doc —
+> indexes the detailed SSOTs, does not duplicate them.
 >
 > Legend: ✅ delete-safe · 🟢 keep-active · 🟡 dormant/parked (real, paused) ·
 > 🗄️ squash-dangling (content on main, branch is history) · 🧹 cursor-scratch ·
@@ -72,14 +74,15 @@ R3 post-launch-A/B, R5, E2, G3, A6, A-T, S6). **The branch cleanup (now 61 branc
 
 ## 5. Cleanup actions (now UNBLOCKED — run from `main` in a quick-fix sitting)
 
-**✅ MERGED into origin/main by ancestry (21, delete-safe):**
-`cursor/3acde074`, `design/ui-system` (⚠️ still has WT `~/virtuna-numen-ui` — remove first),
-`gsd-reviewfix/05-15361`, `gsd-reviewfix/05-6008`, `gsd-reviewfix/07-5638`,
+**✅ MERGED into origin/main by ancestry (delete-safe) — 18 DELETED 2026-06-26:**
+~~`cursor/3acde074`, `gsd-reviewfix/05-15361`, `gsd-reviewfix/05-6008`, `gsd-reviewfix/07-5638`,
 `milestone/backend-completion`, `milestone/backend-foundation`, `milestone/backend-reliability`,
-`milestone/engine-hardening`, `milestone/engine-opt`, `milestone/landing-v2` (⚠️ WT `~/virtuna-landing-v2`),
-`milestone/mvp-cut`, `milestone/mvp-ready`, `milestone/result-surface`, `phase-3-pipeline-infra`,
-`phase-5-video-segmentation`, `phase-6-audio-fingerprint`, `phase-7-multi-persona-sim`,
-`phase-8-benchmark-retrieval`, `worktree-agent-abee5b17a39191285`.
+`milestone/engine-hardening`, `milestone/engine-opt`, `milestone/mvp-cut`, `milestone/mvp-ready`,
+`milestone/result-surface`, `phase-3-pipeline-infra`, `phase-5-video-segmentation`,
+`phase-6-audio-fingerprint`, `phase-7-multi-persona-sim`, `phase-8-benchmark-retrieval`,
+`worktree-agent-abee5b17a39191285`~~ — all pruned (no worktree; content lives on main).
+**2 REMAIN (merged but live worktree — `git worktree remove` FIRST, then `git push origin --delete`):**
+`design/ui-system` (WT `~/virtuna-numen-ui`), `milestone/landing-v2` (WT `~/virtuna-landing-v2`).
 
 **🗄️ Squash-dangling — content ON main via a merged PR, ancestry shows "ahead" only because
 squash doesn't preserve it. Verify nothing stranded, then delete:**
@@ -110,9 +113,9 @@ attempts are "reference only, do not revive" per numen-surface):**
 
 ## 6. Reconciliation needed
 
-- **CLAUDE.md worktree table is STALE** — lists engine-rework on `rework/engine-core ~8 ahead`.
-  Reality: that worktree is on `chore/r2-r4-verify-mark` (all session work merged), and the
-  engine-rework milestone is essentially complete (§0). Update the table when convenient.
-- **Close stale OPEN PR #42** (`docs/s3-handoff`) — it's the only open PR; superseded by the
-  merged S3′ work. Close it + delete the branch.
+- ✅ **DONE 2026-06-26 — CLAUDE.md worktree table reconciled** (engine-rework row now reads
+  "Track COMPLETE / idle"; reconcile note repoints here as the canonical map). Landed in the
+  same PR as this ledger update.
+- ✅ **DONE 2026-06-26 — stale PR #42** (`docs/s3-handoff`) closed + branch deleted (superseded
+  by merged S3′ #49). It was the only open PR.
 - Re-verify the **main eslint count** (UI-lane) before quoting it anywhere — UNVERIFIED here.
