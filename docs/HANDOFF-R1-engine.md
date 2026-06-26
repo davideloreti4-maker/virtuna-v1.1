@@ -29,13 +29,19 @@ Commits:
 
 Verify state at handoff: full suite **2716 pass / 0 fail / 28 skip**; tsc **15**; eslint touched dirs **0 errors**.
 
-### ⚠️ #1 VERIFICATION DEBT — nothing in R1′ was validated LIVE
-User chose "no testing" — code is green + type-clean but the **behavior is an unvalidated bet**. A fresh
-session SHOULD run one real video Read (DashScope spend) and confirm:
-- fold latency fits the 2×45s budget on 3.7-plus (plus is slower per-token than the old omni-flash);
-- diversity clears `DIVERSITY_FLOOR` (0.10; healthy 0.27–0.41) on the plus fold;
-- the audience-score is sane vs expectations.
-Harness exists: `scripts/fold-audio-ab.ts` pattern. The fold logs `costCents` + the diversity guard warns.
+### ✅ #1 VERIFICATION DEBT — CLEARED 2026-06-26 (R1′ fold validated LIVE, clean PASS)
+Drove the REAL `runFold` on one real video (UAT TikTok clip, 5 segments) via new harness
+`scripts/fold-validate-r1.ts`. **Clean PASS on all three axes:**
+- **latency 40.9s** vs the 90s ceiling (single attempt, comfortable headroom — the "plus is slower" fear is unfounded at normal segment counts);
+- **diversity avgCurveRange 0.31** (healthy band 0.27–0.41) — **cleared on the FIRST attempt; the temperature-perturbing retry never fired**;
+- **audience-score sane** — watch 54.7% mean with a believable per-archetype spread (skeptics bail 5–15%, engaged 92–100%), attention curve `[0.68→0.41]`; blended proxy 34.3;
+- **cost 0.33¢ fold + 0.23¢ omni ≈ 0.56¢** (trivial).
+
+**This confirms the core R1′ hypothesis**: the old diversity collapse was a *small-model + greedy* artifact,
+NOT a capability limit — 3.7-plus + the independence directive holds the 10 personas distinct natively.
+**Caveat:** only 5 segments tested; a long video (more segments → larger output) would stress latency + the
+8000-token cap harder — not yet stress-tested. **Harness note:** use `scripts/fold-validate-r1.ts` (drives the
+production `runFold`); the older `scripts/fold-audio-ab.ts` is STALE (tests the retired omni variants inline @4000 tok).
 
 ---
 
@@ -119,8 +125,8 @@ Done this/prior sessions: S1–S5, A1–A5/A7, E1, G1/G2/**G4** (fake citations 
 
 1. `git worktree list` + confirm branch BEFORE `cc`. Work off `main` on short-lived `fix/*` branches.
 2. Start either: **(a) R1′ Part B** (audience unification — §2, the highest-value continuation), or
-   **(b) the live R1′ validation** (§1 — confirm the unvalidated fold bet before more changes), or
    **(c) §04 backlog hygiene** (R2/R4 verify-and-mark — cheap, no spend).
-3. Recommended order: **validate R1′ live FIRST** (cheap insurance on a flagship scorer), then Part B.
+   ~~(b) the live R1′ validation~~ ✅ **DONE 2026-06-26 — clean PASS** (see §1; the fold bet is confirmed).
+3. Recommended order: **R1′ live validation is done (PASS)** → next is **Part B** (the audience unification).
 4. Tests: `node ./node_modules/vitest/vitest.mjs run`. Keep tsc ≤ 15. ENGINE_VERSION bumps only on
    scoring-contract changes (Part B unify is gate-safe → likely no bump).

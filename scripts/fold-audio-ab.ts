@@ -1,4 +1,9 @@
 /**
+ * ⚠️ STALE (2026-06-26) — tests the RETIRED omni-plus/omni-flash fold variants and reimplements
+ * the call inline @4000 tok. It does NOT exercise the shipped fold (qwen3.7-plus, 8000 tok,
+ * independence directive, temp-perturbing retry). For R1′ validation use `scripts/fold-validate-r1.ts`
+ * (drives the REAL exported `runFold`). Kept only as the audio-axis reference experiment.
+ *
  * Fold AUDIO A/B harness — does the audience-sim need to HEAR the video?
  *
  * The fold (audience-sim) currently runs on qwen3.5-omni-plus, which WATCHES + HEARS
