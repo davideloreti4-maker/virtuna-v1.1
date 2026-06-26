@@ -80,6 +80,10 @@ export const apifyVideoSchema = z.object({
             tiktokLink: z.string().url().optional(),
           }),
         )
+        // clockworks returns `null` (not `undefined`) for subtitle-less videos — accept it
+        // so wordless profiles (e.g. khaby.lame) are not silently dropped whole. `remapClockworksVideo`
+        // coalesces with `?? []`, so null and absent are equivalent downstream.
+        .nullable()
         .optional(),
     })
     .optional(),
