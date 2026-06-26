@@ -1,16 +1,20 @@
 ---
-description: UI design track rules — design system, file ownership, conflict hygiene
+description: UI lane rules — design system, file ownership, conflict hygiene vs the GSI milestone
 globs:
 alwaysApply: true
 ---
 
-# Numen UI Design Track — rules for this worktree
+# Numen UI Lanes — rules for the lane/* worktrees
 
-This worktree (`virtuna-ui-restrained`, branch `design/ui-restrained`) is the **UI design track** —
-the restrained-accent rebrand (de-Claude). It runs in PARALLEL with an engine/backend rework in a
-separate worktree (`virtuna-engine-rework`, branch `rework/engine-core`). Stay in your lane to avoid
-conflicts. The prior design batch (`design/ui-system`) is already merged to `main` — branch off
-`main`, not off the old branch.
+These rules govern the parallel UI worktrees that hang off `main`:
+`lane/polish` (`~/virtuna-polish` — design tokens / system), `lane/frame`
+(`~/virtuna-frame` — peripheral screens), `lane/shell` (`~/virtuna-shell` —
+global chrome + states), and `lane/cursor-ui` (`~/virtuna-cursor` — Cursor
+refinement). They run in PARALLEL with the **GSI milestone**
+(`milestone/numen-gsi`, worktree `~/virtuna-numen-gsi`), which is horizontally
+rebuilding the core verb surfaces (Profile / Simulate / Predict) while promising
+the creator experience stays byte-identical. Stay in your lane to avoid
+conflicts. Branch off `main`, not off another lane.
 
 ## 1. Design system — trust ONE source
 - The **only** authoritative design references are `src/app/globals.css` (the `@theme` token
@@ -34,32 +38,46 @@ conflicts. The prior design batch (`design/ui-system`) is already merged to `mai
 - **Always consume tokens, never hardcode hex.** No `#FF7F50`, `#07080a`, `#18191a`, `#fff`, no raw `#d97757`/`#e23b2d` in components (use `--color-accent`).
 - Keep `src/components/reading/__tests__/reskin-matte.test.ts` GREEN (guards against coral/glass).
 
-## 2. File ownership — DO NOT cross
-- ✅ **You own:** `src/components/**`, page-level styling/layout in `src/app/(app)/**` (NON-api),
-  `src/app/globals.css`, design tokens, `src/types/design-tokens.ts`.
-- ⛔ **Do NOT touch (engine track owns these):** `src/lib/**`, `src/app/api/**`, runners,
-  engine, `supabase/**`, prompt/KC files. If a UI change seems to need a backend change,
-  STOP and flag it — don't edit backend here.
+## 2. Lane ownership — DO NOT cross
+- ✅ **`lane/polish` OWNS:** `src/app/globals.css` `@theme` tokens, `docs/DESIGN-SYSTEM.md`,
+  `src/types/design-tokens.ts`, and the cross-cutting visual language. **ONLY this lane edits
+  token *definitions*** — every other lane consumes them.
+- ✅ **`lane/frame` OWNS:** peripheral screens GSI doesn't rebuild — landing/marketing, auth
+  (login/signup/reset), settings, account, billing/pricing/paywall/trial routes.
+- ✅ **`lane/shell` OWNS:** global chrome (nav/sidebar/header shell), error/404, non-home loading
+  skeletons, motion/transitions.
+- ✅ **`lane/cursor-ui`:** small visual refinement, scoped per task. Auto-wip OFF (see ui-workflow.mdc).
+- ⛔ **Do NOT touch (the GSI milestone owns these):** `src/lib/**`, `src/app/api/**`, runners,
+  engine, `supabase/**`, prompt/KC files, **and the verb-surface HOLD list in §3a**. If a UI
+  change seems to need a backend change, STOP and flag it — don't edit backend here.
+- All lanes **CONSUME** tokens (read `globals.css`); only `lane/polish` **DEFINES** them. A token
+  rename or removal must originate in `lane/polish` and be coordinated.
 
-## 3. Coupled surfaces — visual-only, don't change contracts
-`AudienceLens`, the composer, and the thread skill-cards are being reworked on the engine side
-(their data shape/props may change). For these you MAY restyle/relayout, but **do NOT change the
-props/data contracts** they consume or the block schemas. Structural changes to these wait for
-the engine rework — coordinate first.
+## 3. Coupled surfaces — visual via the token seam, don't fork-edit
+The core verb surfaces are being actively rebuilt by the GSI milestone (their data shape / props /
+block schemas are in flux). Polish them through the **TOKEN SEAM** — change a token in `lane/polish`
+and they inherit the new look without anyone editing their component files. Do **NOT** fork a
+parallel edit of these components, and do NOT change the props/data contracts or block schemas.
 
-### 3a. ⛔ Engine-rework HOLD list — do NOT edit (guaranteed merge conflict)
-`rework/engine-core` (worktree `~/virtuna-engine-rework`) is 8 commits ahead of main, NOT yet
-merged, and is actively rewriting these UI-lane files. Editing them here will conflict:
-- `src/components/audience/calibration-flow.tsx`
-- `src/components/audience/audience-reveal.tsx`
-Leave both untouched until that branch lands on main. Everything else in `src/components/**` and
-all of `globals.css` is conflict-free (engine-rework otherwise stays in `src/lib/**`,
-`src/app/api/**`, `supabase/**`, types). See `docs/UI-SURFACES.md` "Engine-rework HOLD list".
+### 3a. ⛔ GSI HOLD list — do NOT edit (guaranteed merge conflict)
+`milestone/numen-gsi` (worktree `~/virtuna-numen-gsi`) is horizontally rewriting these surfaces.
+Leave them untouched until the matching GSI phase lands on `main`:
+- **Home empty state + starter chips** — `src/components/app/home/**`
+- **Composer / inbox** — `src/components/app/home/composer.tsx` + `composer-controls.tsx`
+- **Audience picker / library** — `src/components/audience/**`, routes `src/app/(app)/audience/*`
+- **AudienceLens / ambient reactor / presence** — `src/components/audience-lens/**`
+- **Thread / skill cards / reaction cards** — `src/components/thread/**`
+- **Skill menu · trust badges (Validated/Directional) · the Read output view**
+
+Want a component-level tweak on one of these? Either (a) **wait** until GSI lands that phase to
+`main`, then polish on top, or (b) **hand the tweak into the GSI session** (it's already editing
+those files). Never fork a parallel edit — that's the merge war.
 
 ## 4. Conflict hygiene
 - Rebase onto `origin/main` frequently (`git fetch origin && git rebase origin/main`) — and again
-  before opening a PR, to catch the engine-rework merge when it lands.
-- Keep PRs small and per-surface; merge often to minimize drift.
+  before opening a PR, to catch GSI's merges as each phase lands.
+- Keep PRs small and per-surface; merge often to minimize drift. The GSI milestone merges `main`
+  into its branch at each phase boundary, so it picks up your token/frame changes incrementally.
 - Commit format `type(surface): description`. Atomic commits.
 
 ## 5. Verify before done
