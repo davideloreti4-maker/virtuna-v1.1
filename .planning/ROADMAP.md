@@ -48,7 +48,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — D-03 BLOCKING smoke + structural gate (PACK-04)
+- [x] 01-04-PLAN.md — D-03 BLOCKING smoke + structural gate (PACK-04)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -151,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 3/6 | In Progress|  |
+| 1. Engine / Pack Seam | 4/6 | In Progress|  |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
