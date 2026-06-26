@@ -3,7 +3,7 @@ phase: 1
 slug: engine-pack-seam
 status: planned
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-26
 ---
 
@@ -22,7 +22,7 @@ created: 2026-06-26
 | **Quick run command** | `node ./node_modules/vitest/vitest.mjs run <path>` |
 | **Full suite command** | `node ./node_modules/vitest/vitest.mjs run` |
 | **Engine suite command** | `node ./node_modules/vitest/vitest.mjs run src/lib/engine` |
-| **Estimated runtime** | TBD — Plan 01 Task 2 records the engine-suite runtime after install |
+| **Estimated runtime** | ~13s wall-clock (vitest reports 12.65s) — `src/lib/engine` suite: 91 files / 1151 passed + 20 skipped (measured 2026-06-26, Plan 01 Task 2, post-install) |
 
 > ⚠️ Quirk (CONTEXT + RESEARCH): `npm test` / `npx vitest` print **fake PASS(0)/FAIL(0)** when `node_modules` is absent. Always run via `node ./node_modules/vitest/vitest.mjs run`.
 
@@ -33,7 +33,7 @@ created: 2026-06-26
 - **After every task commit:** Run quick command on touched engine test(s) + `tsc --noEmit` on touched files
 - **After every plan wave:** Run `node ./node_modules/vitest/vitest.mjs run src/lib/engine`
 - **Before `/gsd-verify-work`:** Full suite green + pack-seam smoke green
-- **Max feedback latency:** TBD (Plan 01 Task 2 confirms post-install)
+- **Max feedback latency:** ~13s (full `src/lib/engine` suite; confirmed post-install 2026-06-26, Plan 01 Task 2)
 
 ---
 
@@ -45,8 +45,8 @@ created: 2026-06-26
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 01-01-01 | 01 | 0 | PACK-04 | T-01-SC | Restore vetted lockfile; lockfile byte-unchanged | infra | `npm install` | n/a | ⬜ pending |
-| 01-01-02 | 01 | 0 | PACK-04 | T-01-CP | Green pre-seam baseline; ENGINE_VERSION 3.20.0 | baseline | `node ./node_modules/vitest/vitest.mjs run src/lib/engine` | ✅ exists | ⬜ pending |
+| 01-01-01 | 01 | 0 | PACK-04 | T-01-SC | Restore deps; lockfile gitignored (resolved fresh from main-vetted package.json) | infra | `npm install` | n/a | ✅ green |
+| 01-01-02 | 01 | 0 | PACK-04 | T-01-CP | Green pre-seam baseline; ENGINE_VERSION 3.20.0 | baseline | `node ./node_modules/vitest/vitest.mjs run src/lib/engine` | ✅ exists | ✅ green |
 | 01-02-01 | 02 | 1 | PACK-03 | T-01-RR | DomainPack 7-field contract; scoring shape = aggregateScores | type | `tsc --noEmit` | ❌ W2 | ⬜ pending |
 | 01-02-02 | 02 | 1 | PACK-03 | T-01-RR | scoring sub-shape provably matches aggregateScores | type+unit | `node ./node_modules/vitest/vitest.mjs run src/lib/engine/__tests__/domain-pack.contract.test.ts` | ❌ W2 | ⬜ pending |
 | 01-03-01 | 03 | 2 | PACK-02, PACK-03 | T-01-RR, T-01-CP | SOCIALS_PACK satisfies DomainPack; scoring.run = aggregateScores wrapped whole | type | `tsc --noEmit` | ❌ W2 | ⬜ pending |
@@ -63,8 +63,8 @@ created: 2026-06-26
 
 ## Wave 0 Requirements
 
-- [ ] `npm install` — `node_modules` is absent in this worktree (blocking; root cause of the fake-PASS quirk) — Plan 01 Task 1
-- [ ] Confirm `ENGINE_VERSION` stays pinned at `3.20.0` (cache key + `audience-regression-gate.test.ts` assert it) — Plan 01 Task 2 + asserted by the D-03 smoke (Plan 04)
+- [x] `npm install` — `node_modules` restored (was absent; root cause of the fake-PASS quirk) — Plan 01 Task 1. Note: `package-lock.json` is gitignored and was absent, so deps resolved fresh from the main-vetted `package.json` ranges (not a tracked-lockfile restore).
+- [x] Confirm `ENGINE_VERSION` stays pinned at `3.20.0` (cache key + `audience-regression-gate.test.ts` assert it) — Plan 01 Task 2 + asserted by the D-03 smoke (Plan 04)
 - [ ] Smoke harness `src/lib/engine/__tests__/pack-seam-smoke.test.ts` (D-03) — Plan 04, modeled on `audience-regression-gate.test.ts`
 - [ ] Confirm `factories.ts` `makePipelineResult` covers video + text/url `foldOutcome`/`personaBehavioralAggregate` shapes — Plan 04 Task 1 read_first
 
@@ -88,7 +88,7 @@ created: 2026-06-26
 - [x] Sampling continuity: no 3 consecutive tasks without automated verify
 - [x] Wave 0 covers all MISSING references (`npm install` + smoke harness)
 - [x] No watch-mode flags
-- [ ] Feedback latency confirmed post-install (Plan 01 Task 2)
+- [x] Feedback latency confirmed post-install (Plan 01 Task 2) — ~13s engine suite
 - [x] `nyquist_compliant: true` set in frontmatter
 
 **Approval:** planned
