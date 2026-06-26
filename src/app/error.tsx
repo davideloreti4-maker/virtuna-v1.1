@@ -39,6 +39,9 @@ export default function GlobalError({
             <RotateCcw className="h-4 w-4" />
             Try again
           </button>
+          {/* Intentional hard navigation (full reload) — in an error boundary a soft
+              <Link> nav can preserve the corrupted React tree; <a> escapes it. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             href="/"
             className="flex items-center rounded-lg border border-white/[0.06] px-5 py-2.5 text-sm font-medium text-zinc-300 transition-colors hover:bg-white/[0.02]"

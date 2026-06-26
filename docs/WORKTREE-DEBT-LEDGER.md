@@ -32,9 +32,10 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 
 | Branch | Worktree | State | Note |
 |---|---|---|---|
-| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean; launch GSI from here. ⚠️ trunk's LOCAL main is STALE — `git pull` in `~/virtuna-v1.1` to sync `origin/main` (now through #59 + the cleanup pass). |
-| `milestone/numen-tools` | `~/virtuna-numen-tools` | 🟢 debt worktree | v6.0 shipped (squash #23); worktree STAYS LIVE to burn `DEBT-BACKLOG.md` (§3). 537 ahead = pre-squash history. |
-| `milestone/numen-surface` | `~/virtuna-numen-surface` | 🟢 active (v5.0) | mobile-first rebrand/UX; 83 ahead. |
+| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean. ✅ synced to `origin/main` (`a6955b1a`) 2026-06-26. |
+| `milestone/numen-gsi` | `~/virtuna-numen-gsi` | 🟢 **NEW — the next build** | GSI horizontal milestone, **scaffolded 2026-06-26** (`.planning` scope-cleaned + `MILESTONE.md` + `NUMEN-GSI-VISION.md`). Phase 0 (engine-rework) = DONE + production-verified. **Next:** `/gsd-new-milestone` (requirements→roadmap) IN this worktree. Do NOT `git merge rework/engine-core`. |
+| `milestone/numen-tools` | `~/virtuna-numen-tools` | 🟢 debt worktree | v6.0 shipped (squash #23); STAYS LIVE for `DEBT-BACKLOG.md` (§3). 537 ahead = pre-squash history. |
+| `milestone/numen-surface` | `~/virtuna-numen-surface` | 🟡 PAUSED (v5.0, "old") | mobile-first rebrand; **deprioritized vs GSI** (owner 2026-06-26). Debt (Phase-3 smoke gate unrun + P5–7) stays IN-WORKTREE `.planning`. |
 | `feat/creator-voice-sample` | — | 🟢 **PR #60 OPEN (review)** | voice role across idea/hooks/script/remix runners + Card 9 `VoiceSampleInput` UI; 28/28 green at authoring. **330 ahead / 46 BEHIND main** → rebase onto current main (konva/glass removal + R1′) + re-run suite BEFORE merge. Feeds GSI grounding §4.3. |
 
 ## 2. Dormant / parked — real tracks, paused (keep worktree)
@@ -50,6 +51,8 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 | `feat/chat-ethics-gate` | — | 🟡 Chase Hughes knowledge layer, PARKED (A/B inconclusive + cost flag); 4 ahead, decision pending |
 | `fix/flash-coercion-stability` | — | 🟡→🗄️ **MOSTLY SUPERSEDED** — the read-coercion half (`coerceOmniRead`) was PORTED to main via PR #56 (2026-06-26); the fold-coercion half is already live. Little unique value left — verify nothing else stranded, then retire. |
 
+> **Debt-capture audit 2026-06-26 — all deferred debt has a home.** Engine → `docs/DISSECTION-BACKLOG.md` (main); v6.0 → numen-tools `DEBT-BACKLOG.md` (+ its `todos/pending`); both indexed in §3. **Dormant-worktree debt is RETAINED in each worktree's own `.planning/`** (not promoted to §3 — those tracks are paused/old): numen-surface = Phase-3 smoke gate + P5–7; numen-landing = blocked on surface; the shared `HANDOFF-*-redesign.md` set across numen-rework/viral-remix/ui-opt = historical board-redesign era (archived in memory). **GAP-REMIX-01** (a numen-tools `todos/pending` item) is now ✅ RESOLVED via PR #63 — that pending todo is stale.
+
 ## 3. Open-debt index (detail lives in these SSOTs — do not duplicate)
 
 | Debt source | Location | Scope |
@@ -62,10 +65,11 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 
 **Cross-cutting (not yet fully in any SSOT):**
 - ✅ **Pre-GSI production-readiness sprint DONE 2026-06-26** (see DISSECTION-BACKLOG TOP table): RLS+concurrency GREEN; GAP-REMIX-01 fixed (#63); #41 cut (#64, tsc 15→4); SSRF low. No GSI blocker. **Only open hardening item = rate-limiting** (🟠 deferred to the pre-public-launch HARDEN gate — not a GSI prereq; 6 tool routes unprotected). The raw backlogs OVER-REPORT (flywheel pin wired, gen-retry by-design, rubric-critic resolved).
-- `feat/creator-voice-sample` → now **PR #60 OPEN** (rebase + review).
-- main eslint regression (UI-lane) — **count UNVERIFIED 2026-06-26** (was reported 39err/66warn at the UI merge); re-check on `main`, owned by UI worktree.
+- `feat/creator-voice-sample` → **PR #60 CLOSED 2026-06-26** (was a conflicting 428-file/100-commit/+62k auto-wip branch — un-mergeable). Branch kept on origin; re-extract the creator-voice feature cleanly during GSI grounding §4.3.
+- ✅ **main eslint regression RESOLVED 2026-06-26** (pre-GSI prep, `fix/pre-gsi-prep`): verified at **24 err / 67 warn**, fixed to **0 err / 12 warn**. React-19-compiler errors batched into the existing `eslint.config.mjs` globalIgnores convention (13 LIVE/dead files — real refactor is the post-GSI follow-up below); 4 mechanical errors fixed inline; `_`-prefix unused-vars convention wired; stray `.claire/**` worktree un-linted.
+- 🔸 **NEW (post-GSI refactor debt):** the 13 files added to globalIgnores for React-19-compiler errors are LIVE components (`reading.tsx`, `command-bar/*`, `profile-settings-form.tsx`, audience cards, `ReplayController.tsx` + the dead `competitors/**`) now losing FULL lint coverage. Real fix = refactor the refs-during-render / setState-in-effect patterns, then un-ignore.
 - Part B per-persona reaction MODAL on the Read hero — UI-lane (the SIM-1 Max badge already ships; only the modal remains).
-- Competitor-intelligence (`src/lib/ai/*`) on deepseek-chat + gemini-2.5-flash-lite — provider-consolidation decision.
+- ✅ **Competitor-intelligence (`src/lib/ai/*`) provider question RESOLVED 2026-06-26:** `deepseek.ts` + `gemini.ts` already migrated to `QWEN_REASONING_MODEL` (`qwen3.7-plus`) via DashScope + have no live importers (stale `MODEL-POLICY.md` footnote fixed). Remaining action = delete the dead files (deferred, low-value).
 
 ## 4. GSI carryover — parked work that feeds the horizontal milestone
 
@@ -114,9 +118,10 @@ spike branches not on origin (`change/flash-spike`, `spike/local-gemma`, `spike/
   same PR as this ledger update.
 - ✅ **DONE 2026-06-26 — stale PR #42** (`docs/s3-handoff`) closed + branch deleted (superseded
   by merged S3′ #49). It was the only open PR.
-- Re-verify the **main eslint count** (UI-lane) before quoting it anywhere — UNVERIFIED here.
+- ✅ **DONE 2026-06-26 — main eslint count verified + fixed** (24 err/67 warn → 0 err/12 warn, `fix/pre-gsi-prep`; §3).
 - ⚠️ **ui-restrained worktree has uncommitted work** (`cursor/27a9b701`, `~/.cursor/.../virtuna-ui-restrained`):
   `src/components/audience-lens/audience-presence.tsx` (heroDots 110→84 + padding), Cursor-managed.
   UI-lane decision: commit or discard those edits, THEN `git worktree remove` + delete the branch
   (the last retired-WT cleanup).
-- **Trunk `~/virtuna-v1.1` local `main` is stale** — `git pull` there to pick up #53–#59 + the cleanup pass.
+- ✅ **DONE 2026-06-26 — trunk `~/virtuna-v1.1` local `main` synced** to `origin/main` (0/0); GSI worktree
+  rebased onto it. **GSI base is current** (1 docs commit behind = #66 only, no code gap).

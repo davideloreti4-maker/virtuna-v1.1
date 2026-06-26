@@ -5,7 +5,7 @@
  *   (a) select the top ~3-5 videos by engagement (save+share weighted),
  *   (b) `qwen3.5-omni-flash` WATCHES each (video+audio) → content/format/voice notes
  *       (universal — works for talkers AND silent visual creators, the Khaby class, P.13),
- *   (c) ONE `qwen3.6-flash` synthesis fuses stats + engagement + native subs + watchNotes
+ *   (c) ONE `qwen3.7-plus` synthesis (CALIBRATE: thinking ON) fuses stats + engagement + native subs + watchNotes
  *       → the AudienceSignature (creator persona + 10 reactors + derived weights + summary).
  *
  * Determinism (P.7): every LLM call runs `temperature:0, seed:QWEN_SEED`, system prompts
