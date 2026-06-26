@@ -112,16 +112,17 @@ function scrubUrlQuery(url: string): string {
 // strings (captions) are left untouched so real content is never corrupted.
 function deepScrubTokenUrls<T>(value: T): T {
   if (typeof value === "string") {
-    if (/[?&]token=/i.test(value)) {
-      try {
-        const u = new URL(value);
-        if (u.protocol === "http:" || u.protocol === "https:") {
-          u.search = "";
-          return u.toString() as unknown as T;
-        }
-      } catch {
-        /* not an absolute URL — leave content as-is */
+    // Any absolute http(s) URL whose QUERY mentions a token-ish param loses its whole query.
+    // Broader than `?token=` so `download_token=`, `x-token=`, `apifyToken=` etc. are all caught
+    // (must subsume the `/token=/i` defense-in-depth guard so the fixture writes clean).
+    try {
+      const u = new URL(value);
+      if ((u.protocol === "http:" || u.protocol === "https:") && /token/i.test(u.search)) {
+        u.search = "";
+        return u.toString() as unknown as T;
       }
+    } catch {
+      /* not an absolute URL — leave content as-is */
     }
     return value;
   }
@@ -217,7 +218,26 @@ async function main(): Promise<void> {
     // Defense-in-depth: refuse to write if any "token" substring survives the scrub.
     const serialized = JSON.stringify(socialsInput, null, 2);
     if (/token=/i.test(serialized)) {
-      console.error("\n  FATAL: a token=… param survived the secret scrub — refusing to write the fixture.\n");
+      // Report WHICH paths still carry token= (path + host only — never the secret value, T-02-05).
+      const offenders: string[] = [];
+      const walk = (v: unknown, p: string): void => {
+        if (typeof v === "string") {
+          if (/token=/i.test(v)) {
+            let host = "(non-url)";
+            try { host = new URL(v).host; } catch { /* keep */ }
+            offenders.push(`${p} [host=${host}]`);
+          }
+        } else if (Array.isArray(v)) {
+          v.forEach((e, i) => walk(e, `${p}[${i}]`));
+        } else if (v !== null && typeof v === "object") {
+          for (const [k, val] of Object.entries(v)) walk(val, p ? `${p}.${k}` : k);
+        }
+      };
+      walk(socialsInput, "");
+      console.error(
+        "\n  FATAL: a token=… param survived the secret scrub — refusing to write the fixture.\n" +
+          `  Offending path(s): ${offenders.join(", ") || "(unknown)"}\n`,
+      );
       process.exit(1);
     }
     mkdirSync(resolve(__dirname, "fixtures"), { recursive: true });
