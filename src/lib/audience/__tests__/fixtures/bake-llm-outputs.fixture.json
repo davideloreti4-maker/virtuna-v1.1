@@ -1,0 +1,44 @@
+{
+  "subtitle": "If you want more views it's called hook alignment",
+  "watchNotes": [
+    {
+      "content": "productivity tip",
+      "format": "talking head",
+      "visual_style": "fast cuts",
+      "audio": "blunt voiceover",
+      "hook_type": "promise",
+      "why_it_works": "clear utility",
+      "creator_voice_1liner": "blunt data-backed founder"
+    }
+  ],
+  "synth": {
+    "creator_persona": {
+      "content_description": "ADHD productivity systems",
+      "context": "Audience: founders. Voice: blunt. AVOID: hype.",
+      "writing_style_sample": "If you want more views, it's called hook alignment...",
+      "format_signature": "fast-cut talking head with on-screen text"
+    },
+    "audience": {
+      "follower_tier": "mid",
+      "maturity": "established",
+      "temperature_mix": { "cold": 0.2, "warm": 0.5, "hot": 0.3 },
+      "interest_tags": ["adhd", "productivity", "tools"],
+      "what_resonates": "step-by-step saves",
+      "what_falls_flat": "talking-head storytime",
+      "persona_weights": { "fyp": 0.55, "niche": 0.3, "loyalist": 0.1, "cross_niche": 0.05 },
+      "personas": [
+        { "archetype": "high_engager", "share": 0.1, "reaction_frame": "frame for high_engager", "evidence": "saves 2.1x category" },
+        { "archetype": "saver", "share": 0.1, "reaction_frame": "frame for saver", "evidence": "save-rate 4% vs 1.8% baseline" },
+        { "archetype": "lurker", "share": 0.1, "reaction_frame": "frame for lurker", "evidence": "high views low comments ratio" },
+        { "archetype": "sharer", "share": 0.1, "reaction_frame": "frame for sharer", "evidence": "share-rate 1% vs 0.4% baseline" },
+        { "archetype": "tough_crowd", "share": 0.1, "reaction_frame": "frame for tough_crowd", "evidence": "comment skepticism on claims" },
+        { "archetype": "purposeful_viewer", "share": 0.1, "reaction_frame": "frame for purposeful_viewer", "evidence": "completion on how-to segments" },
+        { "archetype": "niche_deep_buyer", "share": 0.1, "reaction_frame": "frame for niche_deep_buyer", "evidence": "saves on tool-stack videos" },
+        { "archetype": "niche_deep_scout", "share": 0.1, "reaction_frame": "frame for niche_deep_scout", "evidence": "repeat views on system breakdowns" },
+        { "archetype": "loyalist", "share": 0.1, "reaction_frame": "frame for loyalist", "evidence": "comment thread continuity across posts" },
+        { "archetype": "cross_niche_curiosity", "share": 0.1, "reaction_frame": "frame for cross_niche_curiosity", "evidence": "cross-tag reach on productivity x founder" }
+      ]
+    },
+    "summary": "warm, save-heavy productivity crowd"
+  }
+}
