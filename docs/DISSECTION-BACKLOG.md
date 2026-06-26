@@ -103,7 +103,7 @@ near-silent (acceptable; it's the audience's real shape) → worth a threshold c
 
 | # | Sev | Item | file:line | Status |
 |---|-----|------|-----------|--------|
-| R1 | 🟡 | `FOLD_MODEL` defaults to omni-flash (unstable); memory says omni-plus PAID — flip + cost decision | `qwen/client.ts`, `wave3/fold.ts` | OPEN |
+| R1 | 🟡→✅ | **RESOLVED + VALIDATED LIVE (PR #53 + 2026-06-26).** `FOLD_MODEL` now defaults to `qwen3.7-plus` (sighted/deaf), omni retired from the fold (sensor-only). Live `runFold` PASS on a 5-seg video: 40.9s/90s, diversity **0.31 first-attempt (no retry)**, 0.56¢ — the collapse was a small-model+greedy artifact, not a capability limit. Harness `scripts/fold-validate-r1.ts` (the old `fold-audio-ab.ts` is STALE). | `qwen/client.ts`, `wave3/fold.ts` | FIXED `11819ae1` + validated |
 | R2 | 🟡 | `behavioral_score` + `apollo_score` may double-count the same Apollo call | `aggregator.ts` | OPEN |
 | R3 | 🟡 | 0.5/0.5 video blend asserted, never calibrated | `aggregator.ts` | OPEN |
 | R4 | 🟢 | Dead engine signals matching logic (ml/rule/trend/audio_fingerprint/platform_fit) | `aggregator.ts:1170-1253` | OPEN |

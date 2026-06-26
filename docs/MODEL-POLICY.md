@@ -58,7 +58,7 @@ Unused headroom is free (you pay actual output, not the cap).
 | **DECODE** | `remix/decode` | `qwen3.7-plus` | OFF | 1200 | — | rail |
 | **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-plus` | OFF | 2000 | — | bound runaway; streamed |
 | **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-plus` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
-| **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-plus` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever |
+| **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-plus` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
 | **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-plus` | **ON** | 6000 | 2000 | persona output (~2.5k) + thinking |
 | **SENSOR** read | `qwen/omni-analysis` (Wave 0) | `qwen3.5-omni-flash` | OFF | 8000 | — | audio in; sensor dump |
 | **SENSOR** bake-watch | `enrich-signature` (watch call) | `qwen3.5-omni-flash` | OFF | 600 | — | per-video watch notes |
@@ -80,6 +80,9 @@ Unused headroom is free (you pay actual output, not the cap).
 - **PR-3 (R1′ model consolidation, 2026-06-25):** retire 3.6-flash → 3.7-plus (SIM); fold omni-flash →
   3.7-plus (sighted/deaf) + independence directive + real diversity retry; fix the no-video text-analyze
   gaps; cut dead `wave3.ts`; retire `QWEN_FAST_MODEL`. ✅ this change.
+- **R1′ fold live validation (2026-06-26):** ✅ **clean PASS** — real `runFold` on a 5-segment video:
+  40.9s/90s, diversity **0.31 first-attempt (no retry)**, 0.56¢. The 3.7-plus fold holds the 10 personas
+  distinct natively (the collapse was a small-model artifact). Harness `scripts/fold-validate-r1.ts`.
 - **Follow-up (R1′b, not yet built):** unify the fold onto the ambient audience (repaint the 10 archetypes
   with the calibrated signature; General → byte-identical) + surface the Read audience reaction on the
   thread with the `SIM-1 Max` badge.
