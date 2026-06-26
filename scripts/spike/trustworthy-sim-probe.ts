@@ -106,6 +106,36 @@ function scrubUrlQuery(url: string): string {
   }
 }
 
+// Deep belt-and-suspenders scrub: walk EVERY string in the tree and strip the query from
+// any absolute http(s) URL that still carries a token= param (e.g. profile.avatarUrl, nested
+// subtitle download links) — the field-list scrub below alone missed avatarUrl. Non-URL
+// strings (captions) are left untouched so real content is never corrupted.
+function deepScrubTokenUrls<T>(value: T): T {
+  if (typeof value === "string") {
+    if (/[?&]token=/i.test(value)) {
+      try {
+        const u = new URL(value);
+        if (u.protocol === "http:" || u.protocol === "https:") {
+          u.search = "";
+          return u.toString() as unknown as T;
+        }
+      } catch {
+        /* not an absolute URL — leave content as-is */
+      }
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((v) => deepScrubTokenUrls(v)) as unknown as T;
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = deepScrubTokenUrls(v);
+    }
+    return out as unknown as T;
+  }
+  return value;
+}
+
 function scrubInputSecrets(input: EnrichInput): EnrichInput {
   const videos = input.videos.map((v) => {
     const out = { ...v };
@@ -116,7 +146,8 @@ function scrubInputSecrets(input: EnrichInput): EnrichInput {
     if (out.subtitleUrl && /token=/i.test(out.subtitleUrl)) out.subtitleUrl = scrubUrlQuery(out.subtitleUrl);
     return out;
   });
-  return { ...input, videos };
+  // Final deep pass catches token-bearing URLs in any non-enumerated field (profile.avatarUrl, …).
+  return deepScrubTokenUrls({ ...input, videos });
 }
 
 // ── Provenance assertion: every reactor carries ≥1 non-empty evidence quote ──────────────────
