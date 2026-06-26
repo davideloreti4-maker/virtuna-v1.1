@@ -305,21 +305,24 @@ export const SOCIALS_PACK_SCORING: DomainPack["scoring"] = {
 | A3 | The D-03 smoke can run with a mocked LLM layer over `factories.ts` fixtures (fast, deterministic) rather than a live (slow, costly) end-to-end run. | Validation Architecture | If the gate must exercise real LLM calls, add a guarded live smoke; but live calls are nondeterministic in *content* (temp:0+seed gives stability, not byte-equality across providers) and cost money — a structural fixture test better matches D-03's "cheap insurance" intent. |
 | A4 | A behavior-preserving wrap keeps `ENGINE_VERSION` at `3.20.0`. | Runtime State Inventory / Pitfall 2 | If the wrap legitimately changes output, the version must bump AND the regression-gate test updates — signals the wrap was not behavior-preserving. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Cut Line A vs B (the wrap boundary).**
    - What we know: `overall_score`/virality math is in `aggregateScores`; Apollo + fold *execute* in the pipeline.
    - What's unclear: whether D-06 requires Apollo+fold *execution* inside `pack.scoring`, or whether referencing them as grounding/reaction (with the aggregator as the wrapped scorer) suffices.
    - Recommendation: lock **Cut Line A** (reviewable, satisfies PACK-01/02, honors D-07/D-08). Surface explicitly to the planner; cheap to confirm.
+   - RESOLVED: Cut Line A (locked in CONTEXT + Plan 03).
 
 2. **One combined `pack.predict(input, opts)` vs two entrypoints (`pack.run` + `pack.scoring.run`).**
    - What we know: all 4 sites do the same two-call sequence; route adds latency timing between them (route.ts:807-810, 1023-1027).
    - What's unclear: whether the route's inter-call timing/logging needs the two calls kept separate.
    - Recommendation: keep two entrypoints (mirrors the current structure, preserves the route's `aggregateMs` timing) — `pack.run` + `pack.scoring.run`. Lowest-friction.
+   - RESOLVED: two entrypoints (`pack.run` + `pack.scoring.run`).
 
 3. **Smoke harness location.**
    - What we know: engine tests live in `src/lib/engine/__tests__/`; `factories.ts` provides fixtures; `audience-regression-gate.test.ts` is the existing blocking-gate pattern to mirror.
    - Recommendation: add `src/lib/engine/__tests__/pack-seam-smoke.test.ts` modeled on `audience-regression-gate.test.ts` (a self-contained BLOCKING anchor).
+   - RESOLVED: `src/lib/engine/__tests__/pack-seam-smoke.test.ts`.
 
 ## Environment Availability
 
