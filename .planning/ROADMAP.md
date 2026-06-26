@@ -66,7 +66,19 @@ Plans:
   2. Every reactor persona in a no-calibration SIM carries its evidence + provenance, and ungrounded personas are distinguishable from grounded ones.
   3. A SIM with no calibration set is honestly tiered Directional (never Validated), and the spike closes with a written go/no-go verdict on whether the no-calibration trust model holds for the General surface.
 
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — KEEP determinism gate: signature-equality (normalize/equal) + zero-network replay test + Directional-by-rule tiering assertion (TRUST-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 02-02-PLAN.md — THROWAWAY live probe: ×2 double-bake (real Qwen) + General-bundle proto + provenance/source=user inspection (autonomous:false, needs keys + ~$0.50) (TRUST-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 02-03-PLAN.md — SPIKE-VERDICT.md (hard 3-gate GO/NO-GO + fallback) + throwaway teardown (TRUST-03)
 
 ### Phase 3: General Population + Honesty Layer
 
@@ -152,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
-| 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
+| 2. Trustworthy-SIM Spike | 0/3 | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |
