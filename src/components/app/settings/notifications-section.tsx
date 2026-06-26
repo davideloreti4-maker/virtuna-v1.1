@@ -20,23 +20,29 @@ function NotificationItem({
   onCheckedChange,
 }: NotificationItemProps) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4">
+    <div
+      className="flex items-start justify-between gap-4 rounded-lg border border-white/[0.06] p-4"
+      style={{
+        backgroundColor: "var(--color-charcoal-composer)",
+        boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
+      }}
+    >
       <div className="flex-1">
         <label
           htmlFor={id}
-          className="cursor-pointer text-sm font-medium text-white"
+          className="cursor-pointer text-sm font-medium text-foreground"
         >
           {title}
         </label>
-        <p className="mt-1 text-sm text-zinc-400">{description}</p>
+        <p className="mt-1 text-sm text-foreground-secondary">{description}</p>
       </div>
       <Switch.Root
         id={id}
         checked={checked}
         onCheckedChange={onCheckedChange}
-        className="relative h-6 w-11 cursor-pointer rounded-full bg-zinc-700 transition-colors data-[state=checked]:bg-emerald-600"
+        className="relative h-6 w-11 cursor-pointer rounded-full bg-white/[0.12] transition-colors data-[state=checked]:bg-[var(--color-cream-primary)]"
       >
-        <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px]" />
+        <Switch.Thumb className="block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow-sm transition-transform data-[state=checked]:translate-x-[22px] data-[state=checked]:bg-[var(--color-charcoal-app)]" />
       </Switch.Root>
     </div>
   );
@@ -91,12 +97,12 @@ export function NotificationsSection() {
     return (
       <div className="space-y-8 animate-pulse">
         <div>
-          <div className="h-6 w-32 rounded bg-zinc-800" />
-          <div className="mt-2 h-4 w-64 rounded bg-zinc-800" />
+          <div className="h-6 w-32 rounded bg-white/[0.05]" />
+          <div className="mt-2 h-4 w-64 rounded bg-white/[0.05]" />
         </div>
         <div className="space-y-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-20 rounded-lg bg-zinc-800" />
+            <div key={i} className="h-20 rounded-lg bg-white/[0.05]" />
           ))}
         </div>
       </div>
@@ -106,15 +112,15 @@ export function NotificationsSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-white">Notifications</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-lg font-medium text-foreground">Notifications</h2>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Choose what notifications you want to receive.
         </p>
       </div>
 
       {/* Email notifications */}
       <div>
-        <h3 className="mb-4 text-sm font-medium text-zinc-300">
+        <h3 className="mb-4 text-sm font-medium text-foreground-secondary">
           Email notifications
         </h3>
         <div className="space-y-3">
@@ -132,7 +138,7 @@ export function NotificationsSection() {
       </div>
 
       {/* Info text */}
-      <p className="text-sm text-zinc-500">
+      <p className="text-sm text-foreground-muted">
         You can unsubscribe from these emails at any time by clicking the link
         in the footer of any email you receive from us.
       </p>
