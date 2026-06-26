@@ -51,7 +51,10 @@ const MIN_WATCH = 3;
 /** Max transcripts to fold into synthesis (the watched set; writing sample = the top one). */
 const MAX_TRANSCRIPTS = 5;
 const OMNI_TIMEOUT_MS = 60_000;
-const SYNTH_TIMEOUT_MS = 60_000;
+// Thinking-mode synth (qwen-3.7-plus, thinking_budget 2000) empirically runs ~60-90s for a full
+// socials bake; the old 60s ceiling aborted it systematically (spike 02-02 — the second bake
+// reliably timed out at ~60s with "Request was aborted"). 120s covers the observed p95 + headroom.
+const SYNTH_TIMEOUT_MS = 120_000;
 const SYNTH_MAX_TOKENS = 6000; // thinking ON: thinking_budget(2000) + persona output(~2.5k) + headroom
 const SUBTITLE_FETCH_TIMEOUT_MS = 8_000;
 const SUBTITLE_MAX_CHARS = 2_000;
