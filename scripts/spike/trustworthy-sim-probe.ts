@@ -185,6 +185,34 @@ function buildChatBundle(): string {
   ].join("\n");
 }
 
+// ── Transient-abort retry (synth thinking-mode p95 ~90s can trip the prod 60s SYNT_TIMEOUT) ──
+// Throwaway-probe resilience only; production timeout is left untouched (logged as a deferred
+// observation). A timeout abort is transport flakiness, NOT a determinism signal.
+async function bakeWithRetry(
+  label: string,
+  input: EnrichInput,
+  deps: Record<string, unknown>,
+  onAttempt: () => void,
+  maxAttempts = 3,
+): Promise<AudienceSignature> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      onAttempt();
+      return (await enrichSignature(input, deps)) as AudienceSignature;
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/abort/i.test(msg) && attempt < maxAttempts) {
+        console.log(`[${label}] transient abort (synth timeout) on attempt ${attempt}/${maxAttempts} — retrying…`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastErr;
+}
+
 // ── Run ───────────────────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   let qwenCalls = 0;
@@ -247,10 +275,10 @@ async function main(): Promise<void> {
 
   // bake TWICE from the SAME frozen input, REAL Qwen (temp 0 + seed inside enrichSignature).
   console.log("[socials] bake A …");
-  const a: AudienceSignature = await enrichSignature(socialsInput);
+  const a: AudienceSignature = await bakeWithRetry("socials A", socialsInput, {}, () => {});
   qwenCalls += a.provenance.videos_watched + 1; // omni watches + 1 synth
   console.log("[socials] bake B …");
-  const b: AudienceSignature = await enrichSignature(socialsInput);
+  const b: AudienceSignature = await bakeWithRetry("socials B", socialsInput, {}, () => {});
   qwenCalls += b.provenance.videos_watched + 1;
 
   // FULL-DIFF SELF-CHECK (Assumption A1) — log EVERY differing path, then assert equality.
@@ -261,10 +289,11 @@ async function main(): Promise<void> {
   // (2) GENERAL PROTO — zero-omni synthesis path, baked TWICE (D-02/D-03) ─────────────────────
   console.log("[general] bake A (zero omni) …");
   const genInput: EnrichInput = chatBundleToEnrichInput(buildChatBundle(), CUSTOM_NOTE);
-  const ga: AudienceSignature = await enrichSignature(genInput, { watchVideo: async () => null });
+  const genDeps = { watchVideo: async () => null };
+  const ga: AudienceSignature = await bakeWithRetry("general A", genInput, genDeps, () => {});
   qwenCalls += 1; // 1 synth, 0 omni
   console.log("[general] bake B (zero omni) …");
-  const gb: AudienceSignature = await enrichSignature(genInput, { watchVideo: async () => null });
+  const gb: AudienceSignature = await bakeWithRetry("general B", genInput, genDeps, () => {});
   qwenCalls += 1;
 
   // Tag the source=user custom-context as first-class provenance (probe-local, Open Question 3).
