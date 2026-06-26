@@ -92,6 +92,14 @@ export interface BoardState {
    * Board.tsx watches this to reset stream + state even when already on /analyze.
    */
   newAnalysisSignal: number;
+
+  /**
+   * Monotonic counter incremented when the ACTIVE chat thread changes (sidebar
+   * "New Thread" or re-opening a past thread). The home composer watches this to
+   * clear its rendered thread content and refetch the now-active open thread —
+   * the in-memory equivalent of a remount when navigating /home → /home.
+   */
+  activeThreadSignal: number;
 }
 
 export interface BoardActions {
@@ -122,6 +130,13 @@ export interface BoardActions {
 
   /** Increment newAnalysisSignal so Board resets even when already on /analyze. */
   triggerNewAnalysis: () => void;
+
+  /**
+   * Switch the active chat thread: hard-reset board state AND pulse
+   * activeThreadSignal so the home composer reloads the now-active thread.
+   * Called after the server-side new/activate request resolves.
+   */
+  switchThread: () => void;
 
   // ── Camera ──────────────────────────────────────────────────────────────
 
@@ -176,6 +191,7 @@ const DEFAULT_STATE: BoardState = {
   inputBarFocusPulse: 0,
   pendingVideo: null,
   newAnalysisSignal: 0,
+  activeThreadSignal: 0,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -237,6 +253,13 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
   resetToIdle: () => set({ ...DEFAULT_STATE }),
 
   triggerNewAnalysis: () => set((s) => ({ ...DEFAULT_STATE, newAnalysisSignal: s.newAnalysisSignal + 1 })),
+
+  switchThread: () =>
+    set((s) => ({
+      ...DEFAULT_STATE,
+      newAnalysisSignal: s.newAnalysisSignal + 1,
+      activeThreadSignal: s.activeThreadSignal + 1,
+    })),
 
   // ── Camera ──────────────────────────────────────────────────────────────
 

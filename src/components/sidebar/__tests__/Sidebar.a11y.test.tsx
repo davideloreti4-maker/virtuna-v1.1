@@ -4,7 +4,9 @@ import { render, screen } from '@testing-library/react';
 import { axe } from 'vitest-axe';
 
 vi.mock('@/hooks/queries', () => ({
-  useAnalysisHistory: () => ({ data: [], isLoading: false }),
+  useThreadList: () => ({ data: [], isLoading: false }),
+  useCreateThread: () => ({ mutateAsync: vi.fn() }),
+  useActivateThread: () => ({ mutateAsync: vi.fn() }),
 }));
 
 vi.mock('@/hooks/queries/use-profile', () => ({
@@ -53,6 +55,6 @@ describe('Sidebar a11y', () => {
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
     // The relabeled history section header reads "Thread" (the old "Simulations"
     // copy is gone — the positive New Thread / Thread assertions above prove it).
-    expect(screen.getByText('Thread')).toBeInTheDocument();
+    expect(screen.getByText('Threads')).toBeInTheDocument();
   });
 });
