@@ -70,7 +70,7 @@ Plans:
 Plans:
 **Wave 1**
 
-- [ ] 02-01-PLAN.md — KEEP determinism gate: signature-equality (normalize/equal) + zero-network replay test + Directional-by-rule tiering assertion (TRUST-03)
+- [x] 02-01-PLAN.md — KEEP determinism gate: signature-equality (normalize/equal) + zero-network replay test + Directional-by-rule tiering assertion (TRUST-03)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
-| 2. Trustworthy-SIM Spike | 0/3 | Not started | - |
+| 2. Trustworthy-SIM Spike | 1/3 | In progress | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |

@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 2 context gathered
-last_updated: "2026-06-26T14:00:27.716Z"
-last_activity: 2026-06-26
+status: executing
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-06-26T14:37:00.000Z"
+last_activity: 2026-06-26 -- Completed Phase 02 Plan 01 (determinism gate)
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 6
-  completed_plans: 6
-  percent: 14
+  total_plans: 9
+  completed_plans: 7
+  percent: 17
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read.
-**Current focus:** Phase 01 — engine-pack-seam
+**Current focus:** Phase 02 — trustworthy-sim-spike
 
 ## Current Position
 
-Phase: 2
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-06-26
+Phase: 02 (trustworthy-sim-spike) — EXECUTING
+Plan: 2 of 3 (01 complete)
+Status: Executing Phase 02
+Last activity: 2026-06-26 -- Completed Phase 02 Plan 01 (determinism gate)
 
-Progress: [█░░░░░░░░░] 17%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [█░░░░░░░░░] 17%
 | Phase 01 P04 | 3min | 1 tasks | 1 files |
 | Phase 01 P05 | 5min | 2 tasks | 1 files |
 | Phase 01 P06 | 4min | 2 tasks | 2 files |
+| Phase 02 P01 | 5min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,7 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-04: pack-seam-smoke.test.ts is the phase BLOCKING D-03 gate — structural smoke (keys + sane-band overall_score + engine_version 3.20.0) over SOCIALS_PACK.scoring.run for text+video fixtures, plus a static PACK-01 no-aggregateScores check on packs/index.ts; D-04 byte-identical superseded, no golden-master rig.
 - [Phase 01]: 01-05: production /api/analyze dispatches BOTH branches (JSON + SSE) via resolvePack(socials).run + .scoring.run; direct runPredictionPipeline/aggregateScores imports removed (PACK-01 on live route). Identity wraps — opts + aggregateMs timing + onStageEvent preserved; smoke gate + route tests green, tsc clean.
 - [Phase ?]: [Phase 01]: 01-06: both non-route harnesses (corpus/eval-runner + learning/predict) dispatch via resolvePack(socials).run + .scoring.run; direct aggregateScores import dropped, ENGINE_VERSION retained, behavioralSource conditional preserved verbatim. PACK-01 closed across ALL 4 call sites. Full engine suite green (95 files/1170 passed).
+- [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
 
 ### Pending Todos
 
@@ -96,6 +98,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-26T14:00:27.712Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-trustworthy-sim-spike/02-CONTEXT.md
+Last session: 2026-06-26T14:37:00.000Z
+Stopped at: Completed 02-01-PLAN.md (determinism gate)
+Resume file: .planning/phases/02-trustworthy-sim-spike/02-02-PLAN.md
