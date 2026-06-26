@@ -163,10 +163,11 @@ export function buildFoldUserContent(
   verbatim: string,
   emotionArc: EmotionArcPoint[],
   videoUrl?: string | null,
+  audienceRepaint?: Record<string, string>,
 ): ContentItem[] {
   const textItem: ContentItem = {
     type: "text",
-    text: buildFoldTextBlock(slots, segments, verbatim, emotionArc),
+    text: buildFoldTextBlock(slots, segments, verbatim, emotionArc, audienceRepaint),
   };
   return videoUrl
     ? [{ type: "video_url", video_url: { url: videoUrl } }, textItem]
@@ -180,12 +181,20 @@ export function buildFoldUserContent(
  * - Emotion arc data
  * - Per-slot archetype + niche context (the 10 persona assignments)
  * All volatile data lives here — NOT in the system prompt.
+ *
+ * AUDIENCE REPAINT (R1′b): when `audienceRepaint` is provided (a calibrated, non-General
+ * audience is active), each slot line carries that archetype's stored `reaction_frame` so the
+ * fold simulates THIS creator's real, calibrated audience instead of generic archetypes — the
+ * SAME deterministic repaint the text SIM applies (build-reaction-panel.ts:buildAudienceRepaint).
+ * The repaint lives in the USER block (NOT the byte-stable D-17 system prefix); when absent
+ * (General / no audience) the block is BYTE-IDENTICAL to pre-R1′b (regression-gate-safe).
  */
 function buildFoldTextBlock(
   slots: PersonaSlot[],
   segments: SegmentGrid[],
   verbatim: string,
   emotionArc: EmotionArcPoint[],
+  audienceRepaint?: Record<string, string>,
 ): string {
   const lines: string[] = [];
 
@@ -212,14 +221,26 @@ function buildFoldTextBlock(
   lines.push(JSON.stringify(emotionArc));
   lines.push("");
 
-  // Persona slot assignments (niche context per archetype)
+  // Persona slot assignments (niche context per archetype).
+  // R1′b: when a calibrated audience is active, each line carries that archetype's stored
+  // `audience_reaction_frame` (the deterministic repaint) so the fold simulates THIS audience.
+  // No repaint for an archetype → the line is unchanged → byte-identical to pre-R1′b (General-safe).
   lines.push(`## Persona Slot Assignments (niche context)`);
   for (const slot of slots) {
-    lines.push(
-      `- ${slot.archetype} | slot_type: ${slot.slot_type} | persona_id: ${slot.persona_id} | niche: ${slot.niche ?? "general"}`,
-    );
+    const base = `- ${slot.archetype} | slot_type: ${slot.slot_type} | persona_id: ${slot.persona_id} | niche: ${slot.niche ?? "general"}`;
+    const repaint = audienceRepaint?.[slot.archetype];
+    lines.push(repaint ? `${base} | audience_reaction_frame: ${repaint}` : base);
   }
   lines.push("");
+
+  // R1′b: one guidance line, ONLY when a repaint is present (calibrated audience) — tells the
+  // model the frame is the authoritative lens for that archetype. Absent → skipped → byte-identical.
+  if (audienceRepaint) {
+    lines.push(
+      `(audience_reaction_frame, when present, is how THIS creator's real calibrated audience segment judges content — treat it as the authoritative lens for that archetype's attention + intents.)`,
+    );
+    lines.push("");
+  }
 
   lines.push(
     `Return a JSON object with EXACTLY 10 personas and EXACTLY ${segments.length} segment_reactions per persona.`,

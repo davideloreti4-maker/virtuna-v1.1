@@ -293,11 +293,21 @@ export async function runFold(
   emotionArc: EmotionArcPoint[],
   videoUrl: string | null,
   onStageEvent?: StageEventCallback,
+  // R1′b — per-archetype repaint map (archetype → reaction_frame) for the active calibrated
+  // audience, built upstream via buildAudienceRepaint(audience). undefined for General/no
+  // audience → buildFoldUserContent is byte-identical to pre-R1′b (regression-gate-safe).
+  // A primitive map (not the Audience domain type) keeps this engine module isolated.
+  audienceRepaint?: Record<string, string>,
 ): Promise<Wave3FoldOutcome> {
   const stageStart = emitStageStart(onStageEvent, "wave_3_fold", 4);
 
   const ai = getQwenClient();
-  log.info("fold start", { model: FOLD_MODEL, segments: segments.length });
+  log.info("fold start", {
+    model: FOLD_MODEL,
+    segments: segments.length,
+    // R1′b: true when a calibrated audience repaint is threaded in (vs generic archetypes).
+    audience_repaint: audienceRepaint ? Object.keys(audienceRepaint).length : 0,
+  });
   const warnings: string[] = [];
   let fold_success = false;
   let costCents = 0;
@@ -313,7 +323,7 @@ export async function runFold(
       { role: "system" as const, content: STABLE_FOLD_SYSTEM_PROMPT }, // byte-stable cache prefix (D-17)
       {
         role: "user" as const,
-        content: buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl) as never,
+        content: buildFoldUserContent(slots, segments, verbatim, emotionArc, videoUrl, audienceRepaint) as never,
       },
     ],
     response_format: { type: "json_object" as const },

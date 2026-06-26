@@ -8,6 +8,11 @@ import { createLogger } from "@/lib/logger";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
+// R1′b — load the user's active calibrated audience (same per-thread pin the generative
+// skills use) so the Read fold simulates the REAL audience, not generic archetypes.
+import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import type { Audience } from "@/lib/audience/audience-types";
 // stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
 import { AnalysisInputSchema } from "@/lib/engine/types";
 import {
@@ -755,6 +760,27 @@ export async function POST(request: Request) {
     });
 
     // -------------------------------------------------------
+    // R1′b — Load the active calibrated audience (same per-thread pin as the generative
+    // skills: ideas/hooks/script read thread.active_audience_id → getAudience). The Read
+    // fires from the same composer, so it picks up the SAME active audience → the fold
+    // simulates the user's REAL audience (the moat: one audience substrate everywhere).
+    // Resolves to GENERAL_AUDIENCE (is_general → no repaint → byte-identical fold) on any
+    // miss/failure — never blocks the Read.
+    // -------------------------------------------------------
+    let activeAudience: Audience = GENERAL_AUDIENCE;
+    try {
+      const openThread = await createOpenThreadLazy(user.id);
+      const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
+      const activeAudienceId = rawThread.active_audience_id ?? null;
+      if (activeAudienceId) {
+        const loaded = await getAudience(supabase, activeAudienceId);
+        if (loaded) activeAudience = loaded;
+      }
+    } catch {
+      // Non-fatal: fall back to General (no regression — the fold runs generic archetypes).
+    }
+
+    // -------------------------------------------------------
     // JSON branch (CONTEXT D-03) — runs pipeline + aggregator inline.
     // No onStageEvent — JSON callers don't get stage events.
     // -------------------------------------------------------
@@ -767,6 +793,8 @@ export async function POST(request: Request) {
           // reading-ux S1 (2026-06-15): owner id so a tiktok_url re-host lands at a
           // signable, owner-prefixed path and is kept on success for the scrubber.
           userId: user.id,
+          // R1′b — the active calibrated audience repaints the fold's 10 archetypes.
+          audience: activeAudience,
         });
       } catch (pipelineError) {
         // Phase 3 (260528-nsb): cleanup orphan on JSON-branch pipeline throw.
@@ -980,6 +1008,8 @@ export async function POST(request: Request) {
             // reading-ux S1 (2026-06-15): owner id so a tiktok_url re-host lands at a
             // signable, owner-prefixed path and is kept on success for the scrubber.
             userId: user.id,
+            // R1′b — the active calibrated audience repaints the fold's 10 archetypes.
+            audience: activeAudience,
             onStageEvent: (event: StageEvent) => {
               send("stage", event);
             },

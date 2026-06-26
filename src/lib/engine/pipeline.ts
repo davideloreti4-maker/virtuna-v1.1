@@ -38,6 +38,10 @@ import type { Wave3Pass2Outcome } from "./wave3/pass2";
 import { runFold, type Wave3FoldOutcome } from "./wave3/fold";
 import { aggregatePersonaResults } from "./wave3/aggregator";
 import { triggerFilmstripGeneration } from "./filmstrip/queue";
+// R1′b — the active audience flows in via PipelineOptions; buildAudienceRepaint projects it
+// to the per-archetype repaint map the fold consumes (SAME projection the text SIM uses).
+import type { Audience } from "@/lib/audience/audience-types";
+import { buildAudienceRepaint } from "@/lib/engine/flash/build-reaction-panel";
 
 // =====================================================
 // Pipeline Types
@@ -165,6 +169,14 @@ export interface PipelineOptions {
    * the legacy `remix-temp/${requestId}.mp4` derive-and-drop path (deleted unconditionally).
    */
   userId?: string;
+  /**
+   * R1′b — the active calibrated audience for this Read (loaded from the user's open
+   * thread `active_audience_id` by the analyze route, mirroring the generative skills).
+   * The fold repaints its 10 archetypes with this audience's stored reaction frames so the
+   * Read simulates the user's REAL audience (the moat: one audience substrate across every
+   * skill). General / null / is_general → no repaint → byte-identical fold (regression-safe).
+   */
+  audience?: Audience;
 }
 
 // =====================================================
@@ -784,13 +796,20 @@ export async function runPredictionPipeline(
         wave0Result.content_type?.type ?? null,
         wave0Result.niche?.primary_slug ?? null,
       );
+      // R1′b — repaint the fold's 10 archetypes with the active calibrated audience's stored
+      // reaction frames (the moat: the Read simulates the user's REAL audience, not generic
+      // archetypes). buildAudienceRepaint is the SAME projection the text SIM uses, so both
+      // skills simulate the audience identically. General/null/is_general → undefined → the
+      // fold is byte-identical to pre-R1′b (regression-gate-safe; ENGINE_VERSION untouched).
+      const foldAudienceRepaint = buildAudienceRepaint(opts?.audience ?? null);
       foldOutcome = await runFold(
         foldSlots,
         omniSegments,
         verbatimText,
         emotionArc,
-        signedVideoUrl, // sense-complete fold: omni-plus watches the video directly (video+audio)
+        signedVideoUrl, // sighted/deaf fold: qwen3.7-plus watches the video; audio via Wave 0 audio_event
         onStageEvent,
+        foldAudienceRepaint,
       );
       warnings.push(...foldOutcome.warnings);
     } catch (error) {
