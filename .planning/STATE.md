@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: 02-02-PLAN.md Task 3 checkpoint (blocking human-verify — live probe cost approval)
-last_updated: "2026-06-26T15:10:00.000Z"
-last_activity: 2026-06-26 -- 02-02 Tasks 1+2 committed; halted at Task 3 (live probe ~$0.50)
+stopped_at: 02-02-PLAN.md COMPLETE (live probe ran); next 02-03-PLAN.md (spike verdict + teardown)
+last_updated: "2026-06-26T15:20:00.000Z"
+last_activity: 2026-06-26 -- 02-02 COMPLETE: live probe ran (khaby.lame); determinism=NON-DETERMINISTIC (genuine), provenance+tiering GREEN; 2 prod bugs fixed
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 9
-  completed_plans: 7
-  percent: 17
+  completed_plans: 8
+  percent: 19
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 02 (trustworthy-sim-spike) — EXECUTING
-Plan: 2 of 3 (01 complete; 02 IN PROGRESS — Tasks 1+2 done, Task 3 blocked on live-probe cost approval)
-Status: Executing Phase 02 — halted at 02-02 Task 3 (blocking human-verify checkpoint)
-Last activity: 2026-06-26 -- 02-02 Tasks 1+2 committed (adapter 5c856a28, probe 13d6e1fc); awaiting ~$0.50 cost approval for the live double-bake probe
+Plan: 3 of 3 (01 + 02 complete; 02-03 NEXT — spike verdict + throwaway teardown)
+Status: Executing Phase 02 — 02-02 live probe COMPLETE; ready for 02-03 verdict
+Last activity: 2026-06-26 -- 02-02 live probe RAN on khaby.lame (human-approved): DETERMINISM=NON-DETERMINISTIC (genuine, matched watch counts), PROVENANCE+TIERING GREEN; evidence in 02-02-SUMMARY.md; 2 prod bugs fixed (dbbcf46c, aa783456)
 
-Progress: [██░░░░░░░░] 17%
+Progress: [██░░░░░░░░] 19%
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [██░░░░░░░░] 17%
 | Phase 01 P05 | 5min | 2 tasks | 1 files |
 | Phase 01 P06 | 4min | 2 tasks | 2 files |
 | Phase 02 P01 | 5min | 2 tasks | 4 files |
+| Phase 02 P02 | ~40min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-04: pack-seam-smoke.test.ts is the phase BLOCKING D-03 gate — structural smoke (keys + sane-band overall_score + engine_version 3.20.0) over SOCIALS_PACK.scoring.run for text+video fixtures, plus a static PACK-01 no-aggregateScores check on packs/index.ts; D-04 byte-identical superseded, no golden-master rig.
 - [Phase 01]: 01-05: production /api/analyze dispatches BOTH branches (JSON + SSE) via resolvePack(socials).run + .scoring.run; direct runPredictionPipeline/aggregateScores imports removed (PACK-01 on live route). Identity wraps — opts + aggregateMs timing + onStageEvent preserved; smoke gate + route tests green, tsc clean.
 - [Phase ?]: [Phase 01]: 01-06: both non-route harnesses (corpus/eval-runner + learning/predict) dispatch via resolvePack(socials).run + .scoring.run; direct aggregateScores import dropped, ENGINE_VERSION retained, behavioralSource conditional preserved verbatim. PACK-01 closed across ALL 4 call sites. Full engine suite green (95 files/1170 passed).
+- [Phase 02]: 02-02: LIVE make-or-break probe RAN (khaby.lame, human-approved ~$0.50). **DETERMINISM = NON-DETERMINISTIC** — thinking-mode synth (qwen-3.7-plus, temp0+seed) produced different load-bearing fields across two bakes of the IDENTICAL frozen input; matched watch counts (A=3 B=3) rule out the Pitfall-2 transport/INCONCLUSIVE escape, so this is a GENUINE finding; `signatureEqual:false`. PROVENANCE GREEN (10/10 reactors grounded all 4 bakes, source=user note surfaced, ungrounded distinguishable). TIERING GREEN (no-calibration→Directional). Material for 02-03: prod bakes ONCE + freezes (never re-bakes same input) → cross-bake non-determinism may be theoretical not operational; verdict (NO-GO vs accept-with-mitigation: bake-once-freeze / disable thinking / field-tolerance) is 02-03's. 2 LATENT PROD BUGS fixed en route: (a) `apifyVideoSchema.subtitleLinks` now `.nullable()` — clockworks returns null for wordless videos (khaby.lame) and was silently dropping ALL videos of subtitle-less profiles during calibration (`dbbcf46c`); (b) `SYNTH_TIMEOUT_MS` 60→120s — thinking-mode synth runs ~60-90s and was aborting systematically (`aa783456`). Throwaway scaffolding LEFT INTACT for 02-03 teardown.
 - [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
 
 ### Pending Todos
@@ -84,7 +86,7 @@ None yet.
 ### Blockers/Concerns
 
 - PACK-04 byte-identical regression lock (Phase 1) is the load-bearing safety gate — must verify creator output unchanged against pre-seam fixtures before proceeding.
-- Phase 2 spike must return a go/no-go verdict; a negative verdict reshapes Phases 3–7.
+- Phase 2 spike must return a go/no-go verdict; a negative verdict reshapes Phases 3–7. **02-02 evidence is in: determinism leg is RED (live thinking-mode synth non-deterministic across bakes), provenance + tiering GREEN. 02-03 must decide NO-GO vs accept-with-mitigation — note prod bakes-once-and-freezes, so cross-bake non-determinism may not bite operationally.**
 
 ## Deferred Items
 
@@ -98,6 +100,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-26T14:37:00.000Z
-Stopped at: Completed 02-01-PLAN.md (determinism gate)
-Resume file: .planning/phases/02-trustworthy-sim-spike/02-02-PLAN.md
+Last session: 2026-06-26T15:20:00.000Z
+Stopped at: Completed 02-02-PLAN.md (live probe ran — determinism RED, provenance/tiering GREEN)
+Resume file: .planning/phases/02-trustworthy-sim-spike/02-03-PLAN.md

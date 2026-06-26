@@ -74,7 +74,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 02-02-PLAN.md — THROWAWAY live probe: ×2 double-bake (real Qwen) + General-bundle proto + provenance/source=user inspection (autonomous:false, needs keys + ~$0.50) (TRUST-03) — 🟡 IN PROGRESS: Tasks 1+2 authored & committed (adapter `5c856a28`, probe `13d6e1fc`); BLOCKED at Task 3 (blocking human-verify — live probe spends ~$0.50, awaiting cost approval)
+- [x] 02-02-PLAN.md — THROWAWAY live probe: ×2 double-bake (real Qwen) + General-bundle proto + provenance/source=user inspection (autonomous:false, needs keys + ~$0.50) (TRUST-03) — ✅ COMPLETE: live probe RAN on khaby.lame (human-approved spend). **DETERMINISM = NON-DETERMINISTIC** (genuine, matched watch counts A=3 B=3 → not transport; thinking-mode synth temp0+seed insufficient, `signatureEqual:false`); **PROVENANCE GREEN** (10/10 grounded all bakes, source=user surfaced); **TIERING GREEN** (Directional). Evidence verbatim in `02-02-SUMMARY.md`. 2 latent prod bugs fixed en route (subtitleLinks:null `dbbcf46c`, synth timeout 60→120s `aa783456`). Verdict → 02-03.
 
 **Wave 3** *(blocked on Wave 2)*
 
