@@ -387,7 +387,9 @@ function resolveTier(calibration?: { baselineRef?: string }): TrustTier {
 
 **If founder supplies the `@handle` + chat bundle, A4 resolves to a locked decision; otherwise the planner picks per the guidance above.**
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Q1 is the spike's core experiment (un-pre-answerable by design — answered by the 02-02 live probe; result recorded in SPIKE-VERDICT.md). Q2/Q3 have adopted recommendations: default handle + synthetic chat `.txt` in 02-02; probe-local `provenance.custom_context` (`source=user`) shape in 02-02/02-03. No blocking unknowns remain for planning.
 
 1. **Does thinking-mode synthesis stay deterministic across bakes?**
    - What we know: `temp:0 + seed:7` is set; seed exists specifically to pin thinking-mode jitter.
