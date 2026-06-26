@@ -66,7 +66,7 @@ import {
 import { comedyFixture, tutorialFlatFixture } from "./fixtures/omni-structural";
 
 // Task 2 imports (will be RED until decode.ts + decode-prompts.ts exist)
-import { runDecode } from "../decode";
+import { runDecode, coerceDecodeResponse } from "../decode";
 import { DECODE_SYSTEM_PROMPT, buildDecodeContext } from "../decode-prompts";
 
 // =====================================================
@@ -301,36 +301,21 @@ describe("runDecode", () => {
     expect(emotional?.body.length).toBeGreaterThan(10);
   });
 
-  it("backstop: injects algorithmic_outlier when model returns luck:[]", async () => {
+  it("recovers when model returns luck:[] → coerce injects algorithmic_outlier (GAP-REMIX-01)", async () => {
     const mockResultEmptyLuck = {
       beats: makeValidDecodeResult().beats,
       repeatable: ["Strong hook setup"],
       luck: [],
     };
-    // First attempt: Zod rejects luck:[] (min(1)) → retry
-    // Second attempt: still empty luck → Zod rejects again → backstop should NOT fire from Zod failure
-    // BUT: if we use a valid result with non-empty luck from mock, backstop fires differently.
-    // Scenario: model returns luck:[] → Zod REJECTS → retry → this time valid but Zod passes with luck:[]
-    // Actually: DecodeResultZodSchema.min(1) means luck:[] FAILS Zod. The backstop fires AFTER Zod passes.
-    // So to test backstop, we need the model to return VALID Zod (luck non-empty) but we mock runDecode
-    // to simulate internal backstop. Instead, we test the internal path by returning luck:[] on BOTH
-    // attempts so it falls through, OR we accept the backstop runs only when Zod schema is lenient.
-    //
-    // The plan specifies: "after Zod safeParse succeeds: pure-TS backstop — if data.luck.length === 0 push..."
-    // For Zod to pass with luck:[], the schema must NOT enforce min(1)... but plan says it DOES enforce min(1).
-    // Resolution: The backstop is an extra defense layer in case the model BYPASSES Zod validation somehow.
-    // In tests: mock the Qwen response to return luck:[] twice (Zod fails both), result is null. OR:
-    // We test the backstop by mocking a result that passes Zod (luck:[x]) but the internal code
-    // deliberately strips luck and tests the backstop function in isolation.
-    //
-    // Practical approach: test that result is null when model consistently returns empty luck (both attempts
-    // fail Zod), AND separately test the backstop logic by verifying luck.length >= 1 on any valid return.
+    // PRE-coerce this nulled the whole remix Read (luck:[] fails Zod min(1) on both
+    // attempts → decode_failed). coerceDecodeResponse now salvages it before Zod →
+    // a valid result with an injected algorithmic_outlier luck entry.
     mockCreate.mockResolvedValue(makeCompletion(mockResultEmptyLuck));
 
-    // When both attempts produce Zod-failing output, runDecode returns null
     const result = await runDecode(comedyFixture);
-    // Both attempts fail schema validation (luck:[] fails min(1)) → returns null
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.luck.length).toBeGreaterThanOrEqual(1);
+    expect(result!.luck[0]?.category).toBe("algorithmic_outlier");
   });
 
   it("returns null when model returns invalid JSON on both attempts", async () => {
@@ -368,5 +353,71 @@ describe("runDecode", () => {
       }),
       expect.anything(),
     );
+  });
+});
+
+// =====================================================
+// GAP-REMIX-01 — coerceDecodeResponse pre-Zod salvage
+// =====================================================
+
+describe("coerceDecodeResponse (GAP-REMIX-01 pre-Zod salvage)", () => {
+  it("passes valid output through unchanged → Zod-valid", () => {
+    const valid = makeValidDecodeResult();
+    const coerced = coerceDecodeResponse(valid);
+    expect(DecodeResultZodSchema.safeParse(coerced).success).toBe(true);
+    expect(coerced).toEqual({
+      beats: valid.beats,
+      repeatable: valid.repeatable,
+      luck: valid.luck,
+    });
+  });
+
+  it("salvages null/empty beat bodies → honest placeholder, Zod-valid", () => {
+    const malformed = {
+      beats: BEAT_IDS.map((id) => ({ id, body: null, verdict: "present" })),
+      repeatable: ["thing"],
+      luck: [{ category: "algorithmic_outlier", note: "n" }],
+    };
+    const parsed = DecodeResultZodSchema.safeParse(coerceDecodeResponse(malformed));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.beats).toHaveLength(4);
+      expect(parsed.data.beats[0]?.body).toBe("[beat not analyzed]");
+    }
+  });
+
+  it("pads a short beats array to 4 in BEAT_IDS order, keeping real beats", () => {
+    const malformed = {
+      beats: [{ id: "hook_pattern", body: "real beat", verdict: "present" }],
+      repeatable: ["thing"],
+      luck: [{ category: "algorithmic_outlier", note: "n" }],
+    };
+    const parsed = DecodeResultZodSchema.safeParse(coerceDecodeResponse(malformed));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.beats.map((b) => b.id)).toEqual(BEAT_IDS);
+      expect(parsed.data.beats[0]?.body ?? "").toBe("real beat");
+    }
+  });
+
+  it("injects defaults when luck:[] and repeatable:[] → Zod-valid", () => {
+    const malformed = { beats: makeValidDecodeResult().beats, repeatable: [], luck: [] };
+    const parsed = DecodeResultZodSchema.safeParse(coerceDecodeResponse(malformed));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.luck.length).toBeGreaterThanOrEqual(1);
+      expect(parsed.data.repeatable.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("coerces an unknown luck category to algorithmic_outlier", () => {
+    const malformed = {
+      beats: makeValidDecodeResult().beats,
+      repeatable: ["thing"],
+      luck: [{ category: "not_real", note: "x" }],
+    };
+    const parsed = DecodeResultZodSchema.safeParse(coerceDecodeResponse(malformed));
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.luck[0]?.category).toBe("algorithmic_outlier");
   });
 });
