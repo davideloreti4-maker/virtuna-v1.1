@@ -14,7 +14,7 @@ Turn the socials-locked engine into a domain-blind synthetic-population simulato
 Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0" signature substrate is already on `main` and is NOT a build phase here.
 
 - [x] **Phase 1: Engine / Pack Seam** - Engine goes domain-blind; Socials becomes Pack #1 with pluggable scoring, creator output byte-identical (completed 2026-06-26)
-- [ ] **Phase 2: Trustworthy-SIM Spike** - De-risk the make-or-break question: a trustworthy SIM with zero calibration via determinism + provenance + honest tiering
+- [x] **Phase 2: Trustworthy-SIM Spike** - De-risk the make-or-break question: a trustworthy SIM with zero calibration via determinism + provenance + honest tiering (completed 2026-06-26 — verdict NO-GO conditional, clears to GO after dropping thinking-mode synth)
 - [ ] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance
 - [ ] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier
 - [ ] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread
@@ -78,7 +78,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-03-PLAN.md — SPIKE-VERDICT.md (hard 3-gate GO/NO-GO + fallback) + throwaway teardown (TRUST-03)
+- [x] 02-03-PLAN.md — SPIKE-VERDICT.md (hard 3-gate GO/NO-GO + fallback) + throwaway teardown (TRUST-03) — ✅ COMPLETE: verdict = **NO-GO (conditional)** — Determinism FAIL (genuine), Provenance + Tiering PASS; fallback to GO = drop thinking-mode synth then re-confirm `signatureEqual:true`. Threw away `scripts/spike/*` (D-05); KEEP gate green (135 tests). Commits a14af4b9, 362ef8df.
 
 ### Phase 3: General Population + Honesty Layer
 
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
-| 2. Trustworthy-SIM Spike | 1/3 | In progress | - |
+| 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |

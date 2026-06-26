@@ -28,7 +28,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 - [ ] **TRUST-01**: Each audience and each run carries a Validated vs Directional badge, surfaced in the UI
 - [ ] **TRUST-02**: Provenance is surfaced — a General audience's personas show the evidence behind them; ungrounded personas read as visibly ungrounded
-- [ ] **TRUST-03**: A user can build a *trustworthy* General SIM with no calibration data — guaranteed by determinism (temp 0 + seed, bake-once), provenance, and honest trust tiering (de-risked by an early spike per vision §7)
+- [x] **TRUST-03**: A user can build a *trustworthy* General SIM with no calibration data — guaranteed by determinism (temp 0 + seed, bake-once), provenance, and honest trust tiering (de-risked by an early spike per vision §7) — ✅ spike CLOSED 2026-06-26: provenance + tiering PASS; determinism FAIL (genuine thinking-mode synth) → verdict NO-GO conditional, clears to GO after dropping thinking-mode synth (see SPIKE-VERDICT.md)
 
 ### PROF — Profile Verb (the on-ramp)
 
@@ -110,7 +110,7 @@ Phases assigned during roadmap creation. All Pending.
 | POP-05 | Phase 3 | Pending |
 | TRUST-01 | Phase 3 | Pending |
 | TRUST-02 | Phase 3 | Pending |
-| TRUST-03 | Phase 2 | Pending |
+| TRUST-03 | Phase 2 | Complete |
 | PROF-01 | Phase 5 | Pending |
 | PROF-02 | Phase 5 | Pending |
 | PROF-03 | Phase 5 | Pending |

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: 02-02-PLAN.md COMPLETE (live probe ran); next 02-03-PLAN.md (spike verdict + teardown)
-last_updated: "2026-06-26T15:20:00.000Z"
-last_activity: 2026-06-26 -- 02-02 COMPLETE: live probe ran (khaby.lame); determinism=NON-DETERMINISTIC (genuine), provenance+tiering GREEN; 2 prod bugs fixed
+stopped_at: 02-03-PLAN.md COMPLETE (SPIKE-VERDICT.md written + throwaway teardown) — Phase 02 spike CLOSED
+last_updated: "2026-06-26T15:32:00.000Z"
+last_activity: 2026-06-26 -- 02-03 COMPLETE: SPIKE-VERDICT.md = NO-GO (conditional); determinism FAIL (genuine), provenance+tiering PASS; fallback = drop thinking-mode synth; scripts/spike torn down, KEEP gate green
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 9
-  completed_plans: 8
-  percent: 19
+  completed_plans: 9
+  percent: 29
 ---
 
 # Project State
@@ -25,12 +25,12 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 02 (trustworthy-sim-spike) — EXECUTING
-Plan: 3 of 3 (01 + 02 complete; 02-03 NEXT — spike verdict + throwaway teardown)
-Status: Executing Phase 02 — 02-02 live probe COMPLETE; ready for 02-03 verdict
-Last activity: 2026-06-26 -- 02-02 live probe RAN on khaby.lame (human-approved): DETERMINISM=NON-DETERMINISTIC (genuine, matched watch counts), PROVENANCE+TIERING GREEN; evidence in 02-02-SUMMARY.md; 2 prod bugs fixed (dbbcf46c, aa783456)
+Phase: 02 (trustworthy-sim-spike) — COMPLETE (spike closed)
+Plan: 3 of 3 (all complete) — Phase 03 (General Population + Honesty Layer) NEXT
+Status: Phase 02 CLOSED — SPIKE-VERDICT.md = NO-GO (conditional); ready to plan Phase 03
+Last activity: 2026-06-26 -- 02-03 wrote SPIKE-VERDICT.md (hard 3-gate: determinism FAIL genuine, provenance+tiering PASS → NO-GO pending one mitigation: drop thinking-mode synth, then GO); torn down scripts/spike (D-05), KEEP gate green (135 tests); commits a14af4b9, 362ef8df
 
-Progress: [██░░░░░░░░] 19%
+Progress: [███░░░░░░░] 29%
 
 ## Performance Metrics
 
@@ -59,6 +59,7 @@ Progress: [██░░░░░░░░] 19%
 | Phase 01 P06 | 4min | 2 tasks | 2 files |
 | Phase 02 P01 | 5min | 2 tasks | 4 files |
 | Phase 02 P02 | ~40min | 3 tasks | 6 files |
+| Phase 02 P03 | ~6min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01]: 01-04: pack-seam-smoke.test.ts is the phase BLOCKING D-03 gate — structural smoke (keys + sane-band overall_score + engine_version 3.20.0) over SOCIALS_PACK.scoring.run for text+video fixtures, plus a static PACK-01 no-aggregateScores check on packs/index.ts; D-04 byte-identical superseded, no golden-master rig.
 - [Phase 01]: 01-05: production /api/analyze dispatches BOTH branches (JSON + SSE) via resolvePack(socials).run + .scoring.run; direct runPredictionPipeline/aggregateScores imports removed (PACK-01 on live route). Identity wraps — opts + aggregateMs timing + onStageEvent preserved; smoke gate + route tests green, tsc clean.
 - [Phase ?]: [Phase 01]: 01-06: both non-route harnesses (corpus/eval-runner + learning/predict) dispatch via resolvePack(socials).run + .scoring.run; direct aggregateScores import dropped, ENGINE_VERSION retained, behavioralSource conditional preserved verbatim. PACK-01 closed across ALL 4 call sites. Full engine suite green (95 files/1170 passed).
+- [Phase 02]: 02-03: SPIKE CLOSED — `SPIKE-VERDICT.md` renders the hard D-04 3-gate: **Determinism FAIL** (genuine; matched watch counts rule out Pitfall-2 transport → real thinking-mode synth non-determinism), **Provenance PASS** (40/40 reactors grounded, source=user surfaced first-class), **Tiering PASS** (no-calibration→Directional by rule). **OVERALL VERDICT = NO-GO (conditional)** — honest to D-04 (a failed leg is a NO-GO) but framed NO-GO-pending-one-mitigation since provenance+tiering are GREEN and prod **bakes-once-and-freezes** (cross-bake non-determinism is theoretical not operational; re-bake/drift is v2 CAL-01). **Fallback to GO** = drop thinking-mode (`enable_thinking:false`) on the synth bake (Pitfall-3 jitter source; temp:0 greedy decoding is the real lever), then re-run double-bake to confirm `signatureEqual:true`. P3 carry-forward: promote probe-local `provenance.custom_context` (source=user) to a real SIM-scoped field (Open Q3); KEEP `signature-equality.ts`+`signature-determinism.test.ts` = P3 regression foundation (TRUST-01); 2 prod fixes retained. Threw away `scripts/spike/*` (D-05); KEEP gate green post-teardown (135 tests). Commits a14af4b9 (docs), 362ef8df (chore).
 - [Phase 02]: 02-02: LIVE make-or-break probe RAN (khaby.lame, human-approved ~$0.50). **DETERMINISM = NON-DETERMINISTIC** — thinking-mode synth (qwen-3.7-plus, temp0+seed) produced different load-bearing fields across two bakes of the IDENTICAL frozen input; matched watch counts (A=3 B=3) rule out the Pitfall-2 transport/INCONCLUSIVE escape, so this is a GENUINE finding; `signatureEqual:false`. PROVENANCE GREEN (10/10 reactors grounded all 4 bakes, source=user note surfaced, ungrounded distinguishable). TIERING GREEN (no-calibration→Directional). Material for 02-03: prod bakes ONCE + freezes (never re-bakes same input) → cross-bake non-determinism may be theoretical not operational; verdict (NO-GO vs accept-with-mitigation: bake-once-freeze / disable thinking / field-tolerance) is 02-03's. 2 LATENT PROD BUGS fixed en route: (a) `apifyVideoSchema.subtitleLinks` now `.nullable()` — clockworks returns null for wordless videos (khaby.lame) and was silently dropping ALL videos of subtitle-less profiles during calibration (`dbbcf46c`); (b) `SYNTH_TIMEOUT_MS` 60→120s — thinking-mode synth runs ~60-90s and was aborting systematically (`aa783456`). Throwaway scaffolding LEFT INTACT for 02-03 teardown.
 - [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
 
@@ -86,7 +88,7 @@ None yet.
 ### Blockers/Concerns
 
 - PACK-04 byte-identical regression lock (Phase 1) is the load-bearing safety gate — must verify creator output unchanged against pre-seam fixtures before proceeding.
-- Phase 2 spike must return a go/no-go verdict; a negative verdict reshapes Phases 3–7. **02-02 evidence is in: determinism leg is RED (live thinking-mode synth non-deterministic across bakes), provenance + tiering GREEN. 02-03 must decide NO-GO vs accept-with-mitigation — note prod bakes-once-and-freezes, so cross-bake non-determinism may not bite operationally.**
+- Phase 2 spike verdict RENDERED (02-03): **NO-GO (conditional)** — determinism leg RED (genuine thinking-mode synth non-determinism), provenance + tiering GREEN. NOT model-invalidating: prod bakes-once-and-freezes (cross-bake non-determinism theoretical not operational). **Before Phase 3 build:** apply the SPIKE-VERDICT §Fallback mitigation (drop thinking-mode synth in `enrich-signature.ts`) + re-run the live double-bake to confirm `signatureEqual:true` = the GO confirmation. Provenance + tiering need no further work.
 
 ## Deferred Items
 
@@ -100,6 +102,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-26T15:20:00.000Z
-Stopped at: Completed 02-02-PLAN.md (live probe ran — determinism RED, provenance/tiering GREEN)
-Resume file: .planning/phases/02-trustworthy-sim-spike/02-03-PLAN.md
+Last session: 2026-06-26T15:32:00.000Z
+Stopped at: Completed 02-03-PLAN.md — Phase 02 spike CLOSED (SPIKE-VERDICT.md = NO-GO conditional; throwaway teardown done)
+Resume file: None — next is /gsd-plan-phase for Phase 03 (General Population + Honesty Layer)
