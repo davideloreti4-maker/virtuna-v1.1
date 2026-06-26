@@ -39,8 +39,9 @@ created: 2026-06-26
 
 ## Per-Task Verification Map
 
-> Task IDs are `{phase}-{plan}-{task}`. Wave 3 plans (04/05/06) own disjoint files
-> (smoke test / route.ts / harnesses) → parallel-safe.
+> Task IDs are `{phase}-{plan}-{task}`. Plan 04 (smoke gate) is Wave 3; Plans 05/06
+> depend on 04's smoke and run in Wave 4. Plan 05 (route.ts) and Plan 06 (harnesses)
+> own disjoint files → parallel-safe within Wave 4.
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
@@ -51,10 +52,10 @@ created: 2026-06-26
 | 01-03-01 | 03 | 2 | PACK-02, PACK-03 | T-01-RR, T-01-CP | SOCIALS_PACK satisfies DomainPack; scoring.run = aggregateScores wrapped whole | type | `tsc --noEmit` | ❌ W2 | ⬜ pending |
 | 01-03-02 | 03 | 2 | PACK-02 | T-01-RR | resolvePack returns SOCIALS_PACK; dispatcher holds zero scoring logic | unit+static | `node ./node_modules/vitest/vitest.mjs run src/lib/engine/__tests__/domain-pack.contract.test.ts` + import-grep | ❌ W2 | ⬜ pending |
 | 01-04-01 | 04 | 3 | PACK-04 | T-01-RR, T-01-CP | Socials run completes; schema structurally valid; overall_score ∈ [0,100]; engine_version 3.20.0; dispatcher no-import static check | smoke (BLOCKING) | `node ./node_modules/vitest/vitest.mjs run src/lib/engine/__tests__/pack-seam-smoke.test.ts` | ❌ W3 | ⬜ pending |
-| 01-05-01 | 05 | 3 | PACK-01 | T-01-RR | JSON branch dispatches via pack.run + pack.scoring.run | type | `tsc --noEmit` | ✅ exists | ⬜ pending |
-| 01-05-02 | 05 | 3 | PACK-01 | T-01-RR, T-01-ID | SSE branch dispatched; no direct aggregateScores/runPredictionPipeline import; timing preserved | unit+static | `node ./node_modules/vitest/vitest.mjs run src/lib/engine/__tests__/pack-seam-smoke.test.ts src/app/api/analyze/__tests__` + import-grep | ✅ exists | ⬜ pending |
-| 01-06-01 | 06 | 3 | PACK-01 | T-01-RR | eval-runner dispatched via pack; behavioralSource preserved; ENGINE_VERSION import kept | type+static | `tsc --noEmit` + import-grep | ✅ exists | ⬜ pending |
-| 01-06-02 | 06 | 3 | PACK-01 | T-01-RR, T-01-CP | learning/predict dispatched via pack; full engine suite green (all 4 call sites migrated) | unit+static | `node ./node_modules/vitest/vitest.mjs run src/lib/engine` + import-grep | ✅ exists | ⬜ pending |
+| 01-05-01 | 05 | 4 | PACK-01 | T-01-RR | JSON branch dispatches via pack.run + pack.scoring.run | type | `tsc --noEmit` | ✅ exists | ⬜ pending |
+| 01-05-02 | 05 | 4 | PACK-01 | T-01-RR, T-01-ID | SSE branch dispatched; no direct aggregateScores/runPredictionPipeline import; timing preserved | unit+static | `node ./node_modules/vitest/vitest.mjs run src/lib/engine/__tests__/pack-seam-smoke.test.ts src/app/api/analyze/__tests__` + import-grep | ✅ exists | ⬜ pending |
+| 01-06-01 | 06 | 4 | PACK-01 | T-01-RR | eval-runner dispatched via pack; behavioralSource preserved; ENGINE_VERSION import kept | type+static | `tsc --noEmit` + import-grep | ✅ exists | ⬜ pending |
+| 01-06-02 | 06 | 4 | PACK-01 | T-01-RR, T-01-CP | learning/predict dispatched via pack; full engine suite green (all 4 call sites migrated) | unit+static | `node ./node_modules/vitest/vitest.mjs run src/lib/engine` + import-grep | ✅ exists | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
