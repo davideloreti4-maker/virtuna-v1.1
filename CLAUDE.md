@@ -21,8 +21,9 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
 | Path | Branch | Role |
 |------|--------|------|
-| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main`. New milestones launch from here; quick one-session fixes happen here on a short-lived branch. |
-| `~/virtuna-numen-surface/` | `milestone/numen-surface` | **Active milestone (v5.0, scaffolded 2026-06-11).** Mobile-first rebrand + UX rework (oracle "Reading" thread replaces canvas board). Input: `.planning/NUMEN-SURFACE-VISION.md`. Next: define requirements + roadmap **in this worktree**. |
+| `~/virtuna-v1.1/` | `main` | **Trunk / command center.** Stays on `main` (✅ synced to `origin/main` 2026-06-26). New milestones launch into their own sibling worktree. |
+| `~/virtuna-numen-gsi/` | `milestone/numen-gsi` | **🟢 ACTIVE — the next build (scaffolded 2026-06-26).** GSI horizontal milestone (synthetic-population simulator: Profile/Simulate/Predict). `.planning` scope-cleaned + `MILESTONE.md` + `NUMEN-GSI-VISION.md`. Phase 0 (engine-rework) DONE + production-verified. Next: `/gsd-new-milestone` (requirements→roadmap) **in this worktree**. Do NOT `git merge rework/engine-core`. |
+| `~/virtuna-numen-surface/` | `milestone/numen-surface` | **PAUSED (v5.0, "old") — deprioritized vs GSI (2026-06-26).** Mobile-first rebrand + UX rework. Debt (Phase-3 smoke gate unrun + P5–7) stays in-worktree `.planning`. |
 | `~/virtuna-mvp-ready/` | `milestone/mvp-ready` | **Merged + pruned (2026-06-11).** v4.1 Phase 1 (engine, ENGINE_VERSION 3.19.0) merged to main; P2–5 superseded by Numen Surface. Branch retained in `.git`. |
 | `~/virtuna-engine-opt/` | `milestone/engine-opt` | **Merged (PR #17) + pruned (2026-06-11).** v4.0 Apollo engine audit remediation. |
 | `~/virtuna-ui-opt/` | `milestone/ui-opt` | In progress |
@@ -33,10 +34,11 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 | `~/virtuna-ui-restrained/` | `design/ui-restrained` (merged) · `fix/tsc-clean-gate` (superseded) | **RETIRED 2026-06-25 — mission complete, worktree safe to remove.** Restrained de-Claude rebrand merged to main (PR #36, squash `46912461`): near-zero accent DOSAGE (liveness-only) lever, terracotta `#d97757`. Follow-ups ALL landed: P7 dead-code deletion (#45) + konva/react-konva dep removal (#46) + tsc gate→0 (#47). `fix/tsc-clean-gate` is fully superseded — every change landed via #43/#44/#45–47; verified branch-behind with zero stranded work — safe to `git worktree remove ~/virtuna-ui-restrained` + delete branch. LOCKED dosage rule in `docs/DESIGN-SYSTEM.md`; rules `.cursor/rules/ui-design.mdc`. |
 
 > Keep this table current — but the **canonical map is now `docs/WORKTREE-DEBT-LEDGER.md`**
-> (tracked, full branch survey). Last reconciled 2026-06-26 (engine-rework track COMPLETE,
-> PRs #53–#59 merged; full branch-cleanup pass — PR #42 closed, 4 retired worktrees removed,
-> 49 branches pruned → **63→13 remote** (unmerged ones `archive/*`-tagged on origin); the lone
-> ui-restrained Cursor WT `cursor/27a9b701` kept — it has uncommitted edits, see ledger §6).
+> (tracked, full branch survey). Last reconciled 2026-06-26: engine-rework COMPLETE + production-
+> readiness sprint done (GAP-REMIX-01 #63, dead `/api/outcomes` cut #64, tsc 15→4); **GSI milestone
+> scaffolded** at `~/virtuna-numen-gsi`; **trunk synced** to `origin/main`; the earlier branch-cleanup
+> pruned 63→14 remote (incl. the new GSI branch); ui-restrained Cursor WT `cursor/27a9b701` kept —
+> uncommitted edits, see ledger §6.
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 
