@@ -13,7 +13,7 @@ Turn the socials-locked engine into a domain-blind synthetic-population simulato
 
 Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0" signature substrate is already on `main` and is NOT a build phase here.
 
-- [ ] **Phase 1: Engine / Pack Seam** - Engine goes domain-blind; Socials becomes Pack #1 with pluggable scoring, creator output byte-identical
+- [x] **Phase 1: Engine / Pack Seam** - Engine goes domain-blind; Socials becomes Pack #1 with pluggable scoring, creator output byte-identical (completed 2026-06-26)
 - [ ] **Phase 2: Trustworthy-SIM Spike** - De-risk the make-or-break question: a trustworthy SIM with zero calibration via determinism + provenance + honest tiering
 - [ ] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance
 - [ ] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier
@@ -53,7 +53,7 @@ Plans:
 **Wave 4** *(blocked on Wave 3 completion)*
 
 - [x] 01-05-PLAN.md — Wire route.ts JSON + SSE call sites through the pack (PACK-01)
-- [ ] 01-06-PLAN.md — Wire eval-runner + learning/predict call sites through the pack (PACK-01)
+- [x] 01-06-PLAN.md — Wire eval-runner + learning/predict call sites through the pack (PACK-01)
 
 ### Phase 2: Trustworthy-SIM Spike
 
@@ -151,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 5/6 | In Progress|  |
+| 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
