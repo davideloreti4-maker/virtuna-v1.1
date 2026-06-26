@@ -2,27 +2,30 @@
 
 ## What This Is
 
-A social media intelligence platform for TikTok creators. Helps creators predict viral content, discover brand deals, and earn through an affiliate engine. Built as a Next.js application with a Raycast-quality design system (36 components, 100+ tokens, coral #FF7F50 branding). Two-tier SaaS model (Starter/Pro) with Whop payments integration, progressive onboarding, and in-product referral program.
+Numen — a **synthetic-population simulator**: the foresight layer for any decision. Three domain-general primitives — **PROFILE** (evidence → a population), **SIMULATE** (population + stimulus → reactions), **PREDICT** (reactions → a scored verdict) — that chain in one live pipeline. Today pointed at one vertical (TikTok creators, the "Socials" anchor pack); being generalized so users can define arbitrary populations + stimuli. Next.js 15 / TypeScript strict / Tailwind v4 / Supabase; flat-warm charcoal design system with a terracotta accent (the Raycast/coral system is RETIRED). SIM-1 engine (Flash text / Max video, auto-selected). Whop payments, two-tier SaaS.
 
 ## Core Value
 
-AI-powered content intelligence that tells TikTok creators whether their content will resonate — and connects them to monetization opportunities.
+A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (**Validated** vs **Directional**) read — the ownable category that generation (OpenAI/Anthropic) doesn't own. For creators today: whether content will resonate, and why. Generalizing to recruiters, conversations, customers — any audience the user can author or ground from evidence.
 
-## Current Milestone: v5.0 Numen Rework
+## Current Milestone: v7.0 Numen GSI
 
-**Goal:** Rework the existing UI/UX into the Numen vision — collapse the product to **one thread per video (a "Reading")**, mobile-first — by **rethemeing + restructuring the existing board/app components** (NOT a ground-up rebuild). Presentation-layer only; engine frozen at 3.19.0.
+**Goal:** Turn Numen's socials-locked engine into a domain-blind synthetic-population simulator — extract Socials into Pack #1 behind a pluggable engine, then ship the General surface (Profile / Simulate / Predict over user-built audiences) with **Profile-a-chat → Simulate-reply** as the on-ramp wow. The creator (Socials) experience stays byte-identical; generality lives *behind* the Audience picker.
 
 **Target features (v1):**
-- Home (serif greeting + universal composer) + reskinned sidebar (reuse `useAnalysisHistory`); ingestion via the composer (`+` upload / paste-URL auto-detect); two layouts (centered empty → bottom-pinned active)
-- Consolidated Reading thread: hero (`overall_score` + go/no-go gate + watch-through % + persona cloud) → 3 driver rows (Hook / Retention = *where they drop* / Shareability) → Fix First → deeper-read → **all rich board visuals kept as drill-downs**
-- Stage-reveal (blocks materialize as each engine stage completes)
-- Flat-warm visual system + token migration (retire Raycast glass; warm-dark matte; serif voice / sans data; coral evolved; score zones green/amber/red)
-- Basic text follow-up (reuse "Ask the expert" chat as the thread tail)
-- First-run live demo Reading on a known viral video
+- **Engine/pack seam** — a `DomainPack` abstraction; Socials becomes Pack #1; the engine goes domain-blind
+- **Pluggable scoring** — the success criterion is supplied by the pack/user; *wrap* the frozen Apollo/virality math as Pack #1's scorer (don't refactor it)
+- **General SIM** — generalize `audiences` (drop the socials enums + 4-weight lock) into a domain-agnostic population on the signature substrate
+- **Profile verb** — build a person/panel audience from uploaded evidence (chat/doc) → Profile card → saved to a General library
+- **Simulate verb (General)** — run a stimulus through a General audience → reaction-distribution card
+- **Predict verb** — analyst-panel scenario reasoning → probability / factors / confidence gauge; **always Directional** (assumptions + receipts, never an oracle)
+- **Inbox widening** — accept text + file uploads (`.txt` / doc / screenshot), not just video/URL
+- **Audience-as-front-door UI** — promote the Audience picker to the primary context-setter; Mode-scoped skills; generalize the ambient reactor
+- **Validated/Directional trust badge** in the UI
 
-**Locked constraints:** Reuse `src/components/board/**` visuals as drill-downs (transplant off Konva, reskin). Do NOT reuse the `milestone/numen-surface` `numen/`+`reading/` kit (reference only). Konva retired; `/analyze` left dormant (not deleted). Score-forward, **no prose narration**. Engine **FROZEN 3.19.0** — no `lib/engine/` changes. The flat-warm visual system is **HUMAN-UAT-GATED** (locked only after human review). Component & motion libraries (Radix / shadcn / MagicUI / Aceternity / motion (Framer Motion)) permitted at executor discretion, subject to the flat-warm + calm-motion taste bar. Full brief: `.planning/NUMEN-REWORK-BRIEF.md`.
+**Locked constraints:** Creator composer untouched — generality lives *behind* the Audience picker. *Wrap*, don't refactor, the socials scoring math (it becomes Pack #1's scorer). The Phase 0 signature substrate (AudienceSignature, 2-model stack, fold↔calibrated-audience unify) is already on `main` — do **NOT** `git merge rework/engine-core` (content already landed; merge replays as conflicts/dupes). SIM-1 is a visible engine badge, never a user choice. Open-world prediction stays **OUT** (no owned population → no moat). Input vision (EXPLORATORY — walk every section, a brief wins where it conflicts): `.planning/NUMEN-GSI-VISION.md`.
 
-**Deferred (not v1):** agentic tools (Apify competitor analysis — "the moat"), in-thread monetization, desktop dense-instrument (Konva successor).
+**Deferred (not v7.0):** the SIM marketplace + rev-share flywheel; Anchor Pack #2 (Marketing); self-calibration (Directional→Validated promotion via user-uploaded outcomes).
 
 ## Requirements
 
@@ -226,11 +229,9 @@ AI-powered content intelligence that tells TikTok creators whether their content
 
 ## Current State
 
-**Shipped:** **v4.1 MVP Ready — Phase 1 engine (2026-06-11, ENGINE_VERSION 3.19.0)** merged to main + milestone closed early (P2–5 superseded by Numen Rework). **v4.0 Apollo (2026-06-06)** — engine rearchitected from a ~25-call score-and-fabrication machine into a 3-call knowledge-grounded expert (Omni verbatim → fold ∥ Apollo reasoner); insight is the hero, score demoted to an honest band, E2E ~312s→~62–74s, ENGINE_VERSION 3.8.0. Result Surface (2026-05-28), v3.1 Engine Hardening (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
+**Shipped:** **v6.0 Numen Studio — creator suite P1–14 (2026-06-21, merged to main).** **v5.0 Numen Rework (2026-06-15)** — presentation-layer rework to the one-thread-per-video "Reading" + flat-warm charcoal reskin. **v4.1 MVP Ready — Phase 1 engine (2026-06-11, ENGINE_VERSION 3.19.0)** merged to main + milestone closed early (P2–5 superseded by Numen Rework). **v4.0 Apollo (2026-06-06)** — engine rearchitected from a ~25-call score-and-fabrication machine into a 3-call knowledge-grounded expert (Omni verbatim → fold ∥ Apollo reasoner); insight is the hero, score demoted to an honest band, E2E ~312s→~62–74s, ENGINE_VERSION 3.8.0. Result Surface (2026-05-28), v3.1 Engine Hardening (2026-05-25), Engine Foundation v3.0.0 (2026-05-24), UI Dashboard (2026-03-18), Prediction Engine Integration (2026-02-27), Backend Reliability (2026-02-18), Prediction Engine v2 (2026-02-17), Competitors Tool (2026-02-17), MVP Launch (2026-02-16), v2.1 Dashboard Rebuild (2026-02-08), v2.3.5 Design Token Alignment (2026-02-08), v2.3 Brand Deals (2026-02-06), v2.2 Trending Page (2026-02-06), v2.0 Design System (2026-02-05)
 
-**Current milestone:** **v5.0 Numen Rework** — active in `~/virtuna-numen-rework/` (`milestone/numen-rework`), started 2026-06-13. Presentation-layer UI/UX rework to the Numen vision: one-thread-per-video "Reading", flat-warm reskin, reuse of the existing board/app components. Engine frozen 3.19.0. Visual system human-UAT-gated; component libs (Radix/shadcn/MagicUI/Aceternity) permitted. Full brief: `.planning/NUMEN-REWORK-BRIEF.md`.
-- **Phase 1: Foundation & Shell — Complete (2026-06-14).** Flat-warm `@theme` token SSOT (charcoal/cream/terracotta-coral, Newsreader serif), reskinned collapsible "Simulations" sidebar (glass stripped), new authed `/home` (serif greeting + two-layout composer + NumenMark, no chips), authed landing repointed to `/home`. THEME-06 visual system **locked** via live human-UAT gate. 13/13 reqs verified; full suite 1967 green; post-review fixes incl. an OAuth open-redirect (CR-01).
-- **Phase 2: The Reading — Complete (2026-06-14).** The consolidated one-thread-per-video Reading on `/analyze/[id]` (Board mount inverted to `<Reading>` in `analyze/layout.tsx`, Konva board retired-not-deleted). Locked vertical IA: hero (ScoreGauge zone-colored via `bandTone()`, NO prose; AntiViralityHeader gate banner; hero-owned watch% rendered once; static PersonaCloud) → 3 driver rows (Hook/Retention-where-they-drop/Shareability, NEW 0-100 component not the 0-10 FactorBars) → Fix First (timestamped fixes + real-clipboard hook rewrites + "N more →") → Deeper read (clarity/substance/credibility). READ-10 no-cut-data guard + D-13 honest degradation. 9/9 reqs verified; full suite 2041 green; build clean; opus code review found+fixed a fabricated-`0%`-watch honesty hole (CR-01) + 5 warnings. Next: Phase 3 — Rich Visuals as Drill-Downs.
+**Current milestone:** **v7.0 Numen GSI** — active in `~/virtuna-numen-gsi/` (`milestone/numen-gsi`), started 2026-06-26. Generalize the socials-locked engine into a domain-blind synthetic-population simulator: engine/pack seam (Socials → Pack #1), pluggable scoring, `audiences` → general SIM, then the General surface (Profile / Simulate / Predict) with Profile-a-chat → Simulate-reply as the on-ramp wow. Creator core untouched; marketplace deferred. Phase 0 (signature substrate) already on `main`. Input vision: `.planning/NUMEN-GSI-VISION.md`. Requirements + roadmap defined via `/gsd-new-milestone` (this run).
 
 **Apollo north star (now live):** expert insight is the hero, not the score; the moat is Brain 1's distilled knowledge (Chase Hughes) grounded at inference via a cached system prompt — not fine-tuning, not RAG.
 
@@ -264,4 +265,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-14 — v5.0 Numen Rework: Phase 2 (The Reading) complete. The consolidated Reading thread ships on `/analyze/[id]` (hero gauge + driver rows + Fix First + Deeper read; READ-10 honesty guard; opus review caught+fixed CR-01 fabricated-0% watch); 9/9 reqs, suite 2041 green, engine still frozen 3.19.0. Phases 1–2 of 5 done. Next: Phase 3 — Rich Visuals as Drill-Downs (transplant board visuals off Konva into the disclosure surfaces). Prior: v4.1 MVP Ready Phase 1 (engine) merged + closed early 2026-06-11.*
+*Last updated: 2026-06-26 — v7.0 Numen GSI milestone started. Reframes Numen as a synthetic-population simulator (Profile / Simulate / Predict): extract Socials into Pack #1 behind a domain-blind engine, make scoring pluggable, generalize `audiences` → general SIM, then ship the General surface with Profile-a-chat → Simulate-reply as the wow. Creator core byte-identical; marketplace + Pack #2 deferred. Phase 0 signature substrate already merged to main (do NOT `git merge rework/engine-core`). What This Is / Core Value refreshed off the retired Raycast/coral framing. Requirements + roadmap generated this run. Prior: v6.0 Numen Studio shipped 2026-06-21.*
