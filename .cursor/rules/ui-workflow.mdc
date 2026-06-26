@@ -1,0 +1,31 @@
+---
+description: UI worktree workflow — setup, lane safety, hygiene (auto-loaded; delete this file to turn off)
+globs:
+alwaysApply: true
+---
+
+# UI Workflow — always read
+
+Before doing UI work in this worktree, follow **`docs/UI-WORKFLOW.md`** (the
+canonical reference). Key non-negotiables, inline so they're never missed:
+
+- **Worktree setup:** `cp ~/virtuna-v1.1/.env.local .` + link/install
+  `node_modules` (`ln -s ~/virtuna-v1.1/node_modules ./node_modules` or
+  `pnpm install`). Skip this and `tsc`/`vitest` run as stubs → **false green.**
+- **Lane:** UI work stays in `src/components/` + `src/app/**` + `docs/`. The
+  engine-rework track owns `src/lib/**`, `src/app/api/**`, `supabase/**`, types,
+  and the two HOLD files `audience/calibration-flow.tsx` +
+  `audience/audience-reveal.tsx` — coordinate before touching those.
+- **Auto-wip daemon: never inside this worktree** — it co-opts the live branch.
+- **Design system locked:** flat-warm charcoal, accent terracotta `#d97757` at
+  near-zero dosage. Source of truth = `globals.css` + `docs/DESIGN-SYSTEM.md`.
+  Keep `reading/__tests__/reskin-matte.test.ts` green.
+- **Verify visually**, never "should work." Merge promptly, delete the worktree.
+
+## To turn this off
+
+Working on something non-UI from Cursor? Either:
+- delete this file (`.cursor/rules/ui-workflow.mdc`), or
+- flip `alwaysApply: true` → `false` in the frontmatter above.
+
+`docs/UI-WORKFLOW.md` stays as the reference either way.
