@@ -52,7 +52,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md — Wire route.ts JSON + SSE call sites through the pack (PACK-01)
+- [x] 01-05-PLAN.md — Wire route.ts JSON + SSE call sites through the pack (PACK-01)
 - [ ] 01-06-PLAN.md — Wire eval-runner + learning/predict call sites through the pack (PACK-01)
 
 ### Phase 2: Trustworthy-SIM Spike
@@ -151,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 4/6 | In Progress|  |
+| 1. Engine / Pack Seam | 5/6 | In Progress|  |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
