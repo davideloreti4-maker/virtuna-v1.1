@@ -9,6 +9,8 @@ function makeWrapper() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
+  // Test-only wrapper component — display name is irrelevant here.
+  // eslint-disable-next-line react/display-name
   return ({ children }: { children: React.ReactNode }) =>
     React.createElement(QueryClientProvider, { client }, children);
 }
