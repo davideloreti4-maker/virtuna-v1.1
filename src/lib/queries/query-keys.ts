@@ -22,10 +22,6 @@ export const queryKeys = {
     history: () => ["analysis", "history"] as const,
     detail: (id: string) => ["analysis", "detail", id] as const,
   },
-  outcomes: {
-    all: ["outcomes"] as const,
-    history: () => ["outcomes", "history"] as const,
-  },
   bookmarks: {
     all: ["bookmarks"] as const,
     list: () => ["bookmarks", "list"] as const,
