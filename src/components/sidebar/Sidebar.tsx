@@ -40,9 +40,8 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { bandTone } from "@/components/board/verdict/verdict-derive";
 import { NumenMark } from "@/components/brand/numen-logo";
-import { useAnalysisHistory } from "@/hooks/queries";
+import { useThreadList, useCreateThread, useActivateThread } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -70,26 +69,6 @@ function relativeTime(iso: string | undefined): string {
   if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), 'day');
   if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), 'month');
   return rtf.format(Math.round(diffSec / 31536000), 'year');
-}
-
-// ─── score tone ───────────────────────────────────────────────────
-// Unified onto the locked THEME-06 score-zone tokens via the bandTone SSOT
-// (≥70 success / 40–69 warning / <40 error) so the sidebar chip color matches
-// the hero ScoreGauge exactly — one score-color language across the app (P1
-// follow-up). Coral stays reserved for the brand/primary action; the em-dash
-// (remix / no-score) case stays muted.
-function scoreTone(score: number | null | undefined): string {
-  if (score == null) return 'text-foreground-muted';
-  switch (bandTone(score)) {
-    case 'good':
-      return 'text-success';
-    case 'warn':
-      return 'text-warning';
-    case 'crit':
-      return 'text-error';
-    default:
-      return 'text-foreground-secondary';
-  }
 }
 
 // Branded keyboard-focus ring — replaces the browser-default blue outline on
@@ -190,7 +169,32 @@ export function Sidebar() {
   const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
   const isMobile = useIsMobile();
   const reducedMotion = usePrefersReducedMotion();
-  const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
+  const switchThread = useBoardStore((s) => s.switchThread);
+  const createThread = useCreateThread();
+  const activateThread = useActivateThread();
+
+  // Open a fresh blank chat thread, then reset the composer + navigate home.
+  const handleNewThread = async () => {
+    try {
+      await createThread.mutateAsync();
+    } catch {
+      // Non-fatal: still reset the composer so the user gets a blank slate.
+    }
+    switchThread();
+    router.push("/home");
+  };
+
+  // Re-open a past thread: touch it (→ becomes active), reset the composer so it
+  // reloads that thread's persisted content, then navigate home.
+  const handleOpenThread = async (id: string) => {
+    try {
+      await activateThread.mutateAsync(id);
+    } catch {
+      // Non-fatal: still attempt to surface the thread on /home.
+    }
+    switchThread();
+    router.push("/home");
+  };
 
   // Desktop persistent+collapsible (D-14): collapse to an icon rail.
   // Mobile (D-15): a slide-in drawer driven by isOpen — never the collapsed rail.
@@ -204,20 +208,20 @@ export function Sidebar() {
         e.preventDefault();
         toggleCollapsed();
       }
+      // ⌘N / Ctrl-N opens a fresh chat thread (matches the New Thread badge).
+      if ((e.metaKey || e.ctrlKey) && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        void handleNewThread();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toggleCollapsed]);
 
-  // Past threads (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
-  const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
-  const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
-    id: string;
-    content_text?: string | null;
-    overall_score?: number | null;
-    created_at?: string;
-    variants?: { remix?: unknown } | null;
-  }>;
+  // Chat threads — each conversation is its own listable thread (active = first).
+  const { data: threads, isLoading: threadsLoading } = useThreadList();
+  const recentThreads = (threads ?? []).slice(0, 15);
 
   // User profile for Account section
   const { data: profile } = useProfile();
@@ -304,7 +308,7 @@ export function Sidebar() {
               icon={Plus}
               label="New Thread"
               isCollapsed={effectiveCollapsed}
-              onClick={() => { triggerNewAnalysis(); router.push("/home"); }}
+              onClick={() => { void handleNewThread(); }}
               badge={
                 !effectiveCollapsed && (
                   <span className="ml-auto text-[11px] text-foreground-muted font-normal tabular-nums">⌘N</span>
@@ -340,31 +344,32 @@ export function Sidebar() {
             </div>
           </div>
 
-          {/* ── Thread history (D-13) ── */}
+          {/* ── Chat thread history (multi-thread) ── */}
           <div className="pt-4 flex-1">
-            {!effectiveCollapsed && <SectionLabel>Thread</SectionLabel>}
-            {historyLoading && !effectiveCollapsed && (
+            {!effectiveCollapsed && <SectionLabel>Threads</SectionLabel>}
+            {threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-2 px-2.5 pt-1">
                 <Skeleton className="h-3.5 w-full" />
                 <Skeleton className="h-3.5 w-3/4" />
                 <Skeleton className="h-3.5 w-5/6" />
               </div>
             )}
-            {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
+            {!threadsLoading && recentThreads.length === 0 && !effectiveCollapsed && (
               <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No threads yet.
               </p>
             )}
-            {!historyLoading && !effectiveCollapsed && (
+            {!threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-px">
-                {recentBoards.map((board) => {
-                  const isActive = pathname === `/analyze/${board.id}`;
-                  const snippet = board.content_text ? board.content_text.slice(0, 38).trim() : "";
+                {recentThreads.map((thread, i) => {
+                  // The newest thread (index 0) is the active one while on /home.
+                  const isActive = pathname === "/home" && i === 0;
+                  const when = relativeTime(thread.updated_at);
                   return (
                     <button
-                      key={board.id}
+                      key={thread.id}
                       type="button"
-                      onClick={() => router.push(`/analyze/${board.id}`)}
+                      onClick={() => { void handleOpenThread(thread.id); }}
                       className={cn(
                         "group w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-lg text-left",
                         "text-[13px] transition-colors",
@@ -375,55 +380,18 @@ export function Sidebar() {
                       )}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      <span className="truncate flex-1" data-testid="sidebar-board-label">
-                        {snippet ? (
-                          snippet
+                      <span className="truncate flex-1" data-testid="sidebar-thread-label">
+                        {thread.title ? (
+                          thread.title
                         ) : (
-                          (() => {
-                            // WR-06: only render the "·" separator when there is a
-                            // time string — a malformed/absent created_at yields ''
-                            // and must not leave a dangling "Simulation ·".
-                            const when = relativeTime(board.created_at);
-                            return (
-                              <>
-                                Simulation
-                                {when && (
-                                  <span className="text-foreground-muted"> · {when}</span>
-                                )}
-                              </>
-                            );
-                          })()
+                          <>
+                            New chat
+                            {when && (
+                              <span className="text-foreground-muted"> · {when}</span>
+                            )}
+                          </>
                         )}
                       </span>
-                      {(() => {
-                        // D-11/D-12: remix source rows have null overall_score + non-null
-                        // variants.remix — show a "Remix" badge instead of a blank '—' score.
-                        // T-05-08: purely render-side, no trust boundary crossed.
-                        const isRemix =
-                          board.overall_score == null &&
-                          (board.variants as { remix?: unknown } | null)?.remix != null;
-                        if (isRemix) {
-                          return (
-                            <span
-                              className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-white/45"
-                              data-testid="sidebar-remix-tag"
-                            >
-                              Remix
-                            </span>
-                          );
-                        }
-                        return (
-                          <span
-                            className={cn(
-                              "shrink-0 text-[11px] font-semibold tabular-nums tracking-tight",
-                              scoreTone(board.overall_score),
-                            )}
-                            data-testid="sidebar-score-chip"
-                          >
-                            {board.overall_score != null ? Math.round(board.overall_score) : '—'}
-                          </span>
-                        );
-                      })()}
                     </button>
                   );
                 })}

@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
+import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -184,6 +185,14 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // Captured on mount from GET /api/threads/open (returns threadId).
   // Null before first thread is created (first Ideas/Hooks send creates it).
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
+
+  // ── Active-thread switch signal (multi-thread chat history) ─────────────────
+  // Bumped by the sidebar when the user opens a new thread or re-opens a past
+  // one. The rehydration effect below watches it to clear the current thread's
+  // rendered content (live + persisted) and reload the now-active open thread —
+  // the in-memory equivalent of a remount when navigating /home → /home.
+  const activeThreadSignal = useBoardStore((s) => s.activeThreadSignal);
+  const isFirstThreadLoadRef = useRef(true);
 
   // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
   // Loaded on mount from GET /api/threads/open. Declared before the view gates
@@ -371,6 +380,31 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // Does NOT block the composer render (views already no-op when idle).
   useEffect(() => {
     let cancelled = false;
+
+    // On a thread SWITCH (not the initial mount), wipe the current thread's
+    // rendered content first so the previous conversation never bleeds into the
+    // new/re-opened one. The fetch below repopulates persisted blocks for a
+    // re-opened thread, or leaves everything blank for a brand-new thread.
+    if (!isFirstThreadLoadRef.current) {
+      chat.reset();
+      ideas.reset();
+      hooks.reset();
+      script.reset();
+      remix.reset();
+      explore.reset();
+      setLastUserTurn(null);
+      setPersistedIdeaBlocks([]);
+      setPersistedHookBlocks([]);
+      setPersistedChatBlocks([]);
+      setPersistedScriptBlocks([]);
+      setPersistedRemixBlocks([]);
+      setPersistedExploreBlocks([]);
+      setOpenThreadId(null);
+      // Let the rehydration below restore the right tool for the loaded thread.
+      hasUserSelectedToolRef.current = false;
+    }
+    isFirstThreadLoadRef.current = false;
+
     async function loadPersistedBlocks() {
       try {
         const res = await fetch('/api/threads/open');
@@ -430,8 +464,9 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     }
     void loadPersistedBlocks();
     return () => { cancelled = true; };
+  // Re-runs on thread switch (activeThreadSignal); other refs are stable.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // empty dep set — run once on mount
+  }, [activeThreadSignal]);
 
   // ── Audience list fetch (UX-01 — lifted from AudienceChip) ─────────────────
   // Populates the audience popover. Silent on 401 (not logged in yet).
