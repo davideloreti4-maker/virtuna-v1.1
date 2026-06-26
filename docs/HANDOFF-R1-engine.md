@@ -90,12 +90,14 @@ when `audience && !is_general`; **General → no-op = raw archetype = byte-ident
 ## 4. Open engine-rework DISSECTION debt (from `docs/DISSECTION-BACKLOG.md`)
 
 Done this/prior sessions: S1–S5, A1–A5/A7, E1, G1/G2/**G4** (fake citations dropped, PR #51),
-**E3** (dead grounded-thread cut, PR #52), R1′ Part A (this session). Still **OPEN**:
+**E3** (dead grounded-thread cut, PR #52), R1′ Part A (PR #53, **validated live** PR #54),
+**R1′ Part B** (fold↔audience unification, PR #55), **omni read null-coercion** (PR #56),
+**R2 + R4** (verified resolved, this session). Still **OPEN**:
 
-- **§04 The Read:** R2 (behavioral/apollo double-count — *likely already resolved* via F24, **verify + mark**);
-  R3 (0.5/0.5 apollo↔fold blend never calibrated — post-launch A/B); R4 (dead engine signals
-  `aggregator.ts:1170-1253` — *likely resolved* via F43, **verify + mark**); R5 (wave0 confidence:1.0 /
-  `applyCtaPenalty` / `FeatureVector` — **verify** consumers).
+- **§04 The Read:** ~~R2~~ ✅ **verified resolved** (T1.1 fold-in — video headline = 0.5·apollo + 0.5·fold,
+  two independent signals; no double-count); R3 (0.5/0.5 apollo↔fold blend never calibrated — post-launch A/B);
+  ~~R4~~ ✅ **verified resolved** (F43 — dead ml/rule/trend/platform_fit signals emit honest nulls, removed
+  from blend); R5 (wave0 confidence:1.0 / `applyCtaPenalty` / `FeatureVector` — **verify** consumers).
 - **§01 Envelope:** E2 (audience-resolve block copy-pasted ~7 routes → extract one helper).
 - **§05 Grounding:** G3 (`refresh-corpus` cron stub no-op); G-D (M2 RAG cut — DEFERRED, surgical per-module pass needed).
 - **Audience:** A6 (`(supabase as any)` casts in `audience-repo.ts` — type debt); A-T (implement target 3-position model).
