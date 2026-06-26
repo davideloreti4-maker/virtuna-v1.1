@@ -34,8 +34,9 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 
 > Keep this table current — but the **canonical map is now `docs/WORKTREE-DEBT-LEDGER.md`**
 > (tracked, full branch survey). Last reconciled 2026-06-26 (engine-rework track COMPLETE,
-> PRs #53–#58 merged; branch-cleanup pass — stale PR #42 closed + 18 merged-safe branches
-> pruned, 63→44 remote; ui-restrained still RETIRED, worktree safe to remove).
+> PRs #53–#59 merged; full branch-cleanup pass — PR #42 closed, 4 retired worktrees removed,
+> 49 branches pruned → **63→13 remote** (unmerged ones `archive/*`-tagged on origin); the lone
+> ui-restrained Cursor WT `cursor/27a9b701` kept — it has uncommitted edits, see ledger §6).
 
 ### How to work (don't repeat the multi-session-same-worktree mess)
 

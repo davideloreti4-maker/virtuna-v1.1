@@ -3,11 +3,12 @@
 # Worktree + Branch + Debt Ledger
 
 > **The map.** Status of every branch/worktree + an index to the debt SSOTs (§3).
-> **Refreshed 2026-06-26** from a live `git` survey, then a **cleanup pass same day**: stale
-> PR #42 closed + 18 merged-safe (no-worktree) branches pruned + `docs/s3-handoff` deleted →
-> **63→44 remote branches**. The 2 remaining merged-by-ancestry branches stayed ONLY because
-> they still have live worktrees (remove the worktree first — see §5). Pointer/triage doc —
-> indexes the detailed SSOTs, does not duplicate them.
+> **Refreshed 2026-06-26** from a live `git` survey, then a **full cleanup pass same day**
+> (see §5): stale PR #42 closed; 4 retired worktrees removed; 49 branches pruned →
+> **63→13 remote branches**. Every branch carrying unmerged commits was `archive/<name>`-tagged
+> on origin BEFORE deletion (recoverable: `git checkout archive/<name>`). The 13 survivors =
+> trunk + 8 worktree-backed tracks + the ui-restrained Cursor WT + creator-voice PR #60 + 2
+> parked decisions. Pointer/triage doc — indexes the detailed SSOTs, doesn't duplicate them.
 >
 > Legend: ✅ delete-safe · 🟢 keep-active · 🟡 dormant/parked (real, paused) ·
 > 🗄️ squash-dangling (content on main, branch is history) · 🧹 cursor-scratch ·
@@ -23,18 +24,18 @@ Headline engine-rework work is DONE + merged to `origin/main`:
 - omni-read null-coercion reliability fix — a live Read failure caught + fixed (PR #56).
 - §04 backlog R2 + R4 verified-resolved + marked (PR #57).
 
-Engine-rework worktree `~/virtuna-engine-rework` is now IDLE on the merged
-`chore/r2-r4-verify-mark`. Remaining engine debt is all lower-value (DISSECTION-BACKLOG:
-R3 post-launch-A/B, R5, E2, G3, A6, A-T, S6). **The branch cleanup (now 61 branches) is UNBLOCKED.**
+Engine-rework worktree `~/virtuna-engine-rework` is now IDLE (detached on `origin/main`).
+Remaining engine debt is all lower-value (DISSECTION-BACKLOG: R3 post-launch-A/B, R5, E2, G3,
+A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remote, see §5).**
 
 ## 1. Active — touch with care
 
 | Branch | Worktree | State | Note |
 |---|---|---|---|
-| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean; launch GSI from here. ⚠️ trunk's LOCAL main was stale this session — `git pull` to sync `origin/main` (#53–#57). |
+| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean; launch GSI from here. ⚠️ trunk's LOCAL main is STALE — `git pull` in `~/virtuna-v1.1` to sync `origin/main` (now through #59 + the cleanup pass). |
 | `milestone/numen-tools` | `~/virtuna-numen-tools` | 🟢 debt worktree | v6.0 shipped (squash #23); worktree STAYS LIVE to burn `DEBT-BACKLOG.md` (§3). 537 ahead = pre-squash history. |
 | `milestone/numen-surface` | `~/virtuna-numen-surface` | 🟢 active (v5.0) | mobile-first rebrand/UX; 83 ahead. |
-| `feat/creator-voice-sample` | — | 🟢 **DECIDE — built + green, UNMERGED (330 ahead, last 06-19)** | voice role across idea/hooks/script/remix runners + Card 9 `VoiceSampleInput` UI, 28/28 green. Feeds GSI grounding §4.3. **Action: merge or explicitly abandon — don't let it rot.** |
+| `feat/creator-voice-sample` | — | 🟢 **PR #60 OPEN (review)** | voice role across idea/hooks/script/remix runners + Card 9 `VoiceSampleInput` UI; 28/28 green at authoring. **330 ahead / 46 BEHIND main** → rebase onto current main (konva/glass removal + R1′) + re-run suite BEFORE merge. Feeds GSI grounding §4.3. |
 
 ## 2. Dormant / parked — real tracks, paused (keep worktree)
 
@@ -72,44 +73,37 @@ R3 post-launch-A/B, R5, E2, G3, A6, A-T, S6). **The branch cleanup (now 61 branc
 - `milestone/viral-remix*` → a General/Socials skill; scout before rebuild.
 - AudienceSignature (on main) → the SIM/population primitive + trustworthy-SIM answer.
 
-## 5. Cleanup actions (now UNBLOCKED — run from `main` in a quick-fix sitting)
+## 5. Cleanup pass — ✅ DONE 2026-06-26 (63→13 remote branches)
 
-**✅ MERGED into origin/main by ancestry (delete-safe) — 18 DELETED 2026-06-26:**
-~~`cursor/3acde074`, `gsd-reviewfix/05-15361`, `gsd-reviewfix/05-6008`, `gsd-reviewfix/07-5638`,
-`milestone/backend-completion`, `milestone/backend-foundation`, `milestone/backend-reliability`,
-`milestone/engine-hardening`, `milestone/engine-opt`, `milestone/mvp-cut`, `milestone/mvp-ready`,
-`milestone/result-surface`, `phase-3-pipeline-infra`, `phase-5-video-segmentation`,
-`phase-6-audio-fingerprint`, `phase-7-multi-persona-sim`, `phase-8-benchmark-retrieval`,
-`worktree-agent-abee5b17a39191285`~~ — all pruned (no worktree; content lives on main).
-**2 REMAIN (merged but live worktree — `git worktree remove` FIRST, then `git push origin --delete`):**
-`design/ui-system` (WT `~/virtuna-numen-ui`), `milestone/landing-v2` (WT `~/virtuna-landing-v2`).
+Ran from the engine-rework worktree (idle). **Every branch with unmerged commits was
+`archive/<name>`-tagged on origin BEFORE deletion** → fully recoverable via
+`git checkout archive/<name>` (or `git branch <name> archive/<name>`). 12 such tags exist.
 
-**🗄️ Squash-dangling — content ON main via a merged PR, ancestry shows "ahead" only because
-squash doesn't preserve it. Verify nothing stranded, then delete:**
-This session: `fix/r1-validate-live` (#54), `feat/r1b-fold-audience-unify` (#55),
-`fix/omni-read-null-coercion` (#56), `chore/r2-r4-verify-mark` (#57, current engine-rework WT).
-Prior: `feat/persona-weights-live` (#30), `fix/s4-cut-dead-runner-scaffolding` (#39),
-`chore/s5-cut-rubric-critic`, `chore/a5-nudge-and-ci-cleanup`, `fix/audience-backlog-a2-a4` (#31),
-`ship/v6.0-numen-studio` (#23), `chore/ui-deadcode` (#45, ⚠️ WT `~/virtuna-ui-deadcode`),
-`milestone/numen-rework` (#20), `rework/engine-core` (engine-rework squashes — do NOT `git merge`),
-`fix/ci-review-permissions` (CI workflow deleted — dead), `fix/ui-refinement`, `milestone/viral-remix-pr`.
+**Deleted (49 branches + 1 PR closed):**
+- **Stale PR #42** (`docs/s3-handoff`) closed + branch deleted (superseded by S3′ #49).
+- **18 merged-by-ancestry, no-worktree** (content on main): `cursor/3acde074`, 3× `gsd-reviewfix/*`,
+  `milestone/{backend-completion,backend-foundation,backend-reliability,engine-hardening,engine-opt,mvp-cut,mvp-ready,result-surface}`,
+  4× `phase-*`, `worktree-agent-abee5b17a39191285`.
+- **15 squash-dangling, merged-PR-verified, no-worktree**: `fix/r1-validate-live` (#54),
+  `feat/r1b-fold-audience-unify` (#55), `fix/omni-read-null-coercion` (#56), `chore/r2-r4-verify-mark` (#57),
+  `chore/track-worktree-ledger` (#58), `feat/persona-weights-live` (#30), `fix/s4-cut-dead-runner-scaffolding` (#39),
+  `chore/s5-cut-rubric-critic` (#34), `chore/a5-nudge-and-ci-cleanup` (#35), `fix/audience-backlog-a2-a4` (#31),
+  `fix/ci-review-permissions` (#33), `ship/v6.0-numen-studio` (#23), `milestone/viral-remix-pr` (#6),
+  `rework/engine-core` (#24), `cursor/08bbd10c` (#29).
+- **4 retired worktrees removed, then branch deleted**: `chore/ui-deadcode` (#45)→ui-deadcode,
+  `milestone/landing-v2` (#22)→landing-v2, `design/ui-system`→numen-ui (5 throwaway composer sketches
+  there were untracked — design-explored, rebrand shipped). **NOT removed: ui-restrained**
+  (`cursor/27a9b701`) — had real uncommitted source edits + is Cursor-managed → left intact (§6).
+- **12 archived-then-deleted** (`archive/*` tag on origin): `cursor/181f2a73`, `cursor/b87137e7`,
+  `p1-fixes`, `fix/ui-refinement`, `milestone/numen-rework` (#20 content on main), 7× ancient
+  `milestone/{landing-linear-clone,landing-page,landing-page-redesign,mvp-launch,platform-refinement,prediction-engine-integration,prediction-engine-v2}`.
+- **1 foreign, deleted no-archive**: `claude/analyze-langstrasse-app-sNRWE` (wrong repo).
 
-**🧹 Cursor-scratch — delete after confirming nothing stranded:**
-`cursor/08bbd10c`, `cursor/181f2a73`, `cursor/b87137e7`, `p1-fixes` (dup of cursor/08bbd10c),
-`cursor/27a9b701` (= the `~/.cursor/worktrees/virtuna-ui-restrained` WT — remove WT first).
-
-**⚰️ Ancient/abandoned — archive then delete (Feb–May, no worktree, the abandoned landing
-attempts are "reference only, do not revive" per numen-surface):**
-`milestone/landing-linear-clone`, `milestone/landing-page`, `milestone/landing-page-redesign`,
-`milestone/mvp-launch`, `milestone/platform-refinement`, `milestone/prediction-engine-v2`,
-`milestone/prediction-engine-integration`.
-
-**❓ FOREIGN — not this project, delete:**
-`claude/analyze-langstrasse-app-sNRWE` (LangstrasseZurich.ch planning doc — wrong repo, a=1, 02-20).
-
-> ⚠️ Do bulk cleanup from `main` AFTER `git worktree remove`-ing retired worktrees
-> (`design/ui-system`→numen-ui, `chore/ui-deadcode`→ui-deadcode, `cursor/27a9b701`→ui-restrained,
-> `milestone/landing-v2`→landing-v2 if truly done). Never delete a branch with a live worktree.
+**Kept (the 13 survivors):** `main`; 8 worktree-backed tracks
+(`milestone/{numen-surface,numen-tools,numen-landing,landing,ui-opt,viral-remix,viral-remix-adapt}`,
+`reconcile/reading-pr19`); `cursor/27a9b701` (ui-restrained WT); `feat/creator-voice-sample` (PR #60);
+`feat/chat-ethics-gate` (parked); `fix/flash-coercion-stability` (verify+retire, §2). Plus 3 LOCAL-only
+spike branches not on origin (`change/flash-spike`, `spike/local-gemma`, `spike/quantum-cognition`).
 
 ## 6. Reconciliation needed
 
@@ -119,3 +113,8 @@ attempts are "reference only, do not revive" per numen-surface):**
 - ✅ **DONE 2026-06-26 — stale PR #42** (`docs/s3-handoff`) closed + branch deleted (superseded
   by merged S3′ #49). It was the only open PR.
 - Re-verify the **main eslint count** (UI-lane) before quoting it anywhere — UNVERIFIED here.
+- ⚠️ **ui-restrained worktree has uncommitted work** (`cursor/27a9b701`, `~/.cursor/.../virtuna-ui-restrained`):
+  `src/components/audience-lens/audience-presence.tsx` (heroDots 110→84 + padding), Cursor-managed.
+  UI-lane decision: commit or discard those edits, THEN `git worktree remove` + delete the branch
+  (the last retired-WT cleanup).
+- **Trunk `~/virtuna-v1.1` local `main` is stale** — `git pull` there to pick up #53–#59 + the cleanup pass.
