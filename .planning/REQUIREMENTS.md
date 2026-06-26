@@ -95,46 +95,46 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Phases assigned during roadmap creation (next step). All Pending.
+Phases assigned during roadmap creation. All Pending.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PACK-01 | TBD | Pending |
-| PACK-02 | TBD | Pending |
-| PACK-03 | TBD | Pending |
-| PACK-04 | TBD | Pending |
-| POP-01 | TBD | Pending |
-| POP-02 | TBD | Pending |
-| POP-03 | TBD | Pending |
-| POP-04 | TBD | Pending |
-| POP-05 | TBD | Pending |
-| TRUST-01 | TBD | Pending |
-| TRUST-02 | TBD | Pending |
-| TRUST-03 | TBD | Pending |
-| PROF-01 | TBD | Pending |
-| PROF-02 | TBD | Pending |
-| PROF-03 | TBD | Pending |
-| PROF-04 | TBD | Pending |
-| SIMU-01 | TBD | Pending |
-| SIMU-02 | TBD | Pending |
-| SIMU-03 | TBD | Pending |
-| PRED-01 | TBD | Pending |
-| PRED-02 | TBD | Pending |
-| PRED-03 | TBD | Pending |
-| IN-01 | TBD | Pending |
-| IN-02 | TBD | Pending |
-| IN-03 | TBD | Pending |
-| UX-01 | TBD | Pending |
-| UX-02 | TBD | Pending |
-| UX-03 | TBD | Pending |
-| UX-04 | TBD | Pending |
-| UX-05 | TBD | Pending |
+| PACK-01 | Phase 1 | Pending |
+| PACK-02 | Phase 1 | Pending |
+| PACK-03 | Phase 1 | Pending |
+| PACK-04 | Phase 1 | Pending |
+| POP-01 | Phase 3 | Pending |
+| POP-02 | Phase 3 | Pending |
+| POP-03 | Phase 3 | Pending |
+| POP-04 | Phase 3 | Pending |
+| POP-05 | Phase 3 | Pending |
+| TRUST-01 | Phase 3 | Pending |
+| TRUST-02 | Phase 3 | Pending |
+| TRUST-03 | Phase 2 | Pending |
+| PROF-01 | Phase 5 | Pending |
+| PROF-02 | Phase 5 | Pending |
+| PROF-03 | Phase 5 | Pending |
+| PROF-04 | Phase 5 | Pending |
+| SIMU-01 | Phase 5 | Pending |
+| SIMU-02 | Phase 5 | Pending |
+| SIMU-03 | Phase 5 | Pending |
+| PRED-01 | Phase 6 | Pending |
+| PRED-02 | Phase 6 | Pending |
+| PRED-03 | Phase 6 | Pending |
+| IN-01 | Phase 4 | Pending |
+| IN-02 | Phase 4 | Pending |
+| IN-03 | Phase 4 | Pending |
+| UX-01 | Phase 7 | Pending |
+| UX-02 | Phase 7 | Pending |
+| UX-03 | Phase 7 | Pending |
+| UX-04 | Phase 7 | Pending |
+| UX-05 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 30 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 30 ⚠️ (resolved by roadmap step)
+- Mapped to phases: 30 (100%)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-26*
-*Last updated: 2026-06-26 after initial definition*
+*Last updated: 2026-06-26 — traceability filled during roadmap creation (7 phases, 100% coverage)*
