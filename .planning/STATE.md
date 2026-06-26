@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-06-26T12:49:28.005Z"
-last_activity: 2026-06-26 — Roadmap created, 30 v1 requirements mapped across 7 phases
+stopped_at: Completed 01-01-PLAN.md (Wave 0 baseline)
+last_updated: "2026-06-26T13:02:24Z"
+last_activity: 2026-06-26 -- Plan 01-01 complete (deps restored, green baseline)
 progress:
   total_phases: 7
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_plans: 6
+  completed_plans: 1
+  percent: 17
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read.
-**Current focus:** Phase 1 — Engine / Pack Seam
+**Current focus:** Phase 01 — engine-pack-seam
 
 ## Current Position
 
-Phase: 1 of 7 (Engine / Pack Seam)
-Plan: — (not yet planned)
-Status: Ready to execute
-Last activity: 2026-06-26 — Roadmap created, 30 v1 requirements mapped across 7 phases
+Phase: 01 (engine-pack-seam) — EXECUTING
+Plan: 2 of 6
+Status: Executing Phase 01 (Wave 0 complete)
+Last activity: 2026-06-26 -- Plan 01-01 complete (deps restored, green baseline)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 17%
 
 ## Performance Metrics
 
@@ -44,7 +44,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 1 | ~9 min | ~9 min |
 
 **Recent Trend:**
 
@@ -63,6 +63,7 @@ Recent decisions affecting current work:
 - Roadmap: *wrap* the frozen Apollo/virality math as Pack #1's scorer — never refactor it (deep-surgery risk).
 - Roadmap: creator (Socials) experience stays byte-identical; generality lives behind the Audience picker.
 - Roadmap: the trustworthy-SIM-without-calibration question (vision §7) is sequenced as an early de-risk spike (Phase 2) before the General surface is built.
+- Plan 01-01: `package-lock.json` is gitignored + was absent in this worktree → deps resolved fresh from the main-vetted `package.json` ranges (NOT a tracked-lockfile restore). Pre-seam engine baseline GREEN (91 files / 1151 passed + 20 skipped, ~13s); ENGINE_VERSION confirmed pinned 3.20.0. Run engine tests ONLY via `node ./node_modules/vitest/vitest.mjs run` (npm test/npx vitest emit fake PASS(0)).
 
 ### Pending Todos
 
@@ -85,6 +86,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-26T12:05:12.116Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-engine-pack-seam/01-CONTEXT.md
+Last session: 2026-06-26T13:02:24Z
+Stopped at: Completed 01-01-PLAN.md (Wave 0 baseline) — next: 01-02 (DomainPack types)
+Resume file: .planning/phases/01-engine-pack-seam/01-02-PLAN.md

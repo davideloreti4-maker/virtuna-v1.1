@@ -39,7 +39,7 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
 Plans:
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Wave 0: `npm install` + green pre-seam baseline (PACK-04)
+- [x] 01-01-PLAN.md — Wave 0: `npm install` + green pre-seam baseline (PACK-04) ✅
 - [ ] 01-02-PLAN.md — DomainPack 7-field interface + contract probe (PACK-03)
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -151,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 0/6 | Planned | - |
+| 1. Engine / Pack Seam | 1/6 | In Progress | - |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
