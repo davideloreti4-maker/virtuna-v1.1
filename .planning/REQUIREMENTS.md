@@ -12,7 +12,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 ### PACK — Engine / Pack Seam
 
 - [ ] **PACK-01**: The engine runs domain-blind via a `DomainPack` interface; the Socials assumptions are extracted into Pack #1, with no socials-specific logic on the core run path
-- [ ] **PACK-02**: Scoring is pluggable — the success criterion and aggregation are supplied by the pack; the frozen Apollo/virality math is *wrapped* as Pack #1's scorer with its behaviour unchanged
+- [x] **PACK-02**: Scoring is pluggable — the success criterion and aggregation are supplied by the pack; the frozen Apollo/virality math is *wrapped* as Pack #1's scorer with its behaviour unchanged
 - [x] **PACK-03**: The `DomainPack` schema is defined (`populations / grounding / stimulusTypes / reactionFrame / scoring / outputSchema / calibration`) and Socials is populated against it as Pack #1
 - [ ] **PACK-04**: The creator (Socials) pipeline produces byte-identical output after the extraction (regression-locked against pre-seam fixtures)
 
@@ -100,7 +100,7 @@ Phases assigned during roadmap creation. All Pending.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | PACK-01 | Phase 1 | Pending |
-| PACK-02 | Phase 1 | Pending |
+| PACK-02 | Phase 1 | Complete |
 | PACK-03 | Phase 1 | Complete |
 | PACK-04 | Phase 1 | Pending |
 | POP-01 | Phase 3 | Pending |

@@ -44,7 +44,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-03-PLAN.md — SOCIALS_PACK (wrap aggregateScores whole) + resolvePack dispatcher (PACK-02, PACK-03)
+- [x] 01-03-PLAN.md — SOCIALS_PACK (wrap aggregateScores whole) + resolvePack dispatcher (PACK-02, PACK-03)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -151,7 +151,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 2/6 | In Progress|  |
+| 1. Engine / Pack Seam | 3/6 | In Progress|  |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
