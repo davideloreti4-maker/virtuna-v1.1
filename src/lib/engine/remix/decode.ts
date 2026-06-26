@@ -39,6 +39,63 @@ const QWEN_DECODE_MODEL = process.env.QWEN_DECODE_MODEL ?? QWEN_REASONING_MODEL;
 // worst case (180s) + scrape/omni still fits maxDuration=300.
 const PER_CALL_TIMEOUT_MS = 90_000;
 
+const LUCK_CATEGORIES = [
+  "timing_trend_moment",
+  "existing_audience_reach",
+  "algorithmic_outlier",
+  "topic_zeitgeist",
+] as const;
+
+/**
+ * Pre-Zod salvage for the decode model output (GAP-REMIX-01).
+ *
+ * Mirrors `coerceOmniRead` (read robustness, PR #56) and `coerceFoldResponse`:
+ * repair SHAPE so a slightly malformed-but-recoverable response survives instead
+ * of nulling the whole remix Read. The decode schema is strict (`beats.length(4)`,
+ * `repeatable.min(1)`, `luck.min(1)` with `note.min(1)`), so a single null/empty
+ * prose field or a short beat array used to fail Zod twice → `decode_failed` → no
+ * remix card. This fills gaps with HONEST placeholders ("[…not analyzed]") — it
+ * never fabricates a verdict. Valid output passes through unchanged (every field
+ * already satisfies Zod), so the happy path is byte-identical.
+ */
+export function coerceDecodeResponse(raw: unknown): unknown {
+  if (raw === null || typeof raw !== "object") return raw; // let Zod reject non-objects
+  const obj = raw as Record<string, unknown>;
+
+  // beats → exactly 4, in BEAT_IDS order; match by id, positional fallback.
+  const rawBeats = Array.isArray(obj.beats) ? (obj.beats as Record<string, unknown>[]) : [];
+  const beats = BEAT_IDS.map((id, i) => {
+    const src = (rawBeats.find((b) => b && b.id === id) ?? rawBeats[i] ?? {}) as Record<string, unknown>;
+    const body = typeof src.body === "string" && src.body.trim() ? src.body : "[beat not analyzed]";
+    const verdict =
+      src.verdict === "present" || src.verdict === "weak" || src.verdict === "absent"
+        ? src.verdict
+        : "absent";
+    return { id, body, verdict };
+  });
+
+  // repeatable → at least one non-empty string.
+  const repeatable = (Array.isArray(obj.repeatable) ? obj.repeatable : []).filter(
+    (s): s is string => typeof s === "string" && s.trim().length > 0,
+  );
+  if (repeatable.length === 0) repeatable.push("[no repeatable structure identified]");
+
+  // luck → at least one {category, note}.
+  const luck = (Array.isArray(obj.luck) ? (obj.luck as Record<string, unknown>[]) : []).map((l) => {
+    const e = (l ?? {}) as Record<string, unknown>;
+    const category = (LUCK_CATEGORIES as readonly string[]).includes(e.category as string)
+      ? (e.category as string)
+      : "algorithmic_outlier";
+    const note = typeof e.note === "string" && e.note.trim() ? e.note : "[luck factor unclear]";
+    return { category, note };
+  });
+  if (luck.length === 0) {
+    luck.push({ category: "algorithmic_outlier", note: "[luck factor present but unspecified]" });
+  }
+
+  return { beats, repeatable, luck };
+}
+
 /**
  * Run the decode engine on an Omni structural output.
  *
@@ -93,7 +150,7 @@ export async function runDecode(
 
       let parsed: ReturnType<typeof DecodeResultZodSchema.safeParse>;
       try {
-        parsed = DecodeResultZodSchema.safeParse(JSON.parse(text));
+        parsed = DecodeResultZodSchema.safeParse(coerceDecodeResponse(JSON.parse(text)));
       } catch {
         parsed = { success: false, error: new Error("JSON parse failed") } as never;
       }
