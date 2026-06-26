@@ -1,44 +1,50 @@
-# UI Design Track — Surfaces Plan
+# UI Lanes — Surfaces Plan
 
-> Worktree `virtuna-ui-restrained` · branch `design/ui-restrained` (off main) · tool: Cursor.
-> Mission: the **restrained signal-red rebrand (de-Claude)** — dose down terracotta usages,
-> switch primary actions to neutral cream, amplify the constellation motif. Token system + LOCKED
-> dosage rule already landed; this is the per-surface application work.
-> Parallel to the engine rework (`virtuna-engine-rework`, `rework/engine-core`). Design rules:
-> `.cursor/rules/ui-design.mdc`. Design SoT: `docs/DESIGN-SYSTEM.md` + `src/app/globals.css`
-> (ignore all other design docs — stale).
+> Lane worktrees off `main`: `lane/polish` (`~/virtuna-polish` — tokens / design system),
+> `lane/frame` (`~/virtuna-frame` — peripheral screens), `lane/shell` (`~/virtuna-shell` —
+> global chrome + states), `lane/cursor-ui` (`~/virtuna-cursor` — Cursor refinement).
+> Parallel to the **GSI milestone** (`virtuna-numen-gsi`, `milestone/numen-gsi`), which is
+> horizontally rebuilding the core verb surfaces (Profile / Simulate / Predict) and promising the
+> creator experience stays byte-identical. Design rules: `.cursor/rules/ui-design.mdc`. Design SoT:
+> `docs/DESIGN-SYSTEM.md` + `src/app/globals.css` (ignore all other design docs — stale).
 
-## ⛔ Engine-rework HOLD list (do NOT edit — guaranteed merge conflict)
+## ⛔ GSI HOLD list (do NOT edit — guaranteed merge conflict)
 
-`rework/engine-core` is **8 commits ahead of main, not yet merged**, and is actively rewriting
-these UI-lane files. Editing them here WILL conflict — leave them until that branch merges:
+`milestone/numen-gsi` is horizontally rewriting the core verb surfaces. Editing them in a lane
+WILL conflict — and trips GSI's byte-identical gate. Leave them until the matching GSI phase lands
+on `main`; polish them via the **token seam** (`lane/polish`) only:
 
-- `src/components/audience/calibration-flow.tsx` (being modified)
-- `src/components/audience/audience-reveal.tsx` (new file on the engine branch)
+- **Home empty state + starter chips** — `src/components/app/home/**`
+- **Composer / inbox** — `src/components/app/home/composer.tsx` + `composer-controls.tsx`
+- **Audience picker / library** — `src/components/audience/**`, routes `src/app/(app)/audience/*`
+- **AudienceLens / ambient reactor / presence** — `src/components/audience-lens/**`
+- **Thread / skill cards / reaction cards** — `src/components/thread/**`
+- **Skill menu · trust badges (Validated/Directional) · the Read output view**
 
-Everything else in `src/components/**` and all of `globals.css` is conflict-free (engine-rework
-touches `src/lib/**`, `src/app/api/**`, `supabase/**`, `docs/subsystems/**`, types only). Rebase on
-`origin/main` before starting and again before opening a PR to catch the merge when it lands.
+The conflict-free surface for the lanes = `globals.css` tokens (lane/polish), the peripheral
+screens (lane/frame), and global chrome/states (lane/shell). Rebase on `origin/main` before
+starting and again before opening a PR to catch GSI's merges as each phase lands.
 
 ## Coupling status (decides what's safe to build now)
 
-Surfaces split into **free-to-build** (no engine dependency — go now) and **gated**
-(coupled to the in-flight engine rework — restyle OK, but structural/data changes wait).
+Surfaces split into **free-to-build** (no GSI dependency — go now) and **gated**
+(coupled to the in-flight GSI milestone — restyle via tokens OK, but structural/data changes wait).
 
-| Surface | Components | Status | Notes |
-|---|---|---|---|
-| **Audience creation flow** | `src/components/audience/` (`audience-form`, `calibration-flow`, `persona-edit-form`, `audience-manager`); routes `src/app/(app)/audience/*` | 🔴 HOLD (calibration-flow, audience-reveal) / 🟡 GATED (rest) | `calibration-flow.tsx` + `audience-reveal.tsx` are on the HOLD list above — do not touch. Rest: restyle freely; hold field/persona-shape changes until the 3-position model settles. |
-| **Ambient audience / AudienceLens** | `src/components/audience-lens/` (`AudienceLens`, `audience-presence`, `PopulationSwarm`) | 🟡 GATED | the flagship ambient surface; its data contract changes with the audience rework. Visual/motion polish OK; don't change consumed props. |
-| **Skills UI / thread cards** | `src/components/thread/` (`message-blocks` dispatcher + `*-card-block`) | 🟡 GATED | block schemas owned by engine track. Restyle card faces freely; don't change block shapes. |
-| **Composer** | `src/components/app/home/composer.tsx` + `composer-controls.tsx` | 🟡 GATED | ambient-audience composer is coupled to audience + skills. Restyle OK. |
-| **Library page** | route `src/app/(app)/library/page.tsx`; cards `src/components/saved/` | 🟢 FREE | mostly presentational; `saved-item-card.tsx:234,252` has stale `#FF7F50` to fix → tokens. |
-| Design-system tokens / primitives | `globals.css`, shared primitives | 🟢 FREE | safe global polish; coordinate token renames. |
-| Static / marketing / settings pages | `src/app/(app)/**` non-coupled routes | 🟢 FREE | no engine dependency. |
+| Surface | Components | Lane | Status | Notes |
+|---|---|---|---|---|
+| **Audience flow / picker / library** | `src/components/audience/**`; routes `src/app/(app)/audience/*` | GSI | 🔴 HOLD | GSI Phase 3/7 rewrites these (general population, library, badges). Token-seam polish only — no component edits. |
+| **Ambient audience / AudienceLens** | `src/components/audience-lens/` (`AudienceLens`, `audience-presence`, `PopulationSwarm`) | GSI | 🔴 HOLD | GSI Phase 7 generalizes the ambient reactor. Token-seam polish only; don't fork-edit. |
+| **Skills UI / thread cards / reaction cards** | `src/components/thread/` (`message-blocks` dispatcher + `*-card-block`) | GSI | 🔴 HOLD | GSI Phase 5/6 adds Profile/Simulate/Predict cards + Mode-scoped skill menu. Token-seam only. |
+| **Composer / inbox / home empty state** | `src/components/app/home/**` (`composer.tsx`, `composer-controls.tsx`) | GSI | 🔴 HOLD | GSI Phase 4/7 rebuilds the input adapter + home wow. Token-seam only. |
+| Design-system tokens / primitives | `globals.css`, `docs/DESIGN-SYSTEM.md`, shared primitives | `lane/polish` | 🟢 FREE | the token authority — only lane/polish edits definitions. Coordinate token renames. |
+| Peripheral screens | landing/marketing, auth, settings, account, billing/pricing routes under `src/app/**` | `lane/frame` | 🟢 FREE | no GSI dependency. |
+| Global chrome + states | nav/sidebar/header shell, error/404, non-home loading skeletons, motion | `lane/shell` | 🟢 FREE | no GSI dependency. |
+| **Library page (saved content)** | route `src/app/(app)/library/page.tsx`; cards `src/components/saved/` | `lane/frame` | 🟡 GATED | mostly presentational; restyle OK. Watch for overlap if GSI's general-library work reaches it — coordinate. `saved-item-card.tsx` may have stale `#FF7F50` → tokens. |
 
 ## Recommended order
-1. **Start on 🟢 FREE work** — Library page, design-token polish, static pages, fix stray hardcoded hex. Zero conflict risk, immediate throughput.
-2. **Restyle 🟡 GATED surfaces visually** (card faces, AudienceLens look, composer chrome) — safe as long as you don't touch data contracts/props/block schemas.
-3. **Structural GATED work** (new audience-creation fields, new card types, ambient-audience interaction model) lands AFTER the matching engine subsystem reworks — sequence with the engine track.
+1. **Start on 🟢 FREE work** — design tokens (lane/polish), peripheral screens (lane/frame), global chrome (lane/shell). Zero conflict risk, immediate throughput.
+2. **Polish 🔴 HOLD verb surfaces via the token seam** — change a token in lane/polish and they inherit the new look without anyone touching GSI's component files. Never fork-edit those components.
+3. **Component-level work on a HOLD surface** lands AFTER the matching GSI phase merges to `main` (then polish on top), or is handed into the GSI session directly. Sequence with the milestone — don't parallelize the same files.
 
 ## Per-surface doc
 For each surface you take on, capture the before/after intent + decisions in

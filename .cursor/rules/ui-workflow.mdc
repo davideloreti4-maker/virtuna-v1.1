@@ -12,15 +12,17 @@ canonical reference). Key non-negotiables, inline so they're never missed:
 - **Worktree setup:** `cp ~/virtuna-v1.1/.env.local .` + link/install
   `node_modules` (`ln -s ~/virtuna-v1.1/node_modules ./node_modules` or
   `pnpm install`). Skip this and `tsc`/`vitest` run as stubs → **false green.**
-- **Lane:** UI work stays in `src/components/` + `src/app/**` + `docs/`. The
-  engine-rework track owns `src/lib/**`, `src/app/api/**`, `supabase/**`, types,
-  and the two HOLD files `audience/calibration-flow.tsx` +
-  `audience/audience-reveal.tsx` — coordinate before touching those.
-- **Auto-wip daemon: never inside this worktree** — it co-opts the live branch.
+- **Lanes (don't cross):** `lane/polish`=tokens + `globals.css` + `docs/DESIGN-SYSTEM.md` ·
+  `lane/frame`=landing/auth/settings/billing · `lane/shell`=nav/chrome/error/skeletons/motion ·
+  `lane/cursor-ui`=small refinement. The **GSI milestone** (`milestone/numen-gsi`) owns the core
+  verb surfaces + `src/lib/**` + `src/app/api/**` + `supabase/**` — see the HOLD list in
+  `ui-design.mdc` §3a; polish those via the token seam only, never fork-edit.
+- **Auto-wip daemon: never inside a lane worktree** — it co-opts the live branch (the PR #60 lesson).
 - **Design system locked:** flat-warm charcoal, accent terracotta `#d97757` at
   near-zero dosage. Source of truth = `globals.css` + `docs/DESIGN-SYSTEM.md`.
   Keep `reading/__tests__/reskin-matte.test.ts` green.
-- **Verify visually**, never "should work." Merge promptly, delete the worktree.
+- **Verify visually**, never "should work." Rebase on `main` often (GSI merges `main` at each phase
+  boundary); keep PRs small and per-surface; merge promptly.
 
 ## To turn this off
 
