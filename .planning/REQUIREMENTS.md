@@ -1,0 +1,140 @@
+# Requirements: Numen GSI (v7.0)
+
+**Defined:** 2026-06-26
+**Core Value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read — generalizing Numen from "analyze TikToks" to a domain-blind synthetic-population simulator.
+
+> Scope: the PMF-shaped slice + all three General verbs. Engine/pack seam (Socials → Pack #1), pluggable scoring, `audiences` → general SIM, and the General surface (Profile / Simulate / Predict) with **Profile-a-chat → Simulate-reply** as the on-ramp wow. The creator (Socials) experience stays byte-identical; generality lives *behind* the Audience picker. Marketplace deferred. Input vision (exploratory, walk every section): `.planning/NUMEN-GSI-VISION.md`.
+
+## v1 Requirements
+
+Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
+
+### PACK — Engine / Pack Seam
+
+- [ ] **PACK-01**: The engine runs domain-blind via a `DomainPack` interface; the Socials assumptions are extracted into Pack #1, with no socials-specific logic on the core run path
+- [ ] **PACK-02**: Scoring is pluggable — the success criterion and aggregation are supplied by the pack; the frozen Apollo/virality math is *wrapped* as Pack #1's scorer with its behaviour unchanged
+- [ ] **PACK-03**: The `DomainPack` schema is defined (`populations / grounding / stimulusTypes / reactionFrame / scoring / outputSchema / calibration`) and Socials is populated against it as Pack #1
+- [ ] **PACK-04**: The creator (Socials) pipeline produces byte-identical output after the extraction (regression-locked against pre-seam fixtures)
+
+### POP — General Population Object
+
+- [ ] **POP-01**: `audiences` is generalized into a domain-agnostic population on the signature substrate (socials enums + the fixed 4-weight model become optional/pack-supplied); existing Socials audiences migrate cleanly
+- [ ] **POP-02**: A General audience carries its Mode, a success-criterion, and a trust tier
+- [ ] **POP-03**: A user can save, name, browse, and reuse General audiences in a General library
+- [ ] **POP-04**: Built-in General default template panel(s) (e.g. analyst / hiring) let a General run work with zero setup
+- [ ] **POP-05**: A user can author and edit a General audience's success-criterion (what "good" means — the metric the pack scorer optimizes for)
+
+### TRUST — Honesty Layer
+
+- [ ] **TRUST-01**: Each audience and each run carries a Validated vs Directional badge, surfaced in the UI
+- [ ] **TRUST-02**: Provenance is surfaced — a General audience's personas show the evidence behind them; ungrounded personas read as visibly ungrounded
+- [ ] **TRUST-03**: A user can build a *trustworthy* General SIM with no calibration data — guaranteed by determinism (temp 0 + seed, bake-once), provenance, and honest trust tiering (de-risked by an early spike per vision §7)
+
+### PROF — Profile Verb (the on-ramp)
+
+- [ ] **PROF-01**: A user can upload evidence (chat `.txt` / doc) and SIM-1 builds a person/panel audience from it
+- [ ] **PROF-02**: A Profile result card shows who the person/panel is, backed by evidence quotes
+- [ ] **PROF-03**: The audience built by Profile is saved to the General library
+- [ ] **PROF-04**: From a Profile, a chain CTA offers "Simulate a message to [them]"
+
+### SIMU — Simulate Verb (General)
+
+- [ ] **SIMU-01**: `simulate(audience, stimulus)` runs a stimulus through a General audience and returns reactions
+- [ ] **SIMU-02**: A reaction-distribution result card renders the distribution + themes
+- [ ] **SIMU-03**: The end-to-end wow works in one thread: Profile-a-chat → Simulate-a-reply
+
+### PRED — Predict Verb
+
+- [ ] **PRED-01**: `predict(panel, scenario)` simulates an analyst panel across scenario branches and collapses to probability + factors + confidence
+- [ ] **PRED-02**: A prediction-gauge result card renders the probability, factors, and confidence
+- [ ] **PRED-03**: Predict output is always Directional and shows its assumptions + receipts (never presented as an oracle)
+
+### IN — Input Adapter
+
+- [ ] **IN-01**: The composer inbox accepts text and file uploads (`.txt` / doc), not just video/URL, and normalizes them into a `Stimulus`
+- [ ] **IN-02**: The SIM-1 tier (Flash text / Max video) auto-selects from the input type
+- [ ] **IN-03**: The inbox accepts screenshot/image uploads, OCR-extracted into the `Stimulus`
+
+### UX — Audience-as-Front-Door Surface
+
+- [ ] **UX-01**: The Audience picker is promoted to the primary context-setter (front-door picker + library), sectioned by Mode (Socials / General)
+- [ ] **UX-02**: The skill menu is Mode-scoped (the active audience's mode decides the available skills); the Socials creator default is unchanged
+- [ ] **UX-03**: The ambient reactor is generalized — the active Audience reacts live as the user drafts, with the creator experience byte-identical
+- [ ] **UX-04**: A "Build an audience" entry offers from-description / from-evidence / from-template
+- [ ] **UX-05**: The home empty state seeds starter chips to the wow (Test on your audience / Profile a chat / Predict an outcome); the first-run demo is the profile-chat moment
+
+## v2 Requirements
+
+Deferred to a future milestone. Tracked, not in this roadmap.
+
+### Marketplace
+
+- **MKT-01**: A user can share a SIM (audience) publicly
+- **MKT-02**: A user can sell a SIM; marketplace economics / rev-share
+- **MKT-03**: Outcome data feeds back to re-calibrate shared SIMs (the flywheel)
+
+### Anchor Pack #2
+
+- **PACK2-01**: A second Numen-authored anchor pack (Marketing — population ≈ creators, grounding adjacent) ships as a second "Validated" pack
+
+### Self-Calibration
+
+- **CAL-01**: A user can upload their own outcome history to promote a Directional SIM toward Validated
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Open-world prediction (Iran war, election-without-a-poll, "will X happen") | No owned population to simulate, no stimulus, no calibration → no moat (vision §8). If ever wanted, a separate Metaculus-shaped forecasting product, not this engine. |
+| SIM-1 as a user-selectable model | SIM-1 is a visible engine badge that auto-runs Flash/Max; never a user choice (vision §13) |
+| Refactoring the socials Apollo/virality scoring math | *Wrap* it as Pack #1's scorer behind the seam; refactoring the load-bearing socials math is the deep-surgery risk (vision §10) |
+| `git merge rework/engine-core` | The signature-substrate content already landed on `main` piecemeal; merging replays merged work as conflicts/dupes (treat the branch as history only) |
+| Changing the creator (Socials) composer UX | Creator core stays byte-identical; generality lives behind the Audience picker (vision §15.2) |
+
+## Traceability
+
+Phases assigned during roadmap creation (next step). All Pending.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| PACK-01 | TBD | Pending |
+| PACK-02 | TBD | Pending |
+| PACK-03 | TBD | Pending |
+| PACK-04 | TBD | Pending |
+| POP-01 | TBD | Pending |
+| POP-02 | TBD | Pending |
+| POP-03 | TBD | Pending |
+| POP-04 | TBD | Pending |
+| POP-05 | TBD | Pending |
+| TRUST-01 | TBD | Pending |
+| TRUST-02 | TBD | Pending |
+| TRUST-03 | TBD | Pending |
+| PROF-01 | TBD | Pending |
+| PROF-02 | TBD | Pending |
+| PROF-03 | TBD | Pending |
+| PROF-04 | TBD | Pending |
+| SIMU-01 | TBD | Pending |
+| SIMU-02 | TBD | Pending |
+| SIMU-03 | TBD | Pending |
+| PRED-01 | TBD | Pending |
+| PRED-02 | TBD | Pending |
+| PRED-03 | TBD | Pending |
+| IN-01 | TBD | Pending |
+| IN-02 | TBD | Pending |
+| IN-03 | TBD | Pending |
+| UX-01 | TBD | Pending |
+| UX-02 | TBD | Pending |
+| UX-03 | TBD | Pending |
+| UX-04 | TBD | Pending |
+| UX-05 | TBD | Pending |
+
+**Coverage:**
+- v1 requirements: 30 total
+- Mapped to phases: 0 (roadmap pending)
+- Unmapped: 30 ⚠️ (resolved by roadmap step)
+
+---
+*Requirements defined: 2026-06-26*
+*Last updated: 2026-06-26 after initial definition*
