@@ -8,6 +8,7 @@ import { createLogger } from "@/lib/logger";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { runPredictionPipeline } from "@/lib/engine/pipeline";
 import { aggregateScores } from "@/lib/engine/aggregator";
+import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
 // skills use) so the Read fold simulates the REAL audience, not generic archetypes.
 import { createOpenThreadLazy } from "@/lib/threads/threads";
@@ -785,9 +786,10 @@ export async function POST(request: Request) {
     // No onStageEvent — JSON callers don't get stage events.
     // -------------------------------------------------------
     if (wantsJSON) {
+      const pack = resolvePack("socials");
       let pipelineResult;
       try {
-        pipelineResult = await runPredictionPipeline(validated, {
+        pipelineResult = await pack.run(validated, {
           requestId,
           bypassCache,
           // reading-ux S1 (2026-06-15): owner id so a tiktok_url re-host lands at a
@@ -806,7 +808,7 @@ export async function POST(request: Request) {
       }
       const tAgg = performance.now();
       // Stage 11 removed (Plan 02, R9); aggregateScores no longer needs deferCounterfactuals.
-      const result = await aggregateScores(pipelineResult, undefined);
+      const result = await pack.scoring.run(pipelineResult, undefined);
       const aggregateMs = Math.round(performance.now() - tAgg);
 
       // Plan 03 strip: ruleResult removed from pipeline — rule_contributions empty.
