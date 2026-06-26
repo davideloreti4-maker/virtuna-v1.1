@@ -11,26 +11,26 @@ Seeded 2026-06-22 from the 5-agent trace. Live dissection will add to this.
 
 ---
 
-## ⚠ Production-readiness gaps — OUTSIDE the dissection's 5-section scope (surfaced + spot-verified 2026-06-26)
+## ✅ Production-readiness gaps — VERIFICATION SPRINT COMPLETE 2026-06-26 (outside the dissection's 5-section scope)
 
 > The engine DISSECTION (§01–§05: audience→skills→Read→grounding→cuts) **completed its planned 5-section scope** (16 FIXED + 5 RESOLVED + 1 deferred; the rest is scattered low-value polish in the tables below). A 2026-06-26 cross-source mine (memory + `~/virtuna-numen-tools/.planning/DEBT-BACKLOG.md` + GitHub issues + a code audit) surfaced production-readiness items that were **never in the dissection scope**.
 >
 > **⚠ CAUTION: the source backlogs (numen-tools DEBT-BACKLOG, memory) are STALE and OVER-REPORT.** A spot-verification on current `main` DISPROVED several "open" items. Trust this table, not the raw backlogs:
 
-| Item | Stale-backlog claim | Spot-verify on main 2026-06-26 | Real status |
+| Item | Original claim | Verification-sprint outcome (2026-06-26) | Status |
 |---|---|---|---|
-| Flywheel pin / moat loop | "pinPredictedSignature has no runner caller → loop dormant" | **DISPROVEN** — wired in all 4 runners (hooks-runner.ts:503, ideas:460, script:323, remix:287), fire-and-forget post-SIM | ✅ wired — NOT a gap |
-| Gen reliability (retry) | "~33% transient Qwen throws, add retry/fallback" | no auto-retry CONFIRMED but **BY DESIGN** (D-06 removed auto-regen; user-pressed rewrite is the retry path — hooks-runner.ts:382) | 🟡 by-design; a bounded backoff is optional, not a bug-fix |
-| `/api/outcomes` route | GitHub #41 "inserts/filters non-existent columns → 500" | route EXISTS + writes `outcomes` (route.ts:73), handles 23505 dedup; column-drift NOT confirmed without schema | ❓ UNVERIFIED — diff route cols vs migration |
-| GAP-REMIX-01 (remix decode→null) | numen-tools todo (2026-06-20) "decode_failed, blocks remix→Read" | not re-tested on current main; the source doc is stale | ❓ UNVERIFIED — re-test remix on main |
-| Route RLS / concurrency | (never claimed — surfaced by audit) | never audited; open-thread 23505 dedup race + concurrent `active_audience_id` switch unanalysed; never in dissection scope | ❓ UNVERIFIED — genuine un-audited area |
-| Rate-limiting (HARDEN-01) | numen-tools ROADMAP pre-launch gate | constants reserved (`void RATE_LIMIT_*`), TODO ideas/route.ts:124, not wired | 🟠 real, pre-launch gate, not started |
-| SSRF allowlist | GitHub #9 "permits bare apex domains (apify.com, tiktokcdn.com)" | not re-verified on main | ❓ UNVERIFIED — check remix URL allowlist |
-| Gen latency | "~110s/run, target <90s" | real + ongoing; SIM half fixed (S3′ 55s→15s); generation on 3.7-plus reasoning is the remaining bottleneck | 🟡 ongoing track, not a hard blocker |
+| Flywheel pin / moat loop | "pinPredictedSignature has no runner caller → loop dormant" | **DISPROVEN** — wired in all 4 runners (hooks:503, ideas:460, script:323, remix:287), fire-and-forget post-SIM | ✅ not a gap |
+| Gen reliability (retry) | "~33% transient Qwen throws, add retry" | no auto-retry CONFIRMED but **BY DESIGN** (D-06; user-pressed rewrite is the retry path — hooks-runner.ts:382) | 🟡 by-design (optional backoff) |
+| `/api/outcomes` #41 | "inserts/filters non-existent columns → 500" | **CONFIRMED broken vs LIVE DB** (table = simple `real_*` schema; route wrote old rich `actual_*`/`user_id`) **+ DEAD** (0 consumers) **+ superseded** by `/api/outcomes/signature` | ✅ **CUT — PR #64, closes #41** |
+| GAP-REMIX-01 (decode→null) | "decode_failed, breaks remix→Read" | **CONFIRMED** — strict Zod, no pre-Zod salvage (unlike fold/omni-read) | ✅ **FIXED — PR #63** (`coerceDecodeResponse`) |
+| Route RLS / concurrency | (audit-surfaced) | all tool tables have RLS + policies; open-thread 23505 + partial-unique-index is safe; `active_audience_id` read-snapshot is correct semantics | ✅ **VERIFIED GREEN** |
+| Rate-limiting (HARDEN-01) | pre-launch gate | 6 tool routes unprotected; ideas/hooks voided TODO; only analyze-chat wired | 🟠 **DEFERRED to pre-public-launch HARDEN gate** (owner 2026-06-26; not a GSI prereq) |
+| SSRF #9 (+ apify #8/#10) | "CRITICAL — bare-apex bypass" | **over-rated**: `endsWith('.apify.com')` does NOT match `evil-apify.com`; only bare apex `apify.com` itself, behind a private-IP block. #8/#10 = low resilience | ✅ **LOW** — optional hardening |
+| Gen latency ~110s | "target <90s" | real; SIM half fixed (S3′ 55s→15s); generation on 3.7-plus is the bottleneck | 🟡 ongoing track |
 
 **Where the full deferred picture lives (the SSOTs):** `~/virtuna-numen-tools/.planning/DEBT-BACKLOG.md` (v6.0 debt — STALE, over-reports), GitHub issues **#7–12 + #41** (viral-remix hardening), memory (`engine-latency-optimization`, `chase-hughes-knowledge-layer`, `numen-gsi-vision`), and §3 of `docs/WORKTREE-DEBT-LEDGER.md` (the consolidated index).
 
-**Verdict:** NONE is a CONFIRMED hard GSI blocker. The honest pre-launch step is a short **production-readiness verification pass** (confirm #41 / #9 / GAP-REMIX-01 against current `main`; audit route RLS+concurrency; wire rate-limiting) — NOT trusting the stale backlogs at face value.
+**Verdict (✅ verification sprint COMPLETE 2026-06-26):** No GSI blocker found. 2 items came back **GREEN** (RLS, concurrency); **GAP-REMIX-01 FIXED** (#63); **#41 CUT** (#64 — side effect: **tsc baseline 15→4**, the dead route held the column-mismatch errors); **SSRF LOW** (agent over-rated); **rate-limiting DEFERRED** to the pre-public-launch HARDEN gate (owner decision — not a GSI prereq). The engine is production-verified for the GSI pivot. Optional leftovers (non-blocking): bounded gen-retry backoff, SSRF bare-apex tighten, apify try/catch, gen-latency track.
 
 ---
 

@@ -3,7 +3,8 @@
 > Written 2026-06-25 to hand a long session into a fresh one. Worktree `~/virtuna-engine-rework`
 > (branch `rework/engine-core` historically; active work on short-lived `fix/*` branches off `main`).
 > Tests run via `node ./node_modules/vitest/vitest.mjs run` (plain `npm test`/`npx vitest` print fake
-> PASS). tsc baseline = **15** (pre-existing, in test files + onboarding-store). ENGINE_VERSION 3.20.0.
+> PASS). tsc baseline = **4** (was 15; the 2026-06-26 cut of the dead `/api/outcomes` route, PR #64,
+> removed ~11 column-mismatch errors). ENGINE_VERSION 3.20.0.
 
 ---
 
