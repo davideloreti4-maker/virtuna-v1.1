@@ -74,7 +74,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 02-02-PLAN.md — THROWAWAY live probe: ×2 double-bake (real Qwen) + General-bundle proto + provenance/source=user inspection (autonomous:false, needs keys + ~$0.50) (TRUST-03)
+- [ ] 02-02-PLAN.md — THROWAWAY live probe: ×2 double-bake (real Qwen) + General-bundle proto + provenance/source=user inspection (autonomous:false, needs keys + ~$0.50) (TRUST-03) — 🟡 IN PROGRESS: Tasks 1+2 authored & committed (adapter `5c856a28`, probe `13d6e1fc`); BLOCKED at Task 3 (blocking human-verify — live probe spends ~$0.50, awaiting cost approval)
 
 **Wave 3** *(blocked on Wave 2)*
 
