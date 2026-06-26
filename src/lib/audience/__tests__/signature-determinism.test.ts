@@ -20,6 +20,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { enrichSignature, type EnrichDeps } from "../enrich-signature";
 import { signatureEqual, normalizeSignature, stableStringify } from "../signature-equality";
+import { SOCIALS_PACK } from "@/lib/engine/packs/socials";
 import input from "./fixtures/bake-input.fixture.json";
 import recorded from "./fixtures/bake-llm-outputs.fixture.json";
 
@@ -87,5 +88,39 @@ describe("signature determinism (replay gate)", () => {
     for (const p of norm.audience.personas) {
       expect(p.evidence.trim().length).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * Trust-tiering leg of TRUST-03 (D-04). No Validated/Directional RESOLVER exists yet —
+ * the spike ASSERTS the rule as a pure predicate; Phase 3 (TRUST-01) builds the badge
+ * resolver in src/. Keep the predicate LOCAL to this test (over-building a src/ resolver
+ * here breaks D-05 scope).
+ *
+ * The tier keys off `DomainPack.calibration` (the trust-tier basis), NEVER
+ * `Audience.calibration` (scrape provenance) — do not conflate the two (02-RESEARCH
+ * anti-pattern). A pack carrying a non-empty calibration baseline is the Validated
+ * anchor; a no-calibration SIM (e.g. General) resolves Directional BY RULE.
+ */
+type TrustTier = "Validated" | "Directional";
+
+/** A SIM is Validated iff its pack carries a non-empty calibration baseline; else Directional. */
+function resolveTier(calibration?: { baselineRef?: string }): TrustTier {
+  return calibration?.baselineRef ? "Validated" : "Directional";
+}
+
+describe("trust tiering rule (Directional by rule)", () => {
+  it("a calibration-bearing pack (Socials) resolves Validated", () => {
+    // Read only the baselineRef shape — do not depend on the heavy pack internals.
+    const socialsCalibration = { baselineRef: SOCIALS_PACK.calibration?.baselineRef };
+    expect(socialsCalibration.baselineRef).toBeTruthy();
+    expect(resolveTier(socialsCalibration)).toBe("Validated");
+  });
+
+  it("a no-calibration SIM (General) resolves Directional by rule — never Validated", () => {
+    expect(resolveTier(undefined)).toBe("Directional");
+    expect(resolveTier({})).toBe("Directional");
+    expect(resolveTier({ baselineRef: "" })).toBe("Directional");
+    expect(resolveTier(undefined)).not.toBe("Validated");
   });
 });
