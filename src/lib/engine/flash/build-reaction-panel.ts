@@ -49,6 +49,30 @@ export interface ReactionPanel {
   audienceRepaint: Record<string, string> | undefined;
 }
 
+// ─── buildAudienceRepaint ────────────────────────────────────────────────────────
+
+/**
+ * Project an Audience into its archetype-slug → repaint map (the deterministic,
+ * calibration-stored reaction text — Pitfall 2, D-17 cache safety).
+ *
+ * THE SINGLE SOURCE OF TRUTH for the repaint projection: both the text SIM (via
+ * buildReactionPanel below) AND the video Read fold (R1′b — pipeline.ts threads this
+ * into runFold) build their per-archetype repaint from THIS function, so the two skills
+ * simulate the same calibrated audience IDENTICALLY (the moat-credibility guarantee —
+ * the whole reason this helper was lifted out of the runners' inline copies).
+ *
+ * @param audience Active audience (null / is_general / empty personas → undefined).
+ * @returns Record<archetype, repaint> for a calibrated audience, else undefined →
+ *          every consumer omits the arg → byte-identical no-op (General regression gate, D-17).
+ */
+export function buildAudienceRepaint(
+  audience: Audience | null,
+): Record<string, string> | undefined {
+  return audience && !audience.is_general && audience.personas && audience.personas.length > 0
+    ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
+    : undefined;
+}
+
 // ─── buildReactionPanel ─────────────────────────────────────────────────────────
 
 /**
@@ -73,10 +97,6 @@ export function buildReactionPanel(
 
   // archetype-slug → repaint map (undefined for General/no audience → byte-identical Flash no-op).
   // The repaint is stored at calibration (not generated per-request — Pitfall 2).
-  const audienceRepaint: Record<string, string> | undefined =
-    audience && !audience.is_general && audience.personas && audience.personas.length > 0
-      ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-      : undefined;
-
-  return { panel, audienceRepaint };
+  // Shared projection (R1′b) so the fold simulates the same audience identically.
+  return { panel, audienceRepaint: buildAudienceRepaint(audience) };
 }
