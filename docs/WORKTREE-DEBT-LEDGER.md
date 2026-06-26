@@ -32,9 +32,10 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 
 | Branch | Worktree | State | Note |
 |---|---|---|---|
-| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean; launch GSI from here. ⚠️ trunk's LOCAL main is STALE — `git pull` in `~/virtuna-v1.1` to sync `origin/main` (now through #59 + the cleanup pass). |
-| `milestone/numen-tools` | `~/virtuna-numen-tools` | 🟢 debt worktree | v6.0 shipped (squash #23); worktree STAYS LIVE to burn `DEBT-BACKLOG.md` (§3). 537 ahead = pre-squash history. |
-| `milestone/numen-surface` | `~/virtuna-numen-surface` | 🟢 active (v5.0) | mobile-first rebrand/UX; 83 ahead. |
+| `main` | `~/virtuna-v1.1` | 🟢 trunk | stays clean. ✅ synced to `origin/main` (`a6955b1a`) 2026-06-26. |
+| `milestone/numen-gsi` | `~/virtuna-numen-gsi` | 🟢 **NEW — the next build** | GSI horizontal milestone, **scaffolded 2026-06-26** (`.planning` scope-cleaned + `MILESTONE.md` + `NUMEN-GSI-VISION.md`). Phase 0 (engine-rework) = DONE + production-verified. **Next:** `/gsd-new-milestone` (requirements→roadmap) IN this worktree. Do NOT `git merge rework/engine-core`. |
+| `milestone/numen-tools` | `~/virtuna-numen-tools` | 🟢 debt worktree | v6.0 shipped (squash #23); STAYS LIVE for `DEBT-BACKLOG.md` (§3). 537 ahead = pre-squash history. |
+| `milestone/numen-surface` | `~/virtuna-numen-surface` | 🟡 PAUSED (v5.0, "old") | mobile-first rebrand; **deprioritized vs GSI** (owner 2026-06-26). Debt (Phase-3 smoke gate unrun + P5–7) stays IN-WORKTREE `.planning`. |
 | `feat/creator-voice-sample` | — | 🟢 **PR #60 OPEN (review)** | voice role across idea/hooks/script/remix runners + Card 9 `VoiceSampleInput` UI; 28/28 green at authoring. **330 ahead / 46 BEHIND main** → rebase onto current main (konva/glass removal + R1′) + re-run suite BEFORE merge. Feeds GSI grounding §4.3. |
 
 ## 2. Dormant / parked — real tracks, paused (keep worktree)
@@ -49,6 +50,8 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 | `spike/quantum-cognition` | `~/virtuna-quantum-spike` | 🟡 R&D, spec in worktree, not built |
 | `feat/chat-ethics-gate` | — | 🟡 Chase Hughes knowledge layer, PARKED (A/B inconclusive + cost flag); 4 ahead, decision pending |
 | `fix/flash-coercion-stability` | — | 🟡→🗄️ **MOSTLY SUPERSEDED** — the read-coercion half (`coerceOmniRead`) was PORTED to main via PR #56 (2026-06-26); the fold-coercion half is already live. Little unique value left — verify nothing else stranded, then retire. |
+
+> **Debt-capture audit 2026-06-26 — all deferred debt has a home.** Engine → `docs/DISSECTION-BACKLOG.md` (main); v6.0 → numen-tools `DEBT-BACKLOG.md` (+ its `todos/pending`); both indexed in §3. **Dormant-worktree debt is RETAINED in each worktree's own `.planning/`** (not promoted to §3 — those tracks are paused/old): numen-surface = Phase-3 smoke gate + P5–7; numen-landing = blocked on surface; the shared `HANDOFF-*-redesign.md` set across numen-rework/viral-remix/ui-opt = historical board-redesign era (archived in memory). **GAP-REMIX-01** (a numen-tools `todos/pending` item) is now ✅ RESOLVED via PR #63 — that pending todo is stale.
 
 ## 3. Open-debt index (detail lives in these SSOTs — do not duplicate)
 
