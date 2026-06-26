@@ -6,8 +6,6 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
-import { runPredictionPipeline } from "@/lib/engine/pipeline";
-import { aggregateScores } from "@/lib/engine/aggregator";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
 // skills use) so the Read fold simulates the REAL audience, not generic archetypes.
@@ -999,7 +997,8 @@ export async function POST(request: Request) {
             message:
               "Analyzing content with Gemini and loading creator context...",
           });
-          const pipelineResult = await runPredictionPipeline(validated, {
+          const pack = resolvePack("socials");
+          const pipelineResult = await pack.run(validated, {
             requestId,
             bypassCache,
             // Thread the row id so the pipeline can fire-and-forget filmstrip
@@ -1026,7 +1025,7 @@ export async function POST(request: Request) {
           // (Stage 10 + ML + post-window). Per-stage breakdown is logged inside
           // the aggregator under module "aggregator". Stage 11 removed (Plan 02, R9).
           const tAgg = performance.now();
-          const result = await aggregateScores(
+          const result = await pack.scoring.run(
             pipelineResult,
             /* onStageEvent: */ (event: StageEvent) => { send("stage", event); },
           );
