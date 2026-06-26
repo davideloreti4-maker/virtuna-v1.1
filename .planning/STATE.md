@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: executing
+status: verifying
 stopped_at: Completed 01-04-PLAN.md (pack-seam smoke gate)
-last_updated: "2026-06-26T13:26:33.640Z"
+last_updated: "2026-06-26T13:30:07.972Z"
 last_activity: 2026-06-26 -- Plan 01-01 complete (deps restored, green baseline)
 progress:
   total_phases: 7
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 01 (engine-pack-seam) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-26 -- Plan 01-01 complete (deps restored, green baseline)
 
 Progress: [█░░░░░░░░░] 17%
@@ -56,6 +56,7 @@ Progress: [█░░░░░░░░░] 17%
 | Phase 01 P03 | 4min | 2 tasks | 4 files |
 | Phase 01 P04 | 3min | 1 tasks | 1 files |
 | Phase 01 P05 | 5min | 2 tasks | 1 files |
+| Phase 01 P06 | 4min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -72,6 +73,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 01-03: Socials = Pack #1 (SOCIALS_PACK satisfies DomainPack); scoring.run = aggregateScores wrapped whole (D-06/D-07); resolvePack holds zero scoring logic; in-place cut D-01, ENGINE_VERSION 3.20.0 untouched.
 - [Phase 01]: 01-04: pack-seam-smoke.test.ts is the phase BLOCKING D-03 gate — structural smoke (keys + sane-band overall_score + engine_version 3.20.0) over SOCIALS_PACK.scoring.run for text+video fixtures, plus a static PACK-01 no-aggregateScores check on packs/index.ts; D-04 byte-identical superseded, no golden-master rig.
 - [Phase 01]: 01-05: production /api/analyze dispatches BOTH branches (JSON + SSE) via resolvePack(socials).run + .scoring.run; direct runPredictionPipeline/aggregateScores imports removed (PACK-01 on live route). Identity wraps — opts + aggregateMs timing + onStageEvent preserved; smoke gate + route tests green, tsc clean.
+- [Phase ?]: [Phase 01]: 01-06: both non-route harnesses (corpus/eval-runner + learning/predict) dispatch via resolvePack(socials).run + .scoring.run; direct aggregateScores import dropped, ENGINE_VERSION retained, behavioralSource conditional preserved verbatim. PACK-01 closed across ALL 4 call sites. Full engine suite green (95 files/1170 passed).
 
 ### Pending Todos
 
@@ -94,6 +96,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-26T13:26:11.215Z
+Last session: 2026-06-26T13:29:43.895Z
 Stopped at: Completed 01-04-PLAN.md (pack-seam smoke gate)
 Resume file: None
