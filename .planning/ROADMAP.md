@@ -30,8 +30,16 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
   1. The core run path runs `pack[mode].run(...)` against a `DomainPack` (`populations / grounding / stimulusTypes / reactionFrame / scoring / outputSchema / calibration`) with no socials-specific logic remaining on it.
   2. Socials is populated as Pack #1 against the schema; its success criterion and aggregation are supplied by the pack, not hardcoded in the core.
   3. The frozen Apollo/virality math runs unchanged as Pack #1's *wrapped* scorer (no refactor of the scoring math itself).
-  4. The creator (Socials) pipeline produces byte-identical output versus pre-seam fixtures — a regression test asserts this and gates the phase.
-**Plans**: TBD
+  4. ⚠️ SUPERSEDED by CONTEXT D-02/D-03: the byte-identical golden-master lock is dropped. The phase gate is a LIGHT smoke + structural check — the Socials run completes and its output schema is structurally valid (`overall_score ∈ [0,100]`), NOT exact values.
+**Plans**: 6 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Wave 0: `npm install` + green pre-seam baseline (PACK-04)
+- [ ] 01-02-PLAN.md — DomainPack 7-field interface + contract probe (PACK-03)
+- [ ] 01-03-PLAN.md — SOCIALS_PACK (wrap aggregateScores whole) + resolvePack dispatcher (PACK-02, PACK-03)
+- [ ] 01-04-PLAN.md — D-03 BLOCKING smoke + structural gate (PACK-04)
+- [ ] 01-05-PLAN.md — Wire route.ts JSON + SSE call sites through the pack (PACK-01)
+- [ ] 01-06-PLAN.md — Wire eval-runner + learning/predict call sites through the pack (PACK-01)
 
 ### Phase 2: Trustworthy-SIM Spike
 **Goal**: Prove that a user can build a *trustworthy* General SIM with no calibration data — de-risking the vision's make-or-break open question (§7) before any General surface is invested in.
@@ -111,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Engine / Pack Seam | 0/TBD | Not started | - |
+| 1. Engine / Pack Seam | 0/6 | Planned | - |
 | 2. Trustworthy-SIM Spike | 0/TBD | Not started | - |
 | 3. General Population + Honesty Layer | 0/TBD | Not started | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
@@ -120,4 +128,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---
-*Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`.*
+*Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves).*
