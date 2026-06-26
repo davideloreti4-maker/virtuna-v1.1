@@ -65,10 +65,11 @@ A6, A-T, S6). **The branch cleanup ran 2026-06-26 — ✅ COMPLETE (63→13 remo
 
 **Cross-cutting (not yet fully in any SSOT):**
 - ✅ **Pre-GSI production-readiness sprint DONE 2026-06-26** (see DISSECTION-BACKLOG TOP table): RLS+concurrency GREEN; GAP-REMIX-01 fixed (#63); #41 cut (#64, tsc 15→4); SSRF low. No GSI blocker. **Only open hardening item = rate-limiting** (🟠 deferred to the pre-public-launch HARDEN gate — not a GSI prereq; 6 tool routes unprotected). The raw backlogs OVER-REPORT (flywheel pin wired, gen-retry by-design, rubric-critic resolved).
-- `feat/creator-voice-sample` → now **PR #60 OPEN** (rebase + review).
-- main eslint regression (UI-lane) — **count UNVERIFIED 2026-06-26** (was reported 39err/66warn at the UI merge); re-check on `main`, owned by UI worktree.
+- `feat/creator-voice-sample` → **PR #60 CLOSED 2026-06-26** (was a conflicting 428-file/100-commit/+62k auto-wip branch — un-mergeable). Branch kept on origin; re-extract the creator-voice feature cleanly during GSI grounding §4.3.
+- ✅ **main eslint regression RESOLVED 2026-06-26** (pre-GSI prep, `fix/pre-gsi-prep`): verified at **24 err / 67 warn**, fixed to **0 err / 12 warn**. React-19-compiler errors batched into the existing `eslint.config.mjs` globalIgnores convention (13 LIVE/dead files — real refactor is the post-GSI follow-up below); 4 mechanical errors fixed inline; `_`-prefix unused-vars convention wired; stray `.claire/**` worktree un-linted.
+- 🔸 **NEW (post-GSI refactor debt):** the 13 files added to globalIgnores for React-19-compiler errors are LIVE components (`reading.tsx`, `command-bar/*`, `profile-settings-form.tsx`, audience cards, `ReplayController.tsx` + the dead `competitors/**`) now losing FULL lint coverage. Real fix = refactor the refs-during-render / setState-in-effect patterns, then un-ignore.
 - Part B per-persona reaction MODAL on the Read hero — UI-lane (the SIM-1 Max badge already ships; only the modal remains).
-- Competitor-intelligence (`src/lib/ai/*`) on deepseek-chat + gemini-2.5-flash-lite — provider-consolidation decision.
+- ✅ **Competitor-intelligence (`src/lib/ai/*`) provider question RESOLVED 2026-06-26:** `deepseek.ts` + `gemini.ts` already migrated to `QWEN_REASONING_MODEL` (`qwen3.7-plus`) via DashScope + have no live importers (stale `MODEL-POLICY.md` footnote fixed). Remaining action = delete the dead files (deferred, low-value).
 
 ## 4. GSI carryover — parked work that feeds the horizontal milestone
 
@@ -117,9 +118,10 @@ spike branches not on origin (`change/flash-spike`, `spike/local-gemma`, `spike/
   same PR as this ledger update.
 - ✅ **DONE 2026-06-26 — stale PR #42** (`docs/s3-handoff`) closed + branch deleted (superseded
   by merged S3′ #49). It was the only open PR.
-- Re-verify the **main eslint count** (UI-lane) before quoting it anywhere — UNVERIFIED here.
+- ✅ **DONE 2026-06-26 — main eslint count verified + fixed** (24 err/67 warn → 0 err/12 warn, `fix/pre-gsi-prep`; §3).
 - ⚠️ **ui-restrained worktree has uncommitted work** (`cursor/27a9b701`, `~/.cursor/.../virtuna-ui-restrained`):
   `src/components/audience-lens/audience-presence.tsx` (heroDots 110→84 + padding), Cursor-managed.
   UI-lane decision: commit or discard those edits, THEN `git worktree remove` + delete the branch
   (the last retired-WT cleanup).
-- **Trunk `~/virtuna-v1.1` local `main` is stale** — `git pull` there to pick up #53–#59 + the cleanup pass.
+- ✅ **DONE 2026-06-26 — trunk `~/virtuna-v1.1` local `main` synced** to `origin/main` (0/0); GSI worktree
+  rebased onto it. **GSI base is current** (1 docs commit behind = #66 only, no code gap).

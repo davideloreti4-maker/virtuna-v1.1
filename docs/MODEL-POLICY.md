@@ -17,8 +17,10 @@ The Qwen engine runs on **exactly two models**:
 
 **`qwen3.6-flash` is RETIRED** (2026-06-25). With thinking OFF the plus/flash latency gap is small,
 while `3.7-plus` keeps multi-output reactions (SIM candidates, fold personas) far more distinct.
-`QWEN_FAST_MODEL` is removed. (Out of scope: the competitor-intelligence subsystem `src/lib/ai/*`
-runs on `deepseek-chat` + `gemini-2.5-flash-lite` — a separate provider decision, not this policy.)
+`QWEN_FAST_MODEL` is removed. (Note: the legacy competitor-intelligence files `src/lib/ai/deepseek.ts`
++ `gemini.ts` — despite their names — now both resolve to `QWEN_REASONING_MODEL` (`qwen3.7-plus`) via
+DashScope, and have no live (non-test) importers. The old `deepseek-chat` + `gemini-2.5-flash-lite`
+providers are gone; the dead files are a deletion candidate.)
 
 > Card badges are PRODUCT labels, not model ids: **`SIM-1 Flash` = text-only call**, **`SIM-1 Max` =
 > with-video call**. The underlying model is `3.7-plus` either way.
