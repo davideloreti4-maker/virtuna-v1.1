@@ -15,7 +15,11 @@
  */
 
 import type { Audience } from "./audience-types";
-import { SOCIALS_PACK } from "@/lib/engine/packs/socials";
+// Import the leaf calibration descriptor, NOT the SOCIALS_PACK barrel: the barrel
+// pulls runPredictionPipeline → apify-client → Node `dns`, and this module is reached
+// from a "use client" component (audience-card.tsx), so importing the barrel breaks the
+// browser bundle (BUILD-01). The descriptor is the pack's calibration field verbatim.
+import { SOCIALS_CALIBRATION } from "@/lib/engine/packs/socials-calibration";
 
 export type TrustTier = "Validated" | "Directional";
 
@@ -34,6 +38,6 @@ export function tierFromCalibration(calibration?: { baselineRef?: string }): Tru
  * pack in P3 → Directional by rule, never Validated.
  */
 export function resolveTier(audience: Pick<Audience, "mode">): TrustTier {
-  if (audience.mode === "socials") return tierFromCalibration(SOCIALS_PACK.calibration);
+  if (audience.mode === "socials") return tierFromCalibration(SOCIALS_CALIBRATION);
   return "Directional";
 }

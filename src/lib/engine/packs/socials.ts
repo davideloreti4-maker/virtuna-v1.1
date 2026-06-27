@@ -16,6 +16,7 @@
  * touches only the 2 new pack files.
  */
 import type { DomainPack } from "../domain-pack";
+import { SOCIALS_CALIBRATION } from "./socials-calibration";
 import { runPredictionPipeline } from "../pipeline";
 import { aggregateScores } from "../aggregator";
 import { APOLLO_SYSTEM_PROMPT, KNOWLEDGE_CORE } from "../apollo-core";
@@ -64,10 +65,10 @@ export const SOCIALS_PACK: DomainPack = {
   },
 
   // How the read is calibrated (Socials = Validated anchor) — thin descriptor.
-  calibration: {
-    kind: "socials",
-    baselineRef: "src/lib/engine/calibration-baseline.json",
-  },
+  // Byte-identical to the former inline literal — extracted to a leaf module so
+  // presentation code can read it without importing this pipeline-bearing barrel
+  // (BUILD-01). ENGINE_VERSION unchanged.
+  calibration: SOCIALS_CALIBRATION,
 
   // The stimulus axis = the input_mode enum (orthogonal to the pack key).
   stimulusTypes: ["text", "tiktok_url", "video_upload"] as const,
