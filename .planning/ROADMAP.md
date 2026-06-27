@@ -110,7 +110,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 — parallel)*
 
-- [ ] 03-05-PLAN.md — isPersonaGrounded + TrustBadge + card honesty (inline evidence/ungrounded) + manager templates section (TRUST-01, TRUST-02, POP-03)
+- [x] 03-05-PLAN.md — isPersonaGrounded + TrustBadge + card honesty (inline evidence/ungrounded) + manager templates section (TRUST-01, TRUST-02, POP-03)
 - [ ] 03-06-PLAN.md — Route schemas + form: success-criterion + custom-context author/edit (POP-05, POP-02, TRUST-02)
 
 **Wave 4** *(blocked on Wave 3)*
