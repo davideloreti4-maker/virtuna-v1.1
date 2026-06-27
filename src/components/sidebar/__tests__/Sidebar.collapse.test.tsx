@@ -51,6 +51,7 @@ vi.mock('@/hooks/queries', () => ({
   useThreadList: () => ({ data: [], isLoading: false }),
   useCreateThread: () => ({ mutateAsync: vi.fn() }),
   useActivateThread: () => ({ mutateAsync: vi.fn() }),
+  useArchiveThread: () => ({ mutateAsync: vi.fn() }),
 }));
 
 vi.mock('@/hooks/queries/use-profile', () => ({

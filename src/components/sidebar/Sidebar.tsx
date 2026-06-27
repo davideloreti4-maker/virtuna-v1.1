@@ -30,6 +30,9 @@ import {
   CaretUpDown,
   UsersThree,
   Books,
+  Trash,
+  Check,
+  X,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -41,7 +44,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NumenMark } from "@/components/brand/numen-logo";
-import { useThreadList, useCreateThread, useActivateThread } from "@/hooks/queries";
+import {
+  useThreadList,
+  useCreateThread,
+  useActivateThread,
+  useArchiveThread,
+  type ThreadSummary,
+} from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -160,6 +169,98 @@ function NavItem({
   return item;
 }
 
+/**
+ * One chat-thread row: the full-width open button plus a hover-revealed delete
+ * affordance. The open action and the delete action are SIBLING buttons inside a
+ * div (a button cannot nest inside a button). Delete is two-step — a trash icon
+ * arms an inline check/cancel confirm — so a single stray click never drops a
+ * thread. The confirm disarms when the pointer leaves the row.
+ */
+function ThreadRow({
+  thread,
+  isActive,
+  onOpen,
+  onDelete,
+}: {
+  thread: ThreadSummary;
+  isActive: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const when = relativeTime(thread.updated_at);
+  const label = thread.title ?? "New chat";
+
+  return (
+    <div
+      className={cn(
+        "group/row relative flex items-center rounded-lg transition-colors",
+        isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
+      )}
+      onMouseLeave={() => setConfirming(false)}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] text-left text-[13px]",
+          focusRing,
+          isActive
+            ? "text-foreground"
+            : "text-foreground-secondary group-hover/row:text-foreground",
+        )}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <span className="truncate flex-1" data-testid="sidebar-thread-label">
+          {thread.title ? (
+            label
+          ) : (
+            <>
+              New chat
+              {when && <span className="text-foreground-muted"> · {when}</span>}
+            </>
+          )}
+        </span>
+      </button>
+
+      {confirming ? (
+        <div className="flex items-center gap-0.5 pr-1">
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Delete ${label}`}
+            className={cn("rounded p-1 text-error hover:bg-white/[0.06]", focusRing)}
+          >
+            <Check className="h-3.5 w-3.5" weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            aria-label="Cancel delete"
+            className={cn("rounded p-1 text-foreground-muted hover:bg-white/[0.06]", focusRing)}
+          >
+            <X className="h-3.5 w-3.5" weight="bold" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          aria-label={`Delete thread: ${label}`}
+          className={cn(
+            "mr-1 rounded p-1 text-foreground-muted opacity-0 transition-opacity",
+            "group-hover/row:opacity-100 focus-visible:opacity-100",
+            "hover:text-foreground hover:bg-white/[0.06]",
+            focusRing,
+          )}
+        >
+          <Trash className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Sidebar ─────────────────────────────────────────────────────
 
 export function Sidebar() {
@@ -172,6 +273,7 @@ export function Sidebar() {
   const switchThread = useBoardStore((s) => s.switchThread);
   const createThread = useCreateThread();
   const activateThread = useActivateThread();
+  const archiveThread = useArchiveThread();
 
   // Open a fresh blank chat thread, then reset the composer + navigate home.
   const handleNewThread = async () => {
@@ -194,6 +296,19 @@ export function Sidebar() {
     }
     switchThread();
     router.push("/home");
+  };
+
+  // Delete (archive) a thread. If it was the active one while the user is on
+  // /home, reload the composer onto the now-newest remaining open thread.
+  const handleDeleteThread = async (id: string, wasActive: boolean) => {
+    try {
+      await archiveThread.mutateAsync(id);
+    } catch {
+      // Non-fatal: the thread-list refetch reconciles the sidebar either way.
+    }
+    if (wasActive && pathname === "/home") {
+      switchThread();
+    }
   };
 
   // Desktop persistent+collapsible (D-14): collapse to an icon rail.
@@ -364,35 +479,14 @@ export function Sidebar() {
                 {recentThreads.map((thread, i) => {
                   // The newest thread (index 0) is the active one while on /home.
                   const isActive = pathname === "/home" && i === 0;
-                  const when = relativeTime(thread.updated_at);
                   return (
-                    <button
+                    <ThreadRow
                       key={thread.id}
-                      type="button"
-                      onClick={() => { void handleOpenThread(thread.id); }}
-                      className={cn(
-                        "group w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-lg text-left",
-                        "text-[13px] transition-colors",
-                        focusRing,
-                        isActive
-                          ? "bg-white/[0.06] text-foreground"
-                          : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <span className="truncate flex-1" data-testid="sidebar-thread-label">
-                        {thread.title ? (
-                          thread.title
-                        ) : (
-                          <>
-                            New chat
-                            {when && (
-                              <span className="text-foreground-muted"> · {when}</span>
-                            )}
-                          </>
-                        )}
-                      </span>
-                    </button>
+                      thread={thread}
+                      isActive={isActive}
+                      onOpen={() => { void handleOpenThread(thread.id); }}
+                      onDelete={() => { void handleDeleteThread(thread.id, isActive); }}
+                    />
                   );
                 })}
               </div>
