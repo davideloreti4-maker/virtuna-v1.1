@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 03-01 paused at Task 3 (checkpoint:human-action — D-01 live double-bake gate)
-last_updated: "2026-06-27T15:27:00.000Z"
-last_activity: 2026-06-27 -- 03-01 Tasks 1-2 committed (D-01 fix + harness); awaiting live signatureEqual:true gate
+stopped_at: Plan 03-02 COMPLETE (domain foundation — mode/success_criterion/custom_context + resolveTier)
+last_updated: "2026-06-27T15:56:00.000Z"
+last_activity: 2026-06-27 -- 03-02 DONE (40148540 types, 17ffdb87 RED, d16046f2 GREEN); audience suite 139 green
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 16
-  completed_plans: 9
-  percent: 29
+  completed_plans: 10
+  percent: 31
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (general-population-honesty-layer) — EXECUTING
-Plan: 1 of 7 COMPLETE — Wave 1 next (03-02, 03-03)
-Status: Plan 03-01 DONE (c4c7b5c9, 6d5854a2). D-01 live gate RAN (~$0.15): synth non-deterministic even isolated (structural weight/share drift — MoE batch-routing). Operator adopted Fallback **Option 2 (bake-once-freeze)** — determinism contracted on the frozen persisted signature + green replay gate; cross-bake reproducibility → v2 (CAL-01). Wave-0 gate RESOLVED; Wave 1 cleared.
-Last activity: 2026-06-27 -- 03-01 D-01 resolved via bake-once-freeze; Phase 3 build cleared
+Plan: 2 of 7 COMPLETE — Wave 1 cont. (03-03 migration next)
+Status: Plan 03-02 DONE (40148540, 17ffdb87, d16046f2). Domain foundation landed: `Audience.mode` first-class axis + `success_criterion?` + top-level `custom_context?` + `CustomContext` interface (D-04/03/07); `resolveTier`/`tierFromCalibration`/`TrustTier` productionize the spike tier rule (D-06) keyed off `SOCIALS_PACK.calibration` (never `Audience.calibration`). Truth-table gate green; audience suite 11 files/139 passed (+4); ENGINE_VERSION untouched. Next: 03-03 additive mode-gated migration + BLOCKING `supabase db push`.
+Last activity: 2026-06-27 -- 03-02 domain contracts + resolver shipped (interface-first)
 
-Progress: [███░░░░░░░] 29%
+Progress: [███░░░░░░░] 31%
 
 ## Performance Metrics
 
@@ -61,6 +61,7 @@ Progress: [███░░░░░░░] 29%
 | Phase 02 P01 | 5min | 2 tasks | 4 files |
 | Phase 02 P02 | ~40min | 3 tasks | 6 files |
 | Phase 02 P03 | ~6min | 2 tasks | 4 files |
+| Phase 03 P02 | ~8min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 01]: 01-06: both non-route harnesses (corpus/eval-runner + learning/predict) dispatch via resolvePack(socials).run + .scoring.run; direct aggregateScores import dropped, ENGINE_VERSION retained, behavioralSource conditional preserved verbatim. PACK-01 closed across ALL 4 call sites. Full engine suite green (95 files/1170 passed).
 - [Phase 02]: 02-03: SPIKE CLOSED — `SPIKE-VERDICT.md` renders the hard D-04 3-gate: **Determinism FAIL** (genuine; matched watch counts rule out Pitfall-2 transport → real thinking-mode synth non-determinism), **Provenance PASS** (40/40 reactors grounded, source=user surfaced first-class), **Tiering PASS** (no-calibration→Directional by rule). **OVERALL VERDICT = NO-GO (conditional)** — honest to D-04 (a failed leg is a NO-GO) but framed NO-GO-pending-one-mitigation since provenance+tiering are GREEN and prod **bakes-once-and-freezes** (cross-bake non-determinism is theoretical not operational; re-bake/drift is v2 CAL-01). **Fallback to GO** = drop thinking-mode (`enable_thinking:false`) on the synth bake (Pitfall-3 jitter source; temp:0 greedy decoding is the real lever), then re-run double-bake to confirm `signatureEqual:true`. P3 carry-forward: promote probe-local `provenance.custom_context` (source=user) to a real SIM-scoped field (Open Q3); KEEP `signature-equality.ts`+`signature-determinism.test.ts` = P3 regression foundation (TRUST-01); 2 prod fixes retained. Threw away `scripts/spike/*` (D-05); KEEP gate green post-teardown (135 tests). Commits a14af4b9 (docs), 362ef8df (chore).
 - [Phase 02]: 02-02: LIVE make-or-break probe RAN (khaby.lame, human-approved ~$0.50). **DETERMINISM = NON-DETERMINISTIC** — thinking-mode synth (qwen-3.7-plus, temp0+seed) produced different load-bearing fields across two bakes of the IDENTICAL frozen input; matched watch counts (A=3 B=3) rule out the Pitfall-2 transport/INCONCLUSIVE escape, so this is a GENUINE finding; `signatureEqual:false`. PROVENANCE GREEN (10/10 reactors grounded all 4 bakes, source=user note surfaced, ungrounded distinguishable). TIERING GREEN (no-calibration→Directional). Material for 02-03: prod bakes ONCE + freezes (never re-bakes same input) → cross-bake non-determinism may be theoretical not operational; verdict (NO-GO vs accept-with-mitigation: bake-once-freeze / disable thinking / field-tolerance) is 02-03's. 2 LATENT PROD BUGS fixed en route: (a) `apifyVideoSchema.subtitleLinks` now `.nullable()` — clockworks returns null for wordless videos (khaby.lame) and was silently dropping ALL videos of subtitle-less profiles during calibration (`dbbcf46c`); (b) `SYNTH_TIMEOUT_MS` 60→120s — thinking-mode synth runs ~60-90s and was aborting systematically (`aa783456`). Throwaway scaffolding LEFT INTACT for 02-03 teardown.
+- [Phase 03]: 03-02: Domain foundation (interface-first). `Audience` gains a REQUIRED first-class `mode: "socials" | "general"` axis (D-04 — explicitly NOT derived from `is_general`), plus additive-optional `success_criterion?: string | null` (D-03, flows into `DomainPack.scoring` for P5/P6) and top-level `custom_context?: CustomContext[] | null` (D-07 — stored top-level NOT in `SignatureProvenance` so it survives `signature:null`, Pitfall 2); `CustomContext` = `{source:"user", note, persona_evidence_link?}`. New `src/lib/audience/resolve-tier.ts` exports `resolveTier(Pick<Audience,"mode">)` + `tierFromCalibration({baselineRef?})` + `type TrustTier`, productionizing the spike-locked rule: keys off `SOCIALS_PACK.calibration` (the PACK, never `Audience.calibration`/scrape provenance), socials→Validated, every other mode→Directional directly (no General pack in P3 — D-02, do NOT widen `DomainPack`). Truth-table test (4/4) locks never-Validated-for-general. Audience suite 11 files/139 passed (+4, determinism gate kept green); no new tsc errors on touched paths; ENGINE_VERSION untouched. Downstream (03-03 repo/migration, UI, run-badge) now import these contracts without a scavenger hunt.
 - [Phase 03]: 03-01: D-01 determinism close-out. Dropped thinking-mode on the qwen-3.7-plus synth (`enable_thinking:false`, `thinking_budget` removed; c4c7b5c9) + re-created the paid double-bake harness (6d5854a2). **Live gate (~$0.15, "test it cheaper") = signatureEqual:FALSE even SYNTH-ISOLATED** (watch+subtitle stubbed → identical input, 2 real synth calls): structural drift in persona_weights (loyalist 0.15↔0.10, niche 0.05↔0.10) + persona shares + prose; STABLE on follower_tier/maturity/interest_tags/temperature_mix/archetypes/writing_style. Root cause = MoE batch-routing non-determinism (temp:0+seed insufficient), NOT a config bug — reproduces 02-02 independently; Option 3 (prose-tolerance) ruled OUT by structural drift. **Operator adopted Fallback Option 2 (bake-once-freeze):** determinism contracted on the FROZEN persisted signature (prod bakes-once-never-rebakes) + green zero-network replay gate (signature-determinism.test.ts 5/5); cross-bake reproducibility → v2 (CAL-01); `scripts/rebake-determinism.ts` retained as the v2/CAL-01 drift tool (header reframed). Thinking-off change KEPT (strict jitter reduction). ENGINE_VERSION untouched. Honesty layer unaffected (no-cal→Directional already GREEN).
 - [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
 
@@ -104,6 +106,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-27T11:35:36.102Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-general-population-honesty-layer/03-CONTEXT.md
+Last session: 2026-06-27T15:56:00.000Z
+Stopped at: Completed 03-02-PLAN.md (domain foundation + resolveTier)
+Resume file: .planning/phases/03-general-population-honesty-layer/03-03-PLAN.md
