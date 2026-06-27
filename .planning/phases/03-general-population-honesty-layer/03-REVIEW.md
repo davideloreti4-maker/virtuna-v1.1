@@ -25,10 +25,25 @@ findings:
   warning: 5
   info: 4
   total: 9
-status: issues_found
+status: resolved
+resolution: "WR-01..03/05 + IN-01 fixed (commits 91ad6bad, 0c9ee991); WR-04 + IN-02/03/04 accepted/deferred"
 ---
 
 # Phase 03: Code Review Report
+
+## Resolution (2026-06-27)
+
+| Finding | Disposition |
+|---------|-------------|
+| WR-01 (Calibrated chip on Directional template) | **FIXED** `91ad6bad` — `getCalibrationStatus` routes `mode==='general'`→`template`; locked by render test |
+| WR-02 (uncapped personas[] at boundary) | **FIXED** `0c9ee991` — `.max(50)` array cap on both routes (deep element/repaint shaping deferred with the scorer, see IN-02) |
+| WR-03 (read-scoping doc/code mismatch) | **FIXED** `0c9ee991` — `.eq("user_id", user.id)` on updateAudience (defense-in-depth) + corrected docstring |
+| WR-05 (DELETE 500 vs 400 for presets/templates) | **FIXED** `0c9ee991` — refuse all `SENTINEL_IDS` at the route with 400; +regression test |
+| IN-01 (repo schema weaker than routes) | **FIXED** `0c9ee991` — mirrored `.max(50)`/`.max(120)` caps in `WritableAudienceSchema` |
+| WR-04 (tautological branch in form) | **Accepted** — dead-but-harmless cosmetic; no functional impact, left to avoid churn |
+| IN-02 (success_criterion prompt-injection) | **Deferred** — no live scorer in P3 (D-02); track on the P5/P6 scorer integration |
+| IN-03 (redundant setState), IN-04 (`as never` cast) | **Accepted** — cosmetic / pre-existing pattern; not worth the risk this phase |
+
 
 **Reviewed:** 2026-06-27
 **Depth:** standard
