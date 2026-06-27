@@ -18,7 +18,7 @@ export function ReferralsUpgradeFallback() {
         </p>
         <Link
           href="/pricing"
-          className="mt-4 inline-block rounded-lg bg-action px-4 py-2 text-sm font-medium text-foreground-secondary-foreground transition-colors hover:bg-action/90"
+          className="mt-4 inline-block rounded-lg bg-action px-4 py-2 text-sm font-medium text-action-foreground transition-colors hover:bg-action/90"
         >
           View pricing
         </Link>

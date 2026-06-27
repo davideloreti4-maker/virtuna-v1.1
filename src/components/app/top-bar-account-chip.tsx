@@ -265,7 +265,7 @@ export function TopBarAccountChip() {
                   type="button"
                   onClick={handleAdd}
                   disabled={!newHandle.trim()}
-                  className="shrink-0 min-h-[44px] rounded-md bg-action px-3 text-sm font-medium text-foreground-secondary-foreground transition-opacity disabled:opacity-50"
+                  className="shrink-0 min-h-[44px] rounded-md bg-action px-3 text-sm font-medium text-action-foreground transition-opacity disabled:opacity-50"
                 >
                   Add
                 </button>
