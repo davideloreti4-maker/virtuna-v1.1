@@ -106,7 +106,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 03-04-PLAN.md — Repo row mappers + zod + mode='socials' on constants + GENERAL_TEMPLATES (analyst/hiring) (POP-01, POP-03, POP-04)
+- [x] 03-04-PLAN.md — Repo row mappers + zod + mode='socials' on constants + GENERAL_TEMPLATES (analyst/hiring) (POP-01, POP-03, POP-04) ✅ (b28e493a, 98f65169); audience suite 12 files/157 passed
 
 **Wave 3** *(blocked on Wave 2 — parallel)*
 

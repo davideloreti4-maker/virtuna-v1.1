@@ -20,8 +20,8 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 - [ ] **POP-01**: `audiences` is generalized into a domain-agnostic population on the signature substrate (socials enums + the fixed 4-weight model become optional/pack-supplied); existing Socials audiences migrate cleanly
 - [ ] **POP-02**: A General audience carries its Mode, a success-criterion, and a trust tier
-- [ ] **POP-03**: A user can save, name, browse, and reuse General audiences in a General library
-- [ ] **POP-04**: Built-in General default template panel(s) (e.g. analyst / hiring) let a General run work with zero setup
+- [ ] **POP-03**: A user can save, name, browse, and reuse General audiences in a General library — _data-layer DONE in 03-04 (create/list/rename through CRUD); browse/library UI = P5/P7_
+- [x] **POP-04**: Built-in General default template panel(s) (e.g. analyst / hiring) let a General run work with zero setup
 - [ ] **POP-05**: A user can author and edit a General audience's success-criterion (what "good" means — the metric the pack scorer optimizes for)
 
 ### TRUST — Honesty Layer
@@ -105,8 +105,8 @@ Phases assigned during roadmap creation. All Pending.
 | PACK-04 | Phase 1 | Complete |
 | POP-01 | Phase 3 | Pending |
 | POP-02 | Phase 3 | Pending |
-| POP-03 | Phase 3 | Pending |
-| POP-04 | Phase 3 | Pending |
+| POP-03 | Phase 3 | Partial (03-04 data-layer; UI P5/P7) |
+| POP-04 | Phase 3 | Complete (03-04) |
 | POP-05 | Phase 3 | Pending |
 | TRUST-01 | Phase 3 | Pending |
 | TRUST-02 | Phase 3 | Pending |
