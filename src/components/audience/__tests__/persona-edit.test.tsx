@@ -44,6 +44,7 @@ function calibratedAudience(personas: CalibratedPersona[]): Audience {
     user_id: "user-1",
     name: "My TikTok Audience",
     type: "personal",
+    mode: "socials",
     platform: "tiktok",
     goal_label: "Grow my following",
     goal_intent: "grow",

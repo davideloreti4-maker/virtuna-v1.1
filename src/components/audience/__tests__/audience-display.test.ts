@@ -16,6 +16,7 @@ function baseAudience(overrides: Partial<Audience> = {}): Audience {
     user_id: "user-1",
     name: "Test Audience",
     type: "personal",
+    mode: "socials",
     platform: "tiktok",
     goal_label: null,
     goal_intent: null,
@@ -169,6 +170,19 @@ describe("groupAudiences", () => {
     expect(grouped.baseline).toHaveLength(1);
     expect(grouped.templates).toHaveLength(1);
     expect(grouped.yours).toHaveLength(1);
+    expect(grouped.generalTemplates).toHaveLength(0);
+  });
+
+  it("routes mode='general' templates into the generalTemplates bucket (A6)", () => {
+    const general = baseAudience({ id: "g", is_general: true, name: "General" });
+    const preset = baseAudience({ id: "p", is_preset: true, name: "Growth" });
+    const analyst = baseAudience({ id: "template-analyst", mode: "general", name: "Analyst" });
+    const grouped = groupAudiences([general, preset, analyst]);
+    // The general-mode template does NOT mix into the socials `templates` bucket.
+    expect(grouped.generalTemplates).toHaveLength(1);
+    expect(grouped.generalTemplates[0]!.id).toBe("template-analyst");
+    expect(grouped.templates).toHaveLength(1);
+    expect(grouped.templates.some((a) => a.mode === "general")).toBe(false);
   });
 });
 

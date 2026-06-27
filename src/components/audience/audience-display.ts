@@ -29,6 +29,17 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 const GENERAL_PERSONA_COUNT = 10;
 
+/**
+ * A persona is GROUNDED iff it carries a non-empty, trimmed `evidence` quote
+ * (mirrors the spike's empty-evidence predicate — RESEARCH § Code Examples /
+ * Pitfall 5). `CalibratedPersona` carries no `evidence` field at all, so template
+ * personas are ungrounded-by-construction; only scrape-derived `SignaturePersona`
+ * reactors carry the engagement receipt. Presentation-only — never mutates.
+ */
+export function isPersonaGrounded(p: { evidence?: string }): boolean {
+  return typeof p.evidence === "string" && p.evidence.trim().length > 0;
+}
+
 /** Prefer signature reactors, then calibrated personas, else empty. */
 export function getPersonaRoster(audience: Audience): PersonaRosterEntry[] {
   const sigPersonas = audience.signature?.audience.personas;
@@ -110,17 +121,32 @@ export function getDominantTemperature(
 export function groupAudiences(audiences: Audience[]): {
   baseline: Audience[];
   templates: Audience[];
+  generalTemplates: Audience[];
   yours: Audience[];
 } {
   const baseline: Audience[] = [];
   const templates: Audience[] = [];
+  const generalTemplates: Audience[] = [];
   const yours: Audience[] = [];
   for (const a of audiences) {
-    if (a.is_general) baseline.push(a);
+    // `mode==='general'` (the analyst/hiring authored templates) routes to its own
+    // bucket BEFORE the is_preset check (A6) so it never mixes into the socials
+    // `templates` bucket. GENERAL_AUDIENCE is mode='socials' (Pitfall 1) → baseline.
+    if (a.mode === "general") generalTemplates.push(a);
+    else if (a.is_general) baseline.push(a);
     else if (a.is_preset) templates.push(a);
     else yours.push(a);
   }
-  return { baseline, templates, yours };
+  return { baseline, templates, generalTemplates, yours };
+}
+
+/**
+ * Provenance subline for a `mode==='general'` authored template card. These panels
+ * carry no scrape behind them (signature null, evidence-free) → honest Directional.
+ */
+export function getTemplateProvenanceLabel(audience: Audience): string | null {
+  if (audience.mode !== "general") return null;
+  return "Authored template — Directional";
 }
 
 /** Card subline under the audience name. */
