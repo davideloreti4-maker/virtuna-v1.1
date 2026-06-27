@@ -93,7 +93,30 @@ Plans:
   4. Each audience and each run shows a Validated vs Directional badge in the UI.
   5. A persona's provenance is surfaced — the evidence behind it is visible, and ungrounded personas read as visibly ungrounded.
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+**Wave 0** *(determinism gate — D-01, paid live re-bake)*
+
+- [ ] 03-01-PLAN.md — Drop thinking-mode synth + live double-bake re-confirm (`signatureEqual:true`) — autonomous:false (POP-01)
+
+**Wave 1** *(blocked on Wave 0 — foundation, parallel)*
+
+- [ ] 03-02-PLAN.md — Audience type fields (mode/success_criterion/custom_context/CustomContext) + resolveTier resolver + truth-table test (POP-01, POP-02, TRUST-01)
+- [ ] 03-03-PLAN.md — Additive mode-gated migration + [BLOCKING] `supabase db push` — autonomous:false (POP-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 03-04-PLAN.md — Repo row mappers + zod + mode='socials' on constants + GENERAL_TEMPLATES (analyst/hiring) (POP-01, POP-03, POP-04)
+
+**Wave 3** *(blocked on Wave 2 — parallel)*
+
+- [ ] 03-05-PLAN.md — isPersonaGrounded + TrustBadge + card honesty (inline evidence/ungrounded) + manager templates section (TRUST-01, TRUST-02, POP-03)
+- [ ] 03-06-PLAN.md — Route schemas + form: success-criterion + custom-context author/edit (POP-05, POP-02, TRUST-02)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 03-07-PLAN.md — Run/result Read card trust badge (A5 — additive block field + TrustBadge mount) (TRUST-01)
+
 **UI hint**: yes
 
 ### Phase 4: Input Adapter
@@ -165,11 +188,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
-| 3. General Population + Honesty Layer | 0/TBD | Not started | - |
+| 3. General Population + Honesty Layer | 0/7 | Planned | - |
 | 4. Input Adapter | 0/TBD | Not started | - |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---
-*Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves).*
+*Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves). Phase 3 planned 2026-06-27 (7 plans, Waves 0–4; D-01 determinism gate is Wave 0).*
