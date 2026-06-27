@@ -108,7 +108,7 @@ Phases assigned during roadmap creation. All Pending.
 | POP-03 | Phase 3 | Done (03-04 data-layer + 03-05 browse/reuse; net-new General-from-scratch P5/P7) |
 | POP-04 | Phase 3 | Complete (03-04) |
 | POP-05 | Phase 3 | Done (03-06 success-criterion author/edit form + route validation) |
-| TRUST-01 | Phase 3 | Done (03-05 audience-surface badge; run-badge downstream) |
+| TRUST-01 | Phase 3 | Done (03-05 audience-surface badge; 03-07 run/result card badge) |
 | TRUST-02 | Phase 3 | Done (03-05 inline evidence + ungrounded affordance) |
 | TRUST-03 | Phase 2 | Complete |
 | PROF-01 | Phase 5 | Pending |
