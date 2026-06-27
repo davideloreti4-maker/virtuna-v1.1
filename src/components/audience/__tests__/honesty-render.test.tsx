@@ -166,4 +166,19 @@ describe("AudienceCard surfaces persona provenance honestly (D-05 / TRUST-02)", 
     // The general-template provenance line replaces the generic ungrounded line.
     expect(screen.queryByText("no evidence — Directional")).toBeNull();
   });
+
+  it("a mode='general' template never shows a confident 'Calibrated' status chip (WR-01)", () => {
+    const template = baseAudience({
+      id: "template-hiring",
+      name: "Hiring",
+      mode: "general",
+      personas: [calibratedPersona()],
+    });
+    render(<AudienceCard audience={template} />);
+    // Honesty: a Directional template must NOT co-render a "Calibrated" chip.
+    expect(screen.queryByText("Calibrated")).toBeNull();
+    // It reads as the authored "Template" it is.
+    expect(screen.getByText("Template")).toBeInTheDocument();
+    expect(screen.getByText("Directional")).toBeInTheDocument();
+  });
 });

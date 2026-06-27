@@ -66,6 +66,11 @@ export function getTemperatureMix(
 }
 
 export function getCalibrationStatus(audience: Audience): CalibrationStatus {
+  // `mode==='general'` authored templates (analyst/hiring) are Directional-by-design —
+  // no scrape, no calibration behind them. Routed FIRST (A6, mirroring groupAudiences)
+  // so they never fall through to "calibrated" and render a confident "Calibrated" chip
+  // beside their honest "Directional" badge (WR-01 honesty self-contradiction).
+  if (audience.mode === "general") return "template";
   if (audience.is_general) return "baseline";
   if (audience.is_preset) return "template";
   const roster = getPersonaRoster(audience);
