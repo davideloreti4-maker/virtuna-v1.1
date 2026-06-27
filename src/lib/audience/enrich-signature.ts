@@ -5,7 +5,7 @@
  *   (a) select the top ~3-5 videos by engagement (save+share weighted),
  *   (b) `qwen3.5-omni-flash` WATCHES each (video+audio) → content/format/voice notes
  *       (universal — works for talkers AND silent visual creators, the Khaby class, P.13),
- *   (c) ONE `qwen3.7-plus` synthesis (CALIBRATE: thinking ON) fuses stats + engagement + native subs + watchNotes
+ *   (c) ONE `qwen3.7-plus` synthesis (CALIBRATE: greedy temp:0, thinking-mode OFF per D-01) fuses stats + engagement + native subs + watchNotes
  *       → the AudienceSignature (creator persona + 10 reactors + derived weights + summary).
  *
  * Determinism (P.7): every LLM call runs `temperature:0, seed:QWEN_SEED`, system prompts
@@ -51,11 +51,12 @@ const MIN_WATCH = 3;
 /** Max transcripts to fold into synthesis (the watched set; writing sample = the top one). */
 const MAX_TRANSCRIPTS = 5;
 const OMNI_TIMEOUT_MS = 60_000;
-// Thinking-mode synth (qwen-3.7-plus, thinking_budget 2000) empirically runs ~60-90s for a full
-// socials bake; the old 60s ceiling aborted it systematically (spike 02-02 — the second bake
-// reliably timed out at ~60s with "Request was aborted"). 120s covers the observed p95 + headroom.
+// Synth (qwen-3.7-plus, greedy temp:0, thinking-mode OFF per D-01) empirically ran ~60-90s with
+// thinking ON; the old 60s ceiling aborted it systematically (spike 02-02 — the second bake
+// reliably timed out at ~60s with "Request was aborted"). 120s keeps ample headroom now that
+// thinking-mode is dropped (the call is strictly faster without the staging budget).
 const SYNTH_TIMEOUT_MS = 120_000;
-const SYNTH_MAX_TOKENS = 6000; // thinking ON: thinking_budget(2000) + persona output(~2.5k) + headroom
+const SYNTH_MAX_TOKENS = 6000; // persona output (~2.5k) + headroom (thinking budget dropped per D-01)
 const SUBTITLE_FETCH_TIMEOUT_MS = 8_000;
 const SUBTITLE_MAX_CHARS = 2_000;
 
@@ -342,7 +343,7 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
   try {
     const completion = await ai.chat.completions.create(
       {
-        model: QWEN_REASONING_MODEL, // CALIBRATE: bake-once, judgment-heavy → thinking ON
+        model: QWEN_REASONING_MODEL, // CALIBRATE: bake-once — D-01: greedy temp:0, thinking-mode OFF
         messages: [
           { role: "system", content: SYNTH_SYSTEM },
           { role: "user", content: JSON.stringify(payload) },
@@ -350,9 +351,8 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
-        max_tokens: SYNTH_MAX_TOKENS, // 6000: thinking_budget(2000) + output(~2.5k) + headroom
-        enable_thinking: true,        // DashScope extension — suppressed by `as never` cast below
-        thinking_budget: 2000,
+        max_tokens: SYNTH_MAX_TOKENS, // 6000: persona output (~2.5k) + headroom (thinking budget dropped per D-01)
+        enable_thinking: false,       // D-01: greedy temp:0 is the determinism lever; thinking-mode staging was the Pitfall-3 residual-jitter source (spike 02-02 NON-DETERMINISTIC)
       } as never,
       { signal: controller.signal },
     );
