@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 03-02 COMPLETE (domain foundation — mode/success_criterion/custom_context + resolveTier)
-last_updated: "2026-06-27T15:56:00.000Z"
-last_activity: 2026-06-27 -- 03-02 DONE (40148540 types, 17ffdb87 RED, d16046f2 GREEN); audience suite 139 green
+stopped_at: Plan 03-03 Task 1 DONE — AWAITING-PUSH (blocking-human checkpoint for live `supabase db push`)
+last_updated: "2026-06-27T14:00:00.000Z"
+last_activity: 2026-06-27 -- 03-03 migration written + committed (6d8b6073); live push deferred to human checkpoint
 progress:
   total_phases: 7
   completed_phases: 2
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (general-population-honesty-layer) — EXECUTING
-Plan: 2 of 7 COMPLETE — Wave 1 cont. (03-03 migration next)
-Status: Plan 03-02 DONE (40148540, 17ffdb87, d16046f2). Domain foundation landed: `Audience.mode` first-class axis + `success_criterion?` + top-level `custom_context?` + `CustomContext` interface (D-04/03/07); `resolveTier`/`tierFromCalibration`/`TrustTier` productionize the spike tier rule (D-06) keyed off `SOCIALS_PACK.calibration` (never `Audience.calibration`). Truth-table gate green; audience suite 11 files/139 passed (+4); ENGINE_VERSION untouched. Next: 03-03 additive mode-gated migration + BLOCKING `supabase db push`.
-Last activity: 2026-06-27 -- 03-02 domain contracts + resolver shipped (interface-first)
+Plan: 03-03 IN PROGRESS (awaiting-push) — 2 of 7 plans complete; Wave 1 cont.
+Status: Plan 03-03 Task 1 DONE — additive mode-gated migration `supabase/migrations/20260627000000_audience_general.sql` written + committed (6d8b6073), all grep gates green (mode axis + gated weight-sum CHECK with verbatim 4-weight predicate byte-identical to 20260619000000:47-52 + success_criterion + custom_context). **Task 2 = BLOCKING live `supabase db push` is DEFERRED to a human-action checkpoint** (production DB mutation — operator-authorized only). SUPABASE_ACCESS_TOKEN absent in env/.env.local; supabase CLI v2.105.0 present. NOT complete until the push + read-back land. Plan 03-02 prior (40148540, d16046f2) domain foundation.
+Last activity: 2026-06-27 -- 03-03 migration committed; live push pending human checkpoint
 
 Progress: [███░░░░░░░] 31%
 

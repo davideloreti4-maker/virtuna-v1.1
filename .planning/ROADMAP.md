@@ -102,7 +102,7 @@ Plans:
 **Wave 1** *(blocked on Wave 0 — foundation, parallel)*
 
 - [x] 03-02-PLAN.md — Audience type fields (mode/success_criterion/custom_context/CustomContext) + resolveTier resolver + truth-table test (POP-01, POP-02, TRUST-01) ✅ (40148540, d16046f2)
-- [ ] 03-03-PLAN.md — Additive mode-gated migration + [BLOCKING] `supabase db push` — autonomous:false (POP-01)
+- [~] 03-03-PLAN.md — Additive mode-gated migration + [BLOCKING] `supabase db push` — autonomous:false (POP-01) · Task 1 DONE (migration written + committed 6d8b6073, all gates green); ⏸ PAUSED at the blocking-human gate (operator runs `supabase db push` + read-back)
 
 **Wave 2** *(blocked on Wave 1)*
 
