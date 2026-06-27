@@ -97,12 +97,12 @@ Plans:
 Plans:
 **Wave 0** *(determinism gate — D-01, paid live re-bake)*
 
-- [~] 03-01-PLAN.md — Drop thinking-mode synth + live double-bake re-confirm (`signatureEqual:true`) — autonomous:false (POP-01) · Tasks 1-2 DONE (c4c7b5c9, 6d5854a2); ⏸ PAUSED at the blocking-human gate (operator runs `node --import tsx scripts/rebake-determinism.ts`)
+- [x] 03-01-PLAN.md — Drop thinking-mode synth + live double-bake gate (POP-01) ✅ (c4c7b5c9, 6d5854a2). Live gate RAN: synth non-deterministic even isolated (MoE batch-routing) → operator adopted **bake-once-freeze (Option 2)**; determinism contracted on the frozen signature + green replay gate; cross-bake → v2 (CAL-01)
 
 **Wave 1** *(blocked on Wave 0 — foundation, parallel)*
 
 - [x] 03-02-PLAN.md — Audience type fields (mode/success_criterion/custom_context/CustomContext) + resolveTier resolver + truth-table test (POP-01, POP-02, TRUST-01) ✅ (40148540, d16046f2)
-- [~] 03-03-PLAN.md — Additive mode-gated migration + [BLOCKING] `supabase db push` — autonomous:false (POP-01) · Task 1 DONE (migration written + committed 6d8b6073, all gates green); ⏸ PAUSED at the blocking-human gate (operator runs `supabase db push` + read-back)
+- [x] 03-03-PLAN.md — Additive mode-gated migration + live apply (POP-01) ✅ (6d8b6073). Applied to live `virtuna-v1.1` via Supabase MCP (operator-authorized) + verified: 2 rows backfilled mode='socials', gated CHECK live, 3 columns present; history version reconciled to 20260627000000
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -145,6 +145,8 @@ Plans:
   2. The Profile-built audience is saved to the General library and offers a chain CTA "Simulate a message to [them]".
   3. `simulate(audience, stimulus)` runs a stimulus through a General audience and returns reactions rendered as a reaction-distribution card (distribution + themes).
   4. The full Profile-a-chat → Simulate-a-reply flow completes end-to-end within a single thread.
+
+**Security carry-forward (P3 code-review IN-02)**: `simulate()` is the FIRST place user-authored `success_criterion` + `custom_context` flow into a model prompt. Treat them as UNTRUSTED — delimit / instruction-isolate, never concatenate raw into the scorer prompt (prompt-injection). P3's `sanitizeText` only strips control chars for storage/XSS, NOT prompt safety. Detail: `.planning/phases/03-general-population-honesty-layer/03-REVIEW.md` §IN-02.
 
 **Plans**: TBD
 **UI hint**: yes
