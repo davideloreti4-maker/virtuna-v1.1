@@ -211,7 +211,7 @@ export function ProfileSettingsForm(): React.JSX.Element {
         <Heading level={2} size={5}>
           Creator Profile
         </Heading>
-        <Text size="sm" muted className="mt-1 block">
+        <Text size="sm" className="mt-1 block text-foreground-secondary">
           Edit your interview answers anytime. Honest data improves prediction
           accuracy.
         </Text>
