@@ -287,6 +287,73 @@ describe("POST /api/audiences", () => {
     const res = await POST(req);
     expect(res.status).toBe(400);
   });
+
+  it("accepts + sanitizes mode / success_criterion / custom_context into the create payload (POP-05/TRUST-02)", async () => {
+    makeAuthenticatedUser("session-user-id");
+    mocks.mockCreateAudience.mockResolvedValue({ id: "new-aud", user_id: "session-user-id" });
+
+    const req = new Request("http://localhost/api/audiences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "General Audience",
+        type: "target",
+        platform: "tiktok",
+        mode: "general",
+        success_criterion: "  Engagement over reach  ", // control char + outer ws
+        custom_context: [
+          { source: "user", note: "  Founder-led  brand  ", persona_evidence_link: "skeptic" },
+        ],
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(201);
+
+    const passed = mocks.mockCreateAudience.mock.calls[0][1] as {
+      mode: string;
+      success_criterion: string;
+      custom_context: { source: string; note: string }[];
+    };
+    expect(passed.mode).toBe("general");
+    // sanitizeText strips control chars + trims
+    expect(passed.success_criterion).toBe("Engagement over reach");
+    expect(passed.custom_context[0].source).toBe("user");
+    expect(passed.custom_context[0].note).toBe("Founder-led brand");
+  });
+
+  it("rejects an over-cap custom_context array (>50 entries, T-03-14)", async () => {
+    makeAuthenticatedUser();
+    const tooMany = Array.from({ length: 51 }, () => ({ source: "user", note: "x" }));
+    const req = new Request("http://localhost/api/audiences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "DoS Audience",
+        type: "target",
+        platform: "tiktok",
+        custom_context: tooMany,
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an over-length success_criterion (>2000 chars, T-03-12)", async () => {
+    makeAuthenticatedUser();
+    const req = new Request("http://localhost/api/audiences", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: "Long Audience",
+        type: "target",
+        platform: "tiktok",
+        success_criterion: "a".repeat(2001),
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+  });
 });
 
 // ─── Tests: GET /api/audiences/[id] ──────────────────────────────────────────
@@ -350,6 +417,41 @@ describe("PATCH /api/audiences/[id]", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.audience.name).toBe("Updated Name");
+  });
+
+  it("accepts + sanitizes success_criterion / custom_context on PATCH (POP-05/TRUST-02)", async () => {
+    makeAuthenticatedUser();
+    mocks.mockUpdateAudience.mockResolvedValue({ id: "aud-uuid", name: "X" });
+
+    const req = new Request("http://localhost/api/audiences/aud-uuid", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        success_criterion: "  Saves over likes  ",
+        custom_context: [{ source: "user", note: "  Niche founder  " }],
+      }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "aud-uuid" }) });
+    expect(res.status).toBe(200);
+
+    const passed = mocks.mockUpdateAudience.mock.calls[0][2] as {
+      success_criterion: string;
+      custom_context: { source: string; note: string }[];
+    };
+    expect(passed.success_criterion).toBe("Saves over likes");
+    expect(passed.custom_context[0].note).toBe("Niche founder");
+  });
+
+  it("rejects an over-cap custom_context array on PATCH (>50 entries, T-03-14)", async () => {
+    makeAuthenticatedUser();
+    const tooMany = Array.from({ length: 51 }, () => ({ source: "user", note: "x" }));
+    const req = new Request("http://localhost/api/audiences/aud-uuid", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ custom_context: tooMany }),
+    });
+    const res = await PATCH(req, { params: Promise.resolve({ id: "aud-uuid" }) });
+    expect(res.status).toBe(400);
   });
 });
 
