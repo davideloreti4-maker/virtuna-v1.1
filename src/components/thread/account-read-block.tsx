@@ -4,31 +4,39 @@
  * AccountReadBlock — "A Read on your own account" (Plan 10-05, SELF-01/02/03).
  *
  * The know-thyself companion to Discover's know-thy-competitor. A STATIC composed card
- * (multi-audience-read-block is the precedent) that maps the deterministic
- * AccountReadResult onto the FIXED `reading/` renderers — NO model-generated UI.
+ * mapping the deterministic AccountReadResult onto a FIXED layout — NO model-generated UI.
  *
- * Composition (10-UI-SPEC §"Account Read card"):
- *   - ReadingSection (the fixed "quiet label over a flat-warm card" unit) frames every
- *     block — hero summary + the pattern sections (What's working · What to fix ·
- *     Recurring hooks · Format mix · Drop-points).
+ * lane/polish refinement (docs/subsystems/ui-skill-cards.md §2): brought onto the refined
+ * thread-card chrome (matte, warm-cream, eyebrow kicker) and densified to match the sketch.
+ *
+ * Tier C scrape-data slice: the card now opens with the REAL scrape — a profile header
+ * (avatar / display name / verified / follower + post counts) and a cover-thumbnail strip
+ * of the analyzed posts (top performers, with view counts) — so the Read is visibly grounded
+ * in the creator's actual account, not just a handle string over a wall of text.
  *
  * Honesty spine:
  *   - Thin-history fallback (SELF-02): warning-toned `--color-warning` state, NEVER
- *     error/coral, NEVER a fabricated pattern. Reuses the P7 CouldNotAnalyze honesty.
- *   - Accuracy track record (SELF-03): cream-PRIMARY number (data, not a CTA — never
- *     coral); the empty copy shows when `trackRecord` is null.
+ *     error/coral, NEVER a fabricated pattern.
+ *   - Accuracy track record (SELF-03): cream-PRIMARY number (data, not a CTA); the empty
+ *     copy shows when `trackRecord` is null.
+ *   - Working / fix labels use the sanctioned success / warning DATA tones (not brand accent).
+ *   - Cover URLs are ephemeral TikTok-CDN images → display-only: a broken/expired cover
+ *     degrades to a placeholder tile (the view count still reads), never a broken-image icon.
  *
- * Savable: a <SaveAffordance item_type="read" …/> mounts on the success path; the block's
- * own props are the snapshot the shelf re-renders without a re-fetch (Plan 04).
+ * Back-compat: `profile` / `analyzedVideos` are optional. A pre-Tier-C saved snapshot (no
+ * profile) falls back to the handle-only eyebrow and simply omits the header + cover strip.
+ *
+ * Deferred (§7 product call): the forward action "Write to my strengths →" is NOT wired yet
+ * — it's net-new behavior (seed Ideas?). The footer carries Save for now.
  */
 
 import type { AccountReadBlock } from '@/lib/tools/blocks';
-import { ReadingSection } from '@/components/reading/reading-section';
 import { SaveAffordance } from './save-affordance';
 
-/** Non-optional patterns payload (present on the success path). */
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
 type FormatMix = AccountReadPatterns['formatMix'];
+type AccountReadProfile = NonNullable<AccountReadBlock['props']['profile']>;
+type AnalyzedVideos = NonNullable<AccountReadBlock['props']['analyzedVideos']>;
 
 export interface AccountReadBlockProps {
   block: AccountReadBlock;
@@ -36,181 +44,284 @@ export interface AccountReadBlockProps {
   threadId?: string | null;
 }
 
-// ─── Thin-history fallback (SELF-02) ──────────────────────────────────────────
-// Warning-toned, calm informational state — NEVER error, NEVER coral, NEVER fabricated.
+const CARD = 'overflow-hidden rounded-xl border border-white/[0.06] bg-transparent';
 
-function ThinFallback() {
+/** Compact count formatter — 142000 → "142K", 1500 → "1.5K", 2_400_000 → "2.4M". */
+function formatCompact(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  const fmt = (val: number, suffix: string) =>
+    `${val >= 10 || Number.isInteger(val) ? Math.round(val) : val.toFixed(1)}${suffix}`;
+  if (n < 1000) return String(Math.round(n));
+  if (n < 1_000_000) return fmt(n / 1000, 'K');
+  return fmt(n / 1_000_000, 'M');
+}
+
+/** Eyebrow kicker — cream-muted dot + label; optional right-side @handle (back-compat/thin). */
+function Eyebrow({ handle }: { handle?: string }) {
   return (
-    <ReadingSection label="A Read on your own account">
-      <div className="flex flex-col gap-2 p-6" data-testid="account-read-thin">
-        <p
-          className="text-[15px] font-semibold"
-          style={{ color: 'var(--color-warning)' }}
-        >
-          Not enough history to read yet
-        </p>
-        <p className="text-sm leading-relaxed text-foreground-secondary">
-          We couldn&rsquo;t find enough public posts on your account to read its patterns
-          honestly. Post more, or check your handle is public, and try again.
-        </p>
-      </div>
-    </ReadingSection>
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+        <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+        A Read on your account
+      </span>
+      {handle ? <span className="shrink-0 text-[12px] text-foreground-muted">@{handle}</span> : null}
+    </div>
   );
 }
 
-// ─── Accuracy track record (SELF-03) ──────────────────────────────────────────
-// The number is DATA — cream-primary, never coral. Empty copy below the threshold.
-
-function TrackRecord({
-  trackRecord,
-}: {
-  trackRecord: AccountReadBlock['props']['trackRecord'];
-}) {
+/** Subtle verified tick — cream-secondary (a data signal, not brand accent / not blue). */
+function VerifiedTick() {
   return (
-    <ReadingSection label="Accuracy track record">
-      <div className="p-5" data-testid="account-read-track-record">
-        {trackRecord ? (
-          <p className="text-sm leading-relaxed text-foreground-secondary">
-            Numen has been{' '}
-            {/* cream-PRIMARY number — data, never a coral CTA (UI-SPEC §Color). */}
-            <span className="font-semibold text-foreground">
-              within {trackRecord.withinPct}%
-            </span>{' '}
-            on your last{' '}
-            <span className="font-semibold text-foreground">{trackRecord.lastN}</span>{' '}
-            posts.
-          </p>
-        ) : (
-          <p className="text-sm leading-relaxed text-foreground-muted">
-            Not enough posted outcomes yet to show a track record. Capture a few and this
-            builds.
-          </p>
-        )}
-      </div>
-    </ReadingSection>
+    <span
+      className="inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-white/[0.08]"
+      title="Verified"
+      aria-label="Verified"
+    >
+      <svg viewBox="0 0 10 10" className="h-[7px] w-[7px]" fill="none" aria-hidden="true">
+        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--color-foreground-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
   );
 }
 
-// ─── A labeled list section (reuses the fixed ReadingSection card shell) ───────
+/** Profile header — the REAL scrape identity: avatar + name + verified + follower/post counts. */
+function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
+  const name = profile.displayName?.trim() || `@${profile.handle}`;
+  const initial = (name.replace(/^@/, '')[0] ?? '?').toUpperCase();
+  return (
+    <div className="flex items-center gap-3" data-testid="account-read-profile">
+      {/* Avatar — real scrape image over a warm placeholder; broken/empty → the initial shows. */}
+      <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
+        <span className="absolute inset-0 flex items-center justify-center text-[15px] font-semibold text-foreground-muted" aria-hidden="true">
+          {initial}
+        </span>
+        {profile.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN avatar, not a static asset
+          <img
+            src={profile.avatarUrl}
+            alt=""
+            loading="lazy"
+            className="relative h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-semibold text-foreground">{name}</span>
+          {profile.verified ? <VerifiedTick /> : null}
+        </div>
+        <p className="truncate text-[12.5px] text-foreground-muted">
+          @{profile.handle} · {formatCompact(profile.followerCount)} followers · {formatCompact(profile.videoCount)} posts
+        </p>
+      </div>
+    </div>
+  );
+}
 
-function ListSection({
+/** Cover strip — the analyzed posts as 9:16 thumbnails with view counts (real scrape media). */
+function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
+  return (
+    <div data-testid="account-read-covers">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Posts we read</p>
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {videos.map((v, i) => {
+          const Tag = v.videoUrl ? 'a' : 'div';
+          return (
+            <Tag
+              key={`cover-${i}`}
+              {...(v.videoUrl ? { href: v.videoUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
+              className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]"
+              title={v.caption || undefined}
+            >
+              {v.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
+                <img
+                  src={v.coverUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
+              {/* Views overlay — over imagery (white on a dark gradient), legible even if cover fails. */}
+              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1 pb-0.5 pt-3 text-[9px] font-medium tabular-nums text-white/90">
+                <svg viewBox="0 0 8 8" className="h-[6px] w-[6px]" fill="currentColor" aria-hidden="true">
+                  <path d="M1.5 1L7 4L1.5 7Z" />
+                </svg>
+                {formatCompact(v.views)}
+              </span>
+            </Tag>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A labeled bullet list — colored label (success/warning) or muted; honest empty state. */
+function ListBlock({
   label,
   items,
   testid,
+  labelColor,
 }: {
   label: string;
   items: string[];
   testid: string;
+  labelColor?: string;
 }) {
   return (
-    <ReadingSection label={label}>
-      <div className="p-5" data-testid={testid}>
-        {items.length > 0 ? (
-          <ul className="flex flex-col gap-2" role="list">
-            {items.map((item, i) => (
-              <li
-                key={`${testid}-${i}`}
-                className="text-sm leading-relaxed text-foreground-secondary"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          // Honest empty — em-dash muted, never a fabricated entry (UI-SPEC §Color).
-          <p className="text-sm text-foreground-muted">— none detected yet</p>
-        )}
-      </div>
-    </ReadingSection>
+    <div data-testid={testid}>
+      <p
+        className="mb-1.5 text-[11px] uppercase tracking-[0.05em]"
+        style={labelColor ? { color: labelColor } : undefined}
+      >
+        <span className={labelColor ? undefined : 'text-foreground-muted'}>{label}</span>
+      </p>
+      {items.length > 0 ? (
+        <ul className="flex flex-col gap-1" role="list">
+          {items.map((item, i) => (
+            <li key={`${testid}-${i}`} className="flex gap-2 text-[13px] leading-relaxed text-foreground-secondary">
+              <span className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // Honest empty — em-dash muted, never a fabricated entry.
+        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+      )}
+    </div>
   );
 }
 
-// ─── Format-mix section ───────────────────────────────────────────────────────
-
-function FormatMixSection({ formatMix }: { formatMix: FormatMix }) {
+/** Format-mix bars — cream fill over a faint track (warm-cream, full width). */
+function FormatMixBlock({ formatMix }: { formatMix: FormatMix }) {
   return (
-    <ReadingSection label="Format mix">
-      <div className="p-5" data-testid="account-read-format-mix">
-        {formatMix.length > 0 ? (
-          <ul className="flex flex-col gap-2.5" role="list">
-            {formatMix.map((entry, i) => (
-              <li key={`fmt-${i}`} className="flex items-center gap-3 text-sm">
-                <span className="min-w-[140px] text-foreground-secondary">
-                  {entry.label}
-                </span>
-                <span className="h-[6px] flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                  <span
-                    className="block h-full rounded-full"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, entry.pct))}%`,
-                      background:
-                        'linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.38))',
-                    }}
-                  />
-                </span>
-                <span className="w-20 text-right tabular-nums text-foreground">
-                  {entry.count} · {entry.pct}%
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-foreground-muted">— none detected yet</p>
-        )}
-      </div>
-    </ReadingSection>
+    <div data-testid="account-read-format-mix">
+      <p className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Format mix</p>
+      {formatMix.length > 0 ? (
+        <ul className="flex flex-col gap-2" role="list">
+          {formatMix.map((entry, i) => (
+            <li key={`fmt-${i}`} className="flex items-center gap-3 text-[12.5px]">
+              <span className="min-w-[112px] text-foreground-secondary">{entry.label}</span>
+              <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+                <span
+                  className="block h-full rounded-full"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, entry.pct))}%`,
+                    background: 'linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.40))',
+                  }}
+                />
+              </span>
+              <span className="w-12 text-right tabular-nums text-foreground-muted">{entry.pct}%</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+      )}
+    </div>
   );
 }
 
-// ─── Renderer ─────────────────────────────────────────────────────────────────
+/** Accuracy track record (SELF-03) — cream-primary number; empty copy below threshold. */
+function Accuracy({ trackRecord }: { trackRecord: AccountReadBlock['props']['trackRecord'] }) {
+  return (
+    <p
+      className="border-t border-white/[0.06] pt-3 text-[13px] leading-relaxed text-foreground-secondary"
+      data-testid="account-read-track-record"
+    >
+      {trackRecord ? (
+        <>
+          Numen has been{' '}
+          <span className="font-semibold text-foreground">within {trackRecord.withinPct}%</span> on your last{' '}
+          <span className="font-semibold text-foreground">{trackRecord.lastN}</span> posts.
+        </>
+      ) : (
+        <span className="text-foreground-muted">
+          Not enough posted outcomes yet to show a track record. Capture a few and this builds.
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** Thin-history fallback (SELF-02) — warning-toned, calm, never fabricated. */
+function ThinFallback({ handle }: { handle: string }) {
+  return (
+    <div className={CARD} data-testid="account-read-thin">
+      <div className="flex flex-col gap-3 px-4 pb-4 pt-4">
+        <Eyebrow handle={handle} />
+        <p className="text-[15px] font-semibold" style={{ color: 'var(--color-warning)' }}>
+          Not enough history to read yet
+        </p>
+        <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
+          We couldn&rsquo;t find enough public posts on your account to read its patterns honestly.
+          Post more, or check your handle is public, and try again.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockProps) {
-  const { handle, fallback, patterns, trackRecord } = block.props;
+  const { handle, fallback, patterns, trackRecord, profile, analyzedVideos } = block.props;
 
   // Honest thin-history fallback (SELF-02) — never renders fabricated patterns.
   if (fallback === 'thin' || !patterns) {
-    return <ThinFallback />;
+    return <ThinFallback handle={handle} />;
   }
 
   return (
-    <div className="flex flex-col gap-5" data-testid="account-read-block">
-      {/* Hero framing — "A Read on your own account" (companion to know-thy-competitor). */}
-      <ReadingSection label="A Read on your own account">
-        <div className="flex items-center justify-between gap-3 p-5">
-          <span className="text-[15px] font-semibold text-foreground">@{handle}</span>
-          {/* Savable as item_type 'read' — the block's props are the shelf snapshot. */}
-          <SaveAffordance
-            item_type="read"
-            thread_id={threadId}
-            title={`Account Read — @${handle}`}
-            snapshot={block.props as Record<string, unknown>}
+    <div className={CARD} data-testid="account-read-block">
+      <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
+        <Eyebrow />
+
+        {/* Real scrape identity — opens the card with the creator's own face + counts. */}
+        {/* Back-compat: a pre-Tier-C snapshot (no profile) shows the handle in the eyebrow. */}
+        {profile ? <ProfileHeader profile={profile} /> : <p className="text-[13px] text-foreground-muted">@{handle}</p>}
+
+        {/* The analyzed posts — real cover thumbnails (top performers), proof the Read is grounded. */}
+        {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
+
+        {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+          <ListBlock
+            label="What's working"
+            items={patterns.working}
+            testid="account-read-working"
+            labelColor="var(--color-success)"
+          />
+          <ListBlock
+            label="What to fix"
+            items={patterns.fix}
+            testid="account-read-fix"
+            labelColor="var(--color-warning)"
           />
         </div>
-      </ReadingSection>
 
-      <ListSection
-        label="What's working"
-        items={patterns.working}
-        testid="account-read-working"
-      />
-      <ListSection
-        label="What to fix"
-        items={patterns.fix}
-        testid="account-read-fix"
-      />
-      <ListSection
-        label="Recurring hooks"
-        items={patterns.recurringHooks}
-        testid="account-read-hooks"
-      />
-      <FormatMixSection formatMix={patterns.formatMix} />
-      <ListSection
-        label="Drop-points"
-        items={patterns.dropPoints}
-        testid="account-read-drop-points"
-      />
+        <ListBlock label="Recurring hooks" items={patterns.recurringHooks} testid="account-read-hooks" />
+        <FormatMixBlock formatMix={patterns.formatMix} />
+        <ListBlock label="Drop-points" items={patterns.dropPoints} testid="account-read-drop-points" />
 
-      <TrackRecord trackRecord={trackRecord ?? null} />
+        <Accuracy trackRecord={trackRecord ?? null} />
+      </div>
+
+      {/* Footer — Save for now; "Write to my strengths →" (forward action) is deferred (§7). */}
+      <div className="flex items-center border-t border-white/[0.06] px-4 py-3">
+        <SaveAffordance
+          item_type="read"
+          thread_id={threadId}
+          title={`Account Read — @${handle}`}
+          snapshot={block.props as Record<string, unknown>}
+        />
+      </div>
     </div>
   );
 }

@@ -425,6 +425,28 @@ const TrackRecordSchema = z.object({
   lastN: z.number(),
 });
 
+// Real scraped profile header (Tier C scrape-data slice) — avatar / display name /
+// verified / counts. avatarUrl is a plain string (may be "" or an ephemeral CDN URL),
+// not z.url(), so an empty/expired avatar never fails validation.
+const AccountReadProfileSchema = z.object({
+  handle: z.string(),
+  displayName: z.string(),
+  avatarUrl: z.string(),
+  verified: z.boolean(),
+  followerCount: z.number(),
+  videoCount: z.number(),
+});
+
+// One analyzed post as a cover thumbnail (real scrape media). coverUrl is an ephemeral
+// TikTok-CDN image (display-only) — plain string, optional; the renderer degrades to a
+// placeholder tile when it's absent or has expired in a saved snapshot.
+const AnalyzedVideoSchema = z.object({
+  coverUrl: z.string().optional(),
+  views: z.number(),
+  caption: z.string(),
+  videoUrl: z.string(),
+});
+
 export const AccountReadBlockSchema = z.object({
   type: z.literal("account-read"),
   props: z.object({
@@ -433,6 +455,10 @@ export const AccountReadBlockSchema = z.object({
     // Honest thin-history flag (SELF-02). When true, patterns are omitted and the
     // renderer shows the warning-toned fallback. When absent/false, `patterns` is present.
     fallback: z.literal("thin").optional(),
+    // Real scrape header — present on the success path, absent on the thin fallback.
+    profile: AccountReadProfileSchema.optional(),
+    // The analyzed posts as cover thumbnails (real scrape media) — present on success.
+    analyzedVideos: z.array(AnalyzedVideoSchema).optional(),
     // Pattern payload — present on the success path, absent on the thin fallback.
     patterns: AccountReadPatternsSchema.optional(),
     // Accuracy track record (SELF-03) — null below the row threshold (empty copy shown).

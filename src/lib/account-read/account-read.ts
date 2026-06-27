@@ -55,6 +55,8 @@ export const TRACK_RECORD_MIN_ROWS = 3;
 const TOP_HOOKS = 3;
 /** A short-form video is ≤ this many seconds (the format-mix split point). */
 const SHORT_FORM_MAX_SECONDS = 30;
+/** How many cover thumbnails the card's analyzed-post strip shows (top performers). */
+const ANALYZED_VIDEO_COUNT = 8;
 
 // ─── Result types ────────────────────────────────────────────────────────────
 
@@ -69,6 +71,32 @@ export interface FormatMixEntry {
   label: string;
   count: number;
   pct: number;
+}
+
+/**
+ * Profile header for the Account Read card — the REAL scraped identity (avatar, name,
+ * verified, follower/post counts). Surfaced from ProfileData so the card opens with the
+ * creator's own face, not just a handle string (Tier C scrape-data slice).
+ */
+export interface AccountReadProfile {
+  handle: string;
+  displayName: string;
+  avatarUrl: string;
+  verified: boolean;
+  followerCount: number;
+  videoCount: number;
+}
+
+/**
+ * One analyzed post surfaced as a cover thumbnail (the REAL scrape media the Read was
+ * built from). `coverUrl` is an ephemeral TikTok-CDN image (display-only; the renderer
+ * degrades to a placeholder tile when absent/expired).
+ */
+export interface AnalyzedVideo {
+  coverUrl?: string;
+  views: number;
+  caption: string;
+  videoUrl: string;
 }
 
 /** The extracted account patterns (SELF-01). */
@@ -90,6 +118,10 @@ export interface AccountReadSuccess {
   handle: string;
   followerTier: string | null;
   videoCount: number;
+  /** Real scraped profile header (avatar / display name / verified / counts). */
+  profile: AccountReadProfile;
+  /** The top analyzed posts as cover thumbnails — the real media behind the Read. */
+  analyzedVideos: AnalyzedVideo[];
   patterns: AccountReadPatterns;
   trackRecord: TrackRecord | null;
 }
@@ -231,6 +263,24 @@ function extractFix(reconciliations: Reconciliation[]): string[] {
 }
 
 /**
+ * The analyzed-post cover strip — the REAL scrape media behind the Read. Deterministic:
+ * ranks by views (so the strip leads with the creator's top performers), takes the top N,
+ * and carries each cover URL + views + caption for the card's thumbnail row. Honest —
+ * returns [] when there are no videos; omits coverUrl when the scrape didn't surface one.
+ */
+function extractAnalyzedVideos(videos: VideoData[]): AnalyzedVideo[] {
+  return [...videos]
+    .sort((a, b) => b.views - a.views || a.platformVideoId.localeCompare(b.platformVideoId))
+    .slice(0, ANALYZED_VIDEO_COUNT)
+    .map((v) => ({
+      ...(v.coverUrl ? { coverUrl: v.coverUrl } : {}),
+      views: v.views,
+      caption: v.caption ?? "",
+      videoUrl: v.videoUrl,
+    }));
+}
+
+/**
  * Accuracy track record (SELF-03). Computed from the craft-error magnitude trend in
  * reconciliations: "within X% on your last N posts". Only returned when at least
  * TRACK_RECORD_MIN_ROWS rows exist — otherwise null (the card shows the empty copy).
@@ -327,6 +377,18 @@ export async function generateAccountRead(
     handle: profile.handle || handle,
     followerTier: tier,
     videoCount: videos.length,
+    // Real scrape header — the card opens with the creator's own face + counts, not a
+    // bare handle. videoCount here is the ACCOUNT total (authorMeta), not the scraped slice.
+    profile: {
+      handle: profile.handle || handle,
+      displayName: profile.displayName,
+      avatarUrl: profile.avatarUrl,
+      verified: profile.verified,
+      followerCount: profile.followerCount,
+      videoCount: profile.videoCount,
+    },
+    // Real media behind the Read — top performers as cover thumbnails (display-only).
+    analyzedVideos: extractAnalyzedVideos(videos),
     patterns,
     trackRecord,
   };
