@@ -8,7 +8,9 @@
  *  - Zod validates body shape + weights sum ≈ 1.0 ±0.01 (T-07-01)
  *  - sanitizeText applied to goal_label + name (T-07-04)
  *  - Generic error codes; never echo raw input (T-07-04)
- *  - RLS enforced at DB layer (T-07-02); also enforced app-layer via audience-repo
+ *  - Ownership: RLS is the primary DB-layer boundary (T-07-02). App layer re-derives the
+ *    session user_id on writes (anti-mass-assignment, CR-01) and adds an owner predicate on
+ *    update (defense-in-depth, WR-03); reads/deletes by id rely on RLS.
  */
 
 import { NextResponse } from "next/server";
@@ -66,7 +68,9 @@ const CreateAudienceSchema = z.object({
     .max(50)
     .optional(),
   persona_weights: WeightsSchema.optional(),
-  personas: z.array(z.unknown()).optional(),
+  // Cap the array count at the untrusted boundary (storage-DoS guard, WR-02). Deep element-shape
+  // + repaint-string validation is deferred with the General scorer-prompt hardening (IN-02).
+  personas: z.array(z.unknown()).max(50).optional(),
   profile: z.unknown().nullable().optional(),
   calibration: z.unknown().nullable().optional(),
 });

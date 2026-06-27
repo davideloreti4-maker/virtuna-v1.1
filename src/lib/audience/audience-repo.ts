@@ -220,7 +220,7 @@ export const GENERAL_TEMPLATES: Audience[] = [
 ];
 
 /** All virtual sentinel ids — used to short-circuit DB lookups. */
-const SENTINEL_IDS = new Set<string>([
+export const SENTINEL_IDS = new Set<string>([
   GENERAL_AUDIENCE.id,
   ...PRESET_AUDIENCES.map((p) => p.id),
   ...GENERAL_TEMPLATES.map((t) => t.id),
@@ -271,9 +271,10 @@ export const WritableAudienceSchema = z.object({
       z.object({
         source: z.literal("user"),
         note: z.string().max(2000),
-        persona_evidence_link: z.string().optional(),
+        persona_evidence_link: z.string().max(120).optional(),
       }),
     )
+    .max(50) // mirror the route cap — the repo is the last app-layer gate, never weaker than its callers (IN-01)
     .optional(),
   is_general: z.boolean().optional().default(false),
   is_preset: z.boolean().optional().default(false),
@@ -504,6 +505,7 @@ export async function updateAudience(
     .from("audiences")
     .update(rowPayload)
     .eq("id", id)
+    .eq("user_id", user.id) // app-layer ownership (defense-in-depth; RLS remains the primary boundary — WR-03)
     .select("*")
     .single();
 

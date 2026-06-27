@@ -119,6 +119,13 @@ vi.mock("@/lib/audience/audience-repo", () => ({
   getAudience: mocks.mockGetAudience,
   GENERAL_AUDIENCE: mocks.GENERAL_AUDIENCE,
   PRESET_AUDIENCES: mocks.PRESET_AUDIENCES,
+  // mirror the real repo's sentinel set so the route's WR-05 virtual-delete guard resolves
+  SENTINEL_IDS: new Set([
+    mocks.GENERAL_AUDIENCE.id,
+    ...mocks.PRESET_AUDIENCES.map((p) => p.id),
+    "template-analyst",
+    "template-hiring",
+  ]),
 }));
 
 vi.mock("@/lib/audience/calibration", () => ({
@@ -473,7 +480,19 @@ describe("DELETE /api/audiences/[id]", () => {
     const res = await DELETE(req, { params: Promise.resolve({ id: "general" }) });
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toBe("cannot_delete_general");
+    expect(body.error).toBe("cannot_delete_virtual");
+  });
+
+  it("refuses DELETE on preset + general-template sentinels with a clean 400 (WR-05)", async () => {
+    makeAuthenticatedUser();
+    for (const id of ["preset-growth", "template-analyst"]) {
+      const req = new Request(`http://localhost/api/audiences/${id}`, { method: "DELETE" });
+      const res = await DELETE(req, { params: Promise.resolve({ id }) });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("cannot_delete_virtual");
+    }
+    // never reaches the repo — refused at the route layer (was a generic 500 before)
+    expect(mocks.mockDeleteAudience).not.toHaveBeenCalled();
   });
 
   it("deletes a user-owned audience successfully", async () => {

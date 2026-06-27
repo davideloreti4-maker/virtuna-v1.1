@@ -23,7 +23,7 @@ import {
   getAudience,
   updateAudience,
   deleteAudience,
-  GENERAL_AUDIENCE,
+  SENTINEL_IDS,
 } from "@/lib/audience/audience-repo";
 
 // ─── Input validation ──────────────────────────────────────────────────────────
@@ -69,7 +69,9 @@ const PatchAudienceSchema = z
       .max(50)
       .optional(),
     persona_weights: WeightsSchema.optional(),
-    personas: z.array(z.unknown()).optional(),
+    // Cap array count at the untrusted boundary (storage-DoS guard, WR-02); element/repaint
+    // shaping deferred with the General scorer-prompt hardening (IN-02).
+    personas: z.array(z.unknown()).max(50).optional(),
     profile: z.unknown().nullable().optional(),
     calibration: z.unknown().nullable().optional(),
   })
@@ -165,11 +167,12 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // D-04: General is the locked default — delete is refused at route layer too
-  // (audience-repo also throws, but we return 400 here for clarity)
-  if (id === GENERAL_AUDIENCE.id) {
+  // D-04: virtual/sentinel audiences (General + presets + general templates) have no DB row.
+  // Refuse ALL of them at the route layer with a clean 400 — audience-repo also throws, but
+  // that surfaces as a generic 500, contradicting the documented refusal contract (WR-05).
+  if (SENTINEL_IDS.has(id)) {
     return NextResponse.json(
-      { error: "cannot_delete_general" },
+      { error: "cannot_delete_virtual" },
       { status: 400 },
     );
   }
