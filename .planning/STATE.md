@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: executing
-stopped_at: Phase 03 BUILT (7/7 plans) + auto-verified (human_needed) — awaiting UAT (/gsd-verify-work 3); WR-01 honesty fix applied
-last_updated: "2026-06-27T17:25:00.000Z"
-last_activity: 2026-06-27 -- Phase 03 fully built + reviewed (0 blockers) + verified (5/5, human_needed); full suite 2786 green; WR-01 fixed; awaiting human UAT
+status: completed
+stopped_at: Completed 03-07-PLAN.md (run/result Read card trust badge) — Phase 03 COMPLETE (7/7)
+last_updated: "2026-06-27T16:22:07.587Z"
+last_activity: 2026-06-27
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 16
-  completed_plans: 15
-  percent: 47
+  completed_plans: 16
+  percent: 43
 ---
 
 # Project State
@@ -21,24 +21,24 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read.
-**Current focus:** Phase 03 — general-population-honesty-layer
+**Current focus:** Phase 04 — input-adapter
 
 ## Current Position
 
-Phase: 03 (general-population-honesty-layer) — BUILT + auto-verified, AWAITING UAT
-Plan: 7/7 plans executed + committed; gsd-verifier = human_needed (5/5 must-haves, all 7 req IDs); code review 0 blockers; WR-01 honesty fix applied (91ad6bad). NOT formally complete until `/gsd-verify-work 3` UAT passes (then phase.complete advances to Phase 04). Remaining UAT = visual honesty confirm + General-template CRUD; General-scorer e2e is out-of-scope (deferred D-02).
-Status: 03-07 closed the "each run" half of TRUST-01. `MultiAudienceReadBlockSchema.props` gains an additive presentation-only `tier: z.enum(["Validated","Directional"]).optional()` at the TOP level (NOT inside the per-audience `.strict()` entry — run-level, not per-audience; older payloads omit it → no migration). The `two-audience-read` emitter sets `tier = resolveTier(pair[0]!)` (the active/lead audience) on BOTH return paths (self-pair single + 2-audience compare), so a calibrated socials Read reads Validated, general reads Directional by rule (resolveTier = single source of truth, T-03-15). `multi-audience-read-block.tsx` mounts the reused 03-05 `TrustBadge` beside the SIM-1 Flash provenance, reading `block.props.tier ?? "Directional"` (honest fallback, never silently Validated). Presentation-only — no fetch/run/scorer call (D-02 run-path scorer-free). Deviation: adding `resolveTier` pulled `SOCIALS_PACK`'s module graph (→ pipeline → deepseek) into the emitter, breaking the emitter test's incomplete qwen mock → added `QWEN_APOLLO_MODEL` to it (no scorer invoked, only the pack's static calibration field is read). Route suite 5 passed; flash 9 files/116 passed; thread+tools 20 files/206 passed; reskin-matte 6/6; tsc clean on touched paths. TRUST-01 closed (both audience surface + run card). Phase 03 COMPLETE.
+Phase: 4
+Plan: Not started
+Status: Phase 03 COMPLETE (7/7) — UAT 4/4 pass (autonomous browser-verified 2026-06-27); BUILD-01 (client-bundle `dns` break on /audience) found in the browser pass + fixed (commit 1fe39f1a) + re-verified; VERIFICATION human_needed→passed. Next: Phase 04 (Input Adapter), ready to plan. ─── Prior (03-07): 03-07 closed the "each run" half of TRUST-01. `MultiAudienceReadBlockSchema.props` gains an additive presentation-only `tier: z.enum(["Validated","Directional"]).optional()` at the TOP level (NOT inside the per-audience `.strict()` entry — run-level, not per-audience; older payloads omit it → no migration). The `two-audience-read` emitter sets `tier = resolveTier(pair[0]!)` (the active/lead audience) on BOTH return paths (self-pair single + 2-audience compare), so a calibrated socials Read reads Validated, general reads Directional by rule (resolveTier = single source of truth, T-03-15). `multi-audience-read-block.tsx` mounts the reused 03-05 `TrustBadge` beside the SIM-1 Flash provenance, reading `block.props.tier ?? "Directional"` (honest fallback, never silently Validated). Presentation-only — no fetch/run/scorer call (D-02 run-path scorer-free). Deviation: adding `resolveTier` pulled `SOCIALS_PACK`'s module graph (→ pipeline → deepseek) into the emitter, breaking the emitter test's incomplete qwen mock → added `QWEN_APOLLO_MODEL` to it (no scorer invoked, only the pack's static calibration field is read). Route suite 5 passed; flash 9 files/116 passed; thread+tools 20 files/206 passed; reskin-matte 6/6; tsc clean on touched paths. TRUST-01 closed (both audience surface + run card). Phase 03 COMPLETE.
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-27 -- 03-06 route-schema validation + author/edit form shipped; route suite 25 passed, audience 92 passed, reskin guard green
+Last activity: 2026-06-27
 
-Progress: [████░░░░░░] 47%
+Progress: [████░░░░░░] 43% (3/7 phases complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 9
+- Total plans completed: 16
 - Average duration: —
 - Total execution time: —
 
@@ -48,6 +48,7 @@ Progress: [████░░░░░░] 47%
 |-------|-------|-------|----------|
 | 01 | 6 | - | - |
 | 02 | 3 | - | - |
+| 03 | 7 | - | - |
 
 **Recent Trend:**
 

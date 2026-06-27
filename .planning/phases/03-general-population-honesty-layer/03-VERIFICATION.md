@@ -1,8 +1,9 @@
 ---
 phase: 03-general-population-honesty-layer
 verified: 2026-06-27T17:21:00Z
-status: human_needed
+status: passed
 score: 5/5 must-haves verified
+resolved: 2026-06-27 — human UAT performed (autonomous browser pass). Items 1 (WR-01 visual honesty) & 3 (live DB migration) confirmed; item 2 (zero-setup General RUN) deferred with the General scorer (D-02), run-card badge path test-covered. BUILD-01 (client-bundle dns break on /audience) found in the browser pass + fixed (commit 1fe39f1a) + re-verified. See 03-UAT.md.
 overrides_applied: 0
 human_verification:
   - test: "Open the audience manager. Inspect an Analyst/Hiring General template card."
@@ -20,7 +21,7 @@ human_verification:
 
 **Phase Goal:** `audiences` generalizes into a domain-agnostic population on the signature substrate — saveable, named, browseable, with an authorable success-criterion — and every audience and run wears an honest trust badge with surfaced provenance, while Socials stays byte-stable.
 **Verified:** 2026-06-27T17:21:00Z
-**Status:** human_needed
+**Status:** passed (human UAT performed 2026-06-27 — see 03-UAT.md; BUILD-01 found+fixed during it)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement

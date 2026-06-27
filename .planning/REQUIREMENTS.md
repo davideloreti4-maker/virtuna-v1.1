@@ -18,7 +18,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 ### POP — General Population Object
 
-- [ ] **POP-01**: `audiences` is generalized into a domain-agnostic population on the signature substrate (socials enums + the fixed 4-weight model become optional/pack-supplied); existing Socials audiences migrate cleanly
+- [x] **POP-01**: `audiences` is generalized into a domain-agnostic population on the signature substrate (socials enums + the fixed 4-weight model become optional/pack-supplied); existing Socials audiences migrate cleanly
 - [x] **POP-02**: A General audience carries its Mode, a success-criterion, and a trust tier — _DONE 03-06 (route schemas accept + sanitize + cap mode/success_criterion/custom_context; form authors success-criterion + user-added grounding; trust tier via TrustBadge 03-05)_
 - [x] **POP-03**: A user can save, name, browse, and reuse General audiences in a General library — _data-layer DONE 03-04 (create/list/rename through CRUD); browse/reuse surfaced 03-05 (General templates section in the manager); net-new General-from-scratch = P5, front-door mode picker = P7_
 - [x] **POP-04**: Built-in General default template panel(s) (e.g. analyst / hiring) let a General run work with zero setup
@@ -103,7 +103,7 @@ Phases assigned during roadmap creation. All Pending.
 | PACK-02 | Phase 1 | Complete |
 | PACK-03 | Phase 1 | Complete |
 | PACK-04 | Phase 1 | Complete |
-| POP-01 | Phase 3 | Pending |
+| POP-01 | Phase 3 | Complete |
 | POP-02 | Phase 3 | Done (03-06 route schemas + form fields + 03-05 trust tier) |
 | POP-03 | Phase 3 | Done (03-04 data-layer + 03-05 browse/reuse; net-new General-from-scratch P5/P7) |
 | POP-04 | Phase 3 | Complete (03-04) |
