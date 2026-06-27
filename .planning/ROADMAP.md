@@ -131,7 +131,21 @@ Plans:
   3. SIM-1 auto-selects its tier (Flash for text, Max for video) from the input type — never a user choice.
   4. The creator (Socials) video/URL path through the inbox is unchanged.
 
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+**Wave 0** *(Nyquist test scaffold + `Stimulus` contract)*
+
+- [ ] 04-01-PLAN.md — `Stimulus` type + widen `StimulusType` union (file_text/image) + 5 Wave-0 test stubs (+ gated A2 base64 smoke) (IN-01, IN-02, IN-03)
+
+**Wave 1** *(blocked on Wave 0 — parallel leaf modules, no file overlap)*
+
+- [ ] 04-02-PLAN.md — `tier.ts` (resolveSim1Tier, pure, IN-02) + `ingest.ts` (.txt/.md read + V5/V12 validation, IN-01) (IN-02, IN-01)
+- [ ] 04-03-PLAN.md — `vision.ts` (screenshot → qwen3.7-plus vision read, base64, never omni, IN-03) (IN-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-04-PLAN.md — `normalize.ts` (`normalizeStimulus` adapter entry — orchestrates ingest/vision/tier; profiler-ready person-video tag, D-06) (IN-01, IN-02, IN-03)
+
 **UI hint**: yes
 
 ### Phase 5: Profile → Simulate Wow
@@ -193,7 +207,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
-| 4. Input Adapter | 0/TBD | Not started | - |
+| 4. Input Adapter | 0/4 | Planned | - |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
