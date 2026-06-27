@@ -57,12 +57,12 @@ export function DiscoverEntry({ onSubmit, disabled = false }: DiscoverEntryProps
         <button
           type="submit"
           disabled={!trimmed || disabled}
-          className="inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 transition-opacity disabled:opacity-50"
+          className="inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{
             height: "44px",
-            color: "var(--color-foreground-secondary)",
-            backgroundColor: "rgba(255,127,80,0.08)",
-            border: "1px solid rgba(255,127,80,0.30)",
+            color: "var(--color-action-foreground)",
+            backgroundColor: "var(--color-action)",
+            border: "none",
             cursor: trimmed && !disabled ? "pointer" : "default",
           }}
         >

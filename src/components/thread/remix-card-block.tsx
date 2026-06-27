@@ -3,40 +3,26 @@
 /**
  * RemixCardRenderer — decode-anatomy-forward remix card (THREAD-04 / D-05).
  *
- * Design constraints (THREAD-04):
- *  - The model emits validated RemixCardBlock props only; THIS component owns layout.
- *  - No model-generated markup, no dynamic component selection.
+ * lane/polish refined language (docs/subsystems/ui-skill-cards.md §1–§2):
+ *  - Flat matte, warm-cream, band color used once, ZERO coral.
+ *  - Eyebrow = "Borrowed · {format}" chip + the audience-steer tag ("as your {audience}").
+ *  - Two-column Angle / For; the adapted hook is the hero.
+ *  - ONE shared <ProofUnit> labelled "adapted hook" (honesty spine — the fraction is the
+ *    adapted hook's scroll-stop, NOT the original video's score).
+ *  - Decode anatomy (the D-05 moat: WHY the original worked) on expand.
+ *  - ONE cream primary = the forward chain step "Develop into hooks →" (§1.7); Save = icon.
  *
- * Card anatomy:
- *  FACE (always visible):
- *    adaptedHook headline (dominant) · "Borrowed:" format chip · angle/whoItsFor sub-rows
- *  EXPAND (tap/disclosure, D-08):
- *    sourceDecode — the REAL structural decode anatomy (WHY the original worked, D-05 moat):
- *      hookPattern · structure · theTurn · emotionalBeat
- *  SECONDARY CHIP (Pitfall 5 honesty spine — ADAPTED HOOK ONLY):
- *    band + fraction + "adapted hook scroll-stop" copy + SIM-1 Flash tag
- *    This signal describes the adapted hook's scroll-stop only — NOT the original video's score.
- *  CTA (remix→hooks affordance): "Develop into hooks →" — the seam for Plan 06-05 to wire the
- *    chain-handoff (anchorFrom:'card'). Stub when context absent (mirrors HookCardRenderer plan-01).
- *
- * D-05 moat: sourceDecode surfaces the structural reason the original video worked.
- *   hookPattern / structure / theTurn / emotionalBeat are real decode engine outputs —
- *   NOT a metadata guess. This is the differentiated insight the creator cannot get from a
- *   generic description.
- *
- * THEME-06 flat-warm Raycast design: 6% borders, 12px card radius, Inter.
- * Coral accent on "Borrowed:" chip + "Develop into hooks →" CTA only.
+ * THREAD-04: the model emits validated RemixCardBlock props only; THIS component owns layout.
  */
 
-import { useState, useContext } from 'react';
+import { useContext, useState } from 'react';
 import type { RemixCardBlock } from '@/lib/tools/blocks';
 import { useOnDevelopRemix } from '@/lib/remix-develop-context';
-import { SaveAffordance } from '@/components/thread/save-affordance';
 import { PlatformContext } from '@/lib/platform-context';
-import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
-import { CardReactionAtRest } from '@/components/audience-lens/card-reaction-at-rest';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
+import { ProofUnit } from './proof-unit';
+import { SaveAffordance } from '@/components/thread/save-affordance';
 
 export interface RemixCardRendererProps {
   block: RemixCardBlock;
@@ -44,21 +30,6 @@ export interface RemixCardRendererProps {
    *  When absent, reads from RemixDevelopContext; falls back to stub if neither present. */
   onDevelop?: () => void;
 }
-
-const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
-  Strong: 'var(--color-success)',
-  Mixed: 'var(--color-warning)',
-  Weak: 'var(--color-error)',
-};
-
-/** Muted sub-row label style — consistent with script-card beat label */
-const SUB_LABEL_STYLE: React.CSSProperties = {
-  color: 'rgba(255,255,255,0.40)',
-  fontSize: '0.7rem',
-  fontWeight: 600,
-  textTransform: 'uppercase' as const,
-  letterSpacing: '0.07em',
-};
 
 export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCardRendererProps) {
   const {
@@ -80,78 +51,60 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
   // Read PlatformContext so the card can include the correct platform in the anchor POST.
   const platform = useContext(PlatformContext) ?? 'tiktok';
 
-  // Resolve: explicit prop > context (bound with card's adaptedHook + live platform) > null (stub)
   const onDevelop = onDevelopProp ?? (onDevelopCtx
-    ? () => {
-        // The card POSTs the adaptedHook as the anchor to the develop endpoint.
-        // Platform comes from PlatformContext set by RemixThreadView.
-        onDevelopCtx(adaptedHook, platform);
-      }
+    ? () => onDevelopCtx(adaptedHook, platform)
     : undefined);
 
   const [expanded, setExpanded] = useState(false);
-  const bandColor = BAND_COLOR[band];
 
   return (
     <div
-      className="rounded-xl border border-white/[0.06] bg-transparent overflow-hidden"
-      style={{ boxShadow: 'rgba(255,255,255,0.05) 0 1px 0 0 inset' }}
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent"
       aria-label={`Remix: ${adaptedHook.slice(0, 60)}`}
     >
-      {/* FACE — adapted hook anatomy (always visible) */}
-      <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
-
-        {/* "Borrowed:" format chip — coral accent (the format seam) */}
-        <div className="flex items-start gap-2">
+      {/* FACE — adapted hook anatomy (always visible). */}
+      <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
+        {/* Eyebrow — "Borrowed · {format}" chip + audience-steer tag (no coral). */}
+        <div className="flex items-center justify-between gap-3">
           <span
-            className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full border"
-            style={{
-              color: 'var(--color-foreground-secondary)',
-              borderColor: 'rgba(255,255,255,0.1)',
-              backgroundColor: 'rgba(255,255,255,0.06)',
-            }}
+            className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2.5 py-1 text-[12px] text-foreground-secondary"
             title="The format pattern borrowed from the decoded video"
             aria-label={`Format borrowed: ${formatBorrowed}`}
           >
-            Borrowed: {formatBorrowed}
+            Borrowed · {formatBorrowed}
           </span>
+          {audienceName ? (
+            <span
+              className="shrink-0 text-[12px] text-foreground-muted"
+              aria-label={`Adapted for your ${audienceName} audience`}
+              title={`Generated for your "${audienceName}" audience`}
+            >
+              as your {audienceName}
+            </span>
+          ) : null}
         </div>
 
-        {/* 08-04 / D-03 STEER tag — "as your {audience}" near the adapted-hook headline.
-            Muted/foreground only, NEVER coral (coral stays on Borrowed chip + Develop CTA —
-            one-coral law). Rendered only for a calibrated audience; General → no tag, byte-
-            identical to today (regression-safe no-op). */}
-        {audienceName ? (
-          <span
-            className="text-xs text-muted/60"
-            style={{ letterSpacing: '0.02em' }}
-            aria-label={`Adapted for your ${audienceName} audience`}
-            title={`Generated for your "${audienceName}" audience`}
-          >
-            as your {audienceName}
-          </span>
-        ) : null}
+        {/* Adapted hook headline — the hero. */}
+        <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">{adaptedHook}</p>
 
-        {/* Adapted hook headline — dominant face element (AdaptConcept.hook) */}
-        <p className="text-base font-semibold text-foreground leading-snug">
-          {adaptedHook}
-        </p>
-
-        {/* Angle + who it is for — muted sub-rows (AdaptConcept.angle / .who_its_for) */}
-        <div className="flex flex-col gap-1">
-          <div className="flex items-start gap-2">
-            <span style={SUB_LABEL_STYLE} className="shrink-0 mt-0.5">Angle</span>
-            <p className="text-sm text-foreground/70 leading-snug">{angle}</p>
+        {/* Angle / For — two quiet columns. */}
+        <div className="flex gap-6">
+          <div className="min-w-0">
+            <p className="mb-0.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Angle</p>
+            <p className="text-[13px] leading-snug text-foreground-secondary">{angle}</p>
           </div>
-          <div className="flex items-start gap-2">
-            <span style={SUB_LABEL_STYLE} className="shrink-0 mt-0.5">For</span>
-            <p className="text-sm text-foreground/70 leading-snug">{whoItsFor}</p>
+          <div className="min-w-0">
+            <p className="mb-0.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">For</p>
+            <p className="text-[13px] leading-snug text-foreground-secondary">{whoItsFor}</p>
           </div>
         </div>
 
-        {/* Lead scroll-quote — the primary SIM signal for the adapted hook. Tapping it opens
-            the single reusable AudienceLens inline (cascade mode, D-06/D-04). */}
-        <LensTrigger
+        {/* Proof unit — adapted-hook scroll-stop (honesty-scoped). */}
+        <ProofUnit
+          band={band}
+          fraction={fraction}
+          quote={scrollQuote}
+          suffix="adapted hook"
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={adaptedHook}
           platform={platform}
@@ -165,111 +118,59 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
             leverRidesAnchor: true,
           })}
           label="See how the room reacted to this adapted hook"
+        />
+
+        {/* Expand toggle — the decode anatomy (why the original worked) + provenance. */}
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          aria-expanded={expanded}
+          aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
         >
-          {/* Surface 3 (D-01/D-03) — the room reacting AT REST on the ADAPTED HOOK (Pitfall 5
-              honesty spine: adapted-hook scroll-stop only, matching the band chip below). The
-              real stop fraction + a thin cream-vs-muted ribbon render inside the SAME
-              LensTrigger above the verbatim quote, stacked top-to-bottom (the row is
-              flex-center, so wrap in one flex-col block). Collapses to nothing on an
-              unparseable fraction (honest degrade, in lockstep with flatPersonas=[]). */}
-          <div className="flex w-full flex-col gap-2">
-            <CardReactionAtRest fraction={fraction} />
-            <blockquote
-              className="border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug"
-              aria-label="Audience scroll quote for adapted hook"
-            >
-              &ldquo;{scrollQuote}&rdquo;
-            </blockquote>
-          </div>
-        </LensTrigger>
-
-        {/* Opener-scoped band chip + expand toggle row */}
-        <div className="flex items-center justify-between gap-2">
-          {/* Band chip — adapted hook scroll-stop ONLY (Pitfall 5 honesty spine) */}
-          <div
-            className="flex items-center gap-2 text-xs"
-            aria-label={`${band} adapted hook pull — ${fraction} — SIM-1 Flash`}
-            title="Adapted-hook signal — describes scroll-stop for the adapted hook only, not the original video score"
-          >
-            <span className="font-medium" style={{ color: bandColor }}>
-              {band}
-            </span>
-            <span className="text-muted/60">·</span>
-            <span style={{ color: bandColor, opacity: 0.75 }}>{fraction}</span>
-            <span className="text-muted/40">·</span>
-            <span className="text-muted/50">adapted hook scroll-stop</span>
-            <span className="text-muted/40">·</span>
-            <span className="text-muted/50">SIM-1 Flash</span>
-          </div>
-
-          {/* Expand / collapse toggle for decode anatomy */}
-          <button
-            type="button"
-            onClick={() => setExpanded((v) => !v)}
-            className="text-xs text-muted/60 hover:text-muted transition-colors"
-            aria-expanded={expanded}
-            aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
-          >
-            {expanded ? '↑ Why it worked' : '↓ Why it worked'}
-          </button>
-        </div>
+          <span aria-hidden="true">{expanded ? '↑' : '↓'}</span>
+          Why the original worked
+          <span className="text-foreground-muted/70">· SIM-1 Flash</span>
+        </button>
       </div>
 
-      {/* EXPAND — the real decode anatomy (D-05 moat: WHY the original worked) */}
+      {/* EXPAND — the real decode anatomy (D-05 moat). */}
       {expanded && (
-        <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-4">
-          <p
-            className="text-xs text-muted/50 uppercase tracking-wide"
-            style={{ letterSpacing: '0.07em' }}
-          >
-            Original decode anatomy
-          </p>
-
-          {/* Hook pattern beat */}
+        <div className="flex flex-col gap-4 border-t border-white/[0.06] px-4 py-3">
           <div>
-            <p className="text-xs text-muted/60 uppercase tracking-wide mb-1">Hook pattern</p>
-            <p className="text-sm text-foreground/80 leading-snug">{sourceDecode.hookPattern}</p>
+            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Hook pattern</p>
+            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.hookPattern}</p>
           </div>
-
-          {/* Structure / pacing beat */}
           <div>
-            <p className="text-xs text-muted/60 uppercase tracking-wide mb-1">Structure</p>
-            <p className="text-sm text-foreground/80 leading-snug">{sourceDecode.structure}</p>
+            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Structure</p>
+            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.structure}</p>
           </div>
-
-          {/* The turn beat */}
           <div>
-            <p className="text-xs text-muted/60 uppercase tracking-wide mb-1">The turn</p>
-            <p className="text-sm text-foreground/80 leading-snug">{sourceDecode.theTurn}</p>
+            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">The turn</p>
+            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.theTurn}</p>
           </div>
-
-          {/* Emotional beat */}
           <div>
-            <p className="text-xs text-muted/60 uppercase tracking-wide mb-1">Emotional beat</p>
-            <p className="text-sm text-foreground/80 leading-snug">{sourceDecode.emotionalBeat}</p>
+            <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Emotional beat</p>
+            <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{sourceDecode.emotionalBeat}</p>
           </div>
         </div>
       )}
 
-      {/* CTA — "Develop into hooks →" (remix→hooks, anchorFrom:'card' — wired in 06-05) */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
-        {/* Save (Act→State) — a remix output is an adapted hook; save it as item_type "hook". */}
-        <SaveAffordance item_type="hook" title={adaptedHook} snapshot={block.props} />
-
+      {/* Actions — one cream primary (forward chain "Develop into hooks →") + Save icon. */}
+      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
         <button
           type="button"
           onClick={onDevelop}
           disabled={!onDevelop}
-          className="text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-          style={{
-            color: onDevelop ? 'var(--color-foreground-secondary)' : 'rgba(236,231,222,0.35)',
-            cursor: onDevelop ? 'pointer' : 'default',
-          }}
+          className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
           aria-label="Develop this remix concept into hooks"
           title={onDevelop ? 'Develop this remix into hooks' : 'Wired in Plan 06-05'}
         >
           Develop into hooks →
         </button>
+
+        {/* A remix output is an adapted hook; save it as item_type "hook". */}
+        <SaveAffordance className="ml-auto" item_type="hook" title={adaptedHook} snapshot={block.props} />
       </div>
     </div>
   );

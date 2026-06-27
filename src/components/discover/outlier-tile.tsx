@@ -205,18 +205,19 @@ export function OutlierTile({
         </button>
       )}
 
-      {/* Primary CTA — "Remix → Read": the ONE coral element on the tile (accent law). */}
+      {/* Primary CTA — "Remix → Read": the forward chain step, cream primary (§1.7/§1.8;
+          the legacy coral fill was retired — primary ≠ accent). */}
       <button
         type="button"
         onClick={() => onRemix?.(tile)}
         disabled={!onRemix || remixPending}
         aria-label="Remix this outlier into a Read"
-        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
+        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{
           minHeight: "46px",
-          color: "var(--color-foreground-secondary)",
-          backgroundColor: "rgba(255,127,80,0.08)",
-          border: "1px solid rgba(255,127,80,0.30)",
+          color: "var(--color-action-foreground)",
+          backgroundColor: "var(--color-action)",
+          border: "none",
           cursor: onRemix && !remixPending ? "pointer" : "default",
         }}
       >

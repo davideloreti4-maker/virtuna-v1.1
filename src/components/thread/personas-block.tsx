@@ -47,13 +47,25 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
   // The text Read surface mounts the single reusable AudienceLens inline (D-04), opened in
   // cascade mode (flat Shape-B, no timeline — D-06). The PersonasBlock IS already the
   // {archetype, verdict, quote} shape buildFlatPersonaNodes consumes, so it maps 1:1.
+  // lane/polish (§1.4): the cue is now a VISIBLE Lens entry — avatars + "See the room →".
   const lensHeader = (
-    <span className="px-4 py-3 text-sm font-medium text-foreground">
+    <span className="flex w-full items-center gap-2 px-4 py-3 text-sm font-medium text-foreground">
       Audience reactions
-      <span className="ml-2 text-sm text-muted font-normal">
-        {stopCount}/{total} stop
+      <span className="font-normal text-foreground-muted">
+        {stopCount}/{total} stopped
       </span>
-      <span className="ml-2 text-xs text-muted/60">· see the room →</span>
+      <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
+        <span className="flex" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="h-[15px] w-[15px] rounded-full border border-surface-thread bg-white/[0.10]"
+              style={{ marginLeft: i === 0 ? 0 : -5 }}
+            />
+          ))}
+        </span>
+        See the room →
+      </span>
     </span>
   );
 
@@ -76,7 +88,7 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="px-4 py-3 text-muted text-xs hover:text-foreground transition-colors"
+          className="px-4 py-3 text-xs text-foreground-muted transition-colors hover:text-foreground"
           aria-expanded={expanded}
           aria-label={expanded ? 'Hide reactions' : 'Show reactions'}
         >
@@ -100,7 +112,7 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
                   {VERDICT_LABEL[persona.verdict]}
                 </span>
               </div>
-              <p className="text-sm text-muted italic leading-snug">
+              <p className="text-sm italic leading-snug text-foreground-muted">
                 &ldquo;{persona.quote}&rdquo;
               </p>
             </li>
