@@ -135,7 +135,7 @@ Plans:
 Plans:
 **Wave 0** *(Nyquist test scaffold + `Stimulus` contract)*
 
-- [ ] 04-01-PLAN.md — `Stimulus` type + widen `StimulusType` union (file_text/image) + 5 Wave-0 test stubs (+ gated A2 base64 smoke) (IN-01, IN-02, IN-03)
+- [x] 04-01-PLAN.md — `Stimulus` type + widen `StimulusType` union (file_text/image) + 5 Wave-0 test stubs (+ gated A2 base64 smoke) (IN-01, IN-02, IN-03) ✅ (42615adc, cc87d0f2); smoke GREEN, 4 unit stubs RED-pending Waves 1–2
 
 **Wave 1** *(blocked on Wave 0 — parallel leaf modules, no file overlap)*
 
