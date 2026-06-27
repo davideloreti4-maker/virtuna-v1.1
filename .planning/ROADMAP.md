@@ -15,7 +15,7 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
 
 - [x] **Phase 1: Engine / Pack Seam** - Engine goes domain-blind; Socials becomes Pack #1 with pluggable scoring, creator output byte-identical (completed 2026-06-26)
 - [x] **Phase 2: Trustworthy-SIM Spike** - De-risk the make-or-break question: a trustworthy SIM with zero calibration via determinism + provenance + honest tiering (completed 2026-06-26 — verdict NO-GO conditional, clears to GO after dropping thinking-mode synth)
-- [x] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance (completed 2026-06-27 — 7/7 plans; TRUST-01 closed on both the audience surface and the run/result card)
+- [ ] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance (BUILT 2026-06-27 — 7/7 plans; auto-verified 5/5 must-haves + all 7 req IDs; WR-01 honesty fix applied; **awaiting human UAT → `/gsd-verify-work 3`**. TRUST-01 closed on both audience surface + run card; D-01 determinism resolved via bake-once-freeze)
 - [ ] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier
 - [ ] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread
 - [ ] **Phase 6: Predict Verb** - Analyst-panel scenario reasoning collapses to probability/factors/confidence, always honestly Directional
