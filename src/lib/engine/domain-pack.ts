@@ -48,7 +48,7 @@ import type { buildAudienceRepaint } from "./flash/build-reaction-panel";
  * pack key"). `DomainPack.stimulusTypes` *describes* this enum; it never moves
  * the pipeline's `input_mode` branching.
  */
-export type StimulusType = "text" | "tiktok_url" | "video_upload";
+export type StimulusType = "text" | "tiktok_url" | "video_upload" | "file_text" | "image";
 
 /**
  * THE NEW SEAM (D-06). `run` mirrors `aggregateScores` (aggregator.ts:520)
