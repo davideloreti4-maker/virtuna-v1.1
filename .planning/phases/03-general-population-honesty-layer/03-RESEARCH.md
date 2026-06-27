@@ -356,20 +356,20 @@ export interface CustomContext {
 
 **This table is non-empty:** A1/A2 are the Wave-0 gate's whole point; A4/A5 are the two integration decisions the planner should lock early.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Where does the "each run" Validated/Directional badge mount? (A5)**
    - What we know: TRUST-01 requires it on "each run"; P3 builds no new run path (D-02). The only live run path in P3 is the existing Socials Read.
    - What's unclear: which result/block renderer carries the active audience reference today (`blocks.ts` has `MultiAudienceReadBlock`, `AccountReadBlock`, etc.).
-   - Recommendation: in planning, grep the result-block schema for an `audienceId`/`mode` field; if absent, add one small additive field so the renderer can call `resolveTier`. Keep it presentation-only.
+   - RESOLVED (03-07): added a TOP-LEVEL additive presentation-only `tier: z.enum(["Validated","Directional"]).optional()` on `MultiAudienceReadBlockSchema.props`; the renderer mounts `TrustBadge` from it, falling back to "Directional". Presentation-only, no new run path (D-02).
 
 2. **`is_template` flag vs `is_preset` reuse for analyst/hiring (A6)**
    - What we know: `groupAudiences` buckets by `is_general`/`is_preset`; templates should be a visible, distinct group.
-   - Recommendation: add a virtual-only `is_template` boolean (never persisted; templates are constants). Extend `groupAudiences` with a `templates`-general bucket or relabel. Mirrors `PRESET_AUDIENCES` shape otherwise.
+   - RESOLVED (03-04 / 03-05): the analyst/hiring templates are `mode==="general"` virtual constants (03-04, `GENERAL_TEMPLATES`); `groupAudiences` routes `mode==="general"` into a distinct `generalTemplates` bucket BEFORE the `is_preset` check (03-05) — no separate `is_template` flag needed, `mode` is the discriminator.
 
 3. **Does `success_criterion` ever need to reach `DomainPackScoring` in P3?**
    - What we know: `DomainPackScoring` is `{ systemPrompt, run(pipelineResult, …) }` — no success-criterion input today. D-02 forbids wiring a General scorer.
-   - Recommendation: **store + surface only** in P3. Document the seam: `success_criterion` rides on the `Audience`; the P5/P6 General scorer will add it to its input contract. No `DomainPackScoring` change this phase.
+   - RESOLVED (03-02 / 03-06, per D-02): **store + surface only** in P3 — no scorer wired. `success_criterion` rides on the `Audience` type (03-02) and is authored/edited + persisted via the form + routes (03-06); `DomainPackScoring` is untouched this phase. The P5/P6 General scorer adds it to its input contract later.
 
 ## Environment Availability
 
