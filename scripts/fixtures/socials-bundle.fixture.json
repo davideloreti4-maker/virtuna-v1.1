@@ -1,0 +1,75 @@
+{
+  "handle": "khaby.lame",
+  "profile": {
+    "handle": "khaby.lame",
+    "displayName": "Khabane lame",
+    "bio": "Se vuoi ridere sei nel posto giusto😎 If u wanna laugh u r in the right place😎",
+    "avatarUrl": "https://p16-common-sign.tiktokcdn-us.com/tos-useast8-avt-0068-tx2/08987e23b94057953fd4f1738694bf5f~tplv-tiktokx-cropcenter:720:720.jpeg",
+    "verified": true,
+    "followerCount": 162200000,
+    "followingCount": 80,
+    "heartCount": 2600000000,
+    "videoCount": 1334
+  },
+  "videos": [
+    {
+      "platformVideoId": "7655371363988884766",
+      "videoUrl": "https://www.tiktok.com/@khaby.lame/video/7655371363988884766",
+      "caption": "The sign's right there James!! @007 First Light  #earnthenumber  #007firstlight #ad ",
+      "views": 583000,
+      "likes": 85100,
+      "comments": 1857,
+      "shares": 1573,
+      "saves": 4137,
+      "hashtags": [
+        "",
+        "earnthenumber",
+        "007firstlight",
+        "ad"
+      ],
+      "durationSeconds": 42,
+      "postedAt": {},
+      "subtitleUrl": "https://v16m-webapp.tiktokcdn-us.com/54878c0e8aa3e665d164a1c04e2c22f4/6a4136b3/video/tos/useast8/tos-useast8-v-0068-tx2/1c7a015ac3854ab8920606961da967ce/?a=1988&bti=ODszNWYuMDE6&&bt=7263&ft=aEKq_qT0mIoPD12OjfhI3wUOBJAbMeF~O5&mime_type=video_mp4&rc=am14ZXI5cnFvOzMzaTczNEBpam14ZXI5cnFvOzMzaTczNEBiZ2FkMmRrYnJhLS1kMTJzYSNiZ2FkMmRrYnJhLS1kMTJzcw%3D%3D&l=2026062614581773D5CA1D68E8E2071D18&btag=e00048000",
+      "isPinned": false,
+      "mediaUrl": "https://api.apify.com/v2/key-value-stores/rDqSKldJlNyL80BsQ/records/video-khabylame-20260625163053-7655371363988884766.mp4"
+    },
+    {
+      "platformVideoId": "7639785901354126622",
+      "videoUrl": "https://www.tiktok.com/@khaby.lame/video/7639785901354126622",
+      "caption": "Maybe the fan was too close… or maybe I’m just dreaming 🤷🏿‍♂️🤨#learnfromkhaby #comedy ",
+      "views": 54700000,
+      "likes": 3800000,
+      "comments": 37700,
+      "shares": 230700,
+      "saves": 186966,
+      "hashtags": [
+        "learnfromkhaby",
+        "comedy"
+      ],
+      "durationSeconds": 25,
+      "postedAt": {},
+      "isPinned": false,
+      "mediaUrl": "https://api.apify.com/v2/key-value-stores/rDqSKldJlNyL80BsQ/records/video-khabylame-20260514163118-7639785901354126622.mp4"
+    },
+    {
+      "platformVideoId": "7652012587009215774",
+      "videoUrl": "https://www.tiktok.com/@khaby.lame/video/7652012587009215774",
+      "caption": "Bro…. Where is the rest of my rice? 🍚🤨#learnfromkhaby #comedy ",
+      "views": 20500000,
+      "likes": 1100000,
+      "comments": 22500,
+      "shares": 75700,
+      "saves": 49014,
+      "hashtags": [
+        "learnfromkhaby",
+        "comedy"
+      ],
+      "durationSeconds": 30,
+      "postedAt": {},
+      "isPinned": false,
+      "mediaUrl": "https://api.apify.com/v2/key-value-stores/rDqSKldJlNyL80BsQ/records/video-khabylame-20260616151717-7652012587009215774.mp4"
+    }
+  ],
+  "subCoverage": "1/12",
+  "goalIntent": "grow"
+}
