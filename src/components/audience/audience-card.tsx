@@ -6,13 +6,18 @@ import { READING_CARD } from "@/components/reading/reading-section";
 import { AudienceConstellationThumb } from "./audience-constellation-thumb";
 import { AudienceStatusChip } from "./audience-status-chip";
 import { AudienceTempBar } from "./audience-temp-bar";
+import { TrustBadge } from "./trust-badge";
 import {
   getAudienceCardSubtitle,
   getCalibrationStatus,
   getDominantTemperature,
+  getPersonaRoster,
   getTemperatureMix,
+  getTemplateProvenanceLabel,
   getTopArchetypes,
+  isPersonaGrounded,
 } from "./audience-display";
+import { resolveTier } from "@/lib/audience/resolve-tier";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { cn } from "@/lib/utils";
 import { Check, DotsThree } from "@phosphor-icons/react";
@@ -46,10 +51,19 @@ export function AudienceCard({
 }: AudienceCardProps) {
   const reducedMotion = usePrefersReducedMotion();
   const status = getCalibrationStatus(audience);
+  const tier = resolveTier(audience);
   const subtitle = getAudienceCardSubtitle(audience);
   const tempMix = getTemperatureMix(audience);
   const dominant = getDominantTemperature(tempMix);
   const topArchetypes = getTopArchetypes(audience, 2);
+
+  // Honesty layer (D-05/TRUST-02): surface persona provenance at a glance.
+  // Grounded personas (non-empty evidence) show their receipt inline; an
+  // evidence-free card shows ONE muted ungrounded affordance — never both.
+  const groundedPersonas = getPersonaRoster(audience).filter((p) =>
+    isPersonaGrounded(p as { evidence?: string }),
+  );
+  const templateProvenance = getTemplateProvenanceLabel(audience);
   const isUserOwned = !audience.is_general && !audience.is_preset;
   const isNavigable = selectionMode || isUserOwned;
 
@@ -100,7 +114,10 @@ export function AudienceCard({
           <p className="text-[15px] font-medium text-foreground truncate">
             {audience.name}
           </p>
-          <AudienceStatusChip status={status} />
+          <div className="flex shrink-0 items-center gap-1.5">
+            <TrustBadge tier={tier} />
+            <AudienceStatusChip status={status} />
+          </div>
         </div>
 
         <p className="mt-0.5 text-xs text-foreground-secondary truncate">
@@ -120,6 +137,28 @@ export function AudienceCard({
               <span className="text-[10px] text-foreground-muted">{dominant}</span>
             )}
           </div>
+        )}
+
+        {/* Persona provenance — honest at a glance (D-05/TRUST-02). */}
+        {groundedPersonas.length > 0 ? (
+          <div className="mt-2 flex flex-col gap-0.5">
+            {groundedPersonas.slice(0, 2).map((p, i) => (
+              <p
+                key={`${p.archetype}-${i}`}
+                className="text-[11px] text-foreground-muted truncate"
+              >
+                {(p as { evidence?: string }).evidence}
+              </p>
+            ))}
+          </div>
+        ) : templateProvenance ? (
+          <p className="mt-2 text-[11px] text-foreground-muted truncate">
+            {templateProvenance}
+          </p>
+        ) : (
+          <p className="mt-2 text-[11px] text-foreground-muted/80 italic truncate">
+            no evidence — Directional
+          </p>
         )}
       </div>
 
