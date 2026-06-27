@@ -4,29 +4,28 @@
  * AccountReadBlock — "A Read on your own account" (Plan 10-05, SELF-01/02/03).
  *
  * The know-thyself companion to Discover's know-thy-competitor. A STATIC composed card
- * (multi-audience-read-block is the precedent) that maps the deterministic
- * AccountReadResult onto the FIXED `reading/` renderers — NO model-generated UI.
+ * mapping the deterministic AccountReadResult onto a FIXED layout — NO model-generated UI.
  *
- * Composition (10-UI-SPEC §"Account Read card"):
- *   - ReadingSection (the fixed "quiet label over a flat-warm card" unit) frames every
- *     block — hero summary + the pattern sections (What's working · What to fix ·
- *     Recurring hooks · Format mix · Drop-points).
+ * lane/polish refinement (docs/subsystems/ui-skill-cards.md §2): brought onto the refined
+ * thread-card chrome (matte, warm-cream, eyebrow kicker) and densified to match the sketch —
+ * a single card with a two-column What's-working / What-to-fix comparison + full-width
+ * recurring-hooks / format-mix / drop-points + the accuracy line, instead of a stack of
+ * separate ReadingSection cards.
  *
  * Honesty spine:
  *   - Thin-history fallback (SELF-02): warning-toned `--color-warning` state, NEVER
- *     error/coral, NEVER a fabricated pattern. Reuses the P7 CouldNotAnalyze honesty.
- *   - Accuracy track record (SELF-03): cream-PRIMARY number (data, not a CTA — never
- *     coral); the empty copy shows when `trackRecord` is null.
+ *     error/coral, NEVER a fabricated pattern.
+ *   - Accuracy track record (SELF-03): cream-PRIMARY number (data, not a CTA); the empty
+ *     copy shows when `trackRecord` is null.
+ *   - Working / fix labels use the sanctioned success / warning DATA tones (not brand accent).
  *
- * Savable: a <SaveAffordance item_type="read" …/> mounts on the success path; the block's
- * own props are the snapshot the shelf re-renders without a re-fetch (Plan 04).
+ * Deferred (§7 product call): the forward action "Write to my strengths →" is NOT wired yet
+ * — it's net-new behavior (seed Ideas?). The footer carries Save for now.
  */
 
 import type { AccountReadBlock } from '@/lib/tools/blocks';
-import { ReadingSection } from '@/components/reading/reading-section';
 import { SaveAffordance } from './save-affordance';
 
-/** Non-optional patterns payload (present on the success path). */
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
 type FormatMix = AccountReadPatterns['formatMix'];
 
@@ -36,181 +35,173 @@ export interface AccountReadBlockProps {
   threadId?: string | null;
 }
 
-// ─── Thin-history fallback (SELF-02) ──────────────────────────────────────────
-// Warning-toned, calm informational state — NEVER error, NEVER coral, NEVER fabricated.
+const CARD = 'overflow-hidden rounded-xl border border-white/[0.06] bg-transparent';
 
-function ThinFallback() {
+/** Eyebrow kicker — cream-muted dot + label, with the handle as the right-side meta. */
+function Eyebrow({ handle }: { handle: string }) {
   return (
-    <ReadingSection label="A Read on your own account">
-      <div className="flex flex-col gap-2 p-6" data-testid="account-read-thin">
-        <p
-          className="text-[15px] font-semibold"
-          style={{ color: 'var(--color-warning)' }}
-        >
-          Not enough history to read yet
-        </p>
-        <p className="text-sm leading-relaxed text-foreground-secondary">
-          We couldn&rsquo;t find enough public posts on your account to read its patterns
-          honestly. Post more, or check your handle is public, and try again.
-        </p>
-      </div>
-    </ReadingSection>
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+        <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+        A Read on your account
+      </span>
+      <span className="shrink-0 text-[12px] text-foreground-muted">@{handle}</span>
+    </div>
   );
 }
 
-// ─── Accuracy track record (SELF-03) ──────────────────────────────────────────
-// The number is DATA — cream-primary, never coral. Empty copy below the threshold.
-
-function TrackRecord({
-  trackRecord,
-}: {
-  trackRecord: AccountReadBlock['props']['trackRecord'];
-}) {
-  return (
-    <ReadingSection label="Accuracy track record">
-      <div className="p-5" data-testid="account-read-track-record">
-        {trackRecord ? (
-          <p className="text-sm leading-relaxed text-foreground-secondary">
-            Numen has been{' '}
-            {/* cream-PRIMARY number — data, never a coral CTA (UI-SPEC §Color). */}
-            <span className="font-semibold text-foreground">
-              within {trackRecord.withinPct}%
-            </span>{' '}
-            on your last{' '}
-            <span className="font-semibold text-foreground">{trackRecord.lastN}</span>{' '}
-            posts.
-          </p>
-        ) : (
-          <p className="text-sm leading-relaxed text-foreground-muted">
-            Not enough posted outcomes yet to show a track record. Capture a few and this
-            builds.
-          </p>
-        )}
-      </div>
-    </ReadingSection>
-  );
-}
-
-// ─── A labeled list section (reuses the fixed ReadingSection card shell) ───────
-
-function ListSection({
+/** A labeled bullet list — colored label (success/warning) or muted; honest empty state. */
+function ListBlock({
   label,
   items,
   testid,
+  labelColor,
 }: {
   label: string;
   items: string[];
   testid: string;
+  labelColor?: string;
 }) {
   return (
-    <ReadingSection label={label}>
-      <div className="p-5" data-testid={testid}>
-        {items.length > 0 ? (
-          <ul className="flex flex-col gap-2" role="list">
-            {items.map((item, i) => (
-              <li
-                key={`${testid}-${i}`}
-                className="text-sm leading-relaxed text-foreground-secondary"
-              >
-                {item}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          // Honest empty — em-dash muted, never a fabricated entry (UI-SPEC §Color).
-          <p className="text-sm text-foreground-muted">— none detected yet</p>
-        )}
-      </div>
-    </ReadingSection>
+    <div data-testid={testid}>
+      <p
+        className="mb-1.5 text-[11px] uppercase tracking-[0.05em]"
+        style={labelColor ? { color: labelColor } : undefined}
+      >
+        <span className={labelColor ? undefined : 'text-foreground-muted'}>{label}</span>
+      </p>
+      {items.length > 0 ? (
+        <ul className="flex flex-col gap-1" role="list">
+          {items.map((item, i) => (
+            <li key={`${testid}-${i}`} className="flex gap-2 text-[13px] leading-relaxed text-foreground-secondary">
+              <span className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+              {item}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        // Honest empty — em-dash muted, never a fabricated entry.
+        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+      )}
+    </div>
   );
 }
 
-// ─── Format-mix section ───────────────────────────────────────────────────────
-
-function FormatMixSection({ formatMix }: { formatMix: FormatMix }) {
+/** Format-mix bars — cream fill over a faint track (warm-cream, full width). */
+function FormatMixBlock({ formatMix }: { formatMix: FormatMix }) {
   return (
-    <ReadingSection label="Format mix">
-      <div className="p-5" data-testid="account-read-format-mix">
-        {formatMix.length > 0 ? (
-          <ul className="flex flex-col gap-2.5" role="list">
-            {formatMix.map((entry, i) => (
-              <li key={`fmt-${i}`} className="flex items-center gap-3 text-sm">
-                <span className="min-w-[140px] text-foreground-secondary">
-                  {entry.label}
-                </span>
-                <span className="h-[6px] flex-1 overflow-hidden rounded-full bg-white/[0.07]">
-                  <span
-                    className="block h-full rounded-full"
-                    style={{
-                      width: `${Math.max(0, Math.min(100, entry.pct))}%`,
-                      background:
-                        'linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.38))',
-                    }}
-                  />
-                </span>
-                <span className="w-20 text-right tabular-nums text-foreground">
-                  {entry.count} · {entry.pct}%
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-foreground-muted">— none detected yet</p>
-        )}
-      </div>
-    </ReadingSection>
+    <div data-testid="account-read-format-mix">
+      <p className="mb-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Format mix</p>
+      {formatMix.length > 0 ? (
+        <ul className="flex flex-col gap-2" role="list">
+          {formatMix.map((entry, i) => (
+            <li key={`fmt-${i}`} className="flex items-center gap-3 text-[12.5px]">
+              <span className="min-w-[112px] text-foreground-secondary">{entry.label}</span>
+              <span className="h-[5px] flex-1 overflow-hidden rounded-full bg-white/[0.07]">
+                <span
+                  className="block h-full rounded-full"
+                  style={{
+                    width: `${Math.max(0, Math.min(100, entry.pct))}%`,
+                    background: 'linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.40))',
+                  }}
+                />
+              </span>
+              <span className="w-12 text-right tabular-nums text-foreground-muted">{entry.pct}%</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-[13px] text-foreground-muted">— none detected yet</p>
+      )}
+    </div>
   );
 }
 
-// ─── Renderer ─────────────────────────────────────────────────────────────────
+/** Accuracy track record (SELF-03) — cream-primary number; empty copy below threshold. */
+function Accuracy({ trackRecord }: { trackRecord: AccountReadBlock['props']['trackRecord'] }) {
+  return (
+    <p
+      className="border-t border-white/[0.06] pt-3 text-[13px] leading-relaxed text-foreground-secondary"
+      data-testid="account-read-track-record"
+    >
+      {trackRecord ? (
+        <>
+          Numen has been{' '}
+          <span className="font-semibold text-foreground">within {trackRecord.withinPct}%</span> on your last{' '}
+          <span className="font-semibold text-foreground">{trackRecord.lastN}</span> posts.
+        </>
+      ) : (
+        <span className="text-foreground-muted">
+          Not enough posted outcomes yet to show a track record. Capture a few and this builds.
+        </span>
+      )}
+    </p>
+  );
+}
+
+/** Thin-history fallback (SELF-02) — warning-toned, calm, never fabricated. */
+function ThinFallback({ handle }: { handle: string }) {
+  return (
+    <div className={CARD} data-testid="account-read-thin">
+      <div className="flex flex-col gap-3 px-4 pb-4 pt-4">
+        <Eyebrow handle={handle} />
+        <p className="text-[15px] font-semibold" style={{ color: 'var(--color-warning)' }}>
+          Not enough history to read yet
+        </p>
+        <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
+          We couldn&rsquo;t find enough public posts on your account to read its patterns honestly.
+          Post more, or check your handle is public, and try again.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockProps) {
   const { handle, fallback, patterns, trackRecord } = block.props;
 
   // Honest thin-history fallback (SELF-02) — never renders fabricated patterns.
   if (fallback === 'thin' || !patterns) {
-    return <ThinFallback />;
+    return <ThinFallback handle={handle} />;
   }
 
   return (
-    <div className="flex flex-col gap-5" data-testid="account-read-block">
-      {/* Hero framing — "A Read on your own account" (companion to know-thy-competitor). */}
-      <ReadingSection label="A Read on your own account">
-        <div className="flex items-center justify-between gap-3 p-5">
-          <span className="text-[15px] font-semibold text-foreground">@{handle}</span>
-          {/* Savable as item_type 'read' — the block's props are the shelf snapshot. */}
-          <SaveAffordance
-            item_type="read"
-            thread_id={threadId}
-            title={`Account Read — @${handle}`}
-            snapshot={block.props as Record<string, unknown>}
+    <div className={CARD} data-testid="account-read-block">
+      <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
+        <Eyebrow handle={handle} />
+
+        {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+          <ListBlock
+            label="What's working"
+            items={patterns.working}
+            testid="account-read-working"
+            labelColor="var(--color-success)"
+          />
+          <ListBlock
+            label="What to fix"
+            items={patterns.fix}
+            testid="account-read-fix"
+            labelColor="var(--color-warning)"
           />
         </div>
-      </ReadingSection>
 
-      <ListSection
-        label="What's working"
-        items={patterns.working}
-        testid="account-read-working"
-      />
-      <ListSection
-        label="What to fix"
-        items={patterns.fix}
-        testid="account-read-fix"
-      />
-      <ListSection
-        label="Recurring hooks"
-        items={patterns.recurringHooks}
-        testid="account-read-hooks"
-      />
-      <FormatMixSection formatMix={patterns.formatMix} />
-      <ListSection
-        label="Drop-points"
-        items={patterns.dropPoints}
-        testid="account-read-drop-points"
-      />
+        <ListBlock label="Recurring hooks" items={patterns.recurringHooks} testid="account-read-hooks" />
+        <FormatMixBlock formatMix={patterns.formatMix} />
+        <ListBlock label="Drop-points" items={patterns.dropPoints} testid="account-read-drop-points" />
 
-      <TrackRecord trackRecord={trackRecord ?? null} />
+        <Accuracy trackRecord={trackRecord ?? null} />
+      </div>
+
+      {/* Footer — Save for now; "Write to my strengths →" (forward action) is deferred (§7). */}
+      <div className="flex items-center border-t border-white/[0.06] px-4 py-3">
+        <SaveAffordance
+          item_type="read"
+          thread_id={threadId}
+          title={`Account Read — @${handle}`}
+          snapshot={block.props as Record<string, unknown>}
+        />
+      </div>
     </div>
   );
 }
