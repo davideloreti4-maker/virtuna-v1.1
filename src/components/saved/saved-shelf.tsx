@@ -1,21 +1,20 @@
 "use client";
 
 /**
- * SavedShelf — the flat, typed Saved surface (Plan 10-04 Task 3, SAVE-01).
+ * SavedShelf — the flat, typed Library surface (lane/frame elevation of P10/P12 SAVE-01).
  *
- * FLAT by construction (D-07): a heading + subtitle, an optional flat
- * type-filter row (client-side filter — NOT folders), a flat grid of
- * typed-item cards, and a calm empty state. NO folders, NO tags, NO collection
- * grouping (ROADMAP guard). P12 EXTENDS this shape; it never reworks it.
+ * FLAT by construction (D-07, ROADMAP guard): a heading + count, a toolbar (live search · sort ·
+ * grid⇄list density), a flat type-filter segmented control, and a masonry grid (or list) of
+ * type-specific cards that echo their thread card. NO folders, NO tags, NO collection grouping.
  *
- * Flat-warm SSOT throughout (10-UI-SPEC): cream text on charcoal, shelf grid
- * gap --spacing-6, card radius --radius-lg. Filter row is a segmented control
- * with client-derived per-type counts; loading is a branded skeleton grid;
- * empty state carries the Constellation motif + a neutral CTA (de-Claude P2).
+ * Flat-warm SSOT throughout: cream on charcoal, 6% borders, 12px card radius; band tones are the
+ * only color (sanctioned data tones, via the cards); terracotta stays liveness-only. Loading is a
+ * branded skeleton grid; empty state carries the Constellation motif + a neutral CTA.
  */
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MagnifyingGlass, SquaresFour, ListBullets } from "@phosphor-icons/react";
 import { useSavedItems } from "@/hooks/queries/use-saved-items";
 import type { SavedItem, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
@@ -25,7 +24,7 @@ import { Constellation, buildLoadingDots } from "@/components/brand/constellatio
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { SavedItemCard } from "./saved-item-card";
 
-// Flat filter chips — a client-side item_type filter, NOT a folder structure.
+// Flat type filter — a client-side item_type filter, NOT a folder structure.
 const FILTERS: { id: SavedItemType | "all"; label: string }[] = [
   { id: "all", label: "All" },
   { id: "read", label: "Reads" },
@@ -36,9 +35,31 @@ const FILTERS: { id: SavedItemType | "all"; label: string }[] = [
   { id: "format", label: "Formats" },
 ];
 
+type SortKey = "recent" | "oldest" | "az";
+type View = "grid" | "list";
+
+/** Flatten an item's human-meaningful snapshot text into a search index (client-side). */
+function searchText(item: SavedItem): string {
+  const snap = item.snapshot ?? {};
+  const parts: (string | null)[] = [item.title];
+  for (const k of ["hookLine", "title", "mechanism", "angle", "whyItFits", "caption", "openingBeatSeed"]) {
+    if (typeof snap[k] === "string") parts.push(snap[k] as string);
+  }
+  if (Array.isArray(snap.audiences)) {
+    for (const a of snap.audiences as Record<string, unknown>[]) {
+      for (const k of ["name", "interpretation", "lever"]) {
+        if (typeof a[k] === "string") parts.push(a[k] as string);
+      }
+    }
+  }
+  return parts.filter(Boolean).join(" ").toLowerCase();
+}
+
 export function SavedShelf() {
   const [filter, setFilter] = useState<SavedItemType | "all">("all");
-  // Fetch the full list once; filtering is a flat client-side concern.
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<SortKey>("recent");
+  const [view, setView] = useState<View>("grid");
   const { data, isLoading, isError } = useSavedItems();
 
   const items = useMemo<SavedItem[]>(() => data?.items ?? [], [data]);
@@ -50,21 +71,96 @@ export function SavedShelf() {
     return by;
   }, [items]);
 
-  const visible = useMemo(
-    () => (filter === "all" ? items : items.filter((i) => i.item_type === filter)),
-    [items, filter],
-  );
+  const visible = useMemo(() => {
+    let v = filter === "all" ? items : items.filter((i) => i.item_type === filter);
+    const q = query.trim().toLowerCase();
+    if (q) v = v.filter((i) => searchText(i).includes(q));
+    return [...v].sort((a, b) => {
+      if (sort === "az") return (a.title ?? "").localeCompare(b.title ?? "");
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sort === "oldest" ? ta - tb : tb - ta;
+    });
+  }, [items, filter, query, sort]);
+
+  const isFiltered = filter !== "all" || query.trim().length > 0;
 
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-foreground">Library</h1>
-        <p className="text-sm text-foreground-muted">
-          Everything you&rsquo;ve saved — Reads, ideas, hooks, scripts, outliers
-          — ready to pull back into a thread.
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold text-foreground">Library</h1>
+          <p className="max-w-xl text-sm text-foreground-muted">
+            Everything you&rsquo;ve made — Reads, ideas, hooks, scripts, outliers — ready to pull
+            back into a thread.
+          </p>
+        </div>
+        {items.length > 0 && (
+          <span className="shrink-0 rounded-full border border-white/[0.06] bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">
+            <b className="font-semibold tabular-nums text-foreground-secondary">{items.length}</b> saved
+          </span>
+        )}
       </header>
+
+      {/* Toolbar — live search + sort + grid⇄list density toggle */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
+          <MagnifyingGlass
+            size={15}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-foreground-muted"
+          />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your library…"
+            aria-label="Search saved items"
+            className="h-9 w-full rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated pl-9 pr-3 text-sm text-foreground placeholder:text-foreground-muted focus:border-white/[0.10] focus:outline-none"
+          />
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <label htmlFor="library-sort" className="sr-only">
+            Sort
+          </label>
+          <select
+            id="library-sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-9 cursor-pointer rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated px-3 text-sm text-foreground-secondary focus:border-white/[0.10] focus:outline-none"
+          >
+            <option value="recent">Recent</option>
+            <option value="oldest">Oldest</option>
+            <option value="az">A–Z</option>
+          </select>
+          <div
+            className="flex items-center gap-0.5 rounded-[var(--radius-md)] border border-white/[0.06] bg-surface-elevated p-0.5"
+            role="group"
+            aria-label="View"
+          >
+            {([
+              ["grid", SquaresFour, "Grid"],
+              ["list", ListBullets, "List"],
+            ] as const).map(([v, Icon, label]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={view === v}
+                aria-label={`${label} view`}
+                className={cn(
+                  "grid h-7 w-7 place-items-center rounded-[var(--radius-sm)] transition-colors",
+                  view === v
+                    ? "bg-surface text-foreground"
+                    : "text-foreground-muted hover:text-foreground-secondary",
+                )}
+              >
+                <Icon size={15} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Flat type-filter — a segmented control (client-side filter, NOT folders) */}
       <div
@@ -86,9 +182,7 @@ export function SavedShelf() {
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] px-3 py-1.5 text-xs font-medium transition-colors",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
-                active
-                  ? "text-foreground"
-                  : "text-foreground-muted hover:text-foreground-secondary",
+                active ? "text-foreground" : "text-foreground-muted hover:text-foreground-secondary",
               )}
               style={{
                 backgroundColor: active ? "var(--color-charcoal-composer)" : "transparent",
@@ -111,7 +205,7 @@ export function SavedShelf() {
         })}
       </div>
 
-      {/* Body: loading / error / empty / grid */}
+      {/* Body: loading / error / empty / grid / list */}
       {isLoading ? (
         <SavedShelfSkeleton />
       ) : isError ? (
@@ -119,11 +213,26 @@ export function SavedShelf() {
           Couldn&rsquo;t load your library. Try again in a moment.
         </p>
       ) : visible.length === 0 ? (
-        <EmptyState filtered={filter !== "all"} onClearFilter={() => setFilter("all")} />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <EmptyState
+          filtered={isFiltered}
+          onClear={() => {
+            setFilter("all");
+            setQuery("");
+          }}
+        />
+      ) : view === "grid" ? (
+        // Masonry — packs mixed-height cards tight (CSS multicol; no row-locked gaps).
+        <div className="columns-1 [column-gap:1rem] sm:columns-2 lg:columns-3">
           {visible.map((item) => (
-            <SavedItemCard key={item.id} item={item} />
+            <div key={item.id} className="mb-4 break-inside-avoid">
+              <SavedItemCard item={item} variant="card" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-white/[0.06] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface">
+          {visible.map((item) => (
+            <SavedItemCard key={item.id} item={item} variant="row" />
           ))}
         </div>
       )}
@@ -131,11 +240,11 @@ export function SavedShelf() {
   );
 }
 
-/** Branded skeleton grid — mirrors the real card layout (P2 reuses P0's pattern). */
+/** Branded skeleton grid — mirrors the real card layout. */
 function SavedShelfSkeleton() {
   return (
     <div
-      className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       aria-busy="true"
       aria-live="polite"
       data-testid="saved-shelf-skeleton"
@@ -147,29 +256,22 @@ function SavedShelfSkeleton() {
           style={{ backgroundColor: "var(--color-charcoal-composer)" }}
         >
           <div className="flex items-start justify-between gap-2">
-            <Skeleton className="h-5 w-14 rounded-[var(--radius-sm)]" />
+            <Skeleton className="h-5 w-24 rounded-[var(--radius-sm)]" />
             <Skeleton className="h-5 w-5 rounded-full" />
           </div>
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-[90%] rounded-md" />
             <Skeleton className="h-4 w-[60%] rounded-md" />
-            <Skeleton className="h-3 w-20 rounded-md" />
           </div>
-          <Skeleton className="h-4 w-24 rounded-md" />
+          <Skeleton className="h-12 w-full rounded-[10px]" />
         </div>
       ))}
     </div>
   );
 }
 
-/** Calm informational empty state — not an error (UI-SPEC §Honesty). */
-function EmptyState({
-  filtered,
-  onClearFilter,
-}: {
-  filtered: boolean;
-  onClearFilter: () => void;
-}) {
+/** Calm informational empty state — not an error. */
+function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => void }) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
   const dots = useMemo(() => buildLoadingDots(120, 32, 8), []);
@@ -187,17 +289,17 @@ function EmptyState({
       />
       <div className="flex flex-col gap-2">
         <p className="text-base font-semibold text-foreground">
-          {filtered ? "Nothing of this type yet" : "Nothing in your Library yet"}
+          {filtered ? "Nothing matches" : "Nothing in your Library yet"}
         </p>
         <p className="max-w-md text-sm text-foreground-muted">
           {filtered
-            ? "Try another type, or run a Simulation to start filling this shelf."
+            ? "Try another type or clear your search."
             : "Save a Read, idea, hook, or outlier from any thread and it lands here — ready to pull back in."}
         </p>
       </div>
       {filtered ? (
-        <Button variant="secondary" onClick={onClearFilter}>
-          Show all
+        <Button variant="secondary" onClick={onClear}>
+          Clear filters
         </Button>
       ) : (
         <Button variant="primary" onClick={() => router.push("/home")}>
