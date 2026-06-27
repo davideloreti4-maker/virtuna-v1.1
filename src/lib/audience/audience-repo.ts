@@ -104,16 +104,133 @@ export const PRESET_AUDIENCES: Audience[] = [
   },
 ];
 
+/**
+ * General-mode template audiences (D-08) — two zero-setup virtual constants that mirror
+ * PRESET_AUDIENCES so they NEVER touch the DB (no seed row, regression-gate-free).
+ *
+ * These are the ONLY `mode: 'general'` constants (Pitfall 1: GENERAL_AUDIENCE + presets
+ * are 'socials'). `signature` stays null and personas carry NO evidence — they render
+ * ungrounded-by-design (D-05 / Pitfall 5): a General template is honest about being a
+ * Directional SIM with no scrape behind it. Each ships a runnable CalibratedPersona panel
+ * (shares Σ≈1.0) + a representative success_criterion so it runs with zero setup.
+ */
+export const GENERAL_TEMPLATES: Audience[] = [
+  {
+    id: "template-analyst",
+    user_id: "__virtual__",
+    name: "Analyst Panel",
+    type: "target",
+    mode: "general",
+    platform: "custom",
+    goal_label: null,
+    goal_intent: null,
+    is_general: false,
+    is_preset: false,
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [
+      {
+        archetype: "tough_crowd",
+        repaint: "The Skeptic — pressure-tests every claim for its weakest link.",
+        temperature: "warm",
+        disposition: "skeptic",
+        share: 0.3,
+      },
+      {
+        archetype: "purposeful_viewer",
+        repaint: "The Strategist — weighs the call against its second-order consequences.",
+        temperature: "warm",
+        disposition: "collector",
+        share: 0.3,
+      },
+      {
+        archetype: "cross_niche_curiosity",
+        repaint: "The Contrarian — argues the strongest opposing case on principle.",
+        temperature: "cold",
+        disposition: "connector",
+        share: 0.2,
+      },
+      {
+        archetype: "niche_deep_scout",
+        repaint: "The Researcher — hunts the missing evidence and the unstated assumption.",
+        temperature: "warm",
+        disposition: "scanner",
+        share: 0.2,
+      },
+    ],
+    profile: null,
+    calibration: null,
+    signature: null,
+    success_criterion:
+      "Surfaces the sharpest risk and the strongest counter-argument before a decision is made.",
+    custom_context: [],
+    created_at: "1970-01-01T00:00:00Z",
+    updated_at: "1970-01-01T00:00:00Z",
+  },
+  {
+    id: "template-hiring",
+    user_id: "__virtual__",
+    name: "Hiring Panel",
+    type: "target",
+    mode: "general",
+    platform: "custom",
+    goal_label: null,
+    goal_intent: null,
+    is_general: false,
+    is_preset: false,
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [
+      {
+        archetype: "purposeful_viewer",
+        repaint: "The Hiring Manager — maps the candidate signal to the role's bar.",
+        temperature: "warm",
+        disposition: "converter",
+        share: 0.3,
+      },
+      {
+        archetype: "loyalist",
+        repaint: "The Future Peer — judges day-to-day collaboration fit.",
+        temperature: "warm",
+        disposition: "connector",
+        share: 0.25,
+      },
+      {
+        archetype: "tough_crowd",
+        repaint: "The Bar-Raiser — probes for the biggest gap against the level.",
+        temperature: "warm",
+        disposition: "skeptic",
+        share: 0.25,
+      },
+      {
+        archetype: "niche_deep_buyer",
+        repaint: "The Domain Expert — tests depth in the core competency.",
+        temperature: "hot",
+        disposition: "collector",
+        share: 0.2,
+      },
+    ],
+    profile: null,
+    calibration: null,
+    signature: null,
+    success_criterion:
+      "Flags the strongest signal and the biggest gap against the role's bar.",
+    custom_context: [],
+    created_at: "1970-01-01T00:00:00Z",
+    updated_at: "1970-01-01T00:00:00Z",
+  },
+];
+
 /** All virtual sentinel ids — used to short-circuit DB lookups. */
 const SENTINEL_IDS = new Set<string>([
   GENERAL_AUDIENCE.id,
   ...PRESET_AUDIENCES.map((p) => p.id),
+  ...GENERAL_TEMPLATES.map((t) => t.id),
 ]);
 
 /** Map from sentinel id → constant for O(1) lookup. */
 const VIRTUAL_BY_ID = new Map<string, Audience>([
   [GENERAL_AUDIENCE.id, GENERAL_AUDIENCE],
   ...PRESET_AUDIENCES.map((p): [string, Audience] => [p.id, p]),
+  ...GENERAL_TEMPLATES.map((t): [string, Audience] => [t.id, t]),
 ]);
 
 // ─── Zod validation ────────────────────────────────────────────────────────────
@@ -267,8 +384,9 @@ export function audienceToRow(
 
 /**
  * List all audiences for the authenticated user.
- * Returns virtual constants first: [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...userRows].
- * General and presets have no DB row — they are prepended here.
+ * Returns virtual constants first:
+ *   [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...GENERAL_TEMPLATES, ...userRows].
+ * General, presets, and the General templates have no DB row — they are prepended here.
  * RLS ensures only the calling user's rows are returned.
  */
 export async function listAudiences(supabase: SupabaseClient): Promise<Audience[]> {
@@ -286,7 +404,7 @@ export async function listAudiences(supabase: SupabaseClient): Promise<Audience[
     .filter((row) => !SENTINEL_IDS.has(row.id)) // guard against sentinel rows
     .map(rowToAudience);
 
-  return [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...userRows];
+  return [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...GENERAL_TEMPLATES, ...userRows];
 }
 
 /**
