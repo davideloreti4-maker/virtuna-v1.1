@@ -52,7 +52,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 ### IN — Input Adapter
 
 - [ ] **IN-01**: The composer inbox accepts text and file uploads (`.txt` / doc), not just video/URL, and normalizes them into a `Stimulus`
-- [ ] **IN-02**: The SIM-1 tier (Flash text / Max video) auto-selects from the input type
+- [x] **IN-02**: The SIM-1 tier (Flash text / Max video) auto-selects from the input type
 - [ ] **IN-03**: The inbox accepts screenshot/image uploads, OCR-extracted into the `Stimulus`
 
 ### UX — Audience-as-Front-Door Surface
@@ -122,7 +122,7 @@ Phases assigned during roadmap creation. All Pending.
 | PRED-02 | Phase 6 | Pending |
 | PRED-03 | Phase 6 | Pending |
 | IN-01 | Phase 4 | Pending |
-| IN-02 | Phase 4 | Pending |
+| IN-02 | Phase 4 | Complete (04-02) |
 | IN-03 | Phase 4 | Pending |
 | UX-01 | Phase 7 | Pending |
 | UX-02 | Phase 7 | Pending |
