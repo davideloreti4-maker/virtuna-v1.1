@@ -32,6 +32,12 @@ export interface ResolveAndRehostResult {
   /** Supabase signed URL (no token — safe to pass to Omni/DashScope). T-03-01. */
   signedUrl: string;
   /**
+   * Source video cover thumbnail (resolveVideoUrl → clockworks videoMeta.coverUrl). An
+   * ephemeral TikTok-CDN image, display-only (the Remix card's source thumbnail). NOT a
+   * media reference — never fetched/rehosted; undefined when the rehost item had no cover.
+   */
+  coverUrl?: string;
+  /**
    * Unconditionally deletes the temp mp4 object from the videos bucket.
    * MUST be called in a finally block (derive-and-drop, T-03-02 / pitfall C4).
    * Failure to call this leaves a temp object in the bucket — treat as a bug.
@@ -133,5 +139,5 @@ export async function resolveAndRehost(
       });
   };
 
-  return { signedUrl, cleanup };
+  return { signedUrl, cleanup, coverUrl: resolved.coverUrl };
 }

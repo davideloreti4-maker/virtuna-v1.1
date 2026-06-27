@@ -223,6 +223,10 @@ export const RemixCardBlockSchema = z.object({
     angle: z.string().min(1),          // structural angle borrowed (muted sub-row)
     whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
     formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
+    // Source video cover thumbnail (resolveVideoUrl → resolveAndRehost surfaces it) — an
+    // ephemeral CDN image, display-only ("Remixing this post" chip). OPTIONAL/additive
+    // (back-compat): absent → the card renders with no source thumbnail.
+    coverUrl: z.string().optional(),
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally
@@ -275,6 +279,10 @@ export const OutlierGridBlockSchema = z.object({
         platformVideoId: z.string().min(1),
         videoUrl: z.string().min(1),
         caption: z.string(),
+        // Cover thumbnail (clockworks videoMeta.coverUrl) — ephemeral CDN image, display-only.
+        // OPTIONAL/additive: existing persisted outlier-grid blocks stay valid; absent → the
+        // tile renders exactly as before (no cover banner).
+        coverUrl: z.string().optional(),
         // VideoCard-derived metrics grid (measured scrape data)
         views: z.number(),
         likes: z.number(),

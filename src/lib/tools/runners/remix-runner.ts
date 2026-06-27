@@ -160,11 +160,15 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
   let signedUrl: string;
   let cleanup: () => Promise<void>;
+  // Source video cover (display-only thumbnail for the card) — captured from the resolve
+  // step, NOT a media reference. Undefined when the rehost item carried no cover.
+  let sourceCoverUrl: string | undefined;
 
   try {
     const resolved = await resolveAndRehost(url, requestId);
     signedUrl = resolved.signedUrl;
     cleanup = resolved.cleanup;
+    sourceCoverUrl = resolved.coverUrl;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Resolve failed: ${msg}`);
@@ -314,6 +318,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
           // Source decode anatomy — REAL 4-beat structural decode (D-05 moat)
           sourceDecode,
+
+          // Source video cover thumbnail (display-only) — omitted when the resolve step
+          // surfaced none (additive / back-compat).
+          ...(sourceCoverUrl ? { coverUrl: sourceCoverUrl } : {}),
 
           // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
           band: r.band,

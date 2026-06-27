@@ -406,6 +406,9 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     return {
       mp4Url,
       durationSeconds: videoMeta?.duration ?? 0,
+      // Display-only cover (no SSRF concern — rendered as a browser <img>, never fetched
+      // server-side). Omitted when the rehost item carried no videoMeta.coverUrl.
+      ...(videoMeta?.coverUrl ? { coverUrl: videoMeta.coverUrl } : {}),
     };
   }
 

@@ -139,6 +139,8 @@ export async function runExplorePipeline(opts: RunExploreInput): Promise<RunExpl
         platformVideoId: t.platformVideoId,
         videoUrl: t.videoUrl,
         caption: t.caption,
+        // Cover thumbnail flows through RankedOutlier (extends VideoData). Omit when absent.
+        ...(t.coverUrl ? { coverUrl: t.coverUrl } : {}),
         views: t.views,
         likes: t.likes,
         comments: t.comments,

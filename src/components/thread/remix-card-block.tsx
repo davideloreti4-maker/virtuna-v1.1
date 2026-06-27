@@ -42,6 +42,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     fraction,
     scrollQuote,
     audienceName,
+    coverUrl,
   } = block.props;
 
   // Read RemixDevelopContext — enables RemixThreadView to provide the handler without
@@ -64,6 +65,31 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     >
       {/* FACE — adapted hook anatomy (always visible). */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
+        {/* Source thumbnail — the real cover of the post being remixed (display-only).
+            Additive: renders ONLY when coverUrl is present; a broken/expired CDN URL hides
+            the <img> (the placeholder bg shows), never a broken-image icon. */}
+        {coverUrl ? (
+          <div
+            className="flex items-center gap-2.5 self-start"
+            aria-label="The original post this remix borrows from"
+            title="Remixing this post"
+          >
+            <span className="relative block aspect-[9/16] w-10 shrink-0 overflow-hidden rounded-[5px] border border-white/[0.06] bg-white/[0.04]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+              <img
+                src={coverUrl}
+                alt=""
+                loading="lazy"
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </span>
+            <span className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Remixing this post</span>
+          </div>
+        ) : null}
+
         {/* Eyebrow — "Borrowed · {format}" chip + audience-steer tag (no coral). */}
         <div className="flex items-center justify-between gap-3">
           <span
