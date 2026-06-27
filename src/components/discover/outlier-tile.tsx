@@ -35,6 +35,11 @@ export interface OutlierTileData {
   platformVideoId: string;
   videoUrl: string;
   caption: string;
+  /**
+   * Cover thumbnail (clockworks videoMeta.coverUrl) — ephemeral CDN image, display-only.
+   * Optional: absent → the tile renders with no cover banner (degrades to today's layout).
+   */
+  coverUrl?: string;
   views: number;
   likes: number;
   comments: number;
@@ -78,6 +83,14 @@ function formatMultiplier(m: number): string {
   return `${m.toFixed(1)}×`;
 }
 
+/** Format a duration in seconds as "m:ss" for the cover badge ("" when unknown). */
+function formatDuration(s: number): string {
+  if (!Number.isFinite(s) || s <= 0) return "";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 interface OutlierTileProps {
   tile: OutlierTileData;
   /**
@@ -108,8 +121,41 @@ export function OutlierTile({
   trackPending = false,
   tracked = false,
 }: OutlierTileProps) {
+  const duration = formatDuration(tile.durationSeconds);
   return (
     <div className="space-y-2">
+      {/* Cover banner — the real scrape thumbnail (clockworks videoMeta.coverUrl). Additive:
+          renders ONLY when coverUrl is present, so a niche pull / pre-cover block degrades to
+          today's badge-first layout. Capped height (the grid is narrow — a full 9:16 would
+          tower); object-cover crops to a clean banner. Duration badge (bottom-right) is the
+          one overlay — NON-redundant with the views in the metrics grid below. A broken/expired
+          CDN URL hides the <img> (the placeholder bg shows), never a broken-image icon. */}
+      {tile.coverUrl ? (
+        <a
+          href={tile.videoUrl || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative block h-[176px] w-full overflow-hidden rounded-[8px] border border-white/[0.06] bg-white/[0.04]"
+          title={tile.caption || undefined}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+          <img
+            src={tile.coverUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          {duration ? (
+            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
+              {duration}
+            </span>
+          ) : null}
+        </a>
+      ) : null}
+
       {/* Multiplier badge (neutral — data, NOT the action) + source sub-tag */}
       <div className="flex items-start justify-between gap-2">
         {/* D-05: ALWAYS render the multiplier WITH its baseline label — never bare. */}
