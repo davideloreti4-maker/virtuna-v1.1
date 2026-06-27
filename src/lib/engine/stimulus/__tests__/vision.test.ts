@@ -112,12 +112,18 @@ describe("IN-03 / V5: readImageWithVision request shape", () => {
 
 // ---------------------------------------------------------------------------
 // A2 live smoke (gated) — de-risks the one open unknown: does qwen3.7-plus accept
-// a base64 `data:` image URL (not just hosted URLs)? Skipped by default; runs only
-// when DASHSCOPE_API_KEY is set. Fallback if base64 is rejected = Storage →
-// signed-URL (the proven avatar pattern). Uses the REAL endpoint directly so the
-// file-level getQwenClient mock does not interfere.
+// a base64 `data:` image URL (not just hosted URLs)? SKIP-BY-DEFAULT (a paid live
+// call): runs ONLY on explicit opt-in via `RUN_VISION_LIVE_SMOKE=1` AND a real
+// DASHSCOPE_API_KEY. The opt-in flag is required because vitest auto-loads
+// `.env.local` (which carries a key) — without it this paid probe would fire on
+// every routine unit run. Fallback if base64 is rejected = Storage → signed-URL
+// (the proven avatar pattern). Uses the REAL endpoint directly so the file-level
+// getQwenClient mock does not interfere.
 // ---------------------------------------------------------------------------
-const liveIt = process.env.DASHSCOPE_API_KEY ? it : it.skip;
+const liveIt =
+  process.env.RUN_VISION_LIVE_SMOKE && process.env.DASHSCOPE_API_KEY
+    ? it
+    : it.skip;
 
 // 1×1 transparent PNG.
 const TINY_PNG_B64 =
