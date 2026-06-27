@@ -1,5 +1,13 @@
 /**
- * Phase 3 (General Population + Honesty Layer) Plan 01 — D-01 determinism GATE harness (PAID, LIVE).
+ * Phase 3 (General Population + Honesty Layer) Plan 01 — D-01 determinism harness (PAID, LIVE).
+ *
+ * ⚠ V1 STATUS (2026-06-27): the D-01 live gate found `qwen-3.7-plus` synth is non-deterministic
+ * even synth-isolated (structural drift in persona weights/shares — MoE batch-routing, NOT a config
+ * bug). v1 therefore adopted SPIKE-VERDICT §Fallback Option 2 (bake-once-freeze): determinism is
+ * contracted on the FROZEN persisted signature + the green zero-network replay gate, NOT on
+ * cross-bake reproducibility. So `signatureEqual:false` from this harness is EXPECTED in v1 and is
+ * NOT a blocker. This script is retained as the **v2 / CAL-01 re-bake-drift tool** (where re-bake is
+ * a feature). See 03-01-SUMMARY.md (Task 3 evidence) + SPIKE-VERDICT.md §Fallback.
  *
  * Run:  node --import tsx scripts/rebake-determinism.ts
  *       (or the repo's tsx runner, e.g. `pnpm tsx scripts/rebake-determinism.ts`)
