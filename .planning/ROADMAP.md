@@ -140,7 +140,7 @@ Plans:
 **Wave 1** *(blocked on Wave 0 — parallel leaf modules, no file overlap)*
 
 - [x] 04-02-PLAN.md — `tier.ts` (resolveSim1Tier, pure, IN-02) + `ingest.ts` (.txt/.md read + V5/V12 validation, IN-01) (IN-02, IN-01) ✅ (c81e8bbe, a9ab6700); tier.test.ts 4/4 + ingest.test.ts 5/5 GREEN
-- [ ] 04-03-PLAN.md — `vision.ts` (screenshot → qwen3.7-plus vision read, base64, never omni, IN-03) (IN-03)
+- [x] 04-03-PLAN.md — `vision.ts` (screenshot → qwen3.7-plus vision read, base64, never omni, IN-03) (IN-03) ✅ (f06516e9); vision.test.ts 5/5 GREEN (+1 gated live smoke skipped)
 
 **Wave 2** *(blocked on Wave 1)*
 
