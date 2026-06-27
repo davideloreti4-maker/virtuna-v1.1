@@ -172,6 +172,24 @@ export interface AudienceSignature {
   provenance: SignatureProvenance;
 }
 
+// ─── User-added grounding (D-07 — custom_context) ────────────────────────────
+
+/**
+ * A user-supplied grounding note (D-07 / D-defer-01). `source: "user"` distinguishes
+ * it from scrape-derived persona evidence — user-supplied grounding STRENGTHENS
+ * provenance (tagged, visible), never fakes it. Conceptually provenance-level, but
+ * stored TOP-LEVEL on `Audience` (NOT in `SignatureProvenance`) so it survives when
+ * `signature` is null (General/template audiences carry no signature — RESEARCH Pitfall 2).
+ */
+export interface CustomContext {
+  /** Always "user" — marks this as user-added grounding, not scrape-derived. */
+  source: "user";
+  /** Free-text grounding note. */
+  note: string;
+  /** Optional linkage to a persona/archetype slug this note grounds. */
+  persona_evidence_link?: string;
+}
+
 // ─── Audience domain object ───────────────────────────────────────────────────
 
 /**
@@ -190,6 +208,14 @@ export interface Audience {
   name: string;
   /** 'personal' (own account scrape, D-06) or 'target' (described). */
   type: AudienceType;
+  /**
+   * First-class domain-mode axis (D-04): 'socials' runs the Socials pack (Validated
+   * anchor); 'general' is a domain-agnostic SIM (Directional by rule). REQUIRED and
+   * first-class — it is NOT derived from `is_general` (which marks only the locked
+   * General default constant). POP-02 carries Mode explicitly; P7 sections the library
+   * and scopes skills by it.
+   */
+  mode: "socials" | "general";
   /** Platform the audience lives on. */
   platform: AudiencePlatform;
   /** Free-text display label for the goal (D-05 — any text, maps to goal_intent). */
@@ -224,6 +250,22 @@ export interface Audience {
    * Optional so every existing Audience literal stays valid (additive — guardrail).
    */
   signature?: AudienceSignature | null;
+  /**
+   * Editable free-text "what 'good' means for this audience" (D-03 / POP-02 / POP-05).
+   * Flows into the `DomainPack.scoring` input contract for the P5/P6 General scorers to
+   * consume — no live scorer is wired in P3. Socials keeps its implicit fixed virality
+   * fold (the pack's locked scorer), so this stays null for socials rows.
+   * Optional so every existing Audience literal stays valid (additive — guardrail).
+   */
+  success_criterion?: string | null;
+  /**
+   * User-added grounding notes (D-07 / D-defer-01). Conceptually provenance-level but
+   * stored TOP-LEVEL (NOT in `signature.provenance`) so it survives `signature: null`
+   * on General/template audiences (RESEARCH Pitfall 2). Rendered distinctly from scraped
+   * grounding as "user-added grounding."
+   * Optional so every existing Audience literal stays valid (additive — guardrail).
+   */
+  custom_context?: CustomContext[] | null;
   /** Calibration metadata (source, handle for personal, scraped_at, thin flag). */
   calibration: {
     source: "scrape" | "description";
