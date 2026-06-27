@@ -214,7 +214,7 @@ describe("GENERAL_TEMPLATES — analyst + hiring (D-08)", () => {
     for (const t of GENERAL_TEMPLATES) {
       expect(t.personas.length).toBeGreaterThan(0);
       for (const p of t.personas) {
-        expect("evidence" in (p as Record<string, unknown>)).toBe(false);
+        expect("evidence" in (p as unknown as Record<string, unknown>)).toBe(false);
       }
     }
   });

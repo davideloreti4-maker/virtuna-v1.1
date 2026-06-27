@@ -310,7 +310,7 @@ describe("POST /api/audiences", () => {
     const res = await POST(req);
     expect(res.status).toBe(201);
 
-    const passed = mocks.mockCreateAudience.mock.calls[0][1] as {
+    const passed = mocks.mockCreateAudience.mock.calls[0]![1] as {
       mode: string;
       success_criterion: string;
       custom_context: { source: string; note: string }[];
@@ -318,8 +318,8 @@ describe("POST /api/audiences", () => {
     expect(passed.mode).toBe("general");
     // sanitizeText strips control chars + trims
     expect(passed.success_criterion).toBe("Engagement over reach");
-    expect(passed.custom_context[0].source).toBe("user");
-    expect(passed.custom_context[0].note).toBe("Founder-led brand");
+    expect(passed.custom_context[0]!.source).toBe("user");
+    expect(passed.custom_context[0]!.note).toBe("Founder-led brand");
   });
 
   it("rejects an over-cap custom_context array (>50 entries, T-03-14)", async () => {
@@ -434,12 +434,12 @@ describe("PATCH /api/audiences/[id]", () => {
     const res = await PATCH(req, { params: Promise.resolve({ id: "aud-uuid" }) });
     expect(res.status).toBe(200);
 
-    const passed = mocks.mockUpdateAudience.mock.calls[0][2] as {
+    const passed = mocks.mockUpdateAudience.mock.calls[0]![2] as {
       success_criterion: string;
       custom_context: { source: string; note: string }[];
     };
     expect(passed.success_criterion).toBe("Saves over likes");
-    expect(passed.custom_context[0].note).toBe("Niche founder");
+    expect(passed.custom_context[0]!.note).toBe("Niche founder");
   });
 
   it("rejects an over-cap custom_context array on PATCH (>50 entries, T-03-14)", async () => {
