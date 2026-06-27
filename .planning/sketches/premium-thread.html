@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Premium conversational thread — target sketch v2</title>
+<style>
+  :root{
+    --bg:#262624; --surface-thread:#252524; --surface-chip:#2c2c2b; --surface-user:#302f2d;
+    --cream:#ece7de; --cream-2:#c2bdb4; --cream-muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --success:#8fc9a0; --warning:#e0bd72; --error:#e0796b;
+    --accent:#d97757;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --radius-card:12px; --radius-ctl:8px; --radius-full:9999px;
+    --ease:cubic-bezier(.22,1,.36,1);          /* premium ease-out */
+    --ease-soft:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--cream);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;display:flex;flex-direction:column;min-height:100%}
+
+  .topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;padding:0 20px;flex-shrink:0}
+  .brand{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--cream);display:flex;align-items:center;gap:8px}
+  .brand .glyph{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#3a3936,#2a2927);
+    border:1px solid var(--border-hover);display:grid;place-items:center;font-size:12px;color:var(--cream-2)}
+  .aud-chip{font-size:12.5px;color:var(--cream-2);background:var(--surface-chip);border:1px solid var(--border);
+    border-radius:var(--radius-full);padding:5px 12px;display:flex;align-items:center;gap:7px}
+  .aud-chip .d{width:6px;height:6px;border-radius:var(--radius-full);background:var(--accent)}
+
+  .scroll{flex:1;overflow-y:auto;display:flex;justify-content:center;padding:34px 24px 16px}
+  .thread{width:100%;max-width:760px;display:flex;flex-direction:column;gap:30px}
+
+  .turn-user{display:flex;justify-content:flex-end}
+  .bubble{max-width:78%;background:var(--surface-user);border:1px solid var(--border);
+    border-radius:14px;padding:11px 15px;font-size:14.5px;color:var(--cream);line-height:1.5}
+
+  .turn-ai{display:flex;flex-direction:column;gap:15px}
+  .ai-head{display:flex;align-items:center;gap:9px;color:var(--cream-muted);font-size:12.5px;font-weight:500}
+  .ai-head .mark{width:19px;height:19px;border-radius:6px;background:linear-gradient(135deg,#3a3936,#2a2927);
+    border:1px solid var(--border-hover);display:grid;place-items:center;font-size:11px;color:var(--cream-2)}
+
+  /* VOICE — word-fade reveal (calmer than char typewriter) */
+  .say{font-size:15.5px;line-height:1.62;color:var(--cream);max-width:62ch}
+  .say.dim{color:var(--cream-2);font-size:14.5px}
+  .say .w{display:inline-block;opacity:0;filter:blur(3px);transform:translateY(3px);
+    transition:opacity .42s var(--ease),filter .42s var(--ease),transform .42s var(--ease)}
+  .say .w.in{opacity:1;filter:none;transform:none}
+  .say .em{color:var(--cream);font-weight:600}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:3px}
+  .chip{font-size:13px;color:var(--cream-2);background:rgba(255,255,255,.02);border:1px solid var(--border);
+    border-radius:var(--radius-ctl);padding:8px 13px;cursor:pointer;transition:border-color .18s,background .18s,color .18s;
+    display:flex;align-items:center;gap:7px}
+  .chip:hover{border-color:var(--border-hover);background:rgba(255,255,255,.045);color:var(--cream)}
+  .chip.primary{background:var(--action);color:var(--action-fg);border-color:transparent;font-weight:600}
+  .chip.primary:hover{filter:brightness(1.05);color:var(--action-fg)}
+
+  .cards{display:flex;flex-direction:column;gap:12px}
+
+  /* refined hook card (verbatim from hook-card-refined.html) */
+  .card{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
+  .card .body{padding:16px 18px 13px;display:flex;flex-direction:column;gap:13px}
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .kicker{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);
+    display:flex;align-items:center;gap:7px}
+  .kicker .dot{width:6px;height:6px;border-radius:var(--radius-full);background:currentColor;opacity:.9}
+  .rank{font-size:12px;font-weight:600;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+  .hook{font-size:18px;font-weight:600;line-height:1.3;color:var(--cream);letter-spacing:-.01em}
+  .why{font-size:13.5px;color:var(--cream-2);line-height:1.45}
+  .why .k{color:var(--cream-muted)}
+  .proof{border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.02);
+    padding:11px 13px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:border-color .15s,background .15s}
+  .proof:hover{border-color:var(--border-hover);background:rgba(255,255,255,.035)}
+  .proof .top{display:flex;align-items:center;gap:10px;font-size:13px}
+  .band{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .band .bdot{width:7px;height:7px;border-radius:var(--radius-full)}
+  .stopped{color:var(--cream)} .stopped .n{font-weight:600}
+  .ribbon{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .ribbon > i{position:absolute;inset:0 auto 0 0;background:var(--cream-2);border-radius:2px}
+  .seerow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .quote{font-size:13px;font-style:italic;color:rgba(236,231,222,.82);line-height:1.4;
+    border-left:2px solid var(--border-hover);padding-left:11px}
+  .see{font-size:12px;color:var(--cream-2);white-space:nowrap;display:flex;align-items:center;gap:5px}
+  .see .av{display:flex}
+  .see .av span{width:15px;height:15px;border-radius:var(--radius-full);
+    background:radial-gradient(circle at 35% 30%, #4a4844, #322f2c);
+    border:1px solid var(--surface-thread);margin-left:-5px}
+  .see .av span:first-child{margin-left:0}
+  .actions{border-top:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:14px}
+  .btn-primary{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--radius-ctl);
+    font:inherit;font-size:13px;font-weight:600;padding:8px 15px;cursor:pointer}
+  .btn-text{background:none;border:none;color:var(--cream-2);font:inherit;font-size:13px;cursor:pointer}
+  .btn-text:hover{color:var(--cream)}
+  .save{margin-left:auto;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:13px;
+    cursor:pointer;display:flex;align-items:center;gap:6px}
+
+  /* compact script result card */
+  .beat{display:flex;gap:11px;font-size:13.5px;line-height:1.45}
+  .beat .bk{color:var(--cream-muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    width:78px;flex-shrink:0;padding-top:2px}
+  .beat .bt{color:var(--cream-2)} .beat .bt b{color:var(--cream);font-weight:600}
+
+  /* ════════ THE PROGRESS STATE (the hero refinement) ════════ */
+  .gen{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);
+    overflow:hidden}
+  .gen-head{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;
+    font-size:13.5px;color:var(--cream)}
+  .gen-head .gh-l{display:flex;align-items:center;gap:10px;font-weight:500}
+  .gen-head .spark{width:15px;height:15px;position:relative}
+  .gen-head .spark::before,.gen-head .spark::after{content:"";position:absolute;border-radius:50%}
+  .gen-head .spark::before{inset:0;border:1.5px solid var(--accent);opacity:.35}
+  .gen-head .spark::after{inset:4px;background:var(--accent);animation:breathe 1.8s var(--ease-soft) infinite}
+  @keyframes breathe{0%,100%{transform:scale(.7);opacity:.6}50%{transform:scale(1);opacity:1}}
+  .elapsed{font-size:12px;color:var(--cream-muted);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .gh-done .spark::after{animation:none;background:var(--success)}
+  .gh-done .spark::before{border-color:var(--success);opacity:.5}
+
+  .steps{padding:2px 17px 16px;overflow:hidden;transition:height .5s var(--ease),opacity .4s var(--ease-soft)}
+  .step{display:flex;gap:13px;min-height:34px}
+  .rail{width:16px;flex-shrink:0;display:flex;flex-direction:column;align-items:center}
+  .node{width:16px;height:16px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
+    border:1.5px solid var(--border-hover);position:relative;transition:border-color .4s var(--ease),background .4s var(--ease)}
+  .line{width:2px;flex:1;min-height:14px;background:var(--border);border-radius:2px;margin:3px 0;position:relative;overflow:hidden}
+  .line::after{content:"";position:absolute;inset:0 0 100% 0;background:var(--cream-2);border-radius:2px;
+    transition:bottom .5s var(--ease)}
+  .step:last-child .line{display:none}
+  .step-body{padding-bottom:14px;flex:1}
+  .step-label{font-size:14px;line-height:1.3;transition:color .4s var(--ease)}
+  .substep{font-size:12.5px;color:var(--cream-muted);margin-top:4px;height:0;opacity:0;overflow:hidden;
+    transition:height .35s var(--ease),opacity .35s var(--ease);display:flex;align-items:center;gap:7px}
+  .substep .tick{display:inline-flex;gap:3px}
+  .substep .tick i{width:3px;height:3px;border-radius:50%;background:var(--cream-muted);animation:wave 1.2s ease-in-out infinite}
+  .substep .tick i:nth-child(2){animation-delay:.16s} .substep .tick i:nth-child(3){animation-delay:.32s}
+  @keyframes wave{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+
+  /* states */
+  .step.pending .step-label{color:var(--cream-muted)}
+  .step.pending .node{border-color:var(--border-hover)}
+  .step.active .step-label{color:var(--cream)}
+  .step.active .node{border-color:var(--accent)}
+  .step.active .node::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .step.active .node{animation:ring 1.7s ease-out infinite}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(217,119,87,.5)}70%{box-shadow:0 0 0 6px rgba(217,119,87,0)}100%{box-shadow:0 0 0 0 rgba(217,119,87,0)}}
+  .step.active .substep{height:19px;opacity:1}
+  .step.active .line::after{bottom:50%}             /* spine fills halfway through the active step */
+  .step.done .step-label{color:var(--cream)}
+  .step.done .node{background:var(--cream);border-color:var(--cream)}
+  .step.done .node::after{content:"✓";font-size:10px;font-weight:700;color:var(--bg);
+    animation:pop .3s var(--ease)}
+  .step.done .line::after{bottom:0}                 /* spine fully filled above a done step */
+  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+  /* collapsed summary (Claude/Cursor-style "Generated in 0:14 ▸") */
+  .gen.collapsed .steps{height:0!important;opacity:0;padding-top:0;padding-bottom:0}
+  .gen-head.summary{cursor:pointer;color:var(--cream-2)}
+  .gen-head.summary .chev{margin-left:6px;font-size:11px;color:var(--cream-muted)}
+
+  /* composer */
+  .composer-wrap{flex-shrink:0;display:flex;justify-content:center;padding:8px 24px 22px;background:var(--bg)}
+  .composer{width:100%;max-width:760px;background:var(--surface-thread);border:1px solid var(--border-hover);
+    border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .composer .row{display:flex;align-items:center;gap:10px}
+  .skillpill{font-size:12.5px;font-weight:600;color:var(--cream-2);background:rgba(255,255,255,.03);
+    border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 11px;display:flex;align-items:center;gap:6px}
+  .skillpill .d{width:6px;height:6px;border-radius:var(--radius-full);background:var(--accent)}
+  .composer .ph{flex:1;color:var(--cream-muted);font-size:14.5px}
+  .send{width:32px;height:32px;border-radius:var(--radius-ctl);background:var(--action);color:var(--action-fg);
+    border:none;display:grid;place-items:center;font-size:15px;cursor:pointer;flex-shrink:0}
+
+  .legend{max-width:760px;margin:0 auto;width:100%;font-size:13px;color:var(--cream-2);background:var(--surface-thread);
+    border:1px solid var(--border);border-radius:var(--radius-card);padding:15px 17px;display:flex;flex-direction:column;gap:7px}
+  .legend b{color:var(--cream)} .legend .t{display:inline-block;min-width:74px;color:var(--cream-muted)}
+  .replay{position:fixed;top:11px;left:50%;transform:translateX(300px);font-size:12px;color:var(--cream-muted);
+    background:var(--surface-chip);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:6px 11px;cursor:pointer;z-index:9}
+  .replay:hover{color:var(--cream);border-color:var(--border-hover)}
+
+  /* smooth reveal — eased, slight rise + scale */
+  .reveal{opacity:0;transform:translateY(14px) scale(.99);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal,.say .w{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+  <button class="replay" onclick="run()">↻ replay</button>
+
+  <div class="topbar">
+    <span class="brand"><span class="glyph">n</span> Numen</span>
+    <span class="aud-chip"><span class="d"></span> Morning Routine Creators · TikTok</span>
+  </div>
+
+  <div class="scroll" id="scroll">
+    <div class="thread" id="thread">
+
+      <!-- ===== TURN 1 — text → cards → text ===== -->
+      <div class="turn-user reveal" data-step="0">
+        <div class="bubble">Give me hooks for a video on why posting daily actually hurts your reach</div>
+      </div>
+
+      <div class="turn-ai">
+        <div class="ai-head reveal" data-step="1"><span class="mark">n</span> Numen · Hooks</div>
+        <p class="say" data-words="1" id="intro1">Here are your strongest hooks for Morning&nbsp;Routine&nbsp;Creators. The top one stops 8&nbsp;of&nbsp;10 — it weaponizes the exact advice they already follow, then turns it into the villain.</p>
+
+        <div class="cards">
+          <div class="card reveal" data-step="2">
+            <div class="body">
+              <div class="eyebrow"><span class="kicker" style="color:var(--success)"><span class="dot"></span>Stops the skeptic</span><span class="rank">#1</span></div>
+              <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+              <p class="why"><span class="k">Why it works —</span> Pattern-interrupt against received wisdom: names the advice they follow, then frames it as the cause of their problem.</p>
+              <div class="proof">
+                <div class="top"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> stopped</span><span class="ribbon"><i style="width:80%"></i></span></div>
+                <div class="seerow"><span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span><span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span></div>
+              </div>
+            </div>
+            <div class="actions"><button class="btn-primary">Test full →</button><button class="btn-text">Write script →</button><button class="save">⌖ Save</button></div>
+          </div>
+
+          <div class="card reveal" data-step="3">
+            <div class="body">
+              <div class="eyebrow"><span class="kicker" style="color:var(--warning)"><span class="dot"></span>Reframes the metric</span><span class="rank">#2</span></div>
+              <p class="hook">You don't have a posting problem. You have a “which 3 posts” problem.</p>
+              <p class="why"><span class="k">Why it works —</span> Swaps the volume frame for a selection frame — but the premise lands softer with this audience.</p>
+              <div class="proof">
+                <div class="top"><span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span><span class="stopped"><span class="n">5/10</span> stopped</span><span class="ribbon"><i style="width:50%;background:var(--cream-muted)"></i></span></div>
+                <div class="seerow"><span class="quote">“Wait, which three though? Now I want to know.”</span><span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span></div>
+              </div>
+            </div>
+            <div class="actions"><button class="btn-primary">Test full →</button><button class="btn-text">Write script →</button><button class="save">⌖ Save</button></div>
+          </div>
+        </div>
+
+        <p class="say dim" data-words="4" id="outro1">3 more hooks below. The top one beats your last opener by a wide margin — want to take it further?</p>
+        <div class="chips reveal" data-step="4">
+          <button class="chip primary">Write a script from #1 →</button>
+          <button class="chip">Test the top hook on your audience →</button>
+          <button class="chip">Show the other 3</button>
+        </div>
+      </div>
+
+      <!-- ===== TURN 2 — the premium working state ===== -->
+      <div class="turn-user reveal" data-step="5">
+        <div class="bubble">Write a script from the first one</div>
+      </div>
+
+      <div class="turn-ai">
+        <div class="ai-head reveal" data-step="6"><span class="mark">n</span> Numen · Script</div>
+        <p class="say" data-words="6" id="intro2">On it — building a script around “Everyone tells you to post daily…” and pressure-testing the open against your audience.</p>
+
+        <div class="gen reveal" data-step="7" id="gen">
+          <div class="gen-head" id="genHead">
+            <span class="gh-l"><span class="spark"></span> <span id="genTitle">Generating your script</span></span>
+            <span class="elapsed" id="elapsed">0:00</span>
+          </div>
+          <div class="steps" id="steps">
+            <div class="step pending" data-i="0">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Read the hook &amp; your audience signature</div>
+                <div class="substep"><span id="ss0">Loading your 10 calibrated reactors…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="1">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Mapping the beat structure</div>
+                <div class="substep"><span id="ss1">Hook → tension → turn → payoff…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="2">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Writing the script</div>
+                <div class="substep"><span id="ss2">Drafting the cold open…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="3">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Scoring the open against 10 reactors</div>
+                <div class="substep"><span id="ss3">Reactor 1 of 10 reacting…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards"><div class="card" id="scriptCard" style="display:none">
+          <div class="body">
+            <div class="eyebrow"><span class="kicker" style="color:var(--success)"><span class="dot"></span>Script · 32s</span><span class="rank">Strong open</span></div>
+            <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+            <div class="beat"><span class="bk">Cold open</span><span class="bt"><b>0:00</b> — “Everyone tells you to post daily. Mine tanked until I did the opposite.”</span></div>
+            <div class="beat"><span class="bk">Tension</span><span class="bt"><b>0:04</b> — The algorithm doesn't reward frequency. It rewards the three posts that actually land.</span></div>
+            <div class="beat"><span class="bk">Payoff</span><span class="bt"><b>0:18</b> — Post less. Study what hits. Make more of that.</span></div>
+            <div class="proof">
+              <div class="top"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> held to 0:04</span><span class="ribbon"><i style="width:80%"></i></span></div>
+              <div class="seerow"><span class="quote">“Okay the opposite — now I have to know what you did.”</span><span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span></div>
+            </div>
+          </div>
+          <div class="actions"><button class="btn-primary">Test full script →</button><button class="btn-text">Refine the open →</button><button class="save">⌖ Save</button></div>
+        </div></div>
+
+        <p class="say dim" data-words="8" id="outro2" style="display:none">Strongest version held 8 of 10 past the 4-second drop-off. Want me to tighten the payoff, or test the whole thing?</p>
+      </div>
+
+      <div class="legend reveal" data-step="9">
+        <div style="color:var(--cream);font-weight:600;margin-bottom:3px">v2 — refinement focus</div>
+        <div><span class="t">Progress</span> Connected <b>spine</b> with accruing checks; active step <b>pulses</b> + shows a <b>live sub-detail</b> that narrates real work &amp; value (“Reactor 6 of 10 reacting…”); elapsed timer; collapses to a <b>“Generated in 0:32 ▸”</b> summary (Claude/Cursor pattern). This is what users watch on every latency-heavy skill.</div>
+        <div><span class="t">Smoothness</span> Eased reveals (rise + scale); cards arrive <b>one by one</b>; intro/outro <b>word-fade</b> (blur→sharp) instead of jittery char-typing; spine fills + check pops on each completion.</div>
+        <div><span class="t">Resolves</span> Working state → collapses → result <b>card streams in</b> → outro continues the conversation. The full latency arc, end to end.</div>
+        <div><span class="t">Still TODO</span> real avatars in “See the room”, lens-open state, pure chat turn, error/retry, per-skill step copy, motion timing pass.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="composer-wrap">
+    <div class="composer"><div class="row">
+      <span class="skillpill"><span class="d"></span> /script</span>
+      <span class="ph">Reply, or pick a skill…</span>
+      <button class="send">↑</button>
+    </div></div>
+  </div>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+  // wrap text into per-word spans (preserve &nbsp;)
+  function wordsify(el){
+    if(el.dataset.wrapped) return;
+    const html=el.innerHTML; el.dataset.raw=html;
+    el.innerHTML = html.split(' ').map(w=>`<span class="w">${w}</span>`).join(' ');
+    el.dataset.wrapped='1';
+  }
+  function emphasize(el){
+    el.querySelectorAll('.w').forEach(w=>{
+      const t=w.textContent;
+      if(/Morning|Routine|Creators|8 of 10|8\/10/.test(t)) w.classList.add('em');
+      if(t.includes('“Everyone')||t.includes('daily…”')) w.classList.add('em');
+    });
+  }
+  function revealWords(el,doneCb){
+    wordsify(el); emphasize(el);
+    const ws=el.querySelectorAll('.w');
+    if(reduce){ ws.forEach(w=>w.classList.add('in')); doneCb&&doneCb(); return; }
+    ws.forEach((w,i)=>setTimeout(()=>{ w.classList.add('in'); if(i===ws.length-1) doneCb&&doneCb(); }, i*38));
+  }
+  const show = step => $$(`[data-step="${step}"]`).forEach(el=>el.classList.add('in'));
+
+  // ── progress engine ──
+  const SUBS=[
+    ["Loading your 10 calibrated reactors…","Reading the hook's promise…"],
+    ["Hook → tension → turn → payoff…","Placing the 4-second retention beat…"],
+    ["Drafting the cold open…","Building the tension beat…","Landing the payoff…"],
+    ["Reactor 3 of 10 reacting…","The Skeptic is responding…","Comparing to your 8/10 baseline…"],
+  ];
+  let timers=[], elapsedT=null, subT=null;
+  function clearAll(){ timers.forEach(clearTimeout); timers=[]; clearInterval(elapsedT); clearInterval(subT); }
+  function after(ms,fn){ timers.push(setTimeout(fn,ms)); }
+
+  function startElapsed(){
+    let s=0; const el=$('#elapsed');
+    elapsedT=setInterval(()=>{ s++; el.textContent='0:'+String(s).padStart(2,'0'); }, 1000);
+    return ()=>{ clearInterval(elapsedT); return s; };
+  }
+  function cycleSub(i){
+    clearInterval(subT); const opts=SUBS[i], span=$('#ss'+i); let k=0;
+    span.textContent=opts[0];
+    subT=setInterval(()=>{ k=(k+1)%opts.length; span.textContent=opts[k]; }, 1050);
+  }
+  function setStep(i,state){
+    const steps=$$('#steps .step');
+    steps[i].className='step '+state;
+    if(state==='active') cycleSub(i);
+  }
+
+  function runProgress(onDone){
+    const steps=$$('#steps .step');
+    const stop=startElapsed();
+    const STEP_MS=[1500,1700,2300,1900];
+    let i=0;
+    function go(){
+      if(i>0) setStep(i-1,'done');
+      if(i>=steps.length){ clearInterval(subT); onDone(stop()); return; }
+      setStep(i,'active');
+      after(STEP_MS[i], ()=>{ i++; go(); });
+    }
+    go();
+  }
+
+  function collapseAndResolve(secs){
+    const gen=$('#gen'), head=$('#genHead');
+    $('#genTitle').textContent='Generated in 0:'+String(secs).padStart(2,'0');
+    head.classList.add('gh-done','summary');
+    head.querySelector('.elapsed').innerHTML='<span class="chev">▾ steps</span>';
+    // measure → collapse steps
+    const steps=$('#steps'); steps.style.height=steps.scrollHeight+'px';
+    requestAnimationFrame(()=>{ gen.classList.add('collapsed'); });
+    head.onclick=()=>{ // expand/collapse toggle
+      gen.classList.toggle('collapsed');
+      head.querySelector('.chev').textContent = gen.classList.contains('collapsed')?'▾ steps':'▴ hide';
+    };
+    after(520, ()=>{
+      const c=$('#scriptCard'); c.style.display='';
+      c.classList.add('reveal'); requestAnimationFrame(()=>c.classList.add('in'));
+      $('#scroll').scrollTo({top:$('#scroll').scrollHeight,behavior:'smooth'});
+      after(650, ()=>{ const o=$('#outro2'); o.style.display=''; revealWords(o); show(9);
+        after(300,()=>$('#scroll').scrollTo({top:$('#scroll').scrollHeight,behavior:'smooth'})); });
+    });
+  }
+
+  function run(){
+    clearAll();
+    $$('.reveal').forEach(el=>el.classList.remove('in'));
+    // reset voices
+    ['#intro1','#outro1','#intro2','#outro2'].forEach(s=>{const el=$(s); if(el.dataset.raw){el.innerHTML=el.dataset.raw; delete el.dataset.wrapped;}});
+    // reset progress + result
+    $('#gen').classList.remove('collapsed'); $('#genHead').className='gen-head'; $('#genHead').onclick=null;
+    $('#genTitle').textContent='Generating your script'; $('#elapsed').textContent='0:00';
+    $('#steps').style.height=''; $$('#steps .step').forEach(s=>s.className='step pending');
+    const sc=$('#scriptCard'); sc.style.display='none'; sc.classList.remove('in');
+    $('#outro2').style.display='none';
+    const scroll=$('#scroll'); scroll.scrollTop=0;
+
+    if(reduce){
+      [0,1,2,3,4,5,6,7,9].forEach(show);
+      revealWords($('#intro1')); revealWords($('#outro1')); revealWords($('#intro2'));
+      $$('#steps .step').forEach((s,i)=>s.className='step '+(i<3?'done':'active'));
+      return;
+    }
+
+    const seq=[
+      [150,  ()=>show(0)],
+      [600,  ()=>{ show(1); revealWords($('#intro1')); }],
+      [2700, ()=>show(2)],
+      [3050, ()=>show(3)],
+      [3550, ()=>{ revealWords($('#outro1')); show(4); }],
+      [4600, ()=>{ show(5); scroll.scrollTo({top:scroll.scrollHeight,behavior:'smooth'}); }],
+      [5150, ()=>{ show(6); revealWords($('#intro2')); }],
+      [6300, ()=>{ show(7); scroll.scrollTo({top:scroll.scrollHeight,behavior:'smooth'});
+                   runProgress(secs=>collapseAndResolve(secs)); }],
+    ];
+    seq.forEach(([t,fn])=>after(t,fn));
+  }
+  run();
+</script>
+</body>
+</html>
