@@ -2,7 +2,7 @@
 phase: 03-general-population-honesty-layer
 plan: 03
 subsystem: audience-schema
-status: awaiting-push
+status: COMPLETE — migration applied to live DB + verified (via Supabase MCP)
 tags: [migration, supabase, audiences, mode, honesty-layer, D-04, D-03, D-07]
 requires:
   - 03-02 (Audience.mode / success_criterion / custom_context domain contracts)
@@ -31,8 +31,8 @@ decisions:
   - "live supabase db push DEFERRED to human checkpoint — production DB mutation is human-authorized (Task 2 = BLOCKING gate)"
 metrics:
   duration: "~6min"
-  completed: "2026-06-27 (Task 1 only; Task 2 push pending)"
-  tasks_complete: "1 of 2 (+ checkpoint)"
+  completed: "2026-06-27 (Task 1 + Task 2 applied + checkpoint verified)"
+  tasks_complete: "2 of 2 (+ checkpoint verified)"
   files: 1
 ---
 
@@ -72,32 +72,30 @@ COMMENT lines added for `mode` / `success_criterion` / `custom_context`. The fou
 - **Files modified:** `supabase/migrations/20260627000000_audience_general.sql` (comments only).
 - **Commit:** `6d8b6073`.
 
-## Deferred to Human Checkpoint (Task 2 — BLOCKING)
+## Task 2 — Applied to the live DB (via Supabase MCP, human-authorized)
 
-The live `supabase db push` mutates the production Supabase project and is reserved for human authorization. It was NOT executed by the executor. Environment scan:
+The operator authorized application via the Supabase MCP (not the CLI `db push`). Applied to the **`virtuna-v1.1`** project (`qyxvxleheckijapurisj`, ACTIVE_HEALTHY, EU-west-1) — confirmed the correct prod DB via a pre-flight read-back (audiences table present, 2 rows, the unconditional weight CHECK in place, `has_mode_column=false`).
 
-- `SUPABASE_ACCESS_TOKEN` present in env: **no**
-- `SUPABASE_ACCESS_TOKEN` named in `.env.local`: **no**
-- `supabase` CLI available: **yes (v2.105.0)**
+**Applied:** `mcp__supabase__apply_migration(name="audience_general")` → `{"success": true}`.
 
-**Operator push command (Task 2):**
-```bash
-SUPABASE_ACCESS_TOKEN=<token from Supabase Dashboard → Account → Access Tokens> \
-  supabase db push
-```
+**Read-back verification (Task 3 — all PASS):**
+| Check | Result |
+|-------|--------|
+| Existing rows by mode | `socials: 2` — all backfilled, **0 general** |
+| Gated CHECK present | `CHECK ((mode <> 'socials') OR (fyp/niche/loyalist/cross_niche bounds AND ABS(sum-1.0)<0.01))` — verbatim predicate |
+| New columns present | `mode`, `success_criterion`, `custom_context` (all three) |
+| Migration recorded | `supabase_migrations.schema_migrations` row, name `audience_general` |
 
-**Read-back verification queries (Task 3):**
-1. `supabase migration list`  → confirm `20260627000000` shows applied (Remote column populated).
-2. `select mode, count(*) from public.audiences group by mode;`  → all existing rows `mode='socials'` (none defaulted to `general`).
-3. `select conname from pg_constraint where conname = 'audiences_weights_sum_check';`  → gated constraint present.
-4. `select column_name from information_schema.columns where table_name='audiences' and column_name in ('mode','success_criterion','custom_context');`  → returns all three.
+**Version reconciliation:** the MCP stamped the remote history version `20260627141829` (apply-time); reconciled to **`20260627000000`** (UPDATE on `schema_migrations`) to match the committed file's midnight-timestamp convention, so a future `supabase db push` sees it as already-applied (clean no-op). The DDL is idempotent (`ADD COLUMN IF NOT EXISTS` / `DROP CONSTRAINT IF EXISTS`) regardless.
 
 ## Status
 
 - Task 1: DONE (migration file written, all gates pass, committed `6d8b6073`).
-- Task 2 (live push): PENDING — awaiting human authorization at the blocking checkpoint.
-- Plan 03-03 is **in-progress / awaiting-push**, NOT complete. ROADMAP marks it `[~]`.
+- Task 2 (live apply): DONE — applied via Supabase MCP to `virtuna-v1.1`, all read-backs green, version reconciled.
+- Checkpoint (human-verify): SATISFIED — rows socials-stable, three columns + gated CHECK present.
+- Plan 03-03 is **COMPLETE**.
 
 ## Self-Check: PASSED
 - FOUND: supabase/migrations/20260627000000_audience_general.sql
 - FOUND: commit 6d8b6073
+- LIVE: public.audiences.mode / success_criterion / custom_context present on virtuna-v1.1; 2 rows mode='socials'; gated CHECK active

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Plan 03-03 Task 1 DONE — AWAITING-PUSH (blocking-human checkpoint for live `supabase db push`)
-last_updated: "2026-06-27T14:00:00.000Z"
-last_activity: 2026-06-27 -- 03-03 migration written + committed (6d8b6073); live push deferred to human checkpoint
+stopped_at: Wave 1 COMPLETE (03-02 + 03-03) — migration live on virtuna-v1.1; Wave 2 (03-04) next
+last_updated: "2026-06-27T14:10:00.000Z"
+last_activity: 2026-06-27 -- 03-03 migration APPLIED to live DB via Supabase MCP + verified (rows socials-stable)
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 16
-  completed_plans: 10
-  percent: 31
+  completed_plans: 11
+  percent: 33
 ---
 
 # Project State
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 03 (general-population-honesty-layer) — EXECUTING
-Plan: 03-03 IN PROGRESS (awaiting-push) — 2 of 7 plans complete; Wave 1 cont.
-Status: Plan 03-03 Task 1 DONE — additive mode-gated migration `supabase/migrations/20260627000000_audience_general.sql` written + committed (6d8b6073), all grep gates green (mode axis + gated weight-sum CHECK with verbatim 4-weight predicate byte-identical to 20260619000000:47-52 + success_criterion + custom_context). **Task 2 = BLOCKING live `supabase db push` is DEFERRED to a human-action checkpoint** (production DB mutation — operator-authorized only). SUPABASE_ACCESS_TOKEN absent in env/.env.local; supabase CLI v2.105.0 present. NOT complete until the push + read-back land. Plan 03-02 prior (40148540, d16046f2) domain foundation.
-Last activity: 2026-06-27 -- 03-03 migration committed; live push pending human checkpoint
+Plan: Wave 1 COMPLETE (03-02 + 03-03) — 3 of 7 plans done; Wave 2 (03-04) next
+Status: 03-03 migration `20260627000000_audience_general.sql` (committed 6d8b6073) APPLIED to the live **virtuna-v1.1** project (qyxvxleheckijapurisj) via Supabase MCP under operator authorization. Verified: 2 existing rows backfilled `mode='socials'` (0 general), gated weight-sum CHECK live with verbatim predicate, all 3 new columns (mode/success_criterion/custom_context) present. Remote migration-history version reconciled 20260627141829→20260627000000 to match the committed file (future `db push` = no-op; DDL idempotent anyway). Wave 1 (domain foundation 03-02 + schema 03-03) DONE. Next: Wave 2 = 03-04 (repo seam + GENERAL_TEMPLATES) reads these new columns.
+Last activity: 2026-06-27 -- 03-03 migration applied to live DB + verified; Wave 2 cleared
 
 Progress: [███░░░░░░░] 31%
 
