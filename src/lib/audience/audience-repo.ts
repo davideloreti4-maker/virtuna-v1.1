@@ -38,6 +38,10 @@ export const GENERAL_AUDIENCE: Audience = {
   user_id: "__virtual__",
   name: "General",
   type: "target",
+  // PITFALL 1 (collision trap): the locked General DEFAULT runs the SOCIALS pack
+  // (is_general marks the default weight mix, NOT the domain). ONLY the new
+  // analyst/hiring GENERAL_TEMPLATES below are mode:'general'. Do not conflate.
+  mode: "socials",
   platform: "tiktok",
   goal_label: null,
   goal_intent: null,
@@ -67,6 +71,7 @@ export const PRESET_AUDIENCES: Audience[] = [
     user_id: "__virtual__",
     name: "Growth Audience",
     type: "target",
+    mode: "socials", // PITFALL 1: presets run the Socials pack, never 'general'.
     platform: "tiktok",
     goal_label: "Grow my following",
     goal_intent: "grow" as GoalIntent,
@@ -84,6 +89,7 @@ export const PRESET_AUDIENCES: Audience[] = [
     user_id: "__virtual__",
     name: "Conversion Audience",
     type: "target",
+    mode: "socials", // PITFALL 1: presets run the Socials pack, never 'general'.
     platform: "tiktok",
     goal_label: "Drive sales & conversions",
     goal_intent: "sell" as GoalIntent,
@@ -132,12 +138,26 @@ const WeightsSchema = z
  * Writable audience shape validated on create/update.
  * name: max 80 chars; goal_label: max 120 chars.
  */
-const WritableAudienceSchema = z.object({
+export const WritableAudienceSchema = z.object({
   name: z.string().min(1).max(80),
   type: z.enum(["personal", "target"]),
   platform: z.enum(["tiktok", "instagram", "youtube", "custom"]),
   goal_label: z.string().max(120).nullable().optional(),
   goal_intent: z.enum(["grow", "sell", "authority", "nurture"]).nullable().optional(),
+  // POP-01 — first-class domain axis (D-04). user_id is NEVER here (session-derived).
+  mode: z.enum(["socials", "general"]).optional(),
+  // POP-05 — editable free-text "what good means"; capped to bound stored-XSS surface (T-03-08).
+  success_criterion: z.string().max(2000).nullable().optional(),
+  // POP-04 — user-added grounding; note capped (T-03-08), source pinned to the "user" literal.
+  custom_context: z
+    .array(
+      z.object({
+        source: z.literal("user"),
+        note: z.string().max(2000),
+        persona_evidence_link: z.string().optional(),
+      }),
+    )
+    .optional(),
   is_general: z.boolean().optional().default(false),
   is_preset: z.boolean().optional().default(false),
   persona_weights: WeightsSchema.optional(),
@@ -160,6 +180,9 @@ interface AudienceRow {
   platform: string;
   goal_label: string | null;
   goal_intent: string | null;
+  mode: string;
+  success_criterion: string | null;
+  custom_context: unknown[];
   is_general: boolean;
   is_preset: boolean;
   fyp: number;
@@ -176,15 +199,18 @@ interface AudienceRow {
 }
 
 /** Map a DB row → Audience domain object. */
-function rowToAudience(row: AudienceRow): Audience {
+export function rowToAudience(row: AudienceRow): Audience {
   return {
     id: row.id,
     user_id: row.user_id,
     name: row.name,
     type: row.type as Audience["type"],
+    mode: row.mode as Audience["mode"],
     platform: row.platform as Audience["platform"],
     goal_label: row.goal_label,
     goal_intent: row.goal_intent as Audience["goal_intent"],
+    success_criterion: row.success_criterion ?? null,
+    custom_context: (row.custom_context as Audience["custom_context"]) ?? [],
     is_general: row.is_general,
     is_preset: row.is_preset,
     persona_weights: {
@@ -204,7 +230,7 @@ function rowToAudience(row: AudienceRow): Audience {
 }
 
 /** Map an Audience domain object → DB row insert/update payload (flat weights). */
-function audienceToRow(
+export function audienceToRow(
   a: Partial<Audience>,
   sessionUserId: string,
 ): Partial<AudienceRow> {
@@ -214,9 +240,12 @@ function audienceToRow(
 
   if (a.name !== undefined) row.name = a.name;
   if (a.type !== undefined) row.type = a.type;
+  if (a.mode !== undefined) row.mode = a.mode;
   if (a.platform !== undefined) row.platform = a.platform;
   if ("goal_label" in a) row.goal_label = a.goal_label ?? null;
   if ("goal_intent" in a) row.goal_intent = a.goal_intent ?? null;
+  if ("success_criterion" in a) row.success_criterion = a.success_criterion ?? null;
+  if ("custom_context" in a) row.custom_context = a.custom_context ?? [];
   if (a.is_general !== undefined) row.is_general = a.is_general;
   if (a.is_preset !== undefined) row.is_preset = a.is_preset;
   if (a.persona_weights !== undefined) {
