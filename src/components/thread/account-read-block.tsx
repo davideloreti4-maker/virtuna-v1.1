@@ -7,10 +7,12 @@
  * mapping the deterministic AccountReadResult onto a FIXED layout — NO model-generated UI.
  *
  * lane/polish refinement (docs/subsystems/ui-skill-cards.md §2): brought onto the refined
- * thread-card chrome (matte, warm-cream, eyebrow kicker) and densified to match the sketch —
- * a single card with a two-column What's-working / What-to-fix comparison + full-width
- * recurring-hooks / format-mix / drop-points + the accuracy line, instead of a stack of
- * separate ReadingSection cards.
+ * thread-card chrome (matte, warm-cream, eyebrow kicker) and densified to match the sketch.
+ *
+ * Tier C scrape-data slice: the card now opens with the REAL scrape — a profile header
+ * (avatar / display name / verified / follower + post counts) and a cover-thumbnail strip
+ * of the analyzed posts (top performers, with view counts) — so the Read is visibly grounded
+ * in the creator's actual account, not just a handle string over a wall of text.
  *
  * Honesty spine:
  *   - Thin-history fallback (SELF-02): warning-toned `--color-warning` state, NEVER
@@ -18,6 +20,11 @@
  *   - Accuracy track record (SELF-03): cream-PRIMARY number (data, not a CTA); the empty
  *     copy shows when `trackRecord` is null.
  *   - Working / fix labels use the sanctioned success / warning DATA tones (not brand accent).
+ *   - Cover URLs are ephemeral TikTok-CDN images → display-only: a broken/expired cover
+ *     degrades to a placeholder tile (the view count still reads), never a broken-image icon.
+ *
+ * Back-compat: `profile` / `analyzedVideos` are optional. A pre-Tier-C saved snapshot (no
+ * profile) falls back to the handle-only eyebrow and simply omits the header + cover strip.
  *
  * Deferred (§7 product call): the forward action "Write to my strengths →" is NOT wired yet
  * — it's net-new behavior (seed Ideas?). The footer carries Save for now.
@@ -28,6 +35,8 @@ import { SaveAffordance } from './save-affordance';
 
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
 type FormatMix = AccountReadPatterns['formatMix'];
+type AccountReadProfile = NonNullable<AccountReadBlock['props']['profile']>;
+type AnalyzedVideos = NonNullable<AccountReadBlock['props']['analyzedVideos']>;
 
 export interface AccountReadBlockProps {
   block: AccountReadBlock;
@@ -37,15 +46,119 @@ export interface AccountReadBlockProps {
 
 const CARD = 'overflow-hidden rounded-xl border border-white/[0.06] bg-transparent';
 
-/** Eyebrow kicker — cream-muted dot + label, with the handle as the right-side meta. */
-function Eyebrow({ handle }: { handle: string }) {
+/** Compact count formatter — 142000 → "142K", 1500 → "1.5K", 2_400_000 → "2.4M". */
+function formatCompact(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return '0';
+  const fmt = (val: number, suffix: string) =>
+    `${val >= 10 || Number.isInteger(val) ? Math.round(val) : val.toFixed(1)}${suffix}`;
+  if (n < 1000) return String(Math.round(n));
+  if (n < 1_000_000) return fmt(n / 1000, 'K');
+  return fmt(n / 1_000_000, 'M');
+}
+
+/** Eyebrow kicker — cream-muted dot + label; optional right-side @handle (back-compat/thin). */
+function Eyebrow({ handle }: { handle?: string }) {
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
         <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
         A Read on your account
       </span>
-      <span className="shrink-0 text-[12px] text-foreground-muted">@{handle}</span>
+      {handle ? <span className="shrink-0 text-[12px] text-foreground-muted">@{handle}</span> : null}
+    </div>
+  );
+}
+
+/** Subtle verified tick — cream-secondary (a data signal, not brand accent / not blue). */
+function VerifiedTick() {
+  return (
+    <span
+      className="inline-flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-full bg-white/[0.08]"
+      title="Verified"
+      aria-label="Verified"
+    >
+      <svg viewBox="0 0 10 10" className="h-[7px] w-[7px]" fill="none" aria-hidden="true">
+        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="var(--color-foreground-secondary)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/** Profile header — the REAL scrape identity: avatar + name + verified + follower/post counts. */
+function ProfileHeader({ profile }: { profile: AccountReadProfile }) {
+  const name = profile.displayName?.trim() || `@${profile.handle}`;
+  const initial = (name.replace(/^@/, '')[0] ?? '?').toUpperCase();
+  return (
+    <div className="flex items-center gap-3" data-testid="account-read-profile">
+      {/* Avatar — real scrape image over a warm placeholder; broken/empty → the initial shows. */}
+      <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-full bg-white/[0.06]">
+        <span className="absolute inset-0 flex items-center justify-center text-[15px] font-semibold text-foreground-muted" aria-hidden="true">
+          {initial}
+        </span>
+        {profile.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN avatar, not a static asset
+          <img
+            src={profile.avatarUrl}
+            alt=""
+            loading="lazy"
+            className="relative h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        ) : null}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-[15px] font-semibold text-foreground">{name}</span>
+          {profile.verified ? <VerifiedTick /> : null}
+        </div>
+        <p className="truncate text-[12.5px] text-foreground-muted">
+          @{profile.handle} · {formatCompact(profile.followerCount)} followers · {formatCompact(profile.videoCount)} posts
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Cover strip — the analyzed posts as 9:16 thumbnails with view counts (real scrape media). */
+function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
+  return (
+    <div data-testid="account-read-covers">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Posts we read</p>
+      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {videos.map((v, i) => {
+          const Tag = v.videoUrl ? 'a' : 'div';
+          return (
+            <Tag
+              key={`cover-${i}`}
+              {...(v.videoUrl ? { href: v.videoUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
+              className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]"
+              title={v.caption || undefined}
+            >
+              {v.coverUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
+                <img
+                  src={v.coverUrl}
+                  alt=""
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : null}
+              {/* Views overlay — over imagery (white on a dark gradient), legible even if cover fails. */}
+              <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1 pb-0.5 pt-3 text-[9px] font-medium tabular-nums text-white/90">
+                <svg viewBox="0 0 8 8" className="h-[6px] w-[6px]" fill="currentColor" aria-hidden="true">
+                  <path d="M1.5 1L7 4L1.5 7Z" />
+                </svg>
+                {formatCompact(v.views)}
+              </span>
+            </Tag>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -158,7 +271,7 @@ function ThinFallback({ handle }: { handle: string }) {
 }
 
 export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockProps) {
-  const { handle, fallback, patterns, trackRecord } = block.props;
+  const { handle, fallback, patterns, trackRecord, profile, analyzedVideos } = block.props;
 
   // Honest thin-history fallback (SELF-02) — never renders fabricated patterns.
   if (fallback === 'thin' || !patterns) {
@@ -168,7 +281,14 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
   return (
     <div className={CARD} data-testid="account-read-block">
       <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
-        <Eyebrow handle={handle} />
+        <Eyebrow />
+
+        {/* Real scrape identity — opens the card with the creator's own face + counts. */}
+        {/* Back-compat: a pre-Tier-C snapshot (no profile) shows the handle in the eyebrow. */}
+        {profile ? <ProfileHeader profile={profile} /> : <p className="text-[13px] text-foreground-muted">@{handle}</p>}
+
+        {/* The analyzed posts — real cover thumbnails (top performers), proof the Read is grounded. */}
+        {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
 
         {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
