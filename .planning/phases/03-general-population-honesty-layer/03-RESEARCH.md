@@ -415,7 +415,7 @@ export interface CustomContext {
 - [ ] `scripts/<re-bake-harness>.ts` — D-01 live double-bake (re-create the torn-down probe; reuse frozen fixture)
 - [ ] `src/lib/audience/__tests__/resolve-tier.test.ts` — tier truth table (POP-02/TRUST-01)
 - [ ] `src/lib/audience/__tests__/audience-repo-mode.test.ts` (or extend an existing repo test) — `mode`/`success_criterion`/`custom_context` round-trip + template constants + sentinel skip (POP-01/03/04/05/TRUST-02)
-- [ ] Component test(s) for badge + ungrounded state (TRUST-01/02) — may fold into `/gsd-ui-phase`
+- [ ] Component test(s) for badge + ungrounded state (TRUST-01/02) — lands **in-phase** as `src/components/audience/__tests__/honesty-render.test.tsx` (03-05); UI-SPEC was `--skip-ui`'d so there is NO `/gsd-ui-phase` to defer to. (Authoritative: 03-VALIDATION.md.)
 - Existing `signature-determinism.test.ts` already covers assembly/normalization determinism + 10-persona evidence presence — **free, keep green**.
 
 ## Security Domain
