@@ -36,6 +36,7 @@ import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
 import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
+import { TrustBadge } from '@/components/audience/trust-badge';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -228,8 +229,15 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
           renderer without a re-fetch (mirrors account-read-block). Save check is
           cream, never coral (SaveAffordance owns the color discipline). */}
       <div className="flex items-center justify-between gap-3">
-        {/* Provenance — SIM-1 Flash. No 0-100 number anywhere (honesty spine). */}
-        <p className="text-xs text-muted/60">SIM-1 Flash</p>
+        {/* Provenance — SIM-1 Flash + run-level trust tier (TRUST-01). The TrustBadge
+            rides the run so the honesty verdict survives scroll-away (mirrors the band
+            model-tag idiom). Falls back to "Directional" when the upstream emitter did
+            not set tier — the honest default, NEVER silently "Validated". No 0-100
+            number anywhere (honesty spine). */}
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted/60">SIM-1 Flash</p>
+          <TrustBadge tier={block.props.tier ?? 'Directional'} />
+        </div>
         <SaveAffordance
           item_type="read"
           title={saveTitle}
