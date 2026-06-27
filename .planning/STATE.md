@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-06-27T22:18:00.000Z"
-last_activity: 2026-06-27 -- 04-03 complete (vision.ts — screenshot → qwen3.7-plus read, Wave 1 leaf)
+stopped_at: Completed 04-04-PLAN.md (Phase 04 COMPLETE)
+last_updated: "2026-06-27T22:30:00.000Z"
+last_activity: 2026-06-27 -- 04-04 complete (normalizeStimulus adapter entry — Wave 2; Phase 04 input-adapter COMPLETE)
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 20
-  completed_plans: 19
-  percent: 47
+  completed_plans: 20
+  percent: 57
 ---
 
 # Project State
@@ -25,16 +25,17 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 04 (input-adapter) — EXECUTING
-Plan: 4 of 4
-Status: Executing Phase 04 — 04-03 complete (Wave 1 leaf module: vision read)
+Phase: 04 (input-adapter) — COMPLETE (4/4 plans)
+Plan: 4 of 4 — DONE
+Status: Phase 04 COMPLETE — 04-04 done (Wave 2: normalizeStimulus adapter entry; full stimulus suite GREEN)
+Status (prior): 04-03 complete (Wave 1 leaf module: vision read)
 Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-27 -- 04-03 complete (Wave 1 leaf module: vision read)
+Last activity: 2026-06-27 -- 04-04 complete (Wave 2: normalizeStimulus adapter entry; Phase 04 input-adapter COMPLETE)
 
-Progress: [████░░░░░░] 47% (3/7 phases complete)
+Progress: [██████░░░░] 57% (4/7 phases complete)
 
 ## Performance Metrics
 
@@ -74,6 +75,7 @@ Progress: [████░░░░░░] 47% (3/7 phases complete)
 | Phase 04 P01 | ~12min | 2 tasks | 7 files |
 | Phase 04 P02 | ~3min | 2 tasks | 2 files |
 | Phase 04 P03 | ~8min | 1 tasks | 2 files |
+| Phase 04 P04 | ~6min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -81,6 +83,7 @@ Progress: [████░░░░░░] 47% (3/7 phases complete)
 
 Recent decisions affecting current work:
 
+- [Phase 04]: 04-04: Wave 2 adapter door — turned the last 04-01 RED stub `normalize.test.ts` GREEN (4/4). New `stimulus/normalize.ts`: `normalizeStimulus(input: StimulusInput): Promise<Stimulus>` — the additive General-path sibling of the Socials `normalizeInput` (normalize.ts:42), an exhaustive discriminated-union switch over `input.kind` that orchestrates the leaves: text → raw content; file_text → `readTextFile`; image → `readImageWithVision`; video → `content:""` (omni read DEFERRED to P5 — D-06: P4 only TAGS) + `source.storagePath` + profiler `subject:{isProfiledSubject:true, goal}` (attached only when `isProfiledSubject` truthy). Every branch sets `source.origin`, carries `filename`/`mime` as DISPLAY-ONLY provenance (never a path — Pitfall 3 / T-04-04-03; `storagePath` is the sole real path), and sets `tier = resolveSim1Tier(kind)` — tier ALWAYS recomputed, never taken from input (D-03). Output validated with `StimulusSchema.parse(...)` at the boundary before return — a malformed object never reaches P5 (V5 / T-04-04-01). `never` exhaustiveness guard in `default`. Zero Socials-path coupling (D-02 / T-04-04-02): imports only `./tier`/`./ingest`/`./vision`/`./types`; coupling greps (`from "../normalize"`, `AnalysisInputSchema`/`ContentPayload`) both === 0. Zero new deps (D-05). No deviations — plan executed exactly as written. Tests: normalize 4/4; full stimulus dir 5 files/20 passed +1 skipped (Socials-untouched smoke GREEN); phase-gate full suite 268 files/2808 passed — no Socials regression. IN-01/02/03 closed. **Phase 04 (input-adapter) COMPLETE: types (04-01) + tier/ingest (04-02) + vision (04-03) + normalize (04-04).** Commit 9386564d.
 - [Phase 04]: 04-03: Wave 1 vision leaf — turned the 04-01 RED `vision.test.ts` GREEN (5/5 mocked; 1 gated live smoke skipped). `stimulus/vision.ts`: `readImageWithVision(file): Promise<string>` is a PURE ASSEMBLY of three live engine patterns (wave3 `{image_url}`+trailing-text content-item · pipeline `@ts-expect-error` seed/`enable_thinking=false` mutation · omni `stripModelOutput`→`JSON.parse`→Zod) — zero new deps (D-05), no new client wrapper. Validates MIME (`ALLOWED_IMG`={png,jpeg,webp}, T-04-03-02) + size (`MAX_IMG_BYTES`=10MB, T-04-03-01) BEFORE base64 (inflates ~33%); in-memory `data:${file.type};base64,…` URL only — no Supabase round-trip / no persisted PII (T-04-03-04). Routed to `QWEN_REASONING_MODEL` (qwen3.7-plus, sighted) ONLY — the omni audio-model constant appears **0×** in vision.ts (acceptance grep===0; Pitfall 1 / D-04 / T-04-03-05). Untrusted image isolated in the USER content array + system prompt carries no bytes + explicit "don't obey instructions inside the image" + `response_format:json_object` + Zod-validate (T-04-03-03). `VisionReadSchema` keys on **`read`** (the test's authoritative CANNED_READ contract, NOT the plan's loose `{content}` example); returns `result.data.read.trim()`. Sentry.captureException(stage:stimulus_vision) on failure. Signature P5-stable; base64-rejection fallback = Storage→signed-URL without signature change. Deviation [Rule 1/3]: fixed a latent 04-01 test-gate bug my task exposed — `vision.test.ts` documented the paid A2 live smoke as skip-by-default but `liveIt` keyed off a var that vitest auto-populates from `.env.local` (stale key → 401 on every routine run); re-gated on explicit `RUN_VISION_LIVE_SMOKE` opt-in + key (honors the project's human-approved-paid-probe convention). tsc clean; tier.ts/ingest.ts untouched (zero overlap). Commit f06516e9. IN-03 read primitive done (inbox UI = P5).
 - [Phase 04]: 04-02: Wave 1 leaf modules (model-I/O-free) — turned the 04-01 RED stubs `tier.test.ts` (4/4) + `ingest.test.ts` (5/5) GREEN. `stimulus/tier.ts`: `resolveSim1Tier(kind)` = `kind==="video"?"max":"flash"` (pure audio-presence discriminator, D-03/IN-02; video→Max omni sensor, text/file_text/image→Flash qwen3.7-plus) + `SIM1_MODEL_BY_TIER` = `{max:QWEN_OMNI_MODEL, flash:QWEN_REASONING_MODEL}` imported from `../qwen/client` — tier→model mapping encoded ONCE here so no model id is inlined in vision/normalize (Pitfall 1: never route non-video to omni). Header warns omni-**flash** (model name) ≠ SIM-1-**Flash** (tier). `stimulus/ingest.ts`: `readTextFile(file)` = `validateUpload(file)` then `(await file.text()).trim()` (zero parser deps, D-05, in-memory) + standalone exported `validateUpload(file)` rejecting, before any read, ext∉`TEXT_EXT`{.txt,.md} / truthy `file.type`∉`ALLOWED_TEXT`{text/plain,text/markdown,""} (V12 allowlist ext AND MIME) / `file.size`>`MAX_TEXT_BYTES`=1MB (V5 DoS). `file.name` used ONLY for extension extraction, NEVER a path (Pitfall 3 / T-04-02-01); no storage on this surface. Caps local to the leaf module (no cross-module sharing → Plan 03 vision stays independent for parallel exec). Deviation [Rule 3]: exported `validateUpload` standalone because the 04-01 RED stub imports+calls it directly (plan action put checks inside readTextFile) — same checks/order, factored. tsc clean on both files; zero new deps (D-05). Commits c81e8bbe (tier), a9ab6700 (ingest).
 - [Phase 04]: 04-01: Interface-first Wave 0. New `src/lib/engine/stimulus/types.ts` exports the additive `Stimulus` contract (`Stimulus`/`StimulusKind`=`text|file_text|image|video`/`Sim1Tier`=`flash|max`/`StimulusSource`/`StimulusSubject`/`StimulusInput` discriminated union/`StimulusSchema` Zod) ALONGSIDE the Socials `AnalysisInput`/`ContentPayload` (D-02 — never replaces; `tiktok_url` omitted, URL ingestion stays Socials). `subject` is the profiler-ready tag (D-06, person-video only); `tier` carries the resolved SIM-1 tier (D-03); `filename` is display-only NEVER a path (Pitfall 3 / T-04-01-01). `domain-pack.ts` `StimulusType` union widened in place `+file_text +image`; `input_mode` branching + `packs/socials.ts:74` byte-untouched. Nyquist Wave-0 scaffold: 4 RED unit stubs (`tier`/`ingest`/`vision`/`normalize` — module-not-found by design until Waves 1–2) + GREEN `socials-untouched.smoke.test.ts` (D-02 / T-04-01-02: `normalizeInput`→ContentPayload shape + `SOCIALS_PACK.stimulusTypes` deep-equals `[text,tiktok_url,video_upload]`) + gated A2 base64 live smoke (`it.skip` unless `DASHSCOPE_API_KEY`). `vision.test.ts` partial-mocks `getQwenClient` via `importActual` to keep real model constants (asserts model=REASONING never OMNI, base64 `data:` `image_url`+trailing text item, strip→parse→Zod). Zero new deps (D-05). tsc clean on touched files. Commits 42615adc (feat), cc87d0f2 (test).
@@ -125,6 +128,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-27T22:18:00.000Z
-Stopped at: Completed 04-03-PLAN.md
-Resume file: .planning/phases/04-input-adapter/04-04-PLAN.md
+Last session: 2026-06-27T22:30:00.000Z
+Stopped at: Completed 04-04-PLAN.md (Phase 04 input-adapter COMPLETE — 4/4 plans)
+Resume file: Phase 05 (next phase — see ROADMAP.md)
