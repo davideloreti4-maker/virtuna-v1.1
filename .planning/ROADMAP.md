@@ -97,7 +97,7 @@ Plans:
 Plans:
 **Wave 0** *(determinism gate — D-01, paid live re-bake)*
 
-- [ ] 03-01-PLAN.md — Drop thinking-mode synth + live double-bake re-confirm (`signatureEqual:true`) — autonomous:false (POP-01)
+- [~] 03-01-PLAN.md — Drop thinking-mode synth + live double-bake re-confirm (`signatureEqual:true`) — autonomous:false (POP-01) · Tasks 1-2 DONE (c4c7b5c9, 6d5854a2); ⏸ PAUSED at the blocking-human gate (operator runs `node --import tsx scripts/rebake-determinism.ts`)
 
 **Wave 1** *(blocked on Wave 0 — foundation, parallel)*
 

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: planning
-stopped_at: Phase 3 context gathered
-last_updated: "2026-06-27T12:39:43.948Z"
-last_activity: 2026-06-27 -- Phase 3 planning complete
+status: executing
+stopped_at: Plan 03-01 paused at Task 3 (checkpoint:human-action — D-01 live double-bake gate)
+last_updated: "2026-06-27T15:27:00.000Z"
+last_activity: 2026-06-27 -- 03-01 Tasks 1-2 committed (D-01 fix + harness); awaiting live signatureEqual:true gate
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 9
+  total_plans: 16
   completed_plans: 9
   percent: 29
 ---
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read.
-**Current focus:** Phase 02 — trustworthy-sim-spike
+**Current focus:** Phase 03 — general-population-honesty-layer
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Phase 02 CLOSED — SPIKE-VERDICT.md = NO-GO (conditional); ready to plan Phase 03
-Last activity: 2026-06-27 -- Phase 3 planning complete
+Phase: 03 (general-population-honesty-layer) — EXECUTING
+Plan: 1 of 7 (PAUSED — Task 3 blocking-human gate)
+Status: Plan 03-01 Tasks 1-2 committed (c4c7b5c9, 6d5854a2); BLOCKED awaiting the live paid D-01 double-bake (`node --import tsx scripts/rebake-determinism.ts` → record signatureEqual:true). Wave-1+ cannot start until the gate passes.
+Last activity: 2026-06-27 -- 03-01 D-01 fix (thinking-mode dropped) + re-bake harness landed; live gate pending
 
 Progress: [███░░░░░░░] 29%
 
