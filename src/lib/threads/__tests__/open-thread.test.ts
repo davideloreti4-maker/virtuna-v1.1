@@ -22,6 +22,7 @@ import {
   createNewThread,
   touchThread,
   listOpenThreads,
+  archiveThread,
 } from "../threads";
 import type { ThreadRow } from "../threads";
 
@@ -224,5 +225,44 @@ describe("listOpenThreads", () => {
     expect(result).toEqual(rows);
     expect(chain.eq).toHaveBeenCalledWith("user_id", USER_A);
     expect(chain.order).toHaveBeenCalledWith("updated_at", { ascending: false });
+  });
+});
+
+describe("archiveThread", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("flips type open→archived, scoped by user + thread + open-only, returns true", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({ data: { id: "t1" }, error: null });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    const ok = await archiveThread(USER_A, "t1");
+
+    expect(ok).toBe(true);
+    const updateArg = chain.update.mock.calls[0]![0];
+    expect(updateArg.type).toBe("archived");
+    // Ownership + open-only scoping (can't archive someone else's or a non-open thread).
+    expect(chain.eq).toHaveBeenCalledWith("id", "t1");
+    expect(chain.eq).toHaveBeenCalledWith("user_id", USER_A);
+    expect(chain.eq).toHaveBeenCalledWith("type", "open");
+  });
+
+  it("returns false when no owned open thread matches", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    expect(await archiveThread(USER_B, "t1")).toBe(false);
+  });
+
+  it("throws on a real query error", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42P01", message: "relation does not exist" },
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    await expect(archiveThread(USER_A, "t1")).rejects.toThrow(/archiveThread: failed/);
   });
 });

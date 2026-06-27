@@ -1,7 +1,8 @@
 /**
- * /api/threads/[id] — Thread update route.
+ * /api/threads/[id] — Thread update + delete route.
  *
- * PATCH — update thread fields. Currently only supports active_audience_id (D-04).
+ * PATCH  — update thread fields. Currently only supports active_audience_id (D-04).
+ * DELETE — remove a chat thread from the sidebar (archive; see DELETE handler).
  *
  * Security:
  *  - Auth-first (T-07 pattern)
@@ -15,6 +16,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { archiveThread } from "@/lib/threads/threads";
+import { csrfGuard } from "@/lib/http/csrf-guard";
 
 const PatchSchema = z.object({
   // null = General default; otherwise must be a real audience UUID (the column is uuid).
@@ -81,4 +84,49 @@ export async function PATCH(
   }
 
   return Response.json({ thread: data });
+}
+
+/**
+ * DELETE /api/threads/[id] — remove a chat thread from the sidebar.
+ *
+ * Implemented as an ARCHIVE (type "open" → "archived"), not a hard delete: the
+ * conversation + its messages are preserved (no cascade) and simply drop out of
+ * the open-threads list. Reversible at the data layer.
+ *
+ * Security:
+ *   - Auth enforced before any write (CR-01); user_id from session only.
+ *   - CSRF guard (cross-origin Origin 403; a bodyless DELETE is exempt from the
+ *     Content-Type check by design — see csrf-guard.ts).
+ *   - archiveThread is ownership-scoped by user_id and restricted to open threads.
+ *
+ * Response:
+ *   200 { threadId } · 404 if not an owned open thread · 401 · 403 via csrfGuard
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+): Promise<Response> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const guard = csrfGuard(request);
+  if (guard) return guard;
+
+  const { id: threadId } = await params;
+  if (!threadId) {
+    return Response.json({ error: "Thread id required" }, { status: 400 });
+  }
+
+  const ok = await archiveThread(user.id, threadId);
+  if (!ok) {
+    return Response.json({ error: "Thread not found" }, { status: 404 });
+  }
+
+  return Response.json({ threadId });
 }

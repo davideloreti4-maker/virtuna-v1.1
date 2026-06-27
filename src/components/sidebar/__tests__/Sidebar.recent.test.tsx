@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
@@ -50,6 +50,7 @@ function mockThreads(threads: MockThread[]) {
     useThreadList: () => ({ data: threads, isLoading: false }),
     useCreateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('new-id') }),
     useActivateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
+    useArchiveThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
   }));
 }
 
@@ -119,5 +120,45 @@ describe('Sidebar composition — Threads label + no dead affordances', () => {
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
     expect(screen.getByText(/no threads yet/i)).toBeInTheDocument();
+  });
+});
+
+describe('Sidebar thread delete — two-step confirm', () => {
+  async function renderWithArchive(archiveMock: ReturnType<typeof vi.fn>) {
+    vi.resetModules();
+    vi.doMock('@/hooks/queries', () => ({
+      useThreadList: () => ({
+        data: [
+          { id: 'abc', title: 'Doomed thread', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
+        ],
+        isLoading: false,
+      }),
+      useCreateThread: () => ({ mutateAsync: vi.fn() }),
+      useActivateThread: () => ({ mutateAsync: vi.fn() }),
+      useArchiveThread: () => ({ mutateAsync: archiveMock }),
+    }));
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+  }
+
+  it('does NOT archive on the first (arming) click', async () => {
+    const archiveMock = vi.fn().mockResolvedValue('abc');
+    await renderWithArchive(archiveMock);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete thread: doomed thread/i }));
+
+    // The trash icon armed the confirm; nothing deleted yet.
+    expect(archiveMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /cancel delete/i })).toBeInTheDocument();
+  });
+
+  it('archives only after the confirm click', async () => {
+    const archiveMock = vi.fn().mockResolvedValue('abc');
+    await renderWithArchive(archiveMock);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete thread: doomed thread/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete doomed thread$/i }));
+
+    expect(archiveMock).toHaveBeenCalledWith('abc');
   });
 });

@@ -65,3 +65,21 @@ export function useActivateThread() {
     },
   });
 }
+
+/**
+ * Remove a past thread from the sidebar (archive — reversible at the data layer).
+ * Bodyless DELETE; the CSRF guard exempts it from the Content-Type requirement.
+ */
+export function useArchiveThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (threadId: string) => {
+      const res = await fetch(`/api/threads/${threadId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete thread");
+      return threadId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
+    },
+  });
+}

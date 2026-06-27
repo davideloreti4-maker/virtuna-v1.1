@@ -153,6 +153,34 @@ export async function touchThread(userId: string, threadId: string): Promise<boo
   return data != null;
 }
 
+// ─── archiveThread ────────────────────────────────────────────────────────────
+/**
+ * Archive an open chat thread: flip its type "open" → "archived" so it drops out
+ * of the sidebar list (listOpenThreads/getOpenThread both filter type="open")
+ * WITHOUT deleting the conversation — reversible, no message cascade. Backs the
+ * sidebar "Delete thread" action. Ownership-scoped by user_id (CR-01) and
+ * restricted to open threads (you can only archive your own live chat threads).
+ * Returns true on a real update, false when no matching open thread was found.
+ */
+export async function archiveThread(userId: string, threadId: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ type: "archived", updated_at: new Date().toISOString() })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .eq("type", "open")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`archiveThread: failed for threadId=${threadId}: ${error.message}`);
+  }
+
+  return data != null;
+}
+
 // ─── listOpenThreads ──────────────────────────────────────────────────────────
 
 /** A thread summary row for the sidebar list (no message bodies). */
