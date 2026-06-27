@@ -37,6 +37,13 @@ export interface VideoData {
    * absent on metadata-only Discover/Explore paths.
    */
   mediaUrl?: string;
+  /**
+   * Static cover-image URL for the post (clockworks `videoMeta.coverUrl`). A TikTok-CDN
+   * signed image — ephemeral (expires), so it is DISPLAY-ONLY (Account Read cover strip,
+   * Discover/Remix thumbnails) and never persisted as a stable reference. Optional —
+   * absent on metadata-only paths that don't surface a thumbnail.
+   */
+  coverUrl?: string;
 }
 
 /**
