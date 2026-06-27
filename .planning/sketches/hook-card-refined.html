@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Hook card — refined sketch</title>
+<style>
+  /* Flat-warm charcoal tokens (mirrors globals.css @theme) */
+  :root{
+    --bg:#262624; --surface-thread:#252524; --surface-chip:#2c2c2b;
+    --cream:#ece7de; --cream-2:#c2bdb4; --cream-muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --success:#8fc9a0; --warning:#e0bd72; --error:#e0796b;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --radius-card:12px; --radius-ctl:8px; --radius-full:9999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 24px;line-height:1.4}
+  .wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+  h1{font-size:20px;font-weight:600}
+  .sub{color:var(--cream-muted);font-size:14px;margin-top:4px}
+  .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);margin-bottom:10px}
+  .legend{font-size:13px;color:var(--cream-2);background:var(--surface-thread);border:1px solid var(--border);
+    border-radius:var(--radius-card);padding:16px 18px;display:flex;flex-direction:column;gap:7px}
+  .legend b{color:var(--cream)}
+  .legend .tag{display:inline-block;min-width:26px;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+
+  /* ---- Refined hook card ---- */
+  .card{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);
+    overflow:hidden}            /* matte: NO inset boxShadow */
+  .card .body{padding:18px 18px 14px;display:flex;flex-direction:column;gap:14px}
+
+  /* eyebrow: archetype kicker (left) + rank (right) — warm muted, quiet */
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .kicker{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);
+    display:flex;align-items:center;gap:7px}
+  .kicker .dot{width:6px;height:6px;border-radius:var(--radius-full);background:currentColor;opacity:.9}
+  .rank{font-size:12px;font-weight:600;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+
+  /* hook line: the hero */
+  .hook{font-size:19px;font-weight:600;line-height:1.3;color:var(--cream);letter-spacing:-.01em}
+
+  /* why-teaser: payoff surfaced on the face, 1 line */
+  .why{font-size:13.5px;color:var(--cream-2);line-height:1.45}
+  .why .k{color:var(--cream-muted)}
+
+  /* proof = ONE interactive audience unit (the Lens entry, now discoverable) */
+  .proof{border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.02);
+    padding:12px 13px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:border-color .15s,background .15s}
+  .proof:hover{border-color:var(--border-hover);background:rgba(255,255,255,.035)}
+  .proof .top{display:flex;align-items:center;gap:10px;font-size:13px}
+  .band{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .band .bdot{width:7px;height:7px;border-radius:var(--radius-full)}
+  .stopped{color:var(--cream)}
+  .stopped .n{font-weight:600}
+  .ribbon{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .ribbon > i{position:absolute;inset:0 auto 0 0;background:var(--cream-2);border-radius:2px}
+  .seerow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .quote{font-size:13.5px;font-style:italic;color:rgba(236,231,222,.82);line-height:1.4;
+    border-left:2px solid var(--border-hover);padding-left:11px}
+  .see{font-size:12px;color:var(--cream-2);white-space:nowrap;display:flex;align-items:center;gap:5px}
+  .see .av{display:flex}
+  .see .av span{width:15px;height:15px;border-radius:var(--radius-full);background:var(--surface-chip);
+    border:1px solid var(--surface-thread);margin-left:-5px}
+  .see .av span:first-child{margin-left:0}
+  .prov{font-size:11px;color:var(--cream-muted)}
+
+  /* expand toggle — clearer affordance */
+  .more{align-self:flex-start;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:12.5px;
+    cursor:pointer;display:flex;align-items:center;gap:6px;padding:2px 0}
+  .more:hover{color:var(--cream-2)}
+  .more .chev{transition:transform .15s}
+
+  .expand{border-top:1px solid var(--border);padding:14px 18px;display:flex;flex-direction:column;gap:13px}
+  .field .h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-muted);margin-bottom:3px}
+  .field p{font-size:13.5px;color:var(--cream-2);line-height:1.5}
+
+  /* actions: ONE primary cream button + secondary text + save icon */
+  .actions{border-top:1px solid var(--border);padding:13px 18px;display:flex;align-items:center;gap:14px}
+  .btn-primary{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--radius-ctl);
+    font:inherit;font-size:13px;font-weight:600;padding:8px 15px;cursor:pointer}
+  .btn-text{background:none;border:none;color:var(--cream-2);font:inherit;font-size:13px;cursor:pointer}
+  .btn-text:hover{color:var(--cream)}
+  .save{margin-left:auto;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:13px;
+    cursor:pointer;display:flex;align-items:center;gap:6px}
+  .save:hover{color:var(--cream-2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Hook card — refined</h1>
+    <p class="sub">Throwaway design sketch (lane/polish). Compare against the live harness at <code>/dev/cards</code>. Tokens mirror globals.css.</p>
+  </div>
+
+  <!-- STRONG, expanded -->
+  <div>
+    <p class="lbl">Strong · expanded</p>
+    <div class="card">
+      <div class="body">
+        <div class="eyebrow">
+          <span class="kicker" style="color:var(--success)"><span class="dot"></span>Stops the skeptic</span>
+          <span class="rank">#1</span>
+        </div>
+        <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+        <p class="why"><span class="k">Why it works —</span> Pattern-interrupt against received wisdom: names the advice they follow, then frames it as the cause of their problem.</p>
+
+        <div class="proof" title="Opens the AudienceLens">
+          <div class="top">
+            <span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span>
+            <span class="stopped"><span class="n">8/10</span> stopped</span>
+            <span class="ribbon"><i style="width:80%"></i></span>
+          </div>
+          <div class="seerow">
+            <span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span>
+            <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+          </div>
+        </div>
+
+        <button class="more"><span class="chev">↑</span> Hide details · <span class="prov">SIM-1 Flash</span></button>
+      </div>
+      <div class="expand">
+        <div class="field"><div class="h">Seed hook</div><p>Posting daily is killing your reach.</p></div>
+        <div class="field"><div class="h">Delivery</div><p>Spoken</p></div>
+      </div>
+      <div class="actions">
+        <button class="btn-primary">Test full →</button>
+        <button class="btn-text">Write script →</button>
+        <button class="save">⌖ Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIXED, collapsed -->
+  <div>
+    <p class="lbl">Mixed · collapsed</p>
+    <div class="card">
+      <div class="body">
+        <div class="eyebrow">
+          <span class="kicker" style="color:var(--warning)"><span class="dot"></span>Stops the skeptic</span>
+          <span class="rank">#2</span>
+        </div>
+        <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+        <p class="why"><span class="k">Why it works —</span> Pattern-interrupt against received wisdom; opens a curiosity gap they must close.</p>
+        <div class="proof" title="Opens the AudienceLens">
+          <div class="top">
+            <span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span>
+            <span class="stopped"><span class="n">5/10</span> stopped</span>
+            <span class="ribbon"><i style="width:50%;background:var(--cream-muted)"></i></span>
+          </div>
+          <div class="seerow">
+            <span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span>
+            <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+          </div>
+        </div>
+        <button class="more"><span class="chev">↓</span> Why &amp; details · <span class="prov">SIM-1 Flash</span></button>
+      </div>
+      <div class="actions">
+        <button class="btn-primary">Test full →</button>
+        <button class="btn-text">Write script →</button>
+        <button class="save">⌖ Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEAK, collapsed -->
+  <div>
+    <p class="lbl">Weak · collapsed</p>
+    <div class="card">
+      <div class="body">
+        <div class="eyebrow">
+          <span class="kicker" style="color:var(--error)"><span class="dot"></span>Stops the skeptic</span>
+          <span class="rank">#7</span>
+        </div>
+        <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+        <p class="why"><span class="k">Why it works —</span> Pattern-interrupt, but the premise may not be one this audience holds.</p>
+        <div class="proof" title="Opens the AudienceLens">
+          <div class="top">
+            <span class="band" style="color:var(--error)"><span class="bdot" style="background:var(--error)"></span>Weak</span>
+            <span class="stopped"><span class="n">2/10</span> stopped</span>
+            <span class="ribbon"><i style="width:20%;background:var(--cream-muted)"></i></span>
+          </div>
+          <div class="seerow">
+            <span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span>
+            <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+          </div>
+        </div>
+        <button class="more"><span class="chev">↓</span> Why &amp; details · <span class="prov">SIM-1 Flash</span></button>
+      </div>
+      <div class="actions">
+        <button class="btn-primary">Test full →</button>
+        <button class="btn-text">Write script →</button>
+        <button class="save">⌖ Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div style="color:var(--cream);font-weight:600;margin-bottom:3px">What changed vs live</div>
+    <div><span class="tag">A1/A2</span> Proof stated <b>once</b> — band dot + “8/10 stopped” + ribbon in a single unit; band row removed; SIM-1 Flash demoted to the toggle line.</div>
+    <div><span class="tag">A3</span> Archetype becomes a quiet <b>kicker</b> above the hook (color = band); hook line reads first.</div>
+    <div><span class="tag">B1</span> Proof is now a bordered, hoverable <b>audience unit</b> with avatars + “See the room →” — the Lens entry is finally visible.</div>
+    <div><span class="tag">B2</span> Dead “If this could flop →” branch <b>removed</b> (predictedFailureMode is always null).</div>
+    <div><span class="tag">B3</span> One <b>primary</b> cream button (“Test full →”), “Write script →” secondary text, Save = icon.</div>
+    <div><span class="tag">B4</span> <b>“Why it works”</b> teaser surfaced on the face; full seed/delivery on expand.</div>
+    <div><span class="tag">C1</span> Inset-shine removed — <b>flat matte</b> (border + tone only).</div>
+    <div><span class="tag">C2/C3</span> Warm-cream throughout; band color used <b>once</b> (dot + word), not double-applied.</div>
+  </div>
+</div>
+</body>
+</html>

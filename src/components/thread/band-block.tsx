@@ -62,7 +62,7 @@ export function BandBlockRenderer({ block }: BandBlockProps) {
         >
           {band}
         </span>
-        <span className="text-sm text-muted leading-none">pull</span>
+        <span className="text-sm leading-none text-foreground-muted">pull</span>
       </div>
 
       {/* Audience fraction — the supporting context */}
@@ -71,7 +71,7 @@ export function BandBlockRenderer({ block }: BandBlockProps) {
       </p>
 
       {/* Model provenance tag (D-10) */}
-      <p className="mt-2 text-xs text-muted/60">{modelLabel}</p>
+      <p className="mt-2 text-xs text-foreground-muted">{modelLabel}</p>
     </div>
   );
 }

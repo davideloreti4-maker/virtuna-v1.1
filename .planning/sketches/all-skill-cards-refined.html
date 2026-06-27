@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>All skill cards — refined sketch</title>
+<style>
+  :root{
+    --bg:#262624; --surface-thread:#252524; --surface-chip:#2c2c2b;
+    --cream:#ece7de; --cream-2:#c2bdb4; --cream-muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --faint:rgba(255,255,255,.02); --faint-2:rgba(255,255,255,.035);
+    --success:#8fc9a0; --warning:#e0bd72; --error:#e0796b;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --rc:12px; --rctl:8px; --rfull:9999px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 24px 120px;line-height:1.4}
+  .wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  h1{font-size:20px;font-weight:600}
+  .sub{color:var(--cream-muted);font-size:13.5px;margin:4px 0 26px}
+  .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);margin:26px 0 10px}
+  .note{font-size:12px;color:var(--cream-muted);margin-top:7px;padding-left:2px}
+
+  /* shared card */
+  .card{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--rc);overflow:hidden}
+  .body{padding:18px 18px 14px;display:flex;flex-direction:column;gap:13px}
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .kicker{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);
+    display:flex;align-items:center;gap:7px}
+  .kicker .dot{width:6px;height:6px;border-radius:var(--rfull);background:currentColor}
+  .meta{font-size:12px;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+  .hero{font-size:19px;font-weight:600;line-height:1.3;color:var(--cream);letter-spacing:-.01em}
+  .why{font-size:13.5px;color:var(--cream-2);line-height:1.45}
+  .why .k{color:var(--cream-muted)}
+
+  /* proof = interactive audience unit (Lens entry) */
+  .proof{border:1px solid var(--border);border-radius:10px;background:var(--faint);
+    padding:12px 13px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:.15s}
+  .proof:hover{border-color:var(--border-hover);background:var(--faint-2)}
+  .ptop{display:flex;align-items:center;gap:10px;font-size:13px}
+  .band{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .band .bdot{width:7px;height:7px;border-radius:var(--rfull)}
+  .stopped .n{font-weight:600;color:var(--cream)}
+  .stopped{color:var(--cream-2)}
+  .ribbon{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .ribbon>i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--cream-2)}
+  .seerow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .quote{font-size:13.5px;font-style:italic;color:rgba(236,231,222,.82);line-height:1.4;
+    border-left:2px solid var(--border-hover);padding-left:11px}
+  .see{font-size:12px;color:var(--cream-2);white-space:nowrap;display:flex;align-items:center;gap:6px}
+  .av{display:flex}.av span{width:15px;height:15px;border-radius:var(--rfull);background:var(--surface-chip);
+    border:1px solid var(--surface-thread);margin-left:-5px}.av span:first-child{margin-left:0}
+
+  .more{align-self:flex-start;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:12.5px;
+    cursor:pointer;display:flex;gap:6px;padding:2px 0}.more:hover{color:var(--cream-2)}
+  .prov{color:var(--cream-muted)}
+  .expand{border-top:1px solid var(--border);padding:14px 18px;display:flex;flex-direction:column;gap:13px}
+  .field .h{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-muted);margin-bottom:3px}
+  .field p{font-size:13.5px;color:var(--cream-2);line-height:1.5}
+
+  .actions{border-top:1px solid var(--border);padding:13px 18px;display:flex;align-items:center;gap:14px}
+  .btn-primary{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--rctl);
+    font:inherit;font-size:13px;font-weight:600;padding:8px 15px;cursor:pointer}
+  .btn-text{background:none;border:none;color:var(--cream-2);font:inherit;font-size:13px;cursor:pointer}
+  .btn-text:hover{color:var(--cream)}
+  .save{margin-left:auto;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:13px;
+    cursor:pointer;display:flex;gap:6px}.save:hover{color:var(--cream-2)}
+
+  /* idea: take badge */
+  .take{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--warning);
+    border:1px solid rgba(224,189,114,.25);border-radius:var(--rfull);padding:2px 8px}
+  /* remix: borrowed chip + cols */
+  .chip{display:inline-block;font-size:12px;color:var(--cream-2);background:var(--faint);
+    border:1px solid var(--border);border-radius:var(--rfull);padding:3px 10px}
+  .cols{display:flex;gap:22px}.col .h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--cream-muted);margin-bottom:2px}
+  .col p{font-size:13px;color:var(--cream-2)}
+  /* script beats */
+  .beat{border:1px solid var(--border);border-radius:10px;padding:11px 13px;display:flex;flex-direction:column;gap:5px}
+  .beat .bh{display:flex;align-items:center;justify-content:space-between}
+  .beat .bn{font-size:12px;font-weight:600;color:var(--cream)}
+  .beat .bt{font-size:11px;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+  .beat p{font-size:13.5px;color:var(--cream-2);line-height:1.45}
+  .beat .ret{font-size:12px;color:var(--cream-muted);line-height:1.4}
+  /* the Read */
+  .read-aud{display:flex;flex-direction:column;gap:9px}
+  .vrow{display:flex;align-items:baseline;gap:8px;font-size:15px}
+  .vrow .nm{font-weight:600;color:var(--cream)}
+  .vrow .bd{font-weight:600}.vrow .fr{font-size:13px;color:var(--cream-muted)}
+  .lever{border-left:2px solid var(--cream-2);padding:2px 0 2px 12px;font-size:13.5px;color:var(--cream-2);line-height:1.5}
+  .lever b{color:var(--cream);font-weight:600}
+  .interp{font-size:13.5px;color:var(--cream-2);line-height:1.5}.interp b{color:var(--cream)}
+  .npast{font-size:12px;color:var(--cream-muted)}
+  .room{border-top:1px solid var(--border);padding-top:13px;display:flex;flex-direction:column;gap:9px}
+  .room .rh{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--cream-muted)}
+  .rcol2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .rc .ch{font-size:12px;color:var(--cream-muted);margin-bottom:6px;display:flex;gap:6px;align-items:center}
+  .rc .ch .d{width:6px;height:6px;border-radius:var(--rfull)}
+  .rq{font-size:12.5px;font-style:italic;color:var(--cream-2);line-height:1.4;margin-bottom:7px}
+  .rq .who{display:block;font-style:normal;font-size:11px;color:var(--cream-muted);margin-top:2px}
+  .rq.lead{color:var(--cream);font-weight:500}
+  /* the Read — at-a-glance compare row + per-audience reaction drill (depth from the real block) */
+  .compare{display:flex;flex-wrap:wrap;align-items:center;gap:7px 12px;padding:11px 13px;border:1px solid var(--border);border-radius:10px;background:var(--faint)}
+  .compare .ca{display:inline-flex;align-items:center;gap:7px;font-size:13.5px}
+  .compare .ca .nm{color:var(--cream);font-weight:600}
+  .compare .ca .bd{font-weight:600}
+  .compare .bdot{width:7px;height:7px;border-radius:var(--rfull)}
+  .compare .ca .fr{color:var(--cream-muted);font-size:12px}
+  .compare .sep{color:var(--cream-muted);opacity:.4}
+  .aud-name{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600;color:var(--cream)}
+  .aud-name .bdot{width:7px;height:7px;border-radius:var(--rfull)}
+  .drill{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:2px}
+  .drill-trig{width:100%;background:none;border:0;font:inherit;cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:10px 13px}
+  .drill-trig:hover{background:var(--faint)}
+  .drill-trig .n{font-size:13px;color:var(--cream);font-weight:500}
+  .drill-trig .n span{color:var(--cream-muted);font-weight:400;margin-left:8px}
+  .drill-trig .x{font-size:12px;color:var(--cream-muted)}
+  .drill-list{display:none;border-top:1px solid var(--border)}
+  .drill.open .drill-list{display:block}
+  .preact{padding:9px 13px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:4px}
+  .preact:first-child{border-top:0}
+  .preact .h{display:flex;align-items:center;gap:8px}
+  .preact .arc{font-size:12.5px;color:var(--cream);font-weight:500;text-transform:capitalize}
+  .preact .vb{font-size:10px;font-weight:600;padding:1px 7px;border-radius:var(--rfull)}
+  .preact .vb.stop{color:var(--success);background:rgba(143,201,160,.1);border:1px solid rgba(143,201,160,.22)}
+  .preact .vb.scroll{color:var(--error);background:rgba(224,121,107,.1);border:1px solid rgba(224,121,107,.22)}
+  .preact .q{font-size:12.5px;color:var(--cream-muted);font-style:italic;line-height:1.4}
+  /* account read */
+  .ar-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .ar-sec .h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--cream-muted);margin-bottom:6px}
+  .ar-sec li{font-size:13px;color:var(--cream-2);line-height:1.6;list-style:none;display:flex;gap:7px}
+  .ar-sec li::before{content:"";width:5px;height:5px;border-radius:var(--rfull);background:var(--cream-muted);margin-top:7px;flex:none}
+  .fmix{display:flex;flex-direction:column;gap:7px}
+  .fmix .row{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--cream-2)}
+  .fmix .bar{flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+  .fmix .bar i{display:block;height:100%;background:var(--cream-muted);border-radius:2px}
+  .fmix .pct{color:var(--cream-muted);font-variant-numeric:tabular-nums;width:34px;text-align:right}
+  .acc{border-top:1px solid var(--border);padding-top:13px;font-size:13.5px;color:var(--cream-2)}
+  .acc b{color:var(--cream);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>All skill cards — refined</h1>
+  <p class="sub">Throwaway sketch (lane/polish). Shared language: flat matte · warm-cream · single proof unit · visible Lens entry (“See the room →”) · forward-chain primary action · zero legacy coral. Compare to live <code>/dev/cards</code>.</p>
+
+  <!-- ============ IDEA ============ -->
+  <p class="lbl">Idea card</p>
+  <div class="card">
+    <div class="body">
+      <div class="eyebrow">
+        <span class="kicker" style="color:var(--success)"><span class="dot"></span>Made for your audience</span>
+        <span class="take">your take</span>
+      </div>
+      <p class="hero">The “consistency trap” teardown</p>
+      <p class="why">Reframe a sacred-cow tactic as the actual bottleneck. <span class="k">— Fits because your audience over-indexes on hustle advice and is starting to feel burned by it.</span></p>
+      <div class="proof">
+        <div class="ptop">
+          <span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span>
+          <span class="stopped"><span class="n">8/10</span> stopped</span>
+          <span class="ribbon"><i style="width:80%"></i></span>
+        </div>
+        <div class="seerow">
+          <span class="quote">“Finally someone said it.”</span>
+          <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+        </div>
+      </div>
+      <button class="more">↓ Angle &amp; format · <span class="prov">SIM-1 Flash</span></button>
+    </div>
+    <div class="actions">
+      <button class="btn-primary">Develop into hooks →</button>
+      <button class="save">⌖ Save</button>
+    </div>
+  </div>
+  <p class="note">Forward chain: Idea → <b>Develop into hooks</b>. “needs your take” badge kept (amber = data status, not brand accent). whyItFits folded into the why-line.</p>
+
+  <!-- ============ SCRIPT ============ -->
+  <p class="lbl">Script card</p>
+  <div class="card">
+    <div class="body">
+      <div class="eyebrow">
+        <span class="kicker" style="color:var(--warning)"><span class="dot"></span>Opener stops the scroll</span>
+        <span class="meta">5 beats · ~40s</span>
+      </div>
+      <div class="proof">
+        <div class="ptop">
+          <span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span>
+          <span class="stopped"><span class="n">6/10</span> stopped <span style="color:var(--cream-muted)">· opener only</span></span>
+          <span class="ribbon"><i style="width:60%;background:var(--cream-muted)"></i></span>
+        </div>
+        <div class="seerow">
+          <span class="quote">“Is daily posting actually bad?”</span>
+          <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+        </div>
+      </div>
+      <div class="beat">
+        <div class="bh"><span class="bn">Hook</span><span class="bt">0–3s</span></div>
+        <p>Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+        <p class="ret">↳ Names a belief the viewer holds, then threatens it — they must watch to defend it.</p>
+      </div>
+      <div class="beat">
+        <div class="bh"><span class="bn">Setup</span><span class="bt">3–10s</span></div>
+        <p>Here's what the algorithm actually rewards, and it's not what you think.</p>
+      </div>
+      <div class="beat" style="opacity:.7">
+        <div class="bh"><span class="bn">Turn · Payoff · CTA</span><span class="bt">10–40s</span></div>
+        <p style="color:var(--cream-muted)">+ 3 more beats — tap to expand each</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary">Test full →</button>
+      <button class="btn-text">Save</button>
+      <button class="save">⌖ Save</button>
+    </div>
+  </div>
+  <p class="note">Beats become quiet bordered rows with the retention reasoning inline (no per-beat color). Opener proof = same unit, labelled “opener only” (honesty spine). Only action is Test full → primary.</p>
+
+  <!-- ============ REMIX ============ -->
+  <p class="lbl">Remix card</p>
+  <div class="card">
+    <div class="body">
+      <div class="eyebrow">
+        <span class="chip">Borrowed · Data-receipts confessional</span>
+        <span class="meta">as Burned-out creators</span>
+      </div>
+      <p class="hero">I tracked every post for 90 days. The “daily” ones flopped.</p>
+      <div class="cols">
+        <div class="col"><div class="h">Angle</div><p>Personal-experiment receipts over abstract advice.</p></div>
+        <div class="col"><div class="h">For</div><p>Burned-out solo creators chasing cadence.</p></div>
+      </div>
+      <div class="proof">
+        <div class="ptop">
+          <span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span>
+          <span class="stopped"><span class="n">7/10</span> stopped <span style="color:var(--cream-muted)">· adapted hook</span></span>
+          <span class="ribbon"><i style="width:70%"></i></span>
+        </div>
+        <div class="seerow">
+          <span class="quote">“Ninety days of receipts? I have to see this.”</span>
+          <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+        </div>
+      </div>
+      <button class="more">↓ Why the original worked · <span class="prov">SIM-1 Flash</span></button>
+    </div>
+    <div class="actions">
+      <button class="btn-primary">Develop into hooks →</button>
+      <button class="save">⌖ Save</button>
+    </div>
+  </div>
+  <p class="note">“Borrowed” + audience-steer tag as the eyebrow. Decode anatomy (4 beats) on expand. Forward chain: Remix → Develop into hooks.</p>
+
+  <!-- ============ THE READ (in-thread, 2-audience) ============ -->
+  <p class="lbl">The Read · in-thread (2-audience compare)</p>
+  <div class="card">
+    <div class="body" style="gap:16px">
+      <div class="eyebrow"><span class="kicker"><span class="dot" style="background:var(--cream-muted)"></span>The Read</span><span class="meta">SIM-1 Flash · static</span></div>
+
+      <!-- at-a-glance compare — wins-for-X / bombs-for-Y (band stated once) -->
+      <div class="compare">
+        <span class="ca"><span class="bdot" style="background:var(--success)"></span><span class="nm">Burned-out creators</span><span class="bd" style="color:var(--success)">Strong</span><span class="fr">8/10 stop</span></span>
+        <span class="sep">·</span>
+        <span class="ca"><span class="bdot" style="background:var(--warning)"></span><span class="nm">General</span><span class="bd" style="color:var(--warning)">Mixed</span><span class="fr">5/10 stop</span></span>
+      </div>
+
+      <!-- audience 1 -->
+      <div class="read-aud">
+        <div class="aud-name"><span class="bdot" style="background:var(--success)"></span>Burned-out creators</div>
+        <p class="interp"><b style="color:var(--success)">Strong Read.</b> Lands hard — gives them permission to stop the thing that's exhausting them.</p>
+        <p class="lever"><b>Lever →</b> Lead with the relief, not the data.</p>
+        <p class="npast"><b>Scrolls past:</b> hustle-maximalists who equate output with virtue.</p>
+        <div class="drill" data-drill>
+          <button class="drill-trig"><span class="n">Audience reactions<span>8/10 stop</span></span><span class="x">↓ Show</span></button>
+          <div class="drill-list">
+            <div class="preact"><div class="h"><span class="arc">the skeptic</span><span class="vb stop">stops</span></div><p class="q">“Wait, that's not how it usually works—go on.”</p></div>
+            <div class="preact"><div class="h"><span class="arc">the aspirant</span><span class="vb stop">stops</span></div><p class="q">“Okay this is exactly my problem right now.”</p></div>
+            <div class="preact"><div class="h"><span class="arc">the veteran</span><span class="vb scroll">scrolls</span></div><p class="q">“I've already cut my posting. Nothing new for me here.”</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- audience 2 -->
+      <div class="read-aud" style="border-top:1px solid var(--border);padding-top:16px">
+        <div class="aud-name"><span class="bdot" style="background:var(--warning)"></span>General</div>
+        <p class="interp"><b style="color:var(--warning)">Mixed Read.</b> Splits the room — half feel attacked, half feel seen.</p>
+        <p class="lever"><b>Lever →</b> Soften the blame to widen the stop.</p>
+        <p class="npast"><b>Scrolls past:</b> anyone who never followed the daily-posting advice.</p>
+        <div class="drill" data-drill>
+          <button class="drill-trig"><span class="n">Audience reactions<span>5/10 stop</span></span><span class="x">↓ Show</span></button>
+          <div class="drill-list">
+            <div class="preact"><div class="h"><span class="arc">the aspirant</span><span class="vb stop">stops</span></div><p class="q">“This is exactly my problem right now.”</p></div>
+            <div class="preact"><div class="h"><span class="arc">the busy scroller</span><span class="vb scroll">scrolls</span></div><p class="q">“Seen this take a hundred times.”</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- the room — VerbatimWall (merged across both audiences, sharpest as lead) -->
+      <div class="room">
+        <div class="rh">The room · 8 reactions</div>
+        <div class="rcol2">
+          <div class="rc">
+            <div class="ch"><span class="d" style="background:var(--success)"></span>Stopped the scroll · 4</div>
+            <p class="rq lead">“Wait, that's not how it usually works—go on.”<span class="who">Burned-out · the skeptic</span></p>
+            <p class="rq">“Okay this is exactly my problem right now.”<span class="who">General · the aspirant</span></p>
+          </div>
+          <div class="rc">
+            <div class="ch"><span class="d" style="background:var(--error)"></span>Scrolled past · 4</div>
+            <p class="rq lead">“Surface-level — I've already cut my posting.”<span class="who">Burned-out · the veteran</span></p>
+            <p class="rq">“Seen this take a hundred times.”<span class="who">General · the busy scroller</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="save" style="margin-left:0">⌖ Save Read</button>
+      <span class="prov" style="margin-left:auto">SIM-1 Flash</span>
+    </div>
+  </div>
+  <p class="note"><b>Depth recovered from the real block:</b> at-a-glance <b>compare row</b> (wins-for-X / bombs-for-Y, band stated once) · per-audience <b>collapsible reaction drills</b> · the <b>“sharpest quote as lead”</b> verbatim room. Kept stripped: <b>legacy <code>#FF7F50</code> coral + ✦/◐/△ glyphs</b> (band = colored word; Lever = neutral cream rule). <b>Static card (P9):</b> no live cloud/chat — the living AudienceLens is the aspirational upgrade, so the real action is <b>Save</b> (not “Open in AudienceLens”).</p>
+
+  <!-- ============ ACCOUNT READ ============ -->
+  <p class="lbl">Account Read</p>
+  <div class="card">
+    <div class="body" style="gap:16px">
+      <div class="eyebrow"><span class="kicker"><span class="dot" style="background:var(--cream-muted)"></span>A Read on your account</span><span class="meta">@yourhandle</span></div>
+      <div class="ar-grid">
+        <div class="ar-sec"><div class="h" style="color:var(--success)">What's working</div><ul><li>Contrarian openers</li><li>Receipts/data posts</li><li>Short payoffs</li></ul></div>
+        <div class="ar-sec"><div class="h" style="color:var(--warning)">What to fix</div><ul><li>Tighten setup beats</li><li>Move the turn earlier</li><li>Stop burying the CTA</li></ul></div>
+      </div>
+      <div class="ar-grid">
+        <div class="ar-sec"><div class="h">Recurring hooks</div><ul><li>“Nobody talks about…”</li><li>“I tried X for 30 days”</li><li>Direct myth-bust openers</li></ul></div>
+        <div class="ar-sec"><div class="h">Format mix</div>
+          <div class="fmix">
+            <div class="row"><span style="width:96px">Talking-head</span><span class="bar"><i style="width:47%"></i></span><span class="pct">47%</span></div>
+            <div class="row"><span style="width:96px">B-roll VO</span><span class="bar"><i style="width:30%"></i></span><span class="pct">30%</span></div>
+            <div class="row"><span style="width:96px">Text-on-screen</span><span class="bar"><i style="width:23%"></i></span><span class="pct">23%</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="ar-sec"><div class="h">Drop-points</div><ul><li>~40% drop at the 3s mark on slow openers</li><li>Second drop when the payoff lands late (&gt;20s)</li></ul></div>
+      <p class="acc">Numen has been <b>within 78%</b> on your last 12 posts.</p>
+    </div>
+    <div class="actions">
+      <button class="btn-primary">Write to my strengths →</button>
+      <button class="save">⌖ Save</button>
+    </div>
+  </div>
+  <p class="note">Two-column working/fix (success/warning data tones, sanctioned). Format mix = cream bars. Added a forward action (“Write to my strengths →” → seeds Ideas) — currently Account Read dead-ends.</p>
+
+  <!-- ============ TEST OUTPUT (band + personas) ============ -->
+  <p class="lbl">Test output · band + reactions</p>
+  <div class="card">
+    <div class="body">
+      <p class="why" style="color:var(--cream)">Posting daily is killing your reach.</p>
+      <div class="proof">
+        <div class="ptop">
+          <span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span>
+          <span class="stopped"><span class="n">8/10</span> stopped</span>
+          <span class="ribbon"><i style="width:80%"></i></span>
+        </div>
+        <div class="seerow">
+          <span class="quote">2 of 4 panel reactors stopped</span>
+          <span class="see"><span class="av"><span></span><span></span><span></span></span>See the room →</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DISCOVER outlier ============ -->
+  <p class="lbl">Discover · outlier tile</p>
+  <div class="card">
+    <div class="body">
+      <div class="eyebrow">
+        <span class="kicker"><span class="dot" style="background:var(--cream-muted)"></span>Your channel</span>
+        <span class="meta"><b style="color:var(--cream)">6.2×</b> vs own</span>
+      </div>
+      <p class="hero" style="font-size:16px">I tracked every post for 90 days</p>
+      <div class="ptop" style="color:var(--cream-muted);font-size:12.5px;gap:16px">
+        <span>▶ 412K</span><span>♥ 38K</span><span>💬 2.1K</span><span>↗ 5.4K</span><span style="margin-left:auto">38s · May 12</span>
+      </div>
+      <div class="proof" style="cursor:default">
+        <div class="ptop"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Fit · Strong</span><span class="stopped" style="color:var(--cream-muted)">predicted fit for your audience</span></div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary">Remix → Read</button>
+      <button class="save">⌖ Save</button>
+    </div>
+  </div>
+  <p class="note">Measured data (no SIM band/quote — honesty). Multiplier leads in the eyebrow with its baseline; fit estimate is a quiet sub-unit, not a fake reaction.</p>
+
+  <!-- ============ PERSONA CHAT ============ -->
+  <p class="lbl">Ask them why · persona chat</p>
+  <div class="card">
+    <div class="body">
+      <div class="eyebrow"><span class="kicker"><span class="dot" style="background:var(--cream-muted)"></span>The skeptic</span></div>
+      <p style="font-size:14px;color:var(--cream-2);align-self:flex-end;max-width:80%;text-align:right">Why did you stop scrolling on this one?</p>
+      <p style="font-size:14px;color:var(--cream);background:var(--faint);border:1px solid var(--border);border-radius:10px;padding:11px 13px;max-width:85%;line-height:1.5">Because it called out something I actually do, then implied I've been wrong about it. I had to know if that was true.</p>
+    </div>
+  </div>
+</div>
+<script>
+  // per-audience reaction drills (the Read)
+  document.querySelectorAll('[data-drill] .drill-trig').forEach(function(t){
+    t.addEventListener('click', function(){
+      var d = t.closest('[data-drill]');
+      d.classList.toggle('open');
+      t.querySelector('.x').textContent = d.classList.contains('open') ? '↑ Hide' : '↓ Show';
+    });
+  });
+</script>
+</body>
+</html>

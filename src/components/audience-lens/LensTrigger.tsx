@@ -13,7 +13,7 @@
  * Lens with a heatmap instead — so all 6 skills share one entry.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { AudienceLens, type LensRewrite } from './AudienceLens';
 
@@ -32,6 +32,11 @@ export interface LensTriggerProps {
   children: ReactNode;
   /** Accessible label for the open affordance. */
   label?: string;
+  /** Override the clickable wrapper className (e.g. ProofUnit's bordered proof box).
+   *  Defaults to the compact inline-cue style. Ignored on the empty-degrade path. */
+  className?: string;
+  /** Extra styles merged onto the wrapper (minHeight 44 + cursor pointer always applied). */
+  style?: CSSProperties;
 }
 
 export function LensTrigger({
@@ -42,6 +47,8 @@ export function LensTrigger({
   reducedMotion = false,
   children,
   label = 'Open the audience reaction',
+  className,
+  style,
 }: LensTriggerProps) {
   const [open, setOpen] = useState(false);
 
@@ -62,8 +69,11 @@ export function LensTrigger({
           }
         }}
         // ≥44px tap target (reuse-contract row 2 / 7).
-        style={{ minHeight: 44, cursor: 'pointer' }}
-        className="flex items-center rounded-[8px] transition-colors hover:bg-[var(--color-hover)]"
+        style={{ minHeight: 44, cursor: 'pointer', ...style }}
+        className={
+          className ??
+          'flex items-center rounded-[8px] transition-colors hover:bg-[var(--color-hover)]'
+        }
       >
         {children}
       </div>
