@@ -19,6 +19,8 @@ import {
   detectSubjectKind,
   bakeProfileSignature,
   buildSynthMessages,
+  sanitizeStoragePath,
+  watchPersonVideo,
   PROFILE_SYNTH_SYSTEM,
   type ProfileSynth,
   type ProfileSynthInput,
@@ -210,5 +212,49 @@ describe("buildSynthMessages (D-08 isolation)", () => {
     // goal + success criterion are carried as data too (isolated in the USER message)
     expect(user).toContain(goal);
     expect(user).toContain(successCriterion);
+  });
+});
+
+// ─── sanitizeStoragePath (P4 carry AR-04-01 / Pitfall 3) ───────────────────────────
+
+describe("sanitizeStoragePath", () => {
+  it("accepts a valid <userId>/<file> storage key", () => {
+    expect(sanitizeStoragePath("uid-1/clip.mp4")).toBe("uid-1/clip.mp4");
+    expect(sanitizeStoragePath("userid/file.mp4")).toBe("userid/file.mp4");
+  });
+
+  it("throws on path traversal, absolute paths, embedded .. and empty input", () => {
+    expect(() => sanitizeStoragePath("../etc/passwd")).toThrow();
+    expect(() => sanitizeStoragePath("/abs/path")).toThrow();
+    expect(() => sanitizeStoragePath("uid/../secret.mp4")).toThrow();
+    expect(() => sanitizeStoragePath("")).toThrow();
+    expect(() => sanitizeStoragePath("uid/sub/dir/clip.mp4")).toThrow(); // only <id>/<file> shape
+  });
+});
+
+// ─── watchPersonVideo (D-03 Max path — two-step: sanitize → sign → omni watch) ─────
+
+describe("watchPersonVideo", () => {
+  it("sanitizes the storagePath BEFORE signing (throws, never signs/watches on traversal)", async () => {
+    const createSignedUrl = vi.fn(async (_path: string) => "https://signed");
+    const watch = vi.fn(async (_url: string, _goal: string) => ({ signal: "s", transcript: "t" }));
+    await expect(
+      watchPersonVideo("../etc/passwd", "goal", { createSignedUrl, watch }),
+    ).rejects.toThrow();
+    expect(createSignedUrl).not.toHaveBeenCalled();
+    expect(watch).not.toHaveBeenCalled();
+  });
+
+  it("signs the sanitized key then watches with the (isolated) goal", async () => {
+    const createSignedUrl = vi.fn(async (_path: string) => "https://signed-url");
+    const watch = vi.fn(async (url: string, goal: string) => ({
+      signal: `saw ${url}`,
+      transcript: goal,
+    }));
+    const out = await watchPersonVideo("uid-1/clip.mp4", "read them", { createSignedUrl, watch });
+    expect(createSignedUrl).toHaveBeenCalledWith("uid-1/clip.mp4");
+    expect(watch).toHaveBeenCalledWith("https://signed-url", "read them");
+    expect(out.signal).toContain("https://signed-url");
+    expect(out.transcript).toBe("read them");
   });
 });
