@@ -37,6 +37,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { useDeleteSavedItem } from "@/hooks/queries/use-saved-items";
 import type { SavedItem, SavedItemType } from "@/lib/shelf/shelf-repo";
+import { formatCount } from "@/lib/competitors-utils";
 import { cn } from "@/lib/utils";
 
 // Per-type forward action — mirrors the thread card's forward chain step exactly
@@ -92,6 +93,12 @@ const sv = (o: Snap, k: string): string => (typeof o?.[k] === "string" ? (o[k] a
 const nv = (o: Snap, k: string): number | undefined =>
   typeof o?.[k] === "number" ? (o[k] as number) : undefined;
 
+/** Clean "{n}×" display from a measured multiplier (1 decimal under 10×, integer above). */
+function formatMult(m: number): string {
+  if (!Number.isFinite(m) || m <= 0) return "";
+  return m >= 10 ? `${Math.round(m)}×` : `${m.toFixed(1)}×`;
+}
+
 /** Normalised view-model — the shared spine, filled per type from real snapshot fields. */
 interface CardVM {
   kicker: string;
@@ -102,6 +109,7 @@ interface CardVM {
   why?: string;
   proof?: { band: string; fraction: string; quote?: string; compact: boolean };
   measured?: { mult?: string; views?: string }; // outlier — measured, no band
+  coverUrl?: string; // outlier — the real scrape thumbnail (clockworks videoMeta.coverUrl)
 }
 
 /** Build the per-type view-model from the saved snapshot (the originating block's props). */
@@ -171,12 +179,19 @@ function buildVM(item: SavedItem): CardVM {
       };
     }
     case "outlier": {
-      const mult = sv(snap, "multiplier") || (nv(snap, "multiplier") != null ? `${nv(snap, "multiplier")}×` : "");
-      const views = sv(snap, "views");
+      // Snapshot = OutlierTileData (discover/outlier-tile): multiplier/views are NUMBERS.
+      const multRaw = nv(snap, "multiplier");
+      const multCore = sv(snap, "multiplier") || (multRaw != null ? formatMult(multRaw) : "");
+      // D-05 honesty: never a bare multiplier — pair it with its baseline label.
+      const baseline = sv(snap, "baselineLabel");
+      const mult = multCore ? (baseline ? `${multCore} ${baseline}` : multCore) : "";
+      const viewsRaw = nv(snap, "views");
+      const views = sv(snap, "views") || (viewsRaw != null ? formatCount(viewsRaw) : "");
       return {
         kicker: "Outlier",
         hero: sv(snap, "caption") || item.title || "Outlier",
         measured: { mult: mult || undefined, views: views || undefined },
+        coverUrl: sv(snap, "coverUrl") || undefined,
       };
     }
     default: {
@@ -385,6 +400,24 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
   // ── Full echo card (default — masonry grid) ────────────────────────────────
   return (
     <div className="group flex break-inside-avoid flex-col overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface transition-[border-color,transform] hover:-translate-y-0.5 hover:border-white/[0.10]">
+      {/* Cover banner (outlier) — the real scrape thumbnail (clockworks videoMeta.coverUrl).
+          Additive: renders ONLY when coverUrl is present, so a pre-cover save degrades to the
+          text-first echo. Capped height — a full 9:16 in a masonry column would tower; object-cover
+          crops to a clean banner. A broken/expired CDN URL hides the <img> (the bg shows). */}
+      {vm.coverUrl && (
+        <div className="relative h-44 w-full overflow-hidden border-b border-white/[0.06] bg-white/[0.04]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+          <img
+            src={vm.coverUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </div>
+      )}
       <div className="flex flex-col gap-2.5 p-4">
         {/* Eyebrow — type icon + kicker (band dot) ............ rank + remove */}
         <div className="flex items-center justify-between gap-2">
