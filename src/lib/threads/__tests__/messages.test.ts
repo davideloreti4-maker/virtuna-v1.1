@@ -45,6 +45,33 @@ const VALID_BAND_BLOCK = {
 // A block with a type outside the registry — should fail validation.
 const INVALID_BLOCK = { type: "unknown_future_block", props: { data: 42 } };
 
+// ─── Phase 5 blocks (SIMU-03 sequential-blocks-in-one-thread persistence proof) ──
+const VALID_PROFILE_READ_BLOCK = {
+  type: "profile-read",
+  props: {
+    subjectName: "Marcus",
+    subjectKind: "person",
+    identity: { traits: ["dominant"], commStyle: "clipped", drivers: ["control"] },
+    tells: [{ tell: "Reframes asks as favors", evidence: "I'll let you have Friday." }],
+    howTheyReact: "Respects a firm deadline.",
+    goalScope: "Commit to Friday.",
+    caveat: "Directional, from limited evidence.",
+    savedAudienceId: "aud_marcus_1",
+    model: "sim1-flash",
+    tier: "Directional",
+  },
+};
+const VALID_REACTION_DISTRIBUTION_BLOCK = {
+  type: "reaction-distribution",
+  props: {
+    audienceName: "Marcus",
+    subjectKind: "person",
+    read: { verdict: "resistant", reasoning: "Reads soft framing as weakness.", quote: "Why would I move?" },
+    model: "sim1-flash",
+    tier: "Directional",
+  },
+};
+
 describe("insertMessage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -192,6 +219,65 @@ describe("loadMessages — rehydration with re-validation (D-14)", () => {
     (createClient as Mock).mockResolvedValue({ from: mockFrom });
 
     await expect(loadMessages(THREAD_ID)).rejects.toThrow(/DB error/);
+  });
+});
+
+describe("Phase 5 blocks round-trip insertMessage→loadMessages (SIMU-03)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("insertMessage accepts profile-read + reaction-distribution at the write boundary", async () => {
+    const blocks = [VALID_PROFILE_READ_BLOCK, VALID_REACTION_DISTRIBUTION_BLOCK];
+    const fakeRow: MessageRow = {
+      id: "msg-p5",
+      thread_id: THREAD_ID,
+      role: "assistant",
+      body: blocks,
+      created_at: "2026-06-28T00:00:00Z",
+    };
+
+    const mockSingle = vi.fn().mockResolvedValue({ data: fakeRow, error: null });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert });
+
+    (createServiceClient as Mock).mockReturnValue({ from: mockFrom });
+
+    const result = await insertMessage(THREAD_ID, "assistant", blocks);
+
+    expect(result.id).toBe("msg-p5");
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ thread_id: THREAD_ID, role: "assistant", body: blocks }),
+    );
+  });
+
+  it("loadMessages rehydrates both Phase-5 blocks intact (re-validation passes)", async () => {
+    const blocks = [VALID_PROFILE_READ_BLOCK, VALID_REACTION_DISTRIBUTION_BLOCK];
+    const fakeRows: MessageRow[] = [
+      {
+        id: "msg-p5",
+        thread_id: THREAD_ID,
+        role: "assistant",
+        body: blocks,
+        created_at: "2026-06-28T00:00:00Z",
+      },
+    ];
+
+    const mockOrder = vi.fn().mockResolvedValue({ data: fakeRows, error: null });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+
+    (createClient as Mock).mockResolvedValue({ from: mockFrom });
+
+    const messages = await loadMessages(THREAD_ID);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]!.blocks).toHaveLength(2);
+    // Neither degrades to the __unsupported__ sentinel — both round-trip as their real type.
+    expect(messages[0]!.blocks[0]).toMatchObject({ type: "profile-read", props: { subjectName: "Marcus" } });
+    expect(messages[0]!.blocks[1]).toMatchObject({ type: "reaction-distribution", props: { audienceName: "Marcus" } });
   });
 });
 

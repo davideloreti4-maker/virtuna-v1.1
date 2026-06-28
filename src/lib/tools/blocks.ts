@@ -14,6 +14,16 @@
  */
 
 import { z } from "zod";
+import {
+  ProfileReadBlockSchema,
+  ReactionDistributionBlockSchema,
+} from "./profile-blocks";
+
+// Re-export the two Phase-5 schemas + types from the sibling module so existing
+// `@/lib/tools/blocks` import sites keep working (the schemas live in profile-blocks.ts
+// to keep this file under the 500-line project limit). Additive, no behavior change.
+export { ProfileReadBlockSchema, ReactionDistributionBlockSchema } from "./profile-blocks";
+export type { ProfileReadBlock, ReactionDistributionBlock } from "./profile-blocks";
 
 // ─── Markdown block ───────────────────────────────────────────────────────────
 
@@ -463,6 +473,8 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
+  ProfileReadBlockSchema,
+  ReactionDistributionBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;

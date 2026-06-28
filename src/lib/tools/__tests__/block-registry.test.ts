@@ -59,6 +59,63 @@ describe("validateBlock", () => {
     expect(() => validateBlock(42)).not.toThrow();
     expect(() => validateBlock("string")).not.toThrow();
   });
+
+  // ── Phase 5: the two new block types are registered (Pitfall 4) ──────────────
+
+  it("returns ok:true for a valid profile-read block (Plan 05-01)", () => {
+    const result = validateBlock({
+      type: "profile-read",
+      props: {
+        subjectName: "Marcus",
+        subjectKind: "person",
+        identity: { traits: ["dominant"], commStyle: "clipped", drivers: ["control"] },
+        tells: [{ tell: "Reframes asks as favors", evidence: "I'll let you have Friday." }],
+        howTheyReact: "Respects a firm deadline.",
+        goalScope: "Commit to Friday.",
+        caveat: "Directional, from limited evidence.",
+        savedAudienceId: "aud_1",
+        model: "sim1-flash",
+        tier: "Directional",
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.block.type).toBe("profile-read");
+  });
+
+  it("returns ok:true for a valid reaction-distribution block (Plan 05-01)", () => {
+    const result = validateBlock({
+      type: "reaction-distribution",
+      props: {
+        audienceName: "Marcus",
+        subjectKind: "person",
+        read: { verdict: "resistant", reasoning: "Reads soft framing as weakness.", quote: "Why would I move?" },
+        model: "sim1-flash",
+        tier: "Directional",
+      },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.block.type).toBe("reaction-distribution");
+  });
+
+  it("returns ok:false for a profile-read carrying a smuggled numeric score", () => {
+    const result = validateBlock({
+      type: "profile-read",
+      props: {
+        subjectName: "Marcus",
+        subjectKind: "person",
+        identity: { traits: ["dominant"], commStyle: "clipped", drivers: ["control"] },
+        tells: [{ tell: "Reframes asks as favors", evidence: "I'll let you have Friday." }],
+        howTheyReact: "Respects a firm deadline.",
+        goalScope: "Commit to Friday.",
+        caveat: "Directional.",
+        savedAudienceId: "aud_1",
+        model: "sim1-flash",
+        tier: "Directional",
+        score: 88,
+      },
+    });
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe("assertBlocksInRegistry", () => {
