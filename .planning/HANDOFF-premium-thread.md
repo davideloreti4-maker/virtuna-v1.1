@@ -1,32 +1,47 @@
 # HANDOFF — lane/shell · Premium conversational thread
 
-> Worktree `~/virtuna-shell` · branch `lane/shell` (chrome UI lane) · 2026-06-27.
-> Two SSOTs to read first: **`docs/subsystems/ui-loading-states.md`** (audit + north star §5) and this file.
+> Worktree `~/virtuna-shell` · branch `lane/shell` (chrome UI lane) · updated 2026-06-28.
+> **Design phase DONE (sketch signed off at v3.2). Now BUILDING.** This handoff kicks off **PR-1 / Chunk 1.**
 
 ---
 
-## ⎘ PASTE THIS INTO A FRESH SESSION
+## ⎘ PASTE THIS INTO A FRESH SESSION (build PR-1)
 
 ```
-Continuing lane/shell (chrome UI lane), "premium conversational thread" initiative.
-READ FIRST: docs/subsystems/ui-loading-states.md (loading audit + north star §5) and
-.planning/HANDOFF-premium-thread.md. Then open the sketch:
-  open .planning/sketches/premium-thread.html   (↻ replay top-center)
+Continuing lane/shell (chrome UI lane), "premium conversational thread". DESIGN IS DONE — the sketch is
+signed off (v3.2) and there's a build spec. Now build PR-1.
 
-Where we are: PR #72 merged to main; loading/chrome surface fully audited (Themes A=in-thread,
-B=route skeletons, C=primitives debt). North star = make the thread feel like Perplexity/Claude/
-Cursor: (1) text → cards → text conversational shape, (2) premium narrated progress for our
-high-latency skills. Sketch v2 built + verified; owner says "way better, still a lot to refine" —
-direction RIGHT, not final.
+READ FIRST (in order):
+  1. .planning/premium-thread-build-spec.md   ← the contract; build to this. PR-1 section is your scope.
+  2. docs/subsystems/ui-loading-states.md §1   ← A1/A2/A3 mechanisms + exact file:line seams.
+  3. .planning/premium-thread-copy-floor.md     ← only needed for PR-2 (copy), skip for PR-1.
+  open .planning/sketches/premium-thread.html  ← the visual target (↻ replay; ▶ play switch = A1).
 
-Locked decisions: keep the auto-wip Stop hook (it's hardened); conversational prose = CLIENT-TEMPLATED
-now, engine synthesis later (stay in lane, NO engine work); sketch-first before any app code.
+PR-1 / Chunk 1 = switch & submit mechanics (chrome only, NO stream/card changes):
+- A1 thread-switch (the worst UX): add a `rehydrating` flag in composer.tsx — set TRUE synchronously at the
+  top of the [activeThreadSignal] switch effect (~:381, before the :388-405 wipes), FALSE when
+  loadPersistedBlocks() (:408) settles. Plumb into home-page-layout.tsx: gate hero on
+  `!hasConversation && !rehydrating`, keep thread layout on `hasThread || rehydrating`; render
+  <ThreadLoadingSkeleton variant="chat" caption="Opening thread…"/> in the scroll while rehydrating.
+  CONSTRAINT: do NOT remove the activateThread await in Sidebar.handleOpenThread (Sidebar.tsx:291) — it's
+  load-bearing (/api/threads/open reads most-recent). Cover the gap with the skeleton, don't close it.
+- A2 row pending: `activatingId` state in Sidebar; ThreadRow (:179) shows terracotta left-border + dim-pulse
+  (+ optional <Spinner size="sm">) while activating. Set before await, clear after.
+- A3 test-submit: composer test path (:813/:855) never calls captureUserTurn → echo the URL + a muted
+  stream.phase status line before navigating (button loading ~:1362).
 
-Do next: keep refining the sketch per my feedback (motion-timing/smoothness pass; progress-state
-pacing + sub-detail copy; then real avatars, lens-open, a pure chat turn, error/retry, per-skill
-copy). When I sign off the sketch → write a build spec → build Chunk 1 (A1 thread-switch thrash +
-A2 row feedback + A3 test-submit feedback). Reuse <Skeleton> + refine ProgressChecklist; cards =
-locked hook-card-refined, untouched. Client-side only.
+Locked constraints: client-side ONLY (no engine/SSE change); terracotta dosage = active/live states only,
+primary action = cream; reuse <Skeleton> + ThreadLoadingSkeleton; cards = locked hook-card-refined,
+untouched. Keep the auto-wip Stop hook (hardened). Rebase lane/shell on origin/main BEFORE opening the PR.
+
+Verify (REQUIRED — vitest can't catch Next bundle leaks, do a real browser pass):
+  node ./node_modules/vitest/vitest.mjs run   (npm test lies — rtk shim)
+  then a browser pass on throttled network: switch threads = NO serif hero-flash (A1), row signals
+  instantly (A2), test-submit echoes (A3). Auth via e2e/create-test-user.ts. tsc --noEmit clean on the diff;
+  keep reading/__tests__/reskin-matte.test.ts green.
+
+When PR-1 is green: PR it, merge, then PR-2 / Chunk 2 (A4 proof pending→scored + conversational frame) per
+the build spec. Memory `lane-shell-premium-thread` has the full grounded picture.
 ```
 
 ---
