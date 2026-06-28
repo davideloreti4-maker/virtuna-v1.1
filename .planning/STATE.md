@@ -4,13 +4,13 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-06-28T17:27:23.731Z"
-last_activity: 2026-06-28 -- Phase 05 planning complete
+last_updated: "2026-06-28T17:42:11.838Z"
+last_activity: 2026-06-28 -- Phase 05 execution started
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 20
-  completed_plans: 20
+  total_plans: 26
+  completed_plans: 21
   percent: 57
 ---
 
@@ -21,19 +21,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-26)
 
 **Core value:** A calibrated, interrogable synthetic population you can run any stimulus through and get back a grounded, honest (Validated vs Directional) read.
-**Current focus:** Phase 04 — input-adapter
+**Current focus:** Phase 05 — profile-simulate-wow
 
 ## Current Position
 
-Phase: 5
-Plan: Not started
+Phase: 05 (profile-simulate-wow) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
 Status (prior): 04-03 complete (Wave 1 leaf module: vision read)
 Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-28 -- Phase 05 planning complete
+Last activity: 2026-06-28 -- Phase 05 execution started
 
 Progress: [██████░░░░] 57% (4/7 phases complete)
 
@@ -77,6 +77,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 04 P02 | ~3min | 2 tasks | 2 files |
 | Phase 04 P03 | ~8min | 1 tasks | 2 files |
 | Phase 04 P04 | ~6min | 1 tasks | 1 files |
+| Phase 05 P01 | 12min | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,8 @@ Recent decisions affecting current work:
 - [Phase 03]: 03-02: Domain foundation (interface-first). `Audience` gains a REQUIRED first-class `mode: "socials" | "general"` axis (D-04 — explicitly NOT derived from `is_general`), plus additive-optional `success_criterion?: string | null` (D-03, flows into `DomainPack.scoring` for P5/P6) and top-level `custom_context?: CustomContext[] | null` (D-07 — stored top-level NOT in `SignatureProvenance` so it survives `signature:null`, Pitfall 2); `CustomContext` = `{source:"user", note, persona_evidence_link?}`. New `src/lib/audience/resolve-tier.ts` exports `resolveTier(Pick<Audience,"mode">)` + `tierFromCalibration({baselineRef?})` + `type TrustTier`, productionizing the spike-locked rule: keys off `SOCIALS_PACK.calibration` (the PACK, never `Audience.calibration`/scrape provenance), socials→Validated, every other mode→Directional directly (no General pack in P3 — D-02, do NOT widen `DomainPack`). Truth-table test (4/4) locks never-Validated-for-general. Audience suite 11 files/139 passed (+4, determinism gate kept green); no new tsc errors on touched paths; ENGINE_VERSION untouched. Downstream (03-03 repo/migration, UI, run-badge) now import these contracts without a scavenger hunt.
 - [Phase 03]: 03-01: D-01 determinism close-out. Dropped thinking-mode on the qwen-3.7-plus synth (`enable_thinking:false`, `thinking_budget` removed; c4c7b5c9) + re-created the paid double-bake harness (6d5854a2). **Live gate (~$0.15, "test it cheaper") = signatureEqual:FALSE even SYNTH-ISOLATED** (watch+subtitle stubbed → identical input, 2 real synth calls): structural drift in persona_weights (loyalist 0.15↔0.10, niche 0.05↔0.10) + persona shares + prose; STABLE on follower_tier/maturity/interest_tags/temperature_mix/archetypes/writing_style. Root cause = MoE batch-routing non-determinism (temp:0+seed insufficient), NOT a config bug — reproduces 02-02 independently; Option 3 (prose-tolerance) ruled OUT by structural drift. **Operator adopted Fallback Option 2 (bake-once-freeze):** determinism contracted on the FROZEN persisted signature (prod bakes-once-never-rebakes) + green zero-network replay gate (signature-determinism.test.ts 5/5); cross-bake reproducibility → v2 (CAL-01); `scripts/rebake-determinism.ts` retained as the v2/CAL-01 drift tool (header reframed). Thinking-off change KEPT (strict jitter reduction). ENGINE_VERSION untouched. Honesty layer unaffected (no-cal→Directional already GREEN).
 - [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
+- [Phase ?]: 05-01: Phase-5 block schemas live in sibling profile-blocks.ts (re-exported from blocks.ts) to keep blocks.ts under the 500-line limit
+- [Phase ?]: 05-01: savedAudienceId to audienceId chain seam extracted to a pure unit-tested buildSimulateRequest helper (Warning-1)
 
 ### Pending Todos
 
@@ -129,6 +132,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-28T16:48:38.470Z
+Last session: 2026-06-28T17:41:45.851Z
 Stopped at: Phase 5 UI-SPEC approved
 Resume file: .planning/phases/05-profile-simulate-wow/05-UI-SPEC.md

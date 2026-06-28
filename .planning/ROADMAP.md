@@ -170,7 +170,7 @@ Plans:
 Plans:
 **Wave 1** *(interface-first foundations, parallel — no file overlap)*
 
-- [ ] 05-01-PLAN.md — Block contracts (profile-read + reaction-distribution) + registry/union/component-map wiring + profile→simulate chain handoff + persistence round-trip (PROF-02, PROF-04, SIMU-02, SIMU-03)
+- [x] 05-01-PLAN.md — Block contracts (profile-read + reaction-distribution) + registry/union/component-map wiring + profile→simulate chain handoff + persistence round-trip (PROF-02, PROF-04, SIMU-02, SIMU-03)
 - [ ] 05-02-PLAN.md — behavioral-core.ts: harvest the branch corpus → byte-stable cached behavioral system prompt + D-04 ethics block + tier-gated forensic directives (PROF-02)
 - [ ] 05-03-PLAN.md — profile-bake.ts: evidence → frozen person/panel AudienceSignature (reuse enrich-signature synth parts) + storagePath sanitize + omni person-video path (PROF-01)
 
@@ -226,7 +226,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
-| 5. Profile → Simulate Wow | 0/6 | Not started | - |
+| 5. Profile → Simulate Wow | 1/6 | In Progress|  |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 

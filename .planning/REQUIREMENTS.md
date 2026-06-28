@@ -33,15 +33,15 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 ### PROF — Profile Verb (the on-ramp)
 
 - [ ] **PROF-01**: A user can upload evidence (chat `.txt` / doc) and SIM-1 builds a person/panel audience from it
-- [ ] **PROF-02**: A Profile result card shows who the person/panel is, backed by evidence quotes
+- [x] **PROF-02**: A Profile result card shows who the person/panel is, backed by evidence quotes
 - [ ] **PROF-03**: The audience built by Profile is saved to the General library
-- [ ] **PROF-04**: From a Profile, a chain CTA offers "Simulate a message to [them]"
+- [x] **PROF-04**: From a Profile, a chain CTA offers "Simulate a message to [them]"
 
 ### SIMU — Simulate Verb (General)
 
 - [ ] **SIMU-01**: `simulate(audience, stimulus)` runs a stimulus through a General audience and returns reactions
-- [ ] **SIMU-02**: A reaction-distribution result card renders the distribution + themes
-- [ ] **SIMU-03**: The end-to-end wow works in one thread: Profile-a-chat → Simulate-a-reply
+- [x] **SIMU-02**: A reaction-distribution result card renders the distribution + themes
+- [x] **SIMU-03**: The end-to-end wow works in one thread: Profile-a-chat → Simulate-a-reply
 
 ### PRED — Predict Verb
 
@@ -112,12 +112,12 @@ Phases assigned during roadmap creation. All Pending.
 | TRUST-02 | Phase 3 | Done (03-05 inline evidence + ungrounded affordance) |
 | TRUST-03 | Phase 2 | Complete |
 | PROF-01 | Phase 5 | Pending |
-| PROF-02 | Phase 5 | Pending |
+| PROF-02 | Phase 5 | Complete |
 | PROF-03 | Phase 5 | Pending |
-| PROF-04 | Phase 5 | Pending |
+| PROF-04 | Phase 5 | Complete |
 | SIMU-01 | Phase 5 | Pending |
-| SIMU-02 | Phase 5 | Pending |
-| SIMU-03 | Phase 5 | Pending |
+| SIMU-02 | Phase 5 | Complete |
+| SIMU-03 | Phase 5 | Complete |
 | PRED-01 | Phase 6 | Pending |
 | PRED-02 | Phase 6 | Pending |
 | PRED-03 | Phase 6 | Pending |
