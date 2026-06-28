@@ -228,23 +228,33 @@ fold into once locked.
 
 - **v1 (2026-06-27):** full arc over 2 turns — (T1) user echo → typed intro → 2 refined hook cards → outro +
   forward-chain chips; (T2) echo → intro → stage checklist + shimmer skeleton.
-- **v2 (2026-06-27, current) — progress state rebuilt as the hero** (owner: the latency-progress UI is what
+- **v2 (2026-06-27) — progress state rebuilt as the hero** (owner: the latency-progress UI is what
   users watch most; must match Perplexity/Claude/Cursor). Connected **spine** with accruing checks (✓ pops,
   spine fills to next); active step **pulses** (terracotta) + a **live sub-detail that narrates real work &
-  value** (cycles "Loading your 10 calibrated reactors…" → "Drafting the cold open…" → "Reactor 6 of 10
-  reacting…" → "Comparing to your 8/10 baseline…"); **elapsed timer** + breathing spark; on finish
-  **collapses to "Generated in 0:32 ▸"** (Claude/Cursor pattern) → result **card streams in** → outro
-  continues. Smoothness: eased reveals (rise+scale), cards arrive one-by-one, intro/outro **word-fade**
-  (blur→sharp, not char-typing), spine-fill + check-pop per completion.
+  value**; **elapsed timer** + breathing spark; on finish **collapses to "Generated in 0:32 ▸"**
+  (Claude/Cursor pattern) → result **card streams in** → outro continues. Smoothness: eased reveals
+  (rise+scale), cards one-by-one, intro/outro **word-fade** (blur→sharp), spine-fill + check-pop per completion.
+- **v3 (2026-06-28, current) — cleared most of the backlog; verified rendering via Playwright (4 frames).**
+  Adds: **lens-open** ("See the room →" expands inline into the 10-reactor VerbatimWall — stopped/scrolled
+  split, named archetypes, "Ask the skeptic why →"; click any proof OR the replay auto-opens #1); **real
+  reactor avatars** (distinct warm-neutral faces w/ archetype initials S/V/A/B, no accent — dosage stays
+  on live/active only); a **pure text/chat turn** (Turn 3, flush-left Numen prose, no card — proves text
+  coexists); a static **reference gallery** below the live arc with the **error/partial-failure** state
+  (finished steps stay ✓, failed step marked, draft preserved, **Retry scoring →** offered) and **per-skill
+  step copy** (Hooks / Script / Remix / Account Read each with their 4 stages + value-narrating sub-detail);
+  **sub-detail copy** rewritten to narrate real work + value ("Re-reading what stopped them last time…",
+  "Holding it to your 8/10 baseline…"); **motion** — slower word-fade, single debounced scroll
+  choreography, compressed elapsed (0:00→0:32 so the timer matches the summary).
 
-**Sketch refinement backlog (still TODO — owner "still a lot to refine"):**
-- Motion-timing pass everywhere (pacing of reveals, stage dwell, card stream-in) — "smoothness can be improved everywhere"
-- Real reactor avatars in "See the room" (currently empty circles)
-- Lens-open state (what "See the room →" expands into)
-- A pure text/chat turn (no cards) to prove text-only messages coexist
-- Error / retry / partial-failure state for a skill run
-- Per-skill step copy (hooks vs script vs remix vs account-read have different stages/sub-details)
-- Sub-detail copy polish (the value-narrating lines are the emotional core — get them exactly right)
+**Sketch refinement backlog (remaining — pending owner review of v3):**
+- Motion-timing fine-tune pass — owner to react to v3 pacing (stage dwell, lens-open dwell in replay, the
+  Turn-2→Turn-3 hand-off); "smoothness can be improved everywhere" is the standing bar.
+- Sub-detail copy polish — the value-narrating lines are the emotional core; v3 sharpened them, get the
+  exact wording owner-approved per skill.
+- Lens-open depth — currently the VerbatimWall; decide if "Ask the skeptic why →" opens a persona-chat
+  inline (vs navigating) and whether avatars get real imagery later.
+- Error state is static reference — decide if it needs a live retry animation in-thread.
+- (then) owner sign-off → build spec → Chunk 1.
 
 **Constraints carried in:** prose = **client-templated now** (hybrid; engine synthesis later) → stays in
 `lane/shell`, no engine work. Terracotta dosage = active/live states only; primary action = cream, never

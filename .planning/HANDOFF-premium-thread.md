@@ -36,7 +36,9 @@ Started by cleanly shipping the prior session's work (PR #72), then the owner re
 from "loading polish" to a real initiative: **make the Numen thread feel like a premium high-end tool
 (Perplexity / Claude / Cursor).** We audited the whole loading/chrome surface, set the north star,
 and are iterating on a throwaway HTML sketch that locks the target feel before any app code. Sketch is
-at **v2**; owner reaction "way better, still a lot to refine."
+at **v3** (2026-06-28); v2 owner reaction was "way better, still a lot to refine" — v3 cleared most of the
+named backlog (lens-open, real avatars, pure chat turn, error/retry, per-skill copy, sharper sub-detail,
+motion pass) and is **verified-rendering via Playwright**, pending owner review.
 
 ## What shipped this session (DONE, on main)
 - **PR #72 squash-merged → main `6b2d110b`.** The prior session left it CONFLICTING because `lane/shell`
@@ -102,10 +104,14 @@ conversational intro/outro framing, once the sketch is signed off.
 - Unscored cards (A4): `src/hooks/queries/use-hooks-stream.ts:487` (`band ?? 'Mixed'`), `ProofUnit`.
 - Conversational slots: `ThreadAssistantTurn` / `SkillResultCard` (`src/components/thread/skill-result-card.tsx`).
 
-## Sketch refinement backlog (next session, with owner)
-Motion-timing/smoothness pass everywhere · progress-state pacing + sub-detail copy (the value-narrating
-lines are the emotional core) · real reactor avatars · lens-open state · a pure chat turn · error/retry
-state · per-skill step copy. (Also in doc §5.)
+## Sketch refinement backlog (with owner)
+**v3 (2026-06-28) cleared:** lens-open (inline VerbatimWall + avatars + "Ask the skeptic why →") · real
+reactor avatars (archetype initials, neutral) · pure text/chat turn (Turn 3) · error/partial-failure +
+Retry state (static reference) · per-skill step copy (Hooks/Script/Remix/Account-Read gallery) · sharper
+value-narrating sub-detail · motion pass (slower word-fade, debounced scroll, compressed elapsed).
+**Remaining (pending owner react to v3):** motion-timing fine-tune (stage/lens dwell, Turn-2→3 hand-off) ·
+exact sub-detail wording per skill · whether "Ask the skeptic why →" opens persona-chat inline · whether
+the error state needs a live retry animation. (Full detail in doc §5.) → on sign-off: build spec → Chunk 1.
 
 ## State of the tree
 `lane/shell` @ `6b2d110b` (= main) + this session's docs/sketch/handoff committed on top. No app code
