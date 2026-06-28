@@ -169,7 +169,7 @@ describe("runProfile — tier-gated forensic (D-03)", () => {
   it("flash tier: forensic null/absent + model sim1-flash", async () => {
     mockReadReturns(FLASH_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-1"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-1"));
 
     const block = await runProfile(
       { supabase: fakeSupabase, stimulus: flashStimulus() },
@@ -183,7 +183,7 @@ describe("runProfile — tier-gated forensic (D-03)", () => {
   it("max tier (person-video): forensic present + model sim1-max", async () => {
     mockReadReturns(MAX_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-2"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-2"));
     const watch = vi.fn(async () => ({ signal: "at 0:42 a shoulder shift", transcript: "spoken words" }));
 
     const block = await runProfile(
@@ -203,7 +203,7 @@ describe("runProfile — D-08 isolation + Pitfall 1 model routing", () => {
   it("READ system carries no user bytes; flash READ uses QWEN_REASONING_MODEL (never omni)", async () => {
     mockReadReturns(FLASH_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-3"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-3"));
 
     await runProfile({ supabase: fakeSupabase, stimulus: flashStimulus() }, { bake, saveAudience });
 
@@ -233,7 +233,7 @@ describe("runProfile — D-08 isolation + Pitfall 1 model routing", () => {
   it("max READ uses BEHAVIORAL_SYSTEM_PROMPT_MAX as the byte-stable system message", async () => {
     mockReadReturns(MAX_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-4"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-4"));
     const watch = vi.fn(async () => ({ signal: "cue", transcript: "words" }));
 
     await runProfile({ supabase: fakeSupabase, stimulus: maxStimulus() }, { bake, saveAudience, watch });
@@ -251,7 +251,7 @@ describe("runProfile — saved General SIM + subjectKind marker (PROF-03 / D-02)
   it("saves via createAudience(mode:general); block carries savedAudienceId + Directional tier", async () => {
     mockReadReturns(FLASH_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-saved-99"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-saved-99"));
 
     const block = await runProfile(
       { supabase: fakeSupabase, stimulus: flashStimulus() },
@@ -269,7 +269,7 @@ describe("runProfile — saved General SIM + subjectKind marker (PROF-03 / D-02)
     mockReadReturns(FLASH_READ);
     // person bake that produced 3 personas — must NOT mis-branch to "panel".
     const bake = vi.fn(async () => ({ signature: makeSignature(3), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-5"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-5"));
 
     await runProfile({ supabase: fakeSupabase, stimulus: flashStimulus() }, { bake, saveAudience });
 
@@ -287,7 +287,7 @@ describe("runProfile — block validity", () => {
   it("emits a ProfileReadBlockSchema-valid block", async () => {
     mockReadReturns(FLASH_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
-    const saveAudience = vi.fn(async () => makeSavedAudience("aud-6"));
+    const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-6"));
 
     const block = await runProfile(
       { supabase: fakeSupabase, stimulus: flashStimulus() },
