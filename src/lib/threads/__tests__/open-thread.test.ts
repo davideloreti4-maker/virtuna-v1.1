@@ -64,9 +64,32 @@ describe("createOpenThreadLazy", () => {
     vi.clearAllMocks();
   });
 
+  // GET-FIRST regression (#open-thread-divergence): when an open thread already
+  // exists, return it WITHOUT inserting. Insert-first minted a new open thread on
+  // every call wherever the partial unique index was non-enforcing, so the writer
+  // (this fn) and the reader (getOpenThread / GET /api/threads/open) drifted onto
+  // different threads and freshly-written blocks never surfaced.
+  it("returns the existing open thread without inserting (get-first)", async () => {
+    const existing = makeOpenRow();
+    const chain = buildChain();
+    // getOpenThread resolves an existing (oldest) open thread → no insert.
+    chain.maybeSingle.mockResolvedValueOnce({ data: existing, error: null });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    const result = await createOpenThreadLazy(USER_A);
+
+    expect(result).toEqual(existing);
+    // Critical: NO insert when a thread already exists (writer == reader).
+    expect(chain.insert).not.toHaveBeenCalled();
+    // Ownership scoped by user_id (CR-01)
+    expect(chain.eq).toHaveBeenCalledWith("user_id", USER_A);
+  });
+
   it("inserts and returns a new open thread on first open", async () => {
     const row = makeOpenRow();
     const chain = buildChain();
+    // get-first miss (no existing open thread yet) → then insert.
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
     chain.single.mockResolvedValueOnce({ data: row, error: null });
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
 
@@ -81,15 +104,17 @@ describe("createOpenThreadLazy", () => {
     expect(insertArg.user_id).toBe(USER_A);
   });
 
-  it("recovers existing open thread on 23505 unique_violation (idempotent re-open)", async () => {
+  it("recovers the winner on 23505 unique_violation (concurrent first-open race)", async () => {
     const existing = makeOpenRow();
     const chain = buildChain();
-    // Insert collides (concurrent open) → 23505
+    // get-first miss (race window: nothing yet) ...
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    // ... insert collides with the concurrent first-open → 23505 ...
     chain.single.mockResolvedValueOnce({
       data: null,
       error: { code: "23505", message: "duplicate key" },
     });
-    // Re-select via getOpenThread (which uses .maybeSingle())
+    // ... re-select via getOpenThread returns the winner.
     chain.maybeSingle.mockResolvedValueOnce({ data: existing, error: null });
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
 
@@ -102,11 +127,14 @@ describe("createOpenThreadLazy", () => {
 
   it("denies access if concurrent open thread belongs to another user (CR-01)", async () => {
     const chain = buildChain();
+    // get-first miss for USER_B ...
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    // ... insert collides ...
     chain.single.mockResolvedValueOnce({
       data: null,
       error: { code: "23505", message: "duplicate key" },
     });
-    // user_id-scoped re-select finds nothing for USER_B → denied
+    // ... user_id-scoped re-select finds nothing for USER_B → denied
     chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
 
@@ -116,6 +144,9 @@ describe("createOpenThreadLazy", () => {
 
   it("throws on a non-conflict insert error", async () => {
     const chain = buildChain();
+    // get-first miss (no existing open thread) ...
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    // ... insert fails with a non-conflict error.
     chain.single.mockResolvedValueOnce({
       data: null,
       error: { code: "23503", message: "fk violation" },
@@ -123,9 +154,9 @@ describe("createOpenThreadLazy", () => {
     (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
 
     await expect(createOpenThreadLazy(USER_A)).rejects.toThrow(/failed to create/);
-    // No conflict recovery attempted
+    // One insert attempt; only the initial get-first select ran (no conflict recovery).
     expect(chain.single).toHaveBeenCalledTimes(1);
-    expect(chain.maybeSingle).not.toHaveBeenCalled();
+    expect(chain.maybeSingle).toHaveBeenCalledTimes(1);
   });
 });
 

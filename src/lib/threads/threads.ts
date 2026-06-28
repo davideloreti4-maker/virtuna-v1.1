@@ -33,22 +33,41 @@ export type ThreadRow = Database["public"]["Tables"]["threads"]["Row"];
 /**
  * Idempotent get-or-create for the user's open thread (type:"open", reading_id IS NULL).
  *
+ * GET-FIRST (must mirror the reader). `getOpenThread` (and GET /api/threads/open)
+ * resolves the OLDEST open thread; this writer MUST resolve the SAME row so every
+ * tool writes into, and the composer reads back from, ONE canonical open thread.
+ * The earlier insert-first shape diverged whenever the partial unique index
+ * (threads_open_user_unique_idx, user_id WHERE reading_id IS NULL) was absent or
+ * non-enforcing on the DB: each call minted a brand-new open thread (the insert
+ * never hit 23505) while readers kept reading the oldest, so freshly-written blocks
+ * (e.g. the Phase 5 profile-read) never surfaced. Selecting first keeps writer and
+ * reader on the same thread and stops duplicate open threads from accumulating.
+ *
  * Service-client + user_id-scoped idempotent pattern:
- * - Fresh insert succeeds on first open.
- * - 23505 unique_violation (concurrent first-open) → re-select scoped by user_id (CR-01).
+ * - Existing open thread → return it (no insert).
+ * - None yet → insert the first open thread.
+ * - 23505 unique_violation (concurrent first-open won the race between our select
+ *   miss and this insert) → re-select scoped by user_id (CR-01).
  * - Non-conflict insert error → rethrow.
  *
  * Ownership: user_id is always passed from the authenticated session, never from a
- * request body (CR-01 trust boundary). Service client bypasses RLS; the re-select
+ * request body (CR-01 trust boundary). Service client bypasses RLS; every read-back
  * is scoped by user_id to enforce ownership explicitly.
  *
  * @param userId  Session user_id (from supabase.auth.getUser(), never from body).
  * @returns The existing or newly-created open thread row.
  */
 export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
+  // Get-first: return the user's canonical (oldest) open thread if one exists —
+  // the exact row GET /api/threads/open reads back (writer/reader alignment).
+  const existing = await getOpenThread(userId);
+  if (existing) {
+    return existing;
+  }
+
   const supabase = createServiceClient();
 
-  // Fresh-insert path: succeeds on the first open for this user.
+  // No open thread yet — create the first one for this user.
   const { data: inserted, error: insertError } = await supabase
     .from("threads")
     .insert({ type: "open" as const, reading_id: null, user_id: userId })
@@ -59,13 +78,14 @@ export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
     return inserted;
   }
 
-  // 23505 = unique_violation: an open thread for this user already exists.
-  // Re-select via getOpenThread, scoped by user_id (CR-01 ownership guard).
+  // 23505 = unique_violation: a concurrent first-open won the race between the
+  // getOpenThread miss above and this insert. Re-select the winner, scoped by
+  // user_id (CR-01 ownership guard).
   if (insertError?.code === "23505") {
-    const existing = await getOpenThread(userId);
+    const winner = await getOpenThread(userId);
 
-    if (existing) {
-      return existing;
+    if (winner) {
+      return winner;
     }
 
     throw new Error(
