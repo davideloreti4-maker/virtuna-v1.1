@@ -6,7 +6,7 @@ export function ReferralsUpgradeFallback() {
     <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
       <div className="mb-2">
         <h1 className="text-3xl font-bold text-foreground mb-2">Referral Program</h1>
-        <p className="text-muted">Invite friends to Numen and earn rewards for every conversion.</p>
+        <p className="text-foreground-secondary">Invite friends to Numen and earn rewards for every conversion.</p>
       </div>
       <div className="rounded-xl border border-white/[0.06] bg-surface p-6 text-center shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]">
         <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-action/10">

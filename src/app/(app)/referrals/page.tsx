@@ -80,7 +80,7 @@ export default async function ReferralsPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Referral Program
           </h1>
-          <p className="text-muted">
+          <p className="text-foreground-secondary">
             Invite friends to Numen and earn $10 for every successful
             conversion.
           </p>

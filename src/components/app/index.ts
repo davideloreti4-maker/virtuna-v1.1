@@ -7,8 +7,6 @@ export { NetworkVisualization } from "./network-visualization";
 export { Sidebar } from "./sidebar";
 export { SidebarNavItem } from "./sidebar-nav-item";
 export { SocietySelector } from "./society-selector";
-export { ViewSelector, ROLE_LEVELS } from "./view-selector";
-export type { ViewOption, RoleLevelId } from "./view-selector";
 export { LegendPills } from "./legend-pills";
 export type { RoleLevel } from "./legend-pills";
 export { CreateSocietyModal } from "./create-society-modal";

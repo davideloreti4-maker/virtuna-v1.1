@@ -13,7 +13,7 @@ export function ReferralLinkCard({ referralLink }: ReferralLinkCardProps) {
         <h2 className="text-xl font-semibold text-foreground mb-2">
           Your Referral Link
         </h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-foreground-secondary">
           Share this link with friends. When they sign up and purchase a
           subscription, you&apos;ll earn $10.
         </p>
@@ -26,7 +26,7 @@ export function ReferralLinkCard({ referralLink }: ReferralLinkCardProps) {
         <CopyButton text={referralLink} />
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="text-xs text-foreground-secondary">
         Tip: Share on social media, in your TikTok bio, or with creator friends.
       </p>
     </div>
