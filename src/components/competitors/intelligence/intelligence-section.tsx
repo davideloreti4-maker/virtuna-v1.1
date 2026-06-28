@@ -157,7 +157,7 @@ export function IntelligenceSection({
 
       {/* Error message */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg border border-red-500/20 bg-red-500/[0.05] text-sm text-red-400">
+        <div className="mb-4 p-3 rounded-lg border border-error/20 bg-error/[0.05] text-sm text-error">
           {error}
         </div>
       )}
