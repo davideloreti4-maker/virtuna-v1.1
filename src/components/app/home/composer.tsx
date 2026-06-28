@@ -324,6 +324,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // and store the chosen hook as a visible brief above the upload affordance.
   const [testBrief, setTestBrief] = useState<{ hookLine: string; audienceArchetype: string } | null>(null);
 
+  // ── Script anchor hook (PR-2 — conversational intro) ───────────────────────
+  // The hook carried into a script run via the hooks→script handoff. Surfaced to the
+  // ScriptThreadView so the intro can honestly cite the input hook ("Writing a script
+  // from \"…\""). Null for a direct topic send (no anchor hook) → thinner intro.
+  const [scriptAnchorHook, setScriptAnchorHook] = useState<string | null>(null);
+
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -427,6 +433,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setPersistedScriptBlocks([]);
       setPersistedRemixBlocks([]);
       setPersistedExploreBlocks([]);
+      setScriptAnchorHook(null);
       setOpenThreadId(null);
       // Let the rehydration below restore the right tool for the loaded thread.
       hasUserSelectedToolRef.current = false;
@@ -581,6 +588,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // CRITICAL: NEVER sets pendingNavRef / calls stream.start — Script never navigates to /analyze.
   const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
     setActiveTool("script");
+    setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
     script.reset();
     // ask empty — the carried hookLine anchors the script generation.
     void script.start("", platform, hookLine, intent);
@@ -807,6 +815,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       const ask = trimmedUrl; // topic seed or empty (anchor drives the script when carried)
       captureUserTurn(ask);
       setUrl(""); // clear input after send
+      setScriptAnchorHook(null); // direct topic send — no anchor hook → thinner intro
       script.reset();
       // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
       await script.start(ask, platform, undefined, intent);
@@ -1213,6 +1222,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           isStreaming={script.isStreaming}
           error={script.error}
           platform={platform}
+          inputHookLine={scriptAnchorHook}
           onTestScript={handleTestScript}
           onRetry={() => void script.start("", platform)}
           {...threadPresentation}

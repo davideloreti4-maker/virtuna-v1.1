@@ -21,11 +21,22 @@ import {
   cleanup,
   waitFor,
 } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ExploreThreadView } from './explore-thread-view';
 import type { ExploreThreadViewProps } from './explore-thread-view';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 
 afterEach(cleanup);
+
+// An outlier tile mounts SaveAffordance (→ useSaveItem → useQueryClient), so any render
+// that includes a tile must sit under a QueryClientProvider. (PR #79 added the Save shelf
+// to the tile; tile-rendering tests need this wrapper.)
+function renderWithClient(ui: React.ReactElement) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 function baseProps(overrides: Partial<ExploreThreadViewProps> = {}): ExploreThreadViewProps {
   return {
@@ -212,7 +223,7 @@ describe('ExploreThreadView — remix pending state (WR-01)', () => {
       .mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }));
 
     const onThreadReload = vi.fn();
-    render(
+    renderWithClient(
       <ExploreThreadView
         {...baseProps({
           persistedBlocks: [oneTileBlock()],
@@ -249,7 +260,7 @@ describe('ExploreThreadView — remix pending state (WR-01)', () => {
     );
 
     const onThreadReload = vi.fn();
-    render(
+    renderWithClient(
       <ExploreThreadView
         {...baseProps({ persistedBlocks: [oneTileBlock()], onThreadReload })}
       />,

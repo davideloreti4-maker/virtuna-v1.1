@@ -25,6 +25,7 @@
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BAND_COLOR } from './band-block';
 
 type Band = 'Strong' | 'Mixed' | 'Weak';
@@ -46,6 +47,13 @@ export interface ProofUnitProps {
   platform?: 'tiktok' | 'instagram' | 'youtube';
   /** Accessible label for the open affordance. */
   label?: string;
+  /**
+   * A4 (premium-thread): false while the card is streamed-in but its `score` event
+   * hasn't landed — renders a matte-shimmer "Scoring…" strip in place of the band +
+   * fraction + ribbon, which then resolve in when it flips true. Defaults to true so
+   * persisted/test cards (no `scored` field) render fully-scored, unchanged.
+   */
+  scored?: boolean;
 }
 
 /** Byte-identical parse contract to flat-card-reactions. */
@@ -83,6 +91,7 @@ export function ProofUnit({
   rewrite,
   platform = 'tiktok',
   label = 'See how the room reacted',
+  scored = true,
 }: ProofUnitProps) {
   const parsed = parseFraction(fraction);
   const bandColor = BAND_COLOR[band];
@@ -96,40 +105,50 @@ export function ProofUnit({
       label={label}
       className="flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]"
     >
-      {/* Top — band dot+word · count · ribbon (the fraction stated ONCE). */}
-      <div className="flex w-full items-center gap-2.5 text-[13px]">
-        <span
-          className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
-          style={{ color: bandColor }}
-        >
-          <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: bandColor }} />
-          {band}
-        </span>
-        <span className="shrink-0 text-foreground-secondary">
-          {parsed ? (
-            <>
-              <span className="font-semibold tabular-nums text-foreground">
-                {parsed.stop}/{parsed.total}
-              </span>{' '}
-              stopped
-            </>
-          ) : (
-            fraction
-          )}
-          {suffix && <span className="text-foreground-muted"> · {suffix}</span>}
-        </span>
-        {parsed && (
-          <span className="relative h-[3px] flex-1 overflow-hidden rounded-full bg-white/[0.08]">
-            <span
-              className="absolute inset-y-0 left-0 rounded-full"
-              style={{
-                width: `${(parsed.stop / parsed.total) * 100}%`,
-                backgroundColor: 'var(--color-foreground-secondary)',
-              }}
-            />
+      {/* Top — A4: pending shimmer until the score lands, then band · count · ribbon
+          (the fraction stated ONCE) resolve in. The quote + Lens cue below ship with the
+          card, so the unit is never empty while scoring. */}
+      {!scored ? (
+        <div className="flex w-full items-center gap-2.5 text-[13px]" aria-busy="true">
+          <Skeleton className="h-[7px] w-[7px] shrink-0 rounded-full" />
+          <span className="shrink-0 text-foreground-muted">Scoring with your 10 reactors…</span>
+          <Skeleton className="h-[3px] flex-1 rounded-full" />
+        </div>
+      ) : (
+        <div className="proof-resolve flex w-full items-center gap-2.5 text-[13px]">
+          <span
+            className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
+            style={{ color: bandColor }}
+          >
+            <span className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: bandColor }} />
+            {band}
           </span>
-        )}
-      </div>
+          <span className="shrink-0 text-foreground-secondary">
+            {parsed ? (
+              <>
+                <span className="font-semibold tabular-nums text-foreground">
+                  {parsed.stop}/{parsed.total}
+                </span>{' '}
+                stopped
+              </>
+            ) : (
+              fraction
+            )}
+            {suffix && <span className="text-foreground-muted"> · {suffix}</span>}
+          </span>
+          {parsed && (
+            <span className="relative h-[3px] flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+              <span
+                className="ribbon-wipe absolute inset-y-0 left-0 rounded-full"
+                style={{
+                  width: `${(parsed.stop / parsed.total) * 100}%`,
+                  backgroundColor: 'var(--color-foreground-secondary)',
+                }}
+              />
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Quote + the now-visible Lens cue. */}
       {quote && (

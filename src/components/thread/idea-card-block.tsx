@@ -43,6 +43,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     format,
     band,
     fraction,
+    scored,
     scrollQuote,
   } = block.props;
 
@@ -116,6 +117,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         <ProofUnit
           band={band}
           fraction={fraction}
+          scored={scored ?? true}
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={`${title}\n\n${angle}`}
