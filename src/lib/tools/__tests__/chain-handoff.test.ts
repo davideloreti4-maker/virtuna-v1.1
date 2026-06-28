@@ -180,10 +180,35 @@ describe('Rewrite for this audience (same-skill self-handoff)', () => {
   });
 });
 
+// ── 3d. profile → simulate (Phase 5 — PROF-04, the one-thread wow) ────────────
+
+describe('handoffsFor("profile")', () => {
+  it('returns exactly one simulate CTA with the pinned endpoint and card anchor', () => {
+    const handoffs = handoffsFor('profile');
+    const simulateHandoffs = handoffs.filter((h) => h.to === 'simulate');
+
+    // Exactly one profile→simulate entry (no duplicate chain rails).
+    expect(simulateHandoffs).toHaveLength(1);
+    const simulate = simulateHandoffs[0]!;
+
+    expect(simulate.ctaLabel).toBe('Simulate a message to them →');
+    // PINNED: /api/tools/simulate — must match the 05-05 route contract
+    expect(simulate.endpoint).toBe('/api/tools/simulate');
+    // anchorFrom "card" — the profile-read card carries savedAudienceId
+    expect(simulate.anchorFrom).toBe('card');
+  });
+
+  it('resolves as a valid SkillId via handoffsFor (no missing registration)', () => {
+    const profile: SkillId = 'profile';
+    expect(() => handoffsFor(profile)).not.toThrow();
+    expect(Array.isArray(handoffsFor(profile))).toBe(true);
+  });
+});
+
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {
-  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'test'];
+  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'profile', 'simulate', 'test'];
 
   it('does not throw for any SkillId', () => {
     for (const skillId of skillIds) {
@@ -215,6 +240,9 @@ describe('CHAIN_HANDOFFS registry completeness', () => {
 
     // P8 new chain — Discover front door launches the moat chain
     expect(pairs).toContain('discover→remix');
+
+    // P5 new chain — Profile → Simulate (the one-thread wow, PROF-04)
+    expect(pairs).toContain('profile→simulate');
   });
 
   it('all endpoints are either a non-empty string or null', () => {
