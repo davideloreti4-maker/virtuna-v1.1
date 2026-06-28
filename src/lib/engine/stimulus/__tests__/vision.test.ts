@@ -18,6 +18,7 @@
  * EXPECTED-RED: `../vision` does not exist until its Wave-2 implementation plan.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { readFileSync } from "node:fs";
 
 vi.mock("@/lib/logger", () => ({
   createLogger: vi.fn(() => ({
@@ -46,6 +47,28 @@ vi.mock("../../qwen/client", async (importActual) => {
   };
 });
 
+// vitest does NOT load .env.local into process.env (no test.env in
+// vitest.config.ts), so the real key is absent here during a normal run. Capture
+// it for the gated live smoke (bottom) — preferring an inline/exported value,
+// then falling back to reading .env.local directly — BEFORE the dummy override
+// below. The mocked unit tests only need SOME value present; the live smoke needs
+// the REAL key and must never run against the dummy "test-key".
+function readEnvLocalDashscopeKey(): string | undefined {
+  try {
+    const line = readFileSync(`${process.cwd()}/.env.local`, "utf8")
+      .split("\n")
+      .find((l) => l.startsWith("DASHSCOPE_API_KEY="));
+    if (!line) return undefined;
+    return (
+      line.slice(line.indexOf("=") + 1).trim().replace(/^["']|["']$/g, "") ||
+      undefined
+    );
+  } catch {
+    return undefined;
+  }
+}
+const REAL_DASHSCOPE_KEY =
+  process.env.DASHSCOPE_API_KEY ?? readEnvLocalDashscopeKey();
 process.env.DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY ?? "test-key";
 
 import { readImageWithVision } from "../vision";
@@ -114,28 +137,31 @@ describe("IN-03 / V5: readImageWithVision request shape", () => {
 // A2 live smoke (gated) — de-risks the one open unknown: does qwen3.7-plus accept
 // a base64 `data:` image URL (not just hosted URLs)? SKIP-BY-DEFAULT (a paid live
 // call): runs ONLY on explicit opt-in via `RUN_VISION_LIVE_SMOKE=1` AND a real
-// DASHSCOPE_API_KEY. The opt-in flag is required because vitest auto-loads
-// `.env.local` (which carries a key) — without it this paid probe would fire on
-// every routine unit run. Fallback if base64 is rejected = Storage → signed-URL
-// (the proven avatar pattern). Uses the REAL endpoint directly so the file-level
+// DASHSCOPE_API_KEY (REAL_DASHSCOPE_KEY, captured above from process.env or
+// .env.local — NEVER the "test-key" dummy). vitest does NOT load .env.local into
+// process.env, so gating on the dummy-overridden process.env value alone is
+// insufficient (it would fire the paid probe against "test-key" → 401); gating on
+// REAL_DASHSCOPE_KEY keeps it skipped on routine runs and ensures a real key when
+// it does run. Fallback if base64 is rejected = Storage → signed-URL (the proven
+// avatar pattern). Uses the REAL endpoint directly so the file-level
 // getQwenClient mock does not interfere.
 // ---------------------------------------------------------------------------
 const liveIt =
-  process.env.RUN_VISION_LIVE_SMOKE && process.env.DASHSCOPE_API_KEY
-    ? it
-    : it.skip;
+  process.env.RUN_VISION_LIVE_SMOKE && REAL_DASHSCOPE_KEY ? it : it.skip;
 
-// 1×1 transparent PNG.
-const TINY_PNG_B64 =
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+// A valid 64×64 RGB PNG (blue field + white diagonal) — a real, decodable image.
+// A degenerate 1×1 PNG is rejected by the model with 400 "image format illegal",
+// so the fixture must be a real image to actually exercise base64 acceptance (A2).
+const SMALL_PNG_B64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAABGElEQVR4nNXP2Q3DMAwDUE2SSbI/slX6UaQwXMeHrIMkBEj805P7yXFejCN3kfRvdgGMBjnOi9og38VrkN9FapCyMBqk6nSGGkBnaAC4DG0AkeEVwGLoASgMAwC+YQwAN0wBkA2zAFjDAgDTsAYANCwD0AwaAJRBCcAx6AEghi0AgmEXkG4wAOQabACJBjNAlsESkGIwBsQb7AHBBhdApMELEGZwBMQYfAEBBneAtyEC4GoIAvgZ4gBOhlCAhyEaYG5IANgacgCGhjSAlSETYGJIBuwb8gGbBgjAjgEFoDYAAXQGLIDCAAdYNSAClgyggHkDLmDSAA2YMaADhgYCQN/AAegYaABvBiZA00AG+DfwASoDJaA0fADcJmfLOCfTVwAAAABJRU5ErkJggg==";
 
 describe("A2 (gated live): qwen3.7-plus accepts a base64 data: image URL", () => {
   liveIt(
-    "sends a 1×1 base64 PNG to QWEN_REASONING_MODEL and gets a parseable read",
+    "sends a real base64 PNG to QWEN_REASONING_MODEL and gets a parseable read",
     async () => {
       const { default: OpenAI } = await import("openai");
       const ai = new OpenAI({
-        apiKey: process.env.DASHSCOPE_API_KEY,
+        apiKey: REAL_DASHSCOPE_KEY,
         baseURL:
           "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
       });
@@ -147,7 +173,7 @@ describe("A2 (gated live): qwen3.7-plus accepts a base64 data: image URL", () =>
             content: [
               {
                 type: "image_url" as const,
-                image_url: { url: `data:image/png;base64,${TINY_PNG_B64}` },
+                image_url: { url: `data:image/png;base64,${SMALL_PNG_B64}` },
               },
               {
                 type: "text" as const,
