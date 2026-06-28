@@ -166,7 +166,23 @@ Plans:
 
 **Profiler-read scope (from P4 discuss, 2026-06-27 — see `.planning/phases/04-input-adapter/04-CONTEXT.md` D-06)**: Profile's high-value deliverable is the **forensic profiler READ** — an expert behavioral/psychological analysis of a *specific person*, scoped to the user's goal (traits, tells, deception likelihood; e.g. *"narcissist tendencies because…"*, *"at 0:42 the micro-expression → high deception likelihood"*), from a chat **or a video of someone** — not just "build a reusable persona." This is the existing Apollo/Chase-Hughes behavioral knowledge core (`.planning/corpus/KNOWLEDGE-CORE.md`; parked `feat/chat-ethics-gate` work as a starting asset) generalized from "why content works" → "who this person is." Same engine spine, new reaction-frame + grounding. P4 makes the `Stimulus` profiler-ready (person-video + subject/goal tag); the READ is built HERE. Discuss whether to formally split PROFILE into build-an-Audience vs profiler-read deliverable at P5 discuss-phase.
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1** *(interface-first foundations, parallel — no file overlap)*
+
+- [ ] 05-01-PLAN.md — Block contracts (profile-read + reaction-distribution) + registry/union/component-map wiring + profile→simulate chain handoff + persistence round-trip (PROF-02, PROF-04, SIMU-02, SIMU-03)
+- [ ] 05-02-PLAN.md — behavioral-core.ts: harvest the branch corpus → byte-stable cached behavioral system prompt + D-04 ethics block + tier-gated forensic directives (PROF-02)
+- [ ] 05-03-PLAN.md — profile-bake.ts: evidence → frozen person/panel AudienceSignature (reuse enrich-signature synth parts) + storagePath sanitize + omni person-video path (PROF-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 05-04-PLAN.md — profile-runner + /api/tools/profile: fused READ + bake → saved General SIM, tier-gated forensic, D-08 isolation, P4 carries closed (PROF-01, PROF-02, PROF-03)
+- [ ] 05-05-PLAN.md — simulate-runner + /api/tools/simulate: Flash read → person/panel reaction-distribution, bands-only Directional, same thread (SIMU-01, SIMU-02, SIMU-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-06-PLAN.md — minimal additive composer affordance → /api/tools/profile + end-to-end one-thread human-verify (PROF-01, SIMU-03)
+
 **UI hint**: yes
 
 ### Phase 6: Predict Verb
@@ -210,7 +226,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
-| 5. Profile → Simulate Wow | 0/TBD | Not started | - |
+| 5. Profile → Simulate Wow | 0/6 | Not started | - |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
