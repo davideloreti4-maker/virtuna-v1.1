@@ -119,3 +119,61 @@ describe('matte-lint — transplanted charts carry no flat-warm violations (SC-3
     expect(violations, `${rel} carries matte violations: ${violations.join(', ')}`).toEqual([]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Matte-lint (secondary chrome) — lane/frame dead-glass sweep gate.
+//
+// Locks the flat-warm pass on the app's pill/chip primitive + the competitors /
+// brand-deals chrome. These files carried the Raycast holdout that the audit
+// surfaced — the 137deg glass gradient, backdrop-blur, dead surface hex literals
+// (#18191a / #222326 / #0A0A0A), and the dead `var(--color-muted)` token (the real
+// token is --color-foreground-muted) — and are now matte. This gate keeps them clean.
+//
+// SCOPE NOTE: the sanctioned subtle top-edge `inset 0 1px 0 0 rgba(255,255,255,0.05)`
+// is NOT a violation — the gold-standard saved-shelf uses it, and the enforced matte
+// rule bans GLASS + outer GLOW, not inset depth. So this gate checks the glass
+// signatures + dead literals/tokens only, never inset shine.
+//
+// KNOWN-REMAINING 137deg holdouts (deliberately NOT in this set — GSI-adjacent,
+// deferred to a coordinated pass): app/test-type-selector, app/content-form,
+// tooltips/contextual-tooltip, command-bar/CommandBar, primitives/GlassPanel
+// (its only consumer is analyze/result-card = GSI turf).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** The chrome files cleaned by the lane/frame dead-glass sweep. */
+const CLEANED_CHROME_FILES = [
+  'components/primitives/GlassPill.tsx',
+  'components/app/legend-pills.tsx',
+  'components/app/context-bar.tsx',
+  'components/app/filter-pills.tsx',
+  'components/app/brand-deals/deal-card.tsx',
+  'components/app/brand-deals/deal-filter-bar.tsx',
+  'components/app/brand-deals/earnings-chart.tsx',
+  'components/competitors/comparison/comparison-metric-card.tsx',
+  'components/competitors/intelligence/strategy-analysis-card.tsx',
+  'components/competitors/charts/chart-tooltip.tsx',
+] as const;
+
+/** Dead Raycast surface hex literals retired by the flat-warm token migration. */
+const DEAD_LITERAL_RE = /#18191a|#222326|#0A0A0A/i;
+/** Dead token: `--color-muted` does not exist (real token is --color-foreground-muted). */
+const DEAD_MUTED_TOKEN_RE = /var\(--color-muted\)/;
+
+/** Glass + dead-literal/token violations for the secondary-chrome gate. */
+function findChromeViolations(src: string): string[] {
+  const violations: string[] = [];
+  if (GLASS_GRADIENT_RE.test(src)) violations.push('linear-gradient(137deg (Raycast glass)');
+  if (BACKDROP_FILTER_RE.test(src)) violations.push('backdrop-filter / backdropFilter (blur)');
+  if (DEAD_LITERAL_RE.test(src)) violations.push('dead Raycast hex literal (#18191a/#222326/#0A0A0A)');
+  if (DEAD_MUTED_TOKEN_RE.test(src)) violations.push('var(--color-muted) (dead token)');
+  if (OLD_CORAL_HEX_RE.test(src)) violations.push('#FF7F50 (old coral)');
+  return violations;
+}
+
+describe('matte-lint (secondary chrome) — pill primitive + competitors/brand-deals chrome are flat-warm (lane/frame dead-glass sweep)', () => {
+  it.each(CLEANED_CHROME_FILES)('%s carries no Raycast glass / dead literal / dead token', (rel) => {
+    const src = readFileSync(join(SRC, rel), 'utf8');
+    const violations = findChromeViolations(src);
+    expect(violations, `${rel} carries matte violations: ${violations.join(', ')}`).toEqual([]);
+  });
+});

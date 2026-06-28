@@ -182,10 +182,10 @@ export function PricingSection() {
                   <th className="py-4 px-6 text-left text-sm font-medium text-foreground-muted">
                     Feature
                   </th>
-                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground w-32">
+                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground-secondary w-32">
                     Starter
                   </th>
-                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground-secondary w-32">
+                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground w-32">
                     Pro
                   </th>
                 </tr>

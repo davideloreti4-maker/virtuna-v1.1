@@ -16,8 +16,7 @@ interface ChartTooltipProps {
 /**
  * Shared dark theme tooltip for all Recharts charts.
  *
- * Uses surface background (#18191a) with subtle border and shadow
- * to match the Raycast dark theme.
+ * Uses the flat-warm `--color-surface` token with a subtle border and drop shadow.
  */
 export function ChartTooltip({
   active,
@@ -31,7 +30,7 @@ export function ChartTooltip({
     <div
       className="rounded-lg border border-white/[0.06] px-3 py-2 text-sm"
       style={{
-        background: "#18191a",
+        background: "var(--color-surface)",
         boxShadow: "rgba(0,0,0,0.5) 0px 4px 12px",
       }}
     >

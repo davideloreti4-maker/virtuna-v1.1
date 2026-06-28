@@ -19,7 +19,7 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
       <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wide mb-4">
         Overall Strategy
       </h3>
-      <p className="text-sm text-[var(--color-muted)] leading-relaxed mb-6">
+      <p className="text-sm text-foreground-muted leading-relaxed mb-6">
         {data.overall_strategy}
       </p>
 
