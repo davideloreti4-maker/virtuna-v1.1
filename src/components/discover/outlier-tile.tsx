@@ -28,6 +28,7 @@
 
 import { Check } from "@phosphor-icons/react";
 import { VideoCard } from "@/components/competitors/detail/video-card";
+import { SaveAffordance } from "@/components/thread/save-affordance";
 import type { FitLevel } from "@/lib/discover/explore-rank";
 
 /** One Discover outlier tile — mirrors OutlierGridBlock.props.tiles[*] (blocks.ts). */
@@ -226,30 +227,39 @@ export function OutlierTile({
         }}
       />
 
-      {/* NEW (EXPLORE-05 / D-08): "+ Track account" — a quiet, NON-accent text-button that
-          writes the watchlist row. Renders ONLY when tile.trackable. Toggles to "Tracking"
-          with a check on success; disabled while a write is in flight. Secondary to Remix —
-          NEVER coral (the CTA below owns the tile's one accent). */}
-      {tile.trackable && (
-        <button
-          type="button"
-          onClick={() => onTrack?.(tile)}
-          disabled={!onTrack || trackPending || tracked}
-          aria-label={tracked ? "Account tracked" : "Track this account"}
-          aria-pressed={tracked}
-          className="inline-flex items-center gap-1 self-start text-xs font-medium text-foreground-muted transition-opacity hover:text-foreground disabled:opacity-60"
-          style={{ cursor: onTrack && !trackPending && !tracked ? "pointer" : "default" }}
-        >
-          {tracked ? (
-            <>
-              <Check size={13} weight="bold" aria-hidden="true" />
-              Tracking
-            </>
-          ) : (
-            trackPending ? "Tracking…" : "+ Track account"
-          )}
-        </button>
-      )}
+      {/* Secondary actions — Save (always) + "+ Track account" (only when tile.trackable).
+          Both are quiet, NON-accent cream chrome — NEVER coral (the Remix CTA below owns the
+          tile's one accent). Save persists the outlier to the Library shelf (item_type="outlier",
+          snapshot = the tile's own props); the shelf echoes the cover + measured strip without a
+          re-fetch. Track writes the watchlist row and toggles to "Tracking ✓" on success. */}
+      <div className="flex items-center gap-3">
+        {tile.trackable && (
+          <button
+            type="button"
+            onClick={() => onTrack?.(tile)}
+            disabled={!onTrack || trackPending || tracked}
+            aria-label={tracked ? "Account tracked" : "Track this account"}
+            aria-pressed={tracked}
+            className="inline-flex items-center gap-1 text-xs font-medium text-foreground-muted transition-opacity hover:text-foreground disabled:opacity-60"
+            style={{ cursor: onTrack && !trackPending && !tracked ? "pointer" : "default" }}
+          >
+            {tracked ? (
+              <>
+                <Check size={13} weight="bold" aria-hidden="true" />
+                Tracking
+              </>
+            ) : (
+              trackPending ? "Tracking…" : "+ Track account"
+            )}
+          </button>
+        )}
+        <SaveAffordance
+          className="ml-auto text-xs"
+          item_type="outlier"
+          title={tile.caption}
+          snapshot={{ ...tile }}
+        />
+      </div>
 
       {/* Primary CTA — "Remix → Read": the forward chain step, cream primary (§1.7/§1.8;
           the legacy coral fill was retired — primary ≠ accent). */}
