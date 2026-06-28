@@ -172,7 +172,7 @@ Plans:
 
 - [x] 05-01-PLAN.md — Block contracts (profile-read + reaction-distribution) + registry/union/component-map wiring + profile→simulate chain handoff + persistence round-trip (PROF-02, PROF-04, SIMU-02, SIMU-03)
 - [x] 05-02-PLAN.md — behavioral-core.ts: harvest the branch corpus → byte-stable cached behavioral system prompt + D-04 ethics block + tier-gated forensic directives (PROF-02)
-- [ ] 05-03-PLAN.md — profile-bake.ts: evidence → frozen person/panel AudienceSignature (reuse enrich-signature synth parts) + storagePath sanitize + omni person-video path (PROF-01)
+- [x] 05-03-PLAN.md — profile-bake.ts: evidence → frozen person/panel AudienceSignature (reuse enrich-signature synth parts) + storagePath sanitize + omni person-video path (PROF-01) ✅ (0d1d8ad4); profile-bake 15/15, audience suite 13 files/172 passed; reuses synth PARTS not enrichSignature() (grep===0); D-08 isolation + AR-04-01 closed at lib layer
 
 **Wave 2** *(blocked on Wave 1)*
 
