@@ -264,3 +264,221 @@ export const FORENSIC_MAX_DIRECTIVE =
 
 export const BEHAVIORAL_SYSTEM_PROMPT_FLASH = `${BEHAVIORAL_CORE}\n\n---\n\n${BEHAVIORAL_ETHICS_BLOCK}\n\n${FORENSIC_FLASH_DIRECTIVE}`;
 export const BEHAVIORAL_SYSTEM_PROMPT_MAX = `${BEHAVIORAL_CORE}\n\n---\n\n${BEHAVIORAL_ETHICS_BLOCK}\n\n${FORENSIC_MAX_DIRECTIVE}`;
+
+// =====================================================
+// EXCLUDE_REGISTRY + scanForExcludedCoaching — discretionary no-cost coaching backstop.
+//
+// Harvested READ-ONLY from feat/chat-ethics-gate:src/lib/chat/ethics-gate.ts — ONLY the
+// data (the 14 never-coach tactics) + the PURE regex scanner are ported. The realtime
+// stream-buffer tripwire and any model/completions call are deliberately NOT
+// ported (D-05: reuse no branch engine/streaming logic). The prompt-layer ethics block
+// above stays the PRIMARY lock (D-04); this is the belt-and-suspenders the 05-04 runner can
+// optionally call AFTER the READ to catch overt weaponization that slipped the guardrail.
+//
+// It trips per-sentence ONLY when a named tactic co-occurs with prescriptive framing in the
+// same sentence; descriptive/audit mentions ("this funnel uses X") and refusal/recognition
+// framing ("I won't script X", "so you can spot X") never trip.
+// =====================================================
+
+export interface ExcludeItem {
+  /** Spec §3 row number (1–14). */
+  id: number;
+  /** Human name of the never-coach tactic. */
+  name: string;
+  /** Named-tactic detectors. A match is necessary but NOT sufficient to trip. */
+  tacticPatterns: RegExp[];
+}
+
+/**
+ * The 14 EXCLUDE tactics. `tacticPatterns` target the specific named mechanic — phrases
+ * unlikely to appear in ordinary read output. Tripping additionally requires prescriptive
+ * framing (see hasPrescriptiveFraming), so descriptive/audit mentions do not fire.
+ */
+export const EXCLUDE_REGISTRY: readonly ExcludeItem[] = [
+  {
+    id: 1,
+    name: "Childhood-wound contract",
+    tacticPatterns: [
+      /childhood (wound|trauma)/i,
+      /attachment (wound|trauma)/i,
+      /reach(ing)? (in|into) .{0,30}(trauma|nervous system|wound)/i,
+    ],
+  },
+  {
+    id: 2,
+    name: "Regression induction",
+    tacticPatterns: [
+      /regress(ion|ing|ive)?\b.{0,40}(viewer|audience|them|listener|adult|state)/i,
+      /induce .{0,20}regression/i,
+      /(childhood|earlier) (memory|state).{0,30}bypass/i,
+    ],
+  },
+  {
+    id: 3,
+    name: "Presupposition stack / confabulated memory",
+    tacticPatterns: [
+      /confabulat/i,
+      /presuppos\w+.{0,30}(memory|happened|experience)/i,
+      /(implant|plant|fabricate|manufacture) .{0,20}(false )?(memory|memories|experience)/i,
+    ],
+  },
+  {
+    id: 4,
+    name: "Voluntary confession / confession architecture",
+    tacticPatterns: [
+      /confession architecture/i,
+      /cost[- ]of[- ]silence/i,
+      /(make|get) (them|people|the (viewer|audience)) .{0,20}confess/i,
+    ],
+  },
+  {
+    id: 5,
+    name: "Identity statement elicitation / social-introduction seal",
+    tacticPatterns: [
+      /consistency trap/i,
+      /identity (statement|lock).{0,30}(elicit|seal|trap)/i,
+      /lock (their|the viewer'?s?|the audience'?s?) identity/i,
+    ],
+  },
+  {
+    id: 6,
+    name: "Gradual interspersed agreement",
+    tacticPatterns: [
+      /interspersed agreement/i,
+      /(gradual|drip).{0,30}agreement.{0,30}(conversation|casual)/i,
+      /string of (small )?yes(es|s)?\b.{0,30}without (them )?notic/i,
+    ],
+  },
+  {
+    id: 7,
+    name: "Negative offcasting",
+    tacticPatterns: [/negative off-?casting/i, /off-?cast .{0,20}(identity|self)/i],
+  },
+  {
+    id: 8,
+    name: "Manufactured-dependency close",
+    tacticPatterns: [
+      /manufactured[- ]dependency/i,
+      /parasite destabiliz/i,
+      /(create|invent|manufacture) .{0,30}(unsolvable|insoluble) problem/i,
+      /problem .{0,25}only .{0,25}(your |the )?(product|offer|course|service) .{0,15}(solves|fixes|exit)/i,
+    ],
+  },
+  {
+    id: 9,
+    name: "Subscribe-guilt honesty reframe",
+    tacticPatterns: [
+      /subscribe[- ]guilt/i,
+      /(use|using|deploy) honesty .{0,20}(as|as a) .{0,15}(compliance|lever|tactic)/i,
+    ],
+  },
+  {
+    id: 10,
+    name: "Reticular priming / covert filter-installation",
+    tacticPatterns: [
+      /reticular priming/i,
+      /install\w* .{0,25}(perceptual )?filter/i,
+    ],
+  },
+  {
+    id: 11,
+    name: "Covert blind-spot ID / covert diagnostic",
+    tacticPatterns: [
+      /blind-?spot (id|protocol|identif)/i,
+      /covert(ly)? (profile|diagnos)/i,
+      /\d+-question .{0,15}(covert )?(diagnostic|profile)/i,
+    ],
+  },
+  {
+    id: 12,
+    name: "Counterfactual identity test",
+    tacticPatterns: [
+      /counterfactual identity/i,
+      /identity-destabiliz/i,
+      /(question|test) .{0,30}no (safe|good) answer/i,
+    ],
+  },
+  {
+    id: 13,
+    name: "Moral-framing generator",
+    tacticPatterns: [
+      /moral(ly)? (load|frame|framing|charg)\w*.{0,30}(dissent|disagree|criticism|doubt|question)/i,
+      /make (disagreeing|disagreement|criticism|questioning|doubt) feel (immoral|unethical|wrong|evil|shameful)/i,
+    ],
+  },
+  {
+    id: 14,
+    name: "Covert meta-demonstration / run-the-loop-on-audience",
+    tacticPatterns: [
+      /run(ning)? the (full |entire )?(loop|sequence) on (your|the) (audience|viewer|reader)/i,
+      /covert meta-demonstrat/i,
+    ],
+  },
+] as const;
+
+/**
+ * Advisory / second-person-directive markers. A tactic mention only trips if the SAME sentence
+ * also carries prescriptive framing — this excludes third-person descriptive audit use
+ * ("this read uses X") while catching coaching ("use X to…", "you should X").
+ */
+const PRESCRIPTIVE_FRAMING: RegExp[] = [
+  /\byou (should|can|could|need to|must|want to|have to|might|ought to|could try)\b/i,
+  /\b(here'?s|this is) how (you|to)\b/i,
+  /\bthe (trick|key|secret|move|play|idea|goal|technique|method) (is|here is) to\b/i,
+  /\bin order to (make|get|trigger|induce|force|lead|push)\b/i,
+  /\bto (make|get|trigger|induce|force|lead|push) (them|people|the (viewer|audience|reader))\b/i,
+  /\btry (to |and )?\w+ing\b/i,
+  /\b(start|begin) by \w+ing\b/i,
+];
+
+/** Sentence-initial imperative verbs that imply a directive when paired with a named tactic. */
+const IMPERATIVE_LEAD =
+  /^(use|deploy|apply|trigger|induce|install|create|manufacture|make|get|force|exploit|leverage|reach|run|build|plant|implant|lock|frame)\b/i;
+
+function hasPrescriptiveFraming(sentence: string): boolean {
+  const trimmed = sentence.trim();
+  if (IMPERATIVE_LEAD.test(trimmed)) return true;
+  return PRESCRIPTIVE_FRAMING.some((re) => re.test(trimmed));
+}
+
+// First-person refusal ("I won't script…", "I can't provide…", "I refuse to…").
+const SELF_REFUSAL =
+  /\bi(['’]?m| am| will)?\s*(won'?t|will not|can'?t|cannot|refuse|am not going to|not going to|decline|do not|don'?t)\b/i;
+// Recognition / audit framing — naming a tactic so it can be SPOTTED, never deployed.
+const RECOGNITION =
+  /\b(recogniz\w*|recognis\w*|spot(s|ting)?\b|identif\w*|detect\w*|notice|aware of|watch (out )?for|red flag|when it appears|in (others'?|someone else'?s|their) content|defend against|protect against|avoid falling|learn to see)\b/i;
+
+function isDefensiveContext(sentence: string): boolean {
+  return SELF_REFUSAL.test(sentence) || RECOGNITION.test(sentence);
+}
+
+export interface GateResult {
+  /** True when an EXCLUDE tactic is being coached (tactic + prescriptive framing). */
+  tripped: boolean;
+  /** The matched EXCLUDE item, when tripped. */
+  item?: ExcludeItem;
+  /** The offending sentence, for logging. */
+  sentence?: string;
+}
+
+const SENTENCE_SPLIT = /(?<=[.!?])\s+|\n+/;
+
+/**
+ * Pure, no-cost scan for COACHING of an EXCLUDE tactic. Trips per-sentence: a named tactic plus
+ * prescriptive framing in the same sentence. Descriptive/audit mentions and refusal/recognition
+ * framing do not trip. Returns the first hit. No streaming, no model call (D-05).
+ */
+export function scanForExcludedCoaching(text: string): GateResult {
+  if (!text) return { tripped: false };
+  const sentences = text.split(SENTENCE_SPLIT);
+  for (const sentence of sentences) {
+    if (!hasPrescriptiveFraming(sentence)) continue;
+    if (isDefensiveContext(sentence)) continue; // refusal / recognition framing — not coaching
+    for (const item of EXCLUDE_REGISTRY) {
+      if (item.tacticPatterns.some((re) => re.test(sentence))) {
+        return { tripped: true, item, sentence: sentence.trim() };
+      }
+    }
+  }
+  return { tripped: false };
+}

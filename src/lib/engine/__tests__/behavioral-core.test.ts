@@ -7,8 +7,10 @@ import {
   BEHAVIORAL_ETHICS_BLOCK,
   BEHAVIORAL_SYSTEM_PROMPT_FLASH,
   BEHAVIORAL_SYSTEM_PROMPT_MAX,
+  EXCLUDE_REGISTRY,
   FORENSIC_FLASH_DIRECTIVE,
   FORENSIC_MAX_DIRECTIVE,
+  scanForExcludedCoaching,
 } from "../behavioral-core";
 
 describe("behavioral-core — tier-gated byte-stable behavioral prompts", () => {
@@ -66,5 +68,41 @@ describe("behavioral-core — tier-gated byte-stable behavioral prompts", () => 
     expect(src).not.toMatch(/Date\.now\(/);
     expect(src).not.toMatch(/Math\.random\(/);
     expect(src).not.toMatch(/new Date\(/);
+  });
+});
+
+describe("scanForExcludedCoaching — discretionary no-cost coaching backstop", () => {
+  it("ports the 14 never-coach tactics", () => {
+    expect(EXCLUDE_REGISTRY).toHaveLength(14);
+    expect(EXCLUDE_REGISTRY.map((i) => i.name)).toContain(
+      "Manufactured-dependency close",
+    );
+  });
+
+  it("trips on an obvious weaponization / coaching request", () => {
+    const coaching =
+      "Here's how you manufacture an unsolvable problem only your product solves so they can't leave.";
+    const result = scanForExcludedCoaching(coaching);
+    expect(result.tripped).toBe(true);
+    expect(result.item?.name).toBe("Manufactured-dependency close");
+  });
+
+  it("trips on a sentence-initial imperative coaching a named tactic", () => {
+    const result = scanForExcludedCoaching(
+      "Use reticular priming to install a perceptual filter on the viewer.",
+    );
+    expect(result.tripped).toBe(true);
+  });
+
+  it("passes a normal behavioral-read sentence", () => {
+    const neutral =
+      "This person leads with significance and runs a conformity decision pillar; their open delays the subject.";
+    expect(scanForExcludedCoaching(neutral).tripped).toBe(false);
+  });
+
+  it("does NOT trip on descriptive / audit detection of a tactic in someone else's content", () => {
+    const audit =
+      "This funnel uses a manufactured-dependency close — you can spot it when the only exit offered is their product.";
+    expect(scanForExcludedCoaching(audit).tripped).toBe(false);
   });
 });
