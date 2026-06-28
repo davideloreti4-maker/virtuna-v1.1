@@ -1,4 +1,5 @@
 import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
 import { TestimonialCard } from "./testimonial-card";
@@ -54,10 +55,8 @@ const TESTIMONIALS: readonly Testimonial[] = [
 export function Testimonials({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* Section heading — SANS font-semibold (D-13 / A3); serif reserved to hero. */}
-      <h2 className="text-3xl font-semibold text-foreground">
-        What creators say
-      </h2>
+      {/* Section heading — eyebrow kicker + SANS h2 (D-13 / A3); serif reserved to hero. */}
+      <SectionHeading eyebrow="Loved by creators" title="What creators say" />
 
       {/* Static 3-card grid — the only motion is the StaggerReveal entrance. */}
       <StaggerReveal

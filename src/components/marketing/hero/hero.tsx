@@ -61,11 +61,11 @@ export function Hero({ className }: HeroProps) {
 
       {/* 2 — Inter mechanism subcopy (D-11): names the Simulation + the real
           outputs. Cream-secondary so it sits under the H1. No coral here. */}
-      <p className="max-w-[60ch] text-base text-foreground-secondary md:text-lg">
-        Paste a TikTok and a synthetic audience{" "}
-        <span className="text-foreground">simulates</span> the reaction —
-        watch-through&nbsp;%, Hook, Retention, Shareability, and a virality
-        score, before you post.
+      <p className="max-w-[52ch] text-base text-foreground-secondary md:text-lg">
+        Paste any TikTok and a synthetic audience{" "}
+        <span className="text-foreground">simulates</span> the reaction — your
+        virality score, watch-through, and the exact moment viewers drop, before
+        you post.
       </p>
 
       {/* 3 — CTA cluster (D-12): dominant coral primary + a subordinate

@@ -5,7 +5,9 @@ import {
   ScoreGaugeSkeleton,
   AudienceCloudSkeleton,
   DriverRowsSkeleton,
+  RetentionCurveSkeleton,
 } from "@/components/marketing/story/skeletons";
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
 import { FeatureBlock } from "./feature-block";
@@ -61,7 +63,7 @@ const FEATURES: readonly Feature[] = [
   {
     title: "See exactly where viewers drop",
     body: "Watch-through, frame by frame, with the precise moment attention slips away.",
-    visual: <DriverRowsSkeleton className="w-full px-2" />,
+    visual: <RetentionCurveSkeleton className="px-2" />,
   },
   {
     title: "Understand your audience",
@@ -78,10 +80,12 @@ const FEATURES: readonly Feature[] = [
 export function FeatureBlocks({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* Section title — SANS the serif (D-C / A3); serif reserved to the hero. */}
-      <h2 className="text-3xl font-semibold text-foreground">
-        Everything you need to know before you post
-      </h2>
+      {/* Section heading — eyebrow kicker + SANS h2 (D-C / A3); serif reserved
+          to the hero. */}
+      <SectionHeading
+        eyebrow="Features"
+        title="Everything you need to know before you post"
+      />
 
       {/* The alternating deep-dive rows. The only motion is the StaggerReveal
           entrance (client leaf, self-gates reduced-motion). Denser vertical
