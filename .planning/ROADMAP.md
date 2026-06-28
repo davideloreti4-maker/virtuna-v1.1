@@ -177,7 +177,7 @@ Plans:
 **Wave 2** *(blocked on Wave 1)*
 
 - [x] 05-04-PLAN.md — profile-runner + /api/tools/profile: fused READ + bake → saved General SIM, tier-gated forensic, D-08 isolation, P4 carries closed (PROF-01, PROF-02, PROF-03) ✅ (c5903396); runProfile fuses the forensic READ + saved General SIM from ONE bake, tier-routed (flash→reasoning / max→omni, Pitfall 1 asserted), forensic gated to max (D-03), `__subject_kind` marker persisted (D-02/Pitfall 2), savedAudienceId on the block (PROF-04); route closes AR-04-01 (sanitizeStoragePath) + AR-04-02 (text cap); profile-runner 7/7 + route 5/5, tools+flash regression 27 files/313 passed, tsc clean
-- [ ] 05-05-PLAN.md — simulate-runner + /api/tools/simulate: Flash read → person/panel reaction-distribution, bands-only Directional, same thread (SIMU-01, SIMU-02, SIMU-03)
+- [x] 05-05-PLAN.md — simulate-runner + /api/tools/simulate: Flash read → person/panel reaction-distribution, bands-only Directional, same thread (SIMU-01, SIMU-02, SIMU-03) ✅ (cf618428); runSimulate lifts two-audience-read's per-audience read (buildAudienceRepaint → runFlashTextMode → aggregateFlash), drops the 2-audience delta; deterministic person/panel branch from the persisted `__subject_kind` marker (never persona count, Pitfall 2 asserted); person → single lead read (band/fraction suppressed), panel → band+fraction(===aggregateFlash, never re-rolled)+themes+drill; tier Directional by rule; behavioral-core NOT imported (Pitfall 5, grep===0); route auth/csrf/cap/RLS-audience spine → SAME open thread (SIMU-03); simulate-runner 7/7 + route 5/5, runner+route+flash 19 files/216 passed, tsc clean
 
 **Wave 3** *(blocked on Wave 2)*
 

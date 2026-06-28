@@ -39,7 +39,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 ### SIMU — Simulate Verb (General)
 
-- [ ] **SIMU-01**: `simulate(audience, stimulus)` runs a stimulus through a General audience and returns reactions
+- [x] **SIMU-01**: `simulate(audience, stimulus)` runs a stimulus through a General audience and returns reactions
 - [x] **SIMU-02**: A reaction-distribution result card renders the distribution + themes
 - [x] **SIMU-03**: The end-to-end wow works in one thread: Profile-a-chat → Simulate-a-reply
 
@@ -115,7 +115,7 @@ Phases assigned during roadmap creation. All Pending.
 | PROF-02 | Phase 5 | Complete |
 | PROF-03 | Phase 5 | Complete |
 | PROF-04 | Phase 5 | Complete |
-| SIMU-01 | Phase 5 | Pending |
+| SIMU-01 | Phase 5 | Complete |
 | SIMU-02 | Phase 5 | Complete |
 | SIMU-03 | Phase 5 | Complete |
 | PRED-01 | Phase 6 | Pending |
