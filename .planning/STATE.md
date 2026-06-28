@@ -4,13 +4,13 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-06-28T17:42:11.838Z"
+last_updated: "2026-06-28T17:52:03.328Z"
 last_activity: 2026-06-28 -- Phase 05 execution started
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 26
-  completed_plans: 21
+  completed_plans: 22
   percent: 57
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (profile-simulate-wow) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Status (prior): 04-03 complete (Wave 1 leaf module: vision read)
 Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
@@ -78,6 +78,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 04 P03 | ~8min | 1 tasks | 2 files |
 | Phase 04 P04 | ~6min | 1 tasks | 1 files |
 | Phase 05 P01 | 12min | 3 tasks | 12 files |
+| Phase 05 P02 | 10 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,7 @@ Recent decisions affecting current work:
 - [Phase 02]: 02-01: KEEP determinism gate landed — signature-equality.ts (normalizeSignature/signatureEqual/stableStringify, one-field strip of provenance.scraped_at) + zero-network replay test (proves byte-identical assembly post-normalization + scraped_at is the SOLE volatile field via fake-timers double-bake, Assumption A1) + local Directional-by-rule tiering predicate keyed off DomainPack.calibration (Socials→Validated, no-calibration→Directional). No src/ resolver (D-05 scope). Audience suite green 10 files/135 tests. This is P3's free-by-construction regression foundation (TRUST-01). Live LLM-determinism probe is 02-02.
 - [Phase ?]: 05-01: Phase-5 block schemas live in sibling profile-blocks.ts (re-exported from blocks.ts) to keep blocks.ts under the 500-line limit
 - [Phase ?]: 05-01: savedAudienceId to audienceId chain seam extracted to a pure unit-tested buildSimulateRequest helper (Warning-1)
+- [Phase ?]: 05-02: behavioral-core.ts harvested read-only from feat/chat-ethics-gate (D-05, branch never merged); byte-stable tier-gated BEHAVIORAL_SYSTEM_PROMPT_FLASH/_MAX + D-04 light ethics guardrail + pure scanForExcludedCoaching backstop
 
 ### Pending Todos
 
@@ -132,6 +134,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-28T17:41:45.851Z
+Last session: 2026-06-28T17:51:57.063Z
 Stopped at: Phase 5 UI-SPEC approved
 Resume file: .planning/phases/05-profile-simulate-wow/05-UI-SPEC.md
