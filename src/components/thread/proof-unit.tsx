@@ -48,7 +48,7 @@ export interface ProofUnitProps {
   label?: string;
 }
 
-/** Byte-identical parse contract to card-reaction-at-rest / flat-card-reactions. */
+/** Byte-identical parse contract to flat-card-reactions. */
 function parseFraction(fraction: string): { stop: number; total: number } | null {
   const m = fraction.match(/(\d+)\s*\/\s*(\d+)/);
   if (!m) return null;

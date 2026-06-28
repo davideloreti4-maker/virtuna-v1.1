@@ -48,7 +48,7 @@ import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { csrfGuard } from "@/lib/http/csrf-guard";
-import { classifyDiscoverInput } from "@/lib/discover/classify-input";
+import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
 import {
@@ -225,8 +225,18 @@ export async function POST(request: Request): Promise<Response> {
   let mergeInputs: string[] | undefined;
 
   if (pullInput) {
-    // Explicit input → classify (profile vs niche) via the reused Discover classifier.
-    ({ mode, normalized } = classifyDiscoverInput(pullInput));
+    // Explicit input → classify (profile / niche / unsupported) via the reused classifier.
+    const classified = classifyDiscoverInput(pullInput);
+    if (classified.mode === "unsupported") {
+      // Honest reject BEFORE the cap/scrape (nothing charged) — scraping is TikTok-only, so a
+      // pasted non-TikTok link never silently degrades into a garbage niche pull.
+      return Response.json(
+        { error: "unsupported_input", message: classified.reason ?? UNSUPPORTED_INPUT_REASON },
+        { status: 400 },
+      );
+    }
+    mode = classified.mode;
+    normalized = classified.normalized;
   } else if (wantTracked) {
     // CR-02 — competitors pull: resolve the session user's tracked accounts (RLS-scoped),
     // cap the list, and build a merged profile pull. user_id is session-derived (CR-01).
