@@ -55,7 +55,8 @@ export type SkillId =
   | "hooks"
   | "script"   // Phase 6 — live (06-05)
   | "remix"    // Phase 6 — live (06-05)
-  | "test";
+  | "test"
+  | "account-read"; // lane/polish — the self-Read; "Write to my strengths →" seeds Ideas (§7)
 
 // ─── ChainHandoff interface ───────────────────────────────────────────────────
 
@@ -219,6 +220,22 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     // remix/run rejects ask/anchor (url-only); re-develop the adapted concept via the
     // PINNED develop route (remix-origin, accepts { anchor, platform }). A2 minimal adjustment.
     endpoint: "/api/tools/ideas/develop",
+    anchorFrom: "card",
+  },
+
+  // ── lane/polish LIVE: Account Read → Ideas (§7 "Write to my strengths") ────────
+  // "Write to my strengths →" on the AccountReadBlock seeds Ideas with the account's
+  // "What's working" patterns as steering, so the next concepts double down on what
+  // already lands. The card builds `ask` from patterns.working and POSTs to the Ideas
+  // SSE route (which appends idea cards to the open thread), then navigates to /home to
+  // rehydrate them — mirrors discover→remix's card-POST + navigate pattern exactly.
+  // anchorFrom "card" — the strengths ARE the steering anchor (carried as `ask`).
+  // PINNED: /api/tools/ideas accepts { ask?, platform } (ideas/route.ts) — lever rides `ask`.
+  {
+    from: "account-read",
+    to: "idea",
+    ctaLabel: "Write to my strengths →",
+    endpoint: "/api/tools/ideas",
     anchorFrom: "card",
   },
 ];

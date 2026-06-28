@@ -26,11 +26,19 @@
  * Back-compat: `profile` / `analyzedVideos` are optional. A pre-Tier-C saved snapshot (no
  * profile) falls back to the handle-only eyebrow and simply omits the header + cover strip.
  *
- * Deferred (§7 product call): the forward action "Write to my strengths →" is NOT wired yet
- * — it's net-new behavior (seed Ideas?). The footer carries Save for now.
+ * Forward action (§7, LIVE): "Write to my strengths →" seeds Ideas with the account's
+ * "What's working" patterns as steering, so the next concepts double down on what already
+ * lands. The card POSTs `ask` (built from patterns.working) to the Ideas SSE route — which
+ * appends idea cards to the open thread — then navigates to /home to rehydrate them (the
+ * same card-POST + navigate pattern as discover→remix). The endpoint is read from the
+ * CHAIN_HANDOFFS registry (account-read→idea), never hard-coded. The CTA only renders when
+ * there ARE strengths to write to (honest — never an empty seed); Save trails it.
  */
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { AccountReadBlock } from '@/lib/tools/blocks';
+import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { SaveAffordance } from './save-affordance';
 
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
@@ -252,6 +260,63 @@ function Accuracy({ trackRecord }: { trackRecord: AccountReadBlock['props']['tra
   );
 }
 
+/** Build the Ideas steering `ask` from the account's "What's working" strengths.
+ *  Bounded (≤8 bullets, hard-capped well under the route's 2000-char `ask` limit). */
+function buildStrengthsAsk(strengths: string[]): string {
+  const bullets = strengths
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 8)
+    .map((s) => `• ${s}`)
+    .join('\n');
+  return `Write to my strengths — give me new content ideas that lean into what's already working on my account:\n${bullets}`.slice(
+    0,
+    1800,
+  );
+}
+
+/**
+ * "Write to my strengths →" — the forward action (§7, LIVE). POSTs the strengths as the
+ * Ideas steering `ask`, then navigates to /home to rehydrate the appended idea cards.
+ * Endpoint is the CHAIN_HANDOFFS account-read→idea entry (SSOT, never hard-coded) — the
+ * same card-POST + navigate shape as discover→remix. Cream-primary (forward-chain primary).
+ */
+function WriteToStrengthsButton({ strengths }: { strengths: string[] }) {
+  const router = useRouter();
+  const [writing, setWriting] = useState(false);
+  const handoff = handoffsFor('account-read').find((h) => h.to === 'idea');
+
+  async function handleWrite() {
+    if (!handoff?.endpoint || writing) return;
+    setWriting(true);
+    try {
+      // The Ideas SSE route appends idea cards to the OPEN thread server-side; we don't
+      // consume the stream here — /home rehydrates the persisted cards on navigation.
+      await fetch(handoff.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ask: buildStrengthsAsk(strengths), platform: 'tiktok' }),
+      });
+      router.push('/home');
+    } catch {
+      setWriting(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleWrite}
+      disabled={writing}
+      className="rounded text-[13px] font-medium text-foreground transition-opacity hover:opacity-80 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+      aria-label="Write to my strengths — generate ideas that lean into what's working"
+      data-testid="account-read-write-strengths"
+    >
+      {writing ? 'Writing…' : 'Write to my strengths →'}
+    </button>
+  );
+}
+
 /** Thin-history fallback (SELF-02) — warning-toned, calm, never fabricated. */
 function ThinFallback({ handle }: { handle: string }) {
   return (
@@ -313,8 +378,14 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
         <Accuracy trackRecord={trackRecord ?? null} />
       </div>
 
-      {/* Footer — Save for now; "Write to my strengths →" (forward action) is deferred (§7). */}
-      <div className="flex items-center border-t border-white/[0.06] px-4 py-3">
+      {/* Footer — "Write to my strengths →" (forward action, LIVE §7) leads; Save trails.
+          The CTA only shows when there ARE strengths to seed from (honest — no empty run). */}
+      <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3">
+        {patterns.working.length > 0 ? (
+          <WriteToStrengthsButton strengths={patterns.working} />
+        ) : (
+          <span aria-hidden="true" />
+        )}
         <SaveAffordance
           item_type="read"
           thread_id={threadId}
