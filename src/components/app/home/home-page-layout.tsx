@@ -21,6 +21,10 @@ import { Composer } from "./composer";
 export function HomePageLayout() {
   const [hasThread, setHasThread] = useState(false);
   const [hasConversation, setHasConversation] = useState(false);
+  // A1: true while the composer rehydrates a switched-to thread. Keeps the thread
+  // shell mounted + suppresses the welcome hero across the load gap (so the layout
+  // never collapses to the centered serif hero between threads).
+  const [rehydrating, setRehydrating] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
   const handleThreadChange = useCallback((next: boolean) => {
@@ -31,10 +35,14 @@ export function HomePageLayout() {
     setHasConversation(next);
   }, []);
 
+  const handleRehydratingChange = useCallback((next: boolean) => {
+    setRehydrating(next);
+  }, []);
+
   return (
     <div className="flex h-full w-full flex-col items-center px-4">
       <div className="flex w-full max-w-[760px] flex-col flex-1 min-h-0">
-        {!hasConversation && (
+        {!hasConversation && !rehydrating && (
           <div
             className={cn(
               "shrink-0 flex flex-col items-center pt-[clamp(3rem,18vh,7rem)] pb-8",
@@ -45,9 +53,10 @@ export function HomePageLayout() {
           </div>
         )}
         <Composer
-          className={cn(hasThread && "flex-1 min-h-0")}
+          className={cn((hasThread || rehydrating) && "flex-1 min-h-0")}
           onThreadChange={handleThreadChange}
           onConversationChange={handleConversationChange}
+          onRehydratingChange={handleRehydratingChange}
         />
       </div>
     </div>

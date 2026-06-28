@@ -69,6 +69,9 @@ import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
+import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
+import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
+import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
@@ -120,9 +123,13 @@ export interface ComposerProps {
   /** Called when conversation content exists (blocks, streaming, or a submitted turn).
    *  Parent uses this to hide the empty-state welcome hero. */
   onConversationChange?: (hasConversation: boolean) => void;
+  /** Called while a thread-switch is rehydrating (A1). Parent keeps the thread shell
+   *  mounted + suppresses the welcome hero during the load gap so the layout never
+   *  collapses to the centered serif hero between threads. */
+  onRehydratingChange?: (rehydrating: boolean) => void;
 }
 
-export function Composer({ className, onThreadChange, onConversationChange }: ComposerProps) {
+export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -210,6 +217,14 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // Explore persisted grids (Plan 11-07 — filter b.type === 'outlier-grid' on mount).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedExploreBlocks, setPersistedExploreBlocks] = useState<any[]>([]);
+
+  // ── Thread-switch rehydration flag (A1 — premium-thread Chunk 1) ───────────
+  // True for the window between a thread SWITCH and the persisted blocks landing.
+  // Set synchronously at the top of the [activeThreadSignal] effect (before the
+  // wipes) and cleared when loadPersistedBlocks settles. Keeps the thread shell
+  // mounted + suppresses the welcome hero across the gap so the layout never snaps
+  // to the centered serif hero between threads (the worst pre-fix flash).
+  const [rehydrating, setRehydrating] = useState(false);
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
@@ -344,6 +359,14 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     onConversationChange?.(hasConversationContent);
   }, [hasConversationContent, onConversationChange]);
 
+  // A1: notify parent of the rehydrate window so HomePageLayout keeps the thread
+  // shell mounted + suppresses the welcome hero during a thread switch (the gate is
+  // `!hasConversation && !rehydrating` for the hero, `hasThread || rehydrating` for
+  // the layout). Both this and the conversation flip batch into one parent render.
+  useEffect(() => {
+    onRehydratingChange?.(rehydrating);
+  }, [rehydrating, onRehydratingChange]);
+
   // URL validity: empty is "neutral" (no error, just disabled); non-empty +
   // non-TikTok shows the D-21 reject; a valid TikTok URL enables submit.
   const trimmedUrl = url.trim();
@@ -386,6 +409,11 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     // new/re-opened one. The fetch below repopulates persisted blocks for a
     // re-opened thread, or leaves everything blank for a brand-new thread.
     if (!isFirstThreadLoadRef.current) {
+      // A1: flag the rehydrate FIRST — in the SAME render batch as the wipes — so the
+      // thread shell stays mounted and the hero is suppressed before any block array
+      // empties. Without this, hasThread/hasConversationContent flip false for the
+      // fetch duration and the layout collapses to the centered serif welcome-hero.
+      setRehydrating(true);
       chat.reset();
       ideas.reset();
       hooks.reset();
@@ -460,6 +488,11 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
         }
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
+      } finally {
+        // A1: clear the rehydrate flag once the load settles (success, 401, or error).
+        // Guarded by `cancelled` so a stale fetch from a superseded switch never clears
+        // the flag the newer switch just set (that newer fetch owns the clear).
+        if (!cancelled) setRehydrating(false);
       }
     }
     void loadPersistedBlocks();
@@ -809,9 +842,14 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       return;
     }
 
-    // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
+    // ── Test tool path (pendingNavRef/stream.start exclusive here) ─
+    // A3: echo the submitted input before the navigation gap. The Test path only
+    // reaches /analyze/[id] once the `started` SSE flips analysisId (1–3s); until
+    // then it was a silent spinner. captureUserTurn(...) drives the optimistic echo
+    // + status line (testSubmitTurn) so the wait reads as work, not a dead button.
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
+      captureUserTurn(file.name);
       setSubmitting(true);
       try {
         const supabase = createClient();
@@ -853,6 +891,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     }
 
     if (!isValidTikTok) return;
+    captureUserTurn(trimmedUrl); // A3 optimistic echo (drives testSubmitTurn)
     setSubmitting(true);
     try {
       // WR-05: arm navigation for this real submission (see upload path above).
@@ -949,9 +988,11 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       : PLACEHOLDER_BY_TOOL[activeTool];
 
   // Thread mode on /home (no route id): full-height column — thread region
-  // scrolls above the pinned form. This only activates when hasThread is true,
-  // so empty home keeps the existing centered hero layout (no regression).
-  const homeThreadMode = hasThread && !hasSimulation;
+  // scrolls above the pinned form. Active when hasThread is true OR while a switch
+  // is rehydrating (A1) — so the shell stays mounted across the load gap instead of
+  // collapsing to the centered hero. Empty home (no thread, not rehydrating) keeps
+  // the existing centered hero layout (no regression).
+  const homeThreadMode = (hasThread || rehydrating) && !hasSimulation;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // Build the focus descriptors from the VISIBLE tool's already-rendered cards
@@ -1090,8 +1131,36 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     audienceLabel: threadAudienceLabel,
   };
 
+  // A3 — Test/URL submit feedback. No thread view renders for the Test tool, so the
+  // submit→started→/analyze nav was a silent spinner. Echo the input (ThreadShell)
+  // + a live status line (ThreadAssistantTurn) while the run is in flight. Gated on
+  // the in-flight window only, so nothing lingers after navigation or an early error.
+  const testSubmitPending =
+    activeTool === "test" && (submitting || stream.phase === "analyzing");
+  const testSubmitTurn = testSubmitPending ? (
+    <ThreadShell userTurn={lastUserTurn}>
+      <ThreadAssistantTurn>
+        <div
+          className="flex items-center gap-2 text-sm text-foreground-muted"
+          aria-live="polite"
+        >
+          <Spinner size="sm" />
+          <span>
+            {/* Upload path stages a file first ("Uploading…"); the URL path goes
+                straight to the analysis POST. Both resolve to "Starting analysis…"
+                once the stream phase flips to analyzing. */}
+            {file && stream.phase !== "analyzing"
+              ? "Uploading your video…"
+              : "Starting analysis…"}
+          </span>
+        </div>
+      </ThreadAssistantTurn>
+    </ThreadShell>
+  ) : null;
+
   const threadContent = (
     <>
+      {testSubmitTurn}
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
           so the "Develop this →" CTA knows the active platform (D-15).
@@ -1423,7 +1492,16 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
           className="flex-1 min-h-0 overflow-y-auto"
         >
           {ambientFocusMarkers}
-          {threadContent}
+          {/* A1: while a switch is rehydrating and no content has landed yet, fill the
+              scroll with the branded skeleton — never the prior thread's emptied views
+              or the centered serif hero. When the persisted blocks arrive (or it's a
+              brand-new empty thread) hasConversationContent / rehydrating settle and
+              threadContent takes over. */}
+          {rehydrating && !hasConversationContent ? (
+            <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
+          ) : (
+            threadContent
+          )}
         </div>
 
         {/* Pinned bottom dock — audience + composer fused as one surface. */}
