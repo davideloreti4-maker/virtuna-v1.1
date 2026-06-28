@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-04-PLAN.md (Phase 04 input-adapter COMPLETE — 4/4 plans)
-last_updated: "2026-06-28T16:06:23.996Z"
+stopped_at: Phase 5 context gathered
+last_updated: "2026-06-28T16:09:56.026Z"
 last_activity: 2026-06-28
 progress:
   total_phases: 7
@@ -129,6 +129,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-27T22:30:00.000Z
-Stopped at: Completed 04-04-PLAN.md (Phase 04 input-adapter COMPLETE — 4/4 plans)
-Resume file: Phase 05 (next phase — see ROADMAP.md)
+Last session: 2026-06-28T16:09:56.018Z
+Stopped at: Phase 5 context gathered
+Resume file: .planning/phases/05-profile-simulate-wow/05-CONTEXT.md
