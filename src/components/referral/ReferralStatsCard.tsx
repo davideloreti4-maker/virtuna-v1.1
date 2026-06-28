@@ -21,7 +21,7 @@ export function ReferralStatsCard({
         <h2 className="text-xl font-semibold text-foreground mb-2">
           Performance
         </h2>
-        <p className="text-sm text-muted">
+        <p className="text-sm text-foreground-secondary">
           Track your referral clicks, conversions, and earnings.
         </p>
       </div>
@@ -29,28 +29,28 @@ export function ReferralStatsCard({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
           <div className="text-2xl font-bold text-foreground">{clicks}</div>
-          <div className="text-xs text-muted mt-1">Total Clicks</div>
+          <div className="text-xs text-foreground-secondary mt-1">Total Clicks</div>
         </div>
 
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
           <div className="text-2xl font-bold text-foreground">
             {conversions}
           </div>
-          <div className="text-xs text-muted mt-1">Conversions</div>
+          <div className="text-xs text-foreground-secondary mt-1">Conversions</div>
         </div>
 
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
           <div className="text-2xl font-bold text-foreground-secondary">
             ${earningsDollars}
           </div>
-          <div className="text-xs text-muted mt-1">Total Earnings</div>
+          <div className="text-xs text-foreground-secondary mt-1">Total Earnings</div>
         </div>
 
         <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-4">
           <div className="text-2xl font-bold text-foreground">
             {conversionRate}%
           </div>
-          <div className="text-xs text-muted mt-1">Conversion Rate</div>
+          <div className="text-xs text-foreground-secondary mt-1">Conversion Rate</div>
         </div>
       </div>
     </div>
