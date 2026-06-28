@@ -245,7 +245,7 @@ fold into once locked.
   **sub-detail copy** rewritten to narrate real work + value ("Re-reading what stopped them last time…",
   "Holding it to your 8/10 baseline…"); **motion** — slower word-fade, single debounced scroll
   choreography, compressed elapsed (0:00→0:32 so the timer matches the summary).
-- **v3.1 (2026-06-28, current) — re-copied to the honest FLOOR; this is now the buildable target.**
+- **v3.1 (2026-06-28) — re-copied to the honest FLOOR; the buildable copy layer.**
   Grounded against the real data surfaces (`.planning/premium-thread-copy-floor.md`). Outcome of the
   client-vs-engine prose test: **~90% of the shape ships in-lane with zero fabrication.** Changes: hooks
   **intro → thin orientation** (no scores cited pre-card; script-intro already honest = cites input hook);
@@ -255,12 +255,20 @@ fold into once locked.
   stopped · opener" (dropped the unbacked "held to 0:04"); **lens is read-only** (living "ask them why" =
   P9/aspirational, Save lives in the card bar — matches sibling `all-skill-cards-refined.html`). Owner
   decisions LOCKED: intro = thin orientation · sub-detail = static now + engine ask filed.
+- **v3.2 (2026-06-28, current) — added the Chunk-1 loading MECHANICS the copy sits on; verified-rendering
+  (console clean, both new states captured).** This is now the full build target.
+  - **A4 — unscored → scored.** Hook cards stream in with the proof unit **pending** (a matte-shimmer
+    “Scoring with your 10 reactors…” strip where the band/ribbon will be; the scroll-quote ships with the
+    card so it’s already shown), then the band + “8/10 stopped” + ribbon **resolve in** (ribbon scaleX
+    0→1). Mirrors the real stream: `band ?? 'Mixed'`/`fraction ?? '–'` until the `score` event sets
+    `scored:true` (`use-hooks-stream.ts` `toBlocks`). No more silent rewrite.
+  - **A1 — thread-switch.** A mini sidebar+main demo (“▶ play switch”): the clicked row goes **pending**
+    (A2: terracotta left-border + dim-pulse), the thread **shell stays mounted**, and a
+    `ThreadLoadingSkeleton` (constellation + matte-shimmer block + “Opening thread…”) fills the scroll
+    until content lands — **never** the centered serif welcome-hero. Note carries the load-bearing
+    `activateThread`-await constraint (cover the gap, don’t remove it).
 
-**Sketch refinement backlog (remaining — pending owner review of v3.1):**
-- **Add the loading MECHANICS the copy sits on** (these are what Chunk 1 actually builds, still absent from
-  the sketch): **A1** thread-switch → keep shell + skeleton (no hero-flash); **A4** unscored card → scored
-  transition (cards stream in with a pending proof unit, then the band/fraction lands). The sketch shows the
-  happy *conversation*; it must also show these two *transitions*. → this is the v3.2 / build-spec pass.
+**Sketch refinement backlog (remaining — pending owner review of v3.2):**
 - Motion-timing fine-tune pass — owner to react to v3.1 pacing (stage dwell, lens-open dwell in replay, the
   Turn-2→Turn-3 hand-off); "smoothness can be improved everywhere" is the standing bar.
 - Error state is static reference — decide if it needs a live retry animation in-thread.

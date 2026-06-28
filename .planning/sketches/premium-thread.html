@@ -91,6 +91,25 @@
   .see .chev{transition:transform .25s var(--ease);display:inline-block}
   .proof.lensopen .see .chev{transform:rotate(90deg)}
 
+  /* ── matte shimmer brick (mirrors src/components/ui/skeleton.tsx) ── */
+  .skel{background-color:rgba(255,255,255,.05);
+    background-image:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.08) 50%,transparent 100%);
+    background-size:200% 100%;animation:shimmer 1.7s ease-in-out infinite;border-radius:4px}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* ── A4: unscored → scored proof transition ── */
+  .proof .top{position:relative;min-height:17px}
+  .top .scored{display:flex;align-items:center;gap:10px;width:100%;opacity:1;transition:opacity .4s var(--ease)}
+  .top .scoring{position:absolute;inset:0;display:flex;align-items:center;gap:9px;opacity:0;pointer-events:none;
+    transition:opacity .3s var(--ease)}
+  .proof.scoring .top .scored{opacity:0}
+  .proof.scoring .top .scoring{opacity:1}
+  .top .scored .ribbon > i{transform-origin:left;transform:scaleX(1);transition:transform .65s var(--ease) .05s}
+  .proof.scoring .top .scored .ribbon > i{transform:scaleX(0)}
+  .scoring .sk-dot{width:7px;height:7px;border-radius:var(--radius-full);flex:none}
+  .scoring .lbl{font-size:13px;color:var(--cream-muted)}
+  .scoring .sk-bar{flex:1;height:3px;border-radius:2px}
+
   /* real reactor avatars — distinct warm-neutral faces w/ archetype initial */
   .av{display:flex}
   .av .f{width:17px;height:17px;border-radius:var(--radius-full);border:1px solid var(--surface-thread);
@@ -244,6 +263,36 @@
     font-size:8px;color:var(--cream-muted);display:grid;place-items:center;margin-top:1px}
   .skillcol li .sub{display:block;color:var(--cream-muted);font-size:11.5px;font-style:italic;margin-top:2px}
 
+  /* ── A1: thread-switch mini-demo (shell + skeleton, NOT hero-flash) ── */
+  .switchdemo{position:relative;display:grid;grid-template-columns:150px 1fr;gap:0;height:188px;
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
+  .sd-side{border-right:1px solid var(--border);padding:10px 9px;display:flex;flex-direction:column;gap:6px;background:var(--surface-thread)}
+  .sd-row{font-size:12px;color:var(--cream-2);padding:8px 10px;border-radius:var(--radius-ctl);cursor:default;
+    border-left:2px solid transparent;transition:background .2s,color .2s,border-color .2s,opacity .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sd-row.active{background:rgba(255,255,255,.045);color:var(--cream)}
+  .sd-row.pending{opacity:.6;border-left-color:var(--accent);background:rgba(255,255,255,.03);animation:sdpulse 1s ease-in-out infinite}
+  @keyframes sdpulse{0%,100%{opacity:.55}50%{opacity:.85}}
+  .sd-main{position:relative;padding:16px 18px;overflow:hidden}
+  .sd-content{display:flex;flex-direction:column;gap:11px;transition:opacity .3s var(--ease)}
+  .sd-bubble{align-self:flex-end;background:var(--surface-user);border:1px solid var(--border);border-radius:12px;
+    padding:8px 12px;font-size:12.5px;color:var(--cream);max-width:80%}
+  .sd-ai{font-size:12.5px;color:var(--cream-2);line-height:1.5;max-width:90%}
+  .sd-ai .mk{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:5px;font-size:9px;
+    background:linear-gradient(135deg,#3a3936,#2a2927);border:1px solid var(--border-hover);color:var(--cream-2);margin-right:6px;vertical-align:middle}
+  .sd-skel{position:absolute;inset:16px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px}
+  .sd-constell{display:flex;gap:6px;align-items:center;height:26px}
+  .sd-constell i{width:5px;height:5px;border-radius:50%;background:var(--cream-muted);opacity:.5;animation:sdtwinkle 1.6s ease-in-out infinite}
+  .sd-constell i:nth-child(2){animation-delay:.2s;width:6px;height:6px;background:var(--accent);opacity:.7}
+  .sd-constell i:nth-child(3){animation-delay:.4s} .sd-constell i:nth-child(4){animation-delay:.6s}
+  .sd-constell i:nth-child(5){animation-delay:.8s}
+  @keyframes sdtwinkle{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:.9;transform:translateY(-2px)}}
+  .sd-skelblock{width:100%;max-width:280px;height:52px;border-radius:10px}
+  .sd-cap{font-size:12px;color:var(--cream-muted)}
+  .sd-play{position:absolute;top:9px;right:10px;z-index:2;font-size:11.5px;color:var(--cream-2);background:var(--surface-chip);
+    border:1px solid var(--border);border-radius:var(--radius-ctl);padding:5px 10px;cursor:pointer}
+  .sd-play:hover{color:var(--cream);border-color:var(--border-hover)}
+  .sd-note{font-size:12.5px;color:var(--cream-2);line-height:1.5}.sd-note b{color:var(--cream)}
+
   .legend{max-width:760px;margin:18px auto 0;width:100%;font-size:13px;color:var(--cream-2);background:var(--surface-thread);
     border:1px solid var(--border);border-radius:var(--radius-card);padding:15px 17px;display:flex;flex-direction:column;gap:7px}
   .legend b{color:var(--cream)} .legend .t{display:inline-block;min-width:74px;color:var(--cream-muted)}
@@ -286,8 +335,11 @@
               <div class="eyebrow"><span class="kicker" style="color:var(--success)"><span class="dot"></span>Stops the skeptic</span><span class="rank">#1</span></div>
               <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
               <p class="why"><span class="k">Why it works —</span> Pattern-interrupt against received wisdom: names the advice they follow, then frames it as the cause of their problem.</p>
-              <div class="proof" id="proof1" onclick="toggleLens('lens1',this)">
-                <div class="top"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> stopped</span><span class="ribbon"><i style="width:80%"></i></span></div>
+              <div class="proof scoring" id="proof1" onclick="toggleLens('lens1',this)">
+                <div class="top">
+                  <span class="scored"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> stopped</span><span class="ribbon"><i style="width:80%"></i></span></span>
+                  <span class="scoring"><span class="sk-dot skel"></span><span class="lbl">Scoring with your 10 reactors…</span><span class="sk-bar skel"></span></span>
+                </div>
                 <div class="seerow">
                   <span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span>
                   <span class="see"><span class="av"><span class="f s1">S</span><span class="f s2">V</span><span class="f s3">A</span></span>See the room <span class="chev">›</span></span>
@@ -331,8 +383,11 @@
               <div class="eyebrow"><span class="kicker" style="color:var(--warning)"><span class="dot"></span>Reframes the metric</span><span class="rank">#2</span></div>
               <p class="hook">You don't have a posting problem. You have a “which 3 posts” problem.</p>
               <p class="why"><span class="k">Why it works —</span> Swaps the volume frame for a selection frame — but the premise lands softer with this audience.</p>
-              <div class="proof" id="proof2" onclick="toggleLens('lens2',this)">
-                <div class="top"><span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span><span class="stopped"><span class="n">5/10</span> stopped</span><span class="ribbon"><i style="width:50%;background:var(--cream-muted)"></i></span></div>
+              <div class="proof scoring" id="proof2" onclick="toggleLens('lens2',this)">
+                <div class="top">
+                  <span class="scored"><span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span><span class="stopped"><span class="n">5/10</span> stopped</span><span class="ribbon"><i style="width:50%;background:var(--cream-muted)"></i></span></span>
+                  <span class="scoring"><span class="sk-dot skel"></span><span class="lbl">Scoring with your 10 reactors…</span><span class="sk-bar skel"></span></span>
+                </div>
                 <div class="seerow">
                   <span class="quote">“Wait, which three though? Now I want to know.”</span>
                   <span class="see"><span class="av"><span class="f s3">A</span><span class="f s1">S</span><span class="f s4">B</span></span>See the room <span class="chev">›</span></span>
@@ -475,6 +530,29 @@
           </div>
         </div>
 
+        <!-- A1: thread-switch — shell + skeleton, not hero-flash -->
+        <div class="gdivider">Thread switch · A1 (the worst current flash → fixed)</div>
+        <div class="switchdemo">
+          <button class="sd-play" onclick="playSwitch()">▶ play switch</button>
+          <div class="sd-side">
+            <div class="sd-row active" id="sdRow1">Daily posting hooks</div>
+            <div class="sd-row" id="sdRow2">Cold open rewrite</div>
+            <div class="sd-row">Account read · June</div>
+          </div>
+          <div class="sd-main">
+            <div class="sd-content" id="sdContent">
+              <div class="sd-bubble">Write a script from the first one</div>
+              <div class="sd-ai"><span class="mk">n</span>Script · 32s — your opener stopped 8/10. Want me to tighten the payoff?</div>
+            </div>
+            <div class="sd-skel" id="sdSkel" style="display:none">
+              <div class="sd-constell"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="skel sd-skelblock"></div>
+              <p class="sd-cap">Opening thread…</p>
+            </div>
+          </div>
+        </div>
+        <p class="sd-note"><b>Before:</b> composer blanks → snaps to the centered serif welcome-hero → refills (two flashes per switch). <b>After:</b> the row goes <b>pending</b> (A2), the thread <b>shell stays mounted</b>, and a <code>ThreadLoadingSkeleton</code> fills the scroll until content lands. No hero-flash. <span style="color:var(--cream-muted)">(Constraint: the <code>activateThread</code> await is load-bearing — <code>/api/threads/open</code> reads most-recent — so the gap is real; we cover it, not remove it.)</span></p>
+
         <!-- per-skill step copy -->
         <div class="gdivider">Per-skill progress copy</div>
         <div class="skillgrid">
@@ -518,7 +596,8 @@
       </div>
 
       <div class="legend reveal" data-step="9">
-        <div style="color:var(--cream);font-weight:600;margin-bottom:3px">v3.1 — re-copied to the honest floor (buildable target)</div>
+        <div style="color:var(--cream);font-weight:600;margin-bottom:3px">v3.2 — honest floor + the Chunk-1 loading mechanics (build target)</div>
+        <div><span class="t">Mechanics</span> <b>A4</b> — hook cards stream in with the proof <b>pending</b> (“Scoring with your 10 reactors…” shimmer), then band+fraction+ribbon <b>resolve in</b> (no silent rewrite). <b>A1</b> — thread-switch demo below: row pending → <b>shell + skeleton</b>, never the serif hero-flash.</div>
         <div><span class="t">Intro</span> Thin <b>orientation</b> from audience only (no faked scores at submit). Script-intro cites the input hook (honest). <span style="color:var(--cream-muted)">Decision 2026-06-28.</span></div>
         <div><span class="t">Outro</span> = the engine’s <b>real <code>followupText</code></b> (already streamed today) — restyled with word-fade, <b>not templated</b>. Fabricated “beats your last opener” claim removed.</div>
         <div><span class="t">Sub-detail</span> <b>Static</b> honest descriptor per stage (no live “6 of 10” — <code>StageState</code> has no detail field). Live counter is a <b>filed engine ask</b> (add <code>detail</code> to the stage SSE event).</div>
@@ -574,6 +653,27 @@
     const open=lens.classList.toggle('open');
     if(trigger) trigger.classList.toggle('lensopen',open);
     if(open) setTimeout(toBottom,120);
+  }
+
+  // ── A1: thread-switch mini-demo — row pending → shell+skeleton → content (NO hero-flash) ──
+  const SD_T1=`<div class="sd-bubble">Write a script from the first one</div>
+      <div class="sd-ai"><span class="mk">n</span>Script · 32s — your opener stopped 8/10. Want me to tighten the payoff?</div>`;
+  const SD_T2=`<div class="sd-bubble">Rewrite my cold open to be punchier</div>
+      <div class="sd-ai"><span class="mk">n</span>Three tighter opens — the first cuts your setup by 2 seconds and still lands the turn.</div>`;
+  let sdOn2=false, sdBusy=false;
+  function playSwitch(){
+    if(sdBusy) return; sdBusy=true;
+    const to2=!sdOn2, content=$('#sdContent'), skel=$('#sdSkel');
+    const tgt=$(to2?'#sdRow2':'#sdRow1'), oth=$(to2?'#sdRow1':'#sdRow2');
+    tgt.classList.add('pending');                                     // A2: row goes pending immediately
+    setTimeout(()=>{ content.style.opacity=0; skel.style.display='flex'; }, 280); // shell stays, skeleton fills
+    setTimeout(()=>{
+      skel.style.display='none';
+      content.innerHTML = to2?SD_T2:SD_T1;                            // content lands — no hero flash
+      content.style.opacity=1;
+      tgt.classList.remove('pending'); tgt.classList.add('active'); oth.classList.remove('active');
+      sdOn2=to2; sdBusy=false;
+    }, 1150);
   }
 
   // ── progress engine ──
@@ -657,6 +757,7 @@
     ['#intro1','#outro1','#intro2','#outro2','#reply3'].forEach(s=>{const el=$(s); if(el.dataset.raw){el.innerHTML=el.dataset.raw; delete el.dataset.wrapped;}});
     $$('.lens').forEach(l=>l.classList.remove('open'));
     $$('.proof').forEach(p=>p.classList.remove('lensopen'));
+    ['#proof1','#proof2'].forEach(id=>$(id).classList.add('scoring'));   // re-arm A4 unscored state
     $('#gen').classList.remove('collapsed'); $('#genHead').className='gen-head'; $('#genHead').onclick=null;
     $('#genTitle').textContent='Generating your script'; $('#elapsed').textContent='0:00';
     $('#steps').style.height=''; $$('#steps .step').forEach(s=>s.className='step pending');
@@ -668,6 +769,7 @@
 
     if(reduce){
       [0,1,2,3,4,5,6,7,8,'8b',9].forEach(show);
+      ['#proof1','#proof2'].forEach(id=>$(id).classList.remove('scoring'));  // show scored (no motion)
       $$('[data-step="8"]').forEach(el=>el.style.display=''); $('#turn3').style.display='';
       revealWords($('#intro1')); revealWords($('#outro1')); revealWords($('#intro2'));
       revealWords($('#outro2')); revealWords($('#reply3'));
@@ -679,13 +781,15 @@
     const seq=[
       [150,  ()=>show(0)],
       [600,  ()=>{ show(1); revealWords($('#intro1')); }],
-      [2600, ()=>show(2)],
-      [3050, ()=>show(3)],
-      [3600, ()=>{ revealWords($('#outro1')); show(4); }],
-      [4600, ()=>{ toggleLens('lens1',$('#proof1')); toEl($('#proof1')); }],  // auto-open the room
-      [6500, ()=>{ show(5); toBottom(); }],
-      [7050, ()=>{ show(6); revealWords($('#intro2')); }],
-      [8200, ()=>{ show(7); toBottom(); runProgress(secs=>collapseAndResolve(secs)); }],
+      [2600, ()=>show(2)],                                   // card #1 streams in — proof PENDING (A4)
+      [3050, ()=>show(3)],                                   // card #2 streams in — proof PENDING (A4)
+      [3800, ()=>$('#proof1').classList.remove('scoring')],  // #1 score lands → band+fraction+ribbon resolve
+      [4200, ()=>$('#proof2').classList.remove('scoring')],  // #2 score lands
+      [4700, ()=>{ revealWords($('#outro1')); show(4); }],
+      [5600, ()=>{ toggleLens('lens1',$('#proof1')); toEl($('#proof1')); }],  // auto-open the room
+      [7400, ()=>{ show(5); toBottom(); }],
+      [7950, ()=>{ show(6); revealWords($('#intro2')); }],
+      [9100, ()=>{ show(7); toBottom(); runProgress(secs=>collapseAndResolve(secs)); }],
     ];
     seq.forEach(([t,fn])=>after(t,fn));
   }

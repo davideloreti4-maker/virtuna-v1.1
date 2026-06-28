@@ -117,10 +117,15 @@ outro = engine text (restyle, not template); sub-detail → static honest descri
 **Owner decisions LOCKED (2026-06-28):** (1) hooks intro = **thin orientation**; (2) progress sub-detail =
 **static now + filed engine ask** (add `detail` to the stage SSE event / `StageState` — the one justified
 engine request, carry to GSI/engine lane).
-**Remaining:** **add the loading MECHANICS** to the sketch (v3.2) — **A1** thread-switch shell+skeleton (no
-hero-flash) + **A4** unscored→scored card transition; these are what Chunk 1 builds and the sketch's happy
-conversation doesn't yet show them. Then motion-timing fine-tune + error-state live-retry call → sign-off →
-build spec → Chunk 1.
+**v3.2 (2026-06-28) — added the Chunk-1 loading MECHANICS** (verified-rendering): **A4** hook cards stream
+in with a **pending** proof (matte-shimmer "Scoring with your 10 reactors…"), then band+fraction+ribbon
+**resolve in** (no silent rewrite); **A1** thread-switch mini-demo ("▶ play switch") — row **pending** →
+thread **shell stays + ThreadLoadingSkeleton** → content, never the serif hero-flash. The sketch now depicts
+the full arc AND the two hard transitions Chunk 1 builds.
+**Remaining → sign-off:** owner replays v3.2 (motion-timing fine-tune; error-state live-retry call). On
+sign-off → write the build spec → **Chunk 1** = A1 (rehydrating flag → shell+skeleton) + A2 (row pending) +
+A3 (test-submit echo) + A4 (proof pending→scored) + the conversational frame (thin intro slot, restyle
+`followupText` outro, spine from real `stages`, static sub-detail + filed engine `detail` ask).
 
 ## State of the tree
 `lane/shell` @ `6b2d110b` (= main) + this session's docs/sketch/handoff committed on top. No app code
