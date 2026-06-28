@@ -148,6 +148,24 @@ describe("POST /api/tools/profile — storagePath traversal (AR-04-01 / T-05-11)
   });
 });
 
+describe("POST /api/tools/profile — video ownership (CR-01 IDOR)", () => {
+  it("returns 403 on a valid-shaped path owned by another user, before any run", async () => {
+    // Shape is valid (passes sanitizeStoragePath) but the owner segment != session user.
+    const res = await callPOST({ kind: "video", storagePath: "user-2/clip.mp4" });
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toBe("forbidden");
+    expect(mockNormalizeStimulus).not.toHaveBeenCalled();
+    expect(mockRunProfile).not.toHaveBeenCalled();
+  });
+
+  it("allows a video the session user owns (path prefixed with their id)", async () => {
+    const res = await callPOST({ kind: "video", storagePath: "user-1/clip.mp4" });
+    expect(res.status).toBe(200);
+    expect(mockRunProfile).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("POST /api/tools/profile — happy path", () => {
   it("returns 200 { block } with a profile-read block and persists once", async () => {
     const res = await callPOST({ kind: "text", text: "Alex: close by Friday or I walk." });

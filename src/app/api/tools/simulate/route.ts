@@ -94,9 +94,9 @@ export async function POST(request: Request): Promise<Response> {
     await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
     return Response.json({ block });
   } catch (err) {
-    return Response.json(
-      { error: err instanceof Error ? err.message : "Simulate failed" },
-      { status: 500 },
-    );
+    // Do not echo raw err.message to the client — it can carry Zod/DB detail
+    // (WR-02 info disclosure). Log server-side, return a generic message.
+    console.error("[/api/tools/simulate] failed:", err);
+    return Response.json({ error: "Simulate failed" }, { status: 500 });
   }
 }

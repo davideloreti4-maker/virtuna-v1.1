@@ -110,6 +110,14 @@ export async function POST(request: Request): Promise<Response> {
       } catch {
         return Response.json({ error: "invalid storagePath" }, { status: 400 });
       }
+      // Authorization (CR-01 IDOR): the signed-URL fetch downstream signs with the
+      // service client (bypasses RLS), so ownership MUST be enforced here — the user
+      // must own the path (`<userId>/<file>`). Shape sanitization above is NOT an
+      // authz check. Mirrors /api/videos/sign; without this a valid-shaped foreign
+      // key would yield a behavioral read of another tenant's private video.
+      if (storagePath.split("/")[0] !== user.id) {
+        return Response.json({ error: "forbidden" }, { status: 403 });
+      }
       input = {
         kind: "video",
         storagePath,
@@ -132,9 +140,9 @@ export async function POST(request: Request): Promise<Response> {
     await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
     return Response.json({ block });
   } catch (err) {
-    return Response.json(
-      { error: err instanceof Error ? err.message : "Profile failed" },
-      { status: 500 },
-    );
+    // Do not echo raw err.message to the client — it can carry Zod/DB/user-id
+    // detail (WR-02 info disclosure). Log server-side, return a generic message.
+    console.error("[/api/tools/profile] failed:", err);
+    return Response.json({ error: "Profile failed" }, { status: 500 });
   }
 }
