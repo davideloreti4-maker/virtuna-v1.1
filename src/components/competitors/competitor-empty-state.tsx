@@ -1,32 +1,42 @@
 "use client";
 
-import { UsersThree } from "@phosphor-icons/react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Constellation, buildLoadingDots } from "@/components/brand/constellation";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { AddCompetitorDialog } from "@/components/competitors/add-competitor-dialog";
 
 /**
- * Empty state displayed when user has no tracked competitors.
+ * Calm informational empty state shown when the user tracks no competitors yet.
  *
- * Shows a centered layout with icon, title, description, and CTA button.
- * Matches Raycast empty state conventions with subtle surface background.
+ * Echoes the Library saved-shelf empty state (flat-warm SSOT): bordered container
+ * carrying the Constellation brand motif, font-semibold title, muted subline, and
+ * a single CTA. The old Raycast icon-in-rounded-box convention is retired.
  */
 export function CompetitorEmptyState() {
+  const reducedMotion = usePrefersReducedMotion();
+  const dots = useMemo(() => buildLoadingDots(120, 32, 8), []);
+
   return (
-    <div className="flex flex-col items-center justify-center py-20 px-4">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] mb-4">
-        <UsersThree
-          size={32}
-          weight="thin"
-          className="text-foreground-muted"
-        />
+    <div className="flex min-h-[360px] flex-col items-center justify-center gap-5 rounded-[var(--radius-lg)] border border-white/[0.06] px-6 py-16 text-center">
+      <Constellation
+        dots={dots}
+        reducedMotion={reducedMotion}
+        width={140}
+        height={38}
+        vbW={120}
+        vbH={32}
+        ariaLabel="No competitors tracked yet"
+      />
+      <div className="flex flex-col gap-2">
+        <p className="text-base font-semibold text-foreground">
+          No competitors tracked yet
+        </p>
+        <p className="max-w-md text-sm text-foreground-muted">
+          Add your first TikTok competitor to start tracking their growth,
+          engagement, and content strategy.
+        </p>
       </div>
-      <h2 className="text-lg font-medium text-foreground mb-1">
-        No competitors tracked yet
-      </h2>
-      <p className="text-sm text-foreground-muted mb-6 text-center max-w-sm">
-        Add your first TikTok competitor to start tracking their growth,
-        engagement, and content strategy.
-      </p>
       <AddCompetitorDialog
         trigger={<Button variant="primary">Add Competitor</Button>}
       />
