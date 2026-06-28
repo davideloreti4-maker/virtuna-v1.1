@@ -39,7 +39,8 @@ export function ComparisonMetricCard({
           <p
             className={cn(
               "text-base sm:text-lg font-semibold",
-              aWins ? "text-foreground-secondary" : "text-foreground"
+              // Winner is the PROMINENT cream; the lesser value recedes to secondary.
+              aWins ? "text-foreground" : "text-foreground-secondary"
             )}
           >
             {valueA}
@@ -51,7 +52,7 @@ export function ComparisonMetricCard({
           <p
             className={cn(
               "text-base sm:text-lg font-semibold",
-              bWins ? "text-foreground-secondary" : "text-foreground"
+              bWins ? "text-foreground" : "text-foreground-secondary"
             )}
           >
             {valueB}

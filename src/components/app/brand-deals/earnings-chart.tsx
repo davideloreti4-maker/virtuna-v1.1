@@ -19,8 +19,8 @@ import type { MonthlyEarning } from "@/types/brand-deals";
 // ---------------------------------------------------------------------------
 
 /**
- * Solid opaque dark tooltip -- NO glassmorphism, NO backdrop-filter.
- * Matches Raycast dialog/card pattern: solid bg, inset shadow highlight.
+ * Solid opaque flat-warm tooltip -- matte `--color-surface-elevated` token, no
+ * glass blur, no inset shine.
  */
 function EarningsTooltip({
   active,
@@ -33,9 +33,8 @@ function EarningsTooltip({
     <div
       className="rounded-lg border border-white/[0.06] px-3 py-2"
       style={{
-        background: "#222326",
-        boxShadow:
-          "rgba(255,255,255,0.1) 0 1px 0 0 inset, 0 4px 12px rgba(0,0,0,0.5)",
+        background: "var(--color-surface-elevated)",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
       }}
     >
       <p className="text-xs text-foreground-muted">{label}</p>

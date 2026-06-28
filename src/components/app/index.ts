@@ -4,7 +4,6 @@ export { CardActionMenu } from "./card-action-menu";
 export { ContextBar } from "./context-bar";
 export { FilterPill, FilterPillGroup } from "./filter-pills";
 export { NetworkVisualization } from "./network-visualization";
-export { Sidebar } from "./sidebar";
 export { SidebarNavItem } from "./sidebar-nav-item";
 export { SocietySelector } from "./society-selector";
 export { LegendPills } from "./legend-pills";

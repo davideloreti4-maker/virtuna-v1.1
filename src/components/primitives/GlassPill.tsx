@@ -3,18 +3,23 @@
 import { cn } from "@/lib/utils";
 import { type ReactNode, type CSSProperties, type HTMLAttributes } from "react";
 
-/** Available gradient colors for pills */
+/**
+ * Accepted for API back-compat only. Flat-warm renders EVERY pill as a neutral
+ * cream chip — the design system has ONE accent (terracotta, liveness-only) and
+ * no rainbow chrome (DESIGN-SYSTEM.md). Categorical meaning comes from the label
+ * (and any sibling dot indicator), never from the pill's hue.
+ */
 type PillColor = "purple" | "blue" | "pink" | "cyan" | "green" | "orange";
 
 export interface GlassPillProps extends Omit<HTMLAttributes<HTMLElement>, 'color'> {
   children: ReactNode;
-  /** Color theme for the pill */
+  /** Retained for back-compat; does NOT change the hue (flat-warm = neutral cream). */
   color?: PillColor | "neutral";
   /** Size variant */
   size?: "sm" | "md" | "lg";
-  /** Visual style variant */
+  /** Visual style variant — `outline` shows the hairline border at rest. */
   variant?: "subtle" | "solid" | "outline";
-  /** Show as selected/active state */
+  /** Show as selected/active state (cream-prominent). */
   active?: boolean;
   /** Additional className */
   className?: string;
@@ -26,45 +31,6 @@ export interface GlassPillProps extends Omit<HTMLAttributes<HTMLElement>, 'color
   disabled?: boolean;
 }
 
-// Color values for pills
-const colorValues: Record<PillColor | "neutral", { bg: string; border: string; text: string }> = {
-  neutral: {
-    bg: "oklch(0.25 0.02 264 / 0.5)",
-    border: "oklch(1 0 0 / 0.1)",
-    text: "text-white/80",
-  },
-  purple: {
-    bg: "oklch(0.63 0.24 300 / 0.15)",
-    border: "oklch(0.63 0.24 300 / 0.3)",
-    text: "text-purple-300",
-  },
-  blue: {
-    bg: "oklch(0.62 0.19 250 / 0.15)",
-    border: "oklch(0.62 0.19 250 / 0.3)",
-    text: "text-blue-300",
-  },
-  pink: {
-    bg: "oklch(0.66 0.22 350 / 0.15)",
-    border: "oklch(0.66 0.22 350 / 0.3)",
-    text: "text-pink-300",
-  },
-  cyan: {
-    bg: "oklch(0.72 0.15 200 / 0.15)",
-    border: "oklch(0.72 0.15 200 / 0.3)",
-    text: "text-cyan-300",
-  },
-  green: {
-    bg: "oklch(0.68 0.17 145 / 0.15)",
-    border: "oklch(0.68 0.17 145 / 0.3)",
-    text: "text-green-300",
-  },
-  orange: {
-    bg: "oklch(0.70 0.18 50 / 0.15)",
-    border: "oklch(0.70 0.18 50 / 0.3)",
-    text: "text-orange-300",
-  },
-};
-
 const sizeMap = {
   sm: "px-2.5 py-1 text-xs",
   md: "px-3 py-1.5 text-sm",
@@ -72,27 +38,21 @@ const sizeMap = {
 };
 
 /**
- * GlassPill - Glassmorphic pill/chip component for tags, filters, and small actions.
+ * GlassPill — flat-warm MATTE pill/chip for tags, filters, and small actions.
+ *
+ * NOTE: the name is legacy. This was a Raycast glassmorphic pill (137deg gradient
+ * + backdrop-blur + inset white-shine + spectral text). It is now a flat-warm matte
+ * chip per DESIGN-SYSTEM.md hard rules: solid charcoal surface, 6%→10% hairline
+ * border, cream text, no glass / no blur / no glow / no rainbow. Active = cream-
+ * prominent (brighter surface + full-cream text + 10% border), never an accent ring.
  *
  * @example
- * // Neutral pill
  * <GlassPill>Tag Label</GlassPill>
- *
- * @example
- * // Colored pill with click handler
- * <GlassPill color="purple" onClick={() => selectFilter()}>
- *   AI Analysis
- * </GlassPill>
- *
- * @example
- * // Active filter pill
- * <GlassPill color="blue" active>
- *   Selected Filter
- * </GlassPill>
+ * <GlassPill active onClick={() => selectFilter()}>Selected Filter</GlassPill>
  */
 export function GlassPill({
   children,
-  color = "neutral",
+  color: _color = "neutral",
   size = "md",
   variant = "subtle",
   active = false,
@@ -103,9 +63,9 @@ export function GlassPill({
   ...rest
 }: GlassPillProps) {
   const isInteractive = Boolean(onClick) && !disabled;
-  const colorConfig = colorValues[color];
-
   const Component = onClick ? "button" : "span";
+  // Outline variant shows the border at rest; active always carries one.
+  const showBorder = variant === "outline" || active;
 
   return (
     <Component
@@ -114,36 +74,21 @@ export function GlassPill({
       onClick={disabled ? undefined : onClick}
       disabled={disabled}
       className={cn(
-        // Base styles
         "inline-flex items-center justify-center rounded-full font-medium",
-        "transition-all duration-200",
+        "transition-colors duration-200",
         sizeMap[size],
-        // Text color — dim when inactive
-        active ? colorConfig.text : "text-white/40",
+        // Matte cream chip — solid charcoal surface, never glass.
+        active ? "bg-white/[0.06] text-foreground" : "bg-white/[0.03] text-foreground-muted",
+        showBorder && "border",
+        showBorder && (active ? "border-white/[0.10]" : "border-white/[0.06]"),
         // Interactive states
-        isInteractive && "cursor-pointer",
-        isInteractive && "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
-        // Active state
-        active && "ring-1",
+        isInteractive && "cursor-pointer hover:bg-white/[0.05] hover:text-foreground",
+        isInteractive && "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10",
         // Disabled state
         disabled && "opacity-50 cursor-not-allowed",
         className
       )}
-      style={{
-        background: active
-          ? "linear-gradient(137deg, rgba(17,18,20,0.75) 4.87%, rgba(12,13,15,0.9) 75.88%)"
-          : "linear-gradient(137deg, rgba(17,18,20,0.45) 4.87%, rgba(12,13,15,0.55) 75.88%)",
-        backdropFilter: "blur(5px)",
-        WebkitBackdropFilter: "blur(5px)",
-        boxShadow: active
-          ? "rgba(255,255,255,0.15) 0px 1px 1px 0px inset"
-          : "none",
-        borderWidth: variant === "outline" ? 1 : 0,
-        borderColor: active ? colorConfig.border : "rgba(255,255,255,0.06)",
-        // Active ring color
-        ...(active && { "--tw-ring-color": colorConfig.border } as CSSProperties),
-        ...style,
-      }}
+      style={style}
     >
       {children}
     </Component>
