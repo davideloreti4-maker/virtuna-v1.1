@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: executing
-stopped_at: 05-06 code-complete — composer evidence-drop affordance; Task 2 human-verify PENDING
-last_updated: "2026-06-28T21:10:00.000Z"
-last_activity: 2026-06-28 -- 05-06 code-complete (composer affordance → /api/tools/profile); awaiting human-verify
+status: verifying
+stopped_at: 05-06 code-complete (composer evidence-drop affordance, commit 92feb6c6) — Task 2 human-verify checkpoint returned to orchestrator
+last_updated: "2026-06-28T22:41:18.478Z"
+last_activity: 2026-06-28
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 26
-  completed_plans: 25
-  percent: 57
+  completed_plans: 26
+  percent: 71
 ---
 
 # Project State
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 05 (profile-simulate-wow) — EXECUTING
-Plan: 6 of 6
+Phase: 6
+Plan: Not started
 Status: 05-06 CODE-COMPLETE (Wave 3: composer evidence-drop affordance → /api/tools/profile; in-thread profile-read + reaction-distribution via MessageBlocks; creator path byte-identical) — Task 2 end-to-end human-verify (real browser) PENDING. Wave-gate `next build` compiles ✓ (bundle-leak gate met); a pre-existing earnings-chart type error blocks the full build's tsc step (out of scope, deferred).
 Status (prior): 05-05 complete (Wave 2: simulate-runner.ts — drafted message → person/panel reaction-distribution on the EXISTING Flash engine, deterministic subjectKind from the persisted marker; /api/tools/simulate route — auth/csrf/cap/RLS-audience spine + SAME-thread persistence; SIMU-01/02/03)
 Status (prior): 05-04 complete (Wave 2: profile-runner.ts fuses the forensic READ + saved General SIM from ONE bake; /api/tools/profile route — auth/csrf/cap/storagePath spine + thread persistence; PROF-01/02/03)
@@ -36,7 +36,7 @@ Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-28 -- Phase 05 execution started
+Last activity: 2026-06-28
 
 Progress: [██████░░░░] 57% (4/7 phases complete)
 
@@ -44,7 +44,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 
 **Velocity:**
 
-- Total plans completed: 20
+- Total plans completed: 26
 - Average duration: —
 - Total execution time: —
 
@@ -56,6 +56,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | 02 | 3 | - | - |
 | 03 | 7 | - | - |
 | 04 | 4 | - | - |
+| 05 | 6 | - | - |
 
 **Recent Trend:**
 
