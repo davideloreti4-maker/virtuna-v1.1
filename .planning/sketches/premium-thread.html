@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Premium conversational thread — target sketch v3</title>
+<style>
+  :root{
+    --bg:#262624; --surface-thread:#252524; --surface-chip:#2c2c2b; --surface-user:#302f2d;
+    --cream:#ece7de; --cream-2:#c2bdb4; --cream-muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --faint:rgba(255,255,255,.02);
+    --success:#8fc9a0; --warning:#e0bd72; --error:#e0796b;
+    --accent:#d97757;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --radius-card:12px; --radius-ctl:8px; --radius-full:9999px;
+    --ease:cubic-bezier(.22,1,.36,1);          /* premium ease-out */
+    --ease-soft:cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--cream);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.5;display:flex;flex-direction:column;min-height:100%}
+
+  .topbar{height:52px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+    justify-content:space-between;padding:0 20px;flex-shrink:0}
+  .brand{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--cream);display:flex;align-items:center;gap:8px}
+  .brand .glyph{width:20px;height:20px;border-radius:6px;background:linear-gradient(135deg,#3a3936,#2a2927);
+    border:1px solid var(--border-hover);display:grid;place-items:center;font-size:12px;color:var(--cream-2)}
+  .aud-chip{font-size:12.5px;color:var(--cream-2);background:var(--surface-chip);border:1px solid var(--border);
+    border-radius:var(--radius-full);padding:5px 12px;display:flex;align-items:center;gap:7px}
+  .aud-chip .d{width:6px;height:6px;border-radius:var(--radius-full);background:var(--accent)}
+
+  .scroll{flex:1;overflow-y:auto;display:flex;justify-content:center;padding:34px 24px 16px}
+  .thread{width:100%;max-width:760px;display:flex;flex-direction:column;gap:30px}
+
+  .turn-user{display:flex;justify-content:flex-end}
+  .bubble{max-width:78%;background:var(--surface-user);border:1px solid var(--border);
+    border-radius:14px;padding:11px 15px;font-size:14.5px;color:var(--cream);line-height:1.5}
+
+  .turn-ai{display:flex;flex-direction:column;gap:15px}
+  .ai-head{display:flex;align-items:center;gap:9px;color:var(--cream-muted);font-size:12.5px;font-weight:500}
+  .ai-head .mark{width:19px;height:19px;border-radius:6px;background:linear-gradient(135deg,#3a3936,#2a2927);
+    border:1px solid var(--border-hover);display:grid;place-items:center;font-size:11px;color:var(--cream-2)}
+
+  /* VOICE — word-fade reveal (calmer than char typewriter) */
+  .say{font-size:15.5px;line-height:1.62;color:var(--cream);max-width:62ch}
+  .say.dim{color:var(--cream-2);font-size:14.5px}
+  .say .w{display:inline-block;opacity:0;filter:blur(3px);transform:translateY(3px);
+    transition:opacity .5s var(--ease),filter .5s var(--ease),transform .5s var(--ease)}
+  .say .w.in{opacity:1;filter:none;transform:none}
+  .say .em{color:var(--cream);font-weight:600}
+
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:3px}
+  .chip{font-size:13px;color:var(--cream-2);background:var(--faint);border:1px solid var(--border);
+    border-radius:var(--radius-ctl);padding:8px 13px;cursor:pointer;transition:border-color .18s,background .18s,color .18s;
+    display:flex;align-items:center;gap:7px}
+  .chip:hover{border-color:var(--border-hover);background:rgba(255,255,255,.045);color:var(--cream)}
+  .chip.primary{background:var(--action);color:var(--action-fg);border-color:transparent;font-weight:600}
+  .chip.primary:hover{filter:brightness(1.05);color:var(--action-fg)}
+
+  .cards{display:flex;flex-direction:column;gap:12px}
+
+  /* refined hook card (verbatim language from hook-card-refined.html) */
+  .card{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
+  .card .body{padding:16px 18px 13px;display:flex;flex-direction:column;gap:13px}
+  .eyebrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .kicker{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);
+    display:flex;align-items:center;gap:7px}
+  .kicker .dot{width:6px;height:6px;border-radius:var(--radius-full);background:currentColor;opacity:.9}
+  .rank{font-size:12px;font-weight:600;color:var(--cream-muted);font-variant-numeric:tabular-nums}
+  .hook{font-size:18px;font-weight:600;line-height:1.3;color:var(--cream);letter-spacing:-.01em}
+  .why{font-size:13.5px;color:var(--cream-2);line-height:1.45}
+  .why .k{color:var(--cream-muted)}
+  .proof{border:1px solid var(--border);border-radius:10px;background:var(--faint);
+    padding:11px 13px;display:flex;flex-direction:column;gap:9px;cursor:pointer;transition:border-color .15s,background .15s}
+  .proof:hover{border-color:var(--border-hover);background:rgba(255,255,255,.035)}
+  .proof .top{display:flex;align-items:center;gap:10px;font-size:13px}
+  .band{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+  .band .bdot{width:7px;height:7px;border-radius:var(--radius-full)}
+  .stopped{color:var(--cream)} .stopped .n{font-weight:600}
+  .ribbon{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.08);position:relative;overflow:hidden}
+  .ribbon > i{position:absolute;inset:0 auto 0 0;background:var(--cream-2);border-radius:2px}
+  .seerow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .quote{font-size:13px;font-style:italic;color:rgba(236,231,222,.82);line-height:1.4;
+    border-left:2px solid var(--border-hover);padding-left:11px}
+  .see{font-size:12px;color:var(--cream-2);white-space:nowrap;display:flex;align-items:center;gap:6px;
+    transition:color .15s}
+  .proof:hover .see{color:var(--cream)}
+  .see .chev{transition:transform .25s var(--ease);display:inline-block}
+  .proof.lensopen .see .chev{transform:rotate(90deg)}
+
+  /* ── matte shimmer brick (mirrors src/components/ui/skeleton.tsx) ── */
+  .skel{background-color:rgba(255,255,255,.05);
+    background-image:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.08) 50%,transparent 100%);
+    background-size:200% 100%;animation:shimmer 1.7s ease-in-out infinite;border-radius:4px}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  /* ── A4: unscored → scored proof transition ── */
+  .proof .top{position:relative;min-height:17px}
+  .top .scored{display:flex;align-items:center;gap:10px;width:100%;opacity:1;transition:opacity .4s var(--ease)}
+  .top .scoring{position:absolute;inset:0;display:flex;align-items:center;gap:9px;opacity:0;pointer-events:none;
+    transition:opacity .3s var(--ease)}
+  .proof.scoring .top .scored{opacity:0}
+  .proof.scoring .top .scoring{opacity:1}
+  .top .scored .ribbon > i{transform-origin:left;transform:scaleX(1);transition:transform .65s var(--ease) .05s}
+  .proof.scoring .top .scored .ribbon > i{transform:scaleX(0)}
+  .scoring .sk-dot{width:7px;height:7px;border-radius:var(--radius-full);flex:none}
+  .scoring .lbl{font-size:13px;color:var(--cream-muted)}
+  .scoring .sk-bar{flex:1;height:3px;border-radius:2px}
+
+  /* real reactor avatars — distinct warm-neutral faces w/ archetype initial */
+  .av{display:flex}
+  .av .f{width:17px;height:17px;border-radius:var(--radius-full);border:1px solid var(--surface-thread);
+    margin-left:-6px;display:grid;place-items:center;font-size:8px;font-weight:600;color:var(--cream-2);
+    letter-spacing:0}
+  .av .f:first-child{margin-left:0}
+  .f.s1{background:radial-gradient(circle at 34% 28%,#5b574f,#36332e)}
+  .f.s2{background:radial-gradient(circle at 34% 28%,#6a5147,#3d322c)}
+  .f.s3{background:radial-gradient(circle at 34% 28%,#4f5750,#2e352f)}
+  .f.s4{background:radial-gradient(circle at 34% 28%,#5d5564,#36313b)}
+  .f.s5{background:radial-gradient(circle at 34% 28%,#665f4a,#3a3528)}
+
+  /* ── LENS OPEN — "See the room" expands inline (VerbatimWall language) ── */
+  .lens{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--ease)}
+  .lens.open{grid-template-rows:1fr}
+  .lens > .lens-clip{overflow:hidden}
+  .lens-inner{border:1px solid var(--border);border-radius:10px;background:var(--faint);
+    padding:13px 14px;margin-top:2px;display:flex;flex-direction:column;gap:12px}
+  .lens-head{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--cream-muted);
+    display:flex;align-items:center;justify-content:space-between}
+  .lens-head .pct{color:var(--cream-2);font-weight:600;letter-spacing:0;text-transform:none;font-size:12px}
+  .lens-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:560px){.lens-grid{grid-template-columns:1fr}}
+  .lcol .lch{font-size:12px;color:var(--cream-muted);margin-bottom:9px;display:flex;gap:6px;align-items:center}
+  .lcol .lch .d{width:6px;height:6px;border-radius:var(--radius-full)}
+  .react{display:flex;gap:9px;margin-bottom:11px}
+  .react:last-child{margin-bottom:0}
+  .react .f{width:22px;height:22px;border-radius:var(--radius-full);flex:none;display:grid;place-items:center;
+    font-size:9px;font-weight:600;color:var(--cream-2);margin-top:1px}
+  .react .rtext{display:flex;flex-direction:column;gap:2px}
+  .react .rq{font-size:12.5px;font-style:italic;color:var(--cream-2);line-height:1.4}
+  .react.lead .rq{color:var(--cream);font-weight:500}
+  .react .rwho{font-size:11px;color:var(--cream-muted)}
+  .lens-ask{align-self:flex-start;background:none;border:1px solid var(--border);border-radius:var(--radius-ctl);
+    color:var(--cream-2);font:inherit;font-size:12.5px;padding:7px 12px;cursor:pointer;transition:border-color .15s,color .15s}
+  .lens-ask:hover{border-color:var(--border-hover);color:var(--cream)}
+
+  .actions{border-top:1px solid var(--border);padding:11px 18px;display:flex;align-items:center;gap:14px}
+  .btn-primary{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--radius-ctl);
+    font:inherit;font-size:13px;font-weight:600;padding:8px 15px;cursor:pointer}
+  .btn-text{background:none;border:none;color:var(--cream-2);font:inherit;font-size:13px;cursor:pointer}
+  .btn-text:hover{color:var(--cream)}
+  .save{margin-left:auto;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:13px;
+    cursor:pointer;display:flex;align-items:center;gap:6px}
+
+  /* compact script result card */
+  .beat{display:flex;gap:11px;font-size:13.5px;line-height:1.45}
+  .beat .bk{color:var(--cream-muted);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    width:78px;flex-shrink:0;padding-top:2px}
+  .beat .bt{color:var(--cream-2)} .beat .bt b{color:var(--cream);font-weight:600}
+
+  /* ════════ THE PROGRESS STATE (the hero refinement) ════════ */
+  .gen{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);
+    overflow:hidden}
+  .gen-head{display:flex;align-items:center;justify-content:space-between;padding:14px 17px;
+    font-size:13.5px;color:var(--cream)}
+  .gen-head .gh-l{display:flex;align-items:center;gap:10px;font-weight:500}
+  .gen-head .spark{width:15px;height:15px;position:relative;flex:none}
+  .gen-head .spark::before,.gen-head .spark::after{content:"";position:absolute;border-radius:50%}
+  .gen-head .spark::before{inset:0;border:1.5px solid var(--accent);opacity:.35}
+  .gen-head .spark::after{inset:4px;background:var(--accent);animation:breathe 1.8s var(--ease-soft) infinite}
+  @keyframes breathe{0%,100%{transform:scale(.7);opacity:.6}50%{transform:scale(1);opacity:1}}
+  .elapsed{font-size:12px;color:var(--cream-muted);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+  .gh-done .spark::after{animation:none;background:var(--success)}
+  .gh-done .spark::before{border-color:var(--success);opacity:.5}
+  .gh-error .spark::after{animation:none;background:var(--error)}
+  .gh-error .spark::before{border-color:var(--error);opacity:.5}
+
+  .steps{padding:2px 17px 16px;overflow:hidden;transition:height .5s var(--ease),opacity .4s var(--ease-soft)}
+  .step{display:flex;gap:13px;min-height:34px}
+  .rail{width:16px;flex-shrink:0;display:flex;flex-direction:column;align-items:center}
+  .node{width:16px;height:16px;border-radius:50%;flex-shrink:0;display:grid;place-items:center;
+    border:1.5px solid var(--border-hover);position:relative;
+    transition:border-color .4s var(--ease),background .4s var(--ease)}
+  .line{width:2px;flex:1;min-height:14px;background:var(--border);border-radius:2px;margin:3px 0;position:relative;overflow:hidden}
+  .line::after{content:"";position:absolute;inset:0 0 100% 0;background:var(--cream-2);border-radius:2px;
+    transition:bottom .55s var(--ease)}
+  .step:last-child .line{display:none}
+  .step-body{padding-bottom:14px;flex:1}
+  .step-label{font-size:14px;line-height:1.3;transition:color .4s var(--ease)}
+  .substep{font-size:12.5px;color:var(--cream-muted);margin-top:4px;height:0;opacity:0;overflow:hidden;
+    transition:height .35s var(--ease),opacity .35s var(--ease);display:flex;align-items:center;gap:7px}
+  .substep span.txt{transition:opacity .25s var(--ease-soft)}
+  .substep .tick{display:inline-flex;gap:3px}
+  .substep .tick i{width:3px;height:3px;border-radius:50%;background:var(--cream-muted);animation:wave 1.2s ease-in-out infinite}
+  .substep .tick i:nth-child(2){animation-delay:.16s} .substep .tick i:nth-child(3){animation-delay:.32s}
+  @keyframes wave{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-2px)}}
+
+  /* states */
+  .step.pending .step-label{color:var(--cream-muted)}
+  .step.pending .node{border-color:var(--border-hover)}
+  .step.active .step-label{color:var(--cream)}
+  .step.active .node{border-color:var(--accent);animation:ring 1.7s ease-out infinite}
+  .step.active .node::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(217,119,87,.5)}70%{box-shadow:0 0 0 6px rgba(217,119,87,0)}100%{box-shadow:0 0 0 0 rgba(217,119,87,0)}}
+  .step.active .substep{height:19px;opacity:1}
+  .step.active .line::after{bottom:50%}             /* spine fills halfway through the active step */
+  .step.done .step-label{color:var(--cream)}
+  .step.done .node{background:var(--cream);border-color:var(--cream)}
+  .step.done .node::after{content:"✓";font-size:10px;font-weight:700;color:var(--bg);animation:pop .3s var(--ease)}
+  .step.done .line::after{bottom:0}                 /* spine fully filled above a done step */
+  @keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+  /* error step */
+  .step.failed .step-label{color:var(--cream)}
+  .step.failed .node{background:var(--error);border-color:var(--error)}
+  .step.failed .node::after{content:"!";font-size:10px;font-weight:800;color:var(--bg)}
+  .step.failed .substep{height:19px;opacity:1;color:var(--error)}
+  .step.failed .substep .tick{display:none}
+
+  /* collapsed summary (Claude/Cursor-style "Generated in 0:32 ▸") */
+  .gen.collapsed .steps{height:0!important;opacity:0;padding-top:0;padding-bottom:0}
+  .gen-head.summary{cursor:pointer;color:var(--cream-2)}
+  .gen-head.summary .chev{margin-left:6px;font-size:11px;color:var(--cream-muted)}
+
+  /* partial-failure recovery strip */
+  .recover{border-top:1px solid var(--border);padding:12px 17px;display:flex;align-items:center;gap:12px;
+    font-size:13px;color:var(--cream-2)}
+  .recover .rmsg{flex:1;line-height:1.4}
+  .recover .rmsg b{color:var(--cream);font-weight:600}
+  .recover .retry{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--radius-ctl);
+    font:inherit;font-size:12.5px;font-weight:600;padding:7px 13px;cursor:pointer;flex:none}
+  .recover .keep{background:none;border:none;color:var(--cream-muted);font:inherit;font-size:12.5px;cursor:pointer;flex:none}
+  .recover .keep:hover{color:var(--cream-2)}
+
+  /* composer */
+  .composer-wrap{flex-shrink:0;display:flex;justify-content:center;padding:8px 24px 22px;background:var(--bg)}
+  .composer{width:100%;max-width:760px;background:var(--surface-thread);border:1px solid var(--border-hover);
+    border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+  .composer .row{display:flex;align-items:center;gap:10px}
+  .skillpill{font-size:12.5px;font-weight:600;color:var(--cream-2);background:rgba(255,255,255,.03);
+    border:1px solid var(--border);border-radius:var(--radius-full);padding:5px 11px;display:flex;align-items:center;gap:6px}
+  .skillpill .d{width:6px;height:6px;border-radius:var(--radius-full);background:var(--accent)}
+  .composer .ph{flex:1;color:var(--cream-muted);font-size:14.5px}
+  .send{width:32px;height:32px;border-radius:var(--radius-ctl);background:var(--action);color:var(--action-fg);
+    border:none;display:grid;place-items:center;font-size:15px;cursor:pointer;flex-shrink:0}
+
+  /* ── states gallery (static reference: error + per-skill copy) ── */
+  .gallery{max-width:760px;margin:18px auto 0;width:100%;display:flex;flex-direction:column;gap:14px}
+  .gdivider{display:flex;align-items:center;gap:12px;color:var(--cream-muted);font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;margin-top:8px}
+  .gdivider::before,.gdivider::after{content:"";height:1px;background:var(--border);flex:1}
+  .skillgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media (max-width:620px){.skillgrid{grid-template-columns:1fr}}
+  .skillcol{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--radius-card);
+    padding:13px 15px}
+  .skillcol .sh{font-size:12px;font-weight:600;color:var(--cream);margin-bottom:10px;display:flex;align-items:center;gap:7px}
+  .skillcol .sh .d{width:6px;height:6px;border-radius:var(--radius-full);background:var(--accent)}
+  .skillcol ol{list-style:none;display:flex;flex-direction:column;gap:8px}
+  .skillcol li{font-size:12.5px;color:var(--cream-2);line-height:1.35;display:flex;gap:9px}
+  .skillcol li .n{width:14px;height:14px;border-radius:50%;border:1px solid var(--border-hover);flex:none;
+    font-size:8px;color:var(--cream-muted);display:grid;place-items:center;margin-top:1px}
+  .skillcol li .sub{display:block;color:var(--cream-muted);font-size:11.5px;font-style:italic;margin-top:2px}
+
+  /* ── A1: thread-switch mini-demo (shell + skeleton, NOT hero-flash) ── */
+  .switchdemo{position:relative;display:grid;grid-template-columns:150px 1fr;gap:0;height:188px;
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-card);overflow:hidden}
+  .sd-side{border-right:1px solid var(--border);padding:10px 9px;display:flex;flex-direction:column;gap:6px;background:var(--surface-thread)}
+  .sd-row{font-size:12px;color:var(--cream-2);padding:8px 10px;border-radius:var(--radius-ctl);cursor:default;
+    border-left:2px solid transparent;transition:background .2s,color .2s,border-color .2s,opacity .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sd-row.active{background:rgba(255,255,255,.045);color:var(--cream)}
+  .sd-row.pending{opacity:.6;border-left-color:var(--accent);background:rgba(255,255,255,.03);animation:sdpulse 1s ease-in-out infinite}
+  @keyframes sdpulse{0%,100%{opacity:.55}50%{opacity:.85}}
+  .sd-main{position:relative;padding:16px 18px;overflow:hidden}
+  .sd-content{display:flex;flex-direction:column;gap:11px;transition:opacity .3s var(--ease)}
+  .sd-bubble{align-self:flex-end;background:var(--surface-user);border:1px solid var(--border);border-radius:12px;
+    padding:8px 12px;font-size:12.5px;color:var(--cream);max-width:80%}
+  .sd-ai{font-size:12.5px;color:var(--cream-2);line-height:1.5;max-width:90%}
+  .sd-ai .mk{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:5px;font-size:9px;
+    background:linear-gradient(135deg,#3a3936,#2a2927);border:1px solid var(--border-hover);color:var(--cream-2);margin-right:6px;vertical-align:middle}
+  .sd-skel{position:absolute;inset:16px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px}
+  .sd-constell{display:flex;gap:6px;align-items:center;height:26px}
+  .sd-constell i{width:5px;height:5px;border-radius:50%;background:var(--cream-muted);opacity:.5;animation:sdtwinkle 1.6s ease-in-out infinite}
+  .sd-constell i:nth-child(2){animation-delay:.2s;width:6px;height:6px;background:var(--accent);opacity:.7}
+  .sd-constell i:nth-child(3){animation-delay:.4s} .sd-constell i:nth-child(4){animation-delay:.6s}
+  .sd-constell i:nth-child(5){animation-delay:.8s}
+  @keyframes sdtwinkle{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:.9;transform:translateY(-2px)}}
+  .sd-skelblock{width:100%;max-width:280px;height:52px;border-radius:10px}
+  .sd-cap{font-size:12px;color:var(--cream-muted)}
+  .sd-play{position:absolute;top:9px;right:10px;z-index:2;font-size:11.5px;color:var(--cream-2);background:var(--surface-chip);
+    border:1px solid var(--border);border-radius:var(--radius-ctl);padding:5px 10px;cursor:pointer}
+  .sd-play:hover{color:var(--cream);border-color:var(--border-hover)}
+  .sd-note{font-size:12.5px;color:var(--cream-2);line-height:1.5}.sd-note b{color:var(--cream)}
+
+  .legend{max-width:760px;margin:18px auto 0;width:100%;font-size:13px;color:var(--cream-2);background:var(--surface-thread);
+    border:1px solid var(--border);border-radius:var(--radius-card);padding:15px 17px;display:flex;flex-direction:column;gap:7px}
+  .legend b{color:var(--cream)} .legend .t{display:inline-block;min-width:74px;color:var(--cream-muted)}
+  .replay{position:fixed;top:11px;left:50%;transform:translateX(300px);font-size:12px;color:var(--cream-muted);
+    background:var(--surface-chip);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:6px 11px;cursor:pointer;z-index:9}
+  .replay:hover{color:var(--cream);border-color:var(--border-hover)}
+
+  /* smooth reveal — eased, slight rise + scale */
+  .reveal{opacity:0;transform:translateY(14px) scale(.99);transition:opacity .55s var(--ease),transform .55s var(--ease)}
+  .reveal.in{opacity:1;transform:none}
+  @media (prefers-reduced-motion:reduce){
+    .reveal,.say .w{opacity:1!important;transform:none!important;filter:none!important;transition:none!important}
+    .lens{transition:none!important}
+  }
+</style>
+</head>
+<body>
+  <button class="replay" onclick="run()">↻ replay</button>
+
+  <div class="topbar">
+    <span class="brand"><span class="glyph">n</span> Numen</span>
+    <span class="aud-chip"><span class="d"></span> Morning Routine Creators · TikTok</span>
+  </div>
+
+  <div class="scroll" id="scroll">
+    <div class="thread" id="thread">
+
+      <!-- ===== TURN 1 — text → cards → text, with lens-open ===== -->
+      <div class="turn-user reveal" data-step="0">
+        <div class="bubble">Give me hooks for a video on why posting daily actually hurts your reach</div>
+      </div>
+
+      <div class="turn-ai">
+        <div class="ai-head reveal" data-step="1"><span class="mark">n</span> Numen · Hooks</div>
+        <p class="say" id="intro1">Pulling hooks for Morning&nbsp;Routine&nbsp;Creators — I'll react each one with your 10 reactors and rank the strongest first.</p>
+
+        <div class="cards">
+          <div class="card reveal" data-step="2">
+            <div class="body">
+              <div class="eyebrow"><span class="kicker" style="color:var(--success)"><span class="dot"></span>Stops the skeptic</span><span class="rank">#1</span></div>
+              <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+              <p class="why"><span class="k">Why it works —</span> Pattern-interrupt against received wisdom: names the advice they follow, then frames it as the cause of their problem.</p>
+              <div class="proof scoring" id="proof1" onclick="toggleLens('lens1',this)">
+                <div class="top">
+                  <span class="scored"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> stopped</span><span class="ribbon"><i style="width:80%"></i></span></span>
+                  <span class="scoring"><span class="sk-dot skel"></span><span class="lbl">Scoring with your 10 reactors…</span><span class="sk-bar skel"></span></span>
+                </div>
+                <div class="seerow">
+                  <span class="quote">“Hold on — I post daily, is that why I'm stuck?”</span>
+                  <span class="see"><span class="av"><span class="f s1">S</span><span class="f s2">V</span><span class="f s3">A</span></span>See the room <span class="chev">›</span></span>
+                </div>
+              </div>
+              <!-- lens-open panel -->
+              <div class="lens" id="lens1"><div class="lens-clip"><div class="lens-inner">
+                <div class="lens-head"><span>The room · 10 reactors</span><span class="pct">8 stopped · 2 scrolled</span></div>
+                <div class="lens-grid">
+                  <div class="lcol">
+                    <div class="lch"><span class="d" style="background:var(--success)"></span>Stopped the scroll · 8</div>
+                    <div class="react lead">
+                      <span class="f s1">S</span>
+                      <div class="rtext"><span class="rq">“Hold on — I post daily, is that why I'm stuck?”</span><span class="rwho">The skeptic · burned-out creator</span></div>
+                    </div>
+                    <div class="react">
+                      <span class="f s5">A</span>
+                      <div class="rtext"><span class="rq">“Okay this is exactly my problem right now.”</span><span class="rwho">The aspirant · 9 months in</span></div>
+                    </div>
+                  </div>
+                  <div class="lcol">
+                    <div class="lch"><span class="d" style="background:var(--error)"></span>Scrolled past · 2</div>
+                    <div class="react lead">
+                      <span class="f s2">V</span>
+                      <div class="rtext"><span class="rq">“Heard it — I already cut back on posting.”</span><span class="rwho">The veteran · 4 years in</span></div>
+                    </div>
+                    <div class="react">
+                      <span class="f s4">B</span>
+                      <div class="rtext"><span class="rq">“Scrolled — felt like another hot take.”</span><span class="rwho">The busy scroller</span></div>
+                    </div>
+                  </div>
+                </div>
+                <!-- living "Ask the skeptic why →" = P9/aspirational (sibling all-skill-cards uses Save). Ships read-only; Save lives in the card bar. -->
+              </div></div></div>
+            </div>
+            <div class="actions"><button class="btn-primary">Test full →</button><button class="btn-text">Write script →</button><button class="save">⌖ Save</button></div>
+          </div>
+
+          <div class="card reveal" data-step="3">
+            <div class="body">
+              <div class="eyebrow"><span class="kicker" style="color:var(--warning)"><span class="dot"></span>Reframes the metric</span><span class="rank">#2</span></div>
+              <p class="hook">You don't have a posting problem. You have a “which 3 posts” problem.</p>
+              <p class="why"><span class="k">Why it works —</span> Swaps the volume frame for a selection frame — but the premise lands softer with this audience.</p>
+              <div class="proof scoring" id="proof2" onclick="toggleLens('lens2',this)">
+                <div class="top">
+                  <span class="scored"><span class="band" style="color:var(--warning)"><span class="bdot" style="background:var(--warning)"></span>Mixed</span><span class="stopped"><span class="n">5/10</span> stopped</span><span class="ribbon"><i style="width:50%;background:var(--cream-muted)"></i></span></span>
+                  <span class="scoring"><span class="sk-dot skel"></span><span class="lbl">Scoring with your 10 reactors…</span><span class="sk-bar skel"></span></span>
+                </div>
+                <div class="seerow">
+                  <span class="quote">“Wait, which three though? Now I want to know.”</span>
+                  <span class="see"><span class="av"><span class="f s3">A</span><span class="f s1">S</span><span class="f s4">B</span></span>See the room <span class="chev">›</span></span>
+                </div>
+              </div>
+              <div class="lens" id="lens2"><div class="lens-clip"><div class="lens-inner">
+                <div class="lens-head"><span>The room · 10 reactors</span><span class="pct">5 stopped · 5 scrolled</span></div>
+                <div class="lens-grid">
+                  <div class="lcol">
+                    <div class="lch"><span class="d" style="background:var(--success)"></span>Stopped the scroll · 5</div>
+                    <div class="react lead"><span class="f s3">A</span><div class="rtext"><span class="rq">“Wait, which three though? Now I want to know.”</span><span class="rwho">The aspirant · curiosity-led</span></div></div>
+                  </div>
+                  <div class="lcol">
+                    <div class="lch"><span class="d" style="background:var(--error)"></span>Scrolled past · 5</div>
+                    <div class="react lead"><span class="f s1">S</span><div class="rtext"><span class="rq">“Sounds clever but I don't buy the setup.”</span><span class="rwho">The skeptic · needs the proof first</span></div></div>
+                  </div>
+                </div>
+                <!-- living "Ask the skeptic why →" = P9/aspirational (sibling all-skill-cards uses Save). Ships read-only; Save lives in the card bar. -->
+              </div></div></div>
+            </div>
+            <div class="actions"><button class="btn-primary">Test full →</button><button class="btn-text">Write script →</button><button class="save">⌖ Save</button></div>
+          </div>
+        </div>
+
+        <p class="say dim" id="outro1">3 more hooks below. #1 is your strongest — the only one the skeptic stopped on. Want to take it further?</p>
+        <div class="chips reveal" data-step="4">
+          <button class="chip primary">Write a script from #1 →</button>
+          <button class="chip">Test the top hook on your audience →</button>
+          <button class="chip">Show the other 3</button>
+        </div>
+      </div>
+
+      <!-- ===== TURN 2 — the premium working state ===== -->
+      <div class="turn-user reveal" data-step="5">
+        <div class="bubble">Write a script from the first one</div>
+      </div>
+
+      <div class="turn-ai">
+        <div class="ai-head reveal" data-step="6"><span class="mark">n</span> Numen · Script</div>
+        <p class="say" id="intro2">On it — building a script around “Everyone tells you to post daily…” and pressure-testing the open against your audience.</p>
+
+        <div class="gen reveal" data-step="7" id="gen">
+          <div class="gen-head" id="genHead">
+            <span class="gh-l"><span class="spark"></span> <span id="genTitle">Generating your script</span></span>
+            <span class="elapsed" id="elapsed">0:00</span>
+          </div>
+          <div class="steps" id="steps">
+            <div class="step pending" data-i="0">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Read the hook &amp; your audience signature</div>
+                <div class="substep"><span class="txt" id="ss0">Loading your 10 calibrated reactors…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="1">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Mapping the beat structure</div>
+                <div class="substep"><span class="txt" id="ss1">Hook → tension → turn → payoff…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="2">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Writing the script</div>
+                <div class="substep"><span class="txt" id="ss2">Drafting the cold open…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+            <div class="step pending" data-i="3">
+              <div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Scoring the open against your 10 reactors</div>
+                <div class="substep"><span class="txt" id="ss3">Reacting with each of your 10 reactors…</span><span class="tick"><i></i><i></i><i></i></span></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards"><div class="card" id="scriptCard" style="display:none">
+          <div class="body">
+            <div class="eyebrow"><span class="kicker" style="color:var(--success)"><span class="dot"></span>Script · 32s</span><span class="rank">Strong open</span></div>
+            <p class="hook">Everyone tells you to post daily. That advice is quietly killing your reach.</p>
+            <div class="beat"><span class="bk">Cold open</span><span class="bt"><b>0:00</b> — “Everyone tells you to post daily. Mine tanked until I did the opposite.”</span></div>
+            <div class="beat"><span class="bk">Tension</span><span class="bt"><b>0:04</b> — The algorithm doesn't reward frequency. It rewards the three posts that actually land.</span></div>
+            <div class="beat"><span class="bk">Payoff</span><span class="bt"><b>0:18</b> — Post less. Study what hits. Make more of that.</span></div>
+            <div class="proof" onclick="toggleLens('lens3',this)">
+              <div class="top"><span class="band" style="color:var(--success)"><span class="bdot" style="background:var(--success)"></span>Strong</span><span class="stopped"><span class="n">8/10</span> stopped <span style="color:var(--cream-muted)">· opener</span></span><span class="ribbon"><i style="width:80%"></i></span></div>
+              <div class="seerow">
+                <span class="quote">“Okay the opposite — now I have to know what you did.”</span>
+                <span class="see"><span class="av"><span class="f s1">S</span><span class="f s5">A</span><span class="f s2">V</span></span>See the room <span class="chev">›</span></span>
+              </div>
+            </div>
+            <div class="lens" id="lens3"><div class="lens-clip"><div class="lens-inner">
+              <div class="lens-head"><span>Reacted to the opener · 10 reactors</span><span class="pct">8 stopped · 2 scrolled</span></div>
+              <div class="lens-grid">
+                <div class="lcol">
+                  <div class="lch"><span class="d" style="background:var(--success)"></span>Stopped the scroll · 8</div>
+                  <div class="react lead"><span class="f s1">S</span><div class="rtext"><span class="rq">“Okay the opposite — now I have to know what you did.”</span><span class="rwho">The skeptic · hooked by the reversal</span></div></div>
+                  <div class="react"><span class="f s5">A</span><div class="rtext"><span class="rq">“‘Mine tanked’ — finally someone admits it.”</span><span class="rwho">The aspirant</span></div></div>
+                </div>
+                <div class="lcol">
+                  <div class="lch"><span class="d" style="background:var(--error)"></span>Scrolled past · 2</div>
+                  <div class="react lead"><span class="f s2">V</span><div class="rtext"><span class="rq">“Knew the twist before you said it.”</span><span class="rwho">The veteran</span></div></div>
+                </div>
+              </div>
+            </div></div></div>
+          </div>
+          <div class="actions"><button class="btn-primary">Test full script →</button><button class="btn-text">Refine the open →</button><button class="save">⌖ Save</button></div>
+        </div></div>
+
+        <p class="say dim" id="outro2" style="display:none">Your opener stopped 8 of 10 — strongest of the batch. Want me to tighten the payoff, or test the whole thing?</p>
+      </div>
+
+      <!-- ===== TURN 3 — pure chat turn (no cards) ===== -->
+      <div class="turn-user reveal" data-step="8" style="display:none">
+        <div class="bubble">Why does the “post daily” advice stick around if it's wrong?</div>
+      </div>
+      <div class="turn-ai" id="turn3" style="display:none">
+        <div class="ai-head reveal" data-step="8b"><span class="mark">n</span> Numen</div>
+        <p class="say" id="reply3">Because it's the one variable a creator fully controls. You can't will a video to go viral, but you <em>can</em> post every day — so the advice feels like effort you can cash in. The platform rewards <em>resonance</em>, not attendance, which is exactly why your skeptic stops on a hook that finally says the quiet part out loud.</p>
+      </div>
+
+      <!-- ===== STATES GALLERY (static reference) ===== -->
+      <div class="gallery reveal" data-step="9">
+        <div class="gdivider">Reference states · not part of the replay</div>
+
+        <!-- error / partial-failure / retry -->
+        <div class="gen">
+          <div class="gen-head gh-error">
+            <span class="gh-l"><span class="spark"></span> <span>Couldn't finish scoring</span></span>
+            <span class="elapsed">0:21</span>
+          </div>
+          <div class="steps" style="padding-bottom:8px">
+            <div class="step done"><div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Read the hook &amp; your audience signature</div></div></div>
+            <div class="step done"><div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Mapping the beat structure</div></div></div>
+            <div class="step done"><div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Writing the script</div></div></div>
+            <div class="step failed"><div class="rail"><span class="node"></span><span class="line"></span></div>
+              <div class="step-body"><div class="step-label">Scoring the open against your 10 reactors</div>
+                <div class="substep">The reactor panel timed out — your draft is safe.</div></div></div>
+          </div>
+          <div class="recover">
+            <span class="rmsg"><b>Script's written</b> — only the audience score didn't come back.</span>
+            <button class="retry">Retry scoring →</button>
+            <button class="keep">Keep draft</button>
+          </div>
+        </div>
+
+        <!-- A1: thread-switch — shell + skeleton, not hero-flash -->
+        <div class="gdivider">Thread switch · A1 (the worst current flash → fixed)</div>
+        <div class="switchdemo">
+          <button class="sd-play" onclick="playSwitch()">▶ play switch</button>
+          <div class="sd-side">
+            <div class="sd-row active" id="sdRow1">Daily posting hooks</div>
+            <div class="sd-row" id="sdRow2">Cold open rewrite</div>
+            <div class="sd-row">Account read · June</div>
+          </div>
+          <div class="sd-main">
+            <div class="sd-content" id="sdContent">
+              <div class="sd-bubble">Write a script from the first one</div>
+              <div class="sd-ai"><span class="mk">n</span>Script · 32s — your opener stopped 8/10. Want me to tighten the payoff?</div>
+            </div>
+            <div class="sd-skel" id="sdSkel" style="display:none">
+              <div class="sd-constell"><i></i><i></i><i></i><i></i><i></i></div>
+              <div class="skel sd-skelblock"></div>
+              <p class="sd-cap">Opening thread…</p>
+            </div>
+          </div>
+        </div>
+        <p class="sd-note"><b>Before:</b> composer blanks → snaps to the centered serif welcome-hero → refills (two flashes per switch). <b>After:</b> the row goes <b>pending</b> (A2), the thread <b>shell stays mounted</b>, and a <code>ThreadLoadingSkeleton</code> fills the scroll until content lands. No hero-flash. <span style="color:var(--cream-muted)">(Constraint: the <code>activateThread</code> await is load-bearing — <code>/api/threads/open</code> reads most-recent — so the gap is real; we cover it, not remove it.)</span></p>
+
+        <!-- per-skill step copy -->
+        <div class="gdivider">Per-skill progress copy</div>
+        <div class="skillgrid">
+          <div class="skillcol">
+            <div class="sh"><span class="d"></span>Hooks</div>
+            <ol>
+              <li><span class="n">1</span><span>Read your audience signature<span class="sub">Loading your 10 calibrated reactors…</span></span></li>
+              <li><span class="n">2</span><span>Generating hook angles<span class="sub">Drafting against 6 stop-triggers…</span></span></li>
+              <li><span class="n">3</span><span>Simulating the room<span class="sub">Reacting with your 10 reactors…</span></span></li>
+              <li><span class="n">4</span><span>Ranking by stop-rate<span class="sub">Sorting strongest-first vs your baseline…</span></span></li>
+            </ol>
+          </div>
+          <div class="skillcol">
+            <div class="sh"><span class="d"></span>Script</div>
+            <ol>
+              <li><span class="n">1</span><span>Read the hook &amp; signature<span class="sub">Re-reading what stopped them last time…</span></span></li>
+              <li><span class="n">2</span><span>Mapping the beat structure<span class="sub">Placing the 4-second retention beat…</span></span></li>
+              <li><span class="n">3</span><span>Writing the script<span class="sub">Landing the payoff in one line…</span></span></li>
+              <li><span class="n">4</span><span>Scoring the open<span class="sub">Holding it to your 8/10 baseline…</span></span></li>
+            </ol>
+          </div>
+          <div class="skillcol">
+            <div class="sh"><span class="d"></span>Remix</div>
+            <ol>
+              <li><span class="n">1</span><span>Decoding the source video<span class="sub">Pulling the frames + transcript…</span></span></li>
+              <li><span class="n">2</span><span>Mapping what made it work<span class="sub">Isolating the hook mechanic…</span></span></li>
+              <li><span class="n">3</span><span>Rewriting for your audience<span class="sub">Swapping the frame to morning-routine…</span></span></li>
+              <li><span class="n">4</span><span>Scoring the new open<span class="sub">Reacting with your 10 reactors…</span></span></li>
+            </ol>
+          </div>
+          <div class="skillcol">
+            <div class="sh"><span class="d"></span>Account Read</div>
+            <ol>
+              <li><span class="n">1</span><span>Scraping your recent posts<span class="sub">Pulling your last 30 videos…</span></span></li>
+              <li><span class="n">2</span><span>Reading your patterns<span class="sub">Finding your recurring openers…</span></span></li>
+              <li><span class="n">3</span><span>Spotting wins &amp; leaks<span class="sub">Where the drop-off clusters…</span></span></li>
+              <li><span class="n">4</span><span>Calibrating to your baseline<span class="sub">Comparing to your last 12 posts…</span></span></li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend reveal" data-step="9">
+        <div style="color:var(--cream);font-weight:600;margin-bottom:3px">v3.2 — honest floor + the Chunk-1 loading mechanics (build target)</div>
+        <div><span class="t">Mechanics</span> <b>A4</b> — hook cards stream in with the proof <b>pending</b> (“Scoring with your 10 reactors…” shimmer), then band+fraction+ribbon <b>resolve in</b> (no silent rewrite). <b>A1</b> — thread-switch demo below: row pending → <b>shell + skeleton</b>, never the serif hero-flash.</div>
+        <div><span class="t">Intro</span> Thin <b>orientation</b> from audience only (no faked scores at submit). Script-intro cites the input hook (honest). <span style="color:var(--cream-muted)">Decision 2026-06-28.</span></div>
+        <div><span class="t">Outro</span> = the engine’s <b>real <code>followupText</code></b> (already streamed today) — restyled with word-fade, <b>not templated</b>. Fabricated “beats your last opener” claim removed.</div>
+        <div><span class="t">Sub-detail</span> <b>Static</b> honest descriptor per stage (no live “6 of 10” — <code>StageState</code> has no detail field). Live counter is a <b>filed engine ask</b> (add <code>detail</code> to the stage SSE event).</div>
+        <div><span class="t">Proof</span> Script proof is “8/10 stopped · opener” (the real opener-only fraction) — dropped the unbacked “held to 0:04” retention curve.</div>
+        <div><span class="t">Lens</span> Read-only VerbatimWall (real avatars + stopped/scrolled). The living <b>“ask them why”</b> is P9/aspirational — Save lives in the card bar (matches sibling all-skill-cards).</div>
+        <div><span class="t">Real now</span> outro · spine stages · chips · script-intro · lens room · cards. <span class="t" style="min-width:0">Aspirational</span> live sub-counter · persona-chat. Floor write-up: <code>.planning/premium-thread-copy-floor.md</code>.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="composer-wrap">
+    <div class="composer"><div class="row">
+      <span class="skillpill"><span class="d"></span> /script</span>
+      <span class="ph">Reply, or pick a skill…</span>
+      <button class="send">↑</button>
+    </div></div>
+  </div>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+  const scroll=()=>$('#scroll');
+  let scrollQ=null;
+  const toBottom=()=>{ clearTimeout(scrollQ); scrollQ=setTimeout(()=>scroll().scrollTo({top:scroll().scrollHeight,behavior:'smooth'}),40); };
+  const toEl=el=>el.scrollIntoView({behavior:'smooth',block:'center'});
+
+  // wrap text into per-word spans (preserve &nbsp; and inline <em>)
+  function wordsify(el){
+    if(el.dataset.wrapped) return;
+    const html=el.innerHTML; el.dataset.raw=html;
+    el.innerHTML = html.split(' ').map(w=>`<span class="w">${w}</span>`).join(' ');
+    el.dataset.wrapped='1';
+  }
+  function emphasize(el){
+    el.querySelectorAll('.w').forEach(w=>{
+      const t=w.textContent;
+      if(/Morning|Routine|Creators|8 of 10|8\/10|0:32/.test(t)) w.classList.add('em');
+      if(t.includes('“Everyone')||t.includes('daily…”')) w.classList.add('em');
+    });
+  }
+  function revealWords(el,doneCb){
+    wordsify(el); emphasize(el);
+    const ws=el.querySelectorAll('.w');
+    if(reduce){ ws.forEach(w=>w.classList.add('in')); doneCb&&doneCb(); return; }
+    ws.forEach((w,i)=>setTimeout(()=>{ w.classList.add('in'); if(i===ws.length-1) doneCb&&doneCb(); }, i*40));
+  }
+  const show = step => $$(`[data-step="${step}"]`).forEach(el=>el.classList.add('in'));
+
+  // ── lens open/close ──
+  function toggleLens(id,trigger){
+    const lens=$('#'+id); if(!lens) return;
+    const open=lens.classList.toggle('open');
+    if(trigger) trigger.classList.toggle('lensopen',open);
+    if(open) setTimeout(toBottom,120);
+  }
+
+  // ── A1: thread-switch mini-demo — row pending → shell+skeleton → content (NO hero-flash) ──
+  const SD_T1=`<div class="sd-bubble">Write a script from the first one</div>
+      <div class="sd-ai"><span class="mk">n</span>Script · 32s — your opener stopped 8/10. Want me to tighten the payoff?</div>`;
+  const SD_T2=`<div class="sd-bubble">Rewrite my cold open to be punchier</div>
+      <div class="sd-ai"><span class="mk">n</span>Three tighter opens — the first cuts your setup by 2 seconds and still lands the turn.</div>`;
+  let sdOn2=false, sdBusy=false;
+  function playSwitch(){
+    if(sdBusy) return; sdBusy=true;
+    const to2=!sdOn2, content=$('#sdContent'), skel=$('#sdSkel');
+    const tgt=$(to2?'#sdRow2':'#sdRow1'), oth=$(to2?'#sdRow1':'#sdRow2');
+    tgt.classList.add('pending');                                     // A2: row goes pending immediately
+    setTimeout(()=>{ content.style.opacity=0; skel.style.display='flex'; }, 280); // shell stays, skeleton fills
+    setTimeout(()=>{
+      skel.style.display='none';
+      content.innerHTML = to2?SD_T2:SD_T1;                            // content lands — no hero flash
+      content.style.opacity=1;
+      tgt.classList.remove('pending'); tgt.classList.add('active'); oth.classList.remove('active');
+      sdOn2=to2; sdBusy=false;
+    }, 1150);
+  }
+
+  // ── progress engine ──
+  // STATIC descriptors (decision 2026-06-28): ONE honest line per stage — no faked live counter.
+  // The live "(6/10)"/"The Skeptic is responding…" variant arrives later via an engine `detail`
+  // field on the stage SSE event (filed engine ask). Single-element arrays = no cycling.
+  const SUBS=[
+    ["Loading your 10 calibrated reactors…"],
+    ["Hook → tension → turn → payoff"],
+    ["Drafting against your audience…"],
+    ["Reacting with each of your 10 reactors…"],
+  ];
+  let timers=[], elapsedT=null, subT=null;
+  function clearAll(){ timers.forEach(clearTimeout); timers=[]; clearInterval(elapsedT); clearInterval(subT); }
+  function after(ms,fn){ timers.push(setTimeout(fn,ms)); }
+
+  function startElapsed(){
+    let s=0; const el=$('#elapsed');
+    elapsedT=setInterval(()=>{ s++; el.textContent='0:'+String(s).padStart(2,'0'); }, 200); // compressed: ~0:32 over the run
+    return ()=>{ clearInterval(elapsedT); return s; };
+  }
+  function cycleSub(i){
+    clearInterval(subT); const opts=SUBS[i], span=$('#ss'+i);
+    span.textContent=opts[0];
+    if(opts.length<2) return;                 // static descriptor — no cycling, calm on long waits
+    let k=0;
+    subT=setInterval(()=>{
+      span.style.opacity=0;
+      setTimeout(()=>{ k=(k+1)%opts.length; span.textContent=opts[k]; span.style.opacity=1; },220);
+    }, 1150);
+  }
+  function setStep(i,state){
+    const steps=$$('#steps .step');
+    steps[i].className='step '+state;
+    if(state==='active') cycleSub(i);
+  }
+
+  function runProgress(onDone){
+    const steps=$$('#steps .step');
+    const stop=startElapsed();
+    const STEP_MS=[1300,1450,2050,1750];
+    let i=0;
+    function go(){
+      if(i>0) setStep(i-1,'done');
+      if(i>=steps.length){ clearInterval(subT); onDone(stop()); return; }
+      setStep(i,'active');
+      after(STEP_MS[i], ()=>{ i++; go(); });
+    }
+    go();
+  }
+
+  function collapseAndResolve(secs){
+    const gen=$('#gen'), head=$('#genHead');
+    $('#genTitle').textContent='Generated in 0:'+String(secs).padStart(2,'0');
+    head.classList.add('gh-done','summary');
+    head.querySelector('.elapsed').innerHTML='<span class="chev">▾ steps</span>';
+    const steps=$('#steps'); steps.style.height=steps.scrollHeight+'px';
+    requestAnimationFrame(()=>{ gen.classList.add('collapsed'); });
+    head.onclick=()=>{
+      gen.classList.toggle('collapsed');
+      head.querySelector('.chev').textContent = gen.classList.contains('collapsed')?'▾ steps':'▴ hide';
+    };
+    after(520, ()=>{
+      const c=$('#scriptCard'); c.style.display='';
+      c.classList.add('reveal'); requestAnimationFrame(()=>c.classList.add('in'));
+      toBottom();
+      after(680, ()=>{ const o=$('#outro2'); o.style.display=''; revealWords(o); toBottom();
+        // Turn 3 — pure chat turn
+        after(900, ()=>{
+          $$('[data-step="8"]').forEach(el=>el.style.display='');
+          $('#turn3').style.display=''; show(8); toBottom();
+          after(550, ()=>{ show('8b'); revealWords($('#reply3'),toBottom); });
+        });
+      });
+    });
+  }
+
+  function run(){
+    clearAll();
+    $$('.reveal').forEach(el=>el.classList.remove('in'));
+    ['#intro1','#outro1','#intro2','#outro2','#reply3'].forEach(s=>{const el=$(s); if(el.dataset.raw){el.innerHTML=el.dataset.raw; delete el.dataset.wrapped;}});
+    $$('.lens').forEach(l=>l.classList.remove('open'));
+    $$('.proof').forEach(p=>p.classList.remove('lensopen'));
+    ['#proof1','#proof2'].forEach(id=>$(id).classList.add('scoring'));   // re-arm A4 unscored state
+    $('#gen').classList.remove('collapsed'); $('#genHead').className='gen-head'; $('#genHead').onclick=null;
+    $('#genTitle').textContent='Generating your script'; $('#elapsed').textContent='0:00';
+    $('#steps').style.height=''; $$('#steps .step').forEach(s=>s.className='step pending');
+    $$('#steps .substep .txt').forEach(t=>t.style.opacity=1);
+    const sc=$('#scriptCard'); sc.style.display='none'; sc.classList.remove('in');
+    $('#outro2').style.display='none';
+    $$('[data-step="8"]').forEach(el=>el.style.display='none'); $('#turn3').style.display='none';
+    scroll().scrollTop=0;
+
+    if(reduce){
+      [0,1,2,3,4,5,6,7,8,'8b',9].forEach(show);
+      ['#proof1','#proof2'].forEach(id=>$(id).classList.remove('scoring'));  // show scored (no motion)
+      $$('[data-step="8"]').forEach(el=>el.style.display=''); $('#turn3').style.display='';
+      revealWords($('#intro1')); revealWords($('#outro1')); revealWords($('#intro2'));
+      revealWords($('#outro2')); revealWords($('#reply3'));
+      $$('#steps .step').forEach((s,i)=>s.className='step '+(i<3?'done':'active'));
+      $('#scriptCard').style.display=''; $('#outro2').style.display='';
+      return;
+    }
+
+    const seq=[
+      [150,  ()=>show(0)],
+      [600,  ()=>{ show(1); revealWords($('#intro1')); }],
+      [2600, ()=>show(2)],                                   // card #1 streams in — proof PENDING (A4)
+      [3050, ()=>show(3)],                                   // card #2 streams in — proof PENDING (A4)
+      [3800, ()=>$('#proof1').classList.remove('scoring')],  // #1 score lands → band+fraction+ribbon resolve
+      [4200, ()=>$('#proof2').classList.remove('scoring')],  // #2 score lands
+      [4700, ()=>{ revealWords($('#outro1')); show(4); }],
+      [5600, ()=>{ toggleLens('lens1',$('#proof1')); toEl($('#proof1')); }],  // auto-open the room
+      [7400, ()=>{ show(5); toBottom(); }],
+      [7950, ()=>{ show(6); revealWords($('#intro2')); }],
+      [9100, ()=>{ show(7); toBottom(); runProgress(secs=>collapseAndResolve(secs)); }],
+    ];
+    seq.forEach(([t,fn])=>after(t,fn));
+  }
+  run();
+</script>
+</body>
+</html>

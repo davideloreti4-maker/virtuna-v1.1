@@ -179,11 +179,15 @@ function NavItem({
 function ThreadRow({
   thread,
   isActive,
+  isPending = false,
   onOpen,
   onDelete,
 }: {
   thread: ThreadSummary;
   isActive: boolean;
+  /** A2: this row was clicked and is mid-activation (the activateThread round-trip).
+   *  Shows a terracotta left-border + dim-pulse so the click has instant feedback. */
+  isPending?: boolean;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -195,8 +199,15 @@ function ThreadRow({
     <div
       className={cn(
         "group/row relative flex items-center rounded-lg transition-colors",
-        isActive ? "bg-white/[0.06]" : "hover:bg-white/[0.04]",
+        // A2 pending: terracotta is the live/active dosage — earned here (an action is
+        // in flight). Dim-pulse reads as "working"; disabled on reduced motion.
+        isPending
+          ? "border-l-2 border-l-accent bg-white/[0.03] animate-pulse motion-reduce:animate-none"
+          : isActive
+            ? "bg-white/[0.06]"
+            : "hover:bg-white/[0.04]",
       )}
+      aria-busy={isPending || undefined}
       onMouseLeave={() => setConfirming(false)}
     >
       <button
@@ -275,6 +286,12 @@ export function Sidebar() {
   const activateThread = useActivateThread();
   const archiveThread = useArchiveThread();
 
+  // A2: the row currently mid-activation. Set the instant a thread row is clicked
+  // (before the activateThread round-trip) and cleared when it settles — so the click
+  // has immediate feedback during the otherwise-dead 100–400ms gap before the composer
+  // begins rehydrating (A1). null = no activation in flight.
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+
   // Open a fresh blank chat thread, then reset the composer + navigate home.
   const handleNewThread = async () => {
     try {
@@ -289,10 +306,17 @@ export function Sidebar() {
   // Re-open a past thread: touch it (→ becomes active), reset the composer so it
   // reloads that thread's persisted content, then navigate home.
   const handleOpenThread = async (id: string) => {
+    // A2: signal the clicked row immediately, before the (load-bearing) activate
+    // round-trip. /api/threads/open returns the most-recently-touched thread, so
+    // activateThread MUST commit before the composer reads it — we cover that real
+    // gap with row feedback (A2) + the composer skeleton (A1), never by dropping it.
+    setActivatingId(id);
     try {
       await activateThread.mutateAsync(id);
     } catch {
       // Non-fatal: still attempt to surface the thread on /home.
+    } finally {
+      setActivatingId(null);
     }
     switchThread();
     router.push("/home");
@@ -484,6 +508,7 @@ export function Sidebar() {
                       key={thread.id}
                       thread={thread}
                       isActive={isActive}
+                      isPending={activatingId === thread.id}
                       onOpen={() => { void handleOpenThread(thread.id); }}
                       onDelete={() => { void handleDeleteThread(thread.id, isActive); }}
                     />
