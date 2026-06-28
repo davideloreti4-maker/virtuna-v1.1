@@ -1,9 +1,10 @@
 ---
 phase: 04-input-adapter
 verified: 2026-06-27T20:33:55Z
-status: human_needed
+status: passed
 score: 4/4 must-haves verified
 overrides_applied: 0
+human_verification_resolved: "2026-06-28 — A2 live base64 vision read CONFIRMED (qwen3.7-plus HTTP 200, parseable {read}) with human spend approval. Initial 401 traced to a test-harness bug (dummy 'test-key' + degenerate 1x1 PNG fixture), not the credential; fixed test-only in 709ec21c. See 04-UAT.md."
 human_verification:
   - test: "Run the gated A2 live vision smoke against the real model: RUN_VISION_LIVE_SMOKE=1 DASHSCOPE_API_KEY=<valid> node ./node_modules/vitest/vitest.mjs run src/lib/engine/stimulus/__tests__/vision.test.ts"
     expected: "qwen3.7-plus accepts a base64 data: URL image and returns a parseable { read: ... } JSON (HTTP 200). If rejected, trigger the documented Storage→signed-URL fallback (signature unchanged)."
@@ -14,7 +15,7 @@ human_verification:
 
 **Phase Goal:** One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier.
 **Verified:** 2026-06-27T20:33:55Z
-**Status:** human_needed
+**Status:** passed (A2 human-verification resolved 2026-06-28 — see 04-UAT.md + commit 709ec21c)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement

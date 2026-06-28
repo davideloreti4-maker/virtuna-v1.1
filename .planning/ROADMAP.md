@@ -209,7 +209,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 1. Engine / Pack Seam | 6/6 | Complete    | 2026-06-26 |
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
-| 4. Input Adapter | 0/4 | Planned | - |
+| 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 0/TBD | Not started | - |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
