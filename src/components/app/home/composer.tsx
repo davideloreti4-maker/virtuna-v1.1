@@ -671,7 +671,10 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // (SIMU-03 one-thread wow). Mirrors reloadOpenThread's shape. Never navigates.
   const reloadProfileThread = useCallback(async () => {
     try {
-      const res = await fetch('/api/threads/open');
+      // no-store: this is a live poll for the just-persisted reaction-distribution.
+      // A default-cached repeated GET serves the pre-reaction thread, so the card
+      // never auto-surfaces in-session (a full reload revalidated, masking it).
+      const res = await fetch('/api/threads/open', { cache: 'no-store' });
       if (!res.ok) return;
       const data = (await res.json()) as {
         messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
