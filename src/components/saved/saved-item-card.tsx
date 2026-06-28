@@ -99,6 +99,14 @@ function formatMult(m: number): string {
   return m >= 10 ? `${Math.round(m)}×` : `${m.toFixed(1)}×`;
 }
 
+/** Duration in seconds → "m:ss" cover badge ("" when unknown). Mirrors discover/outlier-tile. */
+function formatDuration(s: number): string {
+  if (!Number.isFinite(s) || s <= 0) return "";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 /** Normalised view-model — the shared spine, filled per type from real snapshot fields. */
 interface CardVM {
   kicker: string;
@@ -110,6 +118,7 @@ interface CardVM {
   proof?: { band: string; fraction: string; quote?: string; compact: boolean };
   measured?: { mult?: string; views?: string }; // outlier — measured, no band
   coverUrl?: string; // outlier — the real scrape thumbnail (clockworks videoMeta.coverUrl)
+  coverDuration?: string; // outlier — m:ss badge echoing the source tile's one cover overlay
 }
 
 /** Build the per-type view-model from the saved snapshot (the originating block's props). */
@@ -187,11 +196,13 @@ function buildVM(item: SavedItem): CardVM {
       const mult = multCore ? (baseline ? `${multCore} ${baseline}` : multCore) : "";
       const viewsRaw = nv(snap, "views");
       const views = sv(snap, "views") || (viewsRaw != null ? formatCount(viewsRaw) : "");
+      const durRaw = nv(snap, "durationSeconds");
       return {
         kicker: "Outlier",
         hero: sv(snap, "caption") || item.title || "Outlier",
         measured: { mult: mult || undefined, views: views || undefined },
         coverUrl: sv(snap, "coverUrl") || undefined,
+        coverDuration: durRaw != null ? formatDuration(durRaw) || undefined : undefined,
       };
     }
     default: {
@@ -411,11 +422,19 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
             src={vm.coverUrl}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="h-full w-full object-cover transition-opacity duration-200 group-hover:opacity-90"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
           />
+          {/* Duration badge — echoes the source outlier-tile's one cover overlay (m:ss), kept
+              non-redundant with the views in the measured strip below. White-on-scrim is the
+              house video-badge convention (matches discover/outlier-tile exactly). */}
+          {vm.coverDuration && (
+            <span className="absolute bottom-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
+              {vm.coverDuration}
+            </span>
+          )}
         </div>
       )}
       <div className="flex flex-col gap-2.5 p-4">
