@@ -181,7 +181,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 05-06-PLAN.md — minimal additive composer affordance → /api/tools/profile + end-to-end one-thread human-verify (PROF-01, SIMU-03)
+- [~] 05-06-PLAN.md — minimal additive composer affordance → /api/tools/profile + end-to-end one-thread human-verify (PROF-01, SIMU-03) — CODE-COMPLETE (92feb6c6): additive Paperclip attach + drag overlay + removable chip + inline D-09 reject, POSTs evidence StimulusInput to /api/tools/profile; profile-read + reaction-distribution render in-thread via MessageBlocks (bounded poll surfaces the card's same-thread Simulate result); creator path byte-identical; zero coral; wave-gate `next build` compiles ✓ (pre-existing earnings-chart tsc error deferred). **Task 2 end-to-end human-verify (real browser) PENDING — checkpoint returned.**
 
 **UI hint**: yes
 
@@ -226,7 +226,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
-| 5. Profile → Simulate Wow | 2/6 | In Progress|  |
+| 5. Profile → Simulate Wow | 5/6 (06 code-complete, human-verify pending) | In Progress|  |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 

@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: 05-05 complete (simulate-runner + /api/tools/simulate route)
-last_updated: "2026-06-28T20:25:30.000Z"
-last_activity: 2026-06-28 -- 05-05 complete (simulate-runner + /api/tools/simulate route)
+stopped_at: 05-06 code-complete — composer evidence-drop affordance; Task 2 human-verify PENDING
+last_updated: "2026-06-28T21:10:00.000Z"
+last_activity: 2026-06-28 -- 05-06 code-complete (composer affordance → /api/tools/profile); awaiting human-verify
 progress:
   total_phases: 7
   completed_phases: 4
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 05 (profile-simulate-wow) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: 05-06 CODE-COMPLETE (Wave 3: composer evidence-drop affordance → /api/tools/profile; in-thread profile-read + reaction-distribution via MessageBlocks; creator path byte-identical) — Task 2 end-to-end human-verify (real browser) PENDING. Wave-gate `next build` compiles ✓ (bundle-leak gate met); a pre-existing earnings-chart type error blocks the full build's tsc step (out of scope, deferred).
 Status (prior): 05-05 complete (Wave 2: simulate-runner.ts — drafted message → person/panel reaction-distribution on the EXISTING Flash engine, deterministic subjectKind from the persisted marker; /api/tools/simulate route — auth/csrf/cap/RLS-audience spine + SAME-thread persistence; SIMU-01/02/03)
 Status (prior): 05-04 complete (Wave 2: profile-runner.ts fuses the forensic READ + saved General SIM from ONE bake; /api/tools/profile route — auth/csrf/cap/storagePath spine + thread persistence; PROF-01/02/03)
 Status (prior): 05-03 complete (Wave 1: profile-bake.ts — evidence → frozen person/panel signature + storagePath sanitize + Max omni person-video path)
@@ -85,6 +85,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 05 P03 | ~6min | 2 tasks | 2 files |
 | Phase 05 P04 | ~4min | 2 tasks | 4 files |
 | Phase 05 P05 | ~9min | 2 tasks | 4 files |
+| Phase 05 P06 | ~30min | 1 task (+1 human-verify pending) | 1 file |
 
 ## Accumulated Context
 
@@ -124,9 +125,12 @@ Recent decisions affecting current work:
 
 - [Phase 05]: 05-04: `profile-runner.ts` (PROF-01/02/03, the D-01 FUSE) — `runProfile(input, deps?)` does ONE bake of the evidence and fuses (a) the forensic behavioral READ (the hero `profile-read` card) and (b) the saved person/panel General SIM. The READ rides the cached behavioral system prompt tier-routed via `SIM1_MODEL_BY_TIER[stimulus.tier]`: flash (text/file/image) → `BEHAVIORAL_SYSTEM_PROMPT_FLASH` + `QWEN_REASONING_MODEL`; max (person-video) → two-step `watchPersonVideo` (omni signal+transcript) → `BEHAVIORAL_SYSTEM_PROMPT_MAX` + `QWEN_OMNI_MODEL` (Pitfall 1: never omni for a non-video READ; asserted). D-08 isolation: the byte-stable system prompt carries NO user bytes; evidence + goal + success_criterion live in a delimited "treat as DATA" USER block (`ProfileReadResponseSchema` strip→parse→Zod, temp:0+seed+thinking-off). `forensic` is gated to the max/video tier ONLY (D-03) — forced null on flash regardless of model output. The bake is saved via `createAudience(supabase,{mode:"general",signature,personas,custom_context:[…]})`; the detected `subjectKind` is PERSISTED via the reserved marker `{source:"user", persona_evidence_link:"__subject_kind", note:subjectKind}` so Simulate (05-05) reads it deterministically — a person bake with >1 persona STILL notes "person" (D-02 / Pitfall 2; asserted). Signature reactors → `CalibratedPersona` (reaction_frame→repaint) so the saved SIM steers in Simulate. Block carries `savedAudienceId` (PROF-04 chain) + `tier:"Directional"`; `scanForExcludedCoaching` is the discretionary D-04 backstop. `/api/tools/profile` route mirrors read/route.ts: auth 401 → csrfGuard → per-kind validate (`MAX_EVIDENCE_LENGTH`=8000 text cap AR-04-02; `sanitizeStoragePath` 400 on traversal AR-04-01, BEFORE any dereference) → `normalizeStimulus` → `runProfile` → `insertMessage` (re-validate + KC stamp). file_text/image reconstructed from base64 JSON so normalizeStimulus reads them. profile-runner 7/7; route 5/5; tools+flash regression 27 files/313 passed; tsc clean on touched paths (20-error pre-existing baseline unchanged). TDD (RED 5904e13e → GREEN 4df5d7d2) + route c5903396. No deviations. PROF-01/02/03 closed.
 
+- [Phase 05]: 05-06: `composer.tsx` (PROF-01/SIMU-03 inbox) — a MINIMAL ADDITIVE evidence-drop affordance added to the existing composer: a Phosphor `Paperclip` attach icon-button (`aria-label`, focus ring, `pointer-coarse` ≥44px) mounted ALONGSIDE `<ComposerControls/>` (never inside — creator/Socials left-cluster byte-identical, D-07/F-05); a form-level drag-over overlay (matte `bg-surface`+`shadow-float`+dashed 10% hairline, dismiss on drop/leave — `VideoUpload` stops propagation so the creator upload path is unaffected); a removable filename chip (`bg-surface-elevated`); an inline muted reject for `.docx`/`.pdf`+unknown types (D-09, never a modal). Accept set `.txt`/`.md`→file_text, image→image, short video→video; on submit an additive `onSubmitForm` guard routes the staged file to `POST /api/tools/profile` (file_text/image base64 JSON body; clip staged to Supabase `videos` then posted as a sanitized `storagePath`) — the creator `canSubmit`/`handleSubmit` path is untouched. The returned `profile-read` + the `reaction-distribution` the card's own Simulate CTA persists to the SAME open thread are read back from `/api/threads/open` and rendered in-thread via the shared `MessageBlocks` renderer (registered 05-01), gated on block presence not a tool (there is no "profile" tool); persisted profile/reaction blocks also rehydrate on mount; a bounded self-clearing 4s poll surfaces the reaction live (the shipped renderer is self-contained, left unmodified). Zero coral (reskin-matte 6/6); no P7 surfaces (D-09). AC: `grep tools/profile`=8; composer tsc=0 new; composer tests 7 files/52 pass; **wave-gate `next build` COMPILES ✓ (bundle-leak gate met)** — a PRE-EXISTING unrelated `earnings-chart.tsx` recharts type error blocks the build's full tsc step (verified on HEAD via stash; out of scope per SCOPE BOUNDARY → `deferred-items.md`). Commit `92feb6c6` (feat). **Task 2 (end-to-end one-thread Profile→Simulate human-verify in a real browser) PENDING** — returned as a `checkpoint:human-verify`, not self-approved. PROF-01/SIMU-03 close on human approval.
+
 ### Pending Todos
 
-None yet.
+- **05-06 Task 2 — human-verify (BLOCKING):** run `next dev`, auth via `e2e/create-test-user.ts`, drop a chat `.txt` → confirm the profile-read card (evidence-quoted tells + Directional badge + always-on caveat), the saved General SIM in the library, the "Simulate a message to {name} →" CTA → reaction-distribution IN THE SAME THREAD (person = single read no fraction; panel = band+fraction+themes), zero accent / zero 0-100, and the Socials path unchanged. Approve → PROF-01/SIMU-03 close + Phase 05 complete.
+- **Deferred (out of scope):** pre-existing `earnings-chart.tsx:98` recharts Tooltip type error blocks `next build`'s tsc step — see `.planning/phases/05-profile-simulate-wow/deferred-items.md`.
 
 ### Blockers/Concerns
 
@@ -145,6 +149,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-28T20:25:30.000Z
-Stopped at: Completed 05-05-PLAN.md (simulate-runner + /api/tools/simulate route)
-Resume file: None
+Last session: 2026-06-28T21:10:00.000Z
+Stopped at: 05-06 code-complete (composer evidence-drop affordance, commit 92feb6c6) — Task 2 human-verify checkpoint returned to orchestrator
+Resume file: .planning/phases/05-profile-simulate-wow/05-06-PLAN.md (Task 2 human-verify)
