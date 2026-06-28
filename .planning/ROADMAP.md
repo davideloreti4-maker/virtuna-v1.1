@@ -176,7 +176,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 05-04-PLAN.md — profile-runner + /api/tools/profile: fused READ + bake → saved General SIM, tier-gated forensic, D-08 isolation, P4 carries closed (PROF-01, PROF-02, PROF-03)
+- [x] 05-04-PLAN.md — profile-runner + /api/tools/profile: fused READ + bake → saved General SIM, tier-gated forensic, D-08 isolation, P4 carries closed (PROF-01, PROF-02, PROF-03) ✅ (c5903396); runProfile fuses the forensic READ + saved General SIM from ONE bake, tier-routed (flash→reasoning / max→omni, Pitfall 1 asserted), forensic gated to max (D-03), `__subject_kind` marker persisted (D-02/Pitfall 2), savedAudienceId on the block (PROF-04); route closes AR-04-01 (sanitizeStoragePath) + AR-04-02 (text cap); profile-runner 7/7 + route 5/5, tools+flash regression 27 files/313 passed, tsc clean
 - [ ] 05-05-PLAN.md — simulate-runner + /api/tools/simulate: Flash read → person/panel reaction-distribution, bands-only Directional, same thread (SIMU-01, SIMU-02, SIMU-03)
 
 **Wave 3** *(blocked on Wave 2)*

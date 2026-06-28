@@ -32,9 +32,9 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 ### PROF — Profile Verb (the on-ramp)
 
-- [ ] **PROF-01**: A user can upload evidence (chat `.txt` / doc) and SIM-1 builds a person/panel audience from it
+- [x] **PROF-01**: A user can upload evidence (chat `.txt` / doc) and SIM-1 builds a person/panel audience from it
 - [x] **PROF-02**: A Profile result card shows who the person/panel is, backed by evidence quotes
-- [ ] **PROF-03**: The audience built by Profile is saved to the General library
+- [x] **PROF-03**: The audience built by Profile is saved to the General library
 - [x] **PROF-04**: From a Profile, a chain CTA offers "Simulate a message to [them]"
 
 ### SIMU — Simulate Verb (General)
@@ -111,9 +111,9 @@ Phases assigned during roadmap creation. All Pending.
 | TRUST-01 | Phase 3 | Done (03-05 audience-surface badge; 03-07 run/result card badge) |
 | TRUST-02 | Phase 3 | Done (03-05 inline evidence + ungrounded affordance) |
 | TRUST-03 | Phase 2 | Complete |
-| PROF-01 | Phase 5 | Pending |
+| PROF-01 | Phase 5 | Complete |
 | PROF-02 | Phase 5 | Complete |
-| PROF-03 | Phase 5 | Pending |
+| PROF-03 | Phase 5 | Complete |
 | PROF-04 | Phase 5 | Complete |
 | SIMU-01 | Phase 5 | Pending |
 | SIMU-02 | Phase 5 | Complete |

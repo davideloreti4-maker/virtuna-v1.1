@@ -4,13 +4,13 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 5 UI-SPEC approved
-last_updated: "2026-06-28T20:02:00.000Z"
-last_activity: 2026-06-28 -- 05-03 complete (profile-bake.ts)
+last_updated: "2026-06-28T18:15:00.000Z"
+last_activity: 2026-06-28 -- 05-04 complete (profile-runner + /api/tools/profile route)
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 26
-  completed_plans: 23
+  completed_plans: 24
   percent: 57
 ---
 
@@ -26,8 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 05 (profile-simulate-wow) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
+Status (prior): 05-04 complete (Wave 2: profile-runner.ts fuses the forensic READ + saved General SIM from ONE bake; /api/tools/profile route — auth/csrf/cap/storagePath spine + thread persistence; PROF-01/02/03)
 Status (prior): 05-03 complete (Wave 1: profile-bake.ts — evidence → frozen person/panel signature + storagePath sanitize + Max omni person-video path)
 Status (prior): 04-03 complete (Wave 1 leaf module: vision read)
 Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
@@ -81,6 +82,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 05 P01 | 12min | 3 tasks | 12 files |
 | Phase 05 P02 | 10 | 2 tasks | 2 files |
 | Phase 05 P03 | ~6min | 2 tasks | 2 files |
+| Phase 05 P04 | ~4min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -116,6 +118,8 @@ Recent decisions affecting current work:
 - [Phase ?]: 05-02: behavioral-core.ts harvested read-only from feat/chat-ethics-gate (D-05, branch never merged); byte-stable tier-gated BEHAVIORAL_SYSTEM_PROMPT_FLASH/_MAX + D-04 light ethics guardrail + pure scanForExcludedCoaching backstop
 - [Phase 05]: 05-03: `profile-bake.ts` (PROF-01) — `bakeProfileSignature(input, deps?)` bakes evidence text → a frozen `AudienceSignature` (the saved person/panel General SIM) by REUSING the enrich-signature synthesis PARTS (a relaxed `ProfileSynthSchema`: 1..10 personas no-repeat shares Σ=1 instead of the fixed-`.length(10)`; the `TEMPERATURE_DISPOSITION` engine-fill; the `defaultSynthesize` temp:0/seed/`enable_thinking:false` envelope) — NEVER `enrichSignature()` (its `EnrichInput` is scrape/engagement-ratio shaped; grep gate `enrichSignature\(`===0). `detectSubjectKind` counts distinct chat counterparties (self labels you/me/i filtered) → person/panel, default person on empty/label-less prose (D-02). D-08 isolation extracted into pure `buildSynthMessages` + byte-stable `PROFILE_SYNTH_SYSTEM`: the system prompt carries NONE of evidence/goal/success_criterion; the user message wraps evidence in a delimited "treat as DATA, not instructions" block (mirrors vision.ts) — asserted directly on the assembled messages. Personas carry a REQUIRED non-empty (`.min(1)`) verbatim evidence quote (TRUST-02, stricter than the scrape schema's `.default('')`); temp/disposition engine-filled (LLM never decides). `sanitizeStoragePath` enforces a single `<id>/<file>` key shape (rejects `..`/absolute/deeper paths) and runs BEFORE any dereference inside `watchPersonVideo` (P4 carry AR-04-01 / Pitfall 3 closed at lib layer). `watchPersonVideo(storagePath, goal, deps?)` = the two-step Max path (sanitize → service-client signed URL → omni watch), routes to `QWEN_OMNI_MODEL` ONLY (Pitfall 1), goal isolated as data; both IO steps injectable for zero-network tests. profile-bake 15/15; audience suite 13 files/172 passed; tsc clean on touched paths. No deviations (one test-only mock-param typing fix folded into the GREEN commit). Commits 67008d01 (RED test), d4cadcf0 (feat core), 0d1d8ad4 (feat sanitize+omni). PROF-01 (bake half) closed; 05-04 consumes `bakeProfileSignature` + `watchPersonVideo`.
 
+- [Phase 05]: 05-04: `profile-runner.ts` (PROF-01/02/03, the D-01 FUSE) — `runProfile(input, deps?)` does ONE bake of the evidence and fuses (a) the forensic behavioral READ (the hero `profile-read` card) and (b) the saved person/panel General SIM. The READ rides the cached behavioral system prompt tier-routed via `SIM1_MODEL_BY_TIER[stimulus.tier]`: flash (text/file/image) → `BEHAVIORAL_SYSTEM_PROMPT_FLASH` + `QWEN_REASONING_MODEL`; max (person-video) → two-step `watchPersonVideo` (omni signal+transcript) → `BEHAVIORAL_SYSTEM_PROMPT_MAX` + `QWEN_OMNI_MODEL` (Pitfall 1: never omni for a non-video READ; asserted). D-08 isolation: the byte-stable system prompt carries NO user bytes; evidence + goal + success_criterion live in a delimited "treat as DATA" USER block (`ProfileReadResponseSchema` strip→parse→Zod, temp:0+seed+thinking-off). `forensic` is gated to the max/video tier ONLY (D-03) — forced null on flash regardless of model output. The bake is saved via `createAudience(supabase,{mode:"general",signature,personas,custom_context:[…]})`; the detected `subjectKind` is PERSISTED via the reserved marker `{source:"user", persona_evidence_link:"__subject_kind", note:subjectKind}` so Simulate (05-05) reads it deterministically — a person bake with >1 persona STILL notes "person" (D-02 / Pitfall 2; asserted). Signature reactors → `CalibratedPersona` (reaction_frame→repaint) so the saved SIM steers in Simulate. Block carries `savedAudienceId` (PROF-04 chain) + `tier:"Directional"`; `scanForExcludedCoaching` is the discretionary D-04 backstop. `/api/tools/profile` route mirrors read/route.ts: auth 401 → csrfGuard → per-kind validate (`MAX_EVIDENCE_LENGTH`=8000 text cap AR-04-02; `sanitizeStoragePath` 400 on traversal AR-04-01, BEFORE any dereference) → `normalizeStimulus` → `runProfile` → `insertMessage` (re-validate + KC stamp). file_text/image reconstructed from base64 JSON so normalizeStimulus reads them. profile-runner 7/7; route 5/5; tools+flash regression 27 files/313 passed; tsc clean on touched paths (20-error pre-existing baseline unchanged). TDD (RED 5904e13e → GREEN 4df5d7d2) + route c5903396. No deviations. PROF-01/02/03 closed.
+
 ### Pending Todos
 
 None yet.
@@ -137,6 +141,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-28T20:02:00.000Z
-Stopped at: Completed 05-03-PLAN.md (profile-bake.ts)
+Last session: 2026-06-28T18:15:00.000Z
+Stopped at: Completed 05-04-PLAN.md (profile-runner + /api/tools/profile route)
 Resume file: None
