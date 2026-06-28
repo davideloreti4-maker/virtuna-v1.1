@@ -148,7 +148,19 @@ const STAGE_COPY: Record<string, string> = {
 
 ---
 
-## 4. Two decisions this surfaces (need owner)
+## 4. Two decisions this surfaces — ✅ LOCKED 2026-06-28
+
+> **Decision 1 → (a) Thin orientation.** **Decision 2 → (a) Static now + (b) file the engine ask.**
+> Both folded into the sketch (v3.1). The one engine request is filed below.
+
+### 🔧 FILED ENGINE ASK (carry to the GSI/engine lane at integration)
+Add an optional **`detail?: string`** to the stage SSE event and to `StageState`
+(`src/components/thread/progress-checklist.tsx:25`). Backend may stream a live per-stage status string
+("The Skeptic is responding…", "Reactor 6 of 10…"); chrome renders `stage.detail ?? STAGE_COPY[stage.name]`
+so it degrades to the honest static descriptor when absent. Small, additive, no breaking change. Until then,
+chrome ships static descriptors only — **no faked live counter.**
+
+---
 
 **Decision 1 — the hooks/ideas intro: thin-orientation vs results-lead vs none.**
 - **(a) Thin orientation [recommended].** Honest pre-card line as in the floor. Premium feel comes from the

@@ -234,7 +234,7 @@ fold into once locked.
   value**; **elapsed timer** + breathing spark; on finish **collapses to "Generated in 0:32 ▸"**
   (Claude/Cursor pattern) → result **card streams in** → outro continues. Smoothness: eased reveals
   (rise+scale), cards one-by-one, intro/outro **word-fade** (blur→sharp), spine-fill + check-pop per completion.
-- **v3 (2026-06-28, current) — cleared most of the backlog; verified rendering via Playwright (4 frames).**
+- **v3 (2026-06-28) — cleared most of the backlog; verified rendering via Playwright (4 frames).**
   Adds: **lens-open** ("See the room →" expands inline into the 10-reactor VerbatimWall — stopped/scrolled
   split, named archetypes, "Ask the skeptic why →"; click any proof OR the replay auto-opens #1); **real
   reactor avatars** (distinct warm-neutral faces w/ archetype initials S/V/A/B, no accent — dosage stays
@@ -245,16 +245,30 @@ fold into once locked.
   **sub-detail copy** rewritten to narrate real work + value ("Re-reading what stopped them last time…",
   "Holding it to your 8/10 baseline…"); **motion** — slower word-fade, single debounced scroll
   choreography, compressed elapsed (0:00→0:32 so the timer matches the summary).
+- **v3.1 (2026-06-28, current) — re-copied to the honest FLOOR; this is now the buildable target.**
+  Grounded against the real data surfaces (`.planning/premium-thread-copy-floor.md`). Outcome of the
+  client-vs-engine prose test: **~90% of the shape ships in-lane with zero fabrication.** Changes: hooks
+  **intro → thin orientation** (no scores cited pre-card; script-intro already honest = cites input hook);
+  **outro = the engine's real `followupText`** (restyle only, removed fabricated "beats your last opener");
+  **progress sub-detail → static honest descriptor** per stage (killed the faked "Reactor 6 of 10" counter;
+  live variant is a **filed engine ask** — add `detail` to the stage SSE event); script proof → "8/10
+  stopped · opener" (dropped the unbacked "held to 0:04"); **lens is read-only** (living "ask them why" =
+  P9/aspirational, Save lives in the card bar — matches sibling `all-skill-cards-refined.html`). Owner
+  decisions LOCKED: intro = thin orientation · sub-detail = static now + engine ask filed.
 
-**Sketch refinement backlog (remaining — pending owner review of v3):**
-- Motion-timing fine-tune pass — owner to react to v3 pacing (stage dwell, lens-open dwell in replay, the
+**Sketch refinement backlog (remaining — pending owner review of v3.1):**
+- **Add the loading MECHANICS the copy sits on** (these are what Chunk 1 actually builds, still absent from
+  the sketch): **A1** thread-switch → keep shell + skeleton (no hero-flash); **A4** unscored card → scored
+  transition (cards stream in with a pending proof unit, then the band/fraction lands). The sketch shows the
+  happy *conversation*; it must also show these two *transitions*. → this is the v3.2 / build-spec pass.
+- Motion-timing fine-tune pass — owner to react to v3.1 pacing (stage dwell, lens-open dwell in replay, the
   Turn-2→Turn-3 hand-off); "smoothness can be improved everywhere" is the standing bar.
-- Sub-detail copy polish — the value-narrating lines are the emotional core; v3 sharpened them, get the
-  exact wording owner-approved per skill.
-- Lens-open depth — currently the VerbatimWall; decide if "Ask the skeptic why →" opens a persona-chat
-  inline (vs navigating) and whether avatars get real imagery later.
 - Error state is static reference — decide if it needs a live retry animation in-thread.
 - (then) owner sign-off → build spec → Chunk 1.
+
+**Resolved by the copy-floor pass (`premium-thread-copy-floor.md`, 2026-06-28):** sub-detail copy (static
+descriptor decision) · lens-open depth ("ask them why" = read-only/P9, Save now) · the client-vs-engine
+prose fork (hybrid confirmed: outro+stages already real, intro thin, one filed engine ask for live detail).
 
 **Constraints carried in:** prose = **client-templated now** (hybrid; engine synthesis later) → stays in
 `lane/shell`, no engine work. Terracotta dosage = active/live states only; primary action = cream, never

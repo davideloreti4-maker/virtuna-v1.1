@@ -105,13 +105,22 @@ conversational intro/outro framing, once the sketch is signed off.
 - Conversational slots: `ThreadAssistantTurn` / `SkillResultCard` (`src/components/thread/skill-result-card.tsx`).
 
 ## Sketch refinement backlog (with owner)
-**v3 (2026-06-28) cleared:** lens-open (inline VerbatimWall + avatars + "Ask the skeptic why →") · real
-reactor avatars (archetype initials, neutral) · pure text/chat turn (Turn 3) · error/partial-failure +
-Retry state (static reference) · per-skill step copy (Hooks/Script/Remix/Account-Read gallery) · sharper
-value-narrating sub-detail · motion pass (slower word-fade, debounced scroll, compressed elapsed).
-**Remaining (pending owner react to v3):** motion-timing fine-tune (stage/lens dwell, Turn-2→3 hand-off) ·
-exact sub-detail wording per skill · whether "Ask the skeptic why →" opens persona-chat inline · whether
-the error state needs a live retry animation. (Full detail in doc §5.) → on sign-off: build spec → Chunk 1.
+**v3 (2026-06-28) cleared:** lens-open (inline VerbatimWall + avatars) · real reactor avatars · pure
+text/chat turn (Turn 3) · error/partial-failure + Retry (static ref) · per-skill step copy gallery ·
+motion pass.
+**v3.1 (2026-06-28) — re-copied to the honest FLOOR after the client-vs-engine prose test
+(`.planning/premium-thread-copy-floor.md`).** Result: **~90% of the premium shape ships in-lane with zero
+fabrication** — the outro is already the engine's real `followupText`, the spine is real SSE `stages`,
+chips are real handoffs, script-intro cites the real input hook. Changes: hooks-intro → thin orientation;
+outro = engine text (restyle, not template); sub-detail → static honest descriptor (killed the faked
+"Reactor 6/10" counter); script proof → "8/10 stopped · opener"; lens read-only.
+**Owner decisions LOCKED (2026-06-28):** (1) hooks intro = **thin orientation**; (2) progress sub-detail =
+**static now + filed engine ask** (add `detail` to the stage SSE event / `StageState` — the one justified
+engine request, carry to GSI/engine lane).
+**Remaining:** **add the loading MECHANICS** to the sketch (v3.2) — **A1** thread-switch shell+skeleton (no
+hero-flash) + **A4** unscored→scored card transition; these are what Chunk 1 builds and the sketch's happy
+conversation doesn't yet show them. Then motion-timing fine-tune + error-state live-retry call → sign-off →
+build spec → Chunk 1.
 
 ## State of the tree
 `lane/shell` @ `6b2d110b` (= main) + this session's docs/sketch/handoff committed on top. No app code
