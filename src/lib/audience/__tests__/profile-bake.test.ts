@@ -159,7 +159,7 @@ describe("bakeProfileSignature", () => {
   });
 
   it("honours an explicit subjectKind (no detection) and passes it to synthesize", async () => {
-    const synthesize = vi.fn(async () => makePersonSynth());
+    const synthesize = vi.fn(async (_input: ProfileSynthInput) => makePersonSynth());
     const { subjectKind } = await bakeProfileSignature(
       { evidence: "Alex: a\nJordan: b", subjectKind: "person" },
       { synthesize },
@@ -169,7 +169,7 @@ describe("bakeProfileSignature", () => {
   });
 
   it("detects subjectKind from evidence when not provided and feeds it to synthesize", async () => {
-    const synthesize = vi.fn(async () => makePersonSynth());
+    const synthesize = vi.fn(async (_input: ProfileSynthInput) => makePersonSynth());
     await bakeProfileSignature({ evidence: "You: hi\nAlex: hey" }, { synthesize });
     expect(synthesize).toHaveBeenCalledTimes(1);
     expect(synthesize.mock.calls[0]![0].subjectKind).toBe("person");
