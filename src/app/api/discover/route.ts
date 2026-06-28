@@ -15,7 +15,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createScrapingProvider } from "@/lib/scraping";
-import { classifyDiscoverInput } from "@/lib/discover/classify-input";
+import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { rankOutliers, type RankedOutlier } from "@/lib/discover/outlier-compute";
 import {
   getCachedDiscover,
@@ -74,8 +74,17 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // ── (3) Classify (profile vs niche) ───────────────────────────────────────
-  const { mode, normalized } = classifyDiscoverInput(rawInput);
+  // ── (3) Classify (profile / niche / unsupported) ──────────────────────────
+  const classified = classifyDiscoverInput(rawInput);
+  if (classified.mode === "unsupported") {
+    // Honest reject BEFORE the cap/scrape — scraping is TikTok-only, so a pasted
+    // instagram.com/youtube URL never silently degrades into a garbage niche pull.
+    return Response.json(
+      { error: "unsupported_input", message: classified.reason ?? UNSUPPORTED_INPUT_REASON },
+      { status: 400 },
+    );
+  }
+  const { mode, normalized } = classified;
 
   // ── (4) Per-user daily cap (read-only check; consume only on a real scrape) ─
   const cap = checkUserCap(user.id);

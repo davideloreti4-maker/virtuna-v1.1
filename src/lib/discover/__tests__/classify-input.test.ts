@@ -37,4 +37,34 @@ describe("classifyDiscoverInput", () => {
     expect(r.mode).toBe("niche");
     expect(r.normalized).toBe("budget travel europe");
   });
+
+  it("an instagram.com URL → unsupported (honest reject, not a garbage niche search)", () => {
+    const r = classifyDiscoverInput("instagram.com/thecreator");
+    expect(r.mode).toBe("unsupported");
+    expect(r.reason).toMatch(/only tiktok/i);
+  });
+
+  it("a full https instagram URL → unsupported", () => {
+    const r = classifyDiscoverInput("https://www.instagram.com/reel/abc123/");
+    expect(r.mode).toBe("unsupported");
+    expect(r.reason).toMatch(/only tiktok/i);
+  });
+
+  it("a bare instagram.com host (no path) → unsupported", () => {
+    expect(classifyDiscoverInput("instagram.com").mode).toBe("unsupported");
+  });
+
+  it("other non-TikTok platforms (youtube, x) → unsupported", () => {
+    expect(classifyDiscoverInput("youtube.com/watch?v=xyz").mode).toBe("unsupported");
+    expect(classifyDiscoverInput("https://x.com/someone").mode).toBe("unsupported");
+  });
+
+  it("a niche with a dot is NOT mistaken for a link (no false reject)", () => {
+    expect(classifyDiscoverInput("node.js tutorials").mode).toBe("niche");
+    expect(classifyDiscoverInput("web3.0 trends").mode).toBe("niche");
+  });
+
+  it("a TikTok URL is still profile, never unsupported", () => {
+    expect(classifyDiscoverInput("https://www.tiktok.com/@chef").mode).toBe("profile");
+  });
 });
