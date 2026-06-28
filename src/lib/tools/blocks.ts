@@ -97,6 +97,9 @@ export const IdeaCardBlockSchema = z.object({
     fraction: z.string(),           // e.g. "6/10 stop"
     scrollQuote: z.string(),        // lead per-persona scroll quote (D-04)
     model: z.literal("sim1-flash"), // provenance tag — always Flash for idea cards
+    // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
+    // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
+    scored: z.boolean().optional(),
     // predictedFailureMode: retained nullable field. Originally the rubric-critic's
     // "if this flops, here's why" texture (Plan 14-02); the critic was removed in S5
     // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
@@ -144,6 +147,9 @@ export const HookCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "6/10 stop"
     scrollQuote: z.string(),           // lead per-persona scroll quote (D-02/D-04 texture)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
+    // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
+    // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
+    scored: z.boolean().optional(),
     // Multi-modal hint (corpus/hooks.md) — nullable
     channel: z.string().nullable(),    // e.g. "spoken", "visual", "caption", "edit", "audio"
     // predictedFailureMode: retained nullable field. Originally the rubric-critic's

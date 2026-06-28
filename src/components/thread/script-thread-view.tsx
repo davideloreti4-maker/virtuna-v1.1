@@ -28,14 +28,13 @@
  *  - onRetry?: re-invokes the skill run (W2 tap-to-retry)
  */
 
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
 import { PlatformContext } from '@/lib/platform-context';
 import { ScriptTestContext } from '@/lib/script-test-context';
 import type { OnTestScriptFn } from '@/lib/script-test-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
 import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -66,6 +65,9 @@ export interface ScriptThreadViewProps {
   userTurn?: string | null;
   skillLabel?: string;
   audienceLabel?: string;
+  /** The input hook this script was anchored on (hooks→script handoff). Cited honestly in
+   *  the intro — it's an INPUT, known at submit. Absent for a direct topic send. */
+  inputHookLine?: string | null;
 }
 
 export function ScriptThreadView({
@@ -81,6 +83,7 @@ export function ScriptThreadView({
   userTurn,
   skillLabel = 'Script',
   audienceLabel = 'General',
+  inputHookLine,
 }: ScriptThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
@@ -105,6 +108,10 @@ export function ScriptThreadView({
   const hasAssistantContent =
     hasStreamingContent || hasPersistedContent || !!followupText || isStreaming;
 
+  // Premium frame (PR-2): intro only for a fresh run (not a pure rehydrate). The script intro
+  // cites the input hook (an INPUT, known at submit) when carried via the hooks→script handoff.
+  const isFreshRun = isStreaming || hasStreamingContent;
+
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <ScriptTestContext.Provider value={onTestScript ?? null}>
@@ -117,6 +124,14 @@ export function ScriptThreadView({
 
           {hasAssistantContent && (
             <ThreadAssistantTurn>
+              {isFreshRun && (
+                <ThreadIntro
+                  skill="script"
+                  audienceLabel={audienceLabel}
+                  platform={platform}
+                  hookLine={inputHookLine}
+                />
+              )}
               <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
                 {hasStreamingContent && (
                   <div className="flex flex-col gap-4">
@@ -127,16 +142,9 @@ export function ScriptThreadView({
                   </div>
                 )}
 
-                {followupText && !isStreaming && (
-                  <div
-                    className="prose prose-invert prose-sm max-w-none"
-                    aria-label="Model follow-up"
-                  >
-                    <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                      {followupText}
-                    </ReactMarkdown>
-                  </div>
-                )}
+                {/* Outro — the engine's real follow-up, restyled (no chips: the script card
+                    carries its own "Test full →" terminal handoff). */}
+                {!isStreaming && <ThreadOutro text={followupText} />}
 
                 {hasPersistedContent && (
                   <div className="flex flex-col gap-4">

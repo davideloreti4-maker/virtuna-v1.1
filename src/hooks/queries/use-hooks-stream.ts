@@ -495,6 +495,7 @@ export function useHooksStream(): UseHooksStreamReturn {
         rank: c.rank,
         band: c.band ?? 'Mixed',
         fraction: c.fraction ?? '–',
+        scored: c.scored ?? false, // A4: drives ProofUnit's pending→scored treatment
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
         channel: c.channel,

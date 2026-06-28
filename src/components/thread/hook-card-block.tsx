@@ -44,6 +44,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     rank,
     band,
     fraction,
+    scored,
     scrollQuote,
     channel,
   } = block.props;
@@ -91,6 +92,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <ProofUnit
           band={band}
           fraction={fraction}
+          scored={scored ?? true}
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}

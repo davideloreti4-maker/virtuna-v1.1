@@ -30,13 +30,12 @@
  *  - onRetry?: callback re-invokes the skill run (W2 tap-to-retry)
  */
 
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
 import { PlatformContext } from '@/lib/platform-context';
 import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadIntro, ThreadOutro, outroFallback, type ForwardChip } from '@/components/thread/conversational-frame';
 import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -114,6 +113,24 @@ export function HooksThreadView({
   const hasAssistantContent =
     hasStreamingContent || hasPersistedContent || !!followupText || isStreaming;
 
+  // Premium frame (PR-2): the intro is the present-tense "you were heard" line — show it for a
+  // FRESH run only (a pure rehydrate of a finished thread shouldn't read "I'm pulling hooks…").
+  // The forward chip derives from the top (rank-1) card's REAL hook→script handoff; hook→test
+  // is intentionally NOT offered (lane/polish §1.7 — a hook is only an opener).
+  const isFreshRun = isStreaming || hasStreamingContent;
+  const topHook = (streamingBlocks[0] ?? persistedBlocks[0])?.props;
+  const chips: ForwardChip[] = topHook
+    ? [
+        {
+          label: `Write a script from #${topHook.rank} →`,
+          primary: true,
+          onClick: onWriteScriptHook
+            ? () => onWriteScriptHook(topHook.hookLine, topHook.audienceArchetype)
+            : undefined,
+        },
+      ]
+    : [];
+
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <HookTestContext.Provider value={onTestHook ?? null}>
@@ -129,6 +146,9 @@ export function HooksThreadView({
 
           {hasAssistantContent && (
             <ThreadAssistantTurn>
+              {isFreshRun && (
+                <ThreadIntro skill="hooks" audienceLabel={audienceLabel} platform={platform} />
+              )}
               <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
                 {hasStreamingContent && (
                   <div className="flex flex-col gap-4">
@@ -139,15 +159,12 @@ export function HooksThreadView({
                   </div>
                 )}
 
-                {followupText && !isStreaming && (
-                  <div
-                    className="prose prose-invert prose-sm max-w-none"
-                    aria-label="Model follow-up"
-                  >
-                    <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                      {followupText}
-                    </ReactMarkdown>
-                  </div>
+                {/* Outro — the engine's real follow-up (restyled) + the forward chip. */}
+                {!isStreaming && (
+                  <ThreadOutro
+                    text={followupText ?? outroFallback('hooks', topHook?.rank)}
+                    chips={chips}
+                  />
                 )}
 
                 {hasPersistedContent && (

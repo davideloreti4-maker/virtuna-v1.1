@@ -379,6 +379,62 @@
   }
 }
 
+/* Premium thread (PR-2) — A4 proof resolve + the conversational word-fade. */
+@keyframes proof-resolve {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ribbon-wipe {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+/* A4: when the score lands, the band/count row fades in and the magnitude ribbon
+ * wipes left→right (scaleX). Replaces the old silent band/fraction swap. */
+.proof-resolve {
+  animation: proof-resolve 0.4s var(--ease-out-cubic) both;
+}
+.ribbon-wipe {
+  transform-origin: left;
+  animation: ribbon-wipe 0.65s var(--ease-out-cubic) 0.05s both;
+}
+
+/* Word-fade — intro/outro voice reveal (blur→sharp, per word). Each word sets its own
+ * inline animation-delay for the staggered cascade. */
+@keyframes word-fade {
+  from {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+.word-fade-word {
+  display: inline-block;
+  animation: word-fade 0.5s var(--ease-out-cubic) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proof-resolve,
+  .ribbon-wipe,
+  .word-fade-word {
+    animation: none;
+  }
+}
+
 /* ============================================
  * BASE STYLES
  * ============================================ */

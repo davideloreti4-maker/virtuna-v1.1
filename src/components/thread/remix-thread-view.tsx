@@ -29,14 +29,13 @@
  *  - onRetry?: re-invokes the skill run (W2 tap-to-retry)
  */
 
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
 import { PlatformContext } from '@/lib/platform-context';
 import { RemixDevelopContext } from '@/lib/remix-develop-context';
 import type { OnDevelopRemixFn } from '@/lib/remix-develop-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
+import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
 import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import { ProgressChecklist } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
@@ -106,6 +105,9 @@ export function RemixThreadView({
   const hasAssistantContent =
     hasStreamingContent || hasPersistedContent || !!followupText || isStreaming;
 
+  // Premium frame (PR-2): intro only for a fresh run (not a pure rehydrate).
+  const isFreshRun = isStreaming || hasStreamingContent;
+
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <RemixDevelopContext.Provider value={onDevelop ?? null}>
@@ -118,6 +120,9 @@ export function RemixThreadView({
 
           {hasAssistantContent && (
             <ThreadAssistantTurn>
+              {isFreshRun && (
+                <ThreadIntro skill="remix" audienceLabel={audienceLabel} platform={platform} />
+              )}
               <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
                 {hasStreamingContent && (
                   <div className="flex flex-col gap-4">
@@ -128,16 +133,9 @@ export function RemixThreadView({
                   </div>
                 )}
 
-                {followupText && !isStreaming && (
-                  <div
-                    className="prose prose-invert prose-sm max-w-none"
-                    aria-label="Model follow-up"
-                  >
-                    <ReactMarkdown rehypePlugins={[rehypeSanitize]}>
-                      {followupText}
-                    </ReactMarkdown>
-                  </div>
-                )}
+                {/* Outro — the engine's real follow-up, restyled (no chips: the remix card
+                    carries its own "Develop into hooks →" handoff). */}
+                {!isStreaming && <ThreadOutro text={followupText} />}
 
                 {hasPersistedContent && (
                   <div className="flex flex-col gap-4">
