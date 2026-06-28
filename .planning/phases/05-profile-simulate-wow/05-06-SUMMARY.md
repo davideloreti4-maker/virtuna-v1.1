@@ -108,14 +108,24 @@ None. The affordance is fully wired against the real 05-04 `/api/tools/profile` 
 ## Threat Flags
 None — the composer control is a convenience UX layer; the authoritative validation (MIME/size/cap/storagePath) is server-side in the 05-04/05-05 routes (T-05-18). The creator path is byte-identical (T-05-19). No package installs (T-05-SC — D-05 zero-new-deps; `@phosphor-icons/react` was already a dependency).
 
-## Human-Verify Checkpoint (Task 2 — PENDING)
-Returned to the orchestrator as `checkpoint:human-verify`. The full how-to-verify steps (drop a chat → profile-read card with evidence-quoted tells + Directional badge → Simulate CTA → reaction-distribution in the SAME thread; person vs panel branch; zero accent / zero 0-100; Socials path unchanged) are in 05-06-PLAN.md Task 2. The dev server (`next dev`) is the verification environment; auth via `e2e/create-test-user.ts` per the GSI auth precedent.
+## Human-Verify Checkpoint (Task 2 — PASSED 2026-06-29)
+Verified end-to-end in a real browser (`next dev`, auth via `e2e/create-test-user.ts`) with a real chat fixture through the LIVE engine:
+- **Evidence-drop affordance**: Paperclip → file chooser → staged chip → submit relabels to "Read this evidence"; `SIM-1 Flash` tag for text. ✓
+- **`profile-read` card**: subject name, `person` variant, 4 behavioral tells each bound to a **verbatim** evidence quote, motivations, "How they'll react", grounded honesty caveat, `SIM-1 Flash` + `Directional` badge. **No forensic section** for a chat (D-03). **No 0-100, no N/10, zero terracotta-accent elements.** ✓
+- **Chain**: "Simulate a message to {name} →" draft → `reaction-distribution` persisted to and rendered from the **SAME** open thread; person variant = single lead read (no N/10). ✓ (SIMU-03)
+
+**Two bugs found + fixed during verify (both committed, re-verified live):**
+1. **`15873d53`** — `createOpenThreadLazy` was insert-first; with the partial unique index non-enforcing it minted a new open thread per POST while the reader (`getOpenThread`/GET) returned the oldest, so the profile-read never surfaced. Fixed to **get-first** (idempotent get-or-create, 23505 race fallback kept). Root cause; shared infra — fixes the whole one-thread flow for every tool.
+2. **`3a9abfe5`** — the profile-thread poll's `GET /api/threads/open` used the default fetch cache, so the reaction-distribution only appeared after a reload. Fixed with `{ cache: 'no-store' }`; reaction now auto-surfaces live in-session.
+
+**Deferred (filed):** the Simulate reaction is **content-framed** ("Boring start… grab me with visuals") rather than reacting AS the baked person to the drafted message — an engine-layer concern in the Simulate reaction frame (05-05 runner). Filed as `.planning/todos/pending/simulate-reaction-person-framing.md`. The card honestly self-labels `Directional`, so it is not misleading in the interim.
 
 ## Self-Check: PASSED
-- FOUND: src/components/app/home/composer.tsx (modified, committed 92feb6c6)
+- FOUND: src/components/app/home/composer.tsx (modified, committed 92feb6c6 + 3a9abfe5)
+- FOUND: src/lib/threads/threads.ts (get-first fix, committed 15873d53)
 - FOUND: .planning/phases/05-profile-simulate-wow/deferred-items.md
-- FOUND commit: 92feb6c6 (feat — Task 1)
+- FOUND commits: 92feb6c6 (feat — Task 1), 15873d53 + 3a9abfe5 (human-verify fixes)
 
 ---
 *Phase: 05-profile-simulate-wow*
-*Completed (code): 2026-06-28 — Task 2 human-verify pending*
+*Completed: 2026-06-29 — Task 1 code + Task 2 human-verify PASSED (2 fixes applied)*

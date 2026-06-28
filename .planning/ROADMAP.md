@@ -17,7 +17,7 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
 - [x] **Phase 2: Trustworthy-SIM Spike** - De-risk the make-or-break question: a trustworthy SIM with zero calibration via determinism + provenance + honest tiering (completed 2026-06-26 — verdict NO-GO conditional, clears to GO after dropping thinking-mode synth)
 - [x] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance (BUILT 2026-06-27 — 7/7 plans; auto-verified 5/5 must-haves + all 7 req IDs; WR-01 honesty fix applied; **awaiting human UAT → `/gsd-verify-work 3`**. TRUST-01 closed on both audience surface + run card; D-01 determinism resolved via bake-once-freeze) (completed 2026-06-27)
 - [x] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier (BUILT 2026-06-27 — 4/4 plans; `normalizeStimulus` adapter door GREEN, full stimulus suite GREEN; IN-01/02/03 closed)
-- [ ] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread
+- [x] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread (completed 2026-06-28)
 - [ ] **Phase 6: Predict Verb** - Analyst-panel scenario reasoning collapses to probability/factors/confidence, always honestly Directional
 - [ ] **Phase 7: Audience-as-Front-Door Surface** - The Audience picker becomes the primary context-setter tying the verbs together; creator experience byte-identical
 
@@ -181,7 +181,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [~] 05-06-PLAN.md — minimal additive composer affordance → /api/tools/profile + end-to-end one-thread human-verify (PROF-01, SIMU-03) — CODE-COMPLETE (92feb6c6): additive Paperclip attach + drag overlay + removable chip + inline D-09 reject, POSTs evidence StimulusInput to /api/tools/profile; profile-read + reaction-distribution render in-thread via MessageBlocks (bounded poll surfaces the card's same-thread Simulate result); creator path byte-identical; zero coral; wave-gate `next build` compiles ✓ (pre-existing earnings-chart tsc error deferred). **Task 2 end-to-end human-verify (real browser) PENDING — checkpoint returned.**
+- [x] 05-06-PLAN.md — minimal additive composer affordance → /api/tools/profile + end-to-end one-thread human-verify (PROF-01, SIMU-03) — DONE (92feb6c6): additive Paperclip attach + drag overlay + removable chip + inline D-09 reject, POSTs evidence StimulusInput to /api/tools/profile; profile-read + reaction-distribution render in-thread via MessageBlocks (bounded poll surfaces the card's same-thread Simulate result); creator path byte-identical; zero coral. **Task 2 end-to-end human-verify (real browser) PASSED 2026-06-29** — real chat → profile-read (evidence-quoted tells, Directional, no 0-100/N-of-10, zero accent) → Simulate → reaction-distribution in the SAME thread. Two bugs found+fixed live: open-thread divergence `15873d53` (createOpenThreadLazy get-first) + live-poll cache `3a9abfe5` (no-store). Deferred: simulate reaction content-framing (todo filed).
 
 **UI hint**: yes
 
@@ -226,7 +226,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 2. Trustworthy-SIM Spike | 3/3 | Complete    | 2026-06-26 |
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
-| 5. Profile → Simulate Wow | 5/6 (06 code-complete, human-verify pending) | In Progress|  |
+| 5. Profile → Simulate Wow | 6/6 | Complete   | 2026-06-28 |
 | 6. Predict Verb | 0/TBD | Not started | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
