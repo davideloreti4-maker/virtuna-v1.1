@@ -81,13 +81,13 @@ export function EarningsChart({ data }: EarningsChartProps): React.JSX.Element {
 
         <XAxis
           dataKey="month"
-          tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 12 }}
+          tick={{ fill: "var(--color-foreground-muted)", fontSize: 12 }}
           axisLine={{ stroke: "rgba(255, 255, 255, 0.06)" }}
           tickLine={false}
         />
 
         <YAxis
-          tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 12 }}
+          tick={{ fill: "var(--color-foreground-muted)", fontSize: 12 }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v: number) => `$${(v / 1000).toFixed(1)}K`}

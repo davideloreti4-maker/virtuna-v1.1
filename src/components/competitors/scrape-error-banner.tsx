@@ -11,8 +11,8 @@ export function ScrapeErrorBanner({ handle }: ScrapeErrorBannerProps) {
   const [isPending, startTransition] = useTransition();
 
   return (
-    <div className="border border-red-500/20 bg-red-500/[0.05] rounded-lg p-3 flex items-center justify-between">
-      <span className="text-sm text-red-400">Data refresh failed</span>
+    <div className="border border-error/20 bg-error/[0.05] rounded-lg p-3 flex items-center justify-between">
+      <span className="text-sm text-error">Data refresh failed</span>
       <button
         type="button"
         disabled={isPending}

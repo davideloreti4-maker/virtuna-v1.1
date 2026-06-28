@@ -72,7 +72,7 @@ export function DealCard({ deal, isApplied, onApply }: DealCardProps): React.JSX
       )}
     >
       {/* Payout -- top-right absolute */}
-      <span className="absolute right-5 top-5 text-lg font-semibold text-success">
+      <span className="absolute right-5 top-5 text-lg font-semibold text-foreground">
         {payout}
       </span>
 

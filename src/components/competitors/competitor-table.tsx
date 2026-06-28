@@ -234,7 +234,7 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
                 {/* Status */}
                 <td className="py-3 px-4 text-right">
                   {s.scrape_status === "failed" ? (
-                    <span className="text-[10px] text-red-400 font-medium">Failed</span>
+                    <span className="text-[10px] text-error font-medium">Failed</span>
                   ) : (
                     <StaleIndicator lastScrapedAt={s.last_scraped_at} />
                   )}

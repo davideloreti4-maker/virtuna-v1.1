@@ -29,7 +29,7 @@ const categoryLabels: Record<string, string> = {
 
 const priorityStyles: Record<string, string> = {
   high: "bg-[var(--color-cream-secondary)]/15 text-[var(--color-cream-secondary)]",
-  medium: "bg-amber-500/15 text-amber-400",
+  medium: "bg-warning/15 text-warning",
   low: "bg-white/[0.06] text-foreground-muted",
 };
 
