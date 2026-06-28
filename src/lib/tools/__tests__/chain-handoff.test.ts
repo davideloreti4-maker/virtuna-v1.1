@@ -139,6 +139,28 @@ describe('handoffsFor("discover")', () => {
   });
 });
 
+// ── 3d. account-read → idea (lane/polish §7 "Write to my strengths") ──────────
+
+describe('handoffsFor("account-read")', () => {
+  it('includes an idea CTA with the pinned Ideas endpoint and card anchor', () => {
+    const handoffs = handoffsFor('account-read');
+    const ideaHandoff = handoffs.find((h) => h.to === 'idea');
+
+    expect(ideaHandoff).toBeDefined();
+    expect(ideaHandoff!.ctaLabel).toBe('Write to my strengths →');
+    // PINNED: /api/tools/ideas accepts { ask?, platform } — strengths ride `ask`.
+    expect(ideaHandoff!.endpoint).toBe('/api/tools/ideas');
+    // anchorFrom "card" — the card builds `ask` from patterns.working and POSTs it.
+    expect(ideaHandoff!.anchorFrom).toBe('card');
+  });
+
+  it('resolves as a valid SkillId via handoffsFor (no missing registration)', () => {
+    const accountRead: SkillId = 'account-read';
+    expect(() => handoffsFor(accountRead)).not.toThrow();
+    expect(Array.isArray(handoffsFor(accountRead))).toBe(true);
+  });
+});
+
 // ── 3c. Rewrite for this audience — same-skill self-handoff (P9 / LIVE-07, D-05) ──
 
 describe('Rewrite for this audience (same-skill self-handoff)', () => {
@@ -170,8 +192,8 @@ describe('Rewrite for this audience (same-skill self-handoff)', () => {
     });
   }
 
-  it('does NOT add a Rewrite for non-regenerable surfaces (no chat/discover/test self-handoff)', () => {
-    for (const skill of ['discover', 'test'] as SkillId[]) {
+  it('does NOT add a Rewrite for non-regenerable surfaces (no chat/discover/test/account-read self-handoff)', () => {
+    for (const skill of ['discover', 'test', 'account-read'] as SkillId[]) {
       const selfRewrite = handoffsFor(skill).find(
         (h) => h.to === skill && h.ctaLabel === REWRITE_LABEL,
       );
@@ -183,7 +205,7 @@ describe('Rewrite for this audience (same-skill self-handoff)', () => {
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {
-  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'test'];
+  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'test', 'account-read'];
 
   it('does not throw for any SkillId', () => {
     for (const skillId of skillIds) {
@@ -215,6 +237,9 @@ describe('CHAIN_HANDOFFS registry completeness', () => {
 
     // P8 new chain — Discover front door launches the moat chain
     expect(pairs).toContain('discover→remix');
+
+    // lane/polish §7 — Account Read forward action seeds Ideas from strengths
+    expect(pairs).toContain('account-read→idea');
   });
 
   it('all endpoints are either a non-empty string or null', () => {
