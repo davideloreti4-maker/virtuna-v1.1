@@ -217,17 +217,17 @@ A4 + conversational frame (#88), some route skeletons + `global-error` (#72). **
 - **Engine ask (the one item memory had):** add `detail` to the stage SSE event / `StageState` for the
   live Generating counter (also unblocks the "stuck Generating" item).
 
-## B. DISCOVER-FEED (`feat/feed-ui-refinement`) — granular UI refinement deferrals
-SSOT: **`HANDOFF-FEED-UI-REFINEMENT.md`** (§3–6) — the Sandcastles-grade refinement was partially shipped
-(#90 = UI). Beyond the §B/§C items already in the ledger, the **open decisions + filter work**:
-- **Videos filters → min–max ranges** (the "biggest gap"): needs `GET /api/feed` + `feed-query.ts`
-  `maxViews`/`maxOutlier`/`maxEngagement` + a `postedWithinUnit` (Days/Weeks/Months) — today only `min*`. M.
-- **Save-filter button** + **Channels multi-dropdown** in the filter sidebar. S/M.
-- **Suggested-channels rework** (`suggested-channels.ts`): creator-strategy categories + per-channel
-  follower/view counts (open decision §6.4 — data source). M.
-- **Open design decisions (§6):** metric-pill tints (views=blue/engagement=orange vs neutral) · platform
-  badge brand-colored vs matte · Hooks v1 seed-only vs wait-for-analyze · keep Remix→Read (not "Analyze").
-- (Already in ledger: Describe backend, Status/Analyzed filter, Hooks-from-analyzed, trending-outlier recompute, no-download ingest, multi-platform corpus, E2E-Remix verify.)
+## B. DISCOVER-FEED (`feat/feed-ui-refinement`) — ⚠️ CORRECTED by live verification
+The `HANDOFF-FEED-UI-REFINEMENT.md` §3–6 list was a **pre-#90 plan**; the live `/feed` pass
+(`DEV-VERIFICATION-2026-06-29.md`) proves **#90 shipped most of it**:
+- ✅ **SHIPPED** (live in the filter sidebar): min–max ranges (Outlier/Views/Engagement), `max*` params,
+  `postedWithinUnit` (Posted-in-last + unit dropdown), **Save-filter** button, **Channels multi-select**.
+- ✅ **SHIPPED**: Suggested-channels creator-strategy categories + per-channel follower/view counts.
+- ✅ **Design decisions (§6) decided** — restrained shipped (neutral pills, matte badges, Remix→Read kept).
+- **Still open:** the 3 Phase-3-pipeline stubs (Hooks-from-analyzed, Channels Describe backend,
+  Status/Analyzed filter — all live-confirmed as "coming soon"), trending-metric backfill
+  (`@khaby.lame`/`@chrisbumstead` show "-- followers · 0 views"), `shouldDownloadVideos:false` ingest
+  cost-opt, multi-platform corpus, the unrun E2E-Remix-on-`/feed` check, Save-filter persistence verify.
 
 ## C. NUMEN-GSI — review carry-forward beyond the p05 todos
 - **06-REVIEW (Predict verb) — appears UNRESOLVED on main** (06-REVIEW left "issues_found"; not in any todo):

@@ -8,10 +8,13 @@
 > Supersedes the stale survey baseline in `docs/WORKTREE-DEBT-LEDGER.md` (last reconciled
 > 2026-06-26, predates PRs #71–#90). **Reconcile the ledger from this doc.**
 >
-> **Companion:** `docs/WORKTREE-MERGE-AUDIT-2026-06-29.md` — per-worktree git forensics (polish /
-> shell / frame / discover-feed / numen-gsi): exactly what landed vs what's missing, each open item
-> code-verified with `file:line`. Verdict: all five lanes' code is on `main`; only `polish/cards-next`
-> has unmerged commits and those are superseded throwaway. Four worktrees are retire-able.
+> **Companions:**
+> - `docs/WORKTREE-MERGE-AUDIT-2026-06-29.md` — per-worktree git forensics (polish / shell / frame /
+>   discover-feed / numen-gsi): exactly what landed vs missing, each item code-verified with `file:line`.
+>   Verdict: all five lanes' code is on `main`; only `polish/cards-next` has unmerged (superseded) commits.
+> - `docs/DEV-VERIFICATION-2026-06-29.md` — **live browser pass** (dev :3300, authed) confirming
+>   working-vs-stub on the real app + screenshots (`docs/verification/`). It **corrects** this ledger where
+>   the running app contradicted the static reads (notably: the feed filters/suggested work shipped in #90).
 
 ---
 
@@ -178,12 +181,14 @@ Consolidated parked ledger (SSOT detail in memory `discover-feed-milestone.md` �
 2. Re-check the pre-redesign max-effort `/code-review` findings against the rewritten
    `feed-card` / `feed-results` (review ran on the old branch).
 
-**F. UI refinement deferrals** (`HANDOFF-FEED-UI-REFINEMENT.md` §3–6; merge-audit §B):
-- **Filters → min–max ranges** (biggest gap) — needs `GET /api/feed` + `feed-query.ts` `maxViews`/
-  `maxOutlier`/`maxEngagement` + `postedWithinUnit` (today only `min*`). M. + **Save-filter** button + **Channels multi-dropdown**.
-- **Suggested-channels rework** — creator-strategy categories + per-channel follower/view counts. M.
-- **Open design decisions (§6):** metric-pill tints (views/engagement vs neutral) · platform badge
-  brand-colored vs matte · Hooks v1 seed-only vs wait-for-analyze. Confirm with user before building.
+**F. UI refinement — ✅ MOSTLY SHIPPED in #90** (corrected by the live `DEV-VERIFICATION-2026-06-29.md`
+pass; the `HANDOFF-FEED-UI-REFINEMENT.md` list was a *pre-#90 plan*):
+- ✅ **Filters min–max ranges** (Outlier/Views/Engagement) + `max*` params + `postedWithinUnit` (Posted-in-
+  last + unit) + **Save-filter** button + **Channels multi-select** — all **live** in the filter sidebar.
+- ✅ **Suggested-channels** creator-strategy categories + per-channel follower/view counts — **live**.
+- ✅ **Design decisions (§6)** — the restrained choice shipped (neutral metric pills, matte platform badges).
+  Re-open only if the owner wants tints. Hooks v1 = seed-only shipped (analyzed = stub, item B above).
+- Still open: **Save-filter persistence** not exercised in the browser (present, assume wired — verify). S.
 
 ## 🟢 Frame (all PRs merged; worktree clean)
 
