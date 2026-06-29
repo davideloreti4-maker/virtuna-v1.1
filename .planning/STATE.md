@@ -4,8 +4,8 @@ milestone: v7.0
 milestone_name: milestone
 status: verifying
 stopped_at: 07-06 Tasks 1-3 complete (HomeStarter + composer mount + home.test) — Task 4 human-verify checkpoint PENDING (do NOT mark plan complete)
-last_updated: "2026-06-29T11:17:16.348Z"
-last_activity: 2026-06-29 -- Phase 07 execution started
+last_updated: "2026-06-29T11:23:59.936Z"
+last_activity: 2026-06-29
 progress:
   total_phases: 7
   completed_phases: 7
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 07 (audience-as-front-door-surface) — EXECUTING
-Plan: 6 of 6
+Phase: 07
+Plan: Not started
 Status: Phase complete — ready for verification
 Status (prior): 06-06 complete (Wave 3: predict route — `POST /api/tools/predict` clones the simulate security spine VERBATIM (auth 401 → csrfGuard 415/403 → MAX_MESSAGE_LENGTH=2000 scenario cap 400 → getAudience under session RLS → null 400 audience_not_found → try{normalizeStimulus → createOpenThreadLazy → runPredict → insertMessage re-validate+KC stamp → Response.json({block})} catch{generic 500 "Predict failed", never echoes the thrown detail, WR-02}). Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try: `audience.mode !== "general"` → 400 predict_requires_general_panel; `readSubjectKind(audience) === "person"` → 400 predict_requires_panel + "Predict needs a panel — try the Analyst Panel." nudge — so a non-panel audience never reaches the runner's throw→500 (D-03/WR-03/T-06-20). The default template-analyst (general, custom_context:[], no marker) reads as "panel" and runs (Pitfall 3, asserts 200 + runPredict called once). Body accepts scenario and/or message (scenario wins). D-07 upheld structurally — route concatenates nothing, hands the scenario to runPredict which data-fences it downstream. Wave-0 route.test.ts GREEN 7/7. Deviation [Rule 1]: the Wave-0 mock omitted the readSubjectKind export → partial-mocked via importOriginal so the route uses the REAL pure helper (faithful person/template-analyst coverage); reworded comments to drop the literal err.message for the leak-heuristic gate. PRED-01/PRED-03. Commit ecc0e128. The Wave-4 chain-handoff.test.ts stays RED by design — 06-07 turns it GREEN.)
 Status (prior): 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
@@ -39,7 +39,7 @@ Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-29 -- Phase 07 execution started
+Last activity: 2026-06-29
 
 Progress: [████████░░] 86% (6/7 phases complete)
 
@@ -47,7 +47,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 
 **Velocity:**
 
-- Total plans completed: 34
+- Total plans completed: 40
 - Average duration: —
 - Total execution time: —
 
@@ -61,6 +61,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 | 04 | 4 | - | - |
 | 05 | 6 | - | - |
 | 06 | 7 | - | - |
+| 07 | 6 | - | - |
 
 **Recent Trend:**
 
