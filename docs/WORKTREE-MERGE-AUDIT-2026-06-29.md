@@ -172,3 +172,82 @@ remains is **feature/stub debt and polish**, not stranded merges. Four worktrees
   `simulate-reaction-person-framing` / `earnings-chart` tsc-baseline, and the Read per-persona modal.
 - **New/sharpened vs the prior ledger:** the GSI WR-01/WR-03/WR-04 follow-ups + the person-framing
   Simulate issue + the `earnings-chart.tsx:97` build blocker were not in the OPEN-DEBT-AUDIT; fold them in.
+
+---
+
+# Deep deferred-work sweep — every worktree's `.planning` (pass 2, 2026-06-29)
+
+> Second pass per the "double-verify everything landed + capture ALL deferred work" ask. I read every
+> `.planning` deferred-tracking artifact in all 5 worktrees (HANDOFF / REVIEW / deferred-items / todos)
+> and code-verified each open item against the live `main` tree. **Headline: the shell lane carried a
+> much larger loading-states backlog than memory recorded — most of Theme B + Theme C never shipped.**
+
+## Double-verification of "everything landed" (stronger than pass 1)
+- **shell / frame** — branch tip is a git **ancestor** of `origin/main` ⇒ every commit is on main (definitive).
+- **discover-feed** — `git diff 8388b85f b8ee80b1` = **0 lines** ⇒ branch tip tree == #90 squash (definitive).
+- **GSI** — `git diff origin/main..milestone/numen-gsi` = **0 lines** ⇒ trees identical (definitive).
+- **polish** — per-file vs main: **8/13 byte-identical to main**, 1 is the never-ship `dev/cards` harness,
+  4 are main-superset. The *only* polish-unique lines: a superseded "+ Track account" draft button in
+  `outlier-tile.tsx` (the real track/watchlist shipped via #79/#89) and a **stale** "Write to my strengths
+  → deferred" comment in `account-read-block.tsx` for work that **shipped as #80**. **Nothing stranded.**
+
+## A. SHELL (`lane/shell`) — premium-thread loading-states backlog ⚠️ LARGELY OPEN
+SSOT: **`docs/subsystems/ui-loading-states.md`** (on main, full file:line). Shipped: A1/A2/A3 (#85),
+A4 + conversational frame (#88), some route skeletons + `global-error` (#72). **Still open, code-verified:**
+- **Theme A leftovers:**
+  - **A5** — Account Read has no dedicated loading view (no `account-read-thread-view.tsx`; uses the wrong
+    `variant="chat"` prose skeleton via `chat-thread-view.tsx:149`). M.
+  - **A6** — Script/Remix skeleton drops the status caption: `script-thread-view.tsx:114` +
+    `remix-thread-view.tsx:115` render `<ThreadLoadingSkeleton variant="skill"/>` with **no `caption`** (hooks/ideas pass it). One line each. S.
+  - **A7** — Thread delete not optimistic: `src/hooks/queries/use-threads.ts:73` only `invalidateQueries`, no `onMutate`. **Verified: no optimistic markers in Sidebar/use-threads.** S.
+  - **Bonus** — Explore double-renders skeleton + checklist (`explore-thread-view.tsx:279-287`). S.
+- **Theme B — route loading skeletons (CONFIRMED ABSENT on main):**
+  `home/loading.tsx` (P0), `analyze/layout.tsx:26` `<Suspense fallback={null}>` → blank surface (P0),
+  `library/loading.tsx` (P1), `audience/loading.tsx` (P1), `audience/[id]/loading.tsx` (P1),
+  `audience/new/loading.tsx` (P2), `competitors/[handle]`+`/compare` raw `animate-pulse` (P3).
+  (`feed/loading.tsx` present ✓; brand-deals/discover/referrals/settings already good.)
+- **Theme C — primitives / MATTE debt (CONFIRMED present on main):**
+  toast inset-shine `ui/toast.tsx:213-216`, card inset-shine `ui/card.tsx:61`, **delete dead
+  `primitives/GlassToast.tsx`** (still present), **delete dead `primitives/GlassSkeleton.tsx`**
+  (`SkeletonText`/`SkeletonCard`, still present), unify Button+Input loading→`<Spinner>`
+  (`ui/button.tsx:179` + `ui/input.tsx:191`, currently lucide `Loader2`), pricing spinner
+  `pricing-section.tsx:113`, stale "coral" JSDoc (button/toggle/skeleton), extract shared
+  `<SurfaceEmptyState>`, board `audience-constants.ts:91` coral `#FF7F50` (XS, board refactor).
+  (`card-reaction-at-rest` already deleted in #78.)
+- **Engine ask (the one item memory had):** add `detail` to the stage SSE event / `StageState` for the
+  live Generating counter (also unblocks the "stuck Generating" item).
+
+## B. DISCOVER-FEED (`feat/feed-ui-refinement`) — granular UI refinement deferrals
+SSOT: **`HANDOFF-FEED-UI-REFINEMENT.md`** (§3–6) — the Sandcastles-grade refinement was partially shipped
+(#90 = UI). Beyond the §B/§C items already in the ledger, the **open decisions + filter work**:
+- **Videos filters → min–max ranges** (the "biggest gap"): needs `GET /api/feed` + `feed-query.ts`
+  `maxViews`/`maxOutlier`/`maxEngagement` + a `postedWithinUnit` (Days/Weeks/Months) — today only `min*`. M.
+- **Save-filter button** + **Channels multi-dropdown** in the filter sidebar. S/M.
+- **Suggested-channels rework** (`suggested-channels.ts`): creator-strategy categories + per-channel
+  follower/view counts (open decision §6.4 — data source). M.
+- **Open design decisions (§6):** metric-pill tints (views=blue/engagement=orange vs neutral) · platform
+  badge brand-colored vs matte · Hooks v1 seed-only vs wait-for-analyze · keep Remix→Read (not "Analyze").
+- (Already in ledger: Describe backend, Status/Analyzed filter, Hooks-from-analyzed, trending-outlier recompute, no-download ingest, multi-platform corpus, E2E-Remix verify.)
+
+## C. NUMEN-GSI — review carry-forward beyond the p05 todos
+- **06-REVIEW (Predict verb) — appears UNRESOLVED on main** (06-REVIEW left "issues_found"; not in any todo):
+  - **WR-01 (M)** — `coercePredictResponse` salvages lean casing but **not length/archetype overflow**; a
+    common model overflow **500s the whole Predict feature**. `predict-schema.ts` on main has no length/archetype cap. **Verify + fix.**
+  - **WR-02 (S)** — prompt-injection data fence uses a guessable static delimiter `SCENARIO` (vs a random
+    nonce). Harden the Predict route's USER fence.
+- **03-REVIEW (general-population honesty) — accepted/deferred:** WR-04 + **IN-02** ("deep element/repaint
+  shaping deferred with the scorer") + IN-03/IN-04. Engine-internal, lower priority; tracked here so they're not lost.
+- (Already in ledger: p05 WR-01/WR-03/WR-04 + Simulate person-framing + `earnings-chart.tsx:97`.)
+
+## D. POLISH — no real deferred work
+`HANDOFF-ui-restrained.md` is **stale historical** (2026-06-24; references the **reverted** signal-red
+`#e23b2d` accent — that de-Claude rebrand shipped via #36 + #45/#46/#47). The skill-card lane shipped
+(#73–#80). Nothing open here. *(One latent cross-track flag from that handoff: the P1 audience copy "…not
+how Numen writes" goes stale if/when the engine wires weights→generation — A1; engine R1′b moved that
+direction, so re-check the disclaimer.)*
+
+## E. Stale-inherited (NOT one of the 5 lanes — do not re-surface as active)
+The lane worktrees share an inherited landing-v2-era `.planning` (phases `01-foundation-shell` /
+`03-story-showcase` / `04-proof-conversion`, `AUDIT-ui-surfaces-260624.md`). Its `deferred-items.md`
+items are **superseded:** the "58 err/68 warn engine lint debt" → resolved by #67 (now the `globalIgnores`
+debt) and the "dead `showcase/` token refs" → `showcase/` was **deleted in #77**. Ignore.
