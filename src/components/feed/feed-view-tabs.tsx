@@ -9,12 +9,13 @@
  */
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FilmStrip, Television } from "@phosphor-icons/react";
+import { FilmStrip, Television, Quotes } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 const TABS = [
-  { href: "/feed", label: "Videos", icon: FilmStrip },
-  { href: "/feed/channels", label: "Channels", icon: Television },
+  { href: "/feed", label: "Videos", icon: FilmStrip, match: "exact" },
+  { href: "/feed/channels", label: "Channels", icon: Television, match: "subtree" },
+  { href: "/feed/hooks", label: "Hooks", icon: Quotes, match: "subtree" },
 ] as const;
 
 export function FeedViewTabs() {
@@ -25,8 +26,8 @@ export function FeedViewTabs() {
       className="inline-flex items-center gap-1 rounded-full border border-white/[0.06] bg-background-elevated p-1"
     >
       {TABS.map((t) => {
-        // Videos = exact /feed; Channels = the /feed/channels subtree.
-        const active = t.href === "/feed" ? pathname === "/feed" : pathname.startsWith("/feed/channels");
+        // Videos = exact /feed; Channels + Hooks = their /feed/<x> subtree.
+        const active = t.match === "exact" ? pathname === t.href : pathname.startsWith(t.href);
         const Icon = t.icon;
         return (
           <Link

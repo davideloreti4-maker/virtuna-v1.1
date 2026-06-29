@@ -25,21 +25,12 @@ import {
   TrendDown,
   Play,
   FilmStrip,
-  TiktokLogo,
-  InstagramLogo,
-  YoutubeLogo,
 } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
 import { SaveAffordance } from "@/components/thread/save-affordance";
 import type { FeedTile } from "@/lib/feed/feed-query";
 import { formatCount, formatRelativeTime } from "@/lib/competitors-utils";
+import { PLATFORM_ICON, platformBadgeStyle, platformLabel } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
-
-const PLATFORM_ICON: Record<string, Icon> = {
-  tiktok: TiktokLogo,
-  instagram: InstagramLogo,
-  youtube: YoutubeLogo,
-};
 
 /** "{n}×" — 1 decimal under 10×, integer above. */
 function formatMultiplier(m: number): string {
@@ -96,7 +87,7 @@ export function FeedCard({
   tracked,
 }: FeedCardProps) {
   const hasCover = Boolean(tile.coverUrl);
-  const PlatformIcon = PLATFORM_ICON[tile.platform] ?? TiktokLogo;
+  const PlatformIcon = PLATFORM_ICON[tile.platform] ?? PLATFORM_ICON.tiktok!;
 
   // Hover bar: hover-revealed on pointer devices, always-on for touch (no unreachable actions).
   const hoverBar =
@@ -123,10 +114,12 @@ export function FeedCard({
           </div>
         )}
 
-        {/* Platform badge — top-right, matte dark chip (restrained vs brand gradient). */}
+        {/* Platform badge — top-right, brand-colored mark (IG gradient / TikTok black /
+            YouTube red) with a white glyph + hairline ring for separation over photos. */}
         <span
-          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white/95"
-          title={tile.platform}
+          className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full text-white ring-1 ring-white/20"
+          style={platformBadgeStyle(tile.platform)}
+          title={platformLabel(tile.platform)}
         >
           <PlatformIcon size={13} weight="fill" />
         </span>

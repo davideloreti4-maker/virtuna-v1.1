@@ -13,10 +13,18 @@
  */
 import { useState } from "react";
 import Link from "next/link";
-import { CaretDown, Plus, Faders, DownloadSimple, LinkSimple } from "@phosphor-icons/react";
+import {
+  CaretDown,
+  Plus,
+  Faders,
+  FunnelSimple,
+  DownloadSimple,
+  LinkSimple,
+} from "@phosphor-icons/react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -39,6 +47,13 @@ interface FeedToolbarProps {
   onSortChange: (sort: FeedSort) => void;
   sortOptions: SortOption[];
   total: number;
+  /** How many tiles are currently loaded (for "Showing N of {total}"). */
+  loaded: number;
+  /** Whether the filter sidebar is shown (the toggle is filled when open). */
+  filtersOpen: boolean;
+  onToggleFilters: () => void;
+  /** Number of active filters (badge on the toggle). */
+  activeFilterCount: number;
   /** Launch the Remix → Read chain on a pasted one-off URL. */
   onAddVideoUrl: (url: string) => void;
   addVideoPending: boolean;
@@ -54,6 +69,10 @@ export function FeedToolbar({
   onSortChange,
   sortOptions,
   total,
+  loaded,
+  filtersOpen,
+  onToggleFilters,
+  activeFilterCount,
   onAddVideoUrl,
   addVideoPending,
   onExport,
@@ -89,9 +108,31 @@ export function FeedToolbar({
       <div className="flex flex-wrap items-center gap-2">
         {total > 0 && (
           <span className="mr-1 text-xs text-foreground-muted tabular-nums">
-            {total.toLocaleString()} videos
+            Showing {loaded.toLocaleString()} of {total.toLocaleString()}
           </span>
         )}
+
+        {/* Filters toggle — filled when open; badge shows the active-filter count. */}
+        <button
+          type="button"
+          onClick={onToggleFilters}
+          aria-pressed={filtersOpen}
+          className={cn(
+            "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
+            filtersOpen
+              ? "border-white/[0.12] bg-white/[0.08] text-foreground"
+              : "border-white/[0.06] text-foreground-secondary hover:bg-white/[0.03] hover:text-foreground",
+          )}
+        >
+          <FunnelSimple size={14} weight={filtersOpen ? "fill" : "regular"} aria-hidden="true" />
+          Filters
+          {activeFilterCount > 0 && (
+            <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/[0.12] px-1 text-[10px] tabular-nums text-foreground">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
 
         {/* Sort menu — options are tab-aware (no outlier sort on trending). */}
         <DropdownMenu>

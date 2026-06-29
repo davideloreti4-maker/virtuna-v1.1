@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { FeedCard } from "@/components/feed/feed-card";
 import type { FeedTile, FeedTab } from "@/lib/feed/feed-query";
 
-const GRID_CLASS = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]";
+const GRID_CLASS = "grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4";
 
 interface FeedResultsProps {
   isLoading: boolean;

@@ -78,7 +78,7 @@ export function WatchlistPanel({
           </div>
         </div>
       ) : (
-        <ul className="flex flex-col">
+        <ul className="flex max-h-[560px] flex-col overflow-y-auto pr-1 [scrollbar-width:thin] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/10">
           {channels.map((c) => {
             const isRemoving = removingId === c.id;
             return (
