@@ -28,16 +28,35 @@
 
 ---
 
-## 🟡 GSI Milestone — the headline active build
+## 🟠 Production hardening — open GitHub issues #7–#12
 
-- Worktree `~/virtuna-numen-gsi` (branch `milestone/numen-gsi`). **~86% (6/7 phases).**
-- Currently executing **Phase 07 — audience-as-front-door-surface** (mode-scoped skill menu),
-  plan 2 of 6; 8 unpushed commits.
-- Branch is **23 ahead / 206 behind `main`** → needs a main merge/rebase before completion.
-- One uncommitted modified file `src/components/audience-lens/audience-presence.tsx`
-  (`diff --stat` shows no net change — likely whitespace/no-op; verify or revert).
-- ⚠️ Do NOT `git merge rework/engine-core` (that track is Phase 0, already on main).
-- **Next:** finish Phase 07.
+All **OPEN** (live-verified 2026-06-29). Real bugs, none GSI-blocking; do before public launch (or
+opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is what actually bites users.
+
+| # | Item | Sev |
+|---|------|-----|
+| #7  | Remix variants JSONB read-modify-write race (no atomic merge) | 🟠 |
+| #8  | Apify `defaultDatasetId` used without runtime guard; `scrape*` methods lack try/catch | 🟠 |
+| #11 | Adapt retry leaks AbortController timer on Zod-fail `continue` | 🟠 |
+| #12 | `AdaptFrameBody` auto-fire effect omits `analysisId` from deps (latent stuck-empty) | 🟠 |
+| #10 | `APIFY_TOKEN` missing → falls back to empty string → opaque 401, no fail-fast | 🟡 |
+| #9  | Remix SSRF allowlist permits bare-apex (`apify.com`, `tiktokcdn.com`) — auditor over-rated | 🟢 |
+
+---
+
+## ✅ GSI Milestone — SHIPPED (2026-06-29)
+
+- **v7.0 Numen GSI merged to `main`** via PR #91 (`b09c4f51`) + archived (`6d83bfb1`). All 7 phases
+  done. Phase 07 (audience-as-front-door, mode-scoped skill menu) completed; audience-dropdown clip
+  fixed via body-portal; 4 code-review warnings + 2 build-gate type errors fixed; 6-file divergence
+  merge resolved (both sides integrated, full-suite-gated); squash-merged.
+- ⚠️ Do NOT `git merge rework/engine-core` (Phase 0, already on main).
+- **Deferred into the next milestone** (recorded in GSI `STATE.md` → Deferred Items):
+  1. **P05 review follow-ups** — open todos from the Phase-05 code review.
+  2. **Simulate person-framing** — reframe Simulate output around the person/persona.
+- **Close-out hygiene (cheap):** `~/virtuna-numen-gsi` + `milestone/numen-gsi` are merged → retire
+  the worktree/branch per the convention. First verify no stranded work — audit earlier flagged
+  `audience-presence.tsx` modified (`diff --stat` no net change = whitespace/no-op; verify or revert).
 
 ---
 
@@ -56,6 +75,7 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 | S6 | `assertBlocksInRegistry` now caller-less after S4 cut → rewire vs cut | `block-registry.ts` | S |
 | — | **Gen latency ~110s** — `qwen3.7-plus` generation is the E2E bottleneck (SIM half fixed S3′) | gen pipeline | L |
 | — | Provider drift — competitor-intel `src/lib/ai/*` runs live on `deepseek-chat` + `gemini-2.5-flash-lite`; consolidation decision pending | `src/lib/ai/*` | M |
+| — | **Dead-file delete** — `src/lib/ai/deepseek.ts` + `gemini.ts` migrated, no importers → remove | `src/lib/ai/` | S |
 | G-D/M2 | RAG dead — `engine/retrieval/` + `engine/corpus/` entangled (~2.4K LOC); surgical cut deferred | engine | L |
 | D-R1 | drop Read judgment fields → pure-sensor (atomic 5-file + version bump) | — | M |
 | — | Optional hardening (low): bounded gen-retry backoff, SSRF bare-apex tighten (#9), apify try/catch (#8/#10) | — | S each |
@@ -78,12 +98,40 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 
 ---
 
-## 🟢 Feed / Discover (lane merged #89 + #90; only stubs remain)
+## 🟢 Feed / Discover — parked for GSI (lanes merged #89 + #90)
 
-- **Hooks "from your analyzed videos"** — only curated seed + empty state shipped; real path needs
-  the Phase-3 analyze pipeline (extract hook template from a scraped video). M, feature.
-- **Channels "Describe" tab** — UI only; backend (describe→suggest service) stubbed. M.
-- **Videos "Status / Analyzed" filter** — stub checkboxes; no analyzed-flag tracking yet. S/M.
+Consolidated parked ledger (SSOT detail in memory `discover-feed-milestone.md` → PARKED section).
+
+**A. Close-out hygiene (cheap):**
+- `~/virtuna-discover-feed` sits on merged `feat/feed-ui-refinement` (squash tip not an ancestor of
+  main) → reset to `origin/main` or `git worktree remove`.
+- (Now handled by the refine-lane setup; both feed branches are history-only.)
+
+**B. Phase-3 analyze pipeline (the big deferred feature) — unblocks 3 prod stubs:**
+1. Hooks vault → "Hooks from your analyzed videos" — empty "coming soon"
+   (`hooks-client.tsx:152,230`). Needs: extract hook template (category + inspired-by + outlier/views)
+   from a scraped video → store → surface alongside the 12 default seeds. M.
+2. Videos → "Status / Analyzed" filter — no-op toggle (`feed-filters.tsx:282,295,361`). Needs an
+   `analyzed` flag on `scraped_video` (= whether it has a derived Read/idea). S/M.
+3. Hooks → "Create from video" toolbar — currently a popover → `/feed`; should trigger the
+   video→hook extraction. S.
+
+**C. Channels "Describe" tab backend** — describe→suggest service stub
+(`add-channel-panel.tsx:278,325`); UI fully built, no backend. M.
+
+**D. Carried data/engine debt (open since Phase 2):**
+1. Trending `outlier_multiplier` NULL → "—" — needs a per-niche recompute job; trending tiles can't
+   sort/filter by outlier. M.
+2. `shouldDownloadVideos:false` feed-ingest variant — current ingest downloads ~12 mp4s/channel
+   (calibration config), wasteful for a metadata-only feed. Cost optimization. S.
+3. Multi-platform corpus — ingest is TikTok-only, so Channels Search Platform dropdown +
+   Suggested-seed IG/YouTube badges are forward-looking only. M.
+
+**E. Verify / polish loose ends:**
+1. Fire E2E Remix click on `/feed` (code-identical to prod-proven discover path, unconfirmed on this
+   surface — would trigger paid Apify rehost).
+2. Re-check the pre-redesign max-effort `/code-review` findings against the rewritten
+   `feed-card` / `feed-results` (review ran on the old branch).
 
 ## 🟢 Frame (all PRs merged; worktree clean)
 
@@ -94,16 +142,28 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 ## 🟢 UI / Design
 
 - **Part B per-persona reaction MODAL on the Read hero** — SIM-1 Max badge ships; only modal remains. M.
-- **main eslint status uncertain** — ledger §3 flagged 39err/66warn from the UI merge; prep PR #67
-  claimed →0err/29warn. Contradictory — re-verify on `main`. S.
+
+## 🔸 Post-GSI refactor debt (self-inflicted by the eslint green-up)
+
+The `main` eslint gate is **green (0 err)** — but only because ~20+ LIVE components were batched into
+`eslint.config.mjs` `globalIgnores` (React-19-compiler error class: refs-during-render /
+setState-in-effect / create-components-in-render) to green the gate before GSI branched. They now lose
+full lint coverage. **Real fix = refactor each, then un-ignore.** M total, file-by-file.
+
+- Shared UI primitives: `ui/card.tsx`, `carousel.tsx`, `select.tsx`, `skeleton.tsx`, `toast.tsx`, `typography.tsx`
+- `reading/reading.tsx` + `use-reading-reveal.ts`, `command-bar/{CommandBar,ExpertChatInput,ExpertChatThread}.tsx`
+- `audience-lens/ReplayController.tsx`, `app/profile-settings-form.tsx`, `app/settings/**`, `app/home/use-ambient-focus.ts`
+- `app/cards/{reference-creators-input,wins-flops-input}.tsx`, `hooks/{use-infinite-videos,usePrefersReducedMotion}.ts`
+- `primitives/TrafficLights.tsx`, `motion/**`, `visualization/**`, `viral-results/**`, `trending/**`, `hive/**`
+- (Genuinely dead, fine to leave ignored or delete: `competitors/**`, `extraction/`, `scripts/`, `verification/`.)
 
 ---
 
 ## 🧹 Infra / Repo Hygiene
 
-- **Trunk `~/virtuna-v1.1` main carries 1 unpushed auto-wip commit** `120ea41b`
-  (*"chore(auto-wip): docs"*) on top of `origin/main`. Rule: trunk stays clean on origin/main.
-  Push or drop it. S.
+- ~~**Trunk carries 1 unpushed auto-wip commit** `120ea41b`~~ → ✅ **DONE 2026-06-29** — trunk reset
+  clean to `origin/main`; the 3 real subsystem docs inside it (HANDOFF-backend-audit, score-pipeline,
+  skills-grounding) rescued onto `lane/refine` (`56dad6e1`), the noise dropped.
 - **PR #60 (creator-voice) is CLOSED, not merged** — branch `feat/creator-voice-sample` is
   330 ahead / 76 behind (the un-mergeable monster). Re-extract clean during GSI grounding §4.3. M.
 - **polish/cards-next has 3 stranded WIP commits** (auto-wip ×2 + `wip(account-read): densified
@@ -117,9 +177,18 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 - **Canonical ledger `docs/WORKTREE-DEBT-LEDGER.md` is STALE** — last reconciled 2026-06-26;
   omits 7 newer worktrees (cursor, discover-feed, frame, polish, shell, flash-spike, local-gemma),
   lists PR #60 as OPEN, says trunk needs `git pull`. Reconcile from this doc. S.
-- **MEMORY.md over cap** — 25KB > 24.4KB; index truncated on load. Trim entries to one line. S.
-- **Parked branches:** `fix/flash-coercion-stability` (mostly superseded by #56 — verify, then retire),
-  `feat/chat-ethics-gate` (Chase Hughes; A/B inconclusive + cost flag; decision pending). S each.
+- ~~**MEMORY.md over cap** — 25KB > 24.4KB~~ → ✅ **DONE 2026-06-29** — compacted 25.2KB→13.5KB
+  (index lines collapsed to one-liners, detail stays in topic files; added `refine-lane.md`).
+- **Parked branches needing a decision** (loose ends, not active debt):
+  - `feat/creator-voice-sample` — PR #60 CLOSED unmerged (un-mergeable monster); re-extract clean
+    during GSI grounding §4.3. M.
+  - `feat/chat-ethics-gate` — Chase Hughes; A/B inconclusive + cost flag; decision pending. S.
+  - `fix/flash-coercion-stability` — mostly superseded by #56; verify nothing stranded, then retire. S.
+  - `cursor/27a9b701` (ui-restrained Cursor WT) — uncommitted `audience-presence.tsx` edits; commit
+    or discard, then `git worktree remove`. NOTE: same filename now lived in the GSI worktree —
+    confirm nothing was lost in the GSI merge. S.
+  - `polish/cards-next` + `lane/polish` — skill-card lane shipped (#73–#80); stranded WIP is
+    throwaway → safe to reset to main / prune. S.
 
 ---
 
@@ -133,5 +202,15 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 
 ---
 
-**Net:** only truly *blocking* items are the **stuck Vercel production deploy** and **rate-limiting**
-before public launch. Everything else is polish, repo hygiene, or the in-flight **GSI Phase 07**.
+**Net:** GSI v7.0 is **shipped + merged to main** (PR #91). The only truly *blocking* items are the
+**stuck Vercel production deploy** (#1 — that's why prod still shows the Jan init build) and
+**rate-limiting** before public launch. The 🟠 GitHub-issue cluster (#7/#8/#11/#12) bites users but
+doesn't block. Everything else is polish, repo hygiene, or parked feature work.
+
+---
+
+> **Reconcile log (2026-06-29, refine-lane):** carried this doc onto `lane/refine` as the SSOT;
+> folded in GitHub issues #7–#12, the post-GSI eslint-refactor debt, the dead-`ai/*.ts` deletion, the
+> full discover-feed parked ledger (A–E), GSI Phase-05 deferred items, and parked-branch decisions.
+> Marked trunk-reset + MEMORY.md-trim DONE. The stale `WORKTREE-DEBT-LEDGER.md` should be reconciled
+> from this doc (or retired in its favor) when convenient.
