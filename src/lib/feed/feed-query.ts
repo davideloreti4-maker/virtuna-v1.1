@@ -59,6 +59,8 @@ export interface FeedCursor {
 /** OutlierTile-compatible tile (mirrors OutlierTileData; saves omitted at the scrape boundary). */
 export interface FeedTile {
   platformVideoId: string;
+  /** Source platform ("tiktok" | "instagram" | "youtube") — drives the card's platform badge. */
+  platform: string;
   videoUrl: string;
   caption: string;
   coverUrl?: string;
@@ -85,6 +87,7 @@ export interface FeedPage {
 /** Only the columns the feed reads — cast target for the select(). */
 interface FeedRow {
   id: string;
+  platform: string | null;
   platform_video_id: string;
   video_url: string | null;
   description: string | null;
@@ -103,7 +106,7 @@ interface FeedRow {
 }
 
 const SELECT_COLUMNS =
-  "id, platform_video_id, video_url, description, views, likes, comments, shares, duration_seconds, posted_at, outlier_multiplier, baseline_label, engagement_rate, creator_handle, primary_niche, metadata";
+  "id, platform, platform_video_id, video_url, description, views, likes, comments, shares, duration_seconds, posted_at, outlier_multiplier, baseline_label, engagement_rate, creator_handle, primary_niche, metadata";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -166,6 +169,7 @@ function toTile(row: FeedRow, tab: FeedTab): FeedTile {
 
   return {
     platformVideoId: row.platform_video_id,
+    platform: row.platform ?? "tiktok",
     videoUrl: row.video_url ?? "",
     caption: row.description ?? "",
     coverUrl,

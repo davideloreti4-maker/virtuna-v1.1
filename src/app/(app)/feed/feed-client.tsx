@@ -25,7 +25,7 @@ import {
   type FeedFilterState,
 } from "@/hooks/queries/use-feed";
 import type { FeedTab, FeedSort, FeedTile } from "@/lib/feed/feed-query";
-import type { OutlierTileData } from "@/components/discover/outlier-tile";
+import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
 import { FeedToolbar, type SortOption } from "@/components/feed/feed-toolbar";
 import { FeedFilters, type WatchedChannelOption } from "@/components/feed/feed-filters";
 import { FeedResults } from "@/components/feed/feed-results";
@@ -187,7 +187,7 @@ export function FeedClient() {
   );
 
   const handleRemix = useCallback(
-    (tile: OutlierTileData) => void launchRemix(tile.videoUrl, tile.platformVideoId),
+    (tile: FeedTile) => void launchRemix(tile.videoUrl, tile.platformVideoId),
     [launchRemix],
   );
   const handleAddVideoUrl = useCallback(
@@ -196,7 +196,7 @@ export function FeedClient() {
   );
 
   const handleTrack = useCallback(
-    (tile: OutlierTileData) => {
+    (tile: FeedTile) => {
       const handle = tile.trackHandle;
       if (!handle) return;
       setTrackPendingId(tile.platformVideoId);
@@ -245,7 +245,8 @@ export function FeedClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
+      <FeedViewTabs />
+      <header className="mb-6 mt-5">
         <h1 className="text-2xl font-medium text-foreground">Videos</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
           Outliers from the channels you watch, plus what&apos;s trending. Remix any winner

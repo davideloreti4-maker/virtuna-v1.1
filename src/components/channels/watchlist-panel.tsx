@@ -8,7 +8,7 @@
  * and Remove all. Flat-warm matte (no glass, no coral) — Remove is a quiet muted icon.
  */
 import { X, Television, DownloadSimple } from "@phosphor-icons/react";
-import { Avatar } from "@/components/ui/avatar";
+import { PlatformAvatar } from "./platform-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { formatCount } from "@/lib/competitors-utils";
@@ -45,39 +45,10 @@ export function WatchlistPanel({
   return (
     <section className="rounded-xl border border-white/[0.06] bg-background-elevated p-5">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-sm font-semibold text-foreground">Your Watchlist</h2>
-          {count > 0 && (
-            <span className="text-xs text-foreground-muted tabular-nums">{count}</span>
-          )}
-        </div>
+      <div className="mb-4 flex items-baseline gap-2">
+        <h2 className="text-sm font-semibold text-foreground">Your Watchlist</h2>
         {count > 0 && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onExport}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium",
-                "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground transition-colors",
-                focusRing,
-              )}
-            >
-              <DownloadSimple size={15} />
-              Export
-            </button>
-            <button
-              type="button"
-              onClick={onRemoveAll}
-              className={cn(
-                "rounded-lg px-2.5 py-1.5 text-xs font-medium",
-                "text-foreground-muted hover:bg-white/[0.04] hover:text-foreground transition-colors",
-                focusRing,
-              )}
-            >
-              Remove all
-            </button>
-          </div>
+          <span className="text-xs text-foreground-muted tabular-nums">{count}</span>
         )}
       </div>
 
@@ -118,20 +89,18 @@ export function WatchlistPanel({
                   isRemoving && "opacity-50",
                 )}
               >
-                <Avatar src={c.avatarUrl ?? undefined} fallback={initialsOf(c)} size="sm" />
+                <PlatformAvatar
+                  src={c.avatarUrl ?? undefined}
+                  fallback={initialsOf(c)}
+                  platform={c.platform}
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">
                     {c.displayName ?? `@${c.handle}`}
                   </p>
-                  <p className="truncate text-xs text-foreground-muted">@{c.handle}</p>
-                </div>
-                <div className="hidden flex-col items-end text-right sm:flex">
-                  <span className="text-xs tabular-nums text-foreground-secondary">
-                    {formatCount(c.followerCount)} followers
-                  </span>
-                  <span className="text-[11px] tabular-nums text-foreground-muted">
-                    {formatCount(c.videoCount)} videos · {formatCount(c.totalViews)} views
-                  </span>
+                  <p className="truncate text-xs tabular-nums text-foreground-muted">
+                    {formatCount(c.followerCount)} followers · {formatCount(c.totalViews)} views
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -151,6 +120,34 @@ export function WatchlistPanel({
             );
           })}
         </ul>
+      )}
+
+      {count > 0 && (
+        <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3">
+          <button
+            type="button"
+            onClick={onRemoveAll}
+            className={cn(
+              "rounded-lg px-2.5 py-1.5 text-xs font-medium",
+              "text-foreground-muted hover:bg-white/[0.04] hover:text-foreground transition-colors",
+              focusRing,
+            )}
+          >
+            Remove all
+          </button>
+          <button
+            type="button"
+            onClick={onExport}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium",
+              "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground transition-colors",
+              focusRing,
+            )}
+          >
+            <DownloadSimple size={15} />
+            Export
+          </button>
+        </div>
       )}
     </section>
   );

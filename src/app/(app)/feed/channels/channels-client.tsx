@@ -10,6 +10,7 @@
  */
 import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
+import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
 import { AddChannelPanel } from "@/components/channels/add-channel-panel";
 import { WatchlistPanel } from "@/components/channels/watchlist-panel";
 import {
@@ -107,15 +108,16 @@ export function ChannelsClient() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <header className="mb-6">
+    <div className="mx-auto max-w-6xl px-6 py-8">
+      <FeedViewTabs />
+      <header className="mb-6 mt-5">
         <h1 className="text-2xl font-medium text-foreground">Channels</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
-          Watch creators to fill your Videos feed.
+          Pick which channels to include in your Videos feed.
         </p>
       </header>
 
-      <div className="grid items-start gap-6 lg:grid-cols-2">
+      <div className="grid items-start gap-6 lg:grid-cols-[1.7fr_1fr]">
         <AddChannelPanel
           trackedHandles={trackedHandles}
           pendingHandle={pendingHandle}

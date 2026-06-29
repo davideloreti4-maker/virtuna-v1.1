@@ -22,6 +22,7 @@ import {
   LinkSimple,
   CircleNotch,
 } from "@phosphor-icons/react";
+import { PlatformAvatar } from "./platform-avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Avatar } from "@/components/ui/avatar";
@@ -32,7 +33,6 @@ import { useChannelSearch } from "@/hooks/queries/use-channels";
 import {
   suggestedByCategory,
   SUGGESTED_CATEGORIES,
-  type SuggestedCategory,
 } from "@/lib/channels/suggested-channels";
 
 const focusRing =
@@ -93,19 +93,19 @@ export function AddChannelPanel({
 }: AddChannelPanelProps) {
   return (
     <section className="rounded-xl border border-white/[0.06] bg-background-elevated p-5">
-      <Tabs defaultValue="addUrl">
+      <Tabs defaultValue="suggested">
         <TabsList className="mb-1">
-          <TabsTrigger value="addUrl" size="sm">
-            Add URL
-          </TabsTrigger>
-          <TabsTrigger value="search" size="sm">
-            Search
-          </TabsTrigger>
           <TabsTrigger value="suggested" size="sm">
             Suggested
           </TabsTrigger>
           <TabsTrigger value="describe" size="sm">
             Describe
+          </TabsTrigger>
+          <TabsTrigger value="search" size="sm">
+            Search
+          </TabsTrigger>
+          <TabsTrigger value="addUrl" size="sm">
+            Add URL
           </TabsTrigger>
         </TabsList>
 
@@ -268,6 +268,8 @@ function SearchTab({
 }
 
 // ── Suggested ────────────────────────────────────────────────────────────────
+// Category-sectioned cards (uppercase header + 2-col grid), mirroring the Sandcastles
+// Channels page: avatar + platform badge + name/@handle + an Add affordance per card.
 function SuggestedTab({
   trackedHandles,
   pendingHandle,
@@ -278,53 +280,41 @@ function SuggestedTab({
   onAdd: (handle: string) => void;
 }) {
   const grouped = useMemo(() => suggestedByCategory(), []);
-  const [category, setCategory] = useState<SuggestedCategory>(SUGGESTED_CATEGORIES[0]);
 
   return (
-    <div className="space-y-3">
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {SUGGESTED_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            type="button"
-            onClick={() => setCategory(cat)}
-            className={cn(
-              "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              focusRing,
-              cat === category
-                ? "bg-white/[0.08] text-foreground"
-                : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
-            )}
-          >
+    <div className="max-h-[520px] space-y-5 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {SUGGESTED_CATEGORIES.map((cat) => (
+        <div key={cat} className="space-y-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
             {cat}
-          </button>
-        ))}
-      </div>
-
-      {/* Channels in the active category */}
-      <ul className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-        {grouped[category].map((s) => (
-          <li
-            key={s.handle}
-            className="flex items-center gap-3 rounded-lg border border-white/[0.06] px-3 py-2.5"
-          >
-            <Avatar fallback={s.displayName.slice(0, 2).toUpperCase()} size="sm" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">
-                {s.displayName}
-              </p>
-              <p className="truncate text-xs text-foreground-muted">@{s.handle}</p>
-            </div>
-            <AddButton
-              handle={s.handle}
-              tracked={trackedHandles.has(s.handle)}
-              pending={pendingHandle === s.handle}
-              onAdd={onAdd}
-            />
-          </li>
-        ))}
-      </ul>
+          </p>
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {grouped[cat].map((s) => (
+              <li
+                key={s.handle}
+                className="flex items-center gap-3 rounded-lg border border-white/[0.06] p-3 transition-colors hover:bg-white/[0.02]"
+              >
+                <PlatformAvatar
+                  fallback={s.displayName.slice(0, 2).toUpperCase()}
+                  platform="tiktok"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {s.displayName}
+                  </p>
+                  <p className="truncate text-xs text-foreground-muted">@{s.handle}</p>
+                </div>
+                <AddButton
+                  handle={s.handle}
+                  tracked={trackedHandles.has(s.handle)}
+                  pending={pendingHandle === s.handle}
+                  onAdd={onAdd}
+                />
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

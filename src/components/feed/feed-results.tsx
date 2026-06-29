@@ -1,11 +1,11 @@
 "use client";
 
 /**
- * FeedResults — the Videos feed grid + its states (Discover Feed Phase 2.2 redesign).
+ * FeedResults — the Videos feed grid + its states (Discover Feed Phase 2.2 redesign, v2).
  *
- * Cover-forward grid of FeedCard (its own component — /discover keeps the dense OutlierTile).
- * This component owns the shell around the grid:
- *   - first-load skeletons shaped like the cover-forward card
+ * Cover-forward 9:16 grid of FeedCard (its own component — /discover keeps the dense
+ * OutlierTile). This component owns the shell around the grid:
+ *   - first-load skeletons shaped like the 9:16 card
  *   - error + Retry
  *   - watched-empty → "watch channels" CTA to /feed/channels
  *   - filtered-empty → Clear filters (tab-aware copy)
@@ -18,24 +18,23 @@ import { FilmStrip, FunnelSimple, CircleNotch } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { FeedCard } from "@/components/feed/feed-card";
-import type { OutlierTileData } from "@/components/discover/outlier-tile";
-import type { FeedTab } from "@/lib/feed/feed-query";
+import type { FeedTile, FeedTab } from "@/lib/feed/feed-query";
 
-const GRID_CLASS = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]";
+const GRID_CLASS = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]";
 
 interface FeedResultsProps {
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
-  tiles: OutlierTileData[];
+  tiles: FeedTile[];
   tab: FeedTab;
   /** Watched tab with no tracked channels — show the "watch channels" CTA. */
   watchedEmpty: boolean;
   filtersActive: boolean;
   onClearFilters: () => void;
-  onRemix: (tile: OutlierTileData) => void;
+  onRemix: (tile: FeedTile) => void;
   remixPendingId: string | null;
-  onTrack: (tile: OutlierTileData) => void;
+  onTrack: (tile: FeedTile) => void;
   trackPendingId: string | null;
   trackedIds: Set<string>;
   hasNextPage: boolean;
@@ -43,15 +42,19 @@ interface FeedResultsProps {
   onLoadMore: () => void;
 }
 
-/** One skeleton shaped like the cover-forward FeedCard (tall cover + caption + action). */
+/** One skeleton shaped like the 9:16 FeedCard (tall cover + title + handle + pill row). */
 function FeedCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-white/[0.06]">
-      <Skeleton className="aspect-[4/5] w-full rounded-none" />
+      <Skeleton className="aspect-[9/16] w-full rounded-none" />
       <div className="space-y-2 p-3">
         <Skeleton className="h-4 w-5/6 rounded" />
         <Skeleton className="h-3 w-1/2 rounded" />
-        <Skeleton className="h-9 w-full rounded-lg" />
+        <div className="flex gap-1.5 pt-0.5">
+          <Skeleton className="h-5 w-12 rounded-md" />
+          <Skeleton className="h-5 w-12 rounded-md" />
+          <Skeleton className="h-5 w-10 rounded-md" />
+        </div>
       </div>
     </div>
   );
@@ -118,7 +121,7 @@ export function FeedResults({
   if (isLoading) {
     return (
       <div className={GRID_CLASS} aria-busy="true" aria-label="Loading feed">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 10 }).map((_, i) => (
           <FeedCardSkeleton key={i} />
         ))}
       </div>
@@ -192,7 +195,7 @@ export function FeedResults({
             remixPending={remixPendingId === tile.platformVideoId}
             onTrack={onTrack}
             trackPending={trackPendingId === tile.platformVideoId}
-            tracked={tile.trackHandle != null && trackedIds.has(tile.trackHandle)}
+            tracked={Boolean(tile.trackHandle) && trackedIds.has(tile.trackHandle)}
           />
         ))}
       </div>
