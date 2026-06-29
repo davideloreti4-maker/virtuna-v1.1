@@ -196,7 +196,30 @@ Plans:
   2. A prediction-gauge result card renders the probability, factors, and confidence.
   3. Predict output is always Directional and always shows its assumptions + receipts — never presented as an oracle.
 
-**Plans**: TBD
+**Plans**: 7 plans
+Plans:
+**Wave 0**
+
+- [ ] 06-01-PLAN.md — Predict schema contract (ordinal lean + factor, .strict() honesty guard) + Nyquist test scaffold (PRED-01, PRED-03)
+
+**Wave 1** *(blocked on Wave 0 — parallel, no file overlap)*
+
+- [ ] 06-02-PLAN.md — predict-aggregate.ts: the novel honest collapse — band + panel-spread range + confidence + factors (PRED-01)
+- [ ] 06-03-PLAN.md — run-predict-panel.ts: the analyst-reasoning frame (drops stop/scroll) + D-07 injection isolation (PRED-01)
+- [ ] 06-04-PLAN.md — prediction-gauge block schema (.strict()) + feathered-span renderer + 3-file registration (PRED-02, PRED-03)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 06-05-PLAN.md — predict-runner.ts: orchestration + shared readSubjectKind + Directional assemble (PRED-01, PRED-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 06-06-PLAN.md — /api/tools/predict route: security spine + D-08 400 guards + one-thread persist (PRED-01, PRED-03)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 06-07-PLAN.md — chain CTA simulate→predict + Simulate-card edit + audienceId carry + end-to-end human-verify (PRED-01)
+
 **UI hint**: yes
 
 ### Phase 7: Audience-as-Front-Door Surface
@@ -227,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
-| 6. Predict Verb | 0/TBD | Not started | - |
+| 6. Predict Verb | 0/7 | Planned | - |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---
