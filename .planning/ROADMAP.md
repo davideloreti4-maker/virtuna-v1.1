@@ -214,7 +214,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 06-06-PLAN.md — /api/tools/predict route: security spine + D-08 400 guards + one-thread persist (PRED-01, PRED-03)
+- [x] 06-06-PLAN.md — /api/tools/predict route: security spine + D-08 400 guards + one-thread persist (PRED-01, PRED-03)
 
 **Wave 4** *(blocked on Wave 3)*
 
