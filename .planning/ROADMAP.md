@@ -245,7 +245,7 @@ Plans:
 
 **Wave 2** *(blocked on 07-01)*
 
-- [ ] 07-04-PLAN.md — Composer per-skill submit semantics + `activeMode` threading (UX-02 / D-07)
+- [x] 07-04-PLAN.md — Composer per-skill submit semantics + `activeMode` threading (UX-02 / D-07)
 
 **Wave 3** *(blocked on 07-02/03/04)*
 
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
 | 6. Predict Verb | 7/7 | Complete    | 2026-06-29 |
-| 7. Audience-as-Front-Door Surface | 3/6 | In Progress|  |
+| 7. Audience-as-Front-Door Surface | 4/6 | In Progress|  |
 
 ---
 *Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves). Phase 3 planned 2026-06-27 (7 plans, Waves 0–4; D-01 determinism gate is Wave 0).*
