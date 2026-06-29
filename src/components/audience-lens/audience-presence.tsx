@@ -204,7 +204,9 @@ export function AudiencePresence({
   const socialsRows = [
     ...baseline,
     ...templates,
-    ...yours.filter((a) => a.mode === 'socials'),
+    // WR-04: treat "not general" as socials so legacy rows with null/undefined
+    // mode (pre-backfill) still surface in the switcher rather than vanishing.
+    ...yours.filter((a) => a.mode !== 'general'),
   ];
   const generalRows = [
     ...generalTemplates,
