@@ -37,10 +37,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowUp } from "lucide-react";
+import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
+import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -73,6 +75,8 @@ import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
+import { BuildChooser } from "./build-chooser";
+import { HomeStarter } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -108,11 +112,67 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   explore: "Explore what's working for your audience…",
   offer: "Describe a product, price, or positioning to validate…",
   ad: "Paste an ad concept to pre-flight, ROAS-framed…",
+  // General verbs (P7 / UX-02) — surfaced only when a General audience is active.
+  // The host wiring + per-skill submit semantics land in 07-04; until then the
+  // default mode is "socials" so these placeholders are never reached, but the
+  // widened ToolId Record contract requires them.
+  profile: "Drop a chat or screenshot to build a SIM…",
+  simulate: "Type a draft to run through your audience…",
+  predict: "Describe a scenario for the analyst panel to read…",
 };
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
 function audienceToPlatform(p?: AudiencePlatform | null): Platform {
   return p === "instagram" || p === "youtube" ? p : "tiktok";
+}
+
+// ── Evidence-drop affordance (D-07 / 05-UI-SPEC Surface 3) ───────────────────
+// A MINIMAL, ADDITIVE "drop a chat / screenshot" control on the existing composer.
+// It stages a single file (.txt/.md / image / short video — D-09) and POSTs it as
+// the evidence stimulus to /api/tools/profile (built in 05-04). The creator (Socials)
+// path stays byte-identical — this is a sibling flow, never a rewrite of the field
+// /tool selector / submit handlers. Copy is verbatim from the UI-SPEC copywriting contract.
+const EVIDENCE_ACCEPT = ".txt,.md,text/plain,text/markdown,image/*,video/*";
+const EVIDENCE_ATTACH_LABEL = "Attach a chat or screenshot";
+const EVIDENCE_DROP_HINT = "Drop a chat export, screenshot, or short clip";
+const EVIDENCE_UNSUPPORTED =
+  "That file type isn't supported yet — use a .txt/.md export, an image, or a short video.";
+const EVIDENCE_RUN_FAILED =
+  "That read didn't come through. Try again, or share a bit more of the conversation.";
+
+type EvidenceKind = "file_text" | "image" | "video";
+
+// Map a staged file to its /api/tools/profile evidence kind. .docx/.pdf (and any
+// other type) → null (the inline-rejected, D-09). The server re-validates — this
+// client check is convenience UX, never the trust boundary (T-05-18).
+function classifyEvidence(file: File): EvidenceKind | null {
+  const name = file.name.toLowerCase();
+  const type = file.type;
+  if (name.endsWith(".txt") || name.endsWith(".md") || type === "text/plain" || type === "text/markdown") {
+    return "file_text";
+  }
+  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("video/")) return "video";
+  return null;
+}
+
+// Read a file to a bare base64 string (strip the data: URL prefix) so file_text/image
+// evidence rides the application/json profile body (mirrors the route's base64 contract).
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string") {
+        reject(new Error("read failed"));
+        return;
+      }
+      const comma = result.indexOf(",");
+      resolve(comma >= 0 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("read failed"));
+    reader.readAsDataURL(file);
+  });
 }
 
 export interface ComposerProps {
@@ -150,12 +210,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
   const hasUserSelectedToolRef = useRef(false);
+  // Evidence-drop file input (D-07) — declared here (ahead of the rest of the
+  // evidence state) so handleUserSelectTool can open the Profile evidence picker
+  // within the user-gesture call stack (a file input .click() must ride a real
+  // user gesture; an effect can't open it). The input itself is rendered below.
+  const evidenceInputRef = useRef<HTMLInputElement | null>(null);
   // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
   // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
   // flip it — they are not the creator choosing where to land on reload.
   const handleUserSelectTool = useCallback((id: ToolId) => {
     hasUserSelectedToolRef.current = true;
     setActiveTool(id);
+    // ── Profile (07-04 / D-07): General "Profile" is NOT a topic submit ─────────
+    // Selecting Profile opens the existing evidence-drop affordance (drop a chat /
+    // screenshot / clip → POST /api/tools/profile) instead of arming the topic field.
+    // This runs inside the menu/slash click gesture, so the file picker is allowed.
+    if (id === "profile") {
+      evidenceInputRef.current?.click();
+    }
   }, []);
 
   // ── Audience + intent state (UX-01) ────────────────────────────────────────
@@ -167,6 +239,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // SIM verdict (sell → buying lens) for a calibrated audience. General → no-op.
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
+  // ── Build-an-audience chooser (UX-04 / D-03 / D-08) ─────────────────────────
+  // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
+  const [buildOpen, setBuildOpen] = useState(false);
   // Per-run intent override: null = follow the active audience's goal_intent default (derived below).
   const [intentOverride, setIntentOverride] = useState<Intent | null>(null);
 
@@ -217,6 +292,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Explore persisted grids (Plan 11-07 — filter b.type === 'outlier-grid' on mount).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedExploreBlocks, setPersistedExploreBlocks] = useState<any[]>([]);
+  // Profile-read + reaction-distribution blocks (05-06 — D-07). Rendered in-thread by
+  // MessageBlocks regardless of activeTool; declared here (before hasThread) so the
+  // thread-presence signal can include them without a TDZ reference.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedProfileBlocks, setPersistedProfileBlocks] = useState<any[]>([]);
 
   // ── Thread-switch rehydration flag (A1 — premium-thread Chunk 1) ───────────
   // True for the window between a thread SWITCH and the persisted blocks landing.
@@ -311,6 +391,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     persistedScriptBlocks.length > 0 ||
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
+    persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
     showChatView || // chat view always shown when chip is active (owns empty state)
     showExploreView; // explore view always shown when chip is active (owns idle quick-actions)
 
@@ -334,6 +415,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Evidence-drop affordance state (D-07 — additive Profile inbox) ──────────
+  // evidenceFile = the staged chat/screenshot/clip; evidenceError = the inline
+  // muted reject (D-09 unsupported type); dragOver = the drag overlay; profiling =
+  // the /api/tools/profile POST in flight. persistedProfileBlocks = the profile-read
+  // + reaction-distribution blocks rendered in the thread (loaded from the open thread).
+  const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [evidenceError, setEvidenceError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [profiling, setProfiling] = useState(false);
+  // (evidenceInputRef is declared above, near activeTool, so handleUserSelectTool
+  //  can open the Profile evidence picker within the user-gesture call stack.)
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
 
@@ -358,6 +451,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     persistedScriptBlocks.length > 0 ||
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
+    persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
     !!lastUserTurn;
 
   // Notify parent whenever conversation content changes (welcome hero visibility).
@@ -400,7 +494,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             // Explore: field-send optional (empty = un-niched pull); gate only on stream state.
             : activeTool === "explore"
               ? !submitting && !explore.isStreaming
-              : (isValidTikTok || file !== null) && !submitting;
+              // Simulate / Predict (07-04): a non-empty draft is required to enable the
+              // button; the SELECTED-GENERAL-AUDIENCE requirement is the handleSubmit gate
+              // (fire vs route-to-Build) so the button can still redirect to Build rather
+              // than dead-ending. The server is the real trust boundary (T-07-04-01).
+              : activeTool === "simulate" || activeTool === "predict"
+                ? !submitting && trimmedUrl.length > 0
+                // Profile (07-04): never depends on the topic field — the evidence-drop
+                // affordance is the entry (handled in onSubmitForm via evidenceFile). The
+                // bare topic submit is inert for Profile.
+                : activeTool === "profile"
+                  ? false
+                  : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -460,12 +565,21 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         const scriptBlocks = allBlocks.filter((b) => b.type === 'script-card');
         const remixBlocks = allBlocks.filter((b) => b.type === 'remix-card');
         const outlierGridBlocks = allBlocks.filter((b) => b.type === 'outlier-grid');
+        // Profile-read + reaction-distribution (05-06) — rendered in-thread regardless
+        // of activeTool (there is no "profile" tool; the evidence-drop affordance is the entry).
+        const profileBlocks = allBlocks.filter(
+          (b) =>
+            b.type === 'profile-read' ||
+            b.type === 'reaction-distribution' ||
+            b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+        );
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
         setPersistedChatBlocks(markdownBlocks);
         setPersistedScriptBlocks(scriptBlocks);
         setPersistedRemixBlocks(remixBlocks);
         setPersistedExploreBlocks(outlierGridBlocks);
+        setPersistedProfileBlocks(profileBlocks);
 
         // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
         // activeTool defaults to "test", but every thread-view gate (showHooksView,
@@ -553,6 +667,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     setSelectedAudienceId(newId);
     // GAP-C2: clear any per-run intent flip so the lens falls back to the new audience's default.
     setIntentOverride(null);
+    // WR-02: reconcile the active skill with the new audience's mode. If the current
+    // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
+    // Socials switch, which would silently router.push away + discard the draft),
+    // reset to the in-mode default — "test" for socials, the first General verb for
+    // general — so the pill, slash menu, placeholder, and submit path stay coherent.
+    const newMode = audience.mode ?? "socials";
+    setActiveTool((current) =>
+      getSkill(current).modes.includes(newMode)
+        ? current
+        : newMode === "general" ? "profile" : "test",
+    );
     if (!openThreadId) return;
     // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
     // preset ids ("preset-growth"/"preset-conversion") are not UUIDs and threads
@@ -569,6 +694,19 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       // non-fatal — chip reflects optimistic state
     }
   }, [openThreadId]);
+
+  // ── Built/cloned SIM → active audience (UX-04 / D-03) ───────────────────────
+  // The chooser's template path returns a saved General SIM. Append it to the local
+  // list (so the picker shows it immediately) and select it so the new General SIM
+  // is active — driving the mode-scoped skill menu + reactor.
+  const handleBuiltAudience = useCallback((saved: Audience) => {
+    setAudiences((prev) =>
+      prev.some((a) => a.id === saved.id) ? prev : [...prev, saved],
+    );
+    setSelectedAudienceId(saved.id);
+    setIntentOverride(null);
+    setBuildOpen(false);
+  }, []);
 
   // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
   // Invoked by HookCardRenderer via HookTestContext when the creator clicks
@@ -663,6 +801,145 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       // Network error — silent (the grid stays; the user can retry the tap)
     }
   }, []);
+
+  // ── Evidence-drop affordance (D-07 — the additive Profile inbox) ────────────
+  // reloadProfileThread re-reads the open thread and re-filters the profile-read +
+  // reaction-distribution blocks IN PLACE. It surfaces (a) the profile-read just
+  // persisted by /api/tools/profile and (b) the reaction-distribution the
+  // profile-read card's own "Simulate a message →" CTA persists to the SAME thread
+  // (SIMU-03 one-thread wow). Mirrors reloadOpenThread's shape. Never navigates.
+  const reloadProfileThread = useCallback(async () => {
+    try {
+      // no-store: this is a live poll for the just-persisted reaction-distribution.
+      // A default-cached repeated GET serves the pre-reaction thread, so the card
+      // never auto-surfaces in-session (a full reload revalidated, masking it).
+      const res = await fetch('/api/threads/open', { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = (await res.json()) as {
+        messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      const allBlocks = messages.flatMap(
+        (m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? [],
+      );
+      const profileBlocks = allBlocks.filter(
+        (b: { type?: string }) =>
+          b.type === 'profile-read' ||
+          b.type === 'reaction-distribution' ||
+          b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+      );
+      setPersistedProfileBlocks(profileBlocks);
+    } catch {
+      // Network error — silent (the user can retry the drop)
+    }
+  }, []);
+
+  // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
+  // set the inline muted reject; never a blocking modal. Server re-validates (T-05-18).
+  const acceptEvidenceFile = useCallback((f: File) => {
+    if (classifyEvidence(f) === null) {
+      setEvidenceFile(null);
+      setEvidenceError(EVIDENCE_UNSUPPORTED);
+      return;
+    }
+    setEvidenceError(null);
+    setEvidenceFile(f);
+  }, []);
+
+  // POST the staged evidence to /api/tools/profile (built in 05-04). file_text/image
+  // ride a base64 JSON body; a short clip is staged to Supabase storage first (mirrors
+  // the Test upload path) then posted as a storagePath. On success the profile-read
+  // block is persisted to the open thread — reloadProfileThread surfaces it.
+  const handleProfileSubmit = useCallback(async () => {
+    if (!evidenceFile || profiling) return;
+    const kind = classifyEvidence(evidenceFile);
+    if (kind === null) {
+      setEvidenceError(EVIDENCE_UNSUPPORTED);
+      return;
+    }
+    setProfiling(true);
+    setEvidenceError(null);
+    try {
+      let res: Response;
+      if (kind === 'video') {
+        // Stage the clip to storage, then post the sanitized key (the route re-checks it).
+        const supabase = createClient();
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) {
+          setProfiling(false);
+          return;
+        }
+        const ext = (evidenceFile.name.split('.').pop() ?? 'mp4').toLowerCase();
+        const path = `${userId}/${nanoid()}.${ext}`;
+        const { error } = await supabase.storage
+          .from('videos')
+          .upload(path, evidenceFile, {
+            contentType: evidenceFile.type || 'video/mp4',
+            upsert: false,
+          });
+        if (error) {
+          setEvidenceError(EVIDENCE_RUN_FAILED);
+          setProfiling(false);
+          return;
+        }
+        res = await fetch('/api/tools/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: 'video',
+            storagePath: path,
+            isProfiledSubject: true,
+            filename: evidenceFile.name,
+          }),
+        });
+      } else {
+        const dataBase64 = await fileToBase64(evidenceFile);
+        res = await fetch('/api/tools/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind,
+            file: { name: evidenceFile.name, type: evidenceFile.type, dataBase64 },
+          }),
+        });
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: EVIDENCE_RUN_FAILED }));
+        setEvidenceError((err as { error?: string }).error ?? EVIDENCE_RUN_FAILED);
+        return;
+      }
+      // Persisted to the open thread — clear the chip + surface the profile-read card.
+      setEvidenceFile(null);
+      await reloadProfileThread();
+    } catch {
+      setEvidenceError(EVIDENCE_RUN_FAILED);
+    } finally {
+      setProfiling(false);
+    }
+  }, [evidenceFile, profiling, reloadProfileThread]);
+
+  // The profile-read card owns its own "Simulate a message →" CTA, which POSTs to
+  // /api/tools/simulate and persists the reaction-distribution to the SAME open thread
+  // (then shows "check the thread below"). The card cannot call back into the composer,
+  // so while a profile-read is shown without its reaction yet, poll the open thread so
+  // the reaction-distribution surfaces live (bounded; self-clears once it lands).
+  const awaitingReaction =
+    persistedProfileBlocks.some((b) => b?.type === 'profile-read') &&
+    !persistedProfileBlocks.some((b) => b?.type === 'reaction-distribution');
+  useEffect(() => {
+    if (!awaitingReaction) return;
+    let tries = 0;
+    const id = setInterval(() => {
+      tries += 1;
+      if (tries > 45) {
+        clearInterval(id);
+        return;
+      }
+      void reloadProfileThread();
+    }, 4000);
+    return () => clearInterval(id);
+  }, [awaitingReaction, reloadProfileThread]);
 
   // ── Navigate-on-id (lifted from Board.tsx L300-307, guarded per WR-05) ───
   // The id originates server-side: POST /api/analyze does nanoid(12) + emits
@@ -851,6 +1128,52 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       return;
     }
 
+    // ── Simulate / Predict tool paths (07-04 / D-07, UX-02) ──────────────────
+    // The two General verbs reuse the P5/P6 routes reached today via card-chain
+    // CTAs. CRITICAL (T-07-04-01 gate): both REQUIRE a selected General audience —
+    // when absent, route the user to Build and return WITHOUT firing an ungated
+    // stimulus (the client gate is UX; the server independently enforces auth +
+    // the D-08 honesty guards). CRITICAL: NEVER set pendingNavRef / call stream.start
+    // — a General verb never navigates to /analyze (Pitfall 2 / sibling of Chat).
+    // The draft/scenario is passed RAW (T-07-04-02) — never pre-concatenated into a
+    // prompt; the routes data-fence it downstream.
+    if (activeTool === "simulate" || activeTool === "predict") {
+      // Gate: a General audience must be selected (asymmetry §16.4). A General verb
+      // can be active while no General audience is selected (e.g. picked via the `/`
+      // slash menu, or after switching audience away) — route to Build, never fire.
+      if (!selectedAudience || selectedAudience.mode !== "general") {
+        router.push("/audience/new");
+        return;
+      }
+      const draft = trimmedUrl;
+      if (draft.length === 0) return; // nothing to run (canSubmit already gates this)
+      captureUserTurn(draft);
+      setUrl(""); // clear input after send
+      const endpoint =
+        activeTool === "simulate" ? "/api/tools/simulate" : "/api/tools/predict";
+      const body =
+        activeTool === "simulate"
+          ? { audienceId: selectedAudience.id, message: draft }
+          : { audienceId: selectedAudience.id, scenario: draft };
+      setSubmitting(true);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) return; // silent — the route returns a generic error (WR-02)
+        // The reaction-distribution (Simulate) / prediction-gauge (Predict) persisted
+        // to the SAME open thread — surface it via the one-thread reload (05-06 path).
+        await reloadProfileThread();
+      } catch {
+        // Network error — silent (the user can retry the draft)
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     // ── Test tool path (pendingNavRef/stream.start exclusive here) ─
     // A3: echo the submitted input before the navigation gap. The Test path only
     // reaches /analyze/[id] once the `started` SSE flips analysisId (1–3s); until
@@ -918,7 +1241,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
@@ -928,6 +1251,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         void askAudience(url);
         setUrl("");
       }
+      return;
+    }
+    // Evidence-drop mode (D-07): a staged chat/screenshot/clip POSTs to /api/tools/profile.
+    // Sibling to the creator path — the creator tool/submit flow below is byte-identical.
+    if (evidenceFile) {
+      void handleProfileSubmit();
       return;
     }
     if (!canSubmit) return;
@@ -943,10 +1272,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
+    // Mode-gate identically to the skill pill / slash menu (WR-01) so Enter can
+    // never select an out-of-mode verb the menu never displayed.
+    const slashMode = selectedAudience?.mode ?? "socials";
     return (
       SKILLS.find(
         (s) =>
           s.enabled &&
+          s.modes.includes(slashMode) &&
           (!q || s.label.toLowerCase().includes(q) || s.command.includes(q)),
       ) ?? null
     );
@@ -1101,7 +1434,22 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       onReask={(a) =>
         focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
       }
+      onBuildAudience={() => setBuildOpen(true)}
       docked
+    />
+  );
+
+  // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
+  // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
+  // the existing evidence-drop file picker (the Profile/From-evidence door, do not
+  // rebuild). The From-a-description path navigates to /audience/new?mode=general and
+  // returns via the normal audience load on mount.
+  const buildChooser = (
+    <BuildChooser
+      open={buildOpen}
+      onOpenChange={setBuildOpen}
+      onBuilt={handleBuiltAudience}
+      onEvidence={() => evidenceInputRef.current?.click()}
     />
   );
 
@@ -1170,6 +1518,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const threadContent = (
     <>
       {testSubmitTurn}
+      {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
+          blocks render here via the shared MessageBlocks renderer (registered in 05-01).
+          NOT gated on activeTool: the evidence-drop affordance is the entry, and the
+          profile-read card carries its own Simulate CTA → reaction-distribution lands in
+          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only. */}
+      {persistedProfileBlocks.length > 0 && (
+        <div data-testid="profile-thread-view" className="px-1 py-4">
+          <MessageBlocks body={persistedProfileBlocks} />
+        </div>
+      )}
+
       {/* Ideas thread view — renders above the composer when the Idea tool is active.
           Consumes useIdeasStream state; provides PlatformContext to IdeaCardRenderer
           so the "Develop this →" CTA knows the active platform (D-15).
@@ -1310,8 +1669,34 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       data-testid="composer"
       data-layout={homeThreadMode ? "thread" : layout}
       onSubmit={onSubmitForm}
-      className="w-full"
+      onDragOver={(e) => {
+        // Evidence-drop overlay (D-07). Additive: VideoUpload stops propagation on its
+        // own drop zone, so the creator upload path is unaffected.
+        e.preventDefault();
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) acceptEvidenceFile(f);
+      }}
+      className="relative w-full"
     >
+        {/* Drag-over overlay (05-UI-SPEC Surface 3) — matte surface + float shadow,
+            appears only while dragging; dismisses on drop/leave. Respects reduced motion. */}
+        {dragOver && (
+          <div
+            className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center rounded-2xl border border-dashed border-white/[0.10] bg-surface shadow-float"
+            data-testid="evidence-drop-overlay"
+          >
+            <p className="text-sm text-foreground-secondary">{EVIDENCE_DROP_HINT}</p>
+          </div>
+        )}
         <div className="relative p-3 pt-0">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
@@ -1328,7 +1713,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
               )}
             >
-              <SkillRows active={activeTool} filter={slashQuery} onSelect={selectSkill} />
+              <SkillRows
+                active={activeTool}
+                filter={slashQuery}
+                onSelect={selectSkill}
+                activeMode={selectedAudience?.mode ?? "socials"}
+              />
             </div>
           )}
 
@@ -1361,6 +1751,29 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 className="shrink-0 text-foreground-muted/40 hover:text-foreground-muted transition-colors text-xs"
               >
                 ✕
+              </button>
+            </div>
+          )}
+
+          {/* Evidence chip (05-UI-SPEC Surface 3) — the staged chat/screenshot/clip.
+              Removable (filename + ×), neutral elevated surface, cream text, no accent. */}
+          {evidenceFile && (
+            <div
+              className="mb-2.5 flex items-center gap-2 rounded-lg bg-surface-elevated px-3 py-2"
+              data-testid="evidence-chip"
+            >
+              <Paperclip className="h-4 w-4 shrink-0 text-foreground-muted" />
+              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{evidenceFile.name}</span>
+              <button
+                type="button"
+                aria-label="Remove attachment"
+                onClick={() => {
+                  setEvidenceFile(null);
+                  setEvidenceError(null);
+                }}
+                className="shrink-0 rounded p-0.5 text-foreground-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+              >
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
           )}
@@ -1420,11 +1833,42 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <ComposerControls
               activeTool={activeTool}
               onSelectTool={handleUserSelectTool}
+              // ── activeMode threading (07-04 / UX-02 / D-07) ──────────────────
+              // The skill menu is mode-scoped (07-01): a General audience surfaces
+              // Profile/Simulate/Predict; everything else stays Socials. The mode is
+              // DERIVED from the selected audience — null/Socials audience → "socials"
+              // so the live creator render is byte-identical (Pitfall 2).
+              activeMode={selectedAudience?.mode ?? "socials"}
               intent={intent}
               onIntentChange={setIntentOverride}
               onUploadClick={() => setShowUpload(true)}
               onRunExplore={(params) => void explore.start(params)}
             />
+
+            {/* Evidence-drop affordance (05-06 / D-07) — a minimal additive attach
+                control mounted ALONGSIDE the existing controls (never inside them, so the
+                creator path stays byte-identical). Opens a file picker; drag-and-drop is
+                handled by the form overlay. ≥44px touch target (pointer-coarse). */}
+            <input
+              ref={evidenceInputRef}
+              type="file"
+              accept={EVIDENCE_ACCEPT}
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) acceptEvidenceFile(f);
+                e.target.value = ""; // allow re-selecting the same file
+              }}
+            />
+            <button
+              type="button"
+              aria-label={EVIDENCE_ATTACH_LABEL}
+              title={EVIDENCE_ATTACH_LABEL}
+              onClick={() => evidenceInputRef.current?.click()}
+              className="grid h-[34px] w-[34px] place-items-center rounded-lg text-foreground-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+            >
+              <Paperclip className="h-[18px] w-[18px]" />
+            </button>
 
             <div className="flex-1" />
 
@@ -1436,9 +1880,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               type="submit"
               variant="primary"
               size="sm"
-              aria-label={audienceOpen ? "Ask your audience" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
-              disabled={audienceOpen ? url.trim().length === 0 || asking : !canSubmit}
-              loading={audienceOpen ? asking : submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+              aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
+              disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
+              loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
               className="shrink-0 rounded-lg"
             >
               <ArrowUp className="h-4 w-4" />
@@ -1450,6 +1894,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         {showUrlError && (
           <p className="mt-2 px-1 text-sm text-error" role="alert">
             {ERROR_NON_TIKTOK}
+          </p>
+        )}
+
+        {/* Evidence reject / run error (05-UI-SPEC) — inline muted, never a blocking modal (D-09). */}
+        {evidenceError && (
+          <p className="mt-2 px-1 text-sm text-foreground-muted" role="alert">
+            {evidenceError}
           </p>
         )}
       </form>
@@ -1468,8 +1919,26 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     >
       {audiencePresence}
       {composerForm}
+      {buildChooser}
     </div>
   );
+
+  // ── Home empty-state starter (UX-05 / D-04) ─────────────────────────────────
+  // The 3 LOCKED chips + the show-once first-run demo, rendered ONLY in the empty
+  // home region (Branch B, no conversation). Chip handlers reach composer-internal
+  // flows directly: Test → arm the idea/test flow on the active audience; Profile →
+  // open the evidence-drop (the file picker rides this user gesture, like the
+  // skill-menu Profile pick); Predict → select Predict (07-04 gates it on a selected
+  // General audience and routes to Build when none). onDemoComplete reloads the open
+  // thread so the demo's profile-read card surfaces in-thread.
+  const homeStarter = !hasConversationContent ? (
+    <HomeStarter
+      onChipTest={() => handleUserSelectTool("test")}
+      onChipProfile={() => handleUserSelectTool("profile")}
+      onChipPredict={() => handleUserSelectTool("predict")}
+      onDemoComplete={() => void reloadProfileThread()}
+    />
+  ) : null;
 
   // ── Layout branches ────────────────────────────────────────────────────────
   //
@@ -1530,6 +1999,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col", className)}>
       {threadContent}
       {composerDock}
+      {homeStarter}
     </div>
   );
 }

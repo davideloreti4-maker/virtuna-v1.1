@@ -14,6 +14,25 @@
  */
 
 import { z } from "zod";
+import {
+  ProfileReadBlockSchema,
+  ReactionDistributionBlockSchema,
+  PredictionGaugeBlockSchema,
+} from "./profile-blocks";
+
+// Re-export the sibling-module schemas + types so existing `@/lib/tools/blocks` import
+// sites keep working (the schemas live in profile-blocks.ts to keep this file under the
+// 500-line project limit). Additive, no behavior change.
+export {
+  ProfileReadBlockSchema,
+  ReactionDistributionBlockSchema,
+  PredictionGaugeBlockSchema,
+} from "./profile-blocks";
+export type {
+  ProfileReadBlock,
+  ReactionDistributionBlock,
+  PredictionGaugeBlock,
+} from "./profile-blocks";
 
 // ─── Markdown block ───────────────────────────────────────────────────────────
 
@@ -374,6 +393,13 @@ export const MultiAudienceReadBlockSchema = z.object({
       )
       .min(1),
     model: z.literal("sim1-flash"),                       // provenance — always Flash (D-10)
+    // TRUST-01 run-level honesty badge (P3 03-07). Presentation-only, derived UPSTREAM
+    // from the ACTIVE audience's `resolveTier(...)` — it carries NO score and is purely
+    // additive (older persisted payloads omit it → renderer falls back to "Directional",
+    // never silently "Validated"). TOP-LEVEL on `props`, NOT inside the per-audience
+    // `.strict()` entry: that entry forbids unknown keys (would reject this), and the
+    // tier is RUN-level, not per-audience. Does NOT touch the bands-only honesty spine.
+    tier: z.enum(["Validated", "Directional"]).optional(),
   }),
 });
 
@@ -496,6 +522,9 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
+  ProfileReadBlockSchema,
+  ReactionDistributionBlockSchema,
+  PredictionGaugeBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;

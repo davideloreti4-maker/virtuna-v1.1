@@ -34,6 +34,7 @@ import { aggregateFlash } from "./flash-aggregate";
 import type { FlashBand } from "./flash-aggregate";
 import { deriveWhoNotFor } from "./who-not-for";
 import { GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { resolveTier } from "@/lib/audience/resolve-tier";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { MultiAudienceReadBlock } from "@/lib/tools/blocks";
 
@@ -211,6 +212,10 @@ export async function runTwoAudienceRead(
       props: {
         audiences: [{ ...entry, interpretation, lever }],
         model: "sim1-flash",
+        // Run-level honesty tier (TRUST-01) — the ACTIVE audience is the lead (pair[0]).
+        // Presentation-only; resolveTier is the single source of truth (never-Validated-
+        // for-general rule, T-03-15). Self-pair: lead === the single audience.
+        tier: resolveTier(pair[0]!),
       },
     };
   }
@@ -239,6 +244,10 @@ export async function runTwoAudienceRead(
     props: {
       audiences: audiencesOut,
       model: "sim1-flash",
+      // Run-level honesty tier (TRUST-01) — derived from the ACTIVE/lead audience
+      // (pair[0]). Presentation-only; resolveTier owns the never-Validated-for-general
+      // rule (T-03-15). The badge rides the run, not a per-audience entry.
+      tier: resolveTier(pair[0]!),
     },
   };
 }

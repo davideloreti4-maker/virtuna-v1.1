@@ -38,6 +38,10 @@ export const GENERAL_AUDIENCE: Audience = {
   user_id: "__virtual__",
   name: "General",
   type: "target",
+  // PITFALL 1 (collision trap): the locked General DEFAULT runs the SOCIALS pack
+  // (is_general marks the default weight mix, NOT the domain). ONLY the new
+  // analyst/hiring GENERAL_TEMPLATES below are mode:'general'. Do not conflate.
+  mode: "socials",
   platform: "tiktok",
   goal_label: null,
   goal_intent: null,
@@ -67,6 +71,7 @@ export const PRESET_AUDIENCES: Audience[] = [
     user_id: "__virtual__",
     name: "Growth Audience",
     type: "target",
+    mode: "socials", // PITFALL 1: presets run the Socials pack, never 'general'.
     platform: "tiktok",
     goal_label: "Grow my following",
     goal_intent: "grow" as GoalIntent,
@@ -84,6 +89,7 @@ export const PRESET_AUDIENCES: Audience[] = [
     user_id: "__virtual__",
     name: "Conversion Audience",
     type: "target",
+    mode: "socials", // PITFALL 1: presets run the Socials pack, never 'general'.
     platform: "tiktok",
     goal_label: "Drive sales & conversions",
     goal_intent: "sell" as GoalIntent,
@@ -98,16 +104,133 @@ export const PRESET_AUDIENCES: Audience[] = [
   },
 ];
 
+/**
+ * General-mode template audiences (D-08) — two zero-setup virtual constants that mirror
+ * PRESET_AUDIENCES so they NEVER touch the DB (no seed row, regression-gate-free).
+ *
+ * These are the ONLY `mode: 'general'` constants (Pitfall 1: GENERAL_AUDIENCE + presets
+ * are 'socials'). `signature` stays null and personas carry NO evidence — they render
+ * ungrounded-by-design (D-05 / Pitfall 5): a General template is honest about being a
+ * Directional SIM with no scrape behind it. Each ships a runnable CalibratedPersona panel
+ * (shares Σ≈1.0) + a representative success_criterion so it runs with zero setup.
+ */
+export const GENERAL_TEMPLATES: Audience[] = [
+  {
+    id: "template-analyst",
+    user_id: "__virtual__",
+    name: "Analyst Panel",
+    type: "target",
+    mode: "general",
+    platform: "custom",
+    goal_label: null,
+    goal_intent: null,
+    is_general: false,
+    is_preset: false,
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [
+      {
+        archetype: "tough_crowd",
+        repaint: "The Skeptic — pressure-tests every claim for its weakest link.",
+        temperature: "warm",
+        disposition: "skeptic",
+        share: 0.3,
+      },
+      {
+        archetype: "purposeful_viewer",
+        repaint: "The Strategist — weighs the call against its second-order consequences.",
+        temperature: "warm",
+        disposition: "collector",
+        share: 0.3,
+      },
+      {
+        archetype: "cross_niche_curiosity",
+        repaint: "The Contrarian — argues the strongest opposing case on principle.",
+        temperature: "cold",
+        disposition: "connector",
+        share: 0.2,
+      },
+      {
+        archetype: "niche_deep_scout",
+        repaint: "The Researcher — hunts the missing evidence and the unstated assumption.",
+        temperature: "warm",
+        disposition: "scanner",
+        share: 0.2,
+      },
+    ],
+    profile: null,
+    calibration: null,
+    signature: null,
+    success_criterion:
+      "Surfaces the sharpest risk and the strongest counter-argument before a decision is made.",
+    custom_context: [],
+    created_at: "1970-01-01T00:00:00Z",
+    updated_at: "1970-01-01T00:00:00Z",
+  },
+  {
+    id: "template-hiring",
+    user_id: "__virtual__",
+    name: "Hiring Panel",
+    type: "target",
+    mode: "general",
+    platform: "custom",
+    goal_label: null,
+    goal_intent: null,
+    is_general: false,
+    is_preset: false,
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [
+      {
+        archetype: "purposeful_viewer",
+        repaint: "The Hiring Manager — maps the candidate signal to the role's bar.",
+        temperature: "warm",
+        disposition: "converter",
+        share: 0.3,
+      },
+      {
+        archetype: "loyalist",
+        repaint: "The Future Peer — judges day-to-day collaboration fit.",
+        temperature: "warm",
+        disposition: "connector",
+        share: 0.25,
+      },
+      {
+        archetype: "tough_crowd",
+        repaint: "The Bar-Raiser — probes for the biggest gap against the level.",
+        temperature: "warm",
+        disposition: "skeptic",
+        share: 0.25,
+      },
+      {
+        archetype: "niche_deep_buyer",
+        repaint: "The Domain Expert — tests depth in the core competency.",
+        temperature: "hot",
+        disposition: "collector",
+        share: 0.2,
+      },
+    ],
+    profile: null,
+    calibration: null,
+    signature: null,
+    success_criterion:
+      "Flags the strongest signal and the biggest gap against the role's bar.",
+    custom_context: [],
+    created_at: "1970-01-01T00:00:00Z",
+    updated_at: "1970-01-01T00:00:00Z",
+  },
+];
+
 /** All virtual sentinel ids — used to short-circuit DB lookups. */
-const SENTINEL_IDS = new Set<string>([
+export const SENTINEL_IDS = new Set<string>([
   GENERAL_AUDIENCE.id,
   ...PRESET_AUDIENCES.map((p) => p.id),
+  ...GENERAL_TEMPLATES.map((t) => t.id),
 ]);
 
 /** Map from sentinel id → constant for O(1) lookup. */
 const VIRTUAL_BY_ID = new Map<string, Audience>([
   [GENERAL_AUDIENCE.id, GENERAL_AUDIENCE],
   ...PRESET_AUDIENCES.map((p): [string, Audience] => [p.id, p]),
+  ...GENERAL_TEMPLATES.map((t): [string, Audience] => [t.id, t]),
 ]);
 
 // ─── Zod validation ────────────────────────────────────────────────────────────
@@ -132,12 +255,27 @@ const WeightsSchema = z
  * Writable audience shape validated on create/update.
  * name: max 80 chars; goal_label: max 120 chars.
  */
-const WritableAudienceSchema = z.object({
+export const WritableAudienceSchema = z.object({
   name: z.string().min(1).max(80),
   type: z.enum(["personal", "target"]),
   platform: z.enum(["tiktok", "instagram", "youtube", "custom"]),
   goal_label: z.string().max(120).nullable().optional(),
   goal_intent: z.enum(["grow", "sell", "authority", "nurture"]).nullable().optional(),
+  // POP-01 — first-class domain axis (D-04). user_id is NEVER here (session-derived).
+  mode: z.enum(["socials", "general"]).optional(),
+  // POP-05 — editable free-text "what good means"; capped to bound stored-XSS surface (T-03-08).
+  success_criterion: z.string().max(2000).nullable().optional(),
+  // POP-04 — user-added grounding; note capped (T-03-08), source pinned to the "user" literal.
+  custom_context: z
+    .array(
+      z.object({
+        source: z.literal("user"),
+        note: z.string().max(2000),
+        persona_evidence_link: z.string().max(120).optional(),
+      }),
+    )
+    .max(50) // mirror the route cap — the repo is the last app-layer gate, never weaker than its callers (IN-01)
+    .optional(),
   is_general: z.boolean().optional().default(false),
   is_preset: z.boolean().optional().default(false),
   persona_weights: WeightsSchema.optional(),
@@ -160,6 +298,9 @@ interface AudienceRow {
   platform: string;
   goal_label: string | null;
   goal_intent: string | null;
+  mode: string;
+  success_criterion: string | null;
+  custom_context: unknown[];
   is_general: boolean;
   is_preset: boolean;
   fyp: number;
@@ -176,15 +317,18 @@ interface AudienceRow {
 }
 
 /** Map a DB row → Audience domain object. */
-function rowToAudience(row: AudienceRow): Audience {
+export function rowToAudience(row: AudienceRow): Audience {
   return {
     id: row.id,
     user_id: row.user_id,
     name: row.name,
     type: row.type as Audience["type"],
+    mode: row.mode as Audience["mode"],
     platform: row.platform as Audience["platform"],
     goal_label: row.goal_label,
     goal_intent: row.goal_intent as Audience["goal_intent"],
+    success_criterion: row.success_criterion ?? null,
+    custom_context: (row.custom_context as Audience["custom_context"]) ?? [],
     is_general: row.is_general,
     is_preset: row.is_preset,
     persona_weights: {
@@ -204,7 +348,7 @@ function rowToAudience(row: AudienceRow): Audience {
 }
 
 /** Map an Audience domain object → DB row insert/update payload (flat weights). */
-function audienceToRow(
+export function audienceToRow(
   a: Partial<Audience>,
   sessionUserId: string,
 ): Partial<AudienceRow> {
@@ -214,9 +358,12 @@ function audienceToRow(
 
   if (a.name !== undefined) row.name = a.name;
   if (a.type !== undefined) row.type = a.type;
+  if (a.mode !== undefined) row.mode = a.mode;
   if (a.platform !== undefined) row.platform = a.platform;
   if ("goal_label" in a) row.goal_label = a.goal_label ?? null;
   if ("goal_intent" in a) row.goal_intent = a.goal_intent ?? null;
+  if ("success_criterion" in a) row.success_criterion = a.success_criterion ?? null;
+  if ("custom_context" in a) row.custom_context = a.custom_context ?? [];
   if (a.is_general !== undefined) row.is_general = a.is_general;
   if (a.is_preset !== undefined) row.is_preset = a.is_preset;
   if (a.persona_weights !== undefined) {
@@ -238,8 +385,9 @@ function audienceToRow(
 
 /**
  * List all audiences for the authenticated user.
- * Returns virtual constants first: [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...userRows].
- * General and presets have no DB row — they are prepended here.
+ * Returns virtual constants first:
+ *   [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...GENERAL_TEMPLATES, ...userRows].
+ * General, presets, and the General templates have no DB row — they are prepended here.
  * RLS ensures only the calling user's rows are returned.
  */
 export async function listAudiences(supabase: SupabaseClient): Promise<Audience[]> {
@@ -257,7 +405,7 @@ export async function listAudiences(supabase: SupabaseClient): Promise<Audience[
     .filter((row) => !SENTINEL_IDS.has(row.id)) // guard against sentinel rows
     .map(rowToAudience);
 
-  return [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...userRows];
+  return [GENERAL_AUDIENCE, ...PRESET_AUDIENCES, ...GENERAL_TEMPLATES, ...userRows];
 }
 
 /**
@@ -327,6 +475,48 @@ export async function createAudience(
 }
 
 /**
+ * Clone a GENERAL_TEMPLATES entry into an owned, editable General SIM (UX-04 / D-03 —
+ * the Build chooser "From a template" path). Turns a select-only virtual preset into the
+ * moat object: a saved `mode:'general'` audience the creator owns and can edit.
+ *
+ * Security: this is a thin wrapper over `createAudience` — it adds NO new insert path.
+ *  - The sentinel `id` (e.g. 'template-analyst') and virtual `user_id` ('__virtual__') are
+ *    destructured off and never passed on (T-07-03-02 — a sentinel id never reaches the DB).
+ *  - `createAudience` re-derives `user_id` from `supabase.auth.getUser()` (CR-01), so even the
+ *    stripped virtual user_id is structurally impossible to persist (T-07-03-01 / IDOR).
+ *  - `createAudience` validates via `WritableAudienceSchema` (name ≤ 80, free-text caps),
+ *    bounding the cloned fields (T-07-03-03).
+ *
+ * @param templateId one of GENERAL_TEMPLATES ('template-analyst' | 'template-hiring').
+ * @param name optional override; defaults to the template name. Capped to 80 (schema limit).
+ * @throws if templateId is unknown — no silent createAudience call.
+ */
+export async function cloneTemplateAudience(
+  supabase: SupabaseClient,
+  templateId: string,
+  name?: string,
+): Promise<Audience> {
+  const tpl = GENERAL_TEMPLATES.find((t) => t.id === templateId);
+  if (!tpl) throw new Error(`unknown template '${templateId}'`);
+
+  // Drop the non-writable / sentinel fields (id + virtual user_id + timestamps) — these
+  // must NEVER be forwarded to the insert. `mode:'general'` rides along in `cloneable`.
+  const { id, user_id, created_at, updated_at, ...cloneable } = tpl;
+  void id;
+  void user_id;
+  void created_at;
+  void updated_at;
+
+  const input: Partial<Audience> = {
+    ...cloneable,
+    name: (name ?? tpl.name).slice(0, 80),
+  };
+
+  // Reuse createAudience verbatim — Zod validation + session-derived user_id + RLS insert.
+  return createAudience(supabase, input);
+}
+
+/**
  * Update an existing audience row by id.
  * user_id is stripped from input and re-derived from session (CR-01).
  * Validates the writable shape via Zod before writing.
@@ -357,6 +547,7 @@ export async function updateAudience(
     .from("audiences")
     .update(rowPayload)
     .eq("id", id)
+    .eq("user_id", user.id) // app-layer ownership (defense-in-depth; RLS remains the primary boundary — WR-03)
     .select("*")
     .single();
 

@@ -102,6 +102,51 @@ describe("ComposerControls — skill pill + popover", () => {
   });
 });
 
+describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
+  it("defaults to Socials when no activeMode is passed (byte-identical guard)", () => {
+    // No activeMode prop → "socials" default → Creator/Marketing headers + creator skills.
+    renderControls();
+    openSkillPopover();
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByText("Creator")).toBeInTheDocument();
+    expect(within(menu).getByText("Marketing")).toBeInTheDocument();
+    expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+    expect(within(menu).getByText("/test")).toBeInTheDocument();
+    // The General verbs are NOT present in the Socials default.
+    expect(within(menu).queryByRole("menuitemradio", { name: /profile/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /simulate/i })).toBeNull();
+  });
+
+  it("shows ONLY Profile/Simulate/Predict when activeMode='general' (no creator skills)", () => {
+    renderControls({ activeMode: "general" });
+    openSkillPopover();
+    const menu = screen.getByRole("menu");
+    // The three General verbs are present…
+    expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+    // …and the creator skills are gone.
+    expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+    expect(within(menu).queryByText("/hooks")).toBeNull();
+    expect(within(menu).queryByText("/test")).toBeNull();
+    // General mode is a flat list — no Creator/Marketing sub-headers.
+    expect(within(menu).queryByText("Creator")).toBeNull();
+    expect(within(menu).queryByText("Marketing")).toBeNull();
+  });
+
+  it("SkillRows filters by activeMode (the `/` slash menu reuses it)", () => {
+    const { rerender } = render(
+      <SkillRows active="profile" activeMode="general" onSelect={vi.fn()} />,
+    );
+    expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+    // Socials default surfaces creator skills, not the General verbs.
+    rerender(<SkillRows active="hooks" onSelect={vi.fn()} />);
+    expect(screen.getByRole("menuitemradio", { name: /hooks/i })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitemradio", { name: /profile/i })).toBeNull();
+  });
+});
+
 describe("ModelTag — read-only model indicator (D-09)", () => {
   it("reads SIM-1 Max for the Test skill", () => {
     render(<ModelTag activeTool="test" />);

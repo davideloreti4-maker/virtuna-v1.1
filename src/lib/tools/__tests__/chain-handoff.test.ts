@@ -202,10 +202,55 @@ describe('Rewrite for this audience (same-skill self-handoff)', () => {
   });
 });
 
+// ── 3d. profile → simulate (Phase 5 — PROF-04, the one-thread wow) ────────────
+
+describe('handoffsFor("profile")', () => {
+  it('returns exactly one simulate CTA with the pinned endpoint and card anchor', () => {
+    const handoffs = handoffsFor('profile');
+    const simulateHandoffs = handoffs.filter((h) => h.to === 'simulate');
+
+    // Exactly one profile→simulate entry (no duplicate chain rails).
+    expect(simulateHandoffs).toHaveLength(1);
+    const simulate = simulateHandoffs[0]!;
+
+    expect(simulate.ctaLabel).toBe('Simulate a message to them →');
+    // PINNED: /api/tools/simulate — must match the 05-05 route contract
+    expect(simulate.endpoint).toBe('/api/tools/simulate');
+    // anchorFrom "card" — the profile-read card carries savedAudienceId
+    expect(simulate.anchorFrom).toBe('card');
+  });
+
+  it('resolves as a valid SkillId via handoffsFor (no missing registration)', () => {
+    const profile: SkillId = 'profile';
+    expect(() => handoffsFor(profile)).not.toThrow();
+    expect(Array.isArray(handoffsFor(profile))).toBe(true);
+  });
+});
+
+// ── 3e. simulate → predict (Phase 6 — PRED-03, the Predict chain) ─────────────
+//
+// RED until 06-07 appends the entry to CHAIN_HANDOFFS (and "predict" to SkillId).
+// The Simulate card's "Predict an outcome →" CTA POSTs the just-simulated panel to the
+// predict route. Endpoint + label PINNED so a future drift fails here, not silently.
+
+describe('handoffsFor("simulate") — Predict chain (P6, → 06-07)', () => {
+  it('includes a predict CTA with the pinned endpoint and label', () => {
+    const handoffs = handoffsFor('simulate');
+    const predict = handoffs.find((h) => h.to === 'predict');
+
+    expect(predict).toBeDefined();
+    expect(predict!.ctaLabel).toBe('Predict an outcome →');
+    // PINNED: /api/tools/predict — must match the 06-06 route contract
+    expect(predict!.endpoint).toBe('/api/tools/predict');
+    // anchorFrom "card" — the reaction-distribution card carries the panel audienceId
+    expect(predict!.anchorFrom).toBe('card');
+  });
+});
+
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {
-  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'test', 'account-read'];
+  const skillIds: SkillId[] = ['discover', 'idea', 'hooks', 'script', 'remix', 'profile', 'simulate', 'predict', 'test', 'account-read'];
 
   it('does not throw for any SkillId', () => {
     for (const skillId of skillIds) {
@@ -237,6 +282,12 @@ describe('CHAIN_HANDOFFS registry completeness', () => {
 
     // P8 new chain — Discover front door launches the moat chain
     expect(pairs).toContain('discover→remix');
+
+    // P5 new chain — Profile → Simulate (the one-thread wow, PROF-04)
+    expect(pairs).toContain('profile→simulate');
+
+    // P6 new chain — Simulate → Predict (the one-thread Predict trigger, PRED-01)
+    expect(pairs).toContain('simulate→predict');
 
     // lane/polish §7 — Account Read forward action seeds Ideas from strengths
     expect(pairs).toContain('account-read→idea');

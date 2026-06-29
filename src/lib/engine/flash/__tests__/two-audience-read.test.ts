@@ -26,6 +26,10 @@ vi.mock("@/lib/engine/qwen/client", () => ({
   QWEN_SEED: 7,
   QWEN_FAST_MODEL: "qwen3.6-flash",
   QWEN_REASONING_MODEL: "qwen3.7-plus",
+  // 03-07: the run-level TrustBadge wiring pulls resolveTier → SOCIALS_PACK →
+  // scoring pipeline → deepseek, which references QWEN_APOLLO_MODEL at module load.
+  // The pack's static `calibration` field is the only thing read (no scorer call).
+  QWEN_APOLLO_MODEL: "qwen3.7-plus",
 }));
 
 // ─── Mock runFlashTextMode — the per-audience Flash run ──────────────────────────

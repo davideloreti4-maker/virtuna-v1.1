@@ -174,7 +174,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     }
   }
 
-  const { baseline, templates, yours } = groupAudiences(audiences);
+  const { baseline, templates, generalTemplates, yours } = groupAudiences(audiences);
   const userAudienceCount = yours.length;
 
   function renderAudienceCard(audience: Audience) {
@@ -339,6 +339,15 @@ export function AudienceManager({ className }: AudienceManagerProps) {
               <SectionLabel>Templates</SectionLabel>
               <div className="flex flex-col gap-3">
                 {templates.map(renderAudienceCard)}
+              </div>
+            </section>
+          )}
+
+          {generalTemplates.length > 0 && (
+            <section>
+              <SectionLabel>General templates</SectionLabel>
+              <div className="flex flex-col gap-3">
+                {generalTemplates.map(renderAudienceCard)}
               </div>
             </section>
           )}

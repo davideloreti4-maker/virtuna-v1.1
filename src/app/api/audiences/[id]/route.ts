@@ -23,7 +23,7 @@ import {
   getAudience,
   updateAudience,
   deleteAudience,
-  GENERAL_AUDIENCE,
+  SENTINEL_IDS,
 } from "@/lib/audience/audience-repo";
 
 // ─── Input validation ──────────────────────────────────────────────────────────
@@ -52,8 +52,26 @@ const PatchAudienceSchema = z
     platform: z.enum(["tiktok", "instagram", "youtube", "custom"]).optional(),
     goal_label: z.string().max(120).transform(sanitizeText).nullable().optional(),
     goal_intent: z.enum(["grow", "sell", "authority", "nurture"]).nullable().optional(),
+    // POP-02 — first-class domain axis (D-04); enum-constrained (mass-assignment guard, T-03-13).
+    mode: z.enum(["socials", "general"]).optional(),
+    // POP-05 — editable free-text "what good means"; capped + sanitized (stored-XSS bound, T-03-12).
+    success_criterion: z.string().max(2000).transform(sanitizeText).nullable().optional(),
+    // POP-02/TRUST-02 — user-added grounding: array capped (.max(50), DoS T-03-14); note capped +
+    // sanitized (T-03-12); source pinned to the "user" literal. NOT threaded into any scorer (D-02).
+    custom_context: z
+      .array(
+        z.object({
+          source: z.literal("user"),
+          note: z.string().max(2000).transform(sanitizeText),
+          persona_evidence_link: z.string().max(120).optional(),
+        }),
+      )
+      .max(50)
+      .optional(),
     persona_weights: WeightsSchema.optional(),
-    personas: z.array(z.unknown()).optional(),
+    // Cap array count at the untrusted boundary (storage-DoS guard, WR-02); element/repaint
+    // shaping deferred with the General scorer-prompt hardening (IN-02).
+    personas: z.array(z.unknown()).max(50).optional(),
     profile: z.unknown().nullable().optional(),
     calibration: z.unknown().nullable().optional(),
   })
@@ -149,11 +167,12 @@ export async function DELETE(
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // D-04: General is the locked default — delete is refused at route layer too
-  // (audience-repo also throws, but we return 400 here for clarity)
-  if (id === GENERAL_AUDIENCE.id) {
+  // D-04: virtual/sentinel audiences (General + presets + general templates) have no DB row.
+  // Refuse ALL of them at the route layer with a clean 400 — audience-repo also throws, but
+  // that surfaces as a generic 500, contradicting the documented refusal contract (WR-05).
+  if (SENTINEL_IDS.has(id)) {
     return NextResponse.json(
-      { error: "cannot_delete_general" },
+      { error: "cannot_delete_virtual" },
       { status: 400 },
     );
   }

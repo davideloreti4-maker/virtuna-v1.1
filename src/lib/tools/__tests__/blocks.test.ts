@@ -88,3 +88,137 @@ describe("multi-audience-read block schema (Plan 08-05)", () => {
     expect(result.success).toBe(true);
   });
 });
+
+// ─── Phase 5: profile-read block (PROF-02) ────────────────────────────────────
+// Bands-only `.strict()`; the forensic layer is max-tier-only; evidence quotes = provenance.
+
+function validProfileReadFlashPayload() {
+  return {
+    type: "profile-read",
+    props: {
+      subjectName: "Marcus",
+      subjectKind: "person",
+      identity: {
+        traits: ["dominant", "transactional"],
+        commStyle: "clipped, status-driven",
+        drivers: ["control", "being right"],
+      },
+      tells: [
+        { tell: "Reframes every ask as a favor he's granting", evidence: "I'll let you have until Friday." },
+      ],
+      howTheyReact: "He'll push back hard on a soft ask, but respects a firm deadline.",
+      goalScope: "Get him to commit to the Friday deadline.",
+      caveat: "This is a behavioral read to inform your decision — directional, from limited evidence.",
+      savedAudienceId: "aud_marcus_1",
+      model: "sim1-flash",
+      tier: "Directional",
+    },
+  };
+}
+
+function validProfileReadMaxPayload() {
+  const p = validProfileReadFlashPayload();
+  p.props.model = "sim1-max";
+  (p.props as Record<string, unknown>).forensic = {
+    deceptionLikelihood: "Medium",
+    cues: [
+      { timestamp: "0:42", observation: "shoulder shift + broken eye contact", inference: "discomfort with the number" },
+    ],
+  };
+  return p;
+}
+
+describe("profile-read block schema (Plan 05-01)", () => {
+  it("validates a flash-tier person read (no forensic layer)", () => {
+    const result = BlockUnionSchema.safeParse(validProfileReadFlashPayload());
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a max-tier read carrying the forensic layer", () => {
+    const result = BlockUnionSchema.safeParse(validProfileReadMaxPayload());
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a smuggled numeric score (bands-only — .strict())", () => {
+    const payload = validProfileReadFlashPayload();
+    (payload.props as Record<string, unknown>).score = 87;
+    expect(BlockUnionSchema.safeParse(payload).success).toBe(false);
+  });
+
+  it("rejects a smuggled overall_score (bands-only — .strict())", () => {
+    const payload = validProfileReadFlashPayload();
+    (payload.props as Record<string, unknown>).overall_score = 91;
+    expect(BlockUnionSchema.safeParse(payload).success).toBe(false);
+  });
+
+  it("rejects a non-Directional tier (Directional by rule)", () => {
+    const payload = validProfileReadFlashPayload();
+    (payload.props as Record<string, unknown>).tier = "Validated";
+    expect(BlockUnionSchema.safeParse(payload).success).toBe(false);
+  });
+});
+
+// ─── Phase 5: reaction-distribution block (SIMU-02) ───────────────────────────
+// person variant → `read` (no fraction); panel variant → band/fraction/themes/reactions.
+
+function validReactionPersonPayload() {
+  return {
+    type: "reaction-distribution",
+    props: {
+      audienceName: "Marcus",
+      subjectKind: "person",
+      read: {
+        verdict: "resistant",
+        reasoning: "The soft framing reads as weakness to him; he'll counter.",
+        quote: "Why would I move my whole timeline for that?",
+      },
+      model: "sim1-flash",
+      tier: "Directional",
+    },
+  };
+}
+
+function validReactionPanelPayload() {
+  return {
+    type: "reaction-distribution",
+    props: {
+      audienceName: "Hiring panel",
+      subjectKind: "panel",
+      band: "Mixed",
+      fraction: "6/10 react",
+      themes: [
+        { label: "Credibility doubt", quote: "I'd want to see the numbers first." },
+      ],
+      reactions: [
+        { archetype: "skeptic", verdict: "scroll", quote: "Heard this pitch before." },
+        { archetype: "champion", verdict: "stop", quote: "This is exactly our gap." },
+      ],
+      model: "sim1-flash",
+      tier: "Directional",
+    },
+  };
+}
+
+describe("reaction-distribution block schema (Plan 05-01)", () => {
+  it("validates a person variant (single read, no fraction)", () => {
+    const result = BlockUnionSchema.safeParse(validReactionPersonPayload());
+    expect(result.success).toBe(true);
+  });
+
+  it("validates a panel variant (band + fraction + themes + reactions)", () => {
+    const result = BlockUnionSchema.safeParse(validReactionPanelPayload());
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a smuggled numeric score (bands-only — .strict())", () => {
+    const payload = validReactionPanelPayload();
+    (payload.props as Record<string, unknown>).score = 73;
+    expect(BlockUnionSchema.safeParse(payload).success).toBe(false);
+  });
+
+  it("rejects an invalid band value", () => {
+    const payload = validReactionPanelPayload();
+    (payload.props as Record<string, unknown>).band = "Amazing";
+    expect(BlockUnionSchema.safeParse(payload).success).toBe(false);
+  });
+});

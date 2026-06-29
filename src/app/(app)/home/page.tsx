@@ -18,11 +18,14 @@ export const metadata: Metadata = {
  *   Thread active: same greeting anchor — skill content scrolls underneath,
  *   composer pinned at bottom.
  *
- * LOCKED omissions: NO starter chips (D-18), NO demo affordance (D-25 — the
- * first-run demo is Phase 5), NO Simulation list under the composer (the
- * sidebar owns history). The composer is centered here (no route id); on the
- * /analyze/[id] permalink the same composer drops bottom-pinned (its own
- * data-layout signal). What renders above the pinned composer is Phase 2.
+ * P7 unlock (UX-05 / D-04): the previously-LOCKED-empty region now seeds the 3
+ * starter chips + the show-once first-run demo — rendered by the composer in its
+ * no-conversation region (HomeStarter), so the chip handlers reach the real
+ * composer-internal flows directly. The earlier P5 lock (chips + demo deferred to
+ * Phase 5 under D-18/D-25) is now retired. Still no Simulation
+ * list under the composer (the sidebar owns history). The composer is
+ * centered here (no route id); on the /analyze/[id] permalink the same composer
+ * drops bottom-pinned (its own data-layout signal).
  */
 export default function HomePage() {
   return <HomePageLayout />;

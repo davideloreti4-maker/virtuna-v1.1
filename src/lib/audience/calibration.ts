@@ -299,6 +299,7 @@ export async function calibrateFromScrape(
     name,
     type,
     platform,
+    mode: "socials", // PITFALL 1: a scrape-derived, non-general audience runs the Socials pack.
     goal_label: description ?? null,
     goal_intent: goalIntent,
     is_general: false,

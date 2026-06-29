@@ -25,6 +25,7 @@ import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
 import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
+import { TrustBadge } from '@/components/audience/trust-badge';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -195,14 +196,23 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
       {/* Verbatim focus-group quote wall — presentation over already-emitted quotes (D-11). */}
       <VerbatimWall audiences={audiences} />
 
-      {/* Save (LIB-03) + provenance. The static Read's real action is Save (P9 boundary). */}
+      {/* Save (LIB-03) + provenance. The static Read's real action is Save (P9 boundary);
+          snapshot = the block's own props so the shelf re-renders the SAME typed renderer
+          without a re-fetch (mirrors account-read-block). Provenance carries SIM-1 Flash +
+          run-level trust tier (TRUST-01): the TrustBadge rides the run so the honesty
+          verdict survives scroll-away (mirrors the band model-tag idiom). Falls back to
+          "Directional" when the upstream emitter did not set tier — the honest default,
+          NEVER silently "Validated". No 0-100 number anywhere (honesty spine). */}
       <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
         <SaveAffordance
           item_type="read"
           title={saveTitle}
           snapshot={block.props as Record<string, unknown>}
         />
-        <p className="text-[11px] text-foreground-muted">SIM-1 Flash</p>
+        <div className="flex items-center gap-2">
+          <p className="text-[11px] text-foreground-muted">SIM-1 Flash</p>
+          <TrustBadge tier={block.props.tier ?? 'Directional'} />
+        </div>
       </div>
     </div>
   );

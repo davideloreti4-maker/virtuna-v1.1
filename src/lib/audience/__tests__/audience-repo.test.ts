@@ -165,6 +165,7 @@ describe("listAudiences — virtual-first ordering", () => {
       goal_intent: "grow",
       is_general: false,
       is_preset: false,
+      mode: "socials",
       persona_weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       personas: [],
       profile: null,
@@ -182,16 +183,18 @@ describe("listAudiences — virtual-first ordering", () => {
     expect(result[0]!.id).toBe("general"); // GENERAL first
     expect(result[1]!.id).toBe(PRESET_AUDIENCES[0]!.id); // growth preset second
     expect(result[2]!.id).toBe(PRESET_AUDIENCES[1]!.id); // conversion preset third
-    expect(result[3]!.id).toBe("db-row-id"); // DB row last
-    expect(result).toHaveLength(4);
+    expect(result[3]!.id).toBe("template-analyst"); // General templates (03-04 / D-08)
+    expect(result[4]!.id).toBe("template-hiring");
+    expect(result[5]!.id).toBe("db-row-id"); // DB row last
+    expect(result).toHaveLength(6);
   });
 
-  it("returns [GENERAL, ...PRESETS] when DB returns empty", async () => {
+  it("returns [GENERAL, ...PRESETS, ...GENERAL_TEMPLATES] when DB returns empty", async () => {
     const sb = makeSupabaseMock();
     sb._chain.order.mockResolvedValue({ data: [], error: null });
 
     const result = await listAudiences(sb as unknown as Parameters<typeof listAudiences>[0]);
-    expect(result).toHaveLength(3); // GENERAL + 2 presets
+    expect(result).toHaveLength(5); // GENERAL + 2 presets + 2 General templates (03-04)
     expect(result[0]!.id).toBe("general");
   });
 
@@ -243,6 +246,7 @@ describe("getAudience — virtual constant short-circuit", () => {
       goal_intent: null,
       is_general: false,
       is_preset: false,
+      mode: "socials",
       persona_weights: { fyp: 0.65, niche: 0.20, loyalist: 0.10, cross_niche: 0.05 },
       personas: [],
       profile: null,
@@ -278,6 +282,7 @@ describe("createAudience — never trusts user_id from input", () => {
       goal_intent: "grow",
       is_general: false,
       is_preset: false,
+      mode: "socials",
       persona_weights: { fyp: 0.75, niche: 0.15, loyalist: 0.05, cross_niche: 0.05 },
       personas: [],
       profile: null,

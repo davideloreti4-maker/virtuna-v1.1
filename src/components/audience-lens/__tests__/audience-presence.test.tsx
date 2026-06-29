@@ -58,6 +58,7 @@ function calibrated10(): Audience {
     platform: 'tiktok',
     goal_label: 'grow',
     goal_intent: 'grow',
+    mode: 'socials',
     is_general: false,
     is_preset: false,
     persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
@@ -70,7 +71,33 @@ function calibrated10(): Audience {
 }
 
 function general(): Audience {
-  return { ...calibrated10(), id: 'general', name: 'General', is_general: true, personas: [] };
+  return { ...calibrated10(), id: 'general', name: 'General', mode: 'socials', is_general: true, personas: [] };
+}
+
+/** A General PANEL SIM (multi-persona) — mode:'general', drives the multi-persona reactor. */
+function generalPanel(): Audience {
+  return {
+    ...calibrated10(),
+    id: 'gen-panel',
+    name: 'Analyst Panel',
+    mode: 'general',
+    is_general: false,
+    is_preset: false,
+    personas: Array.from({ length: 3 }, (_, i) => persona(i)),
+  };
+}
+
+/** A General PERSON SIM (exactly one persona) — presents as a single reactor. */
+function generalPerson(): Audience {
+  return {
+    ...calibrated10(),
+    id: 'gen-person',
+    name: 'Mentor SIM',
+    mode: 'general',
+    is_general: false,
+    is_preset: false,
+    personas: [persona(0)],
+  };
 }
 
 const FOCUS: AmbientFocus = {
@@ -154,6 +181,66 @@ describe('AudiencePresence — owns audience switching', () => {
     expect(within(menu).getByRole('link', { name: /manage audiences/i })).toBeInTheDocument();
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /general/i }));
     expect(onSelectAudience).toHaveBeenCalled();
+  });
+});
+
+// ── Mode-sectioned switcher (UX-01 / D-02) ──
+describe('AudiencePresence — Mode-sectioned switcher', () => {
+  const openSwitcher = () =>
+    fireEvent.click(screen.getByRole('button', { name: /switch audience/i }));
+
+  it('renders NO General section header for a Socials-only list (byte-identical)', () => {
+    setup({ audience: calibrated10(), audiences: [calibrated10()] });
+    openSwitcher();
+    const menu = screen.getByRole('menu', { name: /your audiences/i });
+    expect(within(menu).getByText('Socials')).toBeInTheDocument();
+    // No General audience + no General section → no "General" text anywhere in the menu.
+    expect(within(menu).queryByText('General')).toBeNull();
+  });
+
+  it('renders both Socials and General sections when a General audience is owned', () => {
+    setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
+    openSwitcher();
+    const menu = screen.getByRole('menu', { name: /your audiences/i });
+    expect(within(menu).getByText('Socials')).toBeInTheDocument();
+    // The "General" section header (no audience is named "General" in this fixture).
+    expect(within(menu).getByText('General')).toBeInTheDocument();
+    // The General SIM appears as a selectable row.
+    expect(within(menu).getByRole('menuitemradio', { name: /analyst panel/i })).toBeInTheDocument();
+  });
+
+  it('shows a neutral trust badge on each row (Directional for General, Validated for Socials)', () => {
+    setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
+    openSwitcher();
+    const menu = screen.getByRole('menu', { name: /your audiences/i });
+    expect(within(menu).getByText('Validated')).toBeInTheDocument();
+    expect(within(menu).getByText('Directional')).toBeInTheDocument();
+  });
+
+  it('renders a "+ Build an audience" row that fires onBuildAudience', () => {
+    const onBuildAudience = vi.fn();
+    setup({ audiences: [calibrated10()], onBuildAudience });
+    openSwitcher();
+    const menu = screen.getByRole('menu', { name: /your audiences/i });
+    fireEvent.click(within(menu).getByRole('button', { name: /build an audience/i }));
+    expect(onBuildAudience).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Generalized reactor (UX-03 / D-06) ──
+describe('AudiencePresence — General reactor', () => {
+  it('drives the reactor for a General panel SIM (multi-persona, no crash)', () => {
+    const { container } = setup({ audience: generalPanel(), focus: null });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/analyst panel · 3 personas ready/i);
+    expect(container.querySelectorAll('.sr-only ul li').length).toBe(3);
+  });
+
+  it('presents a General person SIM (1 persona) as a SINGLE reactor', () => {
+    const { container } = setup({ audience: generalPerson(), focus: null });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/mentor sim · 1 reactor ready/i);
+    expect(screen.getByTestId('audience-pulse').textContent).not.toMatch(/personas ready/i);
+    // A single reactor → exactly one dot in the sr-only roster mirror.
+    expect(container.querySelectorAll('.sr-only ul li').length).toBe(1);
   });
 });
 

@@ -12,8 +12,8 @@
  *
  * Written first (Task 1) — RED until the slim composer (Task 2) lands.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
 
 // ── controllable stream mock ────────────────────────────────────────────
 const start = vi.fn();
@@ -69,9 +69,86 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+// ── hooks stream mock (07-04 byte-identical Socials guard) ───────────────────
+// Mocked so a Socials submit (hooks) can be observed via a spy without driving the
+// real SSE reader. The other stream hooks stay real (idle) — the existing tests rely
+// on that. Shape mirrors what composer.tsx reads off useHooksStream.
+const hooksStart = vi.fn();
+vi.mock('@/hooks/queries/use-hooks-stream', () => ({
+  useHooksStream: () => ({
+    start: hooksStart,
+    startRefine: vi.fn(),
+    reset: vi.fn(),
+    toBlocks: () => [],
+    isStreaming: false,
+    statusMessage: undefined,
+    stages: [],
+    followupText: undefined,
+    error: null,
+  }),
+}));
+
 import { Composer } from '../composer';
 
 const D21 = 'Numen reads TikTok videos for now';
+
+// ── General-verb (07-04) test scaffolding ────────────────────────────────────
+// A General-mode audience (non-UUID id so handleSelectAudience skips the thread PATCH).
+const GENERAL_AUD = {
+  id: 'gen-1',
+  name: 'Analyst Panel',
+  mode: 'general',
+  is_general: false,
+  is_preset: false,
+  platform: 'tiktok',
+  goal_label: null,
+  goal_intent: null,
+  personas: [],
+};
+
+type FetchCall = { url: string; init?: RequestInit };
+let fetchCalls: FetchCall[] = [];
+
+/** Route the composer's mount + submit fetches to inert JSON; record every call. */
+function installFetchMock() {
+  fetchCalls = [];
+  global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    fetchCalls.push({ url, init });
+    let body: unknown = {};
+    if (url.includes('/api/audiences')) body = { audiences: [GENERAL_AUD] };
+    else if (url.includes('/api/threads/open')) body = { threadId: 't1', messages: [] };
+    else if (url.includes('/api/tracked-accounts')) body = { accounts: [] };
+    else if (url.includes('/api/tools/simulate') || url.includes('/api/tools/predict')) {
+      body = { block: { type: 'reaction-distribution', props: {} } };
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(body),
+    } as Response);
+  }) as typeof fetch;
+}
+
+function calledWith(substr: string): boolean {
+  return fetchCalls.some((c) => c.url.includes(substr));
+}
+
+function submitBtn(container: HTMLElement): HTMLButtonElement {
+  return container.querySelector('button[type="submit"]') as HTMLButtonElement;
+}
+
+/**
+ * Select a skill via the `/` slash menu (Enter resolves firstSlashSkill).
+ * NOTE (WR-01): the slash menu + firstSlashSkill are mode-gated to the active
+ * audience's mode. With no General audience selected the mode is "socials", so
+ * this only resolves Socials skills; General verbs are reached via the
+ * HomeStarter chips (Profile / Predict), which call handleUserSelectTool directly.
+ */
+function selectSkillBySlash(command: string) {
+  const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+  fireEvent.change(field, { target: { value: `/${command}` } });
+  fireEvent.keyDown(field, { key: 'Enter' });
+}
 
 function urlInput(): HTMLInputElement {
   // The single URL/text input — match by its empty-state placeholder.
@@ -137,5 +214,99 @@ describe('Composer — upload control (SHELL-03)', () => {
     render(<Composer />);
     // VideoUpload renders an <input type=file aria-label="Upload video file">.
     expect(screen.getByLabelText(/upload video file/i)).toBeInTheDocument();
+  });
+});
+
+// ── General-verb submit semantics (07-04 / UX-02 / D-07) ─────────────────────
+describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** Open the audience switcher and pick the General-mode audience. */
+  async function selectGeneralAudience() {
+    // Wait for the mount /api/audiences fetch to populate the picker.
+    await waitFor(() => expect(calledWith('/api/audiences')).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: /switch audience/i }));
+    const menu = await screen.findByRole('menu', { name: /your audiences/i });
+    fireEvent.click(within(menu).getByRole('menuitemradio', { name: /analyst panel/i }));
+  }
+
+  it('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
+    const { container } = render(<Composer />);
+    // No audience selected (General/null). The slash menu is mode-gated to
+    // socials here (WR-01), so a General verb is activated via its starter chip:
+    // "Predict an outcome" → handleUserSelectTool("predict"). The T-07-04-01 gate
+    // (shared by simulate + predict) then routes to Build without firing.
+    fireEvent.click(screen.getByRole('button', { name: /predict an outcome/i }));
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'will this resonate?' } });
+    fireEvent.click(submitBtn(container));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/audience/new'));
+    // The gate held — no stimulus fired (T-07-04-01).
+    expect(calledWith('/api/tools/predict')).toBe(false);
+  });
+
+  it('Simulate with a selected General audience POSTs /api/tools/simulate with the audienceId', async () => {
+    const { container } = render(<Composer />);
+    await selectGeneralAudience();
+    selectSkillBySlash('simulate');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'will this resonate?' } });
+    fireEvent.click(submitBtn(container));
+
+    await waitFor(() => expect(calledWith('/api/tools/simulate')).toBe(true));
+    const call = fetchCalls.find((c) => c.url.includes('/api/tools/simulate'))!;
+    const body = JSON.parse(String(call.init?.body));
+    expect(body.audienceId).toBe('gen-1');
+    expect(body.message).toBe('will this resonate?');
+    expect(push).not.toHaveBeenCalledWith('/audience/new');
+  });
+
+  it('Predict with a selected General audience POSTs /api/tools/predict with the audienceId + scenario', async () => {
+    const { container } = render(<Composer />);
+    await selectGeneralAudience();
+    selectSkillBySlash('predict');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'we double our price' } });
+    fireEvent.click(submitBtn(container));
+
+    await waitFor(() => expect(calledWith('/api/tools/predict')).toBe(true));
+    const call = fetchCalls.find((c) => c.url.includes('/api/tools/predict'))!;
+    const body = JSON.parse(String(call.init?.body));
+    expect(body.audienceId).toBe('gen-1');
+    expect(body.scenario).toBe('we double our price');
+  });
+
+  it('selecting Profile opens the evidence-drop file input (not a topic submit)', () => {
+    const { container } = render(<Composer />);
+    const evidenceInput = container.querySelector(
+      'input[type="file"][accept*=".txt"]',
+    ) as HTMLInputElement;
+    const clickSpy = vi.spyOn(evidenceInput, 'click');
+    // The slash menu is mode-gated to socials with no General audience (WR-01),
+    // so Profile is activated via its starter chip: "Profile a chat" →
+    // handleUserSelectTool("profile"), which opens the evidence-drop picker.
+    fireEvent.click(screen.getByRole('button', { name: /profile a chat/i }));
+    expect(clickSpy).toHaveBeenCalled();
+    // Profile never routes through the topic submit path.
+    expect(calledWith('/api/tools/profile')).toBe(false);
+  });
+
+  it('a Socials submit (hooks) still fires its stream path, never a General route', async () => {
+    const { container } = render(<Composer />);
+    selectSkillBySlash('hooks');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'morning routine' } });
+    fireEvent.click(submitBtn(container));
+
+    await waitFor(() => expect(hooksStart).toHaveBeenCalled());
+    expect(calledWith('/api/tools/simulate')).toBe(false);
+    expect(calledWith('/api/tools/predict')).toBe(false);
   });
 });

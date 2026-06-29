@@ -11,8 +11,8 @@
  * Mirrors the proven invocation in corpus/eval-runner.ts (runPredictionPipeline
  * then aggregateScores), but feeds the real video file instead of caption text.
  */
-import { runPredictionPipeline } from "../pipeline";
-import { aggregateScores, ENGINE_VERSION } from "../aggregator";
+import { ENGINE_VERSION } from "../aggregator";
+import { resolvePack } from "../packs";
 import { bucketFromScore } from "../corpus/metrics/score-to-bucket";
 import type { AnalysisInput, PredictionResult, FeatureVector } from "../types";
 import type { Niche, Bucket } from "../corpus/eval-config";
@@ -67,8 +67,9 @@ export async function runEngineOnTrainingVideo(
   };
 
   // Identical two-step the validation path + production analyze route use.
-  const pipelineResult = await runPredictionPipeline(input);
-  const prediction = await aggregateScores(pipelineResult);
+  const pack = resolvePack("socials");
+  const pipelineResult = await pack.run(input);
+  const prediction = await pack.scoring.run(pipelineResult);
 
   return {
     feature_vector: prediction.feature_vector,

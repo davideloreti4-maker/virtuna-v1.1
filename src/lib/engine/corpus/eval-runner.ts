@@ -1,8 +1,8 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import * as Sentry from "@sentry/nextjs";
-import { runPredictionPipeline } from "@/lib/engine/pipeline";
-import { aggregateScores, ENGINE_VERSION } from "@/lib/engine/aggregator";
+import { ENGINE_VERSION } from "@/lib/engine/aggregator";
+import { resolvePack } from "@/lib/engine/packs";
 import type { AnalysisInput, PredictionResult } from "@/lib/engine/types";
 import type { Niche, Bucket } from "./eval-config";
 import { bucketFromScore } from "./metrics/score-to-bucket";
@@ -100,6 +100,8 @@ export async function runEvalOverCorpus(
     : allRows;
   log.info("Eval loop starting", { corpusVersion: opts.corpusVersion, rowCount: effective.length, cap });
 
+  const pack = resolvePack("socials");
+
   for (let i = 0; i < effective.length; i++) {
     const row = effective[i]!;
     const niche = row.niche as Niche;
@@ -120,11 +122,11 @@ export async function runEvalOverCorpus(
         creator_handle: typeof row.creator_handle === "string" ? row.creator_handle : undefined,
       };
 
-      const pipelineResult = await runPredictionPipeline(input);
+      const pipelineResult = await pack.run(input);
       // Phase 7 D-14: forward optional behavioralSource into aggregator.
       // The conditional avoids passing `{ behavioralSource: undefined }` — preserves
       // byte-identical production behavior when caller omits the option.
-      const prediction = await aggregateScores(
+      const prediction = await pack.scoring.run(
         pipelineResult,
         undefined,
         opts.behavioralSource ? { behavioralSource: opts.behavioralSource } : undefined,

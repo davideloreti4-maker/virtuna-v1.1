@@ -10,9 +10,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Audience, AudiencePlatform, AudienceType, GoalIntent } from "@/lib/audience/audience-types";
+import type {
+  Audience,
+  AudiencePlatform,
+  AudienceType,
+  CustomContext,
+  GoalIntent,
+} from "@/lib/audience/audience-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { CalibrationFlow } from "./calibration-flow";
 import { cn } from "@/lib/utils";
@@ -34,10 +41,17 @@ const GOAL_INTENT_OPTIONS = [
 interface AudienceFormProps {
   /** Existing audience for edit mode. Undefined = create mode. */
   existing?: Audience;
+  /**
+   * Preset the create `mode` (07-05 / D-08). `/audience/new?mode=general` passes
+   * "general" so the description Build path lands a General SIM in the library.
+   * Absent ⇒ "socials" (the DB default) — the Socials form stays byte-identical
+   * (no visible control is added for this).
+   */
+  initialMode?: Audience["mode"];
   className?: string;
 }
 
-export function AudienceForm({ existing, className }: AudienceFormProps) {
+export function AudienceForm({ existing, initialMode, className }: AudienceFormProps) {
   const router = useRouter();
   const isEdit = !!existing;
 
@@ -46,6 +60,12 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
   const [platform, setPlatform] = useState<AudiencePlatform>(existing?.platform ?? "tiktok");
   const [goalLabel, setGoalLabel] = useState(existing?.goal_label ?? "");
   const [goalIntent, setGoalIntent] = useState<GoalIntent | "">(existing?.goal_intent ?? "");
+  // Audience axis (D-04). No visible control — preset by the page from ?mode (D-08).
+  const [mode] = useState<Audience["mode"]>(initialMode ?? existing?.mode ?? "socials");
+  // POP-05 — editable "what good means" free-text.
+  const [successCriterion, setSuccessCriterion] = useState(existing?.success_criterion ?? "");
+  // POP-02/TRUST-02/D-07 — user-added grounding (distinct from scrape-derived evidence).
+  const [customContext, setCustomContext] = useState<CustomContext[]>(existing?.custom_context ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -68,9 +88,13 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
       const payload = {
         name: name.trim(),
         type,
+        mode,
         platform,
         goal_label: goalLabel.trim() || null,
         goal_intent: goalIntent || null,
+        success_criterion: successCriterion.trim() || null,
+        // Drop empty notes — only persist grounding the user actually wrote.
+        custom_context: customContext.filter((c) => c.note.trim().length > 0),
       };
 
       let res: Response;
@@ -127,6 +151,22 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
     } else {
       router.push("/audience");
     }
+  }
+
+  // ─── User-added grounding (custom_context) editor ────────────────────────────
+
+  function addCustomContext() {
+    setCustomContext((prev) => [...prev, { source: "user", note: "" }]);
+  }
+
+  function updateCustomContextNote(index: number, note: string) {
+    setCustomContext((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, note } : c)),
+    );
+  }
+
+  function removeCustomContext(index: number) {
+    setCustomContext((prev) => prev.filter((_, i) => i !== index));
   }
 
   // Show calibration flow after audience created
@@ -222,6 +262,77 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
           onChange={(v) => setGoalIntent(v as GoalIntent)}
           placeholder="Goal intent (how Numen weights the audience)"
         />
+      </div>
+
+      {/* Success criterion (POP-05) */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-sm text-foreground-secondary" htmlFor="aud-success-criterion">
+          Success criterion — what &ldquo;good&rdquo; means for this audience (optional)
+        </label>
+        <Textarea
+          id="aud-success-criterion"
+          value={successCriterion}
+          onChange={(e) => setSuccessCriterion(e.target.value)}
+          placeholder="e.g. Saves & shares over raw views — depth of engagement, not reach."
+          maxLength={2000}
+          minRows={3}
+        />
+      </div>
+
+      {/* User-added grounding — custom_context (POP-02 / TRUST-02 / D-07) */}
+      <div className="flex flex-col gap-2.5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm text-foreground-secondary">User-added grounding</span>
+            <p className="text-xs text-foreground-muted">
+              Context you supply — tagged{" "}
+              <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-medium text-foreground-secondary">
+                user-added
+              </span>{" "}
+              and shown apart from scraped evidence. Strengthens provenance, never fakes it.
+            </p>
+          </div>
+        </div>
+
+        {customContext.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {customContext.map((c, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span
+                  className="mt-2 shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[11px] font-medium text-accent"
+                  aria-hidden="true"
+                >
+                  user-added
+                </span>
+                <Textarea
+                  aria-label={`User-added grounding note ${i + 1}`}
+                  value={c.note}
+                  onChange={(e) => updateCustomContextNote(i, e.target.value)}
+                  placeholder="e.g. This audience over-indexes on founders who distrust hype."
+                  maxLength={2000}
+                  minRows={2}
+                  size="sm"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCustomContext(i)}
+                  aria-label={`Remove grounding note ${i + 1}`}
+                >
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div>
+          <Button type="button" variant="secondary" size="sm" onClick={addCustomContext}>
+            Add grounding
+          </Button>
+        </div>
       </div>
 
       {/* Error */}

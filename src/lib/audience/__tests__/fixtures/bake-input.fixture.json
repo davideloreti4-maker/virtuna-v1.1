@@ -1,0 +1,63 @@
+{
+  "handle": "testcreator",
+  "profile": {
+    "handle": "testcreator",
+    "displayName": "Test Creator",
+    "bio": "ADHD productivity & fast systems",
+    "avatarUrl": "https://example.com/a.jpg",
+    "verified": true,
+    "followerCount": 142000,
+    "followingCount": 300,
+    "heartCount": 3200000,
+    "videoCount": 87
+  },
+  "videos": [
+    {
+      "platformVideoId": "vid_0",
+      "videoUrl": "https://www.tiktok.com/@testcreator/video/0",
+      "caption": "Caption 0 #adhd #productivity",
+      "views": 120000,
+      "likes": 6000,
+      "comments": 1200,
+      "shares": 900,
+      "saves": 4800,
+      "hashtags": ["adhd", "productivity"],
+      "durationSeconds": 30,
+      "postedAt": "2026-06-01T00:00:00.000Z",
+      "subtitleUrl": "https://www.tiktok.com/subs/0.vtt",
+      "mediaUrl": "https://v16.tiktokcdn.com/video-0.mp4"
+    },
+    {
+      "platformVideoId": "vid_1",
+      "videoUrl": "https://www.tiktok.com/@testcreator/video/1",
+      "caption": "Caption 1 #adhd #productivity",
+      "views": 90000,
+      "likes": 4500,
+      "comments": 800,
+      "shares": 500,
+      "saves": 3000,
+      "hashtags": ["adhd", "productivity"],
+      "durationSeconds": 28,
+      "postedAt": "2026-06-02T00:00:00.000Z",
+      "subtitleUrl": "https://www.tiktok.com/subs/1.vtt",
+      "mediaUrl": "https://v16.tiktokcdn.com/video-1.mp4"
+    },
+    {
+      "platformVideoId": "vid_2",
+      "videoUrl": "https://www.tiktok.com/@testcreator/video/2",
+      "caption": "Caption 2 #adhd #productivity",
+      "views": 60000,
+      "likes": 3000,
+      "comments": 400,
+      "shares": 200,
+      "saves": 1500,
+      "hashtags": ["adhd", "productivity"],
+      "durationSeconds": 42,
+      "postedAt": "2026-06-03T00:00:00.000Z",
+      "subtitleUrl": "https://www.tiktok.com/subs/2.vtt",
+      "mediaUrl": "https://v16.tiktokcdn.com/video-2.mp4"
+    }
+  ],
+  "subCoverage": "3/3",
+  "goalIntent": "grow"
+}

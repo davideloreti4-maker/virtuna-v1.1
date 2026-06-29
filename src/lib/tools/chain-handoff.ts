@@ -55,6 +55,9 @@ export type SkillId =
   | "hooks"
   | "script"   // Phase 6 — live (06-05)
   | "remix"    // Phase 6 — live (06-05)
+  | "profile"  // Phase 5 — live (05-01): the forensic READ card, CTA launches profile→simulate
+  | "simulate" // Phase 5 — live (05-01): the reaction-distribution result of the chain
+  | "predict"  // Phase 6 — live (06-07): the prediction-gauge result, reached via simulate→predict
   | "test"
   | "account-read"; // lane/polish — the self-Read; "Write to my strengths →" seeds Ideas (§7)
 
@@ -220,6 +223,38 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     // remix/run rejects ask/anchor (url-only); re-develop the adapted concept via the
     // PINNED develop route (remix-origin, accepts { anchor, platform }). A2 minimal adjustment.
     endpoint: "/api/tools/ideas/develop",
+    anchorFrom: "card",
+  },
+
+  // ── P5 LIVE: Profile → Simulate (PROF-04, the one-thread wow) ─────────────────
+  // "Simulate a message to them →" on ProfileReadBlockRenderer POSTs the drafted message
+  // to /api/tools/simulate against the just-baked General SIM. anchorFrom "card" — the
+  // profile-read card carries `savedAudienceId`; the card's buildSimulateRequest helper
+  // (profile-read-block.tsx) maps savedAudienceId → the request body `audienceId`
+  // (unit-tested in profile-read-block.test.ts). The registry is metadata only; the
+  // body-build seam lives in the card (mirrors idea→hooks carrying title+angle).
+  // PINNED: /api/tools/simulate accepts { audienceId, message } (05-05).
+  {
+    from: "profile",
+    to: "simulate",
+    ctaLabel: "Simulate a message to them →",
+    endpoint: "/api/tools/simulate",
+    anchorFrom: "card",
+  },
+
+  // ── P6 LIVE: Simulate → Predict (PRED-01, the one-thread Predict trigger) ─────
+  // "Predict an outcome →" on ReactionDistributionBlockRenderer POSTs the just-simulated
+  // panel's audienceId + a scenario to /api/tools/predict, which runs the analyst panel and
+  // drops a prediction-gauge card into the SAME open thread (D-06). anchorFrom "card" — the
+  // reaction-distribution card carries the panel `audienceId` (additive optional prop,
+  // populated by simulate-runner). Rendered ONLY for a PANEL simulate (predicting from a
+  // person simulate is nonsensical — D-03); the route re-applies the D-08 400 guards as
+  // defense-in-depth. PINNED: /api/tools/predict accepts { audienceId, scenario } (06-06).
+  {
+    from: "simulate",
+    to: "predict",
+    ctaLabel: "Predict an outcome →",
+    endpoint: "/api/tools/predict",
     anchorFrom: "card",
   },
 

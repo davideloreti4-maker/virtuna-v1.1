@@ -24,10 +24,16 @@
  * seeded, no wall-clock / PRNG in render) — SSR-hydration + engine-determinism-gate safe.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Users, Check, Plus, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Audience } from '@/lib/audience/audience-types';
+import { groupAudiences } from '@/components/audience/audience-display';
+// Import the LEAF tier resolver, never the SOCIALS_PACK barrel (BUILD-01 bundle-leak
+// discipline — the barrel drags runPredictionPipeline → apify-client → Node `dns` into
+// this `"use client"` surface). resolveTier reads only `audience.mode`.
+import { resolveTier } from '@/lib/audience/resolve-tier';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLensContent } from './AudienceLensContent';
@@ -43,6 +49,9 @@ import {
 const TITLE = 'Your audience';
 const LOADING_COPY = 'Reading the room…';
 const MANAGE_LABEL = 'Manage audiences';
+const SOCIALS_LABEL = 'Socials';
+const GENERAL_LABEL = 'General';
+const BUILD_LABEL = 'Build an audience';
 
 /** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
 export interface AudienceAsk {
@@ -87,6 +96,8 @@ export interface AudiencePresenceProps {
   onReask?: (ask: AudienceAsk) => void;
   /** When true, the peek band is the top cap of a fused composer dock (no own border/shadow). */
   docked?: boolean;
+  /** Open the Build-an-audience chooser (the `+ Build an audience` switcher row). Optional. */
+  onBuildAudience?: () => void;
 }
 
 export function AudiencePresence({
@@ -102,14 +113,25 @@ export function AudiencePresence({
   asking = false,
   onReask,
   docked = false,
+  onBuildAudience,
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement | null>(null);
+  // The switcher menu is PORTALED to <body> so it escapes the composer surface's
+  // `overflow-hidden` rounded-corner clip (the dropdown opens UPWARD, well above
+  // that surface). Anchored as a fixed box just above the trigger.
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
   const isGeneral = audience == null || audience.is_general || personas.length === 0;
   const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
-  const rosterCount = personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
+  // A General person-SIM is exactly ONE persona (mode==='general' && personas.length===1):
+  // it presents as a SINGLE reactor reacting *as that one person* (UI-SPEC S5 / D-06), not a
+  // swarm. Detect via the persisted mode + persona count — never re-derive from is_general.
+  // A General panel-SIM (>1 persona) keeps the existing multi-persona presentation unchanged.
+  const isPersonSim = audience?.mode === 'general' && personas.length === 1;
+  const rosterCount = isPersonSim ? 1 : personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
 
   const flatPersonas: FlatPersonaReaction[] = useMemo(
     () => (focus ? cardScrollQuoteReactions(focus.fraction, focus.scrollQuote) : []),
@@ -118,9 +140,13 @@ export function AudiencePresence({
   const stopRead = useMemo(() => (focus ? parseStop(focus.fraction) : null), [focus]);
 
   // The one-line pulse: a live read when focused, readiness (never a stale reaction) when idle.
+  // A person-SIM frames readiness for the SINGLE reactor ("1 reactor ready"), not a roster.
+  const readinessText = isPersonSim
+    ? `${audienceName} · 1 reactor ready`
+    : `${audienceName} · ${rosterCount} personas ready`;
   const pulseText = stopRead
     ? `${stopRead.stop} of ${stopRead.total} would stop`
-    : `${audienceName} · ${rosterCount} personas ready`;
+    : readinessText;
 
   const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
   const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
@@ -137,18 +163,89 @@ export function AudiencePresence({
   }, [open, switcherOpen, onOpenChange]);
 
   // Outside-click closes the switcher popover (not the panel — the composer must stay typable).
+  // The menu is portaled outside switcherRef, so it must be excluded too — otherwise the
+  // mousedown on a menu item would close the popover before its click handler fires.
   useEffect(() => {
     if (!switcherOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (!switcherRef.current?.contains(e.target as Node)) setSwitcherOpen(false);
+      const target = e.target as Node;
+      if (switcherRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setSwitcherOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
   }, [switcherOpen]);
 
+  // Anchor the portaled menu just above the trigger; keep it pinned on scroll/resize.
+  useLayoutEffect(() => {
+    if (!switcherOpen) return;
+    const place = () => {
+      const r = switcherRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width: 280 });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [switcherOpen]);
+
   const handleSelect = (a: Audience) => {
     onSelectAudience(a);
     setSwitcherOpen(false);
+  };
+
+  // Section the switcher by Mode (D-02). `groupAudiences` routes mode==='general' FIRST
+  // (before is_general), so GENERAL_AUDIENCE (mode:'socials') stays in Socials (Pitfall 5).
+  const { baseline, templates, generalTemplates, yours } = groupAudiences(audiences);
+  const socialsRows = [
+    ...baseline,
+    ...templates,
+    // WR-04: treat "not general" as socials so legacy rows with null/undefined
+    // mode (pre-backfill) still surface in the switcher rather than vanishing.
+    ...yours.filter((a) => a.mode !== 'general'),
+  ];
+  const generalRows = [
+    ...generalTemplates,
+    ...yours.filter((a) => a.mode === 'general'),
+  ];
+
+  // One row renderer reused by both sections — existing markup verbatim + a neutral,
+  // right-aligned trust badge (resolveTier → Directional/Validated, NO accent).
+  const renderRow = (a: Audience) => {
+    const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
+    const sub = a.is_general
+      ? 'Default — keeps the regression gate'
+      : `${a.platform}${a.goal_label ? ` · ${a.goal_label}` : ''}`;
+    return (
+      <button
+        key={a.id}
+        type="button"
+        role="menuitemradio"
+        aria-checked={on}
+        onClick={(e) => {
+          e.stopPropagation();
+          handleSelect(a);
+        }}
+        className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[var(--color-hover)]"
+      >
+        <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13px] font-medium text-[var(--color-foreground)]">
+            {a.name}
+          </span>
+          <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
+        </span>
+        {/* Trust badge — honest tier text, neutral muted (never accent). */}
+        <span className="shrink-0 text-[11px] font-medium text-[var(--color-foreground-muted)]">
+          {resolveTier(a)}
+        </span>
+        <Check className={'h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
+      </button>
+    );
   };
 
   return (
@@ -304,58 +401,66 @@ export function AudiencePresence({
             </span>
           </button>
 
-          {/* Switcher popover — opens UPWARD (the presence is bottom-docked). */}
-          {switcherOpen && (
+          {/* Switcher popover — opens UPWARD (the presence is bottom-docked).
+              PORTALED to <body> (fixed, anchored above the trigger) so the upward
+              dropdown is not clipped by the composer surface's overflow-hidden. */}
+          {switcherOpen && createPortal(
             <div
+              ref={menuRef}
               role="menu"
               aria-label="Your audiences"
-              className="absolute bottom-full left-0 z-[60] mb-2 max-h-[44vh] w-[280px] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+              style={{ left: menuPos?.left ?? 0, bottom: menuPos?.bottom ?? 0, width: menuPos?.width ?? 280 }}
+              className="fixed z-[60] max-h-[44vh] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
             >
-              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-                {TITLE}
-              </p>
               {audiences.length === 0 && (
                 <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
               )}
-              {audiences.map((a) => {
-                const on = a.is_general ? isGeneral : a.id === selectedAudienceId;
-                const sub = a.is_general
-                  ? 'Default — keeps the regression gate'
-                  : `${a.platform}${a.goal_label ? ` · ${a.goal_label}` : ''}`;
-                return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={on}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSelect(a);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-[var(--color-hover)]"
-                  >
-                    <Users className="h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)]" aria-hidden />
-                    <span className="min-w-0 flex-1">
-                      <span className={'block text-[13px] font-medium ' + (on ? 'text-[var(--color-foreground)]' : 'text-[var(--color-foreground)]')}>
-                        {a.name}
-                      </span>
-                      <span className="mt-0.5 block truncate text-[11px] text-[var(--color-foreground-muted)]">{sub}</span>
-                    </span>
-                    <Check className={'h-4 w-4 shrink-0 text-[var(--color-foreground-secondary)] ' + (on ? 'opacity-100' : 'opacity-0')} aria-hidden />
-                  </button>
-                );
-              })}
+
+              {/* ── Socials ── — baseline + presets + your socials audiences. */}
+              {socialsRows.length > 0 && (
+                <>
+                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                    {SOCIALS_LABEL}
+                  </p>
+                  {socialsRows.map(renderRow)}
+                </>
+              )}
+
+              {/* ── General ── — authored templates + your General SIMs. Rendered ONLY when a
+                    General audience is owned (byte-identical: a Socials-only creator never sees it). */}
+              {generalRows.length > 0 && (
+                <>
+                  <p className="mt-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                    {GENERAL_LABEL}
+                  </p>
+                  {generalRows.map(renderRow)}
+                </>
+              )}
+
               <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
+              {/* + Build an audience — opens the Build chooser (plain glyph, NO accent). */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBuildAudience?.();
+                  setSwitcherOpen(false);
+                }}
+                className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
+              >
+                <Plus className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="flex-1">{BUILD_LABEL}</span>
+              </button>
               <Link
                 href="/audience"
                 onClick={() => setSwitcherOpen(false)}
                 className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
               >
-                <Plus className="h-4 w-4" aria-hidden />
                 <span className="flex-1">{MANAGE_LABEL}</span>
                 <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
               </Link>
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
 

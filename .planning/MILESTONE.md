@@ -1,49 +1,32 @@
-# Milestone: Landing v2 — Refined Marketing Site
+# MILESTONE — Numen GSI (horizontal pivot)
 
-**Branch:** `milestone/landing-v2`
-**Worktree:** `~/virtuna-landing-v2/`
-**Started:** 2026-06-14
-**Forks from:** `main` @e07dbd6d
+> Immutable worktree identity. Created 2026-06-26.
 
-> Immutable worktree identity. Scope all planning operations to this milestone.
+- **Worktree:** `~/virtuna-numen-gsi`
+- **Branch:** `milestone/numen-gsi`
+- **Milestone:** Numen GSI — reframe Numen as a synthetic-population simulator
+  (Profile / Simulate / Predict), horizontal across domains.
+- **Input vision:** `.planning/NUMEN-GSI-VISION.md` (copied from trunk 2026-06-26).
 
-## Identity
+## Phase 0 status — DONE + production-verified (engine-rework)
+Engine-rework is GSI Phase 0 and it is COMPLETE + merged to `main`:
+the SIM primitive (AudienceSignature), fold↔calibrated-audience unification,
+the 2-model stack, and the dissection cuts all landed (#49,#53–#58). The
+pre-GSI production-readiness sprint ran 2026-06-26 — no blocker (RLS/concurrency
+GREEN; GAP-REMIX-01 fixed #63; dead /api/outcomes cut #64; SSRF low).
+SSOTs on `main`: `docs/DISSECTION-BACKLOG.md`, `docs/WORKTREE-DEBT-LEDGER.md`,
+`docs/MODEL-POLICY.md`, `docs/HANDOFF-R1-engine.md` (tsc baseline now 4).
 
-A **refined, from-scratch marketing landing page** for **Numen** (TikTok virality
-intelligence). This is the **marketing surface only** — not the product app. Built
-to the bar set by Linear, Raycast, sandcastles.ai, and OpusClip: premium, dark,
-minimal, motion-rich but tasteful.
+## Next (in THIS worktree, fresh session)
+Run the GSD flow here: `/gsd-new-milestone` → requirements → roadmap.
+Phase 0 scope per the vision: extract Socials → Anchor Pack #1, generalize
+`audiences` → domain-agnostic SIM, make scoring pluggable (the hard bet).
+Do NOT `git merge rework/engine-core` (squash-dangling; content already on main).
 
-## Why from scratch
-
-Five prior landing attempts were all judged **not good enough** and are abandoned
-(reference only, do **not** revive their code):
-`milestone/landing`, `milestone/landing-page`, `milestone/landing-page-redesign`,
-`milestone/landing-linear-clone`, `milestone/numen-landing`.
-
-## Source of truth
-
-- **Vision (input brief):** `.planning/LANDING-VISION.md`
-- **Requirements:** `.planning/REQUIREMENTS.md` (created by `/gsd-new-milestone`)
-- **Roadmap:** `.planning/ROADMAP.md` (created by `/gsd-new-milestone`)
-
-## Hard constraints / scope
-
-- **Marketing surface only.** No engine, no app logic, no Supabase product flows
-  beyond a waitlist/CTA. Engine + board untouched (they live on `main`).
-- **All platform/product visuals are PLACEHOLDERS** — sized, labelled stand-ins for
-  screenshots/videos/demos the human swaps in later. Build the slots, not the assets.
-- **Component/motion libs permitted** (executor discretion, within the taste bar):
-  shadcn/ui, Radix, Magic UI, Aceternity UI, motion (Framer Motion).
-- **Visual North Star:** refined > flashy. Linear/Raycast restraint + considered motion.
-- Numen brand carries over from `main`: coral accent (#FF7F50), Inter, dark
-  (#07080a) Raycast aesthetic, "Stele" logo + "Numen" wordmark.
-
-## Models (this worktree)
-
-- **All GSD agents → `claude-opus-4-8`** (quality profile, see `config.json`).
-- **`cc` main session → Opus 4.8 (1M) @ max effort** (see `.claude/settings.local.json`).
-
-## Phase numbering
-
-Milestone-scoped, restarts at **Phase 1** (per project convention).
+## Engine debt carried (noted on main, NONE GSI-blocking)
+- Low-value polish: E2, A6, A-T (folds into GSI audience work), S6, R3, R5, G3,
+  G-D (M2 RAG cut), `enrich-signature` stale header.
+- Launch-gate: rate-limiting (HARDEN-01, before any public traffic).
+- Ongoing: gen-latency. Optional: gen-retry backoff, SSRF bare-apex tighten,
+  apify try/catch.
+- `feat/creator-voice-sample` = PR #60 OPEN (rebase + review or close).

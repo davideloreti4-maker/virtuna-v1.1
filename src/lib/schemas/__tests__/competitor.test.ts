@@ -46,6 +46,18 @@ describe("apifyVideoSchema — mediaUrls field (Plan 02 additive extension)", ()
     const result = apifyVideoSchema.safeParse(item);
     expect(result.success).toBe(false);
   });
+
+  it("accepts videoMeta.subtitleLinks: null (clockworks subtitle-less video — must not drop the whole item)", () => {
+    // clockworks returns `null` (not `undefined`) for wordless videos (e.g. khaby.lame).
+    // Before the .nullable() fix this rejected the item, silently dropping ALL videos of a
+    // subtitle-less profile during calibration.
+    const item = { ...baseVideo, videoMeta: { duration: 15, subtitleLinks: null } };
+    const result = apifyVideoSchema.safeParse(item);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.videoMeta?.subtitleLinks ?? []).toEqual([]);
+    }
+  });
 });
 
 // ─── IngestError ───────────────────────────────────────────────────────────
