@@ -19,7 +19,7 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
 - [x] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier (BUILT 2026-06-27 — 4/4 plans; `normalizeStimulus` adapter door GREEN, full stimulus suite GREEN; IN-01/02/03 closed)
 - [x] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread (completed 2026-06-28)
 - [x] **Phase 6: Predict Verb** - Analyst-panel scenario reasoning collapses to probability/factors/confidence, always honestly Directional (completed 2026-06-29)
-- [ ] **Phase 7: Audience-as-Front-Door Surface** - The Audience picker becomes the primary context-setter tying the verbs together; creator experience byte-identical
+- [x] **Phase 7: Audience-as-Front-Door Surface** - The Audience picker becomes the primary context-setter tying the verbs together; creator experience byte-identical (completed 2026-06-29)
 
 ## Phase Details
 
@@ -249,11 +249,11 @@ Plans:
 
 **Wave 3** *(blocked on 07-02/03/04)*
 
-- [ ] 07-05-PLAN.md — Build chooser (3 paths) + composer host wiring (UX-04 / D-03, D-08)
+- [x] 07-05-PLAN.md — Build chooser (3 paths) + composer host wiring (UX-04 / D-03, D-08)
 
 **Wave 4** *(blocked on 07-05)*
 
-- [ ] 07-06-PLAN.md — Home empty state: 3 locked chips + first-run profile-chat demo + browser pass (UX-05 / D-04)
+- [x] 07-06-PLAN.md — Home empty state: 3 locked chips + first-run profile-chat demo + browser pass (UX-05 / D-04)
 
 **UI hint**: yes
 
@@ -270,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
 | 6. Predict Verb | 7/7 | Complete    | 2026-06-29 |
-| 7. Audience-as-Front-Door Surface | 4/6 | In Progress|  |
+| 7. Audience-as-Front-Door Surface | 6/6 | Complete   | 2026-06-29 |
 
 ---
 *Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves). Phase 3 planned 2026-06-27 (7 plans, Waves 0–4; D-01 determinism gate is Wave 0).*

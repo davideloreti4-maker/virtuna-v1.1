@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-06-29T07:27:55.553Z"
+status: verifying
+stopped_at: 07-06 Tasks 1-3 complete (HomeStarter + composer mount + home.test) — Task 4 human-verify checkpoint PENDING (do NOT mark plan complete)
+last_updated: "2026-06-29T11:17:16.348Z"
 last_activity: 2026-06-29 -- Phase 07 execution started
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 39
-  completed_plans: 37
-  percent: 86
+  completed_plans: 39
+  percent: 100
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 Phase: 07 (audience-as-front-door-surface) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Status (prior): 06-06 complete (Wave 3: predict route — `POST /api/tools/predict` clones the simulate security spine VERBATIM (auth 401 → csrfGuard 415/403 → MAX_MESSAGE_LENGTH=2000 scenario cap 400 → getAudience under session RLS → null 400 audience_not_found → try{normalizeStimulus → createOpenThreadLazy → runPredict → insertMessage re-validate+KC stamp → Response.json({block})} catch{generic 500 "Predict failed", never echoes the thrown detail, WR-02}). Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try: `audience.mode !== "general"` → 400 predict_requires_general_panel; `readSubjectKind(audience) === "person"` → 400 predict_requires_panel + "Predict needs a panel — try the Analyst Panel." nudge — so a non-panel audience never reaches the runner's throw→500 (D-03/WR-03/T-06-20). The default template-analyst (general, custom_context:[], no marker) reads as "panel" and runs (Pitfall 3, asserts 200 + runPredict called once). Body accepts scenario and/or message (scenario wins). D-07 upheld structurally — route concatenates nothing, hands the scenario to runPredict which data-fences it downstream. Wave-0 route.test.ts GREEN 7/7. Deviation [Rule 1]: the Wave-0 mock omitted the readSubjectKind export → partial-mocked via importOriginal so the route uses the REAL pure helper (faithful person/template-analyst coverage); reworded comments to drop the literal err.message for the leak-heuristic gate. PRED-01/PRED-03. Commit ecc0e128. The Wave-4 chain-handoff.test.ts stays RED by design — 06-07 turns it GREEN.)
 Status (prior): 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
 Status (prior): 06-04 complete (Wave 1: prediction-gauge block — PredictionGaugeBlockSchema (.strict() bands-only, panel-derived range the only numeric, sim1-flash/Directional literals, always-on caveat) in profile-blocks.ts + 3-file registration (blocks.ts re-export/union, block-registry.ts, message-blocks.tsx); PredictionGaugeBlockRenderer — the ONE honest gauge: band WORD (cream) + ~min–max% caption + confidence pill + feathered span (no needle/pointer/tick, fades both ends), attributed factors, collapsible panel drill, assumptions, caveat, Save footer; readable without color; bundle-leak-safe TYPE-only import; PRED-02/PRED-03)
@@ -102,6 +102,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 | Phase 07 P03 | ~3min | 2 tasks | 2 files |
 | Phase 07 P04 | 7min | 3 tasks | 2 files |
 | Phase 07 P05 | 7min | 4 tasks | 6 files |
+| Phase 07 P06 | ~6min | 4 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07]: 07-03: cloneTemplateAudience(supabase, templateId, name?) — UX-04/D-03 template Build path. Thin wrapper over createAudience (NO new insert path): finds GENERAL_TEMPLATES entry (throws on unknown), strips id + virtual user_id + timestamps, name capped 80, returns createAudience (session user_id CR-01 + Zod). build-clone.test.ts 8/8 mocked. Deviation [Rule 1]: sentinel never-persisted scan narrowed to strict-equality on template ids + __virtual__ ('general' sentinel collides with mode:'general'). Full audience suite 14/180 green; tsc clean. Commits b07866b7/de35f041/9dab5e6e. UX-04 closed; 07-05 mounts it.
 - [Phase ?]: [Phase 07] 07-04: Composer threads live activeMode (selectedAudience?.mode ?? 'socials') into ComposerControls + per-skill General submit (D-07): Profile opens the evidence-drop picker (within gesture; evidenceInputRef lifted ahead of handleUserSelectTool); Simulate/Predict POST /api/tools/{simulate,predict} with audienceId gated on a selected General audience. Gate (T-07-04-01): no General audience -> router.push('/audience/new'), never fires ungated; canSubmit gates on draft only (button redirects, server is trust boundary). reloadProfileThread + mount filter widened with 'prediction-gauge' [Rule 2]. Socials byte-identical; no new route; ENGINE_VERSION 3.20.0. Commits 87bbc1a6/b469a4ad/6753b5b5. 25 tests green. UX-02.
 - [Phase ?]: [Phase 07] 07-05: + Build an audience chooser shipped (UX-04/D-03/D-08). New build-chooser.tsx — centered matte Radix Dialog, 3 paths: description → router.push('/audience/new?mode=general'); evidence → onEvidence() reuses the P5 evidence-drop; template → lists GENERAL_TEMPLATES (Directional badge) → editable auto-name (cap 80) → cloneTemplateAudience → onBuilt. Composer hosts it (buildOpen, onBuildAudience opens, handleBuiltAudience appends+selects the cloned General SIM driving skill menu+reactor; mounted in composerDock both layouts). /audience/new now async reads searchParams.mode → AudienceForm initialMode (else undefined); AudienceForm gains initialMode prop + sends mode in create POST (no visible control, Socials byte-identical D-08). No accent/glass; no new route; ENGINE_VERSION 3.20.0. 26 tests green; tsc 19≤20. Commits 7f76d92e/c11e471e/48c11e66/f5e9fb5e/25325173.
+- [Phase 07]: 07-06: HomeStarter unlocks the home empty state (UX-05/D-04) — 3 LOCKED-verbatim chips (Test an idea on your audience / Profile a chat / Predict an outcome) always render in the composer no-conversation region, hosted BY the composer so chip handlers reach composer-internal flows directly (Test→idea/test on active audience, Profile→evidence drop, Predict→gated General flow). Below them a one-tap show-once first-run demo: 'See it in action' POSTs a static canned chat fixture to /api/tools/profile (no user input — route re-validates+caps, T-07-06-01) then reloadProfileThread surfaces the profile-read card in-thread (the §15.5 cold-start wow); 'Dismiss' is a muted text link. Show-once via localStorage numen.home.demo.seen set eagerly on first run OR Dismiss; a mounted-flag useEffect gates the client-only flag to avoid hydration mismatch; chips are NOT flag-gated (only the demo is). page.tsx P5 D-18/D-25 empty-lock doc dropped, re-noted as the P7 unlock. Matte, no accent. home/composer/reskin 26/26 green. Task 4 real authed /home browser pass APPROVED (all 5 steps: empty-state wow, mode-sectioned picker+trust badges, Build chooser, mode-scoped skill menu Profile/Simulate/Predict, byte-identical Socials creator path, zero console errors/warnings). Two orchestrator browser-pass fixes committed: a64d6ecf (portal audience switcher dropdown above composer clip), 99ae67c8 (pre-existing next-build TS gate — recharts-3 tooltip generics + calibration.ts audience.mode). Commits 672e8c93/739b7902/4827c432. UX-05 closed; Phase 07 plans 6/6.
 
 ### Pending Todos
 
@@ -177,6 +179,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-29T07:27:22.078Z
+Last session: 2026-06-29T11:16:43.203Z
 Stopped at: 07-06 Tasks 1-3 complete (HomeStarter + composer mount + home.test) — Task 4 human-verify checkpoint PENDING (do NOT mark plan complete)
 Resume file: .planning/phases/07-audience-as-front-door-surface/07-06-PLAN.md (Task 4)
