@@ -18,7 +18,7 @@ Phases are milestone-scoped (numbered 1-N for v7.0). The engine-rework "Phase 0"
 - [x] **Phase 3: General Population + Honesty Layer** - `audiences` generalizes into a domain-agnostic SIM library with Validated/Directional badges and surfaced provenance (BUILT 2026-06-27 — 7/7 plans; auto-verified 5/5 must-haves + all 7 req IDs; WR-01 honesty fix applied; **awaiting human UAT → `/gsd-verify-work 3`**. TRUST-01 closed on both audience surface + run card; D-01 determinism resolved via bake-once-freeze) (completed 2026-06-27)
 - [x] **Phase 4: Input Adapter** - One inbox door accepts text/file/image, normalizes to a `Stimulus`, auto-selects the SIM-1 tier (BUILT 2026-06-27 — 4/4 plans; `normalizeStimulus` adapter door GREEN, full stimulus suite GREEN; IN-01/02/03 closed)
 - [x] **Phase 5: Profile → Simulate Wow** - The on-ramp: Profile a chat into a saved audience, then Simulate a reply through it, in one thread (completed 2026-06-28)
-- [ ] **Phase 6: Predict Verb** - Analyst-panel scenario reasoning collapses to probability/factors/confidence, always honestly Directional
+- [x] **Phase 6: Predict Verb** - Analyst-panel scenario reasoning collapses to probability/factors/confidence, always honestly Directional (completed 2026-06-29)
 - [ ] **Phase 7: Audience-as-Front-Door Surface** - The Audience picker becomes the primary context-setter tying the verbs together; creator experience byte-identical
 
 ## Phase Details
@@ -218,7 +218,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 06-07-PLAN.md — chain CTA simulate→predict + Simulate-card edit + audienceId carry + end-to-end human-verify (PRED-01)
+- [x] 06-07-PLAN.md — chain CTA simulate→predict + Simulate-card edit + audienceId carry + end-to-end human-verify (PRED-01)
 
 **UI hint**: yes
 
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
-| 6. Predict Verb | 3/7 | In Progress|  |
+| 6. Predict Verb | 7/7 | Complete   | 2026-06-29 |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---
