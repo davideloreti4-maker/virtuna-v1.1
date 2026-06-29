@@ -4,13 +4,13 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-06-29T01:33:58.245Z"
+last_updated: "2026-06-29T01:40:34.123Z"
 last_activity: 2026-06-29 -- Phase 06 execution started
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 33
-  completed_plans: 28
+  completed_plans: 29
   percent: 71
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 06 (predict-verb) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Status (prior): 05-05 complete (Wave 2: simulate-runner.ts — drafted message → person/panel reaction-distribution on the EXISTING Flash engine, deterministic subjectKind from the persisted marker; /api/tools/simulate route — auth/csrf/cap/RLS-audience spine + SAME-thread persistence; SIMU-01/02/03)
 Status (prior): 05-04 complete (Wave 2: profile-runner.ts fuses the forensic READ + saved General SIM from ONE bake; /api/tools/profile route — auth/csrf/cap/storagePath spine + thread persistence; PROF-01/02/03)
@@ -89,6 +89,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 05 P06 | ~30min | 1 task (+1 human-verify pending) | 1 file |
 | Phase 06 P01 | ~6min | 2 tasks | 7 files |
 | Phase 06 P01 | ~6min | 2 tasks | 7 files |
+| Phase 06 P03 | ~7min | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,7 @@ Recent decisions affecting current work:
 
 - [Phase 05]: 05-06: `composer.tsx` (PROF-01/SIMU-03 inbox) — a MINIMAL ADDITIVE evidence-drop affordance added to the existing composer: a Phosphor `Paperclip` attach icon-button (`aria-label`, focus ring, `pointer-coarse` ≥44px) mounted ALONGSIDE `<ComposerControls/>` (never inside — creator/Socials left-cluster byte-identical, D-07/F-05); a form-level drag-over overlay (matte `bg-surface`+`shadow-float`+dashed 10% hairline, dismiss on drop/leave — `VideoUpload` stops propagation so the creator upload path is unaffected); a removable filename chip (`bg-surface-elevated`); an inline muted reject for `.docx`/`.pdf`+unknown types (D-09, never a modal). Accept set `.txt`/`.md`→file_text, image→image, short video→video; on submit an additive `onSubmitForm` guard routes the staged file to `POST /api/tools/profile` (file_text/image base64 JSON body; clip staged to Supabase `videos` then posted as a sanitized `storagePath`) — the creator `canSubmit`/`handleSubmit` path is untouched. The returned `profile-read` + the `reaction-distribution` the card's own Simulate CTA persists to the SAME open thread are read back from `/api/threads/open` and rendered in-thread via the shared `MessageBlocks` renderer (registered 05-01), gated on block presence not a tool (there is no "profile" tool); persisted profile/reaction blocks also rehydrate on mount; a bounded self-clearing 4s poll surfaces the reaction live (the shipped renderer is self-contained, left unmodified). Zero coral (reskin-matte 6/6); no P7 surfaces (D-09). AC: `grep tools/profile`=8; composer tsc=0 new; composer tests 7 files/52 pass; **wave-gate `next build` COMPILES ✓ (bundle-leak gate met)** — a PRE-EXISTING unrelated `earnings-chart.tsx` recharts type error blocks the build's full tsc step (verified on HEAD via stash; out of scope per SCOPE BOUNDARY → `deferred-items.md`). Commit `92feb6c6` (feat). **Task 2 (end-to-end one-thread Profile→Simulate human-verify in a real browser) PENDING** — returned as a `checkpoint:human-verify`, not self-approved. PROF-01/SIMU-03 close on human approval.
 - [Phase ?]: [Phase 06]: 06-01: predict-schema.ts (ordinal-lean model boundary) GREEN as a PARALLEL sibling of flash-schema.ts — LEANS 5-point ordinal + PredictAnalystSchema/.strict (rejects smuggled per-analyst number, D-01/T-06-01) + PredictPanelResultSchema/.strict/.min(2) (NO top-level probability/range/confidence = structural D-01 guard; range/band/confidence derived downstream by aggregatePredict 06-02, never echoed) + coercePredictResponse mirroring coerceFlashResponse (bare array/fences/casing; unknown lean salvaged to neutral toss_up, never fabricated, T-06-02). Binary FlashResult/FlashPersona byte-untouched (grep===0, no PACK-04 risk). Nyquist Wave-0: 5 RED tests (predict-aggregate range=min/max + two-distribution inequality + tight→High/wide→Low + factors carry analystArchetype; predict-runner deps.flash zero-network always Directional/sim1-flash/caveat + successCriterion; route 401/415/400-empty/400-non-general/400-person+nudge/template-analyst-NOT-rejected-Pitfall3/500-generic; gauge .strict-rejects-score + ~min–max% readable-without-color + min===max feather; chain-handoff append simulate→predict). predict-schema 14/14 GREEN; 5 suites RED by design (4 module-not-found + chain-handoff 1-fail/18-pass regression-clean). No deviations. Commits 51c7b68c (feat), 7b3e8692 (test).
+- [Phase ?]: [Phase 06]: 06-03: run-predict-panel.ts (PRED-01) — analyst-reasoning Flash leaf replacing the binary content frame (D-02). runPredictPanel(scenario, panel, audienceRepaint?, deps?) clones the run-flash-text-mode determinism envelope VERBATIM (temp:0 + seed + enable_thinking:false + json_object + 60s abort; strip→parse→coercePredictResponse→PredictPanelResultSchema.safeParse). A PANEL OF ANALYSTS reasons about scenario LIKELIHOOD emitting {archetype, lean(ordinal), factor, factorDirection(for|against), reasoning} — no stop/scroll verbs (count 0). D-07: scenario + successCriterion + customContext isolated in ONE delimited USER data fence; byte-stable system prompt carries zero untrusted bytes + explicit never-obey directive (mirror vision.ts); test asserts SYSTEM excludes scenario, USER includes it in-fence. Steer rides panel.archetypes + audienceRepaint (deterministic), drives analyst count (A4). Flash reasoning model only — audio-sensor constant count 0 (Pitfall 1). Imports only qwen/client + utils/strip + predict-schema. Injectable deps.client = zero-network seam. run-predict-panel.test.ts 9/9 GREEN; tsc clean on new files. No deviations (mock mirrored from vision.test.ts; named flash analog absent). Commits d1b29f8e (test), 34baa7ee (feat).
 
 ### Pending Todos
 
@@ -153,6 +155,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-29T01:28:34.898Z
+Last session: 2026-06-29T01:40:16.507Z
 Stopped at: Phase 6 UI-SPEC approved
 Resume file: .planning/phases/06-predict-verb/06-UI-SPEC.md

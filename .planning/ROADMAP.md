@@ -205,7 +205,7 @@ Plans:
 **Wave 1** *(blocked on Wave 0 — parallel, no file overlap)*
 
 - [x] 06-02-PLAN.md — predict-aggregate.ts: the novel honest collapse — band + panel-spread range + confidence + factors (PRED-01)
-- [ ] 06-03-PLAN.md — run-predict-panel.ts: the analyst-reasoning frame (drops stop/scroll) + D-07 injection isolation (PRED-01)
+- [x] 06-03-PLAN.md — run-predict-panel.ts: the analyst-reasoning frame (drops stop/scroll) + D-07 injection isolation (PRED-01)
 - [ ] 06-04-PLAN.md — prediction-gauge block schema (.strict()) + feathered-span renderer + 3-file registration (PRED-02, PRED-03)
 
 **Wave 2** *(blocked on Wave 1)*
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
-| 6. Predict Verb | 2/7 | In Progress|  |
+| 6. Predict Verb | 3/7 | In Progress|  |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---
