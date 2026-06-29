@@ -7,6 +7,11 @@
 > **Scope:** what is still open as of 2026-06-29. Excludes work already merged to `main`.
 > Supersedes the stale survey baseline in `docs/WORKTREE-DEBT-LEDGER.md` (last reconciled
 > 2026-06-26, predates PRs #71–#90). **Reconcile the ledger from this doc.**
+>
+> **Companion:** `docs/WORKTREE-MERGE-AUDIT-2026-06-29.md` — per-worktree git forensics (polish /
+> shell / frame / discover-feed / numen-gsi): exactly what landed vs what's missing, each open item
+> code-verified with `file:line`. Verdict: all five lanes' code is on `main`; only `polish/cards-next`
+> has unmerged commits and those are superseded throwaway. Four worktrees are retire-able.
 
 ---
 
@@ -51,9 +56,22 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
   fixed via body-portal; 4 code-review warnings + 2 build-gate type errors fixed; 6-file divergence
   merge resolved (both sides integrated, full-suite-gated); squash-merged.
 - ⚠️ Do NOT `git merge rework/engine-core` (Phase 0, already on main).
-- **Deferred into the next milestone** (recorded in GSI `STATE.md` → Deferred Items):
-  1. **P05 review follow-ups** — open todos from the Phase-05 code review.
-  2. **Simulate person-framing** — reframe Simulate output around the person/persona.
+- **Deferred into the next milestone** (GSI `STATE.md` → Deferred Items + `todos/pending/`; see the
+  per-worktree forensics in **`docs/WORKTREE-MERGE-AUDIT-2026-06-29.md` §4**):
+  1. **P05 code-review follow-ups** (`p05-code-review-followups.md`, low-med) —
+     **WR-01** text cap bypassed via file/image upload (`api/tools/profile/route.ts`, only `kind:"text"`
+     capped; add decoded-size cap on file_text ~1MB / image ~10MB) ·
+     **WR-03** Simulate 500 on resolvable non-General audience (`api/tools/simulate/route.ts` +
+     `simulate-runner.ts:~158-161` throw → should be 400) ·
+     **WR-04** composer video path silent no-op + orphaned storage (`composer.tsx:~722-743` when `!userId`).
+  2. **Simulate person-framing** (`simulate-reaction-person-framing.md`, medium, engine/`simulate-runner.ts`)
+     — the baked **person** SIM reacts like a generic **content** critic ("scroll", "first second") not the
+     person reacting to the *message*; `runSimulate` uses the content-reaction frame and doesn't import
+     `behavioral-core.ts` (Pitfall 5). Chain renders/chains fine; only the reaction *framing* is off.
+  3. **`next build` tsc baseline** — `src/components/app/brand-deals/earnings-chart.tsx:97`
+     `<Tooltip content={EarningsTooltip}>` recharts-3 type mismatch fails the full-project tsc step
+     (`next dev` skips it). Pre-existing since 05-01; part of the ~20-err baseline → see the eslint-refactor
+     debt below. **Confirmed on main.** S.
 - **Close-out hygiene (cheap):** `~/virtuna-numen-gsi` + `milestone/numen-gsi` are merged → retire
   the worktree/branch per the convention. First verify no stranded work — audit earlier flagged
   `audience-presence.tsx` modified (`diff --stat` no net change = whitespace/no-op; verify or revert).
@@ -95,6 +113,12 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 - **Cheap client win:** cycle the sub-detail copy + show elapsed seconds during the Generating
   stage so it shows life (no faked stage completion — respects the D-02 "real not timed" rule).
 - Size: S (client win) / M (engine callbacks).
+
+**Shell-lane peripheral chrome (separate from premium-thread; code-verified on main):**
+- 🔴 `src/components/app/auth-guard.tsx:71` `bg-[#0A0A0A]` + `:73` `border-zinc-800` — raw Raycast
+  off-token leftover on the loading gate. **Confirmed still on main.** S.
+- `settings/billing-section.tsx` — session notes claimed zinc/glass; grep found none on main → likely
+  already resolved (#69/#71). Verify visually then drop. · Sidebar inset — claimed, not re-verified, low.
 
 ---
 
