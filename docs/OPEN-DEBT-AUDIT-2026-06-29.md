@@ -15,6 +15,9 @@
 > - `docs/DEV-VERIFICATION-2026-06-29.md` — **live browser pass** (dev :3300, authed) confirming
 >   working-vs-stub on the real app + screenshots (`docs/verification/`). It **corrects** this ledger where
 >   the running app contradicted the static reads (notably: the feed filters/suggested work shipped in #90).
+> - `docs/FINAL-AUDIT-PR-COMMIT-2026-06-29.md` — whole-history audit (80 merged / 4 closed-unmerged / 0
+>   open PRs; 2968 commits; GSI 7/7 phases) + **honest doc/memory coverage attestation** (the ~2,300-file
+>   per-worktree archive is settled/superseded; only #60 creator-voice is real unshipped work).
 
 ---
 
