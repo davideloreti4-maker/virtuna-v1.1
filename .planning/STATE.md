@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 06-07-PLAN.md (chain CTA simulate→predict + human-verify PASSED — Phase 6 COMPLETE 7/7)
-last_updated: "2026-06-29T04:02:00.000Z"
-last_activity: 2026-06-29 -- 06-07 complete (chain CTA simulate→predict + human-verify PASSED — Phase 6 COMPLETE 7/7)
+status: verifying
+stopped_at: Completed 06-07-PLAN.md (chain CTA simulate→predict + human-verify PASSED) — Phase 6 (Predict Verb) COMPLETE 7/7; ready for `/gsd-verify-work 6`
+last_updated: "2026-06-29T02:46:23.714Z"
+last_activity: 2026-06-29
 progress:
   total_phases: 7
   completed_phases: 6
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 
 ## Current Position
 
-Phase: 06 (predict-verb) — COMPLETE (7/7) — ready for verification (`/gsd-verify-work 6`)
-Plan: 7 of 7 (all complete)
+Phase: 7
+Plan: Not started
 Status: 06-07 complete (Wave 4 — THE D-06 minimal trigger, Phase 6 closed). `chain-handoff.ts` adds `"predict"` to the `SkillId` union + appends the `simulate→predict` entry (`ctaLabel:"Predict an outcome →"`, `endpoint:"/api/tools/predict"`, `anchorFrom:"card"`) → Wave-0 `chain-handoff.test.ts` GREEN 19/19. `profile-blocks.ts` adds additive optional `audienceId` to `ReactionDistributionBlockSchema.props` (.strict()-safe; `PredictionGaugeBlockSchema` untouched). `simulate-runner.ts` populates `audienceId:audience.id` on the reaction-distribution block (additive, byte-stable otherwise). `reaction-distribution-block.tsx` renders the panel-only "Predict an outcome →" chain-CTA beside `SaveAffordance` — clones `profile-read-block.tsx` fetch+state: `handoffsFor("simulate").find(h=>h.to==="predict")` → POST `{audienceId,scenario}` → the `prediction-gauge` lands in the SAME open thread; CTA renders ONLY for a panel simulate (D-03) and is omitted when `audienceId` absent (back-compat); neutral cream, zero coral (F-07, reskin-matte green). Full suite 280 files/2929 pass; tsc clean on all 4 touched files. **Task 2 end-to-end human-verify (real browser) PASSED** — real engine `POST /api/tools/predict` (template-analyst, SaaS pricing→churn) → 200 honest `prediction-gauge` (band "Toss-up", range {10,65} = the only numeric, confidence "Low" D-05, 4 analysts ordinal lean + reasoning ZERO per-analyst numbers D-01, 4 named-archetype factors D-04, Directional/sim1-flash/always-on caveat); gauge reads honestly under grayscale (PRED-02/F-03, zero terracotta); person-SIM → 400 `predict_requires_panel` + nudge, mode-reject → 400 `predict_requires_general_panel`, never a 500/crash (D-08); no bundle leak / hydration error (Pitfall 4); person card renders NO Predict CTA (D-03). No deviations. Commit 8d6c4ac5 (feat) + edb7bf32 (SUMMARY). PRED-01 closed — **Phase 6 (Predict Verb) COMPLETE; the full Profile → Simulate → Predict chain now runs end-to-end in one thread, all honestly Directional.**
 Status (prior): 06-06 complete (Wave 3: predict route — `POST /api/tools/predict` clones the simulate security spine VERBATIM (auth 401 → csrfGuard 415/403 → MAX_MESSAGE_LENGTH=2000 scenario cap 400 → getAudience under session RLS → null 400 audience_not_found → try{normalizeStimulus → createOpenThreadLazy → runPredict → insertMessage re-validate+KC stamp → Response.json({block})} catch{generic 500 "Predict failed", never echoes the thrown detail, WR-02}). Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try: `audience.mode !== "general"` → 400 predict_requires_general_panel; `readSubjectKind(audience) === "person"` → 400 predict_requires_panel + "Predict needs a panel — try the Analyst Panel." nudge — so a non-panel audience never reaches the runner's throw→500 (D-03/WR-03/T-06-20). The default template-analyst (general, custom_context:[], no marker) reads as "panel" and runs (Pitfall 3, asserts 200 + runPredict called once). Body accepts scenario and/or message (scenario wins). D-07 upheld structurally — route concatenates nothing, hands the scenario to runPredict which data-fences it downstream. Wave-0 route.test.ts GREEN 7/7. Deviation [Rule 1]: the Wave-0 mock omitted the readSubjectKind export → partial-mocked via importOriginal so the route uses the REAL pure helper (faithful person/template-analyst coverage); reworded comments to drop the literal err.message for the leak-heuristic gate. PRED-01/PRED-03. Commit ecc0e128. The Wave-4 chain-handoff.test.ts stays RED by design — 06-07 turns it GREEN.)
 Status (prior): 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
@@ -39,7 +39,7 @@ Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-29 -- 06-07 complete (chain CTA simulate→predict + human-verify PASSED — Phase 6 COMPLETE 7/7)
+Last activity: 2026-06-29
 
 Progress: [████████░░] 86% (6/7 phases complete)
 
@@ -47,7 +47,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 
 **Velocity:**
 
-- Total plans completed: 27
+- Total plans completed: 34
 - Average duration: —
 - Total execution time: —
 
@@ -60,7 +60,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 | 03 | 7 | - | - |
 | 04 | 4 | - | - |
 | 05 | 6 | - | - |
-| 06 | 5 | - | - |
+| 06 | 7 | - | - |
 
 **Recent Trend:**
 
