@@ -200,7 +200,7 @@ Plans:
 Plans:
 **Wave 0**
 
-- [ ] 06-01-PLAN.md — Predict schema contract (ordinal lean + factor, .strict() honesty guard) + Nyquist test scaffold (PRED-01, PRED-03)
+- [x] 06-01-PLAN.md — Predict schema contract (ordinal lean + factor, .strict() honesty guard) + Nyquist test scaffold (PRED-01, PRED-03)
 
 **Wave 1** *(blocked on Wave 0 — parallel, no file overlap)*
 
@@ -250,7 +250,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. General Population + Honesty Layer | 7/7 | Complete    | 2026-06-27 |
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
-| 6. Predict Verb | 0/7 | Planned | - |
+| 6. Predict Verb | 1/7 | In Progress|  |
 | 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
 
 ---

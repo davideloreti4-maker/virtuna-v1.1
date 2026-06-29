@@ -45,9 +45,9 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 
 ### PRED — Predict Verb
 
-- [ ] **PRED-01**: `predict(panel, scenario)` simulates an analyst panel across scenario branches and collapses to probability + factors + confidence
+- [x] **PRED-01**: `predict(panel, scenario)` simulates an analyst panel across scenario branches and collapses to probability + factors + confidence
 - [ ] **PRED-02**: A prediction-gauge result card renders the probability, factors, and confidence
-- [ ] **PRED-03**: Predict output is always Directional and shows its assumptions + receipts (never presented as an oracle)
+- [x] **PRED-03**: Predict output is always Directional and shows its assumptions + receipts (never presented as an oracle)
 
 ### IN — Input Adapter
 
@@ -118,9 +118,9 @@ Phases assigned during roadmap creation. All Pending.
 | SIMU-01 | Phase 5 | Complete |
 | SIMU-02 | Phase 5 | Complete |
 | SIMU-03 | Phase 5 | Complete |
-| PRED-01 | Phase 6 | Pending |
+| PRED-01 | Phase 6 | Complete |
 | PRED-02 | Phase 6 | Pending |
-| PRED-03 | Phase 6 | Pending |
+| PRED-03 | Phase 6 | Complete |
 | IN-01 | Phase 4 | Complete (04-04) |
 | IN-02 | Phase 4 | Complete (04-02) |
 | IN-03 | Phase 4 | Complete (04-03) |
