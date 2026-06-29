@@ -475,6 +475,48 @@ export async function createAudience(
 }
 
 /**
+ * Clone a GENERAL_TEMPLATES entry into an owned, editable General SIM (UX-04 / D-03 —
+ * the Build chooser "From a template" path). Turns a select-only virtual preset into the
+ * moat object: a saved `mode:'general'` audience the creator owns and can edit.
+ *
+ * Security: this is a thin wrapper over `createAudience` — it adds NO new insert path.
+ *  - The sentinel `id` (e.g. 'template-analyst') and virtual `user_id` ('__virtual__') are
+ *    destructured off and never passed on (T-07-03-02 — a sentinel id never reaches the DB).
+ *  - `createAudience` re-derives `user_id` from `supabase.auth.getUser()` (CR-01), so even the
+ *    stripped virtual user_id is structurally impossible to persist (T-07-03-01 / IDOR).
+ *  - `createAudience` validates via `WritableAudienceSchema` (name ≤ 80, free-text caps),
+ *    bounding the cloned fields (T-07-03-03).
+ *
+ * @param templateId one of GENERAL_TEMPLATES ('template-analyst' | 'template-hiring').
+ * @param name optional override; defaults to the template name. Capped to 80 (schema limit).
+ * @throws if templateId is unknown — no silent createAudience call.
+ */
+export async function cloneTemplateAudience(
+  supabase: SupabaseClient,
+  templateId: string,
+  name?: string,
+): Promise<Audience> {
+  const tpl = GENERAL_TEMPLATES.find((t) => t.id === templateId);
+  if (!tpl) throw new Error(`unknown template '${templateId}'`);
+
+  // Drop the non-writable / sentinel fields (id + virtual user_id + timestamps) — these
+  // must NEVER be forwarded to the insert. `mode:'general'` rides along in `cloneable`.
+  const { id, user_id, created_at, updated_at, ...cloneable } = tpl;
+  void id;
+  void user_id;
+  void created_at;
+  void updated_at;
+
+  const input: Partial<Audience> = {
+    ...cloneable,
+    name: (name ?? tpl.name).slice(0, 80),
+  };
+
+  // Reuse createAudience verbatim — Zod validation + session-derived user_id + RLS insert.
+  return createAudience(supabase, input);
+}
+
+/**
  * Update an existing audience row by id.
  * user_id is stripped from input and re-derived from session (CR-01).
  * Validates the writable shape via Zod before writing.
