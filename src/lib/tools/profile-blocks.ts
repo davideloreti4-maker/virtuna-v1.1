@@ -114,3 +114,52 @@ export const ReactionDistributionBlockSchema = z.object({
 });
 
 export type ReactionDistributionBlock = z.infer<typeof ReactionDistributionBlockSchema>;
+
+// ─── prediction-gauge block (PRED-02 / PRED-03) ──────────────────────────────
+// The honest forecast result card (06-04). Bands/words only; the panel-derived
+// `range` is the SINGLE numeric — `.strict()` rejects any smuggled point-score /
+// `score` / 0-100 / extra field (D-01 / T-06-08). Every factor names its analyst
+// (D-04); the caveat is always present (D-04 / F-04); `model`/`tier` are literals
+// (Predict is always Flash, always Directional). The schema ALLOWS `min === max`
+// (a unanimous panel) — the renderer enforces the feather (F-01), not the schema.
+
+export const PredictionGaugeBlockSchema = z.object({
+  type: z.literal("prediction-gauge"),
+  props: z
+    .object({
+      audienceName: z.string().min(1), // the panel name (header)
+      scenario: z.string().min(1), // "On: {scenario}" lead (clamped in UI)
+      band: z.enum(["Likely", "Lean yes", "Lean no", "Toss-up", "Unlikely"]), // gauge hero WORD
+      range: z.object({
+        min: z.number().int().min(0).max(100),
+        max: z.number().int().min(0).max(100),
+      }), // the ONLY numeric (panel-derived); min === max allowed (renderer feathers it)
+      confidence: z.enum(["High", "Medium", "Low"]), // tightness (D-05) — a WORD
+      factors: z
+        .array(
+          z.object({
+            analystArchetype: z.string().min(1), // every factor names its analyst (D-04 / F-05)
+            driver: z.string().min(1),
+            direction: z.enum(["for", "against"]),
+          }),
+        )
+        .min(1),
+      panel: z
+        .array(
+          z.object({
+            archetype: z.string().min(1),
+            lean: z.enum(["strongly_no", "lean_no", "toss_up", "lean_yes", "strongly_yes"]), // WORD in UI
+            reasoning: z.string().min(1),
+          }),
+        )
+        .min(1), // composition drill (who reasoned) — D-04
+      assumptions: z.array(z.string()).default([]), // scenario premises (D-04)
+      successCriterion: z.string().nullable(), // "Judged against: {…}" lens line (D-04)
+      caveat: z.string().min(1), // always-on Directional caveat (D-04 / F-04)
+      model: z.literal("sim1-flash"), // Predict is always Flash
+      tier: z.literal("Directional"), // never Validated for General
+    })
+    .strict(), // ← rejects a smuggled point-score / 0-100 / extra field (PRED-03 / D-01)
+});
+
+export type PredictionGaugeBlock = z.infer<typeof PredictionGaugeBlockSchema>;

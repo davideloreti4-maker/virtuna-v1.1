@@ -29,6 +29,7 @@ import {
 import {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
+  PredictionGaugeBlockSchema,
 } from "./profile-blocks";
 
 // ─── Registry ─────────────────────────────────────────────────────────────────
@@ -47,6 +48,7 @@ export const BLOCK_REGISTRY = {
   "account-read": { schema: AccountReadBlockSchema as z.ZodType },
   "profile-read": { schema: ProfileReadBlockSchema as z.ZodType },
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
+  "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;
