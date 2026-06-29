@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-06-29T06:54:01.409Z"
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-06-29T07:00:24.780Z"
 last_activity: 2026-06-29 -- Phase 07 execution started
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 39
-  completed_plans: 35
+  completed_plans: 36
   percent: 86
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (audience-as-front-door-surface) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Status (prior): 06-06 complete (Wave 3: predict route — `POST /api/tools/predict` clones the simulate security spine VERBATIM (auth 401 → csrfGuard 415/403 → MAX_MESSAGE_LENGTH=2000 scenario cap 400 → getAudience under session RLS → null 400 audience_not_found → try{normalizeStimulus → createOpenThreadLazy → runPredict → insertMessage re-validate+KC stamp → Response.json({block})} catch{generic 500 "Predict failed", never echoes the thrown detail, WR-02}). Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try: `audience.mode !== "general"` → 400 predict_requires_general_panel; `readSubjectKind(audience) === "person"` → 400 predict_requires_panel + "Predict needs a panel — try the Analyst Panel." nudge — so a non-panel audience never reaches the runner's throw→500 (D-03/WR-03/T-06-20). The default template-analyst (general, custom_context:[], no marker) reads as "panel" and runs (Pitfall 3, asserts 200 + runPredict called once). Body accepts scenario and/or message (scenario wins). D-07 upheld structurally — route concatenates nothing, hands the scenario to runPredict which data-fences it downstream. Wave-0 route.test.ts GREEN 7/7. Deviation [Rule 1]: the Wave-0 mock omitted the readSubjectKind export → partial-mocked via importOriginal so the route uses the REAL pure helper (faithful person/template-analyst coverage); reworded comments to drop the literal err.message for the leak-heuristic gate. PRED-01/PRED-03. Commit ecc0e128. The Wave-4 chain-handoff.test.ts stays RED by design — 06-07 turns it GREEN.)
 Status (prior): 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
@@ -99,6 +99,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 | Phase 06 P07 | ~10min | 2 tasks | 4 files |
 | Phase 07 P01 | 4min | 2 tasks | 3 files |
 | Phase 07 P02 | 10min | 3 tasks | 2 files |
+| Phase 07 P03 | ~3min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,7 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-06: `/api/tools/predict/route.ts` (PRED-01/PRED-03) — the untrusted HTTP boundary, cloned VERBATIM from `simulate/route.ts`: `auth.getUser()` 401 BEFORE any DB/LLM (T-06-14) → `csrfGuard` 415/403 (T-06-15) → `MAX_MESSAGE_LENGTH=2000` scenario cap → 400 on empty/oversize (T-06-16) → `getAudience(supabase, audienceId)` under session (RLS-scoped, never raw weights, T-06-17) → null → 400 `audience_not_found` → try{`normalizeStimulus({kind:"text",text:scenario})` → `createOpenThreadLazy(user.id)` → `runPredict({audience, stimulus})` → `insertMessage` (re-validate + KC stamp) → `Response.json({block})`} catch{`console.error` + generic 500 `"Predict failed"`, never echoes the thrown detail, WR-02/T-06-19}. Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try (so a non-panel audience never reaches the runner's throw→500, T-06-20/WR-03): `audience.mode !== "general"` → 400 `predict_requires_general_panel`; `readSubjectKind(audience) === "person"` → 400 `predict_requires_panel` + `"Predict needs a panel — try the Analyst Panel."` nudge. Imports the SHARED exported `readSubjectKind` (06-05) — single source for the person/panel distinction. The marker-absent default `template-analyst` (mode general, custom_context:[]) reads "panel" and RUNS (Pitfall 3; test asserts 200 + `runPredict` called once). Body accepts `scenario` and/or `message` (scenario wins). D-07 structural — route concatenates nothing, hands the scenario to `runPredict` which data-fences it in the delimited USER block downstream. Wave-0 `route.test.ts` GREEN 7/7 (mocked, zero LLM/DB). Deviations [Rule 1]: (a) the Wave-0 factory mock omitted `readSubjectKind` → partial-mocked via `importOriginal` so the route exercises the REAL pure helper (faithful person/template-analyst coverage); (b) reworded two route comments + one docstring line to drop the literal `err.message` token for the `grep -c "err.message" === 0` leak gate — no behavioral change, the 500 body carries only the generic string (test-proven). tsc clean on the touched route/test files. Commit ecc0e128 (feat). PRED-01/PRED-03 closed. The Wave-4 `chain-handoff.test.ts` stays RED by design — 06-07.
 - [Phase ?]: [Phase 07]: 07-01: Skill menu is Audience-mode-scoped (UX-02/D-01). SkillMeta gains modes[] (creator skills ['socials']; Profile/Simulate/Predict ['general']); ToolId widened +profile/simulate/predict + SKILL_ICON people/target/crosshair (no accent). SkillRows + ComposerControlsProps gain optional activeMode (default 'socials'); inMode() filter gates the list BEFORE the Creator/Marketing partition; General mode is a flat list with no sub-headers. Byte-identical Socials default preserved (live composer unchanged until 07-04 threads the real mode). Deviation [Rule 3]: composer.tsx PLACEHOLDER_BY_TOOL Record<ToolId> gained the 3 keys (union-widening fallout; tsc back to 20-error baseline). composer-controls 14/14 + reskin-matte 6/6 green. Commits b3ad353a, 917f25af. UX-02 closed.
 - [Phase ?]: 07-02: AudiencePresence switcher is now Mode-sectioned via groupAudiences (── Socials ──/── General ──, General header only when a General audience is owned) with per-row neutral resolveTier trust badges (Directional/Validated, no accent) + a + Build an audience row wired to a new optional onBuildAudience prop; the ambient reactor is generalized — a General person-SIM (mode:general, 1 persona) presents as a single reactor (1 reactor ready, one dot) while a panel-SIM keeps multi-persona render; Socials/creator byte-identical, buildAudienceRepaint no-op branch untouched; resolveTier imported as the LEAF (BUILD-01). 31 tests green. Commits fda5b073/1783a37b. UX-01/UX-03 closed.
+- [Phase ?]: [Phase 07]: 07-03: cloneTemplateAudience(supabase, templateId, name?) — UX-04/D-03 template Build path. Thin wrapper over createAudience (NO new insert path): finds GENERAL_TEMPLATES entry (throws on unknown), strips id + virtual user_id + timestamps, name capped 80, returns createAudience (session user_id CR-01 + Zod). build-clone.test.ts 8/8 mocked. Deviation [Rule 1]: sentinel never-persisted scan narrowed to strict-equality on template ids + __virtual__ ('general' sentinel collides with mode:'general'). Full audience suite 14/180 green; tsc clean. Commits b07866b7/de35f041/9dab5e6e. UX-04 closed; 07-05 mounts it.
 
 ### Pending Todos
 
@@ -170,6 +172,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-29T06:53:34.838Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-06-29T07:00:24.771Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
