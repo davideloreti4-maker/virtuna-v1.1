@@ -14,13 +14,23 @@
  */
 
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render as rtlRender, screen, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   PredictionGaugeBlockRenderer,
   PredictionGaugeBlockSchema,
 } from "@/components/thread/prediction-gauge-block";
 
 afterEach(() => cleanup());
+
+// The renderer mounts SaveAffordance (useSaveItem → useQueryClient), so every render
+// must sit under a QueryClientProvider (mirrors idea-card-block.test.tsx precedent).
+function render(ui: Parameters<typeof rtlRender>[0]) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 // ─── Fixture ────────────────────────────────────────────────────────────────────────
 
@@ -46,6 +56,7 @@ function makeProps(over: Partial<GaugeProps> = {}): GaugeProps {
     caveat: "Directional — a synthetic panel, not a guarantee.",
     model: "sim1-flash",
     tier: "Directional",
+    ...over,
   } as GaugeProps;
 }
 

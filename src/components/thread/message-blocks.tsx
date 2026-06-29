@@ -24,6 +24,7 @@ import { PersonaChatTurnBlockRenderer } from '@/components/thread/persona-chat-t
 import { AccountReadBlockRenderer } from '@/components/thread/account-read-block';
 import { ProfileReadBlockRenderer } from '@/components/thread/profile-read-block';
 import { ReactionDistributionBlockRenderer } from '@/components/thread/reaction-distribution-block';
+import { PredictionGaugeBlockRenderer } from '@/components/thread/prediction-gauge-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -43,6 +44,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "account-read": AccountReadBlockRenderer,
   "profile-read": ProfileReadBlockRenderer,
   "reaction-distribution": ReactionDistributionBlockRenderer,
+  "prediction-gauge": PredictionGaugeBlockRenderer,
 };
 
 export interface MessageBlocksProps {
