@@ -137,7 +137,13 @@ function submitBtn(container: HTMLElement): HTMLButtonElement {
   return container.querySelector('button[type="submit"]') as HTMLButtonElement;
 }
 
-/** Select a skill via the `/` slash menu (Enter resolves firstSlashSkill, mode-agnostic). */
+/**
+ * Select a skill via the `/` slash menu (Enter resolves firstSlashSkill).
+ * NOTE (WR-01): the slash menu + firstSlashSkill are mode-gated to the active
+ * audience's mode. With no General audience selected the mode is "socials", so
+ * this only resolves Socials skills; General verbs are reached via the
+ * HomeStarter chips (Profile / Predict), which call handleUserSelectTool directly.
+ */
 function selectSkillBySlash(command: string) {
   const field = screen.getByRole('textbox') as HTMLTextAreaElement;
   fireEvent.change(field, { target: { value: `/${command}` } });
@@ -230,17 +236,20 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /analyst panel/i }));
   }
 
-  it('Simulate with NO General audience does not fetch /api/tools/simulate and routes to Build', async () => {
+  it('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
     const { container } = render(<Composer />);
-    // No audience selected (General/null). Pick Simulate via the slash menu.
-    selectSkillBySlash('simulate');
+    // No audience selected (General/null). The slash menu is mode-gated to
+    // socials here (WR-01), so a General verb is activated via its starter chip:
+    // "Predict an outcome" → handleUserSelectTool("predict"). The T-07-04-01 gate
+    // (shared by simulate + predict) then routes to Build without firing.
+    fireEvent.click(screen.getByRole('button', { name: /predict an outcome/i }));
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(field, { target: { value: 'will this resonate?' } });
     fireEvent.click(submitBtn(container));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/audience/new'));
     // The gate held — no stimulus fired (T-07-04-01).
-    expect(calledWith('/api/tools/simulate')).toBe(false);
+    expect(calledWith('/api/tools/predict')).toBe(false);
   });
 
   it('Simulate with a selected General audience POSTs /api/tools/simulate with the audienceId', async () => {
@@ -280,7 +289,10 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
       'input[type="file"][accept*=".txt"]',
     ) as HTMLInputElement;
     const clickSpy = vi.spyOn(evidenceInput, 'click');
-    selectSkillBySlash('profile');
+    // The slash menu is mode-gated to socials with no General audience (WR-01),
+    // so Profile is activated via its starter chip: "Profile a chat" →
+    // handleUserSelectTool("profile"), which opens the evidence-drop picker.
+    fireEvent.click(screen.getByRole('button', { name: /profile a chat/i }));
     expect(clickSpy).toHaveBeenCalled();
     // Profile never routes through the topic submit path.
     expect(calledWith('/api/tools/profile')).toBe(false);

@@ -1178,10 +1178,14 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
+    // Mode-gate identically to the skill pill / slash menu (WR-01) so Enter can
+    // never select an out-of-mode verb the menu never displayed.
+    const slashMode = selectedAudience?.mode ?? "socials";
     return (
       SKILLS.find(
         (s) =>
           s.enabled &&
+          s.modes.includes(slashMode) &&
           (!q || s.label.toLowerCase().includes(q) || s.command.includes(q)),
       ) ?? null
     );
@@ -1584,7 +1588,12 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
                 "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
               )}
             >
-              <SkillRows active={activeTool} filter={slashQuery} onSelect={selectSkill} />
+              <SkillRows
+                active={activeTool}
+                filter={slashQuery}
+                onSelect={selectSkill}
+                activeMode={selectedAudience?.mode ?? "socials"}
+              />
             </div>
           )}
 
