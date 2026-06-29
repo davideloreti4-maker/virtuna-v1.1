@@ -223,16 +223,25 @@ export function SkillRows({
   active,
   filter,
   onSelect,
+  activeMode = "socials",
 }: {
   active: ToolId;
   filter?: string;
   onSelect: (id: ToolId) => void;
+  /** Active Audience mode (UX-02 / D-01). Gates the list BEFORE the Creator/Marketing
+   *  group partition. Defaults to "socials" so the live Socials render is byte-identical
+   *  until 07-04 threads the real mode. */
+  activeMode?: SkillMode;
 }) {
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
     !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
-  const creator = SKILLS.filter((s) => s.group === "creator" && match(s));
-  const marketing = SKILLS.filter((s) => s.group === "marketing" && match(s));
+  // Gate the whole list on the active mode FIRST, then partition by group for the
+  // Socials sub-headers. In "general" mode only Profile/Simulate/Predict survive.
+  const inMode = (s: SkillMeta) => s.modes.includes(activeMode ?? "socials");
+  const isGeneral = activeMode === "general";
+  const creator = SKILLS.filter((s) => inMode(s) && s.group === "creator" && match(s));
+  const marketing = SKILLS.filter((s) => inMode(s) && s.group === "marketing" && match(s));
 
   const Row = (s: SkillMeta) => (
     <button
@@ -293,7 +302,8 @@ export function SkillRows({
         <Ico name="search" size={14} />
         type to filter · ↵ to select
       </div>
-      {creator.length > 0 && <GroupLabel>Creator</GroupLabel>}
+      {/* General mode is a single flat list — no Creator/Marketing sub-headers. */}
+      {!isGeneral && creator.length > 0 && <GroupLabel>Creator</GroupLabel>}
       {creator.map(Row)}
       {marketing.length > 0 && (
         <>
@@ -349,6 +359,11 @@ export interface ComposerControlsProps {
   activeTool: ToolId;
   onSelectTool: (id: ToolId) => void;
 
+  /** Active Audience mode (UX-02 / D-01) — gates the skill menu. Defaults to
+   *  "socials" so the live composer is byte-identical until 07-04 threads the real
+   *  mode from the selected audience. */
+  activeMode?: SkillMode;
+
   // Audience identity + switching moved to <AudiencePresence> (P13 fork #3) — the
   // composer's icon-only audience chip retired. These controls no longer take it.
 
@@ -373,6 +388,7 @@ export interface ComposerControlsProps {
 export function ComposerControls({
   activeTool,
   onSelectTool,
+  activeMode = "socials",
   intent,
   onIntentChange,
   onUploadClick,
@@ -491,6 +507,7 @@ export function ComposerControls({
         <Popover open={pop === "skill"} labelledBy="composer-skill-pill">
           <SkillRows
             active={activeTool}
+            activeMode={activeMode}
             onSelect={(id) => {
               onSelectTool(id);
               setPop(null);
