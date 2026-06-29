@@ -592,6 +592,17 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     setSelectedAudienceId(newId);
     // GAP-C2: clear any per-run intent flip so the lens falls back to the new audience's default.
     setIntentOverride(null);
+    // WR-02: reconcile the active skill with the new audience's mode. If the current
+    // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
+    // Socials switch, which would silently router.push away + discard the draft),
+    // reset to the in-mode default — "test" for socials, the first General verb for
+    // general — so the pill, slash menu, placeholder, and submit path stay coherent.
+    const newMode = audience.mode ?? "socials";
+    setActiveTool((current) =>
+      getSkill(current).modes.includes(newMode)
+        ? current
+        : newMode === "general" ? "profile" : "test",
+    );
     if (!openThreadId) return;
     // Only persist a per-thread pin for null (General) or a REAL audience UUID. Virtual
     // preset ids ("preset-growth"/"preset-conversion") are not UUIDs and threads
