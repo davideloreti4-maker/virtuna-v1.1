@@ -91,5 +91,13 @@
     "execution": "opus",
     "verification": "opus",
     "completion": "opus"
+  },
+  "effort": {
+    "default": "xhigh",
+    "routing_tier_defaults": {
+      "light": "high",
+      "standard": "xhigh",
+      "heavy": "xhigh"
+    }
   }
 }
