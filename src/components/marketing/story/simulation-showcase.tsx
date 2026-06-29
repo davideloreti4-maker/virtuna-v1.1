@@ -4,6 +4,7 @@ import {
   AudienceCloudSkeleton,
   DriverRowsSkeleton,
 } from "@/components/marketing/story/skeletons";
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
 /**
@@ -72,10 +73,11 @@ const NAMED_OUTPUTS: readonly NamedOutput[] = [
 export function SimulationShowcase({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* 1 — Section title. SANS font-semibold (D-C / A3); serif reserved to the
-          hero. The text is LOCKED VERBATIM "The Simulation" (matches the
-          #the-simulation anchor; the 03-00 test asserts it exactly). */}
-      <h2 className="text-3xl font-semibold text-foreground">The Simulation</h2>
+      {/* 1 — Section heading. SANS font-semibold (D-C / A3); serif reserved to
+          the hero. The h2 text is LOCKED VERBATIM "The Simulation" (matches the
+          #the-simulation anchor; the 03-00 test asserts it exactly + as the sole
+          /simulat/i node — so the eyebrow must NOT contain "simulat"). */}
+      <SectionHeading eyebrow="The output" title="The Simulation" />
 
       {/* one-line subhead — cream-secondary, names what you get back. Avoids the
           tokens the 03-00 test queries (audience/simulat/retention) so each

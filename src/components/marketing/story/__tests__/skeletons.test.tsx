@@ -6,6 +6,7 @@ import {
   ScoreGaugeSkeleton,
   AudienceCloudSkeleton,
   DriverRowsSkeleton,
+  RetentionCurveSkeleton,
   BrowserChrome,
   PhoneChrome,
 } from "../skeletons";
@@ -104,6 +105,28 @@ describe("product-skeleton primitives", () => {
       render(<DriverRowsSkeleton />);
       const img = screen.getByRole("img");
       expect(img.getAttribute("aria-label")).toMatch(/hook/i);
+    });
+  });
+
+  describe("<RetentionCurveSkeleton /> — watch-through curve IA", () => {
+    it("renders one <svg> with a decay path", () => {
+      const { container } = render(<RetentionCurveSkeleton />);
+
+      const svg = container.querySelector("svg");
+      expect(svg).not.toBeNull();
+      const paths = svg?.querySelectorAll("path");
+      expect((paths?.length ?? 0)).toBeGreaterThanOrEqual(1);
+    });
+
+    it("carries a drop timestamp (matches /\\d:\\d{2}/)", () => {
+      const { container } = render(<RetentionCurveSkeleton />);
+      expect(container.textContent ?? "").toMatch(/\d:\d{2}/);
+    });
+
+    it("is a labelled image (role=img + aria-label)", () => {
+      render(<RetentionCurveSkeleton />);
+      const img = screen.getByRole("img");
+      expect(img.getAttribute("aria-label")).toMatch(/retention|watch/i);
     });
   });
 

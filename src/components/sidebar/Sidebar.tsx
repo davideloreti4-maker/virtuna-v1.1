@@ -30,6 +30,10 @@ import {
   CaretUpDown,
   UsersThree,
   Books,
+  FilmStrip,
+  Trash,
+  Check,
+  X,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -40,9 +44,14 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { bandTone } from "@/components/board/verdict/verdict-derive";
 import { NumenMark } from "@/components/brand/numen-logo";
-import { useAnalysisHistory } from "@/hooks/queries";
+import {
+  useThreadList,
+  useCreateThread,
+  useActivateThread,
+  useArchiveThread,
+  type ThreadSummary,
+} from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -70,26 +79,6 @@ function relativeTime(iso: string | undefined): string {
   if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), 'day');
   if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), 'month');
   return rtf.format(Math.round(diffSec / 31536000), 'year');
-}
-
-// ─── score tone ───────────────────────────────────────────────────
-// Unified onto the locked THEME-06 score-zone tokens via the bandTone SSOT
-// (≥70 success / 40–69 warning / <40 error) so the sidebar chip color matches
-// the hero ScoreGauge exactly — one score-color language across the app (P1
-// follow-up). Coral stays reserved for the brand/primary action; the em-dash
-// (remix / no-score) case stays muted.
-function scoreTone(score: number | null | undefined): string {
-  if (score == null) return 'text-foreground-muted';
-  switch (bandTone(score)) {
-    case 'good':
-      return 'text-success';
-    case 'warn':
-      return 'text-warning';
-    case 'crit':
-      return 'text-error';
-    default:
-      return 'text-foreground-secondary';
-  }
 }
 
 // Branded keyboard-focus ring — replaces the browser-default blue outline on
@@ -181,6 +170,109 @@ function NavItem({
   return item;
 }
 
+/**
+ * One chat-thread row: the full-width open button plus a hover-revealed delete
+ * affordance. The open action and the delete action are SIBLING buttons inside a
+ * div (a button cannot nest inside a button). Delete is two-step — a trash icon
+ * arms an inline check/cancel confirm — so a single stray click never drops a
+ * thread. The confirm disarms when the pointer leaves the row.
+ */
+function ThreadRow({
+  thread,
+  isActive,
+  isPending = false,
+  onOpen,
+  onDelete,
+}: {
+  thread: ThreadSummary;
+  isActive: boolean;
+  /** A2: this row was clicked and is mid-activation (the activateThread round-trip).
+   *  Shows a terracotta left-border + dim-pulse so the click has instant feedback. */
+  isPending?: boolean;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const when = relativeTime(thread.updated_at);
+  const label = thread.title ?? "New chat";
+
+  return (
+    <div
+      className={cn(
+        "group/row relative flex items-center rounded-lg transition-colors",
+        // A2 pending: terracotta is the live/active dosage — earned here (an action is
+        // in flight). Dim-pulse reads as "working"; disabled on reduced motion.
+        isPending
+          ? "border-l-2 border-l-accent bg-white/[0.03] animate-pulse motion-reduce:animate-none"
+          : isActive
+            ? "bg-white/[0.06]"
+            : "hover:bg-white/[0.04]",
+      )}
+      aria-busy={isPending || undefined}
+      onMouseLeave={() => setConfirming(false)}
+    >
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "min-w-0 flex-1 flex items-center gap-2 pl-2.5 pr-1 min-h-[30px] text-left text-[13px]",
+          focusRing,
+          isActive
+            ? "text-foreground"
+            : "text-foreground-secondary group-hover/row:text-foreground",
+        )}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <span className="truncate flex-1" data-testid="sidebar-thread-label">
+          {thread.title ? (
+            label
+          ) : (
+            <>
+              New chat
+              {when && <span className="text-foreground-muted"> · {when}</span>}
+            </>
+          )}
+        </span>
+      </button>
+
+      {confirming ? (
+        <div className="flex items-center gap-0.5 pr-1">
+          <button
+            type="button"
+            onClick={onDelete}
+            aria-label={`Delete ${label}`}
+            className={cn("rounded p-1 text-error hover:bg-white/[0.06]", focusRing)}
+          >
+            <Check className="h-3.5 w-3.5" weight="bold" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            aria-label="Cancel delete"
+            className={cn("rounded p-1 text-foreground-muted hover:bg-white/[0.06]", focusRing)}
+          >
+            <X className="h-3.5 w-3.5" weight="bold" />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          aria-label={`Delete thread: ${label}`}
+          className={cn(
+            "mr-1 rounded p-1 text-foreground-muted opacity-0 transition-opacity",
+            "group-hover/row:opacity-100 focus-visible:opacity-100",
+            "hover:text-foreground hover:bg-white/[0.06]",
+            focusRing,
+          )}
+        >
+          <Trash className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── Sidebar ─────────────────────────────────────────────────────
 
 export function Sidebar() {
@@ -190,7 +282,59 @@ export function Sidebar() {
   const { isOpen, close, isCollapsed, toggleCollapsed } = useSidebarStore();
   const isMobile = useIsMobile();
   const reducedMotion = usePrefersReducedMotion();
-  const triggerNewAnalysis = useBoardStore((s) => s.triggerNewAnalysis);
+  const switchThread = useBoardStore((s) => s.switchThread);
+  const createThread = useCreateThread();
+  const activateThread = useActivateThread();
+  const archiveThread = useArchiveThread();
+
+  // A2: the row currently mid-activation. Set the instant a thread row is clicked
+  // (before the activateThread round-trip) and cleared when it settles — so the click
+  // has immediate feedback during the otherwise-dead 100–400ms gap before the composer
+  // begins rehydrating (A1). null = no activation in flight.
+  const [activatingId, setActivatingId] = useState<string | null>(null);
+
+  // Open a fresh blank chat thread, then reset the composer + navigate home.
+  const handleNewThread = async () => {
+    try {
+      await createThread.mutateAsync();
+    } catch {
+      // Non-fatal: still reset the composer so the user gets a blank slate.
+    }
+    switchThread();
+    router.push("/home");
+  };
+
+  // Re-open a past thread: touch it (→ becomes active), reset the composer so it
+  // reloads that thread's persisted content, then navigate home.
+  const handleOpenThread = async (id: string) => {
+    // A2: signal the clicked row immediately, before the (load-bearing) activate
+    // round-trip. /api/threads/open returns the most-recently-touched thread, so
+    // activateThread MUST commit before the composer reads it — we cover that real
+    // gap with row feedback (A2) + the composer skeleton (A1), never by dropping it.
+    setActivatingId(id);
+    try {
+      await activateThread.mutateAsync(id);
+    } catch {
+      // Non-fatal: still attempt to surface the thread on /home.
+    } finally {
+      setActivatingId(null);
+    }
+    switchThread();
+    router.push("/home");
+  };
+
+  // Delete (archive) a thread. If it was the active one while the user is on
+  // /home, reload the composer onto the now-newest remaining open thread.
+  const handleDeleteThread = async (id: string, wasActive: boolean) => {
+    try {
+      await archiveThread.mutateAsync(id);
+    } catch {
+      // Non-fatal: the thread-list refetch reconciles the sidebar either way.
+    }
+    if (wasActive && pathname === "/home") {
+      switchThread();
+    }
+  };
 
   // Desktop persistent+collapsible (D-14): collapse to an icon rail.
   // Mobile (D-15): a slide-in drawer driven by isOpen — never the collapsed rail.
@@ -204,26 +348,27 @@ export function Sidebar() {
         e.preventDefault();
         toggleCollapsed();
       }
+      // ⌘N / Ctrl-N opens a fresh chat thread (matches the New Thread badge).
+      if ((e.metaKey || e.ctrlKey) && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        void handleNewThread();
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toggleCollapsed]);
 
-  // Past threads (D-13) — reuse useAnalysisHistory; rows route to /analyze/[id]
-  const { data: historyData, isLoading: historyLoading } = useAnalysisHistory();
-  const recentBoards = (historyData ?? []).slice(0, 8) as Array<{
-    id: string;
-    content_text?: string | null;
-    overall_score?: number | null;
-    created_at?: string;
-    variants?: { remix?: unknown } | null;
-  }>;
+  // Chat threads — each conversation is its own listable thread (active = first).
+  const { data: threads, isLoading: threadsLoading } = useThreadList();
+  const recentThreads = (threads ?? []).slice(0, 15);
 
   // User profile for Account section
   const { data: profile } = useProfile();
 
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
+  const isOnFeed = pathname.startsWith("/feed");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -304,7 +449,7 @@ export function Sidebar() {
               icon={Plus}
               label="New Thread"
               isCollapsed={effectiveCollapsed}
-              onClick={() => { triggerNewAnalysis(); router.push("/home"); }}
+              onClick={() => { void handleNewThread(); }}
               badge={
                 !effectiveCollapsed && (
                   <span className="ml-auto text-[11px] text-foreground-muted font-normal tabular-nums">⌘N</span>
@@ -337,94 +482,47 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/library")}
               />
+              {/* Feed — the persistent Videos feed (Discover Feed milestone): watched
+                  channels' outliers + Trending. Matte active state like Library. */}
+              <NavItem
+                icon={FilmStrip}
+                label="Feed"
+                isActive={isOnFeed}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/feed")}
+              />
             </div>
           </div>
 
-          {/* ── Thread history (D-13) ── */}
+          {/* ── Chat thread history (multi-thread) ── */}
           <div className="pt-4 flex-1">
-            {!effectiveCollapsed && <SectionLabel>Thread</SectionLabel>}
-            {historyLoading && !effectiveCollapsed && (
+            {!effectiveCollapsed && <SectionLabel>Threads</SectionLabel>}
+            {threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-2 px-2.5 pt-1">
                 <Skeleton className="h-3.5 w-full" />
                 <Skeleton className="h-3.5 w-3/4" />
                 <Skeleton className="h-3.5 w-5/6" />
               </div>
             )}
-            {!historyLoading && recentBoards.length === 0 && !effectiveCollapsed && (
+            {!threadsLoading && recentThreads.length === 0 && !effectiveCollapsed && (
               <p className="px-2.5 py-1 text-xs text-foreground-muted">
                 No threads yet.
               </p>
             )}
-            {!historyLoading && !effectiveCollapsed && (
+            {!threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-px">
-                {recentBoards.map((board) => {
-                  const isActive = pathname === `/analyze/${board.id}`;
-                  const snippet = board.content_text ? board.content_text.slice(0, 38).trim() : "";
+                {recentThreads.map((thread, i) => {
+                  // The newest thread (index 0) is the active one while on /home.
+                  const isActive = pathname === "/home" && i === 0;
                   return (
-                    <button
-                      key={board.id}
-                      type="button"
-                      onClick={() => router.push(`/analyze/${board.id}`)}
-                      className={cn(
-                        "group w-full flex items-center gap-2 px-2.5 min-h-[30px] rounded-lg text-left",
-                        "text-[13px] transition-colors",
-                        focusRing,
-                        isActive
-                          ? "bg-white/[0.06] text-foreground"
-                          : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <span className="truncate flex-1" data-testid="sidebar-board-label">
-                        {snippet ? (
-                          snippet
-                        ) : (
-                          (() => {
-                            // WR-06: only render the "·" separator when there is a
-                            // time string — a malformed/absent created_at yields ''
-                            // and must not leave a dangling "Simulation ·".
-                            const when = relativeTime(board.created_at);
-                            return (
-                              <>
-                                Simulation
-                                {when && (
-                                  <span className="text-foreground-muted"> · {when}</span>
-                                )}
-                              </>
-                            );
-                          })()
-                        )}
-                      </span>
-                      {(() => {
-                        // D-11/D-12: remix source rows have null overall_score + non-null
-                        // variants.remix — show a "Remix" badge instead of a blank '—' score.
-                        // T-05-08: purely render-side, no trust boundary crossed.
-                        const isRemix =
-                          board.overall_score == null &&
-                          (board.variants as { remix?: unknown } | null)?.remix != null;
-                        if (isRemix) {
-                          return (
-                            <span
-                              className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-white/45"
-                              data-testid="sidebar-remix-tag"
-                            >
-                              Remix
-                            </span>
-                          );
-                        }
-                        return (
-                          <span
-                            className={cn(
-                              "shrink-0 text-[11px] font-semibold tabular-nums tracking-tight",
-                              scoreTone(board.overall_score),
-                            )}
-                            data-testid="sidebar-score-chip"
-                          >
-                            {board.overall_score != null ? Math.round(board.overall_score) : '—'}
-                          </span>
-                        );
-                      })()}
-                    </button>
+                    <ThreadRow
+                      key={thread.id}
+                      thread={thread}
+                      isActive={isActive}
+                      isPending={activatingId === thread.id}
+                      onOpen={() => { void handleOpenThread(thread.id); }}
+                      onDelete={() => { void handleDeleteThread(thread.id, isActive); }}
+                    />
                   );
                 })}
               </div>

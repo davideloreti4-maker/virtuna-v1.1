@@ -8,7 +8,7 @@ export function StaleIndicator({ lastScrapedAt }: StaleIndicatorProps) {
   const stale = isStale(lastScrapedAt);
 
   return (
-    <span className={`text-xs ${stale ? "text-amber-400" : "text-foreground-muted"}`}>
+    <span className={`text-xs ${stale ? "text-warning" : "text-foreground-muted"}`}>
       Updated {formatRelativeTime(lastScrapedAt)}
     </span>
   );

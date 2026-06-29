@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Coming Soon | Artificial Societies",
+  title: "Coming Soon | Numen",
   description: "This page is under construction. Check back later.",
 };
 
@@ -14,7 +14,7 @@ export default function ComingSoonPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="text-center">
-        <h1 className="text-4xl font-normal text-white md:text-5xl">
+        <h1 className="text-4xl font-normal text-foreground md:text-5xl">
           Coming Soon
         </h1>
         <p className="mt-4 text-lg text-foreground-muted">
@@ -22,7 +22,7 @@ export default function ComingSoonPage() {
         </p>
         <Link
           href="/"
-          className="mt-8 inline-block rounded bg-action px-6 py-3 text-sm font-medium text-foreground-secondary-foreground transition-colors hover:bg-action/90"
+          className="mt-8 inline-block rounded bg-action px-6 py-3 text-sm font-medium text-action-foreground transition-colors hover:bg-action/90"
         >
           Go back home
         </Link>

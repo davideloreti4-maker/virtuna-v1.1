@@ -1,11 +1,8 @@
 import * as React from "react";
 
 import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
-import {
-  ScoreGaugeSkeleton,
-  AudienceCloudSkeleton,
-  PhoneChrome,
-} from "@/components/marketing/story/skeletons";
+import { PhoneChrome } from "@/components/marketing/story/skeletons";
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
 /**
@@ -25,10 +22,13 @@ import { cn } from "@/lib/utils";
  *
  * Each step pairs a small mono numeral + a section-appropriate static product
  * skeleton (03-04) inside an aspect-stable wrapper (no layout shift) + a sans
- * title + one Inter line of copy. The three step visuals hint the loop's shape:
+ * title + one Inter line of copy. The three step visuals hint the loop's shape
+ * with LIGHT process-flavoured mocks (deliberately distinct from the full
+ * product views in the Simulation/Feature sections so the opener never echoes
+ * them):
  *   1. Paste a TikTok link   → a PhoneChrome with a faux URL-input row
- *   2. The audience reacts   → AudienceCloudSkeleton
- *   3. Get your Simulation   → ScoreGaugeSkeleton (the prediction shape)
+ *   2. The audience reacts   → ReactionRows (a compact viewers-reacting feed)
+ *   3. Get your Simulation   → ResultCard (a compact score-report card)
  *
  * Each visual wrapper carries `data-step-visual` (the stable count hook the
  * 03-00 test uses to gate "exactly 3 step visuals", since the skeleton
@@ -50,6 +50,68 @@ interface Step {
   body: string;
   /** The section-appropriate static product skeleton for this step. */
   visual: React.ReactNode;
+}
+
+/**
+ * Step-2 visual — a compact "viewers reacting" mini-feed (avatar + two text
+ * lines + a reaction pip per row, one row carrying the lone coral pip). A
+ * deliberately DIFFERENT shape from the scatter persona-cloud shown in the
+ * Simulation showcase below, so the opener doesn't echo the product section.
+ */
+function ReactionRows() {
+  const rows = [
+    { w: "w-1/2", accent: false },
+    { w: "w-2/3", accent: true },
+    { w: "w-2/5", accent: false },
+  ];
+  return (
+    <div className="flex w-full flex-col gap-2.5 px-2">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-center gap-2.5">
+          <span className="h-6 w-6 shrink-0 rounded-full bg-foreground-muted/20" />
+          <div className="flex flex-1 flex-col gap-1">
+            <span className={cn("h-1.5 rounded-full bg-foreground-muted/25", r.w)} />
+            <span className="h-1.5 w-3/4 rounded-full bg-foreground-muted/12" />
+          </div>
+          <span
+            className={cn(
+              "h-2 w-2 shrink-0 rounded-full",
+              r.accent ? "bg-accent" : "bg-foreground-muted/25"
+            )}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Step-3 visual — a compact result card (a score number + band word + three
+ * thin result lines). A DIFFERENT shape from the circular score gauge in the
+ * showcase/feature sections — reads as "the report you get back", not a repeat
+ * of the gauge.
+ */
+function ResultCard() {
+  return (
+    <div className="flex w-full max-w-[180px] flex-col gap-2.5 rounded-[--radius-md] border border-border bg-surface px-3.5 py-3">
+      <div className="flex items-baseline gap-2">
+        <span className="text-2xl font-semibold leading-none text-foreground">
+          87
+        </span>
+        <span className="text-xs font-medium text-foreground-secondary">
+          Strong
+        </span>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {["w-full", "w-4/5", "w-3/5"].map((w) => (
+          <div key={w} className="flex items-center gap-2">
+            <span className="h-1.5 w-1/4 shrink-0 rounded-full bg-foreground-muted/30" />
+            <span className={cn("h-1.5 rounded-full bg-foreground-muted/15", w)} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 const STEPS: readonly Step[] = [
@@ -74,22 +136,24 @@ const STEPS: readonly Step[] = [
     ordinal: "02",
     title: "The audience reacts",
     body: "A synthetic audience watches your video and reacts, frame by frame.",
-    visual: <AudienceCloudSkeleton className="w-full px-2" />,
+    visual: <ReactionRows />,
   },
   {
     n: "3",
     ordinal: "03",
     title: "Get your Simulation",
     body: "A score, watch-through %, and where viewers drop — before you post.",
-    visual: <ScoreGaugeSkeleton />,
+    visual: <ResultCard />,
   },
 ] as const;
 
 export function HowItWorks({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* Section title — SANS font-semibold (D-C / A3); serif reserved to hero. */}
-      <h2 className="text-3xl font-semibold text-foreground">How it works</h2>
+      {/* Section heading — eyebrow kicker + SANS h2 (D-C / A3); serif reserved
+          to hero. Eyebrow avoids /simulat/ so "Get your Simulation" stays the
+          section's sole simulat node. */}
+      <SectionHeading eyebrow="Three steps" title="How it works" />
 
       {/* Three calm beats, left→right on desktop, stacking on mobile. The only
           motion is the StaggerReveal entrance (client leaf, self-gates reduce). */}

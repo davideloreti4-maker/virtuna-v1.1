@@ -58,7 +58,8 @@ export type SkillId =
   | "profile"  // Phase 5 — live (05-01): the forensic READ card, CTA launches profile→simulate
   | "simulate" // Phase 5 — live (05-01): the reaction-distribution result of the chain
   | "predict"  // Phase 6 — live (06-07): the prediction-gauge result, reached via simulate→predict
-  | "test";
+  | "test"
+  | "account-read"; // lane/polish — the self-Read; "Write to my strengths →" seeds Ideas (§7)
 
 // ─── ChainHandoff interface ───────────────────────────────────────────────────
 
@@ -254,6 +255,22 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     to: "predict",
     ctaLabel: "Predict an outcome →",
     endpoint: "/api/tools/predict",
+    anchorFrom: "card",
+  },
+
+  // ── lane/polish LIVE: Account Read → Ideas (§7 "Write to my strengths") ────────
+  // "Write to my strengths →" on the AccountReadBlock seeds Ideas with the account's
+  // "What's working" patterns as steering, so the next concepts double down on what
+  // already lands. The card builds `ask` from patterns.working and POSTs to the Ideas
+  // SSE route (which appends idea cards to the open thread), then navigates to /home to
+  // rehydrate them — mirrors discover→remix's card-POST + navigate pattern exactly.
+  // anchorFrom "card" — the strengths ARE the steering anchor (carried as `ask`).
+  // PINNED: /api/tools/ideas accepts { ask?, platform } (ideas/route.ts) — lever rides `ask`.
+  {
+    from: "account-read",
+    to: "idea",
+    ctaLabel: "Write to my strengths →",
+    endpoint: "/api/tools/ideas",
     anchorFrom: "card",
   },
 ];

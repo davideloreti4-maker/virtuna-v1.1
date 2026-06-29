@@ -142,6 +142,8 @@ export async function POST(): Promise<Response> {
           type: "account-read",
           props: {
             handle: result.handle,
+            profile: result.profile,
+            analyzedVideos: result.analyzedVideos,
             patterns: result.patterns,
             trackRecord: result.trackRecord,
           },

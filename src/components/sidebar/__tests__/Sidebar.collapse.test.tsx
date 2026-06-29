@@ -48,7 +48,10 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({
 }));
 
 vi.mock('@/hooks/queries', () => ({
-  useAnalysisHistory: () => ({ data: [], isLoading: false }),
+  useThreadList: () => ({ data: [], isLoading: false }),
+  useCreateThread: () => ({ mutateAsync: vi.fn() }),
+  useActivateThread: () => ({ mutateAsync: vi.fn() }),
+  useArchiveThread: () => ({ mutateAsync: vi.fn() }),
 }));
 
 vi.mock('@/hooks/queries/use-profile', () => ({
@@ -67,8 +70,8 @@ vi.mock('@/hooks/use-social-accounts', () => ({
 }));
 
 vi.mock('@/stores/board-store', () => ({
-  useBoardStore: (selector: (s: { triggerNewAnalysis: () => void }) => unknown) =>
-    selector({ triggerNewAnalysis: vi.fn() }),
+  useBoardStore: (selector: (s: { switchThread: () => void }) => unknown) =>
+    selector({ switchThread: vi.fn() }),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -125,7 +128,7 @@ describe('Sidebar collapse — rendering branches', () => {
     // Expanded width class must NOT be present once collapsed to the rail.
     expect(nav.className).not.toContain('w-[220px]');
     // The "Thread" section label is hidden in the collapsed rail.
-    expect(screen.queryByText('Thread')).toBeNull();
+    expect(screen.queryByText('Threads')).toBeNull();
   });
 
   it('desktop + expanded renders the full 220px nav with the Thread label', () => {
@@ -134,7 +137,7 @@ describe('Sidebar collapse — rendering branches', () => {
     render(<Sidebar />);
     const nav = screen.getByRole('navigation', { name: /app navigation/i });
     expect(nav.className).toContain('w-[220px]');
-    expect(screen.getByText('Thread')).toBeInTheDocument();
+    expect(screen.getByText('Threads')).toBeInTheDocument();
   });
 
   it('mobile is the full-width drawer, never the collapsed rail (even when isCollapsed is true)', () => {
@@ -145,6 +148,6 @@ describe('Sidebar collapse — rendering branches', () => {
     // On mobile the drawer keeps the full expanded width (it slides in/out, not a rail).
     expect(nav.className).toContain('w-[220px]');
     // Drawer content (the Thread label) renders — it is not the icon-only rail.
-    expect(screen.getByText('Thread')).toBeInTheDocument();
+    expect(screen.getByText('Threads')).toBeInTheDocument();
   });
 });

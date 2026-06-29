@@ -504,6 +504,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         format: c.format,
         band: c.band ?? 'Mixed',
         fraction: c.fraction ?? '–',
+        scored: c.scored ?? false, // A4: drives ProofUnit's pending→scored treatment
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
       },

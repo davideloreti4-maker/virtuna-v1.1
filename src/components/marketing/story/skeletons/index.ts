@@ -9,4 +9,5 @@
 export { ScoreGaugeSkeleton } from "./score-gauge-skeleton";
 export { AudienceCloudSkeleton } from "./audience-cloud-skeleton";
 export { DriverRowsSkeleton } from "./driver-rows-skeleton";
+export { RetentionCurveSkeleton } from "./retention-curve-skeleton";
 export { BrowserChrome, PhoneChrome } from "./device-chrome";

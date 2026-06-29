@@ -45,11 +45,8 @@ export function SignupForm({ error, next }: SignupFormProps) {
     <div
       className="w-full max-w-[400px] rounded-[12px] border border-white/[0.06] px-8 py-10"
       style={{
-        backgroundImage:
-          "linear-gradient(137deg, rgba(17, 18, 20, 0.75) 4.87%, rgba(12, 13, 15, 0.9) 75.88%)",
-        backdropFilter: "blur(5px)",
-        WebkitBackdropFilter: "blur(5px)",
-        boxShadow: "rgba(255,255,255,0.15) 0px 1px 1px 0px inset",
+        backgroundColor: "var(--color-charcoal-chip)",
+        boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
       }}
     >
       <div className="mb-8 text-center">

@@ -33,6 +33,8 @@ export interface SaveAffordanceProps {
   /** The block's own props — persisted so the shelf renders without re-fetch. */
   snapshot: Record<string, unknown>;
   className?: string;
+  /** Render the icon only (no "Save"/"Saved" label) — for dense/cover-forward surfaces. */
+  iconOnly?: boolean;
 }
 
 export function SaveAffordance({
@@ -42,6 +44,7 @@ export function SaveAffordance({
   title,
   snapshot,
   className,
+  iconOnly = false,
 }: SaveAffordanceProps) {
   const save = useSaveItem();
   const saved = save.isSuccess;
@@ -78,12 +81,12 @@ export function SaveAffordance({
         <>
           {/* Cream-secondary check — never coral (STATE 05-04). */}
           <Check size={16} weight="bold" className="text-foreground-secondary" />
-          Saved
+          {!iconOnly && "Saved"}
         </>
       ) : (
         <>
           <BookmarkSimple size={16} weight="regular" />
-          {save.isPending ? "Saving…" : "Save"}
+          {!iconOnly && (save.isPending ? "Saving…" : "Save")}
         </>
       )}
     </button>

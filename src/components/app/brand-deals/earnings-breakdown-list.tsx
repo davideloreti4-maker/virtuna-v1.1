@@ -87,7 +87,7 @@ export function EarningsBreakdownList({
               </span>
 
               {/* Earnings */}
-              <span className="text-right text-sm font-semibold text-success">
+              <span className="text-right text-sm font-semibold text-foreground">
                 {formatCurrency(source.totalEarned)}
               </span>
             </div>

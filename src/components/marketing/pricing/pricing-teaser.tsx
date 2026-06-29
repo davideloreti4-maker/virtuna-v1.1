@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { PricingCard } from "./pricing-card";
 
 /** Tier data — mirrors the real model shape (D-11), compressed to 3-4 bullets (D-09). */
@@ -48,10 +49,8 @@ const TIERS = [
 export function PricingTeaser({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* Sans-serif heading — serif is voice-only (D-13) */}
-      <h2 className="text-3xl font-semibold text-foreground">
-        Simple pricing
-      </h2>
+      {/* Eyebrow kicker + sans-serif heading — serif is voice-only (D-13) */}
+      <SectionHeading eyebrow="Pricing" title="Simple pricing" />
       <p className="mt-4 max-w-[60ch] text-base text-foreground-secondary">
         Start free. Upgrade when you&apos;re ready to go unlimited.
       </p>

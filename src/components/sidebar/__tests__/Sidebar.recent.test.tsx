@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
@@ -16,7 +16,7 @@ vi.mock('@/hooks/queries/use-profile', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/analyze',
+  usePathname: () => '/home',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 
@@ -29,7 +29,7 @@ vi.mock('@/stores/sidebar-store', () => ({
   }),
 }));
 
-// Desktop + expanded so the full Simulations list renders (not the icon rail).
+// Desktop + expanded so the full thread list renders (not the icon rail).
 vi.mock('@/hooks/useIsMobile', () => ({
   useIsMobile: () => false,
 }));
@@ -38,119 +38,75 @@ vi.mock('@/hooks/usePrefersReducedMotion', () => ({
   usePrefersReducedMotion: () => true,
 }));
 
-// Sidebar imported dynamically per test to pick up vi.doMock overrides
-void 0; // placeholder — see dynamic imports below
+interface MockThread {
+  id: string;
+  title: string | null;
+  updated_at: string;
+  created_at: string;
+}
 
-function mockHistory(boards: Array<{ id: string; content_text?: string | null; overall_score?: number | null; created_at?: string }>) {
+function mockThreads(threads: MockThread[]) {
   vi.doMock('@/hooks/queries', () => ({
-    useAnalysisHistory: () => ({ data: boards, isLoading: false }),
+    useThreadList: () => ({ data: threads, isLoading: false }),
+    useCreateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('new-id') }),
+    useActivateThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
+    useArchiveThread: () => ({ mutateAsync: vi.fn().mockResolvedValue('id') }),
   }));
 }
 
-describe('Sidebar recent boards label', () => {
-  it('shows content_text snippet when present', async () => {
+describe('Sidebar chat thread list', () => {
+  it('shows the thread title when present', async () => {
     vi.resetModules();
-    mockHistory([
-      { id: 'abc', content_text: 'My morning routine that helps you grow fast', overall_score: 75 },
+    mockThreads([
+      { id: 'abc', title: 'Hook ideas for launch', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    const labels = screen.getAllByTestId('sidebar-board-label');
-    expect(labels[0]?.textContent).toContain('My morning routine');
+    const labels = screen.getAllByTestId('sidebar-thread-label');
+    expect(labels[0]?.textContent).toContain('Hook ideas for launch');
   });
 
-  it('truncates content_text to 38 chars', async () => {
+  it('falls back to "New chat · ..." when title is null', async () => {
     vi.resetModules();
-    mockHistory([
-      { id: 'abc', content_text: 'A'.repeat(100), overall_score: 60 },
+    mockThreads([
+      { id: 'xyz', title: null, updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    const labels = screen.getAllByTestId('sidebar-board-label');
-    expect((labels[0]?.textContent ?? '').length).toBeLessThanOrEqual(38);
+    const labels = screen.getAllByTestId('sidebar-thread-label');
+    expect(labels[0]?.textContent).toMatch(/^New chat\s·/);
   });
 
-  it('falls back to "Simulation · ..." when content_text is null', async () => {
+  it('drops the dangling separator when updated_at is malformed', async () => {
     vi.resetModules();
-    mockHistory([
-      { id: 'xyz', content_text: null, overall_score: null, created_at: new Date().toISOString() },
+    mockThreads([
+      { id: 'no-date', title: null, updated_at: '', created_at: '' },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    const labels = screen.getAllByTestId('sidebar-board-label');
-    expect(labels[0]?.textContent).toMatch(/^Simulation\s·/);
-  });
-
-  it('WR-06: drops the dangling separator when created_at is absent/malformed', async () => {
-    vi.resetModules();
-    mockHistory([
-      // No created_at AND null content_text — the empty-time fallback path.
-      { id: 'no-date', content_text: null, overall_score: null },
-    ]);
-    const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
-    const labels = screen.getAllByTestId('sidebar-board-label');
+    const labels = screen.getAllByTestId('sidebar-thread-label');
     const text = (labels[0]?.textContent ?? '').trim();
-    // Label is exactly "Simulation" — no trailing "·", no "NaN".
-    expect(text).toBe('Simulation');
+    expect(text).toBe('New chat');
     expect(text).not.toContain('·');
-    expect(text).not.toMatch(/nan/i);
-  });
-
-  it('WR-06: rolls up old dates past "day" (no raw large day counts)', async () => {
-    vi.resetModules();
-    const fortyFiveDaysAgo = new Date(Date.now() - 45 * 86400 * 1000).toISOString();
-    mockHistory([
-      { id: 'old', content_text: null, overall_score: null, created_at: fortyFiveDaysAgo },
-    ]);
-    const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
-    const labels = screen.getAllByTestId('sidebar-board-label');
-    const text = labels[0]?.textContent ?? '';
-    // 45 days rolls up to a month bucket — must NOT print "45 day(s)".
-    expect(text).not.toMatch(/45\s*day/i);
-    expect(text).toMatch(/month|mo\b/i);
-  });
-
-  it('shows score chip with rounded overall_score', async () => {
-    vi.resetModules();
-    mockHistory([
-      { id: 'def', content_text: 'Test content', overall_score: 72.8 },
-    ]);
-    const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
-    const chips = screen.getAllByTestId('sidebar-score-chip');
-    expect(chips[0]?.textContent?.trim()).toBe('73');
-  });
-
-  it('shows — in score chip when overall_score is null', async () => {
-    vi.resetModules();
-    mockHistory([
-      { id: 'ghi', content_text: 'Some text', overall_score: null },
-    ]);
-    const { Sidebar: Fresh } = await import('../Sidebar');
-    render(<Fresh />);
-    const chips = screen.getAllByTestId('sidebar-score-chip');
-    expect(chips[0]?.textContent?.trim()).toBe('—');
   });
 });
 
-describe('Sidebar composition — Thread label + no dead affordances (D-11/D-13)', () => {
-  it('labels the history section "Thread" (not "Simulations"/"Recent")', async () => {
+describe('Sidebar composition — Threads label + no dead affordances', () => {
+  it('labels the history section "Threads"', async () => {
     vi.resetModules();
-    mockHistory([
-      { id: 'abc', content_text: 'A simulated video', overall_score: 80 },
+    mockThreads([
+      { id: 'abc', title: 'A chat', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
     ]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
-    expect(screen.getByText('Thread')).toBeInTheDocument();
+    expect(screen.getByText('Threads')).toBeInTheDocument();
     expect(screen.queryByText('Simulations')).toBeNull();
     expect(screen.queryByText('Recent')).toBeNull();
   });
 
   it('renders no Pinned / Projects / Boards dead affordances', async () => {
     vi.resetModules();
-    mockHistory([]);
+    mockThreads([]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
     expect(screen.queryByText('Pinned')).toBeNull();
@@ -160,9 +116,49 @@ describe('Sidebar composition — Thread label + no dead affordances (D-11/D-13)
 
   it('empty state reads "No threads yet."', async () => {
     vi.resetModules();
-    mockHistory([]);
+    mockThreads([]);
     const { Sidebar: Fresh } = await import('../Sidebar');
     render(<Fresh />);
     expect(screen.getByText(/no threads yet/i)).toBeInTheDocument();
+  });
+});
+
+describe('Sidebar thread delete — two-step confirm', () => {
+  async function renderWithArchive(archiveMock: ReturnType<typeof vi.fn>) {
+    vi.resetModules();
+    vi.doMock('@/hooks/queries', () => ({
+      useThreadList: () => ({
+        data: [
+          { id: 'abc', title: 'Doomed thread', updated_at: new Date().toISOString(), created_at: new Date().toISOString() },
+        ],
+        isLoading: false,
+      }),
+      useCreateThread: () => ({ mutateAsync: vi.fn() }),
+      useActivateThread: () => ({ mutateAsync: vi.fn() }),
+      useArchiveThread: () => ({ mutateAsync: archiveMock }),
+    }));
+    const { Sidebar: Fresh } = await import('../Sidebar');
+    render(<Fresh />);
+  }
+
+  it('does NOT archive on the first (arming) click', async () => {
+    const archiveMock = vi.fn().mockResolvedValue('abc');
+    await renderWithArchive(archiveMock);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete thread: doomed thread/i }));
+
+    // The trash icon armed the confirm; nothing deleted yet.
+    expect(archiveMock).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /cancel delete/i })).toBeInTheDocument();
+  });
+
+  it('archives only after the confirm click', async () => {
+    const archiveMock = vi.fn().mockResolvedValue('abc');
+    await renderWithArchive(archiveMock);
+
+    fireEvent.click(screen.getByRole('button', { name: /delete thread: doomed thread/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^delete doomed thread$/i }));
+
+    expect(archiveMock).toHaveBeenCalledWith('abc');
   });
 });

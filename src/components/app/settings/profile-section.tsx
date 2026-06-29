@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import * as Avatar from "@radix-ui/react-avatar";
 import { useProfile, useUpdateProfile, useUploadAvatar } from "@/hooks/queries/use-profile";
-import { Input } from "@/components/ui";
+import { Input, Button } from "@/components/ui";
 
 export function ProfileSection() {
   const { data: profile, isLoading } = useProfile();
@@ -53,18 +53,18 @@ export function ProfileSection() {
     return (
       <div className="space-y-8 animate-pulse">
         <div>
-          <div className="h-6 w-24 rounded bg-zinc-800" />
-          <div className="mt-2 h-4 w-64 rounded bg-zinc-800" />
+          <div className="h-6 w-24 rounded bg-white/[0.05]" />
+          <div className="mt-2 h-4 w-64 rounded bg-white/[0.05]" />
         </div>
         <div className="flex items-center gap-4">
-          <div className="h-20 w-20 rounded-full bg-zinc-800" />
-          <div className="h-9 w-32 rounded-lg bg-zinc-800" />
+          <div className="h-20 w-20 rounded-full bg-white/[0.05]" />
+          <div className="h-9 w-32 rounded-lg bg-white/[0.05]" />
         </div>
         <div className="grid gap-6 sm:grid-cols-2">
           {[1, 2, 3, 4].map((i) => (
             <div key={i}>
-              <div className="mb-2 h-4 w-20 rounded bg-zinc-800" />
-              <div className="h-10 rounded-lg bg-zinc-800" />
+              <div className="mb-2 h-4 w-20 rounded bg-white/[0.05]" />
+              <div className="h-10 rounded-lg bg-white/[0.05]" />
             </div>
           ))}
         </div>
@@ -75,21 +75,24 @@ export function ProfileSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-white">Profile</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-lg font-medium text-foreground">Profile</h2>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Manage your personal information and how others see you.
         </p>
       </div>
 
       {/* Avatar */}
       <div className="flex items-center gap-4">
-        <Avatar.Root className="h-20 w-20 overflow-hidden rounded-full bg-zinc-800">
+        <Avatar.Root
+          className="h-20 w-20 overflow-hidden rounded-full"
+          style={{ backgroundColor: "var(--color-charcoal-chip)" }}
+        >
           <Avatar.Image
             src={profile?.avatar || undefined}
             alt={name}
             className="h-full w-full object-cover"
           />
-          <Avatar.Fallback className="flex h-full w-full items-center justify-center text-lg font-medium text-zinc-400">
+          <Avatar.Fallback className="flex h-full w-full items-center justify-center text-lg font-medium text-foreground-muted">
             {initials}
           </Avatar.Fallback>
         </Avatar.Root>
@@ -101,22 +104,23 @@ export function ProfileSection() {
             className="hidden"
             onChange={handleAvatarChange}
           />
-          <button
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploadAvatar.isPending}
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50"
+            loading={uploadAvatar.isPending}
           >
             {uploadAvatar.isPending ? "Uploading..." : "Change avatar"}
-          </button>
-          <p className="mt-2 text-xs text-zinc-500">JPG, PNG or GIF. Max 2MB.</p>
+          </Button>
+          <p className="mt-2 text-xs text-foreground-muted">JPG, PNG or GIF. Max 2MB.</p>
         </div>
       </div>
 
       {/* Form fields */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-medium text-foreground-secondary">
             Full name
           </label>
           <Input
@@ -126,7 +130,7 @@ export function ProfileSection() {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-medium text-foreground-secondary">
             Email address
           </label>
           <Input
@@ -138,7 +142,7 @@ export function ProfileSection() {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-medium text-foreground-secondary">
             Company
           </label>
           <Input
@@ -148,7 +152,7 @@ export function ProfileSection() {
           />
         </div>
         <div>
-          <label className="mb-2 block text-sm font-medium text-zinc-300">
+          <label className="mb-2 block text-sm font-medium text-foreground-secondary">
             Role
           </label>
           <Input
@@ -161,19 +165,19 @@ export function ProfileSection() {
 
       {/* Save button */}
       <div className="flex items-center gap-4">
-        <button
+        <Button
           type="button"
+          variant="primary"
           onClick={handleSave}
-          disabled={updateProfile.isPending}
-          className="rounded-lg bg-white px-6 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+          loading={updateProfile.isPending}
         >
           {updateProfile.isPending ? "Saving..." : "Save changes"}
-        </button>
+        </Button>
         {saved && (
-          <span className="text-sm text-emerald-400">Changes saved!</span>
+          <span className="text-sm text-success">Changes saved!</span>
         )}
         {updateProfile.isError && (
-          <span className="text-sm text-red-400">
+          <span className="text-sm text-error">
             {updateProfile.error.message}
           </span>
         )}

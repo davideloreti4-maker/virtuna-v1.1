@@ -26,6 +26,10 @@ export const queryKeys = {
     all: ["bookmarks"] as const,
     list: () => ["bookmarks", "list"] as const,
   },
+  threads: {
+    all: ["threads"] as const,
+    list: () => ["threads", "list"] as const,
+  },
   saved: {
     all: ["saved"] as const,
     // Flat filter, NOT a folder: `type` is an optional client-side item_type filter.
@@ -58,5 +62,19 @@ export const queryKeys = {
     all: ["cj"] as const,
     products: (query: string, category?: string) =>
       ["cj", "products", query, category] as const,
+  },
+  channels: {
+    all: ["channels"] as const,
+    // The enriched Channels watchlist (tracked_accounts ⨝ competitor_profiles + agg views).
+    watchlist: () => ["channels", "watchlist"] as const,
+    // Shared-corpus channel search by handle/display_name.
+    search: (q: string) => ["channels", "search", q] as const,
+  },
+  feed: {
+    all: ["feed"] as const,
+    // The keyset-paginated Videos feed — keyed by tab + sort + the full filter set
+    // so any filter/sort/tab change starts a fresh infinite query (no stale pages).
+    list: (args: { tab: string; sort: string; filters: object }) =>
+      ["feed", "list", args] as const,
   },
 } as const;

@@ -67,6 +67,11 @@ export const apifyVideoSchema = z.object({
     .object({
       duration: z.coerce.number().optional(),
       /**
+       * Static cover image (TikTok CDN, signed/ephemeral). Display-only thumbnail for
+       * the Account Read cover strip + Discover/Remix tiles — never a stable reference.
+       */
+      coverUrl: z.string().url().optional(),
+      /**
        * Free native subtitle links (§P.12 live probe — $0, ~6/8 coverage incl. top video).
        * Populated when `downloadSubtitlesOptions:"DOWNLOAD_SUBTITLES"` is passed. The
        * `tiktokLink` fetches the WEBVTT transcript with NO auth (downloadLink needs ?token=).
@@ -146,7 +151,14 @@ export const apidojoVideoSchema = z.object({
     .array(z.union([z.string(), z.object({ name: z.string() })]))
     .optional()
     .default([]),
-  video: z.object({ duration: z.coerce.number().optional() }).optional(),
+  video: z
+    .object({
+      duration: z.coerce.number().optional(),
+      // Static cover image (display-only thumbnail; ephemeral CDN URL). Optional —
+      // apidojo dataset versions vary; absent → the renderer shows a placeholder tile.
+      cover: z.string().url().optional(),
+    })
+    .optional(),
   channel: z
     .object({
       followers: z.coerce.number().int().nonnegative().optional(),

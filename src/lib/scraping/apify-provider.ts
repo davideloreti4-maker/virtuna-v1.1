@@ -147,6 +147,7 @@ export function remapApidojoVideo(item: unknown): VideoData | null {
     durationSeconds: v.video?.duration ?? 0,
     // Guard an unparseable date string → fall back to now (never NaN postedAt).
     postedAt: Number.isNaN(postedAt.getTime()) ? new Date() : postedAt,
+    ...(v.video?.cover ? { coverUrl: v.video.cover } : {}),
   };
 }
 
@@ -201,6 +202,7 @@ export function remapClockworksVideo(item: unknown): VideoData | null {
     ...(subtitleUrl ? { subtitleUrl } : {}),
     ...(v.isPinned !== undefined ? { isPinned: v.isPinned } : {}),
     ...(v.mediaUrls?.[0] ? { mediaUrl: v.mediaUrls[0] } : {}),
+    ...(v.videoMeta?.coverUrl ? { coverUrl: v.videoMeta.coverUrl } : {}),
   };
 }
 
@@ -404,6 +406,9 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     return {
       mp4Url,
       durationSeconds: videoMeta?.duration ?? 0,
+      // Display-only cover (no SSRF concern — rendered as a browser <img>, never fetched
+      // server-side). Omitted when the rehost item carried no videoMeta.coverUrl.
+      ...(videoMeta?.coverUrl ? { coverUrl: videoMeta.coverUrl } : {}),
     };
   }
 

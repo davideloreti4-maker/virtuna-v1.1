@@ -80,7 +80,7 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
               )}
               <StaleIndicator lastScrapedAt={data.last_scraped_at} />
               {data.scrape_status === "failed" && (
-                <span className="text-[10px] text-red-400 font-medium">Scrape failed</span>
+                <span className="text-[10px] text-error font-medium">Scrape failed</span>
               )}
             </div>
           </div>

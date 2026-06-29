@@ -32,12 +32,20 @@ export function DiscoverEntry({ onSubmit, disabled = false }: DiscoverEntryProps
   const [value, setValue] = useState("");
 
   const trimmed = value.trim();
-  // Live classification — drives the mode hint as the user types (D-14).
-  const hint = trimmed.length > 0 ? MODE_HINT[classifyDiscoverInput(trimmed).mode] : null;
+  // Live classification — drives the mode hint as the user types (D-14). A pasted non-TikTok
+  // link classifies as "unsupported": surface the honest reason and block the pull (scraping
+  // is TikTok-only — never degrade silently into a garbage niche search).
+  const classified = trimmed.length > 0 ? classifyDiscoverInput(trimmed) : null;
+  const unsupported = classified?.mode === "unsupported";
+  const hint = classified
+    ? classified.mode === "unsupported"
+      ? classified.reason ?? null
+      : MODE_HINT[classified.mode]
+    : null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!trimmed || disabled) return;
+    if (!trimmed || disabled || unsupported) return;
     onSubmit(trimmed);
   }
 
@@ -56,22 +64,31 @@ export function DiscoverEntry({ onSubmit, disabled = false }: DiscoverEntryProps
         />
         <button
           type="submit"
-          disabled={!trimmed || disabled}
-          className="inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 transition-opacity disabled:opacity-50"
+          disabled={!trimmed || disabled || unsupported}
+          className="inline-flex items-center justify-center rounded-lg text-sm font-semibold px-4 transition-opacity hover:opacity-90 disabled:opacity-50"
           style={{
             height: "44px",
-            color: "var(--color-foreground-secondary)",
-            backgroundColor: "rgba(255,127,80,0.08)",
-            border: "1px solid rgba(255,127,80,0.30)",
-            cursor: trimmed && !disabled ? "pointer" : "default",
+            color: "var(--color-action-foreground)",
+            backgroundColor: "var(--color-action)",
+            border: "none",
+            cursor: trimmed && !disabled && !unsupported ? "pointer" : "default",
           }}
         >
           {disabled ? "Pulling…" : "Pull"}
         </button>
       </div>
 
-      {/* Live mode hint — updates as the input is classified (profile vs niche). */}
-      {hint && <p className="text-xs text-foreground-muted">{hint}</p>}
+      {/* Live mode hint — updates as the input is classified (profile / niche / unsupported).
+          An unsupported (non-TikTok) link reads in the accent tone as an honest reject. */}
+      {hint && (
+        <p
+          className="text-xs text-foreground-muted"
+          style={unsupported ? { color: "var(--color-cream-secondary)" } : undefined}
+          aria-live="polite"
+        >
+          {hint}
+        </p>
+      )}
     </form>
   );
 }

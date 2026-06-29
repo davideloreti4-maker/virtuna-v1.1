@@ -19,7 +19,7 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
       <h3 className="text-sm font-semibold text-foreground-muted uppercase tracking-wide mb-4">
         Overall Strategy
       </h3>
-      <p className="text-sm text-[var(--color-muted)] leading-relaxed mb-6">
+      <p className="text-sm text-foreground-muted leading-relaxed mb-6">
         {data.overall_strategy}
       </p>
 
@@ -104,8 +104,8 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
       {(data.strengths.length > 0 || data.weaknesses.length > 0) && (
         <div className="grid sm:grid-cols-2 gap-4">
           {data.strengths.length > 0 && (
-            <div className="rounded-lg border border-green-500/10 bg-green-500/[0.03] p-3">
-              <h3 className="text-sm font-semibold text-green-400 mb-2">
+            <div className="rounded-lg border border-success/10 bg-success/[0.03] p-3">
+              <h3 className="text-sm font-semibold text-success mb-2">
                 Strengths
               </h3>
               <ul className="space-y-1">
@@ -114,7 +114,7 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
                     key={i}
                     className="text-xs text-foreground-muted flex gap-2"
                   >
-                    <span className="text-green-400 shrink-0">+</span>
+                    <span className="text-success shrink-0">+</span>
                     {s}
                   </li>
                 ))}
@@ -122,8 +122,8 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
             </div>
           )}
           {data.weaknesses.length > 0 && (
-            <div className="rounded-lg border border-red-500/10 bg-red-500/[0.03] p-3">
-              <h3 className="text-sm font-semibold text-red-400 mb-2">
+            <div className="rounded-lg border border-error/10 bg-error/[0.03] p-3">
+              <h3 className="text-sm font-semibold text-error mb-2">
                 Weaknesses
               </h3>
               <ul className="space-y-1">
@@ -132,7 +132,7 @@ export function StrategyAnalysisCard({ data }: StrategyAnalysisCardProps) {
                     key={i}
                     className="text-xs text-foreground-muted flex gap-2"
                   >
-                    <span className="text-red-400 shrink-0">-</span>
+                    <span className="text-error shrink-0">-</span>
                     {w}
                   </li>
                 ))}

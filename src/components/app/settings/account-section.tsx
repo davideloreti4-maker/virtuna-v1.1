@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Input } from "@/components/ui";
+import { Input, Button } from "@/components/ui";
 import { useProfile, useChangePassword } from "@/hooks/queries/use-profile";
 
 export function AccountSection() {
@@ -41,16 +41,22 @@ export function AccountSection() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-lg font-medium text-white">Account</h2>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h2 className="text-lg font-medium text-foreground">Account</h2>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Manage your account settings and security preferences.
         </p>
       </div>
 
       {/* Email section */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <h3 className="text-sm font-medium text-white">Email address</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div
+        className="rounded-lg border border-white/[0.06] p-6"
+        style={{
+          backgroundColor: "var(--color-charcoal-composer)",
+          boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
+        }}
+      >
+        <h3 className="text-sm font-medium text-foreground">Email address</h3>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Your email is used for login and notifications.
         </p>
         <div className="mt-4 flex items-center gap-4">
@@ -64,14 +70,20 @@ export function AccountSection() {
       </div>
 
       {/* Password section */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-6">
-        <h3 className="text-sm font-medium text-white">Change password</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div
+        className="rounded-lg border border-white/[0.06] p-6"
+        style={{
+          backgroundColor: "var(--color-charcoal-composer)",
+          boxShadow: "rgba(255,255,255,0.05) 0 1px 0 0 inset",
+        }}
+      >
+        <h3 className="text-sm font-medium text-foreground">Change password</h3>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Update your password to keep your account secure.
         </p>
         <div className="mt-4 space-y-4">
           <div className="max-w-sm">
-            <label className="mb-2 block text-sm text-zinc-400">
+            <label className="mb-2 block text-sm text-foreground-secondary">
               New password
             </label>
             <Input
@@ -82,7 +94,7 @@ export function AccountSection() {
             />
           </div>
           <div className="max-w-sm">
-            <label className="mb-2 block text-sm text-zinc-400">
+            <label className="mb-2 block text-sm text-foreground-secondary">
               Confirm new password
             </label>
             <Input
@@ -93,37 +105,37 @@ export function AccountSection() {
             />
           </div>
           {passwordError && (
-            <p className="text-sm text-red-400">{passwordError}</p>
+            <p className="text-sm text-error">{passwordError}</p>
           )}
           {passwordSuccess && (
-            <p className="text-sm text-emerald-400">Password updated successfully!</p>
+            <p className="text-sm text-success">Password updated successfully!</p>
           )}
-          <button
+          <Button
             type="button"
+            variant="primary"
             onClick={handlePasswordChange}
-            disabled={changePassword.isPending}
-            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition-colors hover:bg-zinc-200 disabled:opacity-50"
+            loading={changePassword.isPending}
           >
             {changePassword.isPending ? "Updating..." : "Update password"}
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Danger zone */}
-      <div className="rounded-lg border border-red-900/50 bg-red-950/20 p-6">
-        <h3 className="text-sm font-medium text-red-400">Danger zone</h3>
-        <p className="mt-1 text-sm text-zinc-400">
+      <div className="rounded-lg border border-error/40 bg-error/[0.08] p-6">
+        <h3 className="text-sm font-medium text-error">Danger zone</h3>
+        <p className="mt-1 text-sm text-foreground-secondary">
           Once you delete your account, there is no going back. Please be
           certain.
         </p>
         <button
           type="button"
           disabled
-          className="mt-4 rounded-lg border border-red-700 bg-red-900/30 px-4 py-2 text-sm font-medium text-red-400 opacity-50 cursor-not-allowed"
+          className="mt-4 cursor-not-allowed rounded-lg border border-error/40 bg-error/[0.12] px-4 py-2 text-sm font-medium text-error opacity-50"
         >
           Delete account
         </button>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-foreground-muted">
           Contact support to delete your account.
         </p>
       </div>

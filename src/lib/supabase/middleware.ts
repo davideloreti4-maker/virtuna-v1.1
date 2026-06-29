@@ -34,7 +34,6 @@ const AUTH_PAGES = ["/login", "/signup"];
 const PUBLIC_PATHS = [
   "/",
   "/coming-soon",
-  "/showcase",
   "/login",
   "/signup",
   "/auth/callback",

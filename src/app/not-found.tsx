@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { House } from "@phosphor-icons/react/dist/ssr";
+
+import { Button } from "@/components/ui/button";
 
 /**
  * Global 404 page.
- * Raycast design language: dark, minimal, centered.
+ * Flat-warm charcoal: solid charcoal bg, cream text, no glass.
  * Rendered by Next.js for any unmatched route.
- * Root layout.tsx provides <html><body> wrapper.
+ * Root layout.tsx provides the <html><body> wrapper.
  */
 export default function NotFound() {
   return (
@@ -18,12 +21,12 @@ export default function NotFound() {
       <p className="max-w-md text-center text-sm text-foreground-muted">
         The page you&apos;re looking for doesn&apos;t exist or has been moved.
       </p>
-      <Link
-        href="/"
-        className="mt-4 inline-flex items-center justify-center rounded-lg bg-action px-5 py-2.5 text-sm font-medium text-foreground-secondary-foreground transition-colors hover:bg-action/90"
-      >
-        Go home
-      </Link>
+      <Button variant="primary" className="mt-4" asChild>
+        <Link href="/">
+          <House className="h-4 w-4" />
+          Go home
+        </Link>
+      </Button>
     </div>
   );
 }

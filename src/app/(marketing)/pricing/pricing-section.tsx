@@ -34,7 +34,7 @@ function FeatureValue({ value }: { value: boolean | string }) {
   if (value === false) {
     return <X size={18} weight="bold" className="text-foreground-muted/50 mx-auto" />;
   }
-  return <span className="text-sm text-white">{value}</span>;
+  return <span className="text-sm text-foreground">{value}</span>;
 }
 
 export function PricingSection() {
@@ -97,10 +97,10 @@ export function PricingSection() {
         {/* Header */}
         <FadeIn>
           <div className="text-center mb-16">
-            <h1 className="text-[36px] sm:text-[44px] md:text-[52px] leading-[1.1] font-normal text-white">
+            <h1 className="text-[36px] sm:text-[44px] md:text-[52px] leading-[1.1] font-normal text-foreground">
               Simple, transparent pricing
             </h1>
-            <p className="mt-4 text-lg text-white/80 max-w-xl mx-auto">
+            <p className="mt-4 text-lg text-foreground-secondary max-w-xl mx-auto">
               Start with a 7-day free Pro trial. No feature limits during the
               trial. Cancel anytime.
             </p>
@@ -117,7 +117,7 @@ export function PricingSection() {
         {checkoutSuccess && !isPolling && (
           <div className="mb-8 flex items-center justify-center gap-2 rounded-xl border border-success/20 bg-success/5 px-4 py-3">
             <Check size={18} className="text-success" />
-            <span className="text-sm text-white">
+            <span className="text-sm text-foreground">
               Welcome to {checkoutSuccess === "pro" ? "Pro" : "Starter"}! Your plan is now active.
             </span>
           </div>
@@ -134,12 +134,12 @@ export function PricingSection() {
               }}
             >
               <div className="mb-8">
-                <h3 className="text-lg font-medium text-white">Starter</h3>
+                <h3 className="text-lg font-medium text-foreground">Starter</h3>
                 <p className="mt-1 text-sm text-foreground-muted">
                   For creators getting started with content intelligence
                 </p>
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-[48px] font-normal text-white">$19</span>
+                  <span className="text-[48px] font-normal text-foreground">$19</span>
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
@@ -150,21 +150,21 @@ export function PricingSection() {
             <div
               className="relative rounded-[12px] border border-border-hover/30 p-8"
               style={{
-                boxShadow: "rgba(255, 127, 80, 0.1) 0px 1px 0px 0px inset",
+                boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
               }}
             >
               <div className="absolute -top-3 left-8">
-                <span className="rounded-full bg-action px-3 py-1 text-xs font-medium text-foreground-secondary-foreground">
+                <span className="rounded-full bg-action px-3 py-1 text-xs font-medium text-action-foreground">
                   Most popular
                 </span>
               </div>
               <div className="mb-8">
-                <h3 className="text-lg font-medium text-white">Pro</h3>
+                <h3 className="text-lg font-medium text-foreground">Pro</h3>
                 <p className="mt-1 text-sm text-foreground-muted">
                   Everything you need to grow and monetize
                 </p>
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className="text-[48px] font-normal text-white">$49</span>
+                  <span className="text-[48px] font-normal text-foreground">$49</span>
                   <span className="text-foreground-muted">/month</span>
                 </div>
               </div>
@@ -182,10 +182,10 @@ export function PricingSection() {
                   <th className="py-4 px-6 text-left text-sm font-medium text-foreground-muted">
                     Feature
                   </th>
-                  <th className="py-4 px-6 text-center text-sm font-medium text-white w-32">
+                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground-secondary w-32">
                     Starter
                   </th>
-                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground-secondary w-32">
+                  <th className="py-4 px-6 text-center text-sm font-medium text-foreground w-32">
                     Pro
                   </th>
                 </tr>
@@ -200,7 +200,7 @@ export function PricingSection() {
                         : ""
                     }
                   >
-                    <td className="py-4 px-6 text-sm text-white">
+                    <td className="py-4 px-6 text-sm text-foreground">
                       {feature.name}
                     </td>
                     <td className="py-4 px-6 text-center">

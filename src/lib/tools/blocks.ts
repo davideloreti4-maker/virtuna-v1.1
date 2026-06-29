@@ -116,6 +116,9 @@ export const IdeaCardBlockSchema = z.object({
     fraction: z.string(),           // e.g. "6/10 stop"
     scrollQuote: z.string(),        // lead per-persona scroll quote (D-04)
     model: z.literal("sim1-flash"), // provenance tag — always Flash for idea cards
+    // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
+    // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
+    scored: z.boolean().optional(),
     // predictedFailureMode: retained nullable field. Originally the rubric-critic's
     // "if this flops, here's why" texture (Plan 14-02); the critic was removed in S5
     // (was OFF / ~100% fail), so this is always null today. Kept OPTIONAL/nullable so
@@ -163,6 +166,9 @@ export const HookCardBlockSchema = z.object({
     fraction: z.string(),              // e.g. "6/10 stop"
     scrollQuote: z.string(),           // lead per-persona scroll quote (D-02/D-04 texture)
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for hook cards
+    // A4 (premium-thread): true once the `score` event has patched band/fraction. OPTIONAL +
+    // back-compat — absent on persisted/pre-A4 blocks → the renderer treats it as already-scored.
+    scored: z.boolean().optional(),
     // Multi-modal hint (corpus/hooks.md) — nullable
     channel: z.string().nullable(),    // e.g. "spoken", "visual", "caption", "edit", "audio"
     // predictedFailureMode: retained nullable field. Originally the rubric-critic's
@@ -242,6 +248,10 @@ export const RemixCardBlockSchema = z.object({
     angle: z.string().min(1),          // structural angle borrowed (muted sub-row)
     whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
     formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
+    // Source video cover thumbnail (resolveVideoUrl → resolveAndRehost surfaces it) — an
+    // ephemeral CDN image, display-only ("Remixing this post" chip). OPTIONAL/additive
+    // (back-compat): absent → the card renders with no source thumbnail.
+    coverUrl: z.string().optional(),
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally
@@ -294,6 +304,10 @@ export const OutlierGridBlockSchema = z.object({
         platformVideoId: z.string().min(1),
         videoUrl: z.string().min(1),
         caption: z.string(),
+        // Cover thumbnail (clockworks videoMeta.coverUrl) — ephemeral CDN image, display-only.
+        // OPTIONAL/additive: existing persisted outlier-grid blocks stay valid; absent → the
+        // tile renders exactly as before (no cover banner).
+        coverUrl: z.string().optional(),
         // VideoCard-derived metrics grid (measured scrape data)
         views: z.number(),
         likes: z.number(),
@@ -451,6 +465,28 @@ const TrackRecordSchema = z.object({
   lastN: z.number(),
 });
 
+// Real scraped profile header (Tier C scrape-data slice) — avatar / display name /
+// verified / counts. avatarUrl is a plain string (may be "" or an ephemeral CDN URL),
+// not z.url(), so an empty/expired avatar never fails validation.
+const AccountReadProfileSchema = z.object({
+  handle: z.string(),
+  displayName: z.string(),
+  avatarUrl: z.string(),
+  verified: z.boolean(),
+  followerCount: z.number(),
+  videoCount: z.number(),
+});
+
+// One analyzed post as a cover thumbnail (real scrape media). coverUrl is an ephemeral
+// TikTok-CDN image (display-only) — plain string, optional; the renderer degrades to a
+// placeholder tile when it's absent or has expired in a saved snapshot.
+const AnalyzedVideoSchema = z.object({
+  coverUrl: z.string().optional(),
+  views: z.number(),
+  caption: z.string(),
+  videoUrl: z.string(),
+});
+
 export const AccountReadBlockSchema = z.object({
   type: z.literal("account-read"),
   props: z.object({
@@ -459,6 +495,10 @@ export const AccountReadBlockSchema = z.object({
     // Honest thin-history flag (SELF-02). When true, patterns are omitted and the
     // renderer shows the warning-toned fallback. When absent/false, `patterns` is present.
     fallback: z.literal("thin").optional(),
+    // Real scrape header — present on the success path, absent on the thin fallback.
+    profile: AccountReadProfileSchema.optional(),
+    // The analyzed posts as cover thumbnails (real scrape media) — present on success.
+    analyzedVideos: z.array(AnalyzedVideoSchema).optional(),
     // Pattern payload — present on the success path, absent on the thin fallback.
     patterns: AccountReadPatternsSchema.optional(),
     // Accuracy track record (SELF-03) — null below the row threshold (empty copy shown).

@@ -37,6 +37,13 @@ export interface VideoData {
    * absent on metadata-only Discover/Explore paths.
    */
   mediaUrl?: string;
+  /**
+   * Static cover-image URL for the post (clockworks `videoMeta.coverUrl`). A TikTok-CDN
+   * signed image — ephemeral (expires), so it is DISPLAY-ONLY (Account Read cover strip,
+   * Discover/Remix thumbnails) and never persisted as a stable reference. Optional —
+   * absent on metadata-only paths that don't surface a thumbnail.
+   */
+  coverUrl?: string;
 }
 
 /**
@@ -58,6 +65,12 @@ export interface ProfileBundle {
 export interface ResolvedVideo {
   mp4Url: string;
   durationSeconds: number;
+  /**
+   * Static cover-image URL for the resolved post (clockworks `videoMeta.coverUrl`). An
+   * ephemeral TikTok-CDN image — display-only (the Remix card's "Remixing this post"
+   * thumbnail). Optional — absent when the rehost item carried no cover.
+   */
+  coverUrl?: string;
 }
 
 /**

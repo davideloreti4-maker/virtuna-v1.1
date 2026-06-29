@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 
+import { SectionHeading } from "@/components/marketing/section-heading";
 import { FaqAccordion } from "./faq-accordion";
 
 /**
@@ -18,10 +19,8 @@ import { FaqAccordion } from "./faq-accordion";
 export function Faq({ className }: { className?: string }) {
   return (
     <div className={cn(className)}>
-      {/* Section heading — SANS font-semibold; serif + coral reserved elsewhere. */}
-      <h2 className="text-3xl font-semibold text-foreground">
-        Questions, answered
-      </h2>
+      {/* Section heading — eyebrow kicker + SANS h2; serif + coral reserved elsewhere. */}
+      <SectionHeading eyebrow="FAQ" title="Questions, answered" />
 
       {/* One-line cream-secondary subhead — grounds the section without overselling. */}
       <p className="mt-3 text-base text-foreground-secondary">

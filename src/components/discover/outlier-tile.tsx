@@ -28,6 +28,7 @@
 
 import { Check } from "@phosphor-icons/react";
 import { VideoCard } from "@/components/competitors/detail/video-card";
+import { SaveAffordance } from "@/components/thread/save-affordance";
 import type { FitLevel } from "@/lib/discover/explore-rank";
 
 /** One Discover outlier tile — mirrors OutlierGridBlock.props.tiles[*] (blocks.ts). */
@@ -35,6 +36,11 @@ export interface OutlierTileData {
   platformVideoId: string;
   videoUrl: string;
   caption: string;
+  /**
+   * Cover thumbnail (clockworks videoMeta.coverUrl) — ephemeral CDN image, display-only.
+   * Optional: absent → the tile renders with no cover banner (degrades to today's layout).
+   */
+  coverUrl?: string;
   views: number;
   likes: number;
   comments: number;
@@ -78,6 +84,14 @@ function formatMultiplier(m: number): string {
   return `${m.toFixed(1)}×`;
 }
 
+/** Format a duration in seconds as "m:ss" for the cover badge ("" when unknown). */
+function formatDuration(s: number): string {
+  if (!Number.isFinite(s) || s <= 0) return "";
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
 interface OutlierTileProps {
   tile: OutlierTileData;
   /**
@@ -108,8 +122,41 @@ export function OutlierTile({
   trackPending = false,
   tracked = false,
 }: OutlierTileProps) {
+  const duration = formatDuration(tile.durationSeconds);
   return (
     <div className="space-y-2">
+      {/* Cover banner — the real scrape thumbnail (clockworks videoMeta.coverUrl). Additive:
+          renders ONLY when coverUrl is present, so a niche pull / pre-cover block degrades to
+          today's badge-first layout. Capped height (the grid is narrow — a full 9:16 would
+          tower); object-cover crops to a clean banner. Duration badge (bottom-right) is the
+          one overlay — NON-redundant with the views in the metrics grid below. A broken/expired
+          CDN URL hides the <img> (the placeholder bg shows), never a broken-image icon. */}
+      {tile.coverUrl ? (
+        <a
+          href={tile.videoUrl || undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group relative block h-[176px] w-full overflow-hidden rounded-[8px] border border-white/[0.06] bg-white/[0.04]"
+          title={tile.caption || undefined}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+          <img
+            src={tile.coverUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          {duration ? (
+            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
+              {duration}
+            </span>
+          ) : null}
+        </a>
+      ) : null}
+
       {/* Multiplier badge (neutral — data, NOT the action) + source sub-tag */}
       <div className="flex items-start justify-between gap-2">
         {/* D-05: ALWAYS render the multiplier WITH its baseline label — never bare. */}
@@ -180,43 +227,53 @@ export function OutlierTile({
         }}
       />
 
-      {/* NEW (EXPLORE-05 / D-08): "+ Track account" — a quiet, NON-accent text-button that
-          writes the watchlist row. Renders ONLY when tile.trackable. Toggles to "Tracking"
-          with a check on success; disabled while a write is in flight. Secondary to Remix —
-          NEVER coral (the CTA below owns the tile's one accent). */}
-      {tile.trackable && (
-        <button
-          type="button"
-          onClick={() => onTrack?.(tile)}
-          disabled={!onTrack || trackPending || tracked}
-          aria-label={tracked ? "Account tracked" : "Track this account"}
-          aria-pressed={tracked}
-          className="inline-flex items-center gap-1 self-start text-xs font-medium text-foreground-muted transition-opacity hover:text-foreground disabled:opacity-60"
-          style={{ cursor: onTrack && !trackPending && !tracked ? "pointer" : "default" }}
-        >
-          {tracked ? (
-            <>
-              <Check size={13} weight="bold" aria-hidden="true" />
-              Tracking
-            </>
-          ) : (
-            trackPending ? "Tracking…" : "+ Track account"
-          )}
-        </button>
-      )}
+      {/* Secondary actions — Save (always) + "+ Track account" (only when tile.trackable).
+          Both are quiet, NON-accent cream chrome — NEVER coral (the Remix CTA below owns the
+          tile's one accent). Save persists the outlier to the Library shelf (item_type="outlier",
+          snapshot = the tile's own props); the shelf echoes the cover + measured strip without a
+          re-fetch. Track writes the watchlist row and toggles to "Tracking ✓" on success. */}
+      <div className="flex items-center gap-3">
+        {tile.trackable && (
+          <button
+            type="button"
+            onClick={() => onTrack?.(tile)}
+            disabled={!onTrack || trackPending || tracked}
+            aria-label={tracked ? "Account tracked" : "Track this account"}
+            aria-pressed={tracked}
+            className="inline-flex items-center gap-1 text-xs font-medium text-foreground-muted transition-opacity hover:text-foreground disabled:opacity-60"
+            style={{ cursor: onTrack && !trackPending && !tracked ? "pointer" : "default" }}
+          >
+            {tracked ? (
+              <>
+                <Check size={13} weight="bold" aria-hidden="true" />
+                Tracking
+              </>
+            ) : (
+              trackPending ? "Tracking…" : "+ Track account"
+            )}
+          </button>
+        )}
+        <SaveAffordance
+          className="ml-auto text-xs"
+          item_type="outlier"
+          title={tile.caption}
+          snapshot={{ ...tile }}
+        />
+      </div>
 
-      {/* Primary CTA — "Remix → Read": the ONE coral element on the tile (accent law). */}
+      {/* Primary CTA — "Remix → Read": the forward chain step, cream primary (§1.7/§1.8;
+          the legacy coral fill was retired — primary ≠ accent). */}
       <button
         type="button"
         onClick={() => onRemix?.(tile)}
         disabled={!onRemix || remixPending}
         aria-label="Remix this outlier into a Read"
-        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
+        className="w-full inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-50"
         style={{
           minHeight: "46px",
-          color: "var(--color-foreground-secondary)",
-          backgroundColor: "rgba(255,127,80,0.08)",
-          border: "1px solid rgba(255,127,80,0.30)",
+          color: "var(--color-action-foreground)",
+          backgroundColor: "var(--color-action)",
+          border: "none",
           cursor: onRemix && !remixPending ? "pointer" : "default",
         }}
       >

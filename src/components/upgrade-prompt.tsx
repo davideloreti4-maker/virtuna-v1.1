@@ -21,7 +21,7 @@ export function UpgradePrompt() {
         <div className="flex items-center gap-3">
           <Lightning size={18} className="text-warning" />
           <div>
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-medium text-foreground">
               Your trial ends in {trialDaysRemaining}{" "}
               {trialDaysRemaining === 1 ? "day" : "days"}
             </p>

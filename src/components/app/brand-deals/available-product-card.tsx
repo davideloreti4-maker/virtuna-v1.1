@@ -56,7 +56,7 @@ export function AvailableProductCard({
 
       {/* Hero commission rate */}
       <div className="mb-4 text-center">
-        <div className="text-2xl font-semibold text-success">
+        <div className="text-2xl font-semibold text-foreground">
           {product.commissionRate}%
         </div>
         <span className="text-[10px] uppercase tracking-wider text-foreground-muted">

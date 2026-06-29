@@ -1,98 +1,72 @@
 /**
  * threads.ts — thread persistence helpers
  *
+ * Multi-thread model (migration 20260626120000_threads_multi_open):
+ *   A user owns MANY open threads (one per chat conversation). The ACTIVE thread
+ *   is the most-recently-touched open thread (type:"open", reading_id IS NULL,
+ *   ORDER BY updated_at DESC). "New Thread" inserts a fresh one; re-opening an
+ *   old thread touches its updated_at so it becomes active again.
+ *
  * Provides:
- *   createOpenThreadLazy(userId) — idempotent get-or-create for the user's open thread
- *   getOpenThread(userId) — fetch the user's open (reading_id IS NULL) thread
+ *   createOpenThreadLazy(userId) — get-or-create the user's ACTIVE open thread
+ *                                  (idempotent; the ~11 tool routes call this).
+ *   getOpenThread(userId)        — fetch the ACTIVE open thread (newest), or null.
+ *   createNewThread(userId)      — insert a fresh open thread → newest → active.
+ *   touchThread(userId, id)      — bump updated_at so a thread becomes active.
+ *   listOpenThreads(userId)      — list the user's open threads, newest-first.
  *
  * Design notes:
  * - userId is ALWAYS passed from the authenticated session server-side; it is
  *   NEVER sourced from a request body (analysis_chats RLS pattern trust boundary).
  * - Writes go through createServiceClient (bypasses RLS for server-side inserts).
- *   Because the service client bypasses RLS, every read-back MUST scope by
+ *   Because the service client bypasses RLS, every read/write MUST scope by
  *   user_id explicitly — the DB will not enforce ownership for us here (CR-01).
- * - The partial UNIQUE index on the open-thread key (user_id WHERE reading_id IS
- *   NULL) makes concurrent first-opens collide on the constraint (unique_violation
- *   23505) rather than race to two rows; we catch that and fetch the winner. We do
- *   NOT use ON CONFLICT — Postgres cannot use a *partial* unique index as a conflict
- *   arbiter without its predicate (42P10).
  *
- * Row types derive from the regenerated database.types.ts (Task 3).
- * reading_id is `string | null` — analysis_results.id is `text` on the live DB
- * (not uuid as Pitfall #3 assumed), so the FK resolves to a text/string column.
+ * Row types derive from the regenerated database.types.ts.
+ * reading_id is `string | null` — analysis_results.id is `text` on the live DB.
  */
 
 import { createServiceClient } from "@/lib/supabase/service";
 import type { Database } from "@/types/database.types";
 
-// ─── Row type derived from the regenerated database types (Task 3) ────────────
+// ─── Row type derived from the regenerated database types ─────────────────────
 
 export type ThreadRow = Database["public"]["Tables"]["threads"]["Row"];
 
 // ─── createOpenThreadLazy ──────────────────────────────────────────────────────
 /**
- * Idempotent get-or-create for the user's open thread (type:"open", reading_id IS NULL).
+ * Get-or-create the user's ACTIVE open thread (type:"open", reading_id IS NULL).
  *
- * GET-FIRST (must mirror the reader). `getOpenThread` (and GET /api/threads/open)
- * resolves the OLDEST open thread; this writer MUST resolve the SAME row so every
- * tool writes into, and the composer reads back from, ONE canonical open thread.
- * The earlier insert-first shape diverged whenever the partial unique index
- * (threads_open_user_unique_idx, user_id WHERE reading_id IS NULL) was absent or
- * non-enforcing on the DB: each call minted a brand-new open thread (the insert
- * never hit 23505) while readers kept reading the oldest, so freshly-written blocks
- * (e.g. the Phase 5 profile-read) never surfaced. Selecting first keeps writer and
- * reader on the same thread and stops duplicate open threads from accumulating.
- *
- * Service-client + user_id-scoped idempotent pattern:
- * - Existing open thread → return it (no insert).
- * - None yet → insert the first open thread.
- * - 23505 unique_violation (concurrent first-open won the race between our select
- *   miss and this insert) → re-select scoped by user_id (CR-01).
- * - Non-conflict insert error → rethrow.
+ * Active = the most-recently-touched open thread. When none exists yet, insert a
+ * fresh one. This is the entry point the generative tool routes call to append to
+ * "the current thread" — they remain agnostic about which thread is active.
  *
  * Ownership: user_id is always passed from the authenticated session, never from a
- * request body (CR-01 trust boundary). Service client bypasses RLS; every read-back
- * is scoped by user_id to enforce ownership explicitly.
+ * request body (CR-01 trust boundary). Service client bypasses RLS; reads/inserts
+ * are scoped by user_id to enforce ownership explicitly.
  *
  * @param userId  Session user_id (from supabase.auth.getUser(), never from body).
- * @returns The existing or newly-created open thread row.
+ * @returns The active or newly-created open thread row.
  */
 export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
-  // Get-first: return the user's canonical (oldest) open thread if one exists —
-  // the exact row GET /api/threads/open reads back (writer/reader alignment).
+  // Active thread already exists → return it (the common path).
   const existing = await getOpenThread(userId);
-  if (existing) {
-    return existing;
-  }
+  if (existing) return existing;
 
+  // None yet → create the user's first open thread.
   const supabase = createServiceClient();
-
-  // No open thread yet — create the first one for this user.
   const { data: inserted, error: insertError } = await supabase
     .from("threads")
     .insert({ type: "open" as const, reading_id: null, user_id: userId })
     .select("*")
     .single();
 
-  if (inserted) {
-    return inserted;
-  }
+  if (inserted) return inserted;
 
-  // 23505 = unique_violation: a concurrent first-open won the race between the
-  // getOpenThread miss above and this insert. Re-select the winner, scoped by
-  // user_id (CR-01 ownership guard).
-  if (insertError?.code === "23505") {
-    const winner = await getOpenThread(userId);
-
-    if (winner) {
-      return winner;
-    }
-
-    throw new Error(
-      `createOpenThreadLazy: an open thread exists but is not owned by userId=${userId}. ` +
-        `Service client bypasses RLS; ownership scoped to user_id (CR-01).`,
-    );
-  }
+  // Concurrent first-open race (two inserts, no unique index anymore): re-select
+  // the newest open thread scoped by user_id (CR-01 ownership guard).
+  const retry = await getOpenThread(userId);
+  if (retry) return retry;
 
   throw new Error(
     `createOpenThreadLazy: failed to create open thread for userId=${userId}: ${insertError?.message ?? "no data returned"}`,
@@ -101,18 +75,13 @@ export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
 
 // ─── getOpenThread ────────────────────────────────────────────────────────────
 /**
- * Fetch the user's open thread (reading_id IS NULL).
- * Returns null if none exists yet — callers create one lazily when needed.
- * Uses the service client so it can query by user_id without needing an
- * RLS session (server-side caller passes userId from the session).
+ * Fetch the user's ACTIVE open thread — the most-recently-touched open thread
+ * (type:"open", reading_id IS NULL, ORDER BY updated_at DESC). Returns null if
+ * none exists yet — callers create one lazily when needed.
  *
- * Defensive duplicate tolerance: orders by created_at ASC and takes the
- * first row (oldest = canonical). Before the threads_open_user_unique_idx
- * constraint was applied (migration 20260618000000), duplicate open threads
- * could accumulate. Using .maybeSingle() would throw PGRST116 ("multiple rows
- * returned") in that state — this query shape is safe under both old and new
- * DB state. After the migration the index ensures at most one row matches, so
- * order+limit adds no cost.
+ * Uses the service client so it can query by user_id without an RLS session
+ * (the server-side caller passes userId from the session). The order+limit shape
+ * resolves to at most one row even when the user owns several open threads.
  */
 export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
   const supabase = createServiceClient();
@@ -123,7 +92,8 @@ export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
     .eq("user_id", userId)
     .eq("type", "open")
     .is("reading_id", null)
-    .order("created_at", { ascending: true })
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -132,4 +102,118 @@ export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
   }
 
   return data ?? null;
+}
+
+// ─── createNewThread ────────────────────────────────────────────────────────────
+/**
+ * Insert a fresh open thread for the user. Because updated_at defaults to now(),
+ * the new thread is the newest → it immediately becomes the ACTIVE thread.
+ * Backs the "New Thread" sidebar action.
+ */
+export async function createNewThread(userId: string): Promise<ThreadRow> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("threads")
+    .insert({ type: "open" as const, reading_id: null, user_id: userId })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    throw new Error(
+      `createNewThread: failed for userId=${userId}: ${error?.message ?? "no data returned"}`,
+    );
+  }
+
+  return data;
+}
+
+// ─── touchThread ────────────────────────────────────────────────────────────────
+/**
+ * Bump a thread's updated_at to now() so it becomes the ACTIVE (newest) open
+ * thread. Backs the "re-open a past thread" sidebar action. Ownership-scoped by
+ * user_id (CR-01) and restricted to open threads. Returns true on a real update.
+ */
+export async function touchThread(userId: string, threadId: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .eq("type", "open")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`touchThread: failed for threadId=${threadId}: ${error.message}`);
+  }
+
+  return data != null;
+}
+
+// ─── archiveThread ────────────────────────────────────────────────────────────
+/**
+ * Archive an open chat thread: flip its type "open" → "archived" so it drops out
+ * of the sidebar list (listOpenThreads/getOpenThread both filter type="open")
+ * WITHOUT deleting the conversation — reversible, no message cascade. Backs the
+ * sidebar "Delete thread" action. Ownership-scoped by user_id (CR-01) and
+ * restricted to open threads (you can only archive your own live chat threads).
+ * Returns true on a real update, false when no matching open thread was found.
+ */
+export async function archiveThread(userId: string, threadId: string): Promise<boolean> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ type: "archived", updated_at: new Date().toISOString() })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .eq("type", "open")
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`archiveThread: failed for threadId=${threadId}: ${error.message}`);
+  }
+
+  return data != null;
+}
+
+// ─── listOpenThreads ──────────────────────────────────────────────────────────
+
+/** A thread summary row for the sidebar list (no message bodies). */
+export interface OpenThreadSummary {
+  id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * List the user's open threads, newest-first (active thread = index 0).
+ * Bounded; the sidebar only renders the most recent slice. Titles are derived
+ * separately (see the /api/threads/list route) to keep this query body-free.
+ */
+export async function listOpenThreads(
+  userId: string,
+  limit = 50,
+): Promise<OpenThreadSummary[]> {
+  const supabase = createServiceClient();
+
+  const { data, error } = await supabase
+    .from("threads")
+    .select("id, created_at, updated_at")
+    .eq("user_id", userId)
+    .eq("type", "open")
+    .is("reading_id", null)
+    .order("updated_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`listOpenThreads: failed for userId=${userId}: ${error.message}`);
+  }
+
+  return (data ?? []) as OpenThreadSummary[];
 }

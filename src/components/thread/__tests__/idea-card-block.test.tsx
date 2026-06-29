@@ -7,10 +7,10 @@
  *   prop (not hardcoded), and the scroll-quote still LEADS the card (D-03: above
  *   the band fraction).
  *
- * KCQ-04 (Task 2): the `predictedFailureMode` flop texture (populated in 14-02)
- *   renders as an OPT-IN drill/expand affordance — only when the field is non-null,
- *   and only inside the expand/disclosure (never on the always-visible face, never
- *   silent-only). Warning-toned (--color-warning), never coral, never error-red.
+ * lane/polish §2: the `predictedFailureMode` flop branch is REMOVED — the rubric-critic
+ *   that populated it (S5) is gone, so the field is always null and the "If this could
+ *   flop →" affordance never rendered. The card no longer carries the branch at all; these
+ *   tests now guard that it stays absent even if a rehydrated card carries a stale value.
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
@@ -77,32 +77,24 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     expect(screen.queryByText(new RegExp(WHY_IT_FITS, 'i'))).toBeNull();
   });
 
-  it('keeps the scroll-quote leading the card — it renders before the band fraction (D-03)', () => {
+  it('leads with the single proof unit — scroll-quote + visible Lens entry, fraction stated once (§1.3/§1.4)', () => {
     const { container } = renderWithClient(<IdeaCardRenderer block={makeBlock()} />);
-    const html = container.innerHTML;
-    const quoteIdx = html.indexOf(SCROLL_QUOTE);
-    // Phase 13-02 Surface 3 added a resting-reaction readout (the real "{stop}/{total} stop"
-    // fraction + ribbon) ABOVE the verbatim quote, inside the same LensTrigger. So "7/10 stop"
-    // now occurs twice: first the Surface-3 readout (above the quote), then the secondary band
-    // chip (below it). This test guards the ORIGINAL invariant — the quote leads the secondary
-    // BAND-CHIP row — so anchor on the band chip's fraction (the occurrence in the "SIM-1 Flash"
-    // chip row), not the new Surface-3 readout.
-    const bandChipIdx = html.indexOf('SIM-1 Flash');
-    const bandFractionIdx = html.lastIndexOf('7/10 stop', bandChipIdx);
-    expect(quoteIdx).toBeGreaterThan(-1);
-    expect(bandFractionIdx).toBeGreaterThan(-1);
-    // Scroll-quote DOM position precedes the secondary band-chip fraction.
-    expect(quoteIdx).toBeLessThan(bandFractionIdx);
-    // And the new Surface-3 resting readout precedes the quote (the at-rest reaction leads).
-    const surface3FractionIdx = html.indexOf('7/10 stop');
-    expect(surface3FractionIdx).toBeLessThan(quoteIdx);
+    // The scroll-quote renders inside the single proof unit.
+    expect(screen.getByText(new RegExp(SCROLL_QUOTE, 'i'))).toBeTruthy();
+    // The proof unit IS the now-visible AudienceLens entry (§1.4) — "See the room →".
+    expect(screen.getByText(/see the room/i)).toBeTruthy();
+    // The fraction is stated ONCE (§1.3) — the old duplicated band chip is gone. Count on
+    // textContent (the rendered number + "stopped" sit in sibling elements, so the raw
+    // fraction string spans a tag boundary in innerHTML).
+    const text = container.textContent ?? '';
+    const occurrences = text.split('7/10').length - 1;
+    expect(occurrences).toBe(1);
   });
 });
 
-describe('IdeaCardRenderer — KCQ-04 opt-in flop reveal (Task 2)', () => {
+describe('IdeaCardRenderer — flop branch removed (lane/polish §2)', () => {
   it('renders NO flop affordance when predictedFailureMode is null', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: null })} />);
-    // Expand the disclosure — the affordance must still be absent.
     fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
@@ -116,30 +108,13 @@ describe('IdeaCardRenderer — KCQ-04 opt-in flop reveal (Task 2)', () => {
     expect(screen.queryByText(/if this could flop/i)).toBeNull();
   });
 
-  it('flop affordance is gated behind the disclosure — NOT on the always-visible face', () => {
+  it('renders NO flop affordance even when a stale predictedFailureMode value is present (dead branch)', () => {
     renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
-    // Before expanding: affordance is not present on the face.
+    // The branch was removed entirely (§2) — expanding the disclosure never surfaces it,
+    // and the stale value is never rendered anywhere on the card.
+    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
+    expect(screen.queryByText(/if this could flop/i)).toBeNull();
     expect(screen.queryByRole('button', { name: /reveal why this idea might miss/i })).toBeNull();
     expect(screen.queryByText(FLOP_REASON)).toBeNull();
-  });
-
-  it('reveals the failure-mode text only after a second opt-in drill (never silent-only)', () => {
-    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
-    // 1) open the disclosure — affordance appears but text stays hidden (opt-in).
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
-    const flopBtn = screen.getByRole('button', { name: /reveal why this idea might miss/i });
-    expect(flopBtn).toBeTruthy();
-    expect(screen.queryByText(FLOP_REASON)).toBeNull();
-    // 2) drill the affordance — now the failure-mode text is reachable.
-    fireEvent.click(flopBtn);
-    expect(screen.getByText(FLOP_REASON)).toBeTruthy();
-  });
-
-  it('the flop affordance is warning-toned (--color-warning), never coral, never error-red', () => {
-    renderWithClient(<IdeaCardRenderer block={makeBlock({ predictedFailureMode: FLOP_REASON })} />);
-    fireEvent.click(screen.getByRole('button', { name: /expand idea details/i }));
-    const flopBtn = screen.getByRole('button', { name: /reveal why this idea might miss/i });
-    expect(flopBtn.getAttribute('style')).toContain('--color-warning');
-    expect(flopBtn.getAttribute('style')).not.toContain('255,127,80'); // no coral
   });
 });

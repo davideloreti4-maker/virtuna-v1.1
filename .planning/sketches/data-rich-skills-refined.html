@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Data-rich skills — refined sketch (vertical + platform)</title>
+<style>
+  :root{
+    --bg:#262624; --surface-thread:#252524; --surface-chip:#2c2c2b;
+    --cream:#ece7de; --cream-2:#c2bdb4; --cream-muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --faint:rgba(255,255,255,.02);
+    --success:#8fc9a0; --warning:#e0bd72; --error:#e0796b;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --rc:12px; --rctl:8px; --rfull:9999px;
+    --thumb:linear-gradient(155deg,#3a3936,#242321 75%);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:48px 24px 120px;line-height:1.4}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-size:20px;font-weight:600}
+  .sub{color:var(--cream-muted);font-size:13.5px;margin:4px 0 8px}
+  .lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-muted);margin:30px 0 10px}
+  .note{font-size:12px;color:var(--cream-muted);margin-top:8px}
+  .note b{color:var(--cream-2)}
+  .real{color:var(--success)}.gap{color:var(--warning)}
+
+  .card{background:var(--surface-thread);border:1px solid var(--border);border-radius:var(--rc);overflow:hidden}
+  .body{padding:16px;display:flex;flex-direction:column;gap:14px}
+  .actions{border-top:1px solid var(--border);padding:13px 16px;display:flex;align-items:center;gap:14px}
+  .btn-primary{background:var(--action);color:var(--action-fg);border:none;border-radius:var(--rctl);font:inherit;
+    font-size:13px;font-weight:600;padding:8px 15px;cursor:pointer}
+  .save{margin-left:auto;background:none;border:none;color:var(--cream-muted);font:inherit;font-size:13px;cursor:pointer}
+
+  /* platform pill — monochrome glyph + label (no platform brand colors; design system is mono) */
+  .plat{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--cream-2);
+    background:var(--faint);border:1px solid var(--border);border-radius:var(--rfull);padding:2px 8px}
+  .plat .g{font-size:11px;line-height:1}
+  /* tiny overlay variant on covers */
+  .plat-ov{position:absolute;top:7px;right:7px;display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#fff;
+    background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.18);border-radius:var(--rfull);padding:2px 7px;z-index:2}
+
+  /* profile header */
+  .phead{display:flex;align-items:center;gap:14px}
+  .avatar{width:52px;height:52px;border-radius:var(--rfull);background:var(--thumb);border:1px solid var(--border);flex:none;
+    display:flex;align-items:center;justify-content:center;color:var(--cream-muted);font-size:18px}
+  .pname{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:600;color:var(--cream)}
+  .pname .vf{color:#5aa9e6;font-size:13px}
+  .phandle{font-size:12.5px;color:var(--cream-muted);display:flex;align-items:center;gap:8px;margin-top:1px}
+  .pstats{display:flex;gap:18px;margin-top:8px}
+  .pstat{font-size:12px;color:var(--cream-muted)}
+  .pstat b{display:block;font-size:14px;color:var(--cream);font-weight:600;font-variant-numeric:tabular-nums}
+
+  /* VERTICAL 9:16 video tiles */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+  .tile{cursor:pointer}
+  .cover{position:relative;aspect-ratio:9/16;border-radius:10px;background:var(--thumb);border:1px solid var(--border);
+    overflow:hidden;transition:.15s;display:flex;flex-direction:column;justify-content:space-between;padding:8px}
+  .tile:hover .cover{border-color:var(--border-hover)}
+  .cover .play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;border-radius:var(--rfull);
+    background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px}
+  .mult{align-self:flex-start;font-size:11px;font-weight:700;color:var(--cream);
+    background:rgba(0,0,0,.5);border:1px solid var(--border-hover);border-radius:var(--rfull);padding:2px 8px;z-index:2}
+  .mult span{font-weight:400;color:var(--cream-muted);font-size:9.5px}
+  .cbottom{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;font-size:10.5px;color:#fff}
+  .cbottom .vv{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.5);border-radius:5px;padding:1px 6px}
+  .cbottom .dur{background:rgba(0,0,0,.5);border-radius:5px;padding:1px 5px;color:var(--cream-2)}
+  .tinfo{padding:7px 1px 0;display:flex;flex-direction:column;gap:5px}
+  .tcap{font-size:12px;color:var(--cream-2);line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .fit{font-size:10px;color:var(--success);border:1px solid rgba(143,201,160,.25);border-radius:var(--rfull);padding:1px 7px;align-self:flex-start}
+
+  /* remix source (9:16 already) */
+  .src{display:flex;gap:13px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--faint)}
+  .scover{width:68px;aspect-ratio:9/16;border-radius:8px;background:var(--thumb);border:1px solid var(--border);flex:none;position:relative;display:flex;align-items:flex-end;justify-content:flex-end;padding:5px}
+  .scover .play{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#fff;font-size:13px}
+  .scover .dur{font-size:9px;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 4px}
+  .sinfo{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .sauthor{display:flex;align-items:center;gap:7px}
+  .sav{width:22px;height:22px;border-radius:var(--rfull);background:var(--thumb);border:1px solid var(--border);flex:none}
+  .sh{font-size:12.5px;color:var(--cream);font-weight:500}
+  .scap{font-size:12.5px;color:var(--cream-2);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .sm{display:flex;gap:13px;font-size:11.5px;color:var(--cream-muted)}
+  .srclbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--cream-muted);margin-bottom:9px;display:flex;justify-content:space-between;align-items:center}
+  .arrow{text-align:center;color:var(--cream-muted);font-size:12px}
+  .hero{font-size:18px;font-weight:600;line-height:1.3;color:var(--cream)}
+  .decode{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:13px}
+  .dbeat{font-size:12.5px;color:var(--cream-2);line-height:1.4}.dbeat b{color:var(--cream-muted);font-weight:600;text-transform:uppercase;font-size:10.5px;letter-spacing:.04em;display:block}
+
+  /* analyzed strip (9:16) */
+  .strip{display:flex;gap:9px;overflow-x:auto;padding-bottom:2px}
+  .schip{flex:none;width:64px}
+  .schip .sc{aspect-ratio:9/16;border-radius:8px;background:var(--thumb);border:1px solid var(--border);position:relative;display:flex;align-items:flex-end;padding:5px}
+  .schip .v{font-size:9.5px;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 5px}
+  .arsec .h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--cream-muted);margin-bottom:6px}
+  .arsec li{font-size:13px;color:var(--cream-2);line-height:1.6;list-style:none;display:flex;gap:7px}
+  .arsec li::before{content:"";width:5px;height:5px;border-radius:var(--rfull);background:var(--cream-muted);margin-top:7px;flex:none}
+  .argrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Data-rich skills — refined · vertical + platform-aware</h1>
+  <p class="sub">9:16 short-form tiles · platform shown on every scraped item · real Apify data. <span class="real">●</span> available now · <span class="gap">●</span> needs plumbing.</p>
+
+  <!-- ============ EXPLORE — outlier grid, profile mode ============ -->
+  <p class="lbl">/explore · outlier grid (profile mode) — vertical tiles</p>
+  <div class="card">
+    <div class="body">
+      <div class="phead">
+        <div class="avatar">◍</div>
+        <div style="flex:1">
+          <div class="pname">Alex Rivera <span class="vf">✓</span></div>
+          <div class="phandle"><span class="plat"><span class="pmark"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M16.5 3c.35 2.1 1.7 3.7 3.7 4.1v2.5c-1.4 0-2.7-.45-3.7-1.15v6.4a5.6 5.6 0 1 1-5.6-5.6c.32 0 .63.03.93.08v2.6a3.15 3.15 0 1 0 2.2 3V3h2.47z"/></svg></span>TikTok</span> @alexcreates</div>
+          <div class="pstats">
+            <span class="pstat"><b>184K</b>followers</span>
+            <span class="pstat"><b>2.4M</b>likes</span>
+            <span class="pstat"><b>312</b>posts</span>
+          </div>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="tile"><div class="cover">
+            <span class="mult">6.2× <span>vs own</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 412K</span><span class="dur">0:38</span></div></div>
+          <div class="tinfo"><span class="tcap">I tracked every post for 90 days</span><span class="fit">Fit · Strong</span></div></div>
+        <div class="tile"><div class="cover">
+            <span class="mult">3.1× <span>vs own</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 205K</span><span class="dur">0:51</span></div></div>
+          <div class="tinfo"><span class="tcap">The consistency trap nobody warns you about</span><span class="fit">Fit · Fair</span></div></div>
+        <div class="tile"><div class="cover">
+            <span class="mult">2.4× <span>vs own</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 163K</span><span class="dur">0:29</span></div></div>
+          <div class="tinfo"><span class="tcap">Why your hook dies at 3 seconds</span><span class="fit">Fit · Strong</span></div></div>
+      </div>
+      <p style="font-size:11px;color:var(--cream-muted);margin-top:-4px">Profile mode — one platform; the header tag covers it, so per-tile tags are dropped (kept only in niche/mixed mode below).</p>
+    </div>
+    <div class="actions"><button class="btn-primary">Remix top outlier → Read</button><button class="save">⌖ Save grid</button></div>
+  </div>
+  <p class="note"><span class="real">●</span> avatar, name, ✓, counts, per-video metrics, multiplier, caption — scraped today. <span class="gap">●</span> cover thumbnails, the profile header, AND the <b>platform tag</b> need plumbing (no <code>platform</code> field on VideoData/blocks; scrape is TikTok-only — IG needs an actor + classifier support).</p>
+
+  <!-- ============ niche mode — mixed platforms ============ -->
+  <p class="lbl">/explore · niche mode — “morning routines” (mixed platforms)</p>
+  <div class="card">
+    <div class="body">
+      <div class="grid">
+        <div class="tile"><div class="cover">
+            <span class="plat-ov"><span class="pmark"><svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M16.5 3c.35 2.1 1.7 3.7 3.7 4.1v2.5c-1.4 0-2.7-.45-3.7-1.15v6.4a5.6 5.6 0 1 1-5.6-5.6c.32 0 .63.03.93.08v2.6a3.15 3.15 0 1 0 2.2 3V3h2.47z"/></svg></span>TT</span><span class="mult">8.0× <span>vs niche</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 1.2M</span><span class="dur">0:22</span></div></div>
+          <div class="tinfo"><span class="tcap">My 5am routine that actually stuck</span><span class="fit">Fit · Strong</span></div></div>
+        <div class="tile"><div class="cover">
+            <span class="plat-ov"><span class="pmark"><svg viewBox="0 0 24 24" width="9" height="9" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="5.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.15" fill="currentColor" stroke="none"/></svg></span>IG</span><span class="mult">4.6× <span>vs niche</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 540K</span><span class="dur">0:34</span></div></div>
+          <div class="tinfo"><span class="tcap">Romanticize your mornings (Reel)</span><span class="fit">Fit · Fair</span></div></div>
+        <div class="tile"><div class="cover">
+            <span class="plat-ov"><span class="pmark"><svg viewBox="0 0 24 24" width="9" height="9" fill="currentColor"><path d="M16.5 3c.35 2.1 1.7 3.7 3.7 4.1v2.5c-1.4 0-2.7-.45-3.7-1.15v6.4a5.6 5.6 0 1 1-5.6-5.6c.32 0 .63.03.93.08v2.6a3.15 3.15 0 1 0 2.2 3V3h2.47z"/></svg></span>TT</span><span class="mult">3.2× <span>vs niche</span></span><span class="play">▶</span>
+            <div class="cbottom"><span class="vv">▶ 318K</span><span class="dur">0:41</span></div></div>
+          <div class="tinfo"><span class="tcap">The anti-routine routine</span><span class="fit">Fit · Weak</span></div></div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn-primary">Remix top outlier → Read</button><button class="save">⌖ Save grid</button></div>
+  </div>
+  <p class="note">Per-tile platform tag matters most in niche mode — results mix TikTok + Instagram Reels. <span class="gap">●</span> entirely aspirational today (IG unsupported; niche pull is TikTok-only).</p>
+
+  <!-- ============ REMIX — source video hero ============ -->
+  <p class="lbl">/remix · the real source video (vertical)</p>
+  <div class="card">
+    <div class="body">
+      <div>
+        <div class="srclbl"><span>Decoded from</span><span class="plat"><span class="pmark"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M16.5 3c.35 2.1 1.7 3.7 3.7 4.1v2.5c-1.4 0-2.7-.45-3.7-1.15v6.4a5.6 5.6 0 1 1-5.6-5.6c.32 0 .63.03.93.08v2.6a3.15 3.15 0 1 0 2.2 3V3h2.47z"/></svg></span>TikTok</span></div>
+        <div class="src">
+          <div class="scover"><span class="play">▶</span><span class="dur">0:38</span></div>
+          <div class="sinfo">
+            <div class="sauthor"><span class="sav"></span><span class="sh">@alexcreates</span><span style="font-size:11px;color:var(--cream-muted)">· 412K views</span></div>
+            <p class="scap">I tracked every post for 90 days. The “daily” ones flopped — here's the data.</p>
+            <div class="sm"><span>▶ 412K</span><span>♥ 38K</span><span>💬 2.1K</span><span>↗ 5.4K</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="decode">
+        <p class="dbeat"><b>Hook pattern</b>Opens on a counter-result that contradicts the niche consensus.</p>
+        <p class="dbeat"><b>The turn</b>Pivot from “I failed” to “the advice was wrong” relocates blame off the viewer.</p>
+      </div>
+      <div class="arrow">↓ adapted for your audience ↓</div>
+      <p class="hero">I tracked every post for 90 days. The “daily” ones flopped.</p>
+      <div style="border:1px solid var(--border);border-radius:10px;background:var(--faint);padding:11px 13px;display:flex;flex-direction:column;gap:8px;cursor:pointer">
+        <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="color:var(--success);font-weight:600;display:flex;gap:6px;align-items:center"><span style="width:7px;height:7px;border-radius:50%;background:var(--success)"></span>Strong</span><span style="color:var(--cream-2)"><b style="color:var(--cream)">7/10</b> stopped · adapted hook</span></div>
+        <div style="display:flex;justify-content:space-between;gap:10px"><span style="font-size:13px;font-style:italic;color:rgba(236,231,222,.82);border-left:2px solid var(--border-hover);padding-left:11px">“Ninety days of receipts? I have to see this.”</span><span style="font-size:12px;color:var(--cream-2);white-space:nowrap">See the room →</span></div>
+      </div>
+    </div>
+    <div class="actions"><button class="btn-primary">Develop into hooks →</button><button class="save">⌖ Save</button></div>
+  </div>
+  <p class="note"><span class="real">●</span> author handle, caption, metrics — scraped today. <span class="gap">●</span> source cover + author avatar + platform tag need plumbing. User sees the <b>real vertical video</b> Numen decoded.</p>
+
+  <!-- ============ ACCOUNT READ ============ -->
+  <p class="lbl">Account Read · profile + the posts it read</p>
+  <div class="card">
+    <div class="body">
+      <div class="phead">
+        <div class="avatar">◍</div>
+        <div style="flex:1">
+          <div class="pname">Alex Rivera <span class="vf">✓</span></div>
+          <div class="phandle"><span class="plat"><span class="pmark"><svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor"><path d="M16.5 3c.35 2.1 1.7 3.7 3.7 4.1v2.5c-1.4 0-2.7-.45-3.7-1.15v6.4a5.6 5.6 0 1 1-5.6-5.6c.32 0 .63.03.93.08v2.6a3.15 3.15 0 1 0 2.2 3V3h2.47z"/></svg></span>TikTok</span> @alexcreates · A Read on your account</div>
+          <div class="pstats">
+            <span class="pstat"><b>184K</b>followers</span><span class="pstat"><b>2.4M</b>likes</span><span class="pstat"><b>312</b>posts</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="srclbl"><span>Read from your last 12 posts</span></div>
+        <div class="strip">
+          <div class="schip"><div class="sc"><span class="v">412K</span></div></div>
+          <div class="schip"><div class="sc"><span class="v">88K</span></div></div>
+          <div class="schip"><div class="sc"><span class="v">205K</span></div></div>
+          <div class="schip"><div class="sc"><span class="v">41K</span></div></div>
+          <div class="schip"><div class="sc"><span class="v">163K</span></div></div>
+          <div class="schip"><div class="sc"><span class="v">29K</span></div></div>
+        </div>
+      </div>
+      <div class="argrid">
+        <div class="arsec"><div class="h" style="color:var(--success)">What's working</div><ul><li>Contrarian openers</li><li>Receipts/data posts</li><li>Short payoffs</li></ul></div>
+        <div class="arsec"><div class="h" style="color:var(--warning)">What to fix</div><ul><li>Tighten setup beats</li><li>Move the turn earlier</li><li>Stop burying the CTA</li></ul></div>
+      </div>
+      <p style="border-top:1px solid var(--border);padding-top:13px;font-size:13.5px;color:var(--cream-2)">Numen has been <b style="color:var(--cream)">within 78%</b> on your last 12 posts.</p>
+    </div>
+    <div class="actions"><button class="btn-primary">Write to my strengths →</button><button class="save">⌖ Save</button></div>
+  </div>
+  <p class="note"><span class="real">●</span> avatar, name, counts, per-post views — scraped today. <span class="gap">●</span> covers, platform tag + exposing this on the account-read block need plumbing.</p>
+</div>
+</body>
+</html>

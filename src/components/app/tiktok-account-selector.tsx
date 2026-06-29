@@ -259,7 +259,7 @@ export function TiktokAccountSelector() {
                   type="button"
                   onClick={handleAdd}
                   disabled={!newHandle.trim()}
-                  className="shrink-0 rounded-md bg-action px-2.5 py-1.5 text-xs font-medium text-foreground-secondary-foreground transition-opacity disabled:opacity-50"
+                  className="shrink-0 rounded-md bg-action px-2.5 py-1.5 text-xs font-medium text-action-foreground transition-opacity disabled:opacity-50"
                 >
                   Add
                 </button>
