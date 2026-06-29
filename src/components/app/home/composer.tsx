@@ -1590,6 +1590,12 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
             <ComposerControls
               activeTool={activeTool}
               onSelectTool={handleUserSelectTool}
+              // ── activeMode threading (07-04 / UX-02 / D-07) ──────────────────
+              // The skill menu is mode-scoped (07-01): a General audience surfaces
+              // Profile/Simulate/Predict; everything else stays Socials. The mode is
+              // DERIVED from the selected audience — null/Socials audience → "socials"
+              // so the live creator render is byte-identical (Pitfall 2).
+              activeMode={selectedAudience?.mode ?? "socials"}
               intent={intent}
               onIntentChange={setIntentOverride}
               onUploadClick={() => setShowUpload(true)}
