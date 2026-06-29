@@ -28,7 +28,13 @@ vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn() }));
 vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn() }));
 vi.mock("@/lib/engine/stimulus/normalize", () => ({ normalizeStimulus: vi.fn() }));
 vi.mock("@/lib/audience/audience-repo", () => ({ getAudience: vi.fn() }));
-vi.mock("@/lib/tools/runners/predict-runner", () => ({ runPredict: vi.fn() }));
+// Partial-mock: stub only the networked `runPredict`; keep the REAL pure, deterministic
+// `readSubjectKind` export (the route imports it for its person-reject — D-03/D-08). Mocking
+// the marker helper out would defeat the very person/template-analyst distinction under test.
+vi.mock("@/lib/tools/runners/predict-runner", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/tools/runners/predict-runner")>();
+  return { ...actual, runPredict: vi.fn() };
+});
 vi.mock("@/lib/kc/kc-stamp", () => ({ kcStamp: vi.fn(() => ({ kcGenVersion: "gen.1.0.0" })) }));
 
 import { createClient } from "@/lib/supabase/server";
