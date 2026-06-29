@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { cloneTemplateAudience } from "../audience-repo";
+import { GENERAL_TEMPLATES, cloneTemplateAudience } from "../audience-repo";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -148,5 +148,62 @@ describe("cloneTemplateAudience — clones a GENERAL_TEMPLATE as an owned Genera
     ).rejects.toThrow();
 
     expect(sb.from).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Task 2: sentinel id + virtual user_id never persisted (T-07-03-01/02) ────────
+
+describe("cloneTemplateAudience — never persists a sentinel id or the virtual user_id", () => {
+  it("derives user_id from the session — '__virtual__' never reaches the insert", async () => {
+    const sb = makeSupabaseMock();
+
+    await cloneTemplateAudience(
+      sb as unknown as Parameters<typeof cloneTemplateAudience>[0],
+      "template-analyst",
+    );
+
+    const payload = insertPayload(sb);
+    expect(payload["user_id"]).toBe("test-user-id"); // CR-01 session-derived
+    expect(payload["user_id"]).not.toBe("__virtual__");
+  });
+
+  it("no sentinel id is persisted as a value in the insert payload (T-07-03-02)", async () => {
+    const sb = makeSupabaseMock();
+
+    await cloneTemplateAudience(
+      sb as unknown as Parameters<typeof cloneTemplateAudience>[0],
+      "template-analyst",
+    );
+
+    // Collect every persisted value (recursively) and assert none EQUALS a template
+    // sentinel id or the virtual user_id. Strict equality, scoped to the actual leak risks:
+    // `mode:'general'` legitimately carries the string "general" (also the GENERAL sentinel
+    // id), so the assertion targets the template ids + '__virtual__', never the mode word.
+    const values: unknown[] = [];
+    const walk = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === "object") Object.values(v).forEach(walk);
+      else values.push(v);
+    };
+    walk(insertPayload(sb));
+
+    const forbidden = [...GENERAL_TEMPLATES.map((t) => t.id), "__virtual__"];
+    for (const id of forbidden) {
+      expect(values).not.toContain(id);
+    }
+  });
+
+  it("clones template-hiring identically (mode:'general', sentinel stripped)", async () => {
+    const sb = makeSupabaseMock();
+
+    await cloneTemplateAudience(
+      sb as unknown as Parameters<typeof cloneTemplateAudience>[0],
+      "template-hiring",
+    );
+
+    const payload = insertPayload(sb);
+    expect(payload["mode"]).toBe("general");
+    expect(payload["id"]).toBeUndefined();
+    expect(payload["user_id"]).toBe("test-user-id");
   });
 });
