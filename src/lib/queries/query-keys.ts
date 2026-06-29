@@ -63,4 +63,11 @@ export const queryKeys = {
     products: (query: string, category?: string) =>
       ["cj", "products", query, category] as const,
   },
+  channels: {
+    all: ["channels"] as const,
+    // The enriched Channels watchlist (tracked_accounts ⨝ competitor_profiles + agg views).
+    watchlist: () => ["channels", "watchlist"] as const,
+    // Shared-corpus channel search by handle/display_name.
+    search: (q: string) => ["channels", "search", q] as const,
+  },
 } as const;
