@@ -20,7 +20,8 @@ findings:
   warning: 4
   info: 3
   total: 7
-status: issues_found
+status: resolved
+resolution: All 4 WARNINGs fixed (WR-01 4a02dc31, WR-02 4b1b100f, WR-03 fa49f93e, WR-04 9dba923b). 3 INFO findings left as-is (out of scope).
 ---
 
 # Phase 07: Code Review Report
