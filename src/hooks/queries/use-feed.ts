@@ -21,9 +21,15 @@ import type { FeedTab, FeedSort, FeedTile } from "@/lib/feed/feed-query";
 export interface FeedFilterState {
   q?: string;
   minOutlier?: number;
+  maxOutlier?: number;
   minViews?: number;
+  maxViews?: number;
+  /** engagement as a RATIO (0.05 = 5%) — the UI converts its percent inputs. */
   minEngagement?: number;
+  maxEngagement?: number;
   postedWithinDays?: number;
+  /** Source platform; omitted = all platforms. */
+  platform?: string;
   /** creator_handle narrowing (watched tab only) — intersects with the watched set. */
   channels?: string[];
 }
@@ -52,9 +58,13 @@ export function buildFeedQuery(args: UseFeedArgs, cursor?: string): string {
   const f = args.filters;
   if (f.q && f.q.trim()) sp.set("q", f.q.trim());
   if (f.minOutlier != null) sp.set("minOutlier", String(f.minOutlier));
+  if (f.maxOutlier != null) sp.set("maxOutlier", String(f.maxOutlier));
   if (f.minViews != null) sp.set("minViews", String(f.minViews));
+  if (f.maxViews != null) sp.set("maxViews", String(f.maxViews));
   if (f.minEngagement != null) sp.set("minEngagement", String(f.minEngagement));
+  if (f.maxEngagement != null) sp.set("maxEngagement", String(f.maxEngagement));
   if (f.postedWithinDays != null) sp.set("postedWithinDays", String(f.postedWithinDays));
+  if (f.platform) sp.set("platform", f.platform);
   if (f.channels && f.channels.length > 0) sp.set("channels", f.channels.join(","));
 
   return sp.toString();

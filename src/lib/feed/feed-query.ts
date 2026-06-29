@@ -37,10 +37,14 @@ export interface FeedFilters {
   /** description ILIKE substring (wildcards already stripped by the route). */
   q?: string;
   minOutlier?: number;
+  maxOutlier?: number;
   minViews?: number;
+  maxViews?: number;
   minEngagement?: number;
+  maxEngagement?: number;
   postedWithinDays?: number;
-  platform: string;
+  /** Source platform; omitted = all platforms (the corpus is TikTok-first today). */
+  platform?: string;
 }
 
 export interface FeedParams {
@@ -204,9 +208,11 @@ export async function queryFeed(
     .from("scraped_videos")
     .select(SELECT_COLUMNS, { count: "exact" })
     .is("archived_at", null)
-    .eq("platform", filters.platform)
     // every sort pages on a non-null column → clean keyset + no NULL-ordering surprises.
     .not(sortCol, "is", null);
+
+  // Platform is optional — omitted = all platforms (the corpus is TikTok-first today).
+  if (filters.platform) q = q.eq("platform", filters.platform);
 
   if (params.tab === "watched") {
     q = q.in("creator_handle", watchedHandles ?? []);
@@ -216,8 +222,11 @@ export async function queryFeed(
   }
   if (filters.q) q = q.ilike("description", `%${filters.q}%`);
   if (filters.minViews != null) q = q.gte("views", filters.minViews);
+  if (filters.maxViews != null) q = q.lte("views", filters.maxViews);
   if (filters.minOutlier != null) q = q.gte("outlier_multiplier", filters.minOutlier);
+  if (filters.maxOutlier != null) q = q.lte("outlier_multiplier", filters.maxOutlier);
   if (filters.minEngagement != null) q = q.gte("engagement_rate", filters.minEngagement);
+  if (filters.maxEngagement != null) q = q.lte("engagement_rate", filters.maxEngagement);
   if (filters.postedWithinDays != null) {
     const cutoff = new Date(Date.now() - filters.postedWithinDays * 86_400_000).toISOString();
     q = q.gte("posted_at", cutoff);

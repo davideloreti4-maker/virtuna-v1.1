@@ -29,10 +29,14 @@ const QuerySchema = z.object({
   channels: z.string().optional(), // comma-separated handles
   q: z.string().max(200).optional(),
   minViews: z.coerce.number().min(0).optional(),
+  maxViews: z.coerce.number().min(0).optional(),
   minOutlier: z.coerce.number().min(0).optional(),
+  maxOutlier: z.coerce.number().min(0).optional(),
   minEngagement: z.coerce.number().min(0).optional(),
+  maxEngagement: z.coerce.number().min(0).optional(),
   postedWithinDays: z.coerce.number().int().min(1).max(3650).optional(),
-  platform: z.string().default("tiktok"),
+  // Omitted = all platforms (the corpus is TikTok-first today).
+  platform: z.string().optional(),
 });
 
 export async function GET(request: Request) {
@@ -83,8 +87,11 @@ export async function GET(request: Request) {
       channels,
       q: q || undefined,
       minViews: p.minViews,
+      maxViews: p.maxViews,
       minOutlier: p.minOutlier,
+      maxOutlier: p.maxOutlier,
       minEngagement: p.minEngagement,
+      maxEngagement: p.maxEngagement,
       postedWithinDays: p.postedWithinDays,
       platform: p.platform,
     },

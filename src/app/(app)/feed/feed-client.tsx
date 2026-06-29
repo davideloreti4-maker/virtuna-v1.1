@@ -14,7 +14,7 @@
  * would empty the grid). The tracked-handle set is read from the Channels watchlist cache so
  * a Track here lights up the tile and the Channels page together.
  */
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { handoffsFor } from "@/lib/tools/chain-handoff";
@@ -31,6 +31,7 @@ import { FeedFilters, type WatchedChannelOption } from "@/components/feed/feed-f
 import { FeedResults } from "@/components/feed/feed-results";
 
 const DEFAULT_PLATFORM = "tiktok";
+const SAVED_FILTER_KEY = "feed:savedFilter";
 
 // Sort options per tab. Trending has no outlier_multiplier → no "Biggest outlier".
 const WATCHED_SORTS: SortOption[] = [
@@ -90,6 +91,8 @@ export function FeedClient() {
   const [sort, setSort] = useState<FeedSort>("outlier");
   const [filters, setFilters] = useState<FeedFilterState>({});
   const [filtersResetKey, setFiltersResetKey] = useState(0);
+  const [showFilters, setShowFilters] = useState(true);
+  const [savedFilterExists, setSavedFilterExists] = useState(false);
   const [remixPendingId, setRemixPendingId] = useState<string | null>(null);
   const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
   const [addVideoPending, setAddVideoPending] = useState(false);
@@ -133,10 +136,11 @@ export function FeedClient() {
   const activeCount = useMemo(() => {
     let n = 0;
     if (filters.q) n++;
-    if (filters.minOutlier != null) n++;
-    if (filters.minViews != null) n++;
-    if (filters.minEngagement != null) n++;
+    if (filters.minOutlier != null || filters.maxOutlier != null) n++;
+    if (filters.minViews != null || filters.maxViews != null) n++;
+    if (filters.minEngagement != null || filters.maxEngagement != null) n++;
     if (filters.postedWithinDays != null) n++;
+    if (filters.platform) n++;
     if (filters.channels && filters.channels.length > 0) n++;
     return n;
   }, [filters]);
@@ -147,9 +151,54 @@ export function FeedClient() {
     if (next === "trending") {
       // Drop the watched-only dimensions so the trending NOT-NULL keyset isn't emptied.
       if (sort === "outlier") setSort("views");
-      setFilters((f) => ({ ...f, minOutlier: undefined, channels: undefined }));
+      setFilters((f) => ({
+        ...f,
+        minOutlier: undefined,
+        maxOutlier: undefined,
+        channels: undefined,
+      }));
+      setFiltersResetKey((k) => k + 1); // re-seed the sidebar drafts (clears the outlier inputs)
     }
   };
+
+  // Save / restore filters (localStorage). Restore remounts the sidebar so its drafts re-seed.
+  useEffect(() => {
+    try {
+      // After mount only — a lazy initializer would mismatch SSR (server has no localStorage).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSavedFilterExists(Boolean(localStorage.getItem(SAVED_FILTER_KEY)));
+    } catch {
+      /* ignore unavailable storage */
+    }
+  }, []);
+
+  const handleSaveFilter = useCallback(() => {
+    try {
+      localStorage.setItem(SAVED_FILTER_KEY, JSON.stringify(filters));
+      setSavedFilterExists(true);
+      toast({ variant: "success", title: "Filter saved" });
+    } catch {
+      toast({ variant: "error", title: "Couldn't save this filter" });
+    }
+  }, [filters, toast]);
+
+  const handleRestoreFilter = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_FILTER_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as FeedFilterState;
+      // A saved outlier filter only applies on the watched tab.
+      if (tab === "trending") {
+        saved.minOutlier = undefined;
+        saved.maxOutlier = undefined;
+        saved.channels = undefined;
+      }
+      setFilters(saved);
+      setFiltersResetKey((k) => k + 1);
+    } catch {
+      toast({ variant: "error", title: "Couldn't restore the saved filter" });
+    }
+  }, [tab, toast]);
 
   const patchFilters = useCallback((patch: Partial<FeedFilterState>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -261,6 +310,10 @@ export function FeedClient() {
         onSortChange={setSort}
         sortOptions={sortOptions}
         total={total}
+        loaded={tiles.length}
+        filtersOpen={showFilters}
+        onToggleFilters={() => setShowFilters((v) => !v)}
+        activeFilterCount={activeCount}
         onAddVideoUrl={handleAddVideoUrl}
         addVideoPending={addVideoPending}
         onExport={handleExport}
@@ -270,7 +323,7 @@ export function FeedClient() {
       <div className="mt-6">
         {watchedEmpty ? (
           results
-        ) : (
+        ) : showFilters ? (
           <div className="grid items-start gap-6 lg:grid-cols-[220px_1fr]">
             <FeedFilters
               key={filtersResetKey}
@@ -280,9 +333,14 @@ export function FeedClient() {
               onClear={clearFilters}
               watchedChannels={watchedChannels}
               activeCount={activeCount}
+              onSaveFilter={handleSaveFilter}
+              onRestoreFilter={handleRestoreFilter}
+              savedFilterExists={savedFilterExists}
             />
             {results}
           </div>
+        ) : (
+          results
         )}
       </div>
     </div>

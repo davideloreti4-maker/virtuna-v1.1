@@ -8,10 +8,13 @@
  * (the tracked channels with Remove / Remove all / Export). Reached from the feed
  * toolbar's "Customize channels" (Phase 2); standalone-routable today.
  */
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
 import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
-import { AddChannelPanel } from "@/components/channels/add-channel-panel";
+import {
+  AddChannelPanel,
+  type AddChannelResultLite,
+} from "@/components/channels/add-channel-panel";
 import { WatchlistPanel } from "@/components/channels/watchlist-panel";
 import {
   useChannelWatchlist,
@@ -75,6 +78,24 @@ export function ChannelsClient() {
     });
   };
 
+  // Await-able single add for the Add-URL bulk runner — resolves to a per-URL outcome
+  // (never throws, never toasts; the bulk list shows progress inline).
+  const addChannelAsync = useCallback(
+    async (handle: string): Promise<AddChannelResultLite> => {
+      try {
+        const res = await addChannel.mutateAsync(handle);
+        return { ok: true, handle: res.handle };
+      } catch (err) {
+        return {
+          ok: false,
+          handle,
+          message: err instanceof Error ? err.message : "Couldn't add",
+        };
+      }
+    },
+    [addChannel],
+  );
+
   const handleRemove = (id: string) => {
     setRemovingId(id);
     untrack.mutate(id, {
@@ -123,6 +144,7 @@ export function ChannelsClient() {
           pendingHandle={pendingHandle}
           isAdding={addChannel.isPending}
           onAdd={handleAdd}
+          addChannelAsync={addChannelAsync}
         />
         <WatchlistPanel
           channels={channels}
