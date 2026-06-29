@@ -58,7 +58,7 @@ Requirements for milestone v7.0. Each maps to exactly one roadmap phase.
 ### UX — Audience-as-Front-Door Surface
 
 - [ ] **UX-01**: The Audience picker is promoted to the primary context-setter (front-door picker + library), sectioned by Mode (Socials / General)
-- [ ] **UX-02**: The skill menu is Mode-scoped (the active audience's mode decides the available skills); the Socials creator default is unchanged
+- [x] **UX-02**: The skill menu is Mode-scoped (the active audience's mode decides the available skills); the Socials creator default is unchanged
 - [ ] **UX-03**: The ambient reactor is generalized — the active Audience reacts live as the user drafts, with the creator experience byte-identical
 - [ ] **UX-04**: A "Build an audience" entry offers from-description / from-evidence / from-template
 - [ ] **UX-05**: The home empty state seeds starter chips to the wow (Test on your audience / Profile a chat / Predict an outcome); the first-run demo is the profile-chat moment
@@ -125,7 +125,7 @@ Phases assigned during roadmap creation. All Pending.
 | IN-02 | Phase 4 | Complete (04-02) |
 | IN-03 | Phase 4 | Complete (04-03) |
 | UX-01 | Phase 7 | Pending |
-| UX-02 | Phase 7 | Pending |
+| UX-02 | Phase 7 | Complete |
 | UX-03 | Phase 7 | Pending |
 | UX-04 | Phase 7 | Pending |
 | UX-05 | Phase 7 | Pending |
