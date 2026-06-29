@@ -31,6 +31,9 @@ import {
   UsersThree,
   Books,
   FilmStrip,
+  Binoculars,
+  Handshake,
+  Gift,
   Trash,
   Check,
   X,
@@ -369,6 +372,9 @@ export function Sidebar() {
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
+  const isOnCompetitors = pathname.startsWith("/competitors");
+  const isOnBrandDeals = pathname.startsWith("/brand-deals");
+  const isOnReferrals = pathname.startsWith("/referrals");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -490,6 +496,34 @@ export function Sidebar() {
                 isActive={isOnFeed}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/feed")}
+              />
+              {/* Competitors — competitor-intel subsystem (handles, compare). Was
+                  shipped without a nav entry (reachable only by deep-link); surfaced
+                  here (refine lane, 2026-06-29). */}
+              <NavItem
+                icon={Binoculars}
+                label="Competitors"
+                isActive={isOnCompetitors}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/competitors")}
+              />
+              {/* Partnerships — the /brand-deals monetization surface (deals,
+                  affiliates, earnings). Surfaced from deep-link-only (refine lane). */}
+              <NavItem
+                icon={Handshake}
+                label="Partnerships"
+                isActive={isOnBrandDeals}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/brand-deals")}
+              />
+              {/* Referrals — referral stats / invite surface. Surfaced from
+                  deep-link-only (refine lane). */}
+              <NavItem
+                icon={Gift}
+                label="Referrals"
+                isActive={isOnReferrals}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/referrals")}
               />
             </div>
           </div>
