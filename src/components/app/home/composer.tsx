@@ -71,6 +71,7 @@ import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
+import { BuildChooser } from "./build-chooser";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -229,6 +230,9 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // SIM verdict (sell → buying lens) for a calibrated audience. General → no-op.
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null); // null = General
+  // ── Build-an-audience chooser (UX-04 / D-03 / D-08) ─────────────────────────
+  // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
+  const [buildOpen, setBuildOpen] = useState(false);
   // Per-run intent override: null = follow the active audience's goal_intent default (derived below).
   const [intentOverride, setIntentOverride] = useState<Intent | null>(null);
 
@@ -603,6 +607,19 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       // non-fatal — chip reflects optimistic state
     }
   }, [openThreadId]);
+
+  // ── Built/cloned SIM → active audience (UX-04 / D-03) ───────────────────────
+  // The chooser's template path returns a saved General SIM. Append it to the local
+  // list (so the picker shows it immediately) and select it so the new General SIM
+  // is active — driving the mode-scoped skill menu + reactor.
+  const handleBuiltAudience = useCallback((saved: Audience) => {
+    setAudiences((prev) =>
+      prev.some((a) => a.id === saved.id) ? prev : [...prev, saved],
+    );
+    setSelectedAudienceId(saved.id);
+    setIntentOverride(null);
+    setBuildOpen(false);
+  }, []);
 
   // ── "Test full →" handoff (Task 2 — D-05/D-06, HOOKS-03) ──────────────────
   // Invoked by HookCardRenderer via HookTestContext when the creator clicks
@@ -1316,7 +1333,22 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       onReask={(a) =>
         focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
       }
+      onBuildAudience={() => setBuildOpen(true)}
       docked
+    />
+  );
+
+  // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
+  // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
+  // the existing evidence-drop file picker (the Profile/From-evidence door, do not
+  // rebuild). The From-a-description path navigates to /audience/new?mode=general and
+  // returns via the normal audience load on mount.
+  const buildChooser = (
+    <BuildChooser
+      open={buildOpen}
+      onOpenChange={setBuildOpen}
+      onBuilt={handleBuiltAudience}
+      onEvidence={() => evidenceInputRef.current?.click()}
     />
   );
 
@@ -1752,6 +1784,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     >
       {audiencePresence}
       {composerForm}
+      {buildChooser}
     </div>
   );
 
