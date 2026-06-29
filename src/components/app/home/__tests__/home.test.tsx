@@ -1,23 +1,28 @@
 /** @vitest-environment happy-dom */
 /**
- * Home composition (SHELL-01, THEME-04, D-18/D-20/D-25).
+ * Home composition (SHELL-01, THEME-04, UX-05 / D-04).
  *
  * Asserts the clean authed home surface — the serif greeting (font-serif) +
- * the NumenMark stele glyph + the composer — and the ABSENCE of the things the
- * locked decisions removed:
- *  - NO starter chips (D-18: "Paste link" / "Upload" / "Try a demo")
- *  - NO demo affordance (D-25 — deferred to Phase 5)
+ * the NumenMark stele glyph + the composer — and the P7 empty-state UNLOCK:
+ *  - the 3 LOCKED-verbatim starter chips (Test / Profile / Predict)
+ *  - the one-tap, show-once first-run demo (See it in action + Dismiss)
+ *  - show-once: with the localStorage flag set, the demo is hidden but the chips
+ *    still render
+ *  - tapping "See it in action" POSTs the canned fixture to /api/tools/profile
  *  - NO Simulation list under the composer (it lives in the sidebar)
  *
  * Renders the two client pieces (HomeGreeting + Composer) the server page
  * composes — the server page itself is an async RSC and is covered structurally
  * by the plan's file-presence verify, not rendered here.
- *
- * Written first (Task 1) — RED until the greeting (Task 3) + composer (Task 2)
- * land.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import {
+  render,
+  screen,
+  cleanup,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -75,8 +80,17 @@ function Home() {
   );
 }
 
+const DEMO_SEEN_KEY = 'numen.home.demo.seen';
+
 beforeEach(() => {
   cleanup();
+  window.localStorage.clear();
+  // Benign fetch stub: composer mount (GET /api/threads/open) + the demo POST both
+  // resolve to an empty-ok JSON so nothing throws; individual tests inspect the spy.
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+    ok: true,
+    json: async () => ({}),
+  } as Response);
 });
 
 describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () => {
@@ -106,19 +120,60 @@ describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () =
   });
 });
 
-describe('Home — locked omissions (D-18 / D-25)', () => {
-  it('shows NO starter chips (D-18 — composer-only home)', () => {
+describe('Home — empty-state starter chips + first-run demo (UX-05 / D-04)', () => {
+  it('renders the 3 LOCKED-verbatim starter chips on the empty home', () => {
     render(<Home />);
-    // The locked-and-overridden 3-chip spec: none of these affordances exist.
-    expect(screen.queryByRole('button', { name: /paste link/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /^upload$/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /try a demo/i })).toBeNull();
+    expect(
+      screen.getByRole('button', { name: 'Test an idea on your audience' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Profile a chat' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Predict an outcome' }),
+    ).toBeInTheDocument();
   });
 
-  it('shows NO demo affordance (D-25 — demo deferred to Phase 5)', () => {
+  it('renders the one-tap first-run demo (See it in action + Dismiss) when the show-once flag is absent', async () => {
     render(<Home />);
-    expect(screen.queryByText(/try a demo/i)).toBeNull();
-    expect(screen.queryByText(/demo/i)).toBeNull();
+    expect(
+      await screen.findByRole('button', { name: /see it in action/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^dismiss$/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('show-once: with the flag set the demo is hidden but the chips still render', async () => {
+    window.localStorage.setItem(DEMO_SEEN_KEY, '1');
+    render(<Home />);
+    // Chips always render…
+    expect(
+      screen.getByRole('button', { name: 'Profile a chat' }),
+    ).toBeInTheDocument();
+    // …but the demo CTA never appears (flag already consumed). Wait a tick so the
+    // mounted-effect would have surfaced it if the gate were wrong.
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: /see it in action/i }),
+      ).toBeNull();
+    });
+  });
+
+  it('tapping "See it in action" POSTs the canned fixture to /api/tools/profile and sets the show-once flag', async () => {
+    const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    render(<Home />);
+    const cta = await screen.findByRole('button', {
+      name: /see it in action/i,
+    });
+    fireEvent.click(cta);
+    await waitFor(() => {
+      const calledProfile = fetchSpy.mock.calls.some(
+        (c) => String(c[0]).includes('/api/tools/profile') && c[1]?.method === 'POST',
+      );
+      expect(calledProfile).toBe(true);
+    });
+    expect(window.localStorage.getItem(DEMO_SEEN_KEY)).toBe('1');
   });
 
   it('shows NO Simulation list under the composer (the sidebar owns history)', () => {
