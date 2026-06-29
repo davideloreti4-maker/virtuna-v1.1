@@ -18,6 +18,8 @@
 > - `docs/FINAL-AUDIT-PR-COMMIT-2026-06-29.md` — whole-history audit (80 merged / 4 closed-unmerged / 0
 >   open PRs; 2968 commits; GSI 7/7 phases) + **honest doc/memory coverage attestation** (the ~2,300-file
 >   per-worktree archive is settled/superseded; only #60 creator-voice is real unshipped work).
+> - `docs/HANDOFF-NEXT-SESSION.md` — **fresh-session pick-up doc** + the **"merged-but-not-visible-in-UI"**
+>   catalog (mode-gated GSI verbs · routes not in nav · stubs · not-built · the 3× Marcus-Reyes dup). Start here.
 
 ---
 
