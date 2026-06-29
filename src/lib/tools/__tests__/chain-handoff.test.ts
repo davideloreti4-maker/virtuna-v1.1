@@ -205,6 +205,26 @@ describe('handoffsFor("profile")', () => {
   });
 });
 
+// ── 3e. simulate → predict (Phase 6 — PRED-03, the Predict chain) ─────────────
+//
+// RED until 06-07 appends the entry to CHAIN_HANDOFFS (and "predict" to SkillId).
+// The Simulate card's "Predict an outcome →" CTA POSTs the just-simulated panel to the
+// predict route. Endpoint + label PINNED so a future drift fails here, not silently.
+
+describe('handoffsFor("simulate") — Predict chain (P6, → 06-07)', () => {
+  it('includes a predict CTA with the pinned endpoint and label', () => {
+    const handoffs = handoffsFor('simulate');
+    const predict = handoffs.find((h) => h.to === 'predict');
+
+    expect(predict).toBeDefined();
+    expect(predict!.ctaLabel).toBe('Predict an outcome →');
+    // PINNED: /api/tools/predict — must match the 06-06 route contract
+    expect(predict!.endpoint).toBe('/api/tools/predict');
+    // anchorFrom "card" — the reaction-distribution card carries the panel audienceId
+    expect(predict!.anchorFrom).toBe('card');
+  });
+});
+
 // ── 4. All SkillId members resolve via handoffsFor ────────────────────────────
 
 describe('handoffsFor — all SkillId members', () => {
