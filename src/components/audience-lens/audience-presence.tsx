@@ -24,7 +24,8 @@
  * seeded, no wall-clock / PRNG in render) — SSR-hydration + engine-determinism-gate safe.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Users, Check, Plus, ChevronUp, ChevronDown, ChevronRight } from 'lucide-react';
 import type { Audience } from '@/lib/audience/audience-types';
@@ -116,6 +117,11 @@ export function AudiencePresence({
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherRef = useRef<HTMLDivElement | null>(null);
+  // The switcher menu is PORTALED to <body> so it escapes the composer surface's
+  // `overflow-hidden` rounded-corner clip (the dropdown opens UPWARD, well above
+  // that surface). Anchored as a fixed box just above the trigger.
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
   const isGeneral = audience == null || audience.is_general || personas.length === 0;
@@ -157,13 +163,34 @@ export function AudiencePresence({
   }, [open, switcherOpen, onOpenChange]);
 
   // Outside-click closes the switcher popover (not the panel — the composer must stay typable).
+  // The menu is portaled outside switcherRef, so it must be excluded too — otherwise the
+  // mousedown on a menu item would close the popover before its click handler fires.
   useEffect(() => {
     if (!switcherOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (!switcherRef.current?.contains(e.target as Node)) setSwitcherOpen(false);
+      const target = e.target as Node;
+      if (switcherRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setSwitcherOpen(false);
     };
     document.addEventListener('mousedown', onDown);
     return () => document.removeEventListener('mousedown', onDown);
+  }, [switcherOpen]);
+
+  // Anchor the portaled menu just above the trigger; keep it pinned on scroll/resize.
+  useLayoutEffect(() => {
+    if (!switcherOpen) return;
+    const place = () => {
+      const r = switcherRef.current?.getBoundingClientRect();
+      if (!r) return;
+      setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width: 280 });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
   }, [switcherOpen]);
 
   const handleSelect = (a: Audience) => {
@@ -372,12 +399,16 @@ export function AudiencePresence({
             </span>
           </button>
 
-          {/* Switcher popover — opens UPWARD (the presence is bottom-docked). */}
-          {switcherOpen && (
+          {/* Switcher popover — opens UPWARD (the presence is bottom-docked).
+              PORTALED to <body> (fixed, anchored above the trigger) so the upward
+              dropdown is not clipped by the composer surface's overflow-hidden. */}
+          {switcherOpen && createPortal(
             <div
+              ref={menuRef}
               role="menu"
               aria-label="Your audiences"
-              className="absolute bottom-full left-0 z-[60] mb-2 max-h-[44vh] w-[280px] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+              style={{ left: menuPos?.left ?? 0, bottom: menuPos?.bottom ?? 0, width: menuPos?.width ?? 280 }}
+              className="fixed z-[60] max-h-[44vh] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
             >
               {audiences.length === 0 && (
                 <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
@@ -426,7 +457,8 @@ export function AudiencePresence({
                 <span className="flex-1">{MANAGE_LABEL}</span>
                 <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
               </Link>
-            </div>
+            </div>,
+            document.body,
           )}
         </div>
 
