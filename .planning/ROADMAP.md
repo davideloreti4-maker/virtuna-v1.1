@@ -206,7 +206,7 @@ Plans:
 
 - [x] 06-02-PLAN.md — predict-aggregate.ts: the novel honest collapse — band + panel-spread range + confidence + factors (PRED-01)
 - [x] 06-03-PLAN.md — run-predict-panel.ts: the analyst-reasoning frame (drops stop/scroll) + D-07 injection isolation (PRED-01)
-- [ ] 06-04-PLAN.md — prediction-gauge block schema (.strict()) + feathered-span renderer + 3-file registration (PRED-02, PRED-03)
+- [x] 06-04-PLAN.md — prediction-gauge block schema (.strict()) + feathered-span renderer + 3-file registration (PRED-02, PRED-03)
 
 **Wave 2** *(blocked on Wave 1)*
 
