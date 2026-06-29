@@ -147,7 +147,7 @@ export function FeedFilters({
   };
 
   return (
-    <aside className="space-y-5 rounded-xl border border-white/[0.06] bg-background-elevated p-4">
+    <aside className="space-y-5 rounded-xl border border-white/[0.06] bg-background-elevated p-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-foreground">Filters</h2>
         {activeCount > 0 && (

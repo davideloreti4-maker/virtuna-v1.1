@@ -1,13 +1,11 @@
 "use client";
 
 /**
- * FeedResults — the Videos feed grid + its states (Discover Feed Phase 2.2).
+ * FeedResults — the Videos feed grid + its states (Discover Feed Phase 2.2 redesign).
  *
- * REUSE: the populated grid is DiscoverGrid (state="results"), which renders OutlierTile
- * with the Remix / Save / Track affordances + measured chips already built in Phase 8/10.
- * This component owns only the feed-specific shell around it:
- *   - first-load skeletons (fast keyset query — a few tiles' worth, not the minutes-long
- *     Apify copy DiscoverGrid uses for a live scrape)
+ * Cover-forward grid of FeedCard (its own component — /discover keeps the dense OutlierTile).
+ * This component owns the shell around the grid:
+ *   - first-load skeletons shaped like the cover-forward card
  *   - error + Retry
  *   - watched-empty → "watch channels" CTA to /feed/channels
  *   - filtered-empty → Clear filters (tab-aware copy)
@@ -19,11 +17,11 @@ import Link from "next/link";
 import { FilmStrip, FunnelSimple, CircleNotch } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { DiscoverGrid } from "@/components/discover/discover-grid";
+import { FeedCard } from "@/components/feed/feed-card";
 import type { OutlierTileData } from "@/components/discover/outlier-tile";
 import type { FeedTab } from "@/lib/feed/feed-query";
 
-const GRID_CLASS = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(164px,1fr))]";
+const GRID_CLASS = "grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]";
 
 interface FeedResultsProps {
   isLoading: boolean;
@@ -45,22 +43,16 @@ interface FeedResultsProps {
   onLoadMore: () => void;
 }
 
-/** One skeleton tile matching the OutlierTile footprint. */
-function FeedTileSkeleton() {
+/** One skeleton shaped like the cover-forward FeedCard (tall cover + caption + action). */
+function FeedCardSkeleton() {
   return (
-    <div className="space-y-2">
-      <Skeleton className="h-[176px] w-full rounded-[8px]" />
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-5 w-16 rounded" />
-        <Skeleton className="h-4 w-14 rounded" />
+    <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+      <Skeleton className="aspect-[4/5] w-full rounded-none" />
+      <div className="space-y-2 p-3">
+        <Skeleton className="h-4 w-5/6 rounded" />
+        <Skeleton className="h-3 w-1/2 rounded" />
+        <Skeleton className="h-9 w-full rounded-lg" />
       </div>
-      <div className="grid grid-cols-4 gap-2">
-        <Skeleton className="h-8 rounded" />
-        <Skeleton className="h-8 rounded" />
-        <Skeleton className="h-8 rounded" />
-        <Skeleton className="h-8 rounded" />
-      </div>
-      <Skeleton className="h-[46px] w-full rounded-lg" />
     </div>
   );
 }
@@ -76,7 +68,7 @@ function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-4 py-20 text-center">
+    <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-background-elevated px-4 py-20 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
         {icon}
       </div>
@@ -116,7 +108,7 @@ export function FeedResults({
           onLoadMore();
         }
       },
-      { rootMargin: "600px" },
+      { rootMargin: "800px" },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -127,7 +119,7 @@ export function FeedResults({
     return (
       <div className={GRID_CLASS} aria-busy="true" aria-label="Loading feed">
         {Array.from({ length: 8 }).map((_, i) => (
-          <FeedTileSkeleton key={i} />
+          <FeedCardSkeleton key={i} />
         ))}
       </div>
     );
@@ -137,9 +129,7 @@ export function FeedResults({
   if (isError) {
     return (
       <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/[0.05] p-3">
-        <span className="text-sm text-red-400">
-          Couldn&apos;t load your feed. Try again.
-        </span>
+        <span className="text-sm text-red-400">Couldn&apos;t load your feed. Try again.</span>
         <button
           type="button"
           onClick={onRetry}
@@ -162,8 +152,8 @@ export function FeedResults({
           </Button>
         }
       >
-        Watch creators to fill your Videos feed. Add a few channels and their outliers show
-        up here.
+        Watch creators to fill your Videos feed. Add a few channels and their outliers show up
+        here.
       </EmptyState>
     );
   }
@@ -190,18 +180,22 @@ export function FeedResults({
     );
   }
 
-  // ── Results — DiscoverGrid renders the tiles; the sentinel pages the next set ────
+  // ── Results — cover-forward grid; the sentinel pages the next set ────────────────
   return (
     <div className="space-y-6">
-      <DiscoverGrid
-        state="results"
-        tiles={tiles}
-        onRemix={onRemix}
-        remixPendingId={remixPendingId}
-        onTrack={onTrack}
-        trackPendingId={trackPendingId}
-        trackedIds={trackedIds}
-      />
+      <div className={GRID_CLASS}>
+        {tiles.map((tile) => (
+          <FeedCard
+            key={tile.platformVideoId}
+            tile={tile}
+            onRemix={onRemix}
+            remixPending={remixPendingId === tile.platformVideoId}
+            onTrack={onTrack}
+            trackPending={trackPendingId === tile.platformVideoId}
+            tracked={tile.trackHandle != null && trackedIds.has(tile.trackHandle)}
+          />
+        ))}
+      </div>
       <div ref={sentinelRef} aria-hidden="true" />
       {isFetchingNextPage && (
         <div className="flex items-center justify-center py-4 text-foreground-muted">

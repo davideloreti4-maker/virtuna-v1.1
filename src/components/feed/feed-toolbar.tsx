@@ -115,6 +115,8 @@ export function FeedToolbar({
           </DropdownMenuContent>
         </DropdownMenu>
 
+        <div className="mx-1 hidden h-5 w-px bg-white/[0.08] sm:block" aria-hidden="true" />
+
         {/* Add video URL — launches Remix → Read on a one-off link. */}
         <Popover open={addOpen} onOpenChange={setAddOpen}>
           <PopoverTrigger asChild>
