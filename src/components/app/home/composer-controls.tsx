@@ -38,9 +38,19 @@ export type ToolId =
   | "remix"
   | "explore"
   | "offer"
-  | "ad";
+  | "ad"
+  | "profile"
+  | "simulate"
+  | "predict";
 
 export type SkillGroup = "creator" | "marketing";
+/**
+ * Which Audience mode surfaces a skill (UX-02 / D-01). The skill menu filters on
+ * the active Audience's mode BEFORE the Creator/Marketing group partition, so the
+ * Socials/creator render stays byte-identical and General audiences see the three
+ * General verbs (Profile / Simulate / Predict) instead of the creator skills.
+ */
+export type SkillMode = "socials" | "general";
 export type SkillModel = "Flash" | "Max";
 export type Intent = "grow" | "sell";
 
@@ -51,6 +61,10 @@ export interface SkillMeta {
   /** `/` command label shown in the popover + typed into the slash menu. */
   command: string;
   group: SkillGroup;
+  /** Audience mode(s) this skill belongs to (UX-02 / D-01). Creator skills are
+   *  `["socials"]`; the General verbs are `["general"]`. The SkillRows filter gates
+   *  on the active mode before the Creator/Marketing group partition. */
+  modes: SkillMode[];
   /** SIM-1 tier the skill fires — drives the read-only ModelTag. */
   model: SkillModel;
   /** false → "coming soon", rendered disabled (ships as its phase lands). */
@@ -59,15 +73,22 @@ export interface SkillMeta {
 
 // Order mirrors sketch 006 + the handoff table.
 export const SKILLS: SkillMeta[] = [
-  { id: "explore", label: "Explore",          desc: "Audience-curated discovery",          command: "/explore", group: "creator",   model: "Flash", enabled: true  },
-  { id: "idea",    label: "Ideas",            desc: "Funnel-top idea cards",               command: "/ideas",   group: "creator",   model: "Flash", enabled: true  },
-  { id: "hooks",   label: "Hooks",            desc: "Ranked scroll-stoppers",              command: "/hooks",   group: "creator",   model: "Flash", enabled: true  },
-  { id: "script",  label: "Script",           desc: "Beats + retention markers",           command: "/script",  group: "creator",   model: "Flash", enabled: true  },
-  { id: "remix",   label: "Remix",            desc: "Decode a winner → your version",      command: "/remix",   group: "creator",   model: "Flash", enabled: true  },
-  { id: "test",    label: "Test",             desc: "Full Read on a real video",           command: "/test",    group: "creator",   model: "Max",   enabled: true  },
-  { id: "chat",    label: "Chat",             desc: "Ask Numen anything",                  command: "/chat",    group: "creator",   model: "Flash", enabled: true  },
-  { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", model: "Flash", enabled: false },
-  { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", model: "Max",   enabled: false },
+  // ── Socials (creator) — byte-identical render; every entry tagged ["socials"] ──
+  { id: "explore", label: "Explore",          desc: "Audience-curated discovery",          command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "idea",    label: "Ideas",            desc: "Funnel-top idea cards",               command: "/ideas",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "hooks",   label: "Hooks",            desc: "Ranked scroll-stoppers",              command: "/hooks",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "script",  label: "Script",           desc: "Beats + retention markers",           command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "remix",   label: "Remix",            desc: "Decode a winner → your version",      command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "test",    label: "Test",             desc: "Full Read on a real video",           command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
+  { id: "chat",    label: "Chat",             desc: "Ask Numen anything",                  command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
+  { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
+  // ── General — the three verbs surfaced only when a General audience is active.
+  //    `group: "creator"` is inert here (the outer filter is mode; group only sub-headers
+  //    the Socials section). NO accent — reuse the existing row visual language. ──
+  { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
+  { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: true },
+  { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
 ];
 
 export const getSkill = (id: ToolId): SkillMeta =>
@@ -119,6 +140,9 @@ const SKILL_ICON: Record<ToolId, string> = {
   chat: "chat",
   offer: "tag",
   ad: "mega",
+  profile: "people",
+  simulate: "target",
+  predict: "crosshair",
 };
 
 export function Ico({

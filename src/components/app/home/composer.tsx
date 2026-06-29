@@ -106,6 +106,13 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   explore: "Explore what's working for your audience…",
   offer: "Describe a product, price, or positioning to validate…",
   ad: "Paste an ad concept to pre-flight, ROAS-framed…",
+  // General verbs (P7 / UX-02) — surfaced only when a General audience is active.
+  // The host wiring + per-skill submit semantics land in 07-04; until then the
+  // default mode is "socials" so these placeholders are never reached, but the
+  // widened ToolId Record contract requires them.
+  profile: "Drop a chat or screenshot to build a SIM…",
+  simulate: "Type a draft to run through your audience…",
+  predict: "Describe a scenario for the analyst panel to read…",
 };
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
