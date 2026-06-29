@@ -41,10 +41,17 @@ const GOAL_INTENT_OPTIONS = [
 interface AudienceFormProps {
   /** Existing audience for edit mode. Undefined = create mode. */
   existing?: Audience;
+  /**
+   * Preset the create `mode` (07-05 / D-08). `/audience/new?mode=general` passes
+   * "general" so the description Build path lands a General SIM in the library.
+   * Absent ⇒ "socials" (the DB default) — the Socials form stays byte-identical
+   * (no visible control is added for this).
+   */
+  initialMode?: Audience["mode"];
   className?: string;
 }
 
-export function AudienceForm({ existing, className }: AudienceFormProps) {
+export function AudienceForm({ existing, initialMode, className }: AudienceFormProps) {
   const router = useRouter();
   const isEdit = !!existing;
 
@@ -53,6 +60,8 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
   const [platform, setPlatform] = useState<AudiencePlatform>(existing?.platform ?? "tiktok");
   const [goalLabel, setGoalLabel] = useState(existing?.goal_label ?? "");
   const [goalIntent, setGoalIntent] = useState<GoalIntent | "">(existing?.goal_intent ?? "");
+  // Audience axis (D-04). No visible control — preset by the page from ?mode (D-08).
+  const [mode] = useState<Audience["mode"]>(initialMode ?? existing?.mode ?? "socials");
   // POP-05 — editable "what good means" free-text.
   const [successCriterion, setSuccessCriterion] = useState(existing?.success_criterion ?? "");
   // POP-02/TRUST-02/D-07 — user-added grounding (distinct from scrape-derived evidence).
@@ -79,6 +88,7 @@ export function AudienceForm({ existing, className }: AudienceFormProps) {
       const payload = {
         name: name.trim(),
         type,
+        mode,
         platform,
         goal_label: goalLabel.trim() || null,
         goal_intent: goalIntent || null,
