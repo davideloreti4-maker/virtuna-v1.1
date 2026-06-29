@@ -210,7 +210,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 06-05-PLAN.md — predict-runner.ts: orchestration + shared readSubjectKind + Directional assemble (PRED-01, PRED-03)
+- [x] 06-05-PLAN.md — predict-runner.ts: orchestration + shared readSubjectKind + Directional assemble (PRED-01, PRED-03)
 
 **Wave 3** *(blocked on Wave 2)*
 

@@ -4,14 +4,14 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-06-29T01:40:34.123Z"
-last_activity: 2026-06-29 -- Phase 06 execution started
+last_updated: "2026-06-29T03:56:00.000Z"
+last_activity: 2026-06-29 -- 06-05 complete (predict-runner orchestrator)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 33
-  completed_plans: 29
-  percent: 71
+  completed_plans: 30
+  percent: 73
 ---
 
 # Project State
@@ -26,8 +26,9 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 06 (predict-verb) — EXECUTING
-Plan: 5 of 7
-Status: 06-04 complete (Wave 1: prediction-gauge block — PredictionGaugeBlockSchema (.strict() bands-only, panel-derived range the only numeric, sim1-flash/Directional literals, always-on caveat) in profile-blocks.ts + 3-file registration (blocks.ts re-export/union, block-registry.ts, message-blocks.tsx); PredictionGaugeBlockRenderer — the ONE honest gauge: band WORD (cream) + ~min–max% caption + confidence pill + feathered span (no needle/pointer/tick, fades both ends), attributed factors, collapsible panel drill, assumptions, caveat, Save footer; readable without color; bundle-leak-safe TYPE-only import; PRED-02/PRED-03)
+Plan: 6 of 7
+Status: 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
+Status (prior): 06-04 complete (Wave 1: prediction-gauge block — PredictionGaugeBlockSchema (.strict() bands-only, panel-derived range the only numeric, sim1-flash/Directional literals, always-on caveat) in profile-blocks.ts + 3-file registration (blocks.ts re-export/union, block-registry.ts, message-blocks.tsx); PredictionGaugeBlockRenderer — the ONE honest gauge: band WORD (cream) + ~min–max% caption + confidence pill + feathered span (no needle/pointer/tick, fades both ends), attributed factors, collapsible panel drill, assumptions, caveat, Save footer; readable without color; bundle-leak-safe TYPE-only import; PRED-02/PRED-03)
 Status (prior): 05-05 complete (Wave 2: simulate-runner.ts — drafted message → person/panel reaction-distribution on the EXISTING Flash engine, deterministic subjectKind from the persisted marker; /api/tools/simulate route — auth/csrf/cap/RLS-audience spine + SAME-thread persistence; SIMU-01/02/03)
 Status (prior): 05-04 complete (Wave 2: profile-runner.ts fuses the forensic READ + saved General SIM from ONE bake; /api/tools/profile route — auth/csrf/cap/storagePath spine + thread persistence; PROF-01/02/03)
 Status (prior): 05-03 complete (Wave 1: profile-bake.ts — evidence → frozen person/panel signature + storagePath sanitize + Max omni person-video path)
@@ -36,7 +37,7 @@ Status (prior): 04-02 complete (Wave 1 leaf modules: tier + ingest)
 Status (prior): 04-01 complete (Wave 0 — Stimulus contract + Nyquist scaffold)
 Status (prior): 03-06 closed the form→route→repo seam for the honesty fields. Both route Zod schemas (`CreateAudienceSchema` route.ts / `PatchAudienceSchema` [id]/route.ts) now accept + sanitize (each file's `sanitizeText`: control-char strip + trim) + cap `mode` (enum), `success_criterion` (`.max(2000)`), `custom_context` (array `.max(50)`, `source` literal "user", `note.max(2000)`, `persona_evidence_link.max(120)`) — stricter caps than the repo `WritableAudienceSchema` because the route is the untrusted boundary (T-03-12/13/14). Scorer untouched (D-02 — no scoring import in either route). `audience-form.tsx` gains a success-criterion `Textarea` (POP-05) + a "User-added grounding" add/edit/remove list (each note tagged `user-added`, terracotta accent chip, visually distinct from scraped evidence — TRUST-02/D-07), both wired into the existing POST/PATCH payload (`success_criterion: trim()||null`, `custom_context` empty-notes filtered); all free text plain React children, zero `dangerouslySetInnerHTML`. No `mode` toggle in the form (front-door picker is P7; General-from-scratch is P5 — CONTEXT). Route suite 25 passed (+5 new-field cases incl. NUL-strip + over-cap rejection); audience+route suites 10 files/92 passed; reskin-matte guard 6/6; form tsc clean (baseline non-zero). POP-05/POP-02/TRUST-02 closed. Next: 03-07 (run/result Read card trust badge).
 Status (prior): 03-05 made the honesty layer read at a glance on the audience surface. `isPersonaGrounded(p:{evidence?})` (non-empty trimmed evidence → grounded) + a `generalTemplates` bucket on `groupAudiences` (routes `mode==='general'` before the is_preset check, A6) + `getTemplateProvenanceLabel` ("Authored template — Directional") land in `audience-display.ts`. `TrustBadge` (Validated→default / Directional→secondary) wraps the flat-warm `Badge` primitive, presentation-only — the caller passes `resolveTier(audience)` so the never-Validated-for-general rule has one source of truth (T-03-11). `audience-card` mounts the badge beside the status chip and renders persona provenance below the temp bar: grounded evidence quotes inline → general-template provenance subline → one muted "no evidence — Directional" line (never both; T-03-10 plain-text auto-escaped, no dangerouslySetInnerHTML). `audience-manager` surfaces a "General templates" section bound to the new bucket (POP-03 browse). Locked by in-phase `honesty-render.test.tsx` (6/6) — the only honesty-render gate this skip-UI phase has. Backfilled `mode='socials'` on 2 pre-existing audience fixtures (03-02 fallout). Audience suite 9 files/67 passed; reskin-matte guard green; audience-path tsc clean. Requirements TRUST-01/TRUST-02/POP-03 closed. Next: 03-06 (route schemas + success-criterion/custom-context author/edit form).
-Last activity: 2026-06-29 -- 06-04 complete (prediction-gauge block + renderer)
+Last activity: 2026-06-29 -- 06-05 complete (predict-runner orchestrator)
 
 Progress: [██████░░░░] 57% (4/7 phases complete)
 
@@ -91,6 +92,7 @@ Progress: [██████░░░░] 57% (4/7 phases complete)
 | Phase 06 P01 | ~6min | 2 tasks | 7 files |
 | Phase 06 P01 | ~6min | 2 tasks | 7 files |
 | Phase 06 P03 | ~7min | 1 tasks | 2 files |
+| Phase 06 P05 | ~9min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -134,6 +136,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06]: 06-01: predict-schema.ts (ordinal-lean model boundary) GREEN as a PARALLEL sibling of flash-schema.ts — LEANS 5-point ordinal + PredictAnalystSchema/.strict (rejects smuggled per-analyst number, D-01/T-06-01) + PredictPanelResultSchema/.strict/.min(2) (NO top-level probability/range/confidence = structural D-01 guard; range/band/confidence derived downstream by aggregatePredict 06-02, never echoed) + coercePredictResponse mirroring coerceFlashResponse (bare array/fences/casing; unknown lean salvaged to neutral toss_up, never fabricated, T-06-02). Binary FlashResult/FlashPersona byte-untouched (grep===0, no PACK-04 risk). Nyquist Wave-0: 5 RED tests (predict-aggregate range=min/max + two-distribution inequality + tight→High/wide→Low + factors carry analystArchetype; predict-runner deps.flash zero-network always Directional/sim1-flash/caveat + successCriterion; route 401/415/400-empty/400-non-general/400-person+nudge/template-analyst-NOT-rejected-Pitfall3/500-generic; gauge .strict-rejects-score + ~min–max% readable-without-color + min===max feather; chain-handoff append simulate→predict). predict-schema 14/14 GREEN; 5 suites RED by design (4 module-not-found + chain-handoff 1-fail/18-pass regression-clean). No deviations. Commits 51c7b68c (feat), 7b3e8692 (test).
 - [Phase ?]: [Phase 06]: 06-03: run-predict-panel.ts (PRED-01) — analyst-reasoning Flash leaf replacing the binary content frame (D-02). runPredictPanel(scenario, panel, audienceRepaint?, deps?) clones the run-flash-text-mode determinism envelope VERBATIM (temp:0 + seed + enable_thinking:false + json_object + 60s abort; strip→parse→coercePredictResponse→PredictPanelResultSchema.safeParse). A PANEL OF ANALYSTS reasons about scenario LIKELIHOOD emitting {archetype, lean(ordinal), factor, factorDirection(for|against), reasoning} — no stop/scroll verbs (count 0). D-07: scenario + successCriterion + customContext isolated in ONE delimited USER data fence; byte-stable system prompt carries zero untrusted bytes + explicit never-obey directive (mirror vision.ts); test asserts SYSTEM excludes scenario, USER includes it in-fence. Steer rides panel.archetypes + audienceRepaint (deterministic), drives analyst count (A4). Flash reasoning model only — audio-sensor constant count 0 (Pitfall 1). Imports only qwen/client + utils/strip + predict-schema. Injectable deps.client = zero-network seam. run-predict-panel.test.ts 9/9 GREEN; tsc clean on new files. No deviations (mock mirrored from vision.test.ts; named flash analog absent). Commits d1b29f8e (test), 34baa7ee (feat).
 
+- [Phase 06]: 06-05: `predict-runner.ts` (PRED-01/PRED-03) — `runPredict(input, deps?)` is the Predict verb orchestrator, cloned from `simulate-runner.ts` exactly: injectable `deps.flash` (defaults `runPredictPanel`) = zero-network seam, `resolveTier(audience) !== "Directional"` throw kept as defense-in-depth (the user-facing reject is the route's 400, D-08), private `validate()` = `PredictionGaugeBlockSchema.safeParse`-or-throw (`.strict()` bands-only). Pipeline: tier guard → `buildAudienceRepaint` steer (General/empty → no-op) → `flash(stimulus.content, panel, repaint)` (panel = archetype roster + successCriterion lens + custom_context notes minus the `__subject_kind` marker, all D-07 data-fenced in the leaf) → `aggregatePredict(result.analysts)` collapse (band/range/confidence/factors — REUSE, never re-rolled, D-01) → assemble a `prediction-gauge` block ALWAYS carrying `tier:"Directional"`, `model:"sim1-flash"`, a non-empty always-on Directional caveat (UI-SPEC F-04 copy), `assumptions` derived purely from the scenario's sentence-split premises (no fabricated signal, D-04), `successCriterion = audience.success_criterion ?? null`, and the per-analyst `panel[]` drill (archetype + lean + reasoning). Exported `readSubjectKind(audience, explicit?)` LIFTED to a shared helper so the route (06-06) rejects a person SIM at 400 BEFORE the runner runs (D-03): explicit override wins → marker note → DEFAULT "panel" (NOT "person") so a marker-absent `mode:"general"` `template-analyst` panel with `custom_context:[]` is NEVER mis-classified (Pitfall 3); returns "person" ONLY on an explicit `note:"person"`. Binary Flash schema/aggregate/leaf untouched (`grep FlashResultSchema|runFlashTextMode|aggregateFlash` = 0). predict-runner.test.ts 4/4 GREEN zero-network (injected `deps.flash`); zero tsc errors on the touched file (full project `tsc --noEmit` — the single-file form falsely flags path aliases). Deviation: reworded two docstring comparisons to drop the literal `runFlashTextMode`/`aggregateFlash` tokens so the isolation acceptance gate (`grep -c ... = 0`) passes literally — no behavioral change. Commit faef419f (feat). PRED-01/PRED-03 closed.
+
 ### Pending Todos
 
 - **05-06 Task 2 — human-verify (BLOCKING):** run `next dev`, auth via `e2e/create-test-user.ts`, drop a chat `.txt` → confirm the profile-read card (evidence-quoted tells + Directional badge + always-on caveat), the saved General SIM in the library, the "Simulate a message to {name} →" CTA → reaction-distribution IN THE SAME THREAD (person = single read no fraction; panel = band+fraction+themes), zero accent / zero 0-100, and the Socials path unchanged. Approve → PROF-01/SIMU-03 close + Phase 05 complete.
@@ -156,6 +160,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-29T01:40:16.507Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-predict-verb/06-UI-SPEC.md
+Last session: 2026-06-29T03:56:00.000Z
+Stopped at: Completed 06-05-PLAN.md (predict-runner orchestrator)
+Resume file: None
