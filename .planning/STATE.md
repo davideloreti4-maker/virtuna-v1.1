@@ -156,6 +156,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
+- **07-06 Task 4 — human-verify (BLOCKING, phase-closing):** real authed `/home` browser pass of the full P7 surface. Start dev `node ./node_modules/next/dist/bin/next dev` (npx wrapper breaks dev); auth via `e2e/create-test-user.ts`. Confirm: 3 chips render verbatim; `See it in action` → pre-seeded chat → Profile→Read card in-thread; reload → demo gone (show-once) chips remain; audience picker Socials-only has NO `── General ──` header + `+ Build an audience`; build a General SIM via template → appears under `── General ──` + active; General active → skill menu = Profile/Simulate/Predict (Simulate/Predict gate on the General panel, no ungated stimulus); switch to Socials → menu byte-identical (Hooks/Test/Remix/Chat original order); ZERO console errors (no bundle-leak/hydration), zero coral/glass, single liveness dot the only accent. Tasks 1-3 committed: 672e8c93 / 739b7902 / 4827c432. Approve → write 07-06-SUMMARY + close UX-05 + Phase 07 complete.
 - **05-06 Task 2 — human-verify (BLOCKING):** run `next dev`, auth via `e2e/create-test-user.ts`, drop a chat `.txt` → confirm the profile-read card (evidence-quoted tells + Directional badge + always-on caveat), the saved General SIM in the library, the "Simulate a message to {name} →" CTA → reaction-distribution IN THE SAME THREAD (person = single read no fraction; panel = band+fraction+themes), zero accent / zero 0-100, and the Socials path unchanged. Approve → PROF-01/SIMU-03 close + Phase 05 complete.
 - **Deferred (out of scope):** pre-existing `earnings-chart.tsx:98` recharts Tooltip type error blocks `next build`'s tsc step — see `.planning/phases/05-profile-simulate-wow/deferred-items.md`.
 
@@ -177,5 +178,5 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 ## Session Continuity
 
 Last session: 2026-06-29T07:27:22.078Z
-Stopped at: Completed 07-03-PLAN.md
-Resume file: None
+Stopped at: 07-06 Tasks 1-3 complete (HomeStarter + composer mount + home.test) — Task 4 human-verify checkpoint PENDING (do NOT mark plan complete)
+Resume file: .planning/phases/07-audience-as-front-door-surface/07-06-PLAN.md (Task 4)
