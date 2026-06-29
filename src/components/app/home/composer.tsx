@@ -72,6 +72,7 @@ import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
 import { BuildChooser } from "./build-chooser";
+import { HomeStarter } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -1788,6 +1789,23 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     </div>
   );
 
+  // ── Home empty-state starter (UX-05 / D-04) ─────────────────────────────────
+  // The 3 LOCKED chips + the show-once first-run demo, rendered ONLY in the empty
+  // home region (Branch B, no conversation). Chip handlers reach composer-internal
+  // flows directly: Test → arm the idea/test flow on the active audience; Profile →
+  // open the evidence-drop (the file picker rides this user gesture, like the
+  // skill-menu Profile pick); Predict → select Predict (07-04 gates it on a selected
+  // General audience and routes to Build when none). onDemoComplete reloads the open
+  // thread so the demo's profile-read card surfaces in-thread.
+  const homeStarter = !hasConversationContent ? (
+    <HomeStarter
+      onChipTest={() => handleUserSelectTool("test")}
+      onChipProfile={() => handleUserSelectTool("profile")}
+      onChipPredict={() => handleUserSelectTool("predict")}
+      onDemoComplete={() => void reloadProfileThread()}
+    />
+  ) : null;
+
   // ── Layout branches ────────────────────────────────────────────────────────
   //
   // Branch A — Home thread mode (hasThread && !hasSimulation):
@@ -1838,6 +1856,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col", className)}>
       {threadContent}
       {composerDock}
+      {homeStarter}
     </div>
   );
 }
