@@ -200,12 +200,24 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
   const hasUserSelectedToolRef = useRef(false);
+  // Evidence-drop file input (D-07) — declared here (ahead of the rest of the
+  // evidence state) so handleUserSelectTool can open the Profile evidence picker
+  // within the user-gesture call stack (a file input .click() must ride a real
+  // user gesture; an effect can't open it). The input itself is rendered below.
+  const evidenceInputRef = useRef<HTMLInputElement | null>(null);
   // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
   // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
   // flip it — they are not the creator choosing where to land on reload.
   const handleUserSelectTool = useCallback((id: ToolId) => {
     hasUserSelectedToolRef.current = true;
     setActiveTool(id);
+    // ── Profile (07-04 / D-07): General "Profile" is NOT a topic submit ─────────
+    // Selecting Profile opens the existing evidence-drop affordance (drop a chat /
+    // screenshot / clip → POST /api/tools/profile) instead of arming the topic field.
+    // This runs inside the menu/slash click gesture, so the file picker is allowed.
+    if (id === "profile") {
+      evidenceInputRef.current?.click();
+    }
   }, []);
 
   // ── Audience + intent state (UX-01) ────────────────────────────────────────
@@ -378,7 +390,8 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [profiling, setProfiling] = useState(false);
-  const evidenceInputRef = useRef<HTMLInputElement | null>(null);
+  // (evidenceInputRef is declared above, near activeTool, so handleUserSelectTool
+  //  can open the Profile evidence picker within the user-gesture call stack.)
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
 
@@ -438,7 +451,18 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
             // Explore: field-send optional (empty = un-niched pull); gate only on stream state.
             : activeTool === "explore"
               ? !submitting && !explore.isStreaming
-              : (isValidTikTok || file !== null) && !submitting;
+              // Simulate / Predict (07-04): a non-empty draft is required to enable the
+              // button; the SELECTED-GENERAL-AUDIENCE requirement is the handleSubmit gate
+              // (fire vs route-to-Build) so the button can still redirect to Build rather
+              // than dead-ending. The server is the real trust boundary (T-07-04-01).
+              : activeTool === "simulate" || activeTool === "predict"
+                ? !submitting && trimmedUrl.length > 0
+                // Profile (07-04): never depends on the topic field — the evidence-drop
+                // affordance is the entry (handled in onSubmitForm via evidenceFile). The
+                // bare topic submit is inert for Profile.
+                : activeTool === "profile"
+                  ? false
+                  : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -470,7 +494,10 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
         // Profile-read + reaction-distribution (05-06) — rendered in-thread regardless
         // of activeTool (there is no "profile" tool; the evidence-drop affordance is the entry).
         const profileBlocks = allBlocks.filter(
-          (b) => b.type === 'profile-read' || b.type === 'reaction-distribution',
+          (b) =>
+            b.type === 'profile-read' ||
+            b.type === 'reaction-distribution' ||
+            b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
         );
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
@@ -691,7 +718,10 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
         (m: { blocks?: Array<{ type?: string; props?: unknown }> }) => m.blocks ?? [],
       );
       const profileBlocks = allBlocks.filter(
-        (b: { type?: string }) => b.type === 'profile-read' || b.type === 'reaction-distribution',
+        (b: { type?: string }) =>
+          b.type === 'profile-read' ||
+          b.type === 'reaction-distribution' ||
+          b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
       );
       setPersistedProfileBlocks(profileBlocks);
     } catch {
@@ -992,6 +1022,52 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       return;
     }
 
+    // ── Simulate / Predict tool paths (07-04 / D-07, UX-02) ──────────────────
+    // The two General verbs reuse the P5/P6 routes reached today via card-chain
+    // CTAs. CRITICAL (T-07-04-01 gate): both REQUIRE a selected General audience —
+    // when absent, route the user to Build and return WITHOUT firing an ungated
+    // stimulus (the client gate is UX; the server independently enforces auth +
+    // the D-08 honesty guards). CRITICAL: NEVER set pendingNavRef / call stream.start
+    // — a General verb never navigates to /analyze (Pitfall 2 / sibling of Chat).
+    // The draft/scenario is passed RAW (T-07-04-02) — never pre-concatenated into a
+    // prompt; the routes data-fence it downstream.
+    if (activeTool === "simulate" || activeTool === "predict") {
+      // Gate: a General audience must be selected (asymmetry §16.4). A General verb
+      // can be active while no General audience is selected (e.g. picked via the `/`
+      // slash menu, or after switching audience away) — route to Build, never fire.
+      if (!selectedAudience || selectedAudience.mode !== "general") {
+        router.push("/audience/new");
+        return;
+      }
+      const draft = trimmedUrl;
+      if (draft.length === 0) return; // nothing to run (canSubmit already gates this)
+      captureUserTurn(draft);
+      setUrl(""); // clear input after send
+      const endpoint =
+        activeTool === "simulate" ? "/api/tools/simulate" : "/api/tools/predict";
+      const body =
+        activeTool === "simulate"
+          ? { audienceId: selectedAudience.id, message: draft }
+          : { audienceId: selectedAudience.id, scenario: draft };
+      setSubmitting(true);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) return; // silent — the route returns a generic error (WR-02)
+        // The reaction-distribution (Simulate) / prediction-gauge (Predict) persisted
+        // to the SAME open thread — surface it via the one-thread reload (05-06 path).
+        await reloadProfileThread();
+      } catch {
+        // Network error — silent (the user can retry the draft)
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     // ── Test tool path (unchanged — pendingNavRef/stream.start exclusive here) ─
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
@@ -1053,7 +1129,7 @@ export function Composer({ className, onThreadChange, onConversationChange }: Co
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
