@@ -1,7 +1,8 @@
 ---
 phase: 7
 slug: audience-as-front-door-surface
-status: draft
+status: approved
+reviewed_at: 2026-06-29
 shadcn_initialized: false
 preset: none
 created: 2026-06-29
