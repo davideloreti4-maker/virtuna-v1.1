@@ -235,7 +235,26 @@ Plans:
   4. A "Build an audience" entry offers from-description / from-evidence / from-template.
   5. The home empty state seeds starter chips to the wow (Test on your audience / Profile a chat / Predict an outcome) and the first-run demo is the profile-chat moment.
 
-**Plans**: TBD
+**Plans**: 6 plans
+Plans:
+**Wave 1** *(parallel — no file overlap)*
+
+- [ ] 07-01-PLAN.md — Mode-scoped skill menu: `modes[]` tag + 3 General entries (UX-02 / D-01)
+- [ ] 07-02-PLAN.md — Mode-sectioned picker switcher + trust badges + Build row + generalized reactor (UX-01, UX-03 / D-02, D-06)
+- [ ] 07-03-PLAN.md — `cloneTemplateAudience` template-clone helper (UX-04 / D-03)
+
+**Wave 2** *(blocked on 07-01)*
+
+- [ ] 07-04-PLAN.md — Composer per-skill submit semantics + `activeMode` threading (UX-02 / D-07)
+
+**Wave 3** *(blocked on 07-02/03/04)*
+
+- [ ] 07-05-PLAN.md — Build chooser (3 paths) + composer host wiring (UX-04 / D-03, D-08)
+
+**Wave 4** *(blocked on 07-05)*
+
+- [ ] 07-06-PLAN.md — Home empty state: 3 locked chips + first-run profile-chat demo + browser pass (UX-05 / D-04)
+
 **UI hint**: yes
 
 ## Progress
@@ -251,7 +270,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Input Adapter | 4/4 | Complete    | 2026-06-28 |
 | 5. Profile → Simulate Wow | 6/6 | Complete    | 2026-06-28 |
 | 6. Predict Verb | 7/7 | Complete    | 2026-06-29 |
-| 7. Audience-as-Front-Door Surface | 0/TBD | Not started | - |
+| 7. Audience-as-Front-Door Surface | 0/6 | Planned | - |
 
 ---
 *Roadmap created 2026-06-26. 30 v1 requirements mapped across 7 phases (100% coverage). Granularity: fine. Phase 0 (signature substrate) already on `main` — do NOT `git merge rework/engine-core`. Phase 1 planned 2026-06-26 (6 plans, 4 waves). Phase 3 planned 2026-06-27 (7 plans, Waves 0–4; D-01 determinism gate is Wave 0).*
