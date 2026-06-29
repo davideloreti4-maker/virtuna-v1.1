@@ -4,7 +4,7 @@ milestone: v7.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-06-29T07:15:28.136Z"
+last_updated: "2026-06-29T07:27:55.553Z"
 last_activity: 2026-06-29 -- Phase 07 execution started
 progress:
   total_phases: 7
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-26)
 ## Current Position
 
 Phase: 07 (audience-as-front-door-surface) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Status (prior): 06-06 complete (Wave 3: predict route — `POST /api/tools/predict` clones the simulate security spine VERBATIM (auth 401 → csrfGuard 415/403 → MAX_MESSAGE_LENGTH=2000 scenario cap 400 → getAudience under session RLS → null 400 audience_not_found → try{normalizeStimulus → createOpenThreadLazy → runPredict → insertMessage re-validate+KC stamp → Response.json({block})} catch{generic 500 "Predict failed", never echoes the thrown detail, WR-02}). Two D-08 honesty guards inserted AFTER getAudience, BEFORE the try: `audience.mode !== "general"` → 400 predict_requires_general_panel; `readSubjectKind(audience) === "person"` → 400 predict_requires_panel + "Predict needs a panel — try the Analyst Panel." nudge — so a non-panel audience never reaches the runner's throw→500 (D-03/WR-03/T-06-20). The default template-analyst (general, custom_context:[], no marker) reads as "panel" and runs (Pitfall 3, asserts 200 + runPredict called once). Body accepts scenario and/or message (scenario wins). D-07 upheld structurally — route concatenates nothing, hands the scenario to runPredict which data-fences it downstream. Wave-0 route.test.ts GREEN 7/7. Deviation [Rule 1]: the Wave-0 mock omitted the readSubjectKind export → partial-mocked via importOriginal so the route uses the REAL pure helper (faithful person/template-analyst coverage); reworded comments to drop the literal err.message for the leak-heuristic gate. PRED-01/PRED-03. Commit ecc0e128. The Wave-4 chain-handoff.test.ts stays RED by design — 06-07 turns it GREEN.)
 Status (prior): 06-05 complete (Wave 2: predict-runner.ts — `runPredict(input, deps?)` clones simulate-runner exactly (injectable `deps.flash` zero-network seam, `resolveTier` Directional defense-in-depth throw, `.strict()` validate-on-assemble) but swaps the binary leaf for `runPredictPanel` + `aggregatePredict`, assembling an always-Directional `prediction-gauge` block (tier:Directional, model:sim1-flash, non-empty always-on caveat, assumptions from scenario-sentence premises, successCriterion from the lens). Exported `readSubjectKind` lifted to a shared helper for the route's 400 person-reject — rejects ONLY on explicit note:person; marker-absent general defaults to "panel" so the default Analyst Panel is never wrongly rejected (Pitfall 3). Wave-0 predict-runner.test.ts GREEN 4/4 zero-network; binary Flash schema/aggregate/leaf untouched. PRED-01/PRED-03)
@@ -101,6 +101,7 @@ Progress: [████████░░] 86% (6/7 phases complete)
 | Phase 07 P02 | 10min | 3 tasks | 2 files |
 | Phase 07 P03 | ~3min | 2 tasks | 2 files |
 | Phase 07 P04 | 7min | 3 tasks | 2 files |
+| Phase 07 P05 | 7min | 4 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -151,6 +152,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 07-02: AudiencePresence switcher is now Mode-sectioned via groupAudiences (── Socials ──/── General ──, General header only when a General audience is owned) with per-row neutral resolveTier trust badges (Directional/Validated, no accent) + a + Build an audience row wired to a new optional onBuildAudience prop; the ambient reactor is generalized — a General person-SIM (mode:general, 1 persona) presents as a single reactor (1 reactor ready, one dot) while a panel-SIM keeps multi-persona render; Socials/creator byte-identical, buildAudienceRepaint no-op branch untouched; resolveTier imported as the LEAF (BUILD-01). 31 tests green. Commits fda5b073/1783a37b. UX-01/UX-03 closed.
 - [Phase ?]: [Phase 07]: 07-03: cloneTemplateAudience(supabase, templateId, name?) — UX-04/D-03 template Build path. Thin wrapper over createAudience (NO new insert path): finds GENERAL_TEMPLATES entry (throws on unknown), strips id + virtual user_id + timestamps, name capped 80, returns createAudience (session user_id CR-01 + Zod). build-clone.test.ts 8/8 mocked. Deviation [Rule 1]: sentinel never-persisted scan narrowed to strict-equality on template ids + __virtual__ ('general' sentinel collides with mode:'general'). Full audience suite 14/180 green; tsc clean. Commits b07866b7/de35f041/9dab5e6e. UX-04 closed; 07-05 mounts it.
 - [Phase ?]: [Phase 07] 07-04: Composer threads live activeMode (selectedAudience?.mode ?? 'socials') into ComposerControls + per-skill General submit (D-07): Profile opens the evidence-drop picker (within gesture; evidenceInputRef lifted ahead of handleUserSelectTool); Simulate/Predict POST /api/tools/{simulate,predict} with audienceId gated on a selected General audience. Gate (T-07-04-01): no General audience -> router.push('/audience/new'), never fires ungated; canSubmit gates on draft only (button redirects, server is trust boundary). reloadProfileThread + mount filter widened with 'prediction-gauge' [Rule 2]. Socials byte-identical; no new route; ENGINE_VERSION 3.20.0. Commits 87bbc1a6/b469a4ad/6753b5b5. 25 tests green. UX-02.
+- [Phase ?]: [Phase 07] 07-05: + Build an audience chooser shipped (UX-04/D-03/D-08). New build-chooser.tsx — centered matte Radix Dialog, 3 paths: description → router.push('/audience/new?mode=general'); evidence → onEvidence() reuses the P5 evidence-drop; template → lists GENERAL_TEMPLATES (Directional badge) → editable auto-name (cap 80) → cloneTemplateAudience → onBuilt. Composer hosts it (buildOpen, onBuildAudience opens, handleBuiltAudience appends+selects the cloned General SIM driving skill menu+reactor; mounted in composerDock both layouts). /audience/new now async reads searchParams.mode → AudienceForm initialMode (else undefined); AudienceForm gains initialMode prop + sends mode in create POST (no visible control, Socials byte-identical D-08). No accent/glass; no new route; ENGINE_VERSION 3.20.0. 26 tests green; tsc 19≤20. Commits 7f76d92e/c11e471e/48c11e66/f5e9fb5e/25325173.
 
 ### Pending Todos
 
@@ -174,6 +176,6 @@ v2 scope (tracked, not in this roadmap): SIM marketplace + rev-share flywheel (M
 
 ## Session Continuity
 
-Last session: 2026-06-29T07:15:18.752Z
+Last session: 2026-06-29T07:27:22.078Z
 Stopped at: Completed 07-03-PLAN.md
 Resume file: None
