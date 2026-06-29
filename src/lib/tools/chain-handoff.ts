@@ -57,6 +57,7 @@ export type SkillId =
   | "remix"    // Phase 6 — live (06-05)
   | "profile"  // Phase 5 — live (05-01): the forensic READ card, CTA launches profile→simulate
   | "simulate" // Phase 5 — live (05-01): the reaction-distribution result of the chain
+  | "predict"  // Phase 6 — live (06-07): the prediction-gauge result, reached via simulate→predict
   | "test";
 
 // ─── ChainHandoff interface ───────────────────────────────────────────────────
@@ -237,6 +238,22 @@ export const CHAIN_HANDOFFS: ChainHandoff[] = [
     to: "simulate",
     ctaLabel: "Simulate a message to them →",
     endpoint: "/api/tools/simulate",
+    anchorFrom: "card",
+  },
+
+  // ── P6 LIVE: Simulate → Predict (PRED-01, the one-thread Predict trigger) ─────
+  // "Predict an outcome →" on ReactionDistributionBlockRenderer POSTs the just-simulated
+  // panel's audienceId + a scenario to /api/tools/predict, which runs the analyst panel and
+  // drops a prediction-gauge card into the SAME open thread (D-06). anchorFrom "card" — the
+  // reaction-distribution card carries the panel `audienceId` (additive optional prop,
+  // populated by simulate-runner). Rendered ONLY for a PANEL simulate (predicting from a
+  // person simulate is nonsensical — D-03); the route re-applies the D-08 400 guards as
+  // defense-in-depth. PINNED: /api/tools/predict accepts { audienceId, scenario } (06-06).
+  {
+    from: "simulate",
+    to: "predict",
+    ctaLabel: "Predict an outcome →",
+    endpoint: "/api/tools/predict",
     anchorFrom: "card",
   },
 ];

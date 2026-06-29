@@ -82,6 +82,10 @@ export const ReactionDistributionBlockSchema = z.object({
   props: z
     .object({
       audienceName: z.string().min(1),
+      // PRED-01 (A3): the panel SIM the user just simulated, carried so the "Predict an
+      // outcome →" chain CTA can POST it to /api/tools/predict. Additive + optional →
+      // `.strict()`-safe (no smuggled aggregate; back-compat with pre-06-07 blocks).
+      audienceId: z.string().optional(),
       subjectKind: z.enum(["person", "panel"]),
       // person path — a single read; NO fraction (a single human has no honest distribution)
       read: z

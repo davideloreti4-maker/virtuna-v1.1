@@ -10,15 +10,16 @@
  *     + a collapsible per-persona reactions drill.
  *
  * Renders validated props ONLY (D-14). Bands/words only — ZERO 0-100 number (the `.strict()`
- * schema enforces it; the UI must not invent a meter or gauge). Introduces NO coral literal
- * (reskin-matte guard stays green): band tones come from the sanctioned BAND_COLOR map.
+ * schema enforces it; the UI must not invent a meter or gauge). Introduces NO accent-tone
+ * literal (reskin-matte guard stays green): band tones come from the sanctioned BAND_COLOR map.
  *
  * Visual polish (final flat-warm token pass, spacing) is a separate `/gsd-ui-phase` task —
  * this renderer ships functional-but-plain.
  */
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ReactionDistributionBlock } from '@/lib/tools/blocks';
+import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 
@@ -36,7 +37,7 @@ export interface ReactionDistributionBlockRendererProps {
 export function ReactionDistributionBlockRenderer({
   block,
 }: ReactionDistributionBlockRendererProps) {
-  const { audienceName, subjectKind, read, band, fraction, themes, reactions, model } =
+  const { audienceName, audienceId, subjectKind, read, band, fraction, themes, reactions, model } =
     block.props;
 
   const modelLabel = model === 'sim1-max' ? 'SIM-1 Max' : 'SIM-1 Flash';
@@ -44,6 +45,43 @@ export function ReactionDistributionBlockRenderer({
 
   const stopCount = reactions?.filter((r) => r.verdict === 'stop').length ?? 0;
   const total = reactions?.length ?? 0;
+
+  // ── Predict chain CTA (PRED-01 / D-06) — read from the chain-handoff SSOT. ──────
+  // Rendered ONLY for a PANEL simulate that carries its audienceId (D-03 — predicting
+  // from a person simulate is nonsensical; back-compat blocks without audienceId omit it).
+  // Mirrors profile-read-block.tsx's fetch+state pattern: POST { audienceId, scenario }
+  // to /api/tools/predict; on success the prediction-gauge lands in the SAME open thread.
+  const predictHandoff = handoffsFor('simulate').find((h) => h.to === 'predict');
+  const canPredict =
+    subjectKind === 'panel' && !!audienceId && !!predictHandoff?.endpoint;
+
+  const [scenario, setScenario] = useState('');
+  const [predicting, setPredicting] = useState(false);
+  const [predictError, setPredictError] = useState<string | null>(null);
+  const [predicted, setPredicted] = useState(false);
+
+  const handlePredict = useCallback(async () => {
+    if (predicting || predicted || !audienceId || !predictHandoff?.endpoint) return;
+    setPredicting(true);
+    setPredictError(null);
+    try {
+      const res = await fetch(predictHandoff.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // anchorFrom "card" — the panel audienceId + the user's scenario.
+        body: JSON.stringify({ audienceId, scenario }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Predict request failed' }));
+        throw new Error((err as { error?: string }).error ?? 'Predict request failed');
+      }
+      setPredicted(true);
+    } catch (err) {
+      setPredictError(err instanceof Error ? err.message : 'Predict error');
+    } finally {
+      setPredicting(false);
+    }
+  }, [predicting, predicted, audienceId, predictHandoff?.endpoint, scenario]);
 
   return (
     <div
@@ -150,9 +188,49 @@ export function ReactionDistributionBlockRenderer({
         )}
       </div>
 
-      {/* Footer — Save */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex items-center gap-4">
-        <SaveAffordance item_type="read" title={audienceName} snapshot={block.props} />
+      {/* Footer — Save + forward-chain Predict CTA (panel-only, D-03/D-06) */}
+      <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-3">
+        <div className="flex items-center gap-4">
+          <SaveAffordance item_type="read" title={audienceName} snapshot={block.props} />
+        </div>
+        {canPredict &&
+          (!predicted ? (
+            <div className="flex flex-col gap-2">
+              <textarea
+                value={scenario}
+                onChange={(e) => setScenario(e.target.value)}
+                placeholder="Describe an outcome to predict…"
+                rows={2}
+                className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+                aria-label="Scenario to predict"
+              />
+              <button
+                type="button"
+                onClick={() => void handlePredict()}
+                disabled={predicting || scenario.trim().length === 0}
+                className="self-start text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+                style={{
+                  color:
+                    predicting || scenario.trim().length === 0
+                      ? 'rgba(236,231,222,0.5)'
+                      : 'var(--color-foreground-secondary)',
+                  cursor: predicting ? 'wait' : 'pointer',
+                }}
+                aria-label="Predict an outcome →"
+              >
+                {predicting ? 'Predicting…' : 'Predict an outcome →'}
+              </button>
+              {predictError && (
+                <p className="text-xs text-red-400" role="alert">
+                  {predictError}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-foreground-muted">
+              Prediction queued — check the thread below.
+            </p>
+          ))}
       </div>
     </div>
   );

@@ -178,6 +178,7 @@ export async function runSimulate(
       type: "reaction-distribution",
       props: {
         audienceName: audience.name,
+        audienceId: audience.id, // PRED-01 (A3): carried for the predict chain CTA (additive)
         subjectKind: "person",
         read: lead
           ? {
@@ -198,6 +199,7 @@ export async function runSimulate(
     type: "reaction-distribution",
     props: {
       audienceName: audience.name,
+      audienceId: audience.id, // PRED-01 (A3): the panel the predict chain CTA targets (additive)
       subjectKind: "panel",
       band,
       fraction,
