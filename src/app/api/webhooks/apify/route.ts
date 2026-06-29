@@ -144,6 +144,13 @@ export async function POST(request: Request) {
             creator_handle: author,
             primary_niche: deriveNicheSlug(item.categoryType ?? item.category ?? null),
             posted_at: item.createTimeISO ?? null,
+            // Phase 2.1: measured engagement for the feed filter/sort (same definition as the
+            // per-channel ingest helper) — keeps new trending rows sortable by engagement.
+            engagement_rate:
+              (item.playCount ?? 0) > 0
+                ? ((item.diggCount ?? 0) + (item.commentCount ?? 0) + (item.shareCount ?? 0)) /
+                  (item.playCount ?? 1)
+                : null,
             // supabase-js types vector(768) as `string | null` on the wire (pgvector
             // literal "[0.1,0.2,...]"); the generated Database type for scraped_videos
             // expects this serialized form, so we stringify the number[] from embedBatch

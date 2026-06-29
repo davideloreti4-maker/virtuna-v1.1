@@ -30,6 +30,7 @@ import {
   CaretUpDown,
   UsersThree,
   Books,
+  FilmStrip,
   Trash,
   Check,
   X,
@@ -367,6 +368,7 @@ export function Sidebar() {
 
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
+  const isOnFeed = pathname.startsWith("/feed");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -479,6 +481,15 @@ export function Sidebar() {
                 isActive={isOnLibrary}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/library")}
+              />
+              {/* Feed — the persistent Videos feed (Discover Feed milestone): watched
+                  channels' outliers + Trending. Matte active state like Library. */}
+              <NavItem
+                icon={FilmStrip}
+                label="Feed"
+                isActive={isOnFeed}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/feed")}
               />
             </div>
           </div>

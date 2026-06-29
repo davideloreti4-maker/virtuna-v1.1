@@ -1590,6 +1590,7 @@ export type Database = {
           archived_at: string | null
           author: string | null
           author_url: string | null
+          baseline_label: string | null
           category: string | null
           comments: number | null
           created_at: string | null
@@ -1597,11 +1598,13 @@ export type Database = {
           description: string | null
           duration_seconds: number | null
           embedding: string | null
+          engagement_rate: number | null
           follower_tier: string | null
           hashtags: string[] | null
           id: string
           likes: number | null
           metadata: Json | null
+          outlier_multiplier: number | null
           platform: string
           platform_video_id: string
           posted_at: string | null
@@ -1617,6 +1620,7 @@ export type Database = {
           archived_at?: string | null
           author?: string | null
           author_url?: string | null
+          baseline_label?: string | null
           category?: string | null
           comments?: number | null
           created_at?: string | null
@@ -1624,11 +1628,13 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           embedding?: string | null
+          engagement_rate?: number | null
           follower_tier?: string | null
           hashtags?: string[] | null
           id?: string
           likes?: number | null
           metadata?: Json | null
+          outlier_multiplier?: number | null
           platform?: string
           platform_video_id: string
           posted_at?: string | null
@@ -1644,6 +1650,7 @@ export type Database = {
           archived_at?: string | null
           author?: string | null
           author_url?: string | null
+          baseline_label?: string | null
           category?: string | null
           comments?: number | null
           created_at?: string | null
@@ -1651,11 +1658,13 @@ export type Database = {
           description?: string | null
           duration_seconds?: number | null
           embedding?: string | null
+          engagement_rate?: number | null
           follower_tier?: string | null
           hashtags?: string[] | null
           id?: string
           likes?: number | null
           metadata?: Json | null
+          outlier_multiplier?: number | null
           platform?: string
           platform_video_id?: string
           posted_at?: string | null
