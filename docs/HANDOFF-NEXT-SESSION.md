@@ -40,24 +40,31 @@ Read the four audit docs in `docs/` (all on this lane):
 Verified live on :3300. It is NOT env-flags (there are none in the UI). The gap is **gating / nav / wiring /
 not-built**, in 5 buckets:
 
-### A. Mode-gated — visible only with the right audience selected  ← the big GSI one
+> **✅ SESSION 2 UPDATE (2026-06-30, `lane/refine` tip `e0e06dba`, pushed not-merged):** buckets **A**, **B**,
+> and **E** are now RESOLVED (annotated inline below). Remaining live-UI gaps = **C** (Phase-3 analyze stubs)
+> and **D** (route skeletons, the inset-shine MATTE leftovers, premium-thread Generating, GSI Part-B modal).
+
+### A. ✅ RESOLVED (session 2) — Mode-gated GSI verbs now always visible
 - **Profile / Simulate / Predict verbs** are fully built + wired, but the skill menu is **audience-mode-scoped**.
   With the DEFAULT socials "General" audience you see creator skills (Explore/Ideas/Hooks/Script/Remix/Test/Chat);
   the 3 verbs only appear after selecting a **general-mode** audience (Analyst Panel / Hiring Panel / a Profiled
   person SIM). The 3 Home chips ("Test an idea / Profile a chat / Predict an outcome") are the only default entry
   point. **Why it feels missing:** a creator landing on the default audience never sees the GSI verbs in the menu.
   *Lever:* surface the verbs more (e.g. always-visible "General" section, or a verb switcher) — design decision.
+  **✅ FIXED `4a5748b5`:** shared `isSkillVisible()` shows the 3 verbs in an always-visible **General** group
+  in every audience mode (popover + `/` slash). No-General-audience Simulate/Predict still funnels to Build.
 
-### B. Built routes NOT in the primary nav (reachable only by deep-link / contextual entry)
-The sidebar has only **Audience / Library / Feed**. These shipped routes have **no nav entry**:
-- `/competitors`, `/competitors/[handle]`, `/competitors/compare` — competitor-intel subsystem (also the
-  `video-card` lucide + the eslint-`globalIgnores`'d `competitors/**` live here).
-- `/brand-deals` — monetization surface (earnings, deals, affiliate cards).
-- `/referrals` — referral stats.
-- `/discover`, `/discover/...` — the OLD discover surface; **superseded by `/feed`** but route still live (decide: redirect/retire vs link).
-- `/saved` — the OLD saved shelf; **superseded by `/library`** but route still live (same decide).
-- `/analyze`, `/analyze/[id]` — the Reading; reached by running Test/a Read, not nav (intentional).
-*Lever:* decide per route — add to nav, move under a menu, or retire the superseded ones (discover/saved).
+### B. ⚠️ MOSTLY RESOLVED (session 2) — Built routes were NOT in the primary nav
+The sidebar had only **Audience / Library / Feed**. These shipped routes had **no nav entry**:
+- `/competitors`, `/competitors/[handle]`, `/competitors/compare` — **✅ added to sidebar `2c139870`** (Binoculars).
+  (Also where the `video-card` lucide + the eslint-`globalIgnores`'d `competitors/**` live — both still open.)
+- `/brand-deals` — **✅ added to sidebar `2c139870`** as "Partnerships" (Handshake). ⚠️ carries the
+  `earnings-chart.tsx:97` next-build tsc error — fix before this nav reaches prod.
+- `/referrals` — **✅ added to sidebar `2c139870`** (Gift). Renders a Pro-gated upsell.
+- `/discover`, `/discover/...` — **✅ now `redirect("/feed")` `f508a6df`** (was a live duplicate of `/feed`).
+- `/saved` — **already** a `redirect("/library")` (handoff was stale — it was never a live duplicate).
+- `/analyze`, `/analyze/[id]` — the Reading; reached by running Test/a Read, not nav (intentional, left as-is).
+*Outcome:* all 3 real surfaces wired to nav; both superseded routes redirect. Nothing left to decide here.
 
 ### C. Built but stub / "coming soon" (visible, intentionally inert)
 - Feed Hooks "from your analyzed videos · 0" · Channels **Describe** (Search disabled) · Videos **Status/Analyzed**
@@ -66,15 +73,16 @@ The sidebar has only **Audience / Library / Feed**. These shipped routes have **
 ### D. NOT built yet → nothing to see (so it reads as "missing")
 - **Theme B route loading skeletons** — `home`, `analyze`, `library`, `audience`, `audience/[id]`, `audience/new`,
   `feed/channels`, `feed/hooks`, `saved` have no `loading.tsx` (blank/generic flash on nav). SSOT `ui-loading-states.md` §2.
-- **Theme C** dead-glass + MATTE debt (`GlassToast`/`GlassSkeleton` still present; toast/card inset-shine). §3.
+- **Theme C** MATTE debt — toast/card inset-shine still present. (`GlassToast`/`GlassSkeleton` ✅ deleted session 2 `6be82815`.) §3.
 - **A5/A6/A7** loading states (account-read view, script/remix caption, optimistic delete). §1.
 - **Premium-thread "Generating"** parks ~52s then flashes the rest (`hooks/route.ts:182/186/198`).
 - **GSI:** per-persona reaction MODAL (Part B) — note the cards DO have a "See how the room reacted to this hook"
   button now (AudienceLens opens), so verify what's actually missing vs the deferred full modal.
 
-### E. Data-quality dupes (visible but messy)
+### E. ✅ RESOLVED (session 2) — Data-quality dupes
 - **3× "Marcus Reyes"** general audiences in the switcher — Profile-bake created duplicates (no dedup on
-  re-profiling the same chat). Worth a dedup/cleanup + a guard in `runProfile`/`createAudience`.
+  re-profiling the same chat). **✅ FIXED `e0e06dba`:** `upsertProfileAudience()` updates a same-name General
+  SIM in place instead of inserting (+5 tests); prod DB cleaned to the single newest row (`fb6047a7`).
 
 ---
 
@@ -82,7 +90,7 @@ The sidebar has only **Audience / Library / Feed**. These shipped routes have **
 - 🔴 **Blocking:** Vercel prod stuck on the Jan-init commit (5mo undeployed; auto-deploy disconnected) · rate-limit HARDEN-01.
 - 🟠 **GitHub issues #7–#12** (remix race, apify guard, abort-timer leak, missing dep, apify-token, SSRF-low).
 - 🟠 **GSI carry-forward:** p05 WR-01/03/04 · Simulate person-framing · `earnings-chart.tsx:97` next-build tsc · 06-REVIEW Predict WR-01 (coercion overflow 500s) / WR-02 · 03-REVIEW WR-04/IN-02-04.
-- 🟢 **Engine (DISSECTION-BACKLOG):** A6 · A-T · S6 · R3 · R5 · E2 · G3 · G-D/RAG · gen-latency ~110s · provider-drift + delete dead `ai/{deepseek,gemini}.ts`.
+- 🟢 **Engine (DISSECTION-BACKLOG):** A6 · A-T · S6 · R3 · R5 · E2 · G3 · G-D/RAG · gen-latency ~110s · provider-*consolidation* (`ai/*` runs live on deepseek+gemini). ❌ NOT "delete dead `ai/*.ts`" — that claim is FALSE (files are live via `/competitors`; see OPEN-DEBT CLOSED §).
 - 🟢 **Shell:** the Theme A/B/C backlog above (`ui-loading-states.md`) + auth-guard `#0A0A0A`.
 - 🟢 **Frame:** `video-card` lucide→phosphor · `ui/{card,select,toast}` glass.
 - 🟢 **Feed:** the 3 analyze-pipeline stubs + trending-metric backfill + no-download ingest + multi-platform corpus + Save-filter persistence verify.
@@ -90,11 +98,14 @@ The sidebar has only **Audience / Library / Feed**. These shipped routes have **
 - 🧹 **Hygiene:** retire 4 landed worktrees (shell/frame/discover-feed/numen-gsi) + prune merged branches + 3 stale stashes + re-extract #60 creator-voice. (Owner said DON'T retire yet.)
 
 ## Suggested first moves for the fresh session
-1. **Decide the nav/visibility story** (bucket A + B) — it's the highest-leverage "why can't I see my work"
-   fix and it's mostly wiring/design, not new features: surface the GSI verbs + decide discover/saved/competitors/
-   brand-deals/referrals nav placement vs retire.
-2. **Quick wins:** A6 caption one-liners, the Marcus-Reyes dedup, delete dead `ai/*.ts`, Theme C dead-glass deletes.
-3. **Then** pick from the backlog by value (the Vercel deploy is the only true launch-blocker).
+1. ✅ **DONE (session 2)** — nav/visibility story (buckets A + B): GSI verbs surfaced, `/discover`→`/feed`,
+   3 routes wired to the sidebar.
+2. ⚠️ **PARTLY DONE (session 2)** — quick wins: ✅ Marcus-Reyes dedup, ✅ Theme C dead-glass deletes; the
+   `ai/*.ts` delete was ❌ FALSE (files live — not done, retired). Still open: **A6 caption one-liners**.
+3. **Next (recommended):** the two items session-2's nav work made *reachable* — `earnings-chart.tsx:97`
+   tsc (brand-deals now in nav + on the deploy path) and **06-REVIEW Predict WR-01** (coercion overflow
+   500s the now-surfaced Predict verb). Then `auth-guard` raw `#0A0A0A` + the P0 route skeletons.
+4. **Then** pick from the backlog by value (the Vercel deploy is the only true launch-blocker).
 
 ## Gotchas
 - Dev heap 3072+ (768 OOMs on browser waits). Use `node ./node_modules/next/dist/bin/next dev` (npx wrapper breaks dev).

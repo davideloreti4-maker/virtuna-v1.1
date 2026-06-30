@@ -23,6 +23,37 @@
 
 ---
 
+## ✅ CLOSED — refine-lane session 2 (2026-06-30)
+
+Shipped to `lane/refine` (pushed to `origin/lane/refine`, tip `e0e06dba`; NOT yet merged to main):
+
+1. **Merged-but-not-visible buckets A + B (nav/visibility)** — the owner's main concern, mostly resolved:
+   - **GSI verbs surfaced** (`4a5748b5`) — `composer-controls.tsx` now shows Profile/Simulate/Predict in an
+     always-visible **General** group regardless of audience mode (new shared `isSkillVisible()`; slash menu
+     reuses it). Browser-verified. Selecting Simulate/Predict without a General audience still funnels to
+     Build (§16.4) — unchanged, matches the Home chips.
+   - **`/discover` → `/feed` redirect** (`f508a6df`) — was a live duplicate of `/feed`; now `redirect("/feed")`
+     mirroring `/saved`→`/library`. `DiscoverClient` + `/api/discover` left for a later sweep.
+   - **Competitors / Partnerships / Referrals into the sidebar** (`2c139870`, `Sidebar.tsx`) — the 3 orphan
+     routes (no nav entry) now surfaced with phosphor icons; all 3 browser-verified to render. `/saved` was
+     already a redirect to `/library` (handoff was stale on that — no action needed).
+2. **Theme C dead-glass deleted** (`6be82815`) — `GlassToast` + `GlassSkeleton` (+ `SkeletonText`/`SkeletonCard`)
+   removed + barrel + stale `skeleton.tsx` comment. Zero consumers confirmed. *(See §Shell Theme C — the
+   inset-shine MATTE items remain.)*
+3. **3× Marcus Reyes dedup** (`e0e06dba`) — root-cause fix `upsertProfileAudience()` (find caller's own
+   same-name General SIM → update-in-place, else create; sentinel/virtual rows excluded), wired as
+   `runProfile`'s default save; +5 tests. Prod DB cleaned: deleted the 2 stale orphans (none FK-referenced),
+   kept newest `fb6047a7`.
+
+⚠️ **CORRECTION — the "Dead-file delete `ai/{deepseek,gemini}.ts`" item below is WRONG; do NOT delete.**
+Code-verified this session: `src/lib/ai/intelligence-service.ts:14-15` imports both, and it is **live** via
+`/competitors/[handle]` + `/api/intelligence`. The audit self-contradicted (§Engine: "runs live" row vs
+"no importers → remove" row). Deleting breaks the build + the competitors-intel feature. The only real item
+there is **provider consolidation** (the M-sized row), not a delete. Both prior session debt-dumps repeated
+the false "no importers" claim — it is hereby retired.
+
+---
+
 ## 🔴 Blocking
 
 ### 1. Production is stuck on the January init commit
@@ -108,7 +139,7 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 | S6 | `assertBlocksInRegistry` now caller-less after S4 cut → rewire vs cut | `block-registry.ts` | S |
 | — | **Gen latency ~110s** — `qwen3.7-plus` generation is the E2E bottleneck (SIM half fixed S3′) | gen pipeline | L |
 | — | Provider drift — competitor-intel `src/lib/ai/*` runs live on `deepseek-chat` + `gemini-2.5-flash-lite`; consolidation decision pending | `src/lib/ai/*` | M |
-| — | **Dead-file delete** — `src/lib/ai/deepseek.ts` + `gemini.ts` migrated, no importers → remove | `src/lib/ai/` | S |
+| — | ~~Dead-file delete — `ai/deepseek.ts` + `gemini.ts`~~ ❌ **RETIRED — FALSE (see CLOSED §, session 2):** they're LIVE via `intelligence-service.ts` → `/competitors` + `/api/intelligence`. Do NOT delete. Real item = the provider-consolidation row above. | `src/lib/ai/` | — |
 | G-D/M2 | RAG dead — `engine/retrieval/` + `engine/corpus/` entangled (~2.4K LOC); surgical cut deferred | engine | L |
 | D-R1 | drop Read judgment fields → pure-sensor (atomic 5-file + version bump) | — | M |
 | — | Optional hardening (low): bounded gen-retry backoff, SSRF bare-apex tighten (#9), apify try/catch (#8/#10) | — | S each |
@@ -145,7 +176,7 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
   `library` · `audience` · `audience/[id]` (P1), `audience/new` (P2), `competitors/[handle]`+`/compare` raw
   pulse (P3). M each.
 - **Theme C — MATTE/cleanup:** toast inset-shine (`toast.tsx:213`) · card inset-shine (`card.tsx:61`) ·
-  **delete dead `GlassToast` + `GlassSkeleton`** (both still present) · Button/Input loading→`<Spinner>`
+  ~~delete dead `GlassToast` + `GlassSkeleton`~~ ✅ **DONE (session 2, `6be82815`)** · Button/Input loading→`<Spinner>`
   (`button.tsx:179`/`input.tsx:191`) · pricing spinner · stale "coral" JSDoc · shared `<SurfaceEmptyState>`
   extract · board `audience-constants.ts:91` coral `#FF7F50` (XS). S each.
 
