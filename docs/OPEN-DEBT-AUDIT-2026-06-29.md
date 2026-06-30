@@ -110,7 +110,8 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
   3. **`next build` tsc baseline** — `src/components/app/brand-deals/earnings-chart.tsx:97`
      `<Tooltip content={EarningsTooltip}>` recharts-3 type mismatch fails the full-project tsc step
      (`next dev` skips it). Pre-existing since 05-01; part of the ~20-err baseline → see the eslint-refactor
-     debt below. **Confirmed on main.** S.
+     debt below. **Confirmed on main.** S. ⚑ **SUPERSEDED by the MVP brand-deals removal (owner, 2026-06-30,
+     HANDOFF "MVP decisions"):** deleting `brand-deals/**` removes this file → blocker gone. Do NOT fix; remove.
   4. **06-REVIEW (Predict verb) — appears UNRESOLVED on main** (06-REVIEW left "issues_found", not in any
      todo; see `WORKTREE-MERGE-AUDIT-2026-06-29.md` §C):
      **WR-01 (M)** `coercePredictResponse` salvages lean casing but not length/archetype overflow → a common

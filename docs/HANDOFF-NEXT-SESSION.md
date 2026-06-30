@@ -5,6 +5,18 @@
 > The four audit docs are the detail; this is the map + the **"merged-but-not-visible-in-UI"** catalog
 > (the thing the owner flagged: a lot is shipped but you can't find it in the running app).
 
+## ⚑ MVP decisions (owner, 2026-06-30) — do these
+- **Remove brand-deals (Partnerships) from MVP; restore at a later stage.** It was added to the sidebar this
+  session (`2c139870`); pull it back out. Do it as ONE clean removal commit so `git revert <sha>` restores it
+  whole later. Scope + bonus (kills the `earnings-chart.tsx:97` tsc blocker) in "Suggested first moves" #3.
+  *This is the next session's FIRST task.*
+
+## ⏱ Lane status (end of refine session 4, 2026-06-30)
+`origin/lane/refine` tip **`4b98435d`** — 8 commits this session (5 code + 3 docs), all pushed, **NOT merged
+to main**. Trunk clean on `origin/main`. Shipped this lane: GSI verbs surfaced · `/discover`→`/feed` ·
+3 routes→nav · Theme-C glass deleted · Marcus-Reyes dedup (code+prod-DB). Docs (this file + OPEN-DEBT) fully
+reconciled through session 4. **Open question for the owner: merge `lane/refine` to main, or keep batching?**
+
 ## Start here
 ```
 cd ~/virtuna-refine            # branch lane/refine (= origin/main + the refine docs)
@@ -58,8 +70,9 @@ not-built**, in 5 buckets:
 The sidebar had only **Audience / Library / Feed**. These shipped routes had **no nav entry**:
 - `/competitors`, `/competitors/[handle]`, `/competitors/compare` — **✅ added to sidebar `2c139870`** (Binoculars).
   (Also where the `video-card` lucide + the eslint-`globalIgnores`'d `competitors/**` live — both still open.)
-- `/brand-deals` — **✅ added to sidebar `2c139870`** as "Partnerships" (Handshake). ⚠️ carries the
-  `earnings-chart.tsx:97` next-build tsc error — fix before this nav reaches prod.
+- `/brand-deals` — **✅ added to sidebar `2c139870`** as "Partnerships" (Handshake). ⚑ **OWNER DECISION
+  (2026-06-30): REMOVE from MVP, restore later** — see "MVP decisions" at top. (Removing it also deletes
+  the `earnings-chart.tsx:97` next-build tsc error → no separate fix needed.)
 - `/referrals` — **✅ added to sidebar `2c139870`** (Gift). Renders a Pro-gated upsell.
 - `/discover`, `/discover/...` — **✅ now `redirect("/feed")` `f508a6df`** (was a live duplicate of `/feed`).
 - `/saved` — **already** a `redirect("/library")` (handoff was stale — it was never a live duplicate).
@@ -102,10 +115,16 @@ The sidebar had only **Audience / Library / Feed**. These shipped routes had **n
    3 routes wired to the sidebar.
 2. ⚠️ **PARTLY DONE (session 2)** — quick wins: ✅ Marcus-Reyes dedup, ✅ Theme C dead-glass deletes; the
    `ai/*.ts` delete was ❌ FALSE (files live — not done, retired). Still open: **A6 caption one-liners**.
-3. **Next (recommended):** the two items session-2's nav work made *reachable* — `earnings-chart.tsx:97`
-   tsc (brand-deals now in nav + on the deploy path) and **06-REVIEW Predict WR-01** (coercion overflow
-   500s the now-surfaced Predict verb). Then `auth-guard` raw `#0A0A0A` + the P0 route skeletons.
-4. **Then** pick from the backlog by value (the Vercel deploy is the only true launch-blocker).
+3. **⚑ FIRST next session (owner decision 2026-06-30): remove brand-deals from MVP** (restore later).
+   One clean removal commit so `git revert` brings it back: drop the **Partnerships nav item** (revert that
+   part of `2c139870` in `Sidebar.tsx` — the `Handshake` import, the `isOnBrandDeals` line, the NavItem) ·
+   remove the route `src/app/(app)/brand-deals/` (page + `loading.tsx`) · the components `src/components/app/brand-deals/**`
+   · the api routes `src/app/api/{deals,earnings,affiliate-links,programs}` (verify none shared elsewhere first).
+   **Bonus:** this deletes `earnings-chart.tsx` → the `earnings-chart.tsx:97` next-build tsc blocker is gone,
+   so DON'T separately "fix earnings-chart" — it's superseded. Verify `next build` / tsc after.
+4. **Then** **06-REVIEW Predict WR-01** (coercion overflow 500s the now-surfaced Predict verb) · `auth-guard`
+   raw `#0A0A0A` · P0 route skeletons (home/analyze) · video-card lucide→phosphor.
+5. **Then** pick from the backlog by value (the Vercel deploy is the only true launch-blocker).
 
 ## Gotchas
 - Dev heap 3072+ (768 OOMs on browser waits). Use `node ./node_modules/next/dist/bin/next dev` (npx wrapper breaks dev).
