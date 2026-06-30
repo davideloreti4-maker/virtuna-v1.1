@@ -92,7 +92,7 @@ The sidebar had only **Audience / Library / Feed**. These shipped routes had **n
 - 🟠 **GSI carry-forward:** p05 WR-01/03/04 · Simulate person-framing · `earnings-chart.tsx:97` next-build tsc · 06-REVIEW Predict WR-01 (coercion overflow 500s) / WR-02 · 03-REVIEW WR-04/IN-02-04.
 - 🟢 **Engine (DISSECTION-BACKLOG):** A6 · A-T · S6 · R3 · R5 · E2 · G3 · G-D/RAG · gen-latency ~110s · provider-*consolidation* (`ai/*` runs live on deepseek+gemini). ❌ NOT "delete dead `ai/*.ts`" — that claim is FALSE (files are live via `/competitors`; see OPEN-DEBT CLOSED §).
 - 🟢 **Shell:** the Theme A/B/C backlog above (`ui-loading-states.md`) + auth-guard `#0A0A0A`.
-- 🟢 **Frame:** `video-card` lucide→phosphor · `ui/{card,select,toast}` glass.
+- 🟢 **Frame** (triaged S3): only `competitors/detail/video-card.tsx` lucide→phosphor (4 icons, on GSI seam) is frame-scoped. `ui/{card,select,toast}` glass = GSI-adjacent defer; GSI-owned verb glass = DO NOT touch; `format` save path = skip (speculative). Sanctioned-not-debt list in OPEN-DEBT §Frame.
 - 🟢 **Feed:** the 3 analyze-pipeline stubs + trending-metric backfill + no-download ingest + multi-platform corpus + Save-filter persistence verify.
 - 🔸 **Post-GSI refactor:** ~20 LIVE files in `eslint.config.mjs` globalIgnores (refactor + un-ignore).
 - 🧹 **Hygiene:** retire 4 landed worktrees (shell/frame/discover-feed/numen-gsi) + prune merged branches + 3 stale stashes + re-extract #60 creator-voice. (Owner said DON'T retire yet.)

@@ -226,11 +226,28 @@ pass; the `HANDOFF-FEED-UI-REFINEMENT.md` list was a *pre-#90 plan*):
   Re-open only if the owner wants tints. Hooks v1 = seed-only shipped (analyzed = stub, item B above).
 - Still open: **Save-filter persistence** not exercised in the browser (present, assume wired — verify). S.
 
-## 🟢 Frame (all PRs merged; worktree clean)
+## 🟢 Frame (all PRs merged; worktree clean) — triaged 2026-06-30 (session 3, live-verified)
 
-- **video-card lucide → phosphor** (deferred = GSI seam). S.
-- **ui/card + ui/select + ui/toast glass holdouts** — SHARED primitives, GSI-adjacent, deferred. M.
-- **`format` save path** — speculative. S.
+**Only one item is actually frame-scoped + actionable:**
+- **`competitors/detail/video-card.tsx` lucide → phosphor** — 4 icons `Eye/Heart/MessageCircle/Share2`
+  (`import ... from "lucide-react"` line 1; used lines 71–83). Real, S. **Sits on the GSI seam**
+  (competitor-detail abuts GSI) — confirm it's not about to be reworked before touching.
+- **`format` save path** — speculative; **no confirmed defect → SKIP** unless a real bug surfaces.
+
+**NOT frame lane (routed elsewhere — do not pick up here):**
+- **Shared primitives `ui/{card,select,toast}.tsx`** — glass still live but editing ripples into GSI
+  surfaces → **defer** (GSI-adjacent). M.
+- **GSI-owned verb surfaces — DO NOT TOUCH** (GSI milestone owns these; token-seam rule = polish *around*,
+  not *into*): `app/{content-form,test-type-selector,survey-form,tiktok-account-selector,delete-test-modal}.tsx`,
+  `command-bar/CommandBar.tsx`, `primitives/{CommandPalette,GlassPanel}.tsx`, `tooltips/contextual-tooltip.tsx`
+  (full Raycast 137deg glass holdouts — spot-verified still present).
+- **Shell lane** (`lane/shell`): `auth-guard.tsx` P0 raw `#0A0A0A`+`border-zinc-800` · `settings/billing-section.tsx`
+  zinc/glass · sidebar inset. *(Also listed under §Shell above.)*
+
+**✅ Confirmed NOT debt — sanctioned, leave alone (re-flagged by auditors otherwise):**
+`saved/saved-item-card.tsx:334` + `competitors/remove-competitor-button.tsx:71` `blur(4px)` scrims (legit
+overlay scrims, not chrome glass) · `GlassPill.tsx` 137deg = legacy *comment* only (primitive is matte) ·
+`globals.css` token defs · `platforms.ts` brand colors · `__tests__/*` matte guards.
 
 ## 🟢 UI / Design
 
