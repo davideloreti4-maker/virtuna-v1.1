@@ -150,14 +150,19 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 
 - **Symptom:** the progress spine parks on "Generating / Drafting against your audience" for
   the full ~52s of a hooks run, then flashes Self-judge → Simulating → Ranking in the final ms.
+  **Working, not broken** — session-4 live log: `POST /api/tools/hooks 200 in 52s` (a 2nd run 55s),
+  cards resolve after the await. **Rule of thumb: >90s with no cards = a real SSE bug, not this.**
 - **Cause (not a bug):** `src/app/api/tools/hooks/route.ts:186` — `runHooksPipeline` is one
-  awaited call (GENERATE→SIM→GATE→RANK). The route emits `Generating: active` before it, then
-  (comment at `route.ts:202–205`) emits the remaining stages back-to-back after it, because
-  *"the runner doesn't expose per-phase callbacks."* All real latency buckets into one stage.
+  awaited call (GENERATE→SIM→GATE→RANK). The route emits `Generating: active` before it (`:182`),
+  marks it done (`:198`), then (comment at `route.ts:200–205`) emits the remaining stages back-to-back
+  (`:206–209`) because *"the runner doesn't expose per-phase callbacks."* All real latency buckets into one stage.
 - **Clean fix:** cross-lane engine ask — per-phase callbacks / `detail?` field on the stage SSE
   for a live counter (memory `lane-shell-premium-thread` flags this as the ONLY deferred shell item).
-- **Cheap client win:** cycle the sub-detail copy + show elapsed seconds during the Generating
-  stage so it shows life (no faked stage completion — respects the D-02 "real not timed" rule).
+  The seam exists: `progress-checklist.tsx:34` already renders `stage.detail ?? STAGE_COPY[name]`,
+  so the engine just needs to stream `detail` on the stage event.
+- **Cheap client win** (file: `src/components/thread/progress-checklist.tsx`, ~`:86` active sub-detail):
+  cycle the sub-detail copy + show elapsed seconds during the Generating stage so it shows life (no faked
+  stage completion — respects the D-02 "real not timed" rule).
 - Size: S (client win) / M (engine callbacks).
 
 **Shell-lane peripheral chrome (separate from premium-thread; code-verified on main):**
