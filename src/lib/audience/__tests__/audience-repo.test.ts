@@ -54,6 +54,7 @@ import {
   getAudience,
   createAudience,
   updateAudience,
+  upsertProfileAudience,
   deleteAudience,
 } from "../audience-repo";
 
@@ -415,6 +416,124 @@ describe("deleteAudience — calls .from('audiences').delete().eq('id', ...)", (
     expect(sb.from).toHaveBeenCalledWith("audiences");
     expect(sb._chain.delete).toHaveBeenCalled();
     expect(sb._chain.eq).toHaveBeenCalledWith("id", "audience-to-delete");
+  });
+});
+
+// ─── upsertProfileAudience — re-profile dedup (refine lane) ─────────────────────
+
+describe("upsertProfileAudience — dedup re-profiled General SIMs by name", () => {
+  const generalRow: Audience = {
+    id: "db-marcus-1",
+    user_id: "test-user-id",
+    name: "Marcus Reyes",
+    type: "target",
+    platform: "custom",
+    goal_label: null,
+    goal_intent: null,
+    is_general: false,
+    is_preset: false,
+    mode: "general",
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [],
+    profile: null,
+    calibration: null,
+    created_at: "2026-06-18T00:00:00Z",
+    updated_at: "2026-06-18T00:00:00Z",
+  };
+
+  const profileInput: Partial<Audience> = {
+    name: "Marcus Reyes",
+    type: "target",
+    platform: "custom",
+    mode: "general",
+    persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+    personas: [],
+  };
+
+  it("UPDATES an existing same-name General audience in place (no duplicate insert)", async () => {
+    const sb = makeSupabaseMock();
+    sb._chain.order.mockResolvedValue({ data: [rowToDb(generalRow)], error: null });
+    sb._chain.single.mockResolvedValue({ data: rowToDb(generalRow), error: null });
+
+    await upsertProfileAudience(
+      sb as unknown as Parameters<typeof upsertProfileAudience>[0],
+      profileInput,
+    );
+
+    expect(sb._chain.update).toHaveBeenCalled();
+    expect(sb._chain.eq).toHaveBeenCalledWith("id", "db-marcus-1");
+    expect(sb._chain.insert).not.toHaveBeenCalled();
+  });
+
+  it("matches case-insensitively (a re-profile with different casing still updates)", async () => {
+    const sb = makeSupabaseMock();
+    sb._chain.order.mockResolvedValue({ data: [rowToDb(generalRow)], error: null });
+    sb._chain.single.mockResolvedValue({ data: rowToDb(generalRow), error: null });
+
+    await upsertProfileAudience(sb as unknown as Parameters<typeof upsertProfileAudience>[0], {
+      ...profileInput,
+      name: "marcus reyes",
+    });
+
+    expect(sb._chain.update).toHaveBeenCalled();
+    expect(sb._chain.insert).not.toHaveBeenCalled();
+  });
+
+  it("CREATES when no same-name General audience exists", async () => {
+    const sb = makeSupabaseMock();
+    sb._chain.order.mockResolvedValue({ data: [], error: null });
+    sb._chain.single.mockResolvedValue({
+      data: rowToDb({ ...generalRow, id: "new-id", name: "Someone Else" }),
+      error: null,
+    });
+
+    await upsertProfileAudience(sb as unknown as Parameters<typeof upsertProfileAudience>[0], {
+      ...profileInput,
+      name: "Someone Else",
+    });
+
+    expect(sb._chain.insert).toHaveBeenCalled();
+    expect(sb._chain.update).not.toHaveBeenCalled();
+  });
+
+  it("does NOT dedup socials-mode audiences (the guard is General-only)", async () => {
+    const sb = makeSupabaseMock();
+    // A same-name socials row exists, but a socials-mode save must never match it.
+    sb._chain.order.mockResolvedValue({
+      data: [rowToDb({ ...generalRow, mode: "socials" })],
+      error: null,
+    });
+    sb._chain.single.mockResolvedValue({
+      data: rowToDb({ ...generalRow, mode: "socials" }),
+      error: null,
+    });
+
+    await upsertProfileAudience(sb as unknown as Parameters<typeof upsertProfileAudience>[0], {
+      ...profileInput,
+      mode: "socials",
+    });
+
+    expect(sb._chain.insert).toHaveBeenCalled();
+    expect(sb._chain.update).not.toHaveBeenCalled();
+  });
+
+  it("never collides with the virtual 'General' constant (a subject named 'General' still inserts)", async () => {
+    const sb = makeSupabaseMock();
+    // order→[] means listAudiences still prepends the virtual GENERAL_AUDIENCE (sentinel id
+    // 'general'), which the match excludes — so a real subject named "General" is created.
+    sb._chain.order.mockResolvedValue({ data: [], error: null });
+    sb._chain.single.mockResolvedValue({
+      data: rowToDb({ ...generalRow, id: "new-id", name: "General" }),
+      error: null,
+    });
+
+    await upsertProfileAudience(sb as unknown as Parameters<typeof upsertProfileAudience>[0], {
+      ...profileInput,
+      name: "General",
+    });
+
+    expect(sb._chain.insert).toHaveBeenCalled();
+    expect(sb._chain.update).not.toHaveBeenCalled();
   });
 });
 
