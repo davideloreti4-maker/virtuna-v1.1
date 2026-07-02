@@ -39,16 +39,22 @@ export type Lean = (typeof LEANS)[number];
 
 // ─── Per-analyst schema ─────────────────────────────────────────────────────────
 // .strict() rejects a smuggled per-analyst number/probability/score (D-01 / T-06-01).
-// factor: the named driver (the "receipt") — 1..160 chars (one readable phrase, fits the chip).
-// reasoning: 1..240 chars (the panel-drill quote).
+// factor: the named driver (the "receipt") — 1..FACTOR_MAX chars (one readable phrase, fits the chip).
+// reasoning: 1..REASONING_MAX chars (the panel-drill quote).
+// The max caps are shared with the coercion truncation (WR-01) so the two never drift.
+
+/** Max chars for a per-analyst `factor` (one readable phrase — fits the chip). */
+export const FACTOR_MAX = 160;
+/** Max chars for a per-analyst `reasoning` (the panel-drill quote). */
+export const REASONING_MAX = 240;
 
 export const PredictAnalystSchema = z
   .object({
     archetype: z.string(),
     lean: z.enum(LEANS),
-    factor: z.string().min(1).max(160),
+    factor: z.string().min(1).max(FACTOR_MAX),
     factorDirection: z.enum(["for", "against"]),
-    reasoning: z.string().min(1).max(240),
+    reasoning: z.string().min(1).max(REASONING_MAX),
   })
   .strict();
 
@@ -76,6 +82,9 @@ export type PredictPanelResult = z.infer<typeof PredictPanelResultSchema>;
 //  2. Bare top-level array of analysts → { analysts: [...] }
 //  3. lean casing variants ("LEAN_YES", "Lean Yes") → lowercase + underscore-normalize
 //  4. factorDirection casing variants ("For", "AGAINST") → lowercase
+//  5. over-long factor/reasoning → truncated to the schema cap (WR-01) — a verbose small model
+//     that blows factor>FACTOR_MAX or reasoning>REASONING_MAX would otherwise fail Zod .max()
+//     and 500 the WHOLE panel; trimming the tail salvages the signal without fabricating it.
 //
 // An unknown/unparseable lean salvages to the NEUTRAL "toss_up" (documented — never a
 // fabricated yes/no signal). Coercion NEVER bypasses the Zod gate (T-06-02).
@@ -85,6 +94,16 @@ function normalizeLean(v: unknown): string {
   if (typeof v !== "string") return "toss_up";
   const norm = v.toLowerCase().trim().replace(/[\s-]+/g, "_");
   return (LEANS as readonly string[]).includes(norm) ? norm : "toss_up";
+}
+
+/**
+ * Stringify + truncate an over-long value to `max` chars (WR-01 salvage). Trims the tail of a
+ * verbose-model overflow so it clears Zod `.max()` — never fabricates: a shorter string keeps
+ * the same leading signal. `archetype` is deliberately NOT capped (it maps to the roster).
+ */
+function capLen(v: unknown, max: number): string {
+  const s = typeof v === "string" ? v : String(v ?? "");
+  return s.length > max ? s.slice(0, max) : s;
 }
 
 /** Lowercase + trim the for/against direction; leave an unknown value for Zod to reject. */
@@ -126,9 +145,9 @@ export function coercePredictResponse(raw: unknown): unknown {
       return {
         archetype: String(aa.archetype ?? ""),
         lean: normalizeLean(aa.lean),
-        factor: String(aa.factor ?? ""),
+        factor: capLen(aa.factor, FACTOR_MAX),
         factorDirection: normalizeDirection(aa.factorDirection),
-        reasoning: String(aa.reasoning ?? ""),
+        reasoning: capLen(aa.reasoning, REASONING_MAX),
       };
     }),
   };
