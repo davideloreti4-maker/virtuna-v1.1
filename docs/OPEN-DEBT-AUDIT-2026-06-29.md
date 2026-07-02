@@ -131,10 +131,11 @@ current code (the owner asked to confirm accuracy) — several were stale or int
 
 ## ✅ CLOSED / CORRECTED — refine-lane session 8 (2026-07-02, refactor + audit-verify)
 
-Batched on `lane/refine` (not yet merged). One fix shipped; two queue items verified out.
+Batched on `lane/refine`. E2 + SSOT merged to main via PR #95 (`c9afa5a0`); Theme-B skeletons on the
+lane after. Two shipped; two queue items verified out.
 
 **Fixed:**
-1. **E2 — shared `resolveThreadAudience` helper** (`52f657fe`) — the per-thread active-audience read
+1. **E2 — shared `resolveThreadAudience` helper** (`52f657fe`, merged #95) — the per-thread active-audience read
    (D-04 pin) was duplicated as a ~10-line block across 6 generative tool routes
    (ideas/hooks/script/chat/react/explore). Extracted to
    `src/lib/audience/resolve-thread-audience.ts`. **Net −67 lines**; dropped the stale
@@ -142,6 +143,14 @@ Batched on `lane/refine` (not yet merged). One fix shipped; two queue items veri
    (not audience-repo) so the helper's `getAudience`/`GENERAL_AUDIENCE` imports resolve through the
    cross-module binding — the existing route-test mocks (react's `getAudience` spy + CR-01 assertion,
    explore's full module replace) keep passing **unchanged**. +5-case unit test. 50 tests green, tsc + eslint clean.
+2. **Theme-B route loading skeletons** (`c100c9f8`) — added route-level `loading.tsx` for the 4 (app) routes
+   that lacked one and fell back to the generic `(app)/loading.tsx` dashboard grid: `library`, `audience`,
+   `audience/[id]`, `audience/new`. Each mirrors its page's real layout verbatim (SavedShelf chrome + 6-card
+   grid / AudienceManager header + list / a verbatim copy of the page's own client DetailSkeleton / form
+   field-groups) → shape-matched, no layout shift. `competitors/[handle]` + `/compare` (handoff P3) were
+   **already covered** by pre-existing `loading.tsx` (handoff stale). Verified authed on dev :3300: tsc +
+   eslint clean, all 4 render final content with 0 console errors, skeleton renders cleanly in-shell. Theme B
+   is now complete bar the deferred `analyze` Reading-internal state.
 
 **CORRECTED (verified NOT the low-risk items the auditor rated — do not re-open as quick wins):**
 - **A6 `(supabase as any)` casts — MIS-SCOPED, NOT a low-risk strip.** Two distinct blockers:
@@ -290,10 +299,14 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
 - **Theme A:** A5 Account-Read dedicated loading view (M) · A6 Script/Remix skeleton caption
   (`script-thread-view.tsx:114`/`remix-thread-view.tsx:115`, S) · A7 optimistic thread delete
   (`use-threads.ts:73`, S) · Explore double skeleton+checklist (S).
-- **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · `analyze` (P0) **deferred**
-  — its `layout.tsx:26 fallback={null}` is the inert inner-Reading Suspense; the real fix is a Reading-internal
-  loading state (see the session-6 CORRECTION). STILL OPEN: `library` · `audience` · `audience/[id]` (P1),
-  `audience/new` (P2), `competitors/[handle]`+`/compare` raw pulse (P3). M each.
+- **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · ✅ **`library` · `audience` ·
+  `audience/[id]` (P1) + `audience/new` (P2) DONE (session 8, `c100c9f8`)** — each mirrors its page's real
+  layout verbatim (SavedShelf chrome / AudienceManager list / DetailSkeleton copy / form field-groups); tsc +
+  eslint clean, all 4 render with 0 console errors, skeleton renders cleanly in-shell. `competitors/[handle]` +
+  `/compare` (P3) were **already covered** (own `loading.tsx` pre-existing — handoff was stale). `analyze` (P0)
+  **deferred** — its `layout.tsx:26 fallback={null}` is the inert inner-Reading Suspense; the real fix is a
+  Reading-internal loading state (see the session-6 CORRECTION). **Theme B is now effectively complete** bar
+  the deferred `analyze` Reading-internal state.
 - **Theme C — MATTE/cleanup:** toast inset-shine (`toast.tsx:213`) · card inset-shine (`card.tsx:61`) ·
   ~~delete dead `GlassToast` + `GlassSkeleton`~~ ✅ **DONE (session 2, `6be82815`)** · Button/Input loading→`<Spinner>`
   (`button.tsx:179`/`input.tsx:191`) · pricing spinner · stale "coral" JSDoc · shared `<SurfaceEmptyState>`
