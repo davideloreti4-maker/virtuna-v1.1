@@ -34,6 +34,12 @@ import type { StimulusInput } from "@/lib/engine/stimulus/types";
 /** Text-evidence cap (chars) — enforced server-side (AR-04-02 / DoS, T-05-12). */
 const MAX_EVIDENCE_LENGTH = 8000;
 
+/** Decoded-size caps for UPLOADED evidence (WR-01). The text path caps chars; the file
+ *  paths must cap bytes too, or an upload bypasses the DoS guard entirely. Checked from the
+ *  base64 string length (≈4/3 of decoded bytes) so we never allocate an oversized buffer. */
+const MAX_FILE_TEXT_BYTES = 1_000_000; // ~1MB decoded (.txt / .md)
+const MAX_IMAGE_BYTES = 10_000_000; // ~10MB decoded (screenshot)
+
 interface UploadedFile {
   name: string;
   type: string;
@@ -95,6 +101,16 @@ export async function POST(request: Request): Promise<Response> {
     }
     case "file_text":
     case "image": {
+      // WR-01: cap the DECODED size BEFORE fileFromBody decodes it, so an upload can't bypass
+      // the text-path DoS guard and we never allocate an oversized buffer. base64 ≈ 4/3 of bytes.
+      const capBytes = kind === "image" ? MAX_IMAGE_BYTES : MAX_FILE_TEXT_BYTES;
+      const rawB64 = (body.file as { dataBase64?: unknown } | null)?.dataBase64;
+      if (typeof rawB64 === "string" && Math.floor((rawB64.length * 3) / 4) > capBytes) {
+        return Response.json(
+          { error: `file must be at most ${Math.round(capBytes / 1_000_000)}MB` },
+          { status: 400 },
+        );
+      }
       const file = fileFromBody(body.file);
       if (!file) {
         return Response.json({ error: "file is required" }, { status: 400 });
