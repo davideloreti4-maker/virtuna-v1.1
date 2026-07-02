@@ -72,6 +72,8 @@ import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { RemixThreadView } from "@/components/thread/remix-thread-view";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
+import { useAccountReadStream } from "@/hooks/queries/use-account-read-stream";
+import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
@@ -109,6 +111,9 @@ const ERROR_UPLOAD_FAILED =
 // Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat — P5. Script/Remix — P6 (06-05).
 const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   test: PLACEHOLDER_EMPTY,
+  // Account Read takes no input (one-tap; the read resolves your own handle server-side),
+  // so the field is inert — canSubmit is false and the in-view CTA is the entry.
+  account: "Read your own account — no input needed, just run it…",
   idea: "What idea or topic do you want to test? (or leave empty for Auto)",
   hooks: "What topic do you want hooks for? (or leave empty for Auto)",
   chat: "Ask anything…",
@@ -364,9 +369,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // (Pitfall 1 — Explore renders in-thread in /home, NEVER navigates to /analyze/[id]).
   const explore = useExploreStream();
   const exploreBlocks = explore.toBlocks();
+  // Account Read (A5) — one-tap self-Read; owns its idle CTA + profile-shaped skeleton.
+  const account = useAccountReadStream();
   // Explore view ALWAYS shows when the explore chip is active (it owns its idle
   // quick-actions, exactly like ChatThreadView — D-07/EXPLORE-04, unconditional gate).
   const showExploreView = activeTool === "explore";
+  const showAccountView = activeTool === "account";
+  // Account content = streaming or a result block (does NOT flip on tool selection alone).
+  const hasAccountContent = account.isStreaming || account.block !== null;
 
   // ── Tracked accounts presence (Plan 11-07 — drives card-2 honest degrade) ──
   // Whether the creator has any tracked accounts; gates ExploreThreadView card 2
@@ -400,7 +410,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
     showChatView || // chat view always shown when chip is active (owns empty state)
-    showExploreView; // explore view always shown when chip is active (owns idle quick-actions)
+    showExploreView || // explore view always shown when chip is active (owns idle quick-actions)
+    showAccountView; // account read view always shown when chip is active (owns idle CTA)
 
   // Notify parent whenever thread presence changes (HomePageLayout uses this).
   useEffect(() => {
@@ -463,6 +474,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
+    hasAccountContent ||
     !!lastUserTurn;
 
   // Notify parent whenever conversation content changes (welcome hero visibility).
@@ -514,7 +526,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 // Profile (07-04): never depends on the topic field — the evidence-drop
                 // affordance is the entry (handled in onSubmitForm via evidenceFile). The
                 // bare topic submit is inert for Profile.
-                : activeTool === "profile"
+                : activeTool === "profile" || activeTool === "account"
                   ? false
                   : (isValidTikTok || file !== null) && !submitting;
 
@@ -542,6 +554,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       script.reset();
       remix.reset();
       explore.reset();
+      account.reset();
       setLastUserTurn(null);
       setPersistedIdeaBlocks([]);
       setPersistedHookBlocks([]);
@@ -1691,6 +1704,19 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           onRetry={() => void explore.start({})}
           onThreadReload={() => void reloadOpenThread()}
           {...threadPresentation}
+        />
+      )}
+
+      {/* Account Read thread view (A5) — one-tap self-Read. Owns its idle CTA + the
+          profile-shaped loading skeleton; canSubmit is false (the in-view CTA is the entry). */}
+      {showAccountView && (
+        <AccountReadThreadView
+          block={account.block}
+          isStreaming={account.isStreaming}
+          error={account.error}
+          fallbackMessage={account.fallbackMessage}
+          onRun={() => void account.start()}
+          userTurn={lastUserTurn}
         />
       )}
     </>
