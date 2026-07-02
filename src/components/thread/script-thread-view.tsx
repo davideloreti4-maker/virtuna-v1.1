@@ -118,7 +118,9 @@ export function ScriptThreadView({
         <ThreadShell userTurn={userTurn}>
           {isStreaming && stages.length > 0 && <ProgressChecklist stages={stages} />}
 
-          {isStreaming && stages.length === 0 && <ThreadLoadingSkeleton variant="skill" />}
+          {isStreaming && stages.length === 0 && (
+            <ThreadLoadingSkeleton variant="skill" caption="Drafting your script…" />
+          )}
 
           {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 

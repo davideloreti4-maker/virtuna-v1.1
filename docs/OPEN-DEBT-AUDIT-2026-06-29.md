@@ -352,15 +352,27 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 **Shell loading-states backlog — LARGELY OPEN** (SSOT `docs/subsystems/ui-loading-states.md`; full
 file:line + code-verification in `WORKTREE-MERGE-AUDIT-2026-06-29.md` §A). Only A1–A4 + some #72 route
 skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still open on main:
-- **Theme A:** A5 Account-Read dedicated loading view (M, **still open** — needs a new
-  `account-read-thread-view.tsx` + reroute) · ✅ **A7 optimistic thread delete DONE (session 10,
-  `0256d187`)** (`use-threads.ts` `useArchiveThread` — `onMutate` remove + rollback + settle) ·
-  ✅ **Explore double skeleton+checklist DONE (session 10)** (gated the skeleton behind
-  `stages.length===0`, matching every other view; caption still shows pre-stages).
-  ⚠️ **A6 Script/Remix skeleton caption — DEFERRED, SSOT WAS WRONG:** it is NOT "one-line each."
-  `use-script-stream.ts`/`use-remix-stream.ts` **do not track `statusMessage` at all** (only
-  ideas/explore/hooks streams do), and the views take no such prop — surfacing it is a stream-hook +
-  SSE-protocol + prop-plumbing feature add, not a cleanup. (SSOT `ui-loading-states.md` §A6 corrected.)
+- **Theme A:**
+  - ✅ **A7 optimistic thread delete DONE (session 10, `0256d187`)** (`use-threads.ts` `useArchiveThread` —
+    `onMutate` remove + rollback + settle).
+  - ✅ **Explore double skeleton+checklist DONE (session 10)** (gated the skeleton behind
+    `stages.length===0`, matching every other view; caption still shows pre-stages).
+  - ✅ **A6 Script/Remix skeleton caption DONE (session 11)** — but NOT the way the SSOT framed it.
+    Investigation: the skeleton only renders while `stages.length===0` (pre-first-stage), and the FIRST
+    SSE event both routes emit is a `stage` (`Generating`/`Resolving`) → the skeleton is replaced the
+    instant streaming produces anything. The full `statusMessage`→caption plumbing (like hooks/ideas)
+    would render **nothing** (it's vestigial there too — status fires *after* the first stage; generation
+    is already narrated by `ProgressChecklist` `STAGE_COPY`). The honest fix for the actual symptom
+    ("generic *Running your skill…*") is a **specific static caption**: `script-thread-view.tsx` →
+    "Drafting your script…", `remix-thread-view.tsx` → "Reworking the video for your audience…". 1 line each.
+  - ⛔ **A5 Account-Read dedicated loading view — BLOCKED, SSOT PREMISE WAS WRONG (session 11):** the SSOT
+    claimed "Account Read is delivered through the chat surface" — it is **not delivered at all**. Account
+    Read is a **built-but-UNWIRED** skill: `/api/account-read` SSE route (emits `status`/`fallback`/`done{block}`)
+    + refined `account-read-block.tsx` renderer exist (last touched #74), but **zero client code triggers
+    it** — no `fetch`/`EventSource`/stream-hook, not a `ToolId`, no thread-view slot, no button. Building a
+    shaped loading skeleton now = **orphan UI for an unreachable feature** (dead code, untestable). A5 is
+    therefore **blocked on first wiring the trigger** — a real feature needing a product decision on the
+    entry point (skill chip? profile-page button? chat quick-action?), NOT a refine loading-view fix.
 - **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · ✅ **`library` · `audience` ·
   `audience/[id]` (P1) + `audience/new` (P2) DONE (session 8, `c100c9f8`)** — each mirrors its page's real
   layout verbatim (SavedShelf chrome / AudienceManager list / DetailSkeleton copy / form field-groups); tsc +
