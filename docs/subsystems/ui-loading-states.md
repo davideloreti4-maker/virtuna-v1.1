@@ -100,31 +100,37 @@ placeholder `band="Mixed" · fraction="–"`, then **silently** rewrite the band
 `animate-pulse` (or "scoring…" micro-label) on the proof unit while `!scored`. Touches the two stream hooks,
 the block prop type, and `ProofUnit`.
 
-### A5 — Account Read has no dedicated loading view  ·  size M
+### A5 — Account Read has no dedicated loading view  ·  ⛔ BLOCKED (premise wrong)
 
-**Symptom.** While the Account Read scrape + LLM analysis runs (seconds→tens of seconds), the user sees
-`ThreadLoadingSkeleton variant="chat"` (prose text-lines) — the wrong shape for a profile read.
+**Symptom (as originally filed).** Account Read supposedly shows `ThreadLoadingSkeleton variant="chat"` (prose
+lines) — the wrong shape for a profile read.
 
-**Mechanism.** No `account-read-thread-view.tsx`; Account Read is delivered through the chat surface
-(`src/components/thread/chat-thread-view.tsx:149`).
+**CORRECTED (session 11) — the premise is stale.** Account Read is **not delivered through the chat surface**;
+it is **not delivered at all**. It is a **built-but-UNWIRED** skill: the `/api/account-read` SSE route (emits
+`status`/`fallback`/`error`/`done{block}`) and the refined `account-read-block.tsx` renderer exist (last touched
+#74), but **no client code triggers it** — no `fetch`/`EventSource`/stream-hook calls `/api/account-read`, it is
+**not a `ToolId`** (`composer-controls.tsx` union), there is no thread-view slot in `composer.tsx`, and no button
+anywhere invokes it. `account-read.ts` is called only by its own route; the route is called by nobody.
 
-**Fix direction.** Add a dedicated `account-read-thread-view.tsx` with a shaped skeleton (mock profile header +
-content bars).
+**Fix direction.** A5 is **blocked on first wiring the trigger** — that is a real feature (entry-point product
+decision: skill chip? profile-page button? chat quick-action?) + client stream hook + a dedicated
+`account-read-thread-view.tsx`. Building the shaped skeleton before the trigger exists = orphan UI for an
+unreachable feature (dead code, untestable). Do NOT build it standalone; wire the skill first.
 
-### A6 — Script / Remix skeleton drops the status caption  ·  size S
+### A6 — Script / Remix skeleton drops the status caption  ·  ✅ DONE (session 11)
 
-**Symptom.** Script and Remix show only the generic "Running your skill…" even when the SSE provides a more
-specific `statusMessage`.
+**Symptom.** Script and Remix showed only the generic "Running your skill…" default.
 
-**Mechanism.** `script-thread-view.tsx:114` and `remix-thread-view.tsx:115` render
-`<ThreadLoadingSkeleton variant="skill" />` with **no `caption` prop** — unlike hooks/ideas which pass
-`caption={statusMessage ?? undefined}`.
+**Investigation (session 11) — the statusMessage plumbing is a no-op here.** The skeleton renders only while
+`isStreaming && stages.length===0` (pre-first-stage). Both routes' FIRST emitted SSE event is a `stage`
+(`script`→`Generating`, `remix`→`Resolving`), which flips `stages.length` to 1 and **replaces the skeleton
+immediately**. The hooks/ideas `caption={statusMessage}` pattern is vestigial for the same reason (their
+`status` event fires *after* the first stage; during generation `ProgressChecklist`'s `STAGE_COPY` already
+narrates). So adding `statusMessage` state + SSE parsing + prop plumbing would render **nothing new**.
 
-**Fix direction.** ⚠️ **CORRECTED (session 10) — NOT "one-line each."** `use-script-stream.ts` and
-`use-remix-stream.ts` **do not track `statusMessage` at all** (only `use-ideas-stream`/`use-explore-stream`/
-`use-hooks-stream` do), and `ScriptThreadViewProps`/`RemixThreadViewProps` expose no such prop. Surfacing a
-caption here is a real feature add — add `statusMessage` state + SSE parsing to both stream hooks, thread it
-through the parents (`script-card-block`/`remix-card-block`/`composer`), then pass the caption. Sized S→M, deferred.
+**Fix shipped.** A **specific static caption** — the honest fix for the actual symptom, 1 line per view:
+`script-thread-view.tsx` → `caption="Drafting your script…"`, `remix-thread-view.tsx` →
+`caption="Reworking the video for your audience…"`. tsc clean.
 
 ### A7 — Thread delete is not optimistic  ·  size S
 

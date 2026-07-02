@@ -114,7 +114,9 @@ export function RemixThreadView({
         <ThreadShell userTurn={userTurn}>
           {isStreaming && stages.length > 0 && <ProgressChecklist stages={stages} />}
 
-          {isStreaming && stages.length === 0 && <ThreadLoadingSkeleton variant="skill" />}
+          {isStreaming && stages.length === 0 && (
+            <ThreadLoadingSkeleton variant="skill" caption="Reworking the video for your audience…" />
+          )}
 
           {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 
