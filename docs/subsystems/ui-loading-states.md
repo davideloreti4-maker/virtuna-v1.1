@@ -120,7 +120,11 @@ specific `statusMessage`.
 `<ThreadLoadingSkeleton variant="skill" />` with **no `caption` prop** — unlike hooks/ideas which pass
 `caption={statusMessage ?? undefined}`.
 
-**Fix direction.** Pass `statusMessage` through. One-line each.
+**Fix direction.** ⚠️ **CORRECTED (session 10) — NOT "one-line each."** `use-script-stream.ts` and
+`use-remix-stream.ts` **do not track `statusMessage` at all** (only `use-ideas-stream`/`use-explore-stream`/
+`use-hooks-stream` do), and `ScriptThreadViewProps`/`RemixThreadViewProps` expose no such prop. Surfacing a
+caption here is a real feature add — add `statusMessage` state + SSE parsing to both stream hooks, thread it
+through the parents (`script-card-block`/`remix-card-block`/`composer`), then pass the caption. Sized S→M, deferred.
 
 ### A7 — Thread delete is not optimistic  ·  size S
 

@@ -352,9 +352,15 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 **Shell loading-states backlog — LARGELY OPEN** (SSOT `docs/subsystems/ui-loading-states.md`; full
 file:line + code-verification in `WORKTREE-MERGE-AUDIT-2026-06-29.md` §A). Only A1–A4 + some #72 route
 skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still open on main:
-- **Theme A:** A5 Account-Read dedicated loading view (M) · A6 Script/Remix skeleton caption
-  (`script-thread-view.tsx:114`/`remix-thread-view.tsx:115`, S) · A7 optimistic thread delete
-  (`use-threads.ts:73`, S) · Explore double skeleton+checklist (S).
+- **Theme A:** A5 Account-Read dedicated loading view (M, **still open** — needs a new
+  `account-read-thread-view.tsx` + reroute) · ✅ **A7 optimistic thread delete DONE (session 10,
+  `0256d187`)** (`use-threads.ts` `useArchiveThread` — `onMutate` remove + rollback + settle) ·
+  ✅ **Explore double skeleton+checklist DONE (session 10)** (gated the skeleton behind
+  `stages.length===0`, matching every other view; caption still shows pre-stages).
+  ⚠️ **A6 Script/Remix skeleton caption — DEFERRED, SSOT WAS WRONG:** it is NOT "one-line each."
+  `use-script-stream.ts`/`use-remix-stream.ts` **do not track `statusMessage` at all** (only
+  ideas/explore/hooks streams do), and the views take no such prop — surfacing it is a stream-hook +
+  SSE-protocol + prop-plumbing feature add, not a cleanup. (SSOT `ui-loading-states.md` §A6 corrected.)
 - **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · ✅ **`library` · `audience` ·
   `audience/[id]` (P1) + `audience/new` (P2) DONE (session 8, `c100c9f8`)** — each mirrors its page's real
   layout verbatim (SavedShelf chrome / AudienceManager list / DetailSkeleton copy / form field-groups); tsc +
@@ -363,10 +369,24 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
   **deferred** — its `layout.tsx:26 fallback={null}` is the inert inner-Reading Suspense; the real fix is a
   Reading-internal loading state (see the session-6 CORRECTION). **Theme B is now effectively complete** bar
   the deferred `analyze` Reading-internal state.
-- **Theme C — MATTE/cleanup:** toast inset-shine (`toast.tsx:213`) · card inset-shine (`card.tsx:61`) ·
-  ~~delete dead `GlassToast` + `GlassSkeleton`~~ ✅ **DONE (session 2, `6be82815`)** · Button/Input loading→`<Spinner>`
-  (`button.tsx:179`/`input.tsx:191`) · pricing spinner · stale "coral" JSDoc · shared `<SurfaceEmptyState>`
-  extract · board `audience-constants.ts:91` coral `#FF7F50` (XS). S each.
+- **Theme C — MATTE/cleanup (session 10, `0256d187`):**
+  - ✅ **Button/Input loading→`<Spinner>` DONE** — last two lucide `Loader2` holdouts swapped for the
+    design-system `<Spinner>` (`button.tsx`/`input.tsx`).
+  - ✅ **pricing spinner DONE** — bespoke ring-spinner `<div>` → `<Spinner size="sm">` (`pricing-section.tsx`).
+  - ✅ **board `audience-constants.ts` coral `#FF7F50` DONE** — resolved by **deleting the dead
+    `MARKER_RING_COLOR` export** (zero importers; it held the last `#FF7F50` in `src/`).
+  - ⛔ **toast/card inset-shine — DEFERRED (editing would be WRONG):** the matte guard's own scope note
+    (`reskin-matte.test.ts:132–135`) **sanctions** `inset 0 1px 0 0 rgba(255,255,255,0.05)` — it's the
+    gold-standard (billing-section uses it, verified clean). `card.tsx:61` is exactly that sanctioned form.
+    `toast.tsx`'s real violation is `backdrop-filter` **glass**, which is the 🟠 owner-gated
+    `ui/{card,select,toast}` GSI-rippling deferral. (Note: `CLAUDE.md` "no inset-shine" contradicts the
+    enforced gate — flagged for owner to reconcile.)
+  - ⏸️ **stale "coral" JSDoc — DEFERRED:** the coral type helpers (`CoralStep`/`GradientToken 'coral'`/
+    `colorVar('coral')`) in `types/design-tokens.ts` are **unused outside that file** (dead scaffolding), but
+    it's a foundational types file with zero user value → belongs in the dead-code/eslint-un-ignore pass, not a cosmetic batch.
+  - ⏸️ **shared `<SurfaceEmptyState>` extract — DEFERRED:** 20+ disparate empty-state call sites; a real
+    refactor needing shared-API design, not an S cleanup.
+  - ✅ ~~delete dead `GlassToast` + `GlassSkeleton`~~ **DONE (session 2, `6be82815`)**.
 
 ---
 
