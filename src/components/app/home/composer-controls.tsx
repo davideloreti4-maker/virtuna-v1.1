@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 // selector is built once and lights up per phase.
 export type ToolId =
   | "test"
+  | "account"
   | "idea"
   | "hooks"
   | "chat"
@@ -80,6 +81,7 @@ export const SKILLS: SkillMeta[] = [
   { id: "script",  label: "Script",           desc: "Beats + retention markers",           command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "remix",   label: "Remix",            desc: "Decode a winner → your version",      command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "test",    label: "Test",             desc: "Full Read on a real video",           command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
+  { id: "account", label: "Account Read",     desc: "A Read on your own account",          command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "chat",    label: "Chat",             desc: "Ask Numen anything",                  command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
   { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
@@ -150,6 +152,7 @@ const SKILL_ICON: Record<ToolId, string> = {
   script: "doc",
   remix: "shuffle",
   test: "crosshair",
+  account: "search",
   chat: "chat",
   offer: "tag",
   ad: "mega",

@@ -100,22 +100,26 @@ placeholder `band="Mixed" · fraction="–"`, then **silently** rewrite the band
 `animate-pulse` (or "scoring…" micro-label) on the proof unit while `!scored`. Touches the two stream hooks,
 the block prop type, and `ProofUnit`.
 
-### A5 — Account Read has no dedicated loading view  ·  ⛔ BLOCKED (premise wrong)
+### A5 — Account Read dedicated loading view  ·  ✅ DONE (session 12 — full skill wired)
 
-**Symptom (as originally filed).** Account Read supposedly shows `ThreadLoadingSkeleton variant="chat"` (prose
-lines) — the wrong shape for a profile read.
+**Was.** Account Read was a **built-but-UNWIRED** skill (session 11 finding): the `/api/account-read` SSE route +
+refined `account-read-block.tsx` renderer existed, but nothing triggered them (not a `ToolId`, no view, no button).
+So the "loading view" gap was really a "the skill has no entry point" gap.
 
-**CORRECTED (session 11) — the premise is stale.** Account Read is **not delivered through the chat surface**;
-it is **not delivered at all**. It is a **built-but-UNWIRED** skill: the `/api/account-read` SSE route (emits
-`status`/`fallback`/`error`/`done{block}`) and the refined `account-read-block.tsx` renderer exist (last touched
-#74), but **no client code triggers it** — no `fetch`/`EventSource`/stream-hook calls `/api/account-read`, it is
-**not a `ToolId`** (`composer-controls.tsx` union), there is no thread-view slot in `composer.tsx`, and no button
-anywhere invokes it. `account-read.ts` is called only by its own route; the route is called by nobody.
+**Shipped (session 12) — the whole skill, entry point = skill-menu chip** (per `ui-skill-cards.md`, which already
+listed Account Read as a skill; owner-confirmed):
+- **`ToolId "account"` + `SKILLS` entry** ("Account Read" · `/account` · creator/socials · Flash) — the menu chip.
+- **`useAccountReadStream`** (`src/hooks/queries/use-account-read-stream.ts`) — bodyless POST `/api/account-read`,
+  parses SSE `fallback`/`error`/`done{block}` (mirrors `use-explore-stream`'s fetch+getReader loop).
+- **`AccountReadThreadView`** (`src/components/thread/account-read-thread-view.tsx`) — one-tap idle CTA →
+  **profile-shaped loading skeleton** (avatar + name/handle bars + a cover-thumbnail strip + pattern bars, matte
+  `<Skeleton>`) → the composed `AccountReadBlockRenderer` on done · thin-history fallback (SELF-02, warning-toned) ·
+  retryable error. No input (handle resolved server-side, T-10-12); `canSubmit` is false (mirrors Profile) so the
+  in-view CTA is the sole entry (fires only on explicit tap — D-05/D-07).
+- **Composer dispatch** — `showAccountView`, `hasAccountContent`, reset-on-switch, all `Record<ToolId>` maps.
 
-**Fix direction.** A5 is **blocked on first wiring the trigger** — that is a real feature (entry-point product
-decision: skill chip? profile-page button? chat quick-action?) + client stream hook + a dedicated
-`account-read-thread-view.tsx`. Building the shaped skeleton before the trigger exists = orphan UI for an
-unreachable feature (dead code, untestable). Do NOT build it standalone; wire the skill first.
+**Verified.** tsc clean; composer-controls + account-read tests green; real browser pass (login → menu shows
+Account Read → idle view → run → thin-fallback rendered, **0 console errors**).
 
 ### A6 — Script / Remix skeleton drops the status caption  ·  ✅ DONE (session 11)
 

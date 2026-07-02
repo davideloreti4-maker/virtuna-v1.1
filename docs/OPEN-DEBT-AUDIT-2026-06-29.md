@@ -365,14 +365,15 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
     is already narrated by `ProgressChecklist` `STAGE_COPY`). The honest fix for the actual symptom
     ("generic *Running your skill…*") is a **specific static caption**: `script-thread-view.tsx` →
     "Drafting your script…", `remix-thread-view.tsx` → "Reworking the video for your audience…". 1 line each.
-  - ⛔ **A5 Account-Read dedicated loading view — BLOCKED, SSOT PREMISE WAS WRONG (session 11):** the SSOT
-    claimed "Account Read is delivered through the chat surface" — it is **not delivered at all**. Account
-    Read is a **built-but-UNWIRED** skill: `/api/account-read` SSE route (emits `status`/`fallback`/`done{block}`)
-    + refined `account-read-block.tsx` renderer exist (last touched #74), but **zero client code triggers
-    it** — no `fetch`/`EventSource`/stream-hook, not a `ToolId`, no thread-view slot, no button. Building a
-    shaped loading skeleton now = **orphan UI for an unreachable feature** (dead code, untestable). A5 is
-    therefore **blocked on first wiring the trigger** — a real feature needing a product decision on the
-    entry point (skill chip? profile-page button? chat quick-action?), NOT a refine loading-view fix.
+  - ✅ **A5 Account-Read dedicated loading view — DONE (session 12): the whole skill wired.** Session 11
+    found Account Read was a built-but-UNWIRED skill (route + refined renderer existed, but no trigger / not a
+    `ToolId` / no view), so the "loading-view gap" was really a "no entry point" gap. Owner chose the
+    **skill-menu chip** entry point (per `ui-skill-cards.md`, which already listed it as a skill). Shipped:
+    `ToolId "account"` + `SKILLS` chip (`/account`, creator/socials, Flash) · `useAccountReadStream` (bodyless
+    POST + SSE parse) · `AccountReadThreadView` with the **profile-shaped loading skeleton** (avatar + name/handle
+    bars + cover strip + pattern bars) → result card | thin fallback (SELF-02) | retryable error · composer
+    dispatch (`canSubmit` false like Profile — the in-view one-tap CTA is the entry). tsc clean; tests green;
+    real browser pass (menu → idle → run → thin-fallback, 0 console errors).
 - **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · ✅ **`library` · `audience` ·
   `audience/[id]` (P1) + `audience/new` (P2) DONE (session 8, `c100c9f8`)** — each mirrors its page's real
   layout verbatim (SavedShelf chrome / AudienceManager list / DetailSkeleton copy / form field-groups); tsc +
