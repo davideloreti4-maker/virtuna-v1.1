@@ -192,8 +192,43 @@ lane after. Two shipped; two queue items verified out.
   `f510cf0f` *"feat: initialize virtuna v1.1 project"* (the first commit).
 - State READY, but ~5 months of merged work (v5.0, v6.0, discover-feed, every UI lane,
   **premium-thread**) is **NOT deployed**. GitHub→Vercel auto-deploy appears disconnected/paused.
-- **Action:** investigate the GitHub integration — why no deploy fires on `main` push.
 - Size: **L** · Owner: infra.
+
+#### DIAGNOSED + PARTIALLY ACTIONED (2026-07-02, via Vercel MCP — read-only)
+- **Root cause:** the GitHub→Vercel Git integration fired **exactly once**, at project
+  creation (`githubDeployment:"1"`, 10:53:07 — 23s after the project was created 10:52:44),
+  and **never again**. Not a build failure — there are **zero failed deploys**; nothing was
+  *triggering* a deploy at all. Verified: `f510cf0f` IS the root commit
+  (`git rev-list --max-parents=0`); **3,010 commits** on `origin/main` since, none deployed;
+  Vercel-linked repo = `davideloreti4-maker/virtuna-v1.1` (matches `origin`); project
+  `live:false`. IDs: project `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url`, team `team_4eBJIDHXvR0VGq2Nrgr9xt21`.
+- **Step 1 DONE (owner):** Git integration **reconnected** in Vercel dashboard on 2026-07-02
+  ~11:38 (project `updatedAt` moved May-17 → 2026-07-02 11:38:34, confirming the settings write).
+  ⚠️ Reconnect does **NOT** backfill a deploy — still 1 deploy / `live:false`. The pipe is
+  *armed for future pushes*, unproven until a push to `main` or a manual deploy fires.
+- **NOT an Anthropic-key issue** (owner's initial worry): the webhook is the Vercel **GitHub
+  App** (OAuth, no key). And the app runtime reads **DashScope/Gemini/DeepSeek**, never
+  `ANTHROPIC_API_KEY` (code-verified grep of `process.env.*`).
+- **Env vars to set in Vercel (Production) before first real deploy** — copy values from local
+  `.env.local`; dashboard-check which already exist (MCP can't read env vars):
+  - 🔴 build/app breaks: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+    `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`.
+  - 🟠 core product 500s (build still passes): `DASHSCOPE_API_KEY` (engine hero, 18 refs),
+    `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `APIFY_TOKEN` (16 refs).
+  - 🟡 if feature live: `WHOP_API_KEY`/`WHOP_WEBHOOK_SECRET`/`WHOP_PRODUCT_ID_STARTER`/`_PRO`
+    (billing), `CRON_SECRET`, `APIFY_WEBHOOK_SECRET`, `FILMSTRIP_EXTRACT_SECRET`,
+    `NEXT_PUBLIC_SENTRY_DSN`.
+  - ⚪ skip (code defaults): `FLASH_MODEL`, `EMBEDDING_MODEL`, `QWEN_*_MODEL`, `FOLD_*`,
+    `OMNI_MAX_TOKENS`, `RECALIBRATION_STEP`, `APIFY_ACTOR_*`, `SCRAPER_HASHTAGS`,
+    `RUN_VISION_LIVE_SMOKE`. `NODE_ENV`/`NEXT_RUNTIME` are Vercel-set.
+- **Second landmine (not yet checked):** deployed code expects a Supabase **prod DB schema**
+  with ~5mo of migrations applied. Memory flags `database.types.ts` missing
+  `mode`/`success_criterion`/`custom_context` cols — if prod DB is stuck at Jan-27 schema the
+  app errors even with keys set. Confirm prod migration state (Supabase MCP, read-only) before deploy.
+- **DEFERRED (owner decision 2026-07-02):** do NOT trigger the deploy yet — stay on local dev.
+  Remaining next steps when resumed: (1) set 🔴+🟠 env vars, (2) confirm prod Supabase migrations,
+  (3) fire first deploy by merging any small PR to `main` (proves reconnected webhook + ships tip
+  in one shot), (4) verify landed via MCP.
 
 ### 2. Rate-limiting (HARDEN-01) — pre-public-launch gate
 - 6 tool routes unprotected; `src/app/api/tools/ideas/route.ts:117` has a voided TODO;
