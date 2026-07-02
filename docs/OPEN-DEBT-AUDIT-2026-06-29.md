@@ -151,6 +151,14 @@ lane after. Two shipped; two queue items verified out.
    **already covered** by pre-existing `loading.tsx` (handoff stale). Verified authed on dev :3300: tsc +
    eslint clean, all 4 render final content with 0 console errors, skeleton renders cleanly in-shell. Theme B
    is now complete bar the deferred `analyze` Reading-internal state.
+3. **WR-04 composer video silent no-ops + orphaned blob** (`3245f7e7`) — both video paths (Test upload +
+   Profile evidence) had failure branches that returned BEFORE `stream.start`, so `stream.phase` never owned
+   the error and the button went dead-quiet. Test path `!userId` / storage-upload-error now set a new
+   `submitError` in the existing inline error slot; Profile path `!userId` surfaces via `evidenceError`.
+   Orphaned storage: Profile path best-effort removes the staged clip on server reject (safe — synchronous
+   route); Test path deliberately does NOT clean client-side (`/api/analyze` async background job → deleting
+   would race the server; left to a server sweep, documented inline). **Browser-proven** on dev :3300: forced
+   a storage 500 with a staged video → "That upload didn't go through…" renders (was silent). tsc + eslint clean.
 
 **CORRECTED (verified NOT the low-risk items the auditor rated — do not re-open as quick wins):**
 - **A6 `(supabase as any)` casts — MIS-SCOPED, NOT a low-risk strip.** Two distinct blockers:
@@ -224,7 +232,10 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
      capped; add decoded-size cap on file_text ~1MB / image ~10MB) ·
      **WR-03** Simulate 500 on resolvable non-General audience (`api/tools/simulate/route.ts` +
      `simulate-runner.ts:~158-161` throw → should be 400) ·
-     **WR-04** composer video path silent no-op + orphaned storage (`composer.tsx:~722-743` when `!userId`).
+     ~~**WR-04** composer video path silent no-op + orphaned storage~~ ✅ **CLOSED s8 (`3245f7e7`)** — both
+     video paths surfaced their pre-`stream.start` failures (Test → new `submitError`; profile → `evidenceError`)
+     + profile path best-effort removes the staged blob on server reject (Test path async → deferred to a
+     server sweep, documented). Browser-proven (forced storage 500 → error renders).
   2. **Simulate person-framing** (`simulate-reaction-person-framing.md`, medium, engine/`simulate-runner.ts`)
      — the baked **person** SIM reacts like a generic **content** critic ("scroll", "first second") not the
      person reacting to the *message*; `runSimulate` uses the content-reaction frame and doesn't import
