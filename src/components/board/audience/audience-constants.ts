@@ -86,10 +86,3 @@ export function derivePersonaInsight(
     : base;
 }
 
-/** D-11 marker ring colors by archetype slot. */
-export const MARKER_RING_COLOR: Record<PersonaSlotType, string> = {
-  fyp:         '#FF7F50',                  // coral-500
-  niche:       'oklch(0.87 0.10 40)',      // coral-300
-  loyalist:    'oklch(0.97 0.03 40)',      // coral-100
-  cross_niche: 'rgba(255,255,255,0.30)',
-} as const;

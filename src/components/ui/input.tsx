@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Spinner } from "./spinner";
 
 /** Size variants for the Input component */
 export type InputSize = "sm" | "md" | "lg";
@@ -188,12 +189,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {/* Loading Spinner */}
           {loading && (
-            <Loader2
-              className={cn(
-                "animate-spin text-foreground-muted",
-                styles.icon
-              )}
-              aria-label="Loading"
+            <Spinner
+              className={cn("text-foreground-muted", styles.icon)}
+              label="Loading"
             />
           )}
 

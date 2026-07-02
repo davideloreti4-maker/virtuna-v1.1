@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui";
+import { Button, Spinner } from "@/components/ui";
 import { FadeIn } from "@/components/motion";
 import { Check, X } from "@phosphor-icons/react";
 import { CheckoutModal } from "@/components/app/checkout-modal";
@@ -110,7 +110,7 @@ export function PricingSection() {
         {/* Post-checkout feedback */}
         {isPolling && (
           <div className="mb-8 flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-border-hover border-t-transparent" />
+            <Spinner size="sm" className="text-foreground-secondary" />
             <span className="text-sm text-foreground-secondary">Confirming your subscription...</span>
           </div>
         )}

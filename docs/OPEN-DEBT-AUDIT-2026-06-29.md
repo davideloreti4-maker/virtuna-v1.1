@@ -192,8 +192,43 @@ lane after. Two shipped; two queue items verified out.
   `f510cf0f` *"feat: initialize virtuna v1.1 project"* (the first commit).
 - State READY, but ~5 months of merged work (v5.0, v6.0, discover-feed, every UI lane,
   **premium-thread**) is **NOT deployed**. GitHub→Vercel auto-deploy appears disconnected/paused.
-- **Action:** investigate the GitHub integration — why no deploy fires on `main` push.
 - Size: **L** · Owner: infra.
+
+#### DIAGNOSED + PARTIALLY ACTIONED (2026-07-02, via Vercel MCP — read-only)
+- **Root cause:** the GitHub→Vercel Git integration fired **exactly once**, at project
+  creation (`githubDeployment:"1"`, 10:53:07 — 23s after the project was created 10:52:44),
+  and **never again**. Not a build failure — there are **zero failed deploys**; nothing was
+  *triggering* a deploy at all. Verified: `f510cf0f` IS the root commit
+  (`git rev-list --max-parents=0`); **3,010 commits** on `origin/main` since, none deployed;
+  Vercel-linked repo = `davideloreti4-maker/virtuna-v1.1` (matches `origin`); project
+  `live:false`. IDs: project `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url`, team `team_4eBJIDHXvR0VGq2Nrgr9xt21`.
+- **Step 1 DONE (owner):** Git integration **reconnected** in Vercel dashboard on 2026-07-02
+  ~11:38 (project `updatedAt` moved May-17 → 2026-07-02 11:38:34, confirming the settings write).
+  ⚠️ Reconnect does **NOT** backfill a deploy — still 1 deploy / `live:false`. The pipe is
+  *armed for future pushes*, unproven until a push to `main` or a manual deploy fires.
+- **NOT an Anthropic-key issue** (owner's initial worry): the webhook is the Vercel **GitHub
+  App** (OAuth, no key). And the app runtime reads **DashScope/Gemini/DeepSeek**, never
+  `ANTHROPIC_API_KEY` (code-verified grep of `process.env.*`).
+- **Env vars to set in Vercel (Production) before first real deploy** — copy values from local
+  `.env.local`; dashboard-check which already exist (MCP can't read env vars):
+  - 🔴 build/app breaks: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+    `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`.
+  - 🟠 core product 500s (build still passes): `DASHSCOPE_API_KEY` (engine hero, 18 refs),
+    `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `APIFY_TOKEN` (16 refs).
+  - 🟡 if feature live: `WHOP_API_KEY`/`WHOP_WEBHOOK_SECRET`/`WHOP_PRODUCT_ID_STARTER`/`_PRO`
+    (billing), `CRON_SECRET`, `APIFY_WEBHOOK_SECRET`, `FILMSTRIP_EXTRACT_SECRET`,
+    `NEXT_PUBLIC_SENTRY_DSN`.
+  - ⚪ skip (code defaults): `FLASH_MODEL`, `EMBEDDING_MODEL`, `QWEN_*_MODEL`, `FOLD_*`,
+    `OMNI_MAX_TOKENS`, `RECALIBRATION_STEP`, `APIFY_ACTOR_*`, `SCRAPER_HASHTAGS`,
+    `RUN_VISION_LIVE_SMOKE`. `NODE_ENV`/`NEXT_RUNTIME` are Vercel-set.
+- **Second landmine (not yet checked):** deployed code expects a Supabase **prod DB schema**
+  with ~5mo of migrations applied. Memory flags `database.types.ts` missing
+  `mode`/`success_criterion`/`custom_context` cols — if prod DB is stuck at Jan-27 schema the
+  app errors even with keys set. Confirm prod migration state (Supabase MCP, read-only) before deploy.
+- **DEFERRED (owner decision 2026-07-02):** do NOT trigger the deploy yet — stay on local dev.
+  Remaining next steps when resumed: (1) set 🔴+🟠 env vars, (2) confirm prod Supabase migrations,
+  (3) fire first deploy by merging any small PR to `main` (proves reconnected webhook + ships tip
+  in one shot), (4) verify landed via MCP.
 
 ### 2. Rate-limiting (HARDEN-01) — pre-public-launch gate
 - 6 tool routes unprotected; `src/app/api/tools/ideas/route.ts:117` has a voided TODO;
@@ -317,9 +352,15 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 **Shell loading-states backlog — LARGELY OPEN** (SSOT `docs/subsystems/ui-loading-states.md`; full
 file:line + code-verification in `WORKTREE-MERGE-AUDIT-2026-06-29.md` §A). Only A1–A4 + some #72 route
 skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still open on main:
-- **Theme A:** A5 Account-Read dedicated loading view (M) · A6 Script/Remix skeleton caption
-  (`script-thread-view.tsx:114`/`remix-thread-view.tsx:115`, S) · A7 optimistic thread delete
-  (`use-threads.ts:73`, S) · Explore double skeleton+checklist (S).
+- **Theme A:** A5 Account-Read dedicated loading view (M, **still open** — needs a new
+  `account-read-thread-view.tsx` + reroute) · ✅ **A7 optimistic thread delete DONE (session 10,
+  `0256d187`)** (`use-threads.ts` `useArchiveThread` — `onMutate` remove + rollback + settle) ·
+  ✅ **Explore double skeleton+checklist DONE (session 10)** (gated the skeleton behind
+  `stages.length===0`, matching every other view; caption still shows pre-stages).
+  ⚠️ **A6 Script/Remix skeleton caption — DEFERRED, SSOT WAS WRONG:** it is NOT "one-line each."
+  `use-script-stream.ts`/`use-remix-stream.ts` **do not track `statusMessage` at all** (only
+  ideas/explore/hooks streams do), and the views take no such prop — surfacing it is a stream-hook +
+  SSE-protocol + prop-plumbing feature add, not a cleanup. (SSOT `ui-loading-states.md` §A6 corrected.)
 - **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · ✅ **`library` · `audience` ·
   `audience/[id]` (P1) + `audience/new` (P2) DONE (session 8, `c100c9f8`)** — each mirrors its page's real
   layout verbatim (SavedShelf chrome / AudienceManager list / DetailSkeleton copy / form field-groups); tsc +
@@ -328,10 +369,24 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
   **deferred** — its `layout.tsx:26 fallback={null}` is the inert inner-Reading Suspense; the real fix is a
   Reading-internal loading state (see the session-6 CORRECTION). **Theme B is now effectively complete** bar
   the deferred `analyze` Reading-internal state.
-- **Theme C — MATTE/cleanup:** toast inset-shine (`toast.tsx:213`) · card inset-shine (`card.tsx:61`) ·
-  ~~delete dead `GlassToast` + `GlassSkeleton`~~ ✅ **DONE (session 2, `6be82815`)** · Button/Input loading→`<Spinner>`
-  (`button.tsx:179`/`input.tsx:191`) · pricing spinner · stale "coral" JSDoc · shared `<SurfaceEmptyState>`
-  extract · board `audience-constants.ts:91` coral `#FF7F50` (XS). S each.
+- **Theme C — MATTE/cleanup (session 10, `0256d187`):**
+  - ✅ **Button/Input loading→`<Spinner>` DONE** — last two lucide `Loader2` holdouts swapped for the
+    design-system `<Spinner>` (`button.tsx`/`input.tsx`).
+  - ✅ **pricing spinner DONE** — bespoke ring-spinner `<div>` → `<Spinner size="sm">` (`pricing-section.tsx`).
+  - ✅ **board `audience-constants.ts` coral `#FF7F50` DONE** — resolved by **deleting the dead
+    `MARKER_RING_COLOR` export** (zero importers; it held the last `#FF7F50` in `src/`).
+  - ⛔ **toast/card inset-shine — DEFERRED (editing would be WRONG):** the matte guard's own scope note
+    (`reskin-matte.test.ts:132–135`) **sanctions** `inset 0 1px 0 0 rgba(255,255,255,0.05)` — it's the
+    gold-standard (billing-section uses it, verified clean). `card.tsx:61` is exactly that sanctioned form.
+    `toast.tsx`'s real violation is `backdrop-filter` **glass**, which is the 🟠 owner-gated
+    `ui/{card,select,toast}` GSI-rippling deferral. (Note: `CLAUDE.md` "no inset-shine" contradicts the
+    enforced gate — flagged for owner to reconcile.)
+  - ⏸️ **stale "coral" JSDoc — DEFERRED:** the coral type helpers (`CoralStep`/`GradientToken 'coral'`/
+    `colorVar('coral')`) in `types/design-tokens.ts` are **unused outside that file** (dead scaffolding), but
+    it's a foundational types file with zero user value → belongs in the dead-code/eslint-un-ignore pass, not a cosmetic batch.
+  - ⏸️ **shared `<SurfaceEmptyState>` extract — DEFERRED:** 20+ disparate empty-state call sites; a real
+    refactor needing shared-API design, not an S cleanup.
+  - ✅ ~~delete dead `GlassToast` + `GlassSkeleton`~~ **DONE (session 2, `6be82815`)**.
 
 ---
 

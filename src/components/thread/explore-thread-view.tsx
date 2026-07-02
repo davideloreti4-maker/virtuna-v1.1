@@ -279,10 +279,12 @@ export function ExploreThreadView({
       {isStreaming && (
         <div className="flex flex-col gap-3">
           {stages.length > 0 && <ProgressChecklist stages={stages} />}
-          <ThreadLoadingSkeleton
-            variant="skill"
-            caption="Pulling outliers and scoring them for your audience… this can take a few minutes."
-          />
+          {stages.length === 0 && (
+            <ThreadLoadingSkeleton
+              variant="skill"
+              caption="Pulling outliers and scoring them for your audience… this can take a few minutes."
+            />
+          )}
         </div>
       )}
 
