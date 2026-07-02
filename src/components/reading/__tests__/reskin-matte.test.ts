@@ -146,6 +146,7 @@ const CLEANED_CHROME_FILES = [
   'components/app/legend-pills.tsx',
   'components/app/context-bar.tsx',
   'components/app/filter-pills.tsx',
+  'components/app/auth-guard.tsx',
   'components/competitors/comparison/comparison-metric-card.tsx',
   'components/competitors/intelligence/strategy-analysis-card.tsx',
   'components/competitors/charts/chart-tooltip.tsx',
