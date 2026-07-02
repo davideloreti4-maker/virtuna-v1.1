@@ -4,7 +4,30 @@ created: 2026-06-29
 source: 05-06 human-verify
 severity: medium
 area: engine / simulate-runner (05-05)
-status: pending
+status: done
+resolved: 2026-07-02
+resolution: lane/refine — person path now routes through behavioral-core
+---
+
+## ✅ RESOLVED 2026-07-02 (lane/refine)
+
+The person path (`subjectKind: "person"`) no longer touches the Flash content-critic
+engine. It fires ONE deterministic behavioral call grounded in the baked signature —
+the same cached `BEHAVIORAL_SYSTEM_PROMPT_FLASH` the Profile READ rides (revising the
+05-05 Pitfall 5 boundary, which was itself the cause). The drafted MESSAGE + a
+signature-grounded SUBJECT description ride the delimited USER data block (D-08); the
+reaction reads the message's ask/argument/tone, not a hook. `describePerson` builds the
+subject from `creator_persona` + `signature.summary` + `what_resonates/falls_flat` + the
+lead reactor's `reaction_frame`. The PANEL path is byte-untouched (Flash regression gate
+holds); band/fraction stay suppressed for a person (Pitfall 2).
+
+Live before/after on a freshly-baked "Marcus Reyes" (skeptical analyst) person SIM:
+- BEFORE: *"Scrolled instantly. The first second offered zero visual intrigue or clear premise."* (content-scroll critique)
+- AFTER:  *"Where are the baseline definitions and control parameters?... 'Excited' isn't a metric."* (reacts to the message, grounded in his aversion to vibes-over-data)
+
++4 unit tests (person path bypasses Flash, subject grounding, quote truncation, block
+validity). 242 runner+flash tests green; tsc clean on the touched files.
+
 ---
 
 # Simulate reaction is content-framed, not person-framed

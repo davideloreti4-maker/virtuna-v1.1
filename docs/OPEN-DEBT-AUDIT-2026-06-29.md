@@ -236,10 +236,16 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
      video paths surfaced their pre-`stream.start` failures (Test → new `submitError`; profile → `evidenceError`)
      + profile path best-effort removes the staged blob on server reject (Test path async → deferred to a
      server sweep, documented). Browser-proven (forced storage 500 → error renders).
-  2. **Simulate person-framing** (`simulate-reaction-person-framing.md`, medium, engine/`simulate-runner.ts`)
+  2. ~~**Simulate person-framing** (`simulate-reaction-person-framing.md`, medium, engine/`simulate-runner.ts`)
      — the baked **person** SIM reacts like a generic **content** critic ("scroll", "first second") not the
-     person reacting to the *message*; `runSimulate` uses the content-reaction frame and doesn't import
-     `behavioral-core.ts` (Pitfall 5). Chain renders/chains fine; only the reaction *framing* is off.
+     person reacting to the *message*~~ ✅ **CLOSED s9 (2026-07-02)** — the person path (`subjectKind:"person"`)
+     now BYPASSES the Flash content-critic engine and fires ONE deterministic behavioral call grounded in the
+     baked signature (the same cached `BEHAVIORAL_SYSTEM_PROMPT_FLASH` the Profile READ rides — revising the
+     05-05 Pitfall 5 boundary, which was the cause). Message + a `describePerson` subject description ride the
+     D-08 USER data block; the reaction reads the ask/argument/tone, not a hook. PANEL path byte-untouched
+     (Flash gate holds); band/fraction stay suppressed (Pitfall 2). Live before/after on a baked "Marcus Reyes":
+     BEFORE *"Scrolled instantly. The first second offered zero visual intrigue…"* → AFTER *"Where are the
+     baseline definitions and control parameters?… 'Excited' isn't a metric."* +4 tests; todo → `todos/done/`.
   3. ~~**`next build` tsc baseline** — `src/components/app/brand-deals/earnings-chart.tsx:97` recharts-3
      type mismatch~~ ✅ **CLOSED (session 5, `81f8294d`)** — the file was deleted by the MVP brand-deals
      removal, so the blocker is gone. Do NOT re-open. *(The full-project tsc still carries the ~17 pre-existing
