@@ -46,7 +46,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
-import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { type RankedOutlier } from "@/lib/discover/outlier-compute";
@@ -278,16 +278,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── (3) Open thread + active audience (CR-01 — id NEVER from body) ─────────
   const openThread = await createOpenThreadLazy(user.id);
-  let activeAudience: Audience = GENERAL_AUDIENCE;
-  const activeAudienceId = openThread.active_audience_id ?? null;
-  if (activeAudienceId) {
-    try {
-      const loaded = await getAudience(supabase, activeAudienceId);
-      if (loaded) activeAudience = loaded;
-    } catch {
-      // Non-fatal: fall back to General if the audience load fails (no regression).
-    }
-  }
+  const activeAudience = await resolveThreadAudience(supabase, openThread);
 
   // ── (4) Per-user daily cap (read-only check; consume only on a real scrape) ──
   const cap = checkUserCap(user.id);

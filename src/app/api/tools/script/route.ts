@@ -43,10 +43,9 @@ import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
-import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
-import type { Audience } from "@/lib/audience/audience-types";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -128,21 +127,11 @@ export async function POST(request: Request): Promise<Response> {
   // ── (5) Get/create open thread ────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
-  // ── (5a) Load active audience (08-04 / D-04 per-thread pin — mirrors ideas route) ──
-  // thread.active_audience_id: NULL = General default (no DB query). Non-null = load row
-  // (virtual constants short-circuit). Falls back to GENERAL_AUDIENCE on load failure (non-fatal).
-  // Audience id is NEVER read from the request body — session/thread only (CR-01).
-  let activeAudience: Audience = GENERAL_AUDIENCE;
-  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
-  const activeAudienceId = rawThread.active_audience_id ?? null;
-  if (activeAudienceId) {
-    try {
-      const loaded = await getAudience(supabase, activeAudienceId);
-      if (loaded) activeAudience = loaded;
-    } catch {
-      // Non-fatal: fall back to General if audience load fails (no regression, D-04)
-    }
-  }
+  // ── (5a) Load active audience (08-04 / D-04 per-thread pin — shared helper) ──
+  // thread.active_audience_id: NULL = General default; non-null = load under the session.
+  // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
+  // the request body — session/thread only (CR-01).
+  const activeAudience = await resolveThreadAudience(supabase, openThread);
 
   // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────
   // Explicit composer override wins; else default from the audience's goal_intent (4→2 lens).
