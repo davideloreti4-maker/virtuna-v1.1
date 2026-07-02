@@ -6,7 +6,6 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {}
  * Skeleton - Loading placeholder with shimmer animation.
  *
  * Uses a moving gradient highlight (shimmer) instead of simple pulse.
- * Matches the GlassSkeleton pattern for premium loading states.
  *
  * Note: motion-reduce:animate-none is applied via the Tailwind class,
  * which sets `animation: none` and overrides the inline animation style.

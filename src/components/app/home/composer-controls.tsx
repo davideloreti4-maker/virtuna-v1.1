@@ -94,6 +94,19 @@ export const SKILLS: SkillMeta[] = [
 export const getSkill = (id: ToolId): SkillMeta =>
   SKILLS.find((s) => s.id === id) ?? SKILLS[1]!; // fall back to Ideas (never reached)
 
+/**
+ * Whether a skill is visible in the menu for the given active Audience mode.
+ *
+ * The three General verbs (Profile / Simulate / Predict) are ALWAYS visible — they
+ * stay discoverable from a creator (socials) context instead of vanishing until a
+ * General audience is selected (the "merged-but-not-visible" gap). Selecting one
+ * without a General audience funnels the user to Build (composer §16.4), matching
+ * the always-present Home chips. Creator/Marketing skills surface only in socials
+ * mode. Shared by the skill popover AND the `/` slash menu so the two never drift.
+ */
+export const isSkillVisible = (s: SkillMeta, mode: SkillMode): boolean =>
+  s.modes.includes("general") || (mode !== "general" && s.modes.includes(mode));
+
 // ─── Model labels (D-09) — the skill decides the model; this is read-only ────
 export const MODEL_LABEL: Record<ToolId, string> = SKILLS.reduce(
   (acc, s) => ({ ...acc, [s.id]: `SIM-1 ${s.model}` }),
@@ -236,12 +249,19 @@ export function SkillRows({
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
     !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
-  // Gate the whole list on the active mode FIRST, then partition by group for the
-  // Socials sub-headers. In "general" mode only Profile/Simulate/Predict survive.
-  const inMode = (s: SkillMeta) => s.modes.includes(activeMode ?? "socials");
-  const isGeneral = activeMode === "general";
-  const creator = SKILLS.filter((s) => inMode(s) && s.group === "creator" && match(s));
-  const marketing = SKILLS.filter((s) => inMode(s) && s.group === "marketing" && match(s));
+  // Visibility partition (UX-02 / D-01, refine lane): the General verbs are ALWAYS
+  // shown in their own group; Creator/Marketing surface only in socials mode. The
+  // shared isSkillVisible() keeps this list and the `/` slash menu in lock-step.
+  const mode = activeMode ?? "socials";
+  const general = SKILLS.filter(
+    (s) => s.modes.includes("general") && isSkillVisible(s, mode) && match(s),
+  );
+  const creator = SKILLS.filter(
+    (s) => s.group === "creator" && s.modes.includes("socials") && isSkillVisible(s, mode) && match(s),
+  );
+  const marketing = SKILLS.filter(
+    (s) => s.group === "marketing" && isSkillVisible(s, mode) && match(s),
+  );
 
   const Row = (s: SkillMeta) => (
     <button
@@ -302,8 +322,7 @@ export function SkillRows({
         <Ico name="search" size={14} />
         type to filter · ↵ to select
       </div>
-      {/* General mode is a single flat list — no Creator/Marketing sub-headers. */}
-      {!isGeneral && creator.length > 0 && <GroupLabel>Creator</GroupLabel>}
+      {creator.length > 0 && <GroupLabel>Creator</GroupLabel>}
       {creator.map(Row)}
       {marketing.length > 0 && (
         <>
@@ -312,7 +331,18 @@ export function SkillRows({
         </>
       )}
       {marketing.map(Row)}
-      {creator.length === 0 && marketing.length === 0 && (
+      {/* General verbs — always shown so they stay discoverable from a creator
+          context. Divider/label drop when this is the only group (general mode). */}
+      {general.length > 0 && (
+        <>
+          {(creator.length > 0 || marketing.length > 0) && (
+            <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />
+          )}
+          <GroupLabel>General</GroupLabel>
+        </>
+      )}
+      {general.map(Row)}
+      {creator.length === 0 && marketing.length === 0 && general.length === 0 && (
         <div className="px-2.5 py-3 text-[12px] text-foreground-muted">No skills match.</div>
       )}
     </>

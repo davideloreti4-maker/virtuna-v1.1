@@ -53,6 +53,7 @@ import {
   SkillRows,
   SKILLS,
   getSkill,
+  isSkillVisible,
   type ToolId,
   type Intent,
 } from "./composer-controls";
@@ -1272,14 +1273,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
-    // Mode-gate identically to the skill pill / slash menu (WR-01) so Enter can
-    // never select an out-of-mode verb the menu never displayed.
+    // Gate identically to the skill pill / slash menu via the shared isSkillVisible
+    // (WR-01) so Enter can never select a skill the menu never displayed — and the
+    // always-visible General verbs ARE selectable here too.
     const slashMode = selectedAudience?.mode ?? "socials";
     return (
       SKILLS.find(
         (s) =>
           s.enabled &&
-          s.modes.includes(slashMode) &&
+          isSkillVisible(s, slashMode) &&
           (!q || s.label.toLowerCase().includes(q) || s.command.includes(q)),
       ) ?? null
     );

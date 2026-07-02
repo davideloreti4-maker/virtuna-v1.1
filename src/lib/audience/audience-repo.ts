@@ -475,6 +475,36 @@ export async function createAudience(
 }
 
 /**
+ * Upsert a Profile-baked General SIM by subject name (refine lane — dedup).
+ *
+ * Re-profiling the same chat/person produces the same subjectName, which previously
+ * INSERTED a fresh general audience every time (the "3× Marcus Reyes" dupes in the
+ * switcher). This finds the caller's OWN general-mode audience with the same
+ * (case-insensitive) name and UPDATES it in place — refreshing the re-baked
+ * signature/personas — instead of duplicating it. Virtual/sentinel rows (General +
+ * presets + templates, prepended by listAudiences) are excluded, so a profile can
+ * never collide with a constant. Falls back to createAudience when there is no match.
+ * Scope is deliberately narrow (mode:'general' + exact name) so two genuinely distinct
+ * subjects never merge.
+ */
+export async function upsertProfileAudience(
+  supabase: SupabaseClient,
+  input: Partial<Audience>,
+): Promise<Audience> {
+  const name = (input.name ?? "").trim();
+  if (name && input.mode === "general") {
+    const match = (await listAudiences(supabase)).find(
+      (a) =>
+        !SENTINEL_IDS.has(a.id) &&
+        a.mode === "general" &&
+        a.name.trim().toLowerCase() === name.toLowerCase(),
+    );
+    if (match) return updateAudience(supabase, match.id, input);
+  }
+  return createAudience(supabase, input);
+}
+
+/**
  * Clone a GENERAL_TEMPLATES entry into an owned, editable General SIM (UX-04 / D-03 —
  * the Build chooser "From a template" path). Turns a select-only virtual preset into the
  * moat object: a saved `mode:'general'` audience the creator owns and can edit.

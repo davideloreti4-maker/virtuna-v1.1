@@ -31,6 +31,8 @@ import {
   UsersThree,
   Books,
   FilmStrip,
+  Binoculars,
+  Gift,
   Trash,
   Check,
   X,
@@ -369,6 +371,8 @@ export function Sidebar() {
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
+  const isOnCompetitors = pathname.startsWith("/competitors");
+  const isOnReferrals = pathname.startsWith("/referrals");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -490,6 +494,25 @@ export function Sidebar() {
                 isActive={isOnFeed}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/feed")}
+              />
+              {/* Competitors — competitor-intel subsystem (handles, compare). Was
+                  shipped without a nav entry (reachable only by deep-link); surfaced
+                  here (refine lane, 2026-06-29). */}
+              <NavItem
+                icon={Binoculars}
+                label="Competitors"
+                isActive={isOnCompetitors}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/competitors")}
+              />
+              {/* Referrals — referral stats / invite surface. Surfaced from
+                  deep-link-only (refine lane). */}
+              <NavItem
+                icon={Gift}
+                label="Referrals"
+                isActive={isOnReferrals}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/referrals")}
               />
             </div>
           </div>

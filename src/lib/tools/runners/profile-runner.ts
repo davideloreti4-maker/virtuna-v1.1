@@ -44,7 +44,7 @@ import {
   bakeProfileSignature,
   watchPersonVideo,
 } from "@/lib/audience/profile-bake";
-import { createAudience } from "@/lib/audience/audience-repo";
+import { createAudience, upsertProfileAudience } from "@/lib/audience/audience-repo";
 import { ProfileReadBlockSchema } from "@/lib/tools/profile-blocks";
 import type { ProfileReadBlock } from "@/lib/tools/profile-blocks";
 import type { Stimulus } from "@/lib/engine/stimulus/types";
@@ -109,7 +109,9 @@ export interface ProfileRunDeps {
   bake?: typeof bakeProfileSignature;
   /** Person-video Max path: storagePath + goal → behavioral signal + transcript (05-03). */
   watch?: typeof watchPersonVideo;
-  /** Save the bake as a General-mode audience (existing General library CRUD). */
+  /** Save the bake as a General-mode audience. Defaults to upsertProfileAudience, which
+   *  updates an existing same-name General SIM in place (re-profile dedup) instead of
+   *  inserting a duplicate. Signature is compatible with createAudience for test injection. */
   saveAudience?: typeof createAudience;
 }
 
@@ -212,7 +214,7 @@ export async function runProfile(
   const { supabase, stimulus } = input;
   const bake = deps.bake ?? bakeProfileSignature;
   const watch = deps.watch ?? watchPersonVideo;
-  const saveAudience = deps.saveAudience ?? createAudience;
+  const saveAudience = deps.saveAudience ?? upsertProfileAudience;
 
   const goal = stimulus.subject?.goal ?? "";
   // Stimulus carries no success_criterion (it lives on the audience). Isolate the slot
