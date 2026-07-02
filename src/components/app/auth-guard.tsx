@@ -68,9 +68,9 @@ export function AuthGuard({ children }: AuthGuardProps) {
  */
 function AppShellSkeleton() {
   return (
-    <div className="flex h-screen bg-[#0A0A0A]">
+    <div className="flex h-screen bg-background">
       {/* Sidebar skeleton - hidden on mobile */}
-      <div className="hidden w-[248px] shrink-0 flex-col border-r border-zinc-800 p-4 md:flex">
+      <div className="hidden w-[248px] shrink-0 flex-col border-r border-white/[0.06] bg-background-elevated p-4 md:flex">
         <Skeleton className="mb-6 h-6 w-6" />
         <div className="mt-6 space-y-2">
           <Skeleton className="h-3 w-20" />

@@ -16,6 +16,8 @@ import {
   PredictAnalystSchema,
   PredictPanelResultSchema,
   coercePredictResponse,
+  FACTOR_MAX,
+  REASONING_MAX,
   type PredictAnalyst,
 } from "../predict-schema";
 
@@ -180,5 +182,27 @@ describe("coercePredictResponse — format salvage", () => {
     const coerced = coercePredictResponse("not json at all");
     const res = PredictPanelResultSchema.safeParse(coerced);
     expect(res.success).toBe(false);
+  });
+
+  it("truncates over-long factor/reasoning to the cap so a verbose model doesn't 500 the panel (WR-01)", () => {
+    // A verbose small model blows factor.max(FACTOR_MAX) / reasoning.max(REASONING_MAX). Pre-fix this
+    // fails Zod → runPredictPanel throws → the WHOLE Predict feature 500s. Coercion now trims the tail.
+    const coerced = coercePredictResponse([
+      { ...validA, factor: "F".repeat(FACTOR_MAX + 200), reasoning: "R".repeat(REASONING_MAX + 300) },
+      validB,
+    ]) as { analysts: Array<{ factor: string; reasoning: string }> };
+    expect(coerced.analysts[0]!.factor.length).toBe(FACTOR_MAX);
+    expect(coerced.analysts[0]!.reasoning.length).toBe(REASONING_MAX);
+    // the panel now CLEARS Zod instead of nuking (the 500 is gone)
+    expect(PredictPanelResultSchema.safeParse(coerced).success).toBe(true);
+  });
+
+  it("leaves an at-cap factor/reasoning untouched (no needless truncation)", () => {
+    const coerced = coercePredictResponse([
+      { ...validA, factor: "F".repeat(FACTOR_MAX), reasoning: "R".repeat(REASONING_MAX) },
+      validB,
+    ]) as { analysts: Array<{ factor: string; reasoning: string }> };
+    expect(coerced.analysts[0]!.factor.length).toBe(FACTOR_MAX);
+    expect(PredictPanelResultSchema.safeParse(coerced).success).toBe(true);
   });
 });

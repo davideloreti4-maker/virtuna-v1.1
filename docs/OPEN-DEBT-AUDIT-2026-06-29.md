@@ -76,6 +76,29 @@ Committed to `lane/refine` (`81f8294d`), merged to main via the lane PR (2026-07
 
 ---
 
+## ✅ CLOSED — refine-lane session 6 (2026-07-02, post-merge continuation)
+
+Batched on `lane/refine` after the PR #92 merge (not yet PR'd — commits below):
+
+1. **Predict WR-01 + WR-02** (`d52b9aaf`) — the 500-on-overflow + the guessable data-fence delimiter.
+   See the struck-through GSI carry-forward #4 for detail. 39 flash/predict tests green.
+2. **auth-guard loading skeleton detokenized** (`3fe62a8b`) — the last raw `#0A0A0A` + `border-zinc-800`
+   → flat-warm tokens (`bg-background` / `bg-background-elevated` / `border-white/[0.06]`); added to the
+   `reskin-matte` gate (14 green) so it can't regress.
+3. **video-card lucide→phosphor** (`0dd5f846`) — competitor-detail metric icons (Eye/Heart/ChatCircle/
+   ShareNetwork); the last lucide holdout on the frame seam. tsc clean.
+4. **/home route loading skeleton** (`deb7ced4`) — Theme B P0; hero-anchored logo+serif+composer skeleton
+   mirroring HomePageLayout (no more generic dashboard-grid flash on nav). Authed browser pass: GET /home
+   200, 0 console errors.
+
+⚠️ **CORRECTION — analyze P0 (`analyze/layout.tsx:26` `fallback={null}`):** that Suspense wraps the inner
+`<Reading>`, a CLIENT tree that loads via hooks (not Suspense), so the fallback is effectively inert — the
+real load state lives INSIDE Reading. The Theme-B "analyze skeleton" fix is therefore a Reading-internal
+loading state, not a layout fallback swap; needs a live Reading-load observation before touching (memory
+`reading-live-load-froze` flags this surface as delicate). Left open with this corrected diagnosis.
+
+---
+
 ## 🔴 Blocking
 
 ### 1. Production is stuck on the January init commit
@@ -133,11 +156,11 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
      type mismatch~~ ✅ **CLOSED (session 5, `81f8294d`)** — the file was deleted by the MVP brand-deals
      removal, so the blocker is gone. Do NOT re-open. *(The full-project tsc still carries the ~17 pre-existing
      `Audience.mode` test-fixture errors — separate baseline, tracked under the eslint-refactor debt below.)*
-  4. **06-REVIEW (Predict verb) — appears UNRESOLVED on main** (06-REVIEW left "issues_found", not in any
-     todo; see `WORKTREE-MERGE-AUDIT-2026-06-29.md` §C):
-     **WR-01 (M)** `coercePredictResponse` salvages lean casing but not length/archetype overflow → a common
-     model overflow **500s the whole Predict feature** (`predict-schema.ts` has no length/archetype cap on
-     main) · **WR-02 (S)** Predict route data-fence uses a guessable static delimiter `SCENARIO` (use a nonce).
+  4. ~~**06-REVIEW (Predict verb)**~~ ✅ **CLOSED (session 6, `d52b9aaf`)** — **WR-01** `coercePredictResponse`
+     now truncates factor/reasoning to the schema cap (shared `FACTOR_MAX`/`REASONING_MAX`), so a verbose
+     model no longer fails Zod `.max()` and 500s the whole panel (+2 tests) · **WR-02** the scenario data
+     fence now carries a random per-call `node:crypto` nonce (injectable via `deps.nonce` for tests) so
+     untrusted bytes can't forge the closing delimiter (+3 tests). 39 flash/predict tests green.
   5. **03-REVIEW accepted/deferred** (engine-internal, low): WR-04 + IN-02 (deep element/repaint shaping
      deferred with the scorer) + IN-03/IN-04.
 - **Close-out hygiene (cheap):** `~/virtuna-numen-gsi` + `milestone/numen-gsi` are merged → retire
@@ -188,8 +211,8 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 - Size: S (client win) / M (engine callbacks).
 
 **Shell-lane peripheral chrome (separate from premium-thread; code-verified on main):**
-- 🔴 `src/components/app/auth-guard.tsx:71` `bg-[#0A0A0A]` + `:73` `border-zinc-800` — raw Raycast
-  off-token leftover on the loading gate. **Confirmed still on main.** S.
+- ~~🔴 `src/components/app/auth-guard.tsx:71` `bg-[#0A0A0A]` + `:73` `border-zinc-800`~~ ✅ **CLOSED
+  (session 6, `3fe62a8b`)** — flat-warm tokens + added to the `reskin-matte` gate.
 - `settings/billing-section.tsx` — session notes claimed zinc/glass; grep found none on main → likely
   already resolved (#69/#71). Verify visually then drop. · Sidebar inset — claimed, not re-verified, low.
 
@@ -199,9 +222,10 @@ skeletons shipped; memory's "only the engine ask is deferred" was wrong. Still o
 - **Theme A:** A5 Account-Read dedicated loading view (M) · A6 Script/Remix skeleton caption
   (`script-thread-view.tsx:114`/`remix-thread-view.tsx:115`, S) · A7 optimistic thread delete
   (`use-threads.ts:73`, S) · Explore double skeleton+checklist (S).
-- **Theme B — route skeletons ABSENT:** `home` (P0), `analyze/layout.tsx:26` blank `fallback={null}` (P0),
-  `library` · `audience` · `audience/[id]` (P1), `audience/new` (P2), `competitors/[handle]`+`/compare` raw
-  pulse (P3). M each.
+- **Theme B — route skeletons:** ✅ `home` (P0) **DONE** (session 6, `deb7ced4`) · `analyze` (P0) **deferred**
+  — its `layout.tsx:26 fallback={null}` is the inert inner-Reading Suspense; the real fix is a Reading-internal
+  loading state (see the session-6 CORRECTION). STILL OPEN: `library` · `audience` · `audience/[id]` (P1),
+  `audience/new` (P2), `competitors/[handle]`+`/compare` raw pulse (P3). M each.
 - **Theme C — MATTE/cleanup:** toast inset-shine (`toast.tsx:213`) · card inset-shine (`card.tsx:61`) ·
   ~~delete dead `GlassToast` + `GlassSkeleton`~~ ✅ **DONE (session 2, `6be82815`)** · Button/Input loading→`<Spinner>`
   (`button.tsx:179`/`input.tsx:191`) · pricing spinner · stale "coral" JSDoc · shared `<SurfaceEmptyState>`
@@ -256,9 +280,8 @@ pass; the `HANDOFF-FEED-UI-REFINEMENT.md` list was a *pre-#90 plan*):
 ## 🟢 Frame (all PRs merged; worktree clean) — triaged 2026-06-30 (session 3, live-verified)
 
 **Only one item is actually frame-scoped + actionable:**
-- **`competitors/detail/video-card.tsx` lucide → phosphor** — 4 icons `Eye/Heart/MessageCircle/Share2`
-  (`import ... from "lucide-react"` line 1; used lines 71–83). Real, S. **Sits on the GSI seam**
-  (competitor-detail abuts GSI) — confirm it's not about to be reworked before touching.
+- ~~**`competitors/detail/video-card.tsx` lucide → phosphor**~~ ✅ **CLOSED (session 6, `0dd5f846`)** —
+  Eye/Heart/ChatCircle/ShareNetwork; GSI merged so the seam was stable. tsc clean.
 - **`format` save path** — speculative; **no confirmed defect → SKIP** unless a real bug surfaces.
 
 **NOT frame lane (routed elsewhere — do not pick up here):**
