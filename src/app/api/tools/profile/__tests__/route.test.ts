@@ -137,6 +137,18 @@ describe("POST /api/tools/profile — text cap (AR-04-02 / T-05-12)", () => {
   });
 });
 
+describe("POST /api/tools/profile — upload size cap (WR-01)", () => {
+  it("returns 400 on an over-cap file_text upload (can't bypass the text cap) and does NOT run", async () => {
+    // ~1.05MB decoded (> the 1MB file_text cap). Rejected at the boundary, before decode/run.
+    const res = await callPOST({
+      kind: "file_text",
+      file: { name: "big.txt", type: "text/plain", dataBase64: "A".repeat(1_400_000) },
+    });
+    expect(res.status).toBe(400);
+    expect(mockRunProfile).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/tools/profile — storagePath traversal (AR-04-01 / T-05-11)", () => {
   it("returns 400 on a traversal key and does NOT run", async () => {
     const res = await callPOST({ kind: "video", storagePath: "../x" });

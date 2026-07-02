@@ -99,6 +99,36 @@ loading state, not a layout fallback swap; needs a live Reading-load observation
 
 ---
 
+## ✅ CLOSED / CORRECTED — refine-lane session 7 (2026-07-02, debt sweep)
+
+Batched on `lane/refine` (commits below). This session ALSO re-verified the open items against
+current code (the owner asked to confirm accuracy) — several were stale or intentional:
+
+**Fixed:**
+1. **#10 apify token fail-fast** + **#8 dataset guard** (`da68f37a`) — constructor rejects a missing
+   token (was `?? APIFY_TOKEN!` → opaque 401); `.dataset(run.defaultDatasetId)` centralized behind a
+   guarded `listRunItems()`.
+2. **#11 adapt abort-timer leak** (`da68f37a`) — the Zod-fail `continue` skipped `clearTimeout`; moved
+   the clear into a `finally` (every path clears now).
+3. **p05 WR-01 upload size cap** + **WR-03 Simulate 500→400** (`a0d03f7d`) — file_text/image now cap
+   decoded size before decode; a resolvable non-General audience is a boundary 400, not a runner-throw 500.
+   +2 tests.
+
+**CORRECTED (verified NOT real / not actionable — do not re-open):**
+- **#12 `AdaptFrameBody` missing-dep effect — STALE.** The component was deleted (P7 dead-code sweep
+  `b436b7f3` + the viral-remix rework); it survives only as a comment in `use-analysis-stream.ts:526`.
+  The buggy auto-fire effect no longer exists. `useAdaptConcepts` is also caller-less (minor dead hook).
+- **G3 `cron/refresh-corpus` stub — INTENTIONAL, not a no-op bug.** It's a documented Phase-1 stub
+  (returns 200 so the `vercel.json` schedule fires; full 30-day refresh explicitly deferred to Phase 11/12).
+  Cutting it would break the registered cron. Leave until that phase.
+- **S6 `assertBlocksInRegistry` — INTENTIONAL, keep.** Documented "retained for re-use" and covered by 4
+  test files; only its prod caller was cut in S4. Not dead — no rewire/cut needed.
+- **#7 remix variants JSONB race — REAL but MIGRATION-GATED.** The only correct fix is a DB-atomic
+  `jsonb_set` merge via a Postgres RPC (Supabase JS `.update()` can't deep-merge atomically) — a prod
+  schema change, out of scope for an autonomous code sweep. Needs an owner-approved migration.
+
+---
+
 ## 🔴 Blocking
 
 ### 1. Production is stuck on the January init commit
@@ -124,12 +154,12 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
 
 | # | Item | Sev |
 |---|------|-----|
-| #7  | Remix variants JSONB read-modify-write race (no atomic merge) | 🟠 |
-| #8  | Apify `defaultDatasetId` used without runtime guard; `scrape*` methods lack try/catch | 🟠 |
-| #11 | Adapt retry leaks AbortController timer on Zod-fail `continue` | 🟠 |
-| #12 | `AdaptFrameBody` auto-fire effect omits `analysisId` from deps (latent stuck-empty) | 🟠 |
-| #10 | `APIFY_TOKEN` missing → falls back to empty string → opaque 401, no fail-fast | 🟡 |
-| #9  | Remix SSRF allowlist permits bare-apex (`apify.com`, `tiktokcdn.com`) — auditor over-rated | 🟢 |
+| #7  | Remix variants JSONB read-modify-write race — REAL but **migration-gated** (atomic `jsonb_set` RPC); see session-7 CORRECTED | 🟠 |
+| ~~#8~~  | ✅ **CLOSED s7 `da68f37a`** — `defaultDatasetId` guarded via `listRunItems()` | ✅ |
+| ~~#11~~ | ✅ **CLOSED s7 `da68f37a`** — abort timer cleared in a `finally` | ✅ |
+| ~~#12~~ | ✅ **STALE (s7)** — `AdaptFrameBody` was deleted; effect no longer exists | ✅ |
+| ~~#10~~ | ✅ **CLOSED s7 `da68f37a`** — constructor fails fast on a missing token | ✅ |
+| #9  | Remix SSRF allowlist permits bare-apex (`apify.com`, `tiktokcdn.com`) — auditor over-rated; low, open | 🟢 |
 
 ---
 

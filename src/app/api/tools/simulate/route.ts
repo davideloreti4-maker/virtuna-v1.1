@@ -30,6 +30,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { getAudience } from "@/lib/audience/audience-repo";
+import { resolveTier } from "@/lib/audience/resolve-tier";
 import { runSimulate } from "@/lib/tools/runners/simulate-runner";
 import type { Audience } from "@/lib/audience/audience-types";
 
@@ -83,6 +84,13 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!audience) {
     return Response.json({ error: "audience_not_found" }, { status: 400 });
+  }
+
+  // ── (3b) Eligibility (WR-03): Simulate runs ONLY against General (Directional)
+  //    audiences. A resolvable-but-ineligible audience is a client error → 400, not a 500.
+  //    resolveTier is the SSOT the runner also guards on (kept there as defense-in-depth).
+  if (resolveTier(audience) !== "Directional") {
+    return Response.json({ error: "audience_not_eligible" }, { status: 400 });
   }
 
   // ── (4) Normalize → run → persist to the SAME open thread (SIMU-03) ──────────

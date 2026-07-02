@@ -175,6 +175,21 @@ describe("POST /api/tools/simulate — audience resolution (T-05-14)", () => {
   });
 });
 
+describe("POST /api/tools/simulate — audience eligibility (WR-03)", () => {
+  it("returns 400 audience_not_eligible on a resolvable NON-General audience and does NOT run (not a 500)", async () => {
+    // A socials-mode audience resolves fine but is ineligible for Simulate (Directional-only).
+    // Pre-fix the runner threw → the route's catch mapped it to a 500; now it's a boundary 400.
+    mockGetAudience.mockResolvedValue({ ...makeAudience(), mode: "socials" });
+
+    const res = await callPOST({ audienceId: "aud-socials", message: "a reply" });
+
+    expect(res.status).toBe(400);
+    const data = await res.json();
+    expect(data.error).toBe("audience_not_eligible");
+    expect(mockRunSimulate).not.toHaveBeenCalled();
+  });
+});
+
 describe("POST /api/tools/simulate — happy path (SIMU-03)", () => {
   it("returns 200 { block } reaction-distribution and persists once to the open thread", async () => {
     const res = await callPOST({ audienceId: "aud-1", message: "Sounds good — Friday works." });
