@@ -1,20 +1,24 @@
 /**
- * simulate-runner.test.ts — Phase 5 Plan 05 Task 1 (SIMU-01/02).
+ * simulate-runner.test.ts — Phase 5 Plan 05 Task 1 (SIMU-01/02) · person-framing revision.
  *
- * Locks the Simulate verb: a drafted message runs through a General audience on the
- * EXISTING Flash engine (runFlashTextMode → aggregateFlash, steered by the audience
- * repaint) and renders a person/panel-aware, bands-only, Directional reaction-distribution
- * block.
+ * Locks the Simulate verb's TWO branches:
+ *   - PANEL → the message runs through the Flash content-critic engine
+ *     (runFlashTextMode → aggregateFlash, steered by the audience repaint) and renders a
+ *     band + fraction (NEVER re-rolled) + clustered themes + the per-persona drill.
+ *   - PERSON → the Flash engine is BYPASSED. A single behavioral MESSAGE-reaction
+ *     (injectable `personReact`, grounded in the baked signature) renders one read
+ *     (verdict + reasoning + quote); band/fraction/themes SUPPRESSED (Pitfall 2 — no
+ *     "7/10" for one human). This is the person-framing fix: the person reacts to the
+ *     message's ask, not to it as content to scroll past.
  *
  * Coverage (the <behavior> + acceptance_criteria):
- *   - panel audience → band + fraction (from aggregateFlash, NOT re-rolled) + themes[] +
- *     reactions[]; read null/absent.
- *   - person audience → a single read (verdict + reasoning + quote); band/fraction/themes
- *     SUPPRESSED (Pitfall 2 — no "7/10" for one human).
+ *   - person → single read from personReact; flash NEVER called; band/fraction/themes null.
+ *   - person → personReact receives the drafted message + a signature-grounded subject.
+ *   - person → an over-long quote is truncated to the block's 160-char cap.
  *   - the person/panel branch is DETERMINISTIC: driven by the persisted `__subject_kind`
- *     custom_context marker, NOT by persona count. A person-marked audience carrying >1
- *     persona STILL renders a person read (no fraction).
- *   - fraction === aggregateFlash(personas).fraction (never re-rolled); tier === "Directional".
+ *     marker, NOT by persona count. A person-marked audience carrying >1 persona STILL
+ *     renders a person read (no fraction).
+ *   - panel → band/fraction === aggregateFlash(personas) (never re-rolled); tier Directional.
  *   - the emitted block passes ReactionDistributionBlockSchema.safeParse.
  */
 
@@ -26,6 +30,7 @@ import type { Audience, CalibratedPersona } from "@/lib/audience/audience-types"
 import type { Stimulus } from "@/lib/engine/stimulus/types";
 
 import { runSimulate } from "../simulate-runner";
+import type { PersonReaction } from "../simulate-runner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -91,10 +96,21 @@ function makeStimulus(content = "Hey — circling back on the proposal, can we c
   return { kind: "text", content, source: { origin: "text" }, tier: "flash" };
 }
 
-/** A mocked runFlashTextMode returning a fixed panel. */
+/** A mocked runFlashTextMode returning a fixed panel (PANEL path). */
 function flashReturning(personas: FlashPersona[]) {
   return vi.fn(async () => ({ result: { personas }, warnings: [] as string[] }));
 }
+
+/** A mocked personReact returning a fixed reaction (PERSON path). */
+function personReactReturning(reaction: PersonReaction) {
+  return vi.fn(async () => reaction);
+}
+
+const READ: PersonReaction = {
+  verdict: "resistant",
+  reasoning: "A skeptical analyst wants the insight up front, not a file-transfer preamble.",
+  quote: "Lead with the number that changes my mind — don't make me dig for it.",
+};
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
@@ -120,35 +136,64 @@ describe("runSimulate — panel (distribution + themes)", () => {
   });
 });
 
-describe("runSimulate — person (single read, NO crowd — Pitfall 2)", () => {
-  it("returns a single read; band/fraction/themes suppressed", async () => {
-    const personas = makePersonas(6);
-    const flash = flashReturning(personas);
+describe("runSimulate — person (single MESSAGE-reaction, NOT a content critique)", () => {
+  it("returns a single read from personReact; Flash NEVER called; band/fraction/themes suppressed", async () => {
+    const flash = flashReturning(makePersonas(6));
+    const personReact = personReactReturning(READ);
     const audience = makeAudience({
       marker: "person",
       personas: [calibratedPersona("loyalist", 0.7), calibratedPersona("tough_crowd", 0.3)],
     });
 
-    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash });
+    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash, personReact });
 
     expect(block.props.subjectKind).toBe("person");
-    expect(block.props.read).not.toBeNull();
-    expect(block.props.read?.verdict.length).toBeGreaterThan(0);
-    expect(block.props.read?.reasoning.length).toBeGreaterThan(0);
-    expect(block.props.read?.quote.length).toBeGreaterThan(0);
+    // The person path bypasses the content-critic engine entirely.
+    expect(flash).not.toHaveBeenCalled();
+    expect(personReact).toHaveBeenCalledTimes(1);
+    // The read is the behavioral reaction, NOT a repurposed Flash persona quote.
+    expect(block.props.read?.verdict).toBe("resistant");
+    expect(block.props.read?.reasoning).toBe(READ.reasoning);
+    expect(block.props.read?.quote).toBe(READ.quote);
     // Pitfall 2: a single human has no honest distribution.
     expect(block.props.band ?? null).toBeNull();
     expect(block.props.fraction ?? null).toBeNull();
     expect(block.props.themes ?? null).toBeNull();
-    // the lead read echoes the highest-share persona (loyalist) from the flash panel.
-    expect(block.props.read?.quote).toContain("loyalist");
+  });
+
+  it("feeds personReact the drafted message + a signature-grounded subject description", async () => {
+    const personReact = personReactReturning(READ);
+    const audience = makeAudience({
+      marker: "person",
+      personas: [calibratedPersona("tough_crowd", 0.6), calibratedPersona("loyalist", 0.4)],
+    });
+    const message = "Sending the data now — full cohort breakdown attached.";
+
+    await runSimulate({ audience, stimulus: makeStimulus(message) }, { personReact });
+
+    const arg = personReact.mock.calls[0]![0];
+    expect(arg.message).toBe(message);
+    // grounded from the audience: the name + the highest-share persona's reaction frame.
+    expect(arg.subjectDescription).toContain("Alex");
+    expect(arg.subjectDescription).toContain("tough_crowd judges directly");
+  });
+
+  it("truncates an over-long reaction quote to the block's 160-char cap", async () => {
+    const longQuote = "x".repeat(400);
+    const personReact = personReactReturning({ ...READ, quote: longQuote });
+    const audience = makeAudience({ marker: "person", personas: [calibratedPersona("loyalist", 1)] });
+
+    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { personReact });
+
+    expect(block.props.read?.quote.length).toBe(160);
+    expect(ReactionDistributionBlockSchema.safeParse(block).success).toBe(true);
   });
 });
 
 describe("runSimulate — subjectKind is read from the marker, NOT persona count (D-02)", () => {
   it("a person-marked audience carrying >1 persona STILL renders a person read (no fraction)", async () => {
-    const personas = makePersonas(8);
-    const flash = flashReturning(personas);
+    const flash = flashReturning(makePersonas(8));
+    const personReact = personReactReturning(READ);
     // 3 calibrated personas but the persisted marker says "person".
     const audience = makeAudience({
       marker: "person",
@@ -159,12 +204,13 @@ describe("runSimulate — subjectKind is read from the marker, NOT persona count
       ],
     });
 
-    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash });
+    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash, personReact });
 
     // Driven by the marker → person, NOT panel (despite 3 personas).
     expect(block.props.subjectKind).toBe("person");
     expect(block.props.read).not.toBeNull();
     expect(block.props.fraction ?? null).toBeNull();
+    expect(flash).not.toHaveBeenCalled();
   });
 
   it("an explicit input.subjectKind overrides the marker", async () => {
@@ -181,17 +227,17 @@ describe("runSimulate — subjectKind is read from the marker, NOT persona count
   });
 
   it("defaults to person (honest-safe) when the marker is absent", async () => {
-    const flash = flashReturning(makePersonas(4));
+    const personReact = personReactReturning(READ);
     const audience = makeAudience({}); // no marker
 
-    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash });
+    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { personReact });
 
     expect(block.props.subjectKind).toBe("person");
     expect(block.props.read).not.toBeNull();
   });
 });
 
-describe("runSimulate — block validity + Flash reuse", () => {
+describe("runSimulate — block validity", () => {
   it("emits a ReactionDistributionBlockSchema-valid block (panel)", async () => {
     const flash = flashReturning(makePersonas(3));
     const audience = makeAudience({ marker: "panel" });
@@ -204,14 +250,15 @@ describe("runSimulate — block validity + Flash reuse", () => {
   });
 
   it("emits a ReactionDistributionBlockSchema-valid block (person)", async () => {
-    const flash = flashReturning(makePersonas(9));
+    const personReact = personReactReturning(READ);
     const audience = makeAudience({
       marker: "person",
       personas: [calibratedPersona("loyalist", 1)],
     });
 
-    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { flash });
+    const block = await runSimulate({ audience, stimulus: makeStimulus() }, { personReact });
 
     expect(ReactionDistributionBlockSchema.safeParse(block).success).toBe(true);
+    expect(block.props.model).toBe("sim1-flash");
   });
 });
