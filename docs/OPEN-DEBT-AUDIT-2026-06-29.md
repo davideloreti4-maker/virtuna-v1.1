@@ -227,11 +227,15 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
 - ⚠️ Do NOT `git merge rework/engine-core` (Phase 0, already on main).
 - **Deferred into the next milestone** (GSI `STATE.md` → Deferred Items + `todos/pending/`; see the
   per-worktree forensics in **`docs/WORKTREE-MERGE-AUDIT-2026-06-29.md` §4**):
-  1. **P05 code-review follow-ups** (`p05-code-review-followups.md`, low-med) —
-     **WR-01** text cap bypassed via file/image upload (`api/tools/profile/route.ts`, only `kind:"text"`
-     capped; add decoded-size cap on file_text ~1MB / image ~10MB) ·
-     **WR-03** Simulate 500 on resolvable non-General audience (`api/tools/simulate/route.ts` +
-     `simulate-runner.ts:~158-161` throw → should be 400) ·
+  1. ~~**P05 code-review follow-ups** (`p05-code-review-followups.md`, low-med)~~ ✅ **ALL CLOSED (s9 verify,
+     2026-07-02)** — todo → `todos/done/`. Every actionable WR finding is shipped + tested; only the
+     "acknowledged/optional" Info items (non-commitments) remain:
+     ~~**WR-01** text cap bypassed via file/image upload~~ ✅ **CLOSED (`a0d03f7d`)** — decoded-size caps
+     (`MAX_FILE_TEXT_BYTES` ~1MB / `MAX_IMAGE_BYTES` ~10MB) checked from the base64 length BEFORE decode
+     in `api/tools/profile/route.ts` → 400; test locks over-cap `file_text` → 400, `runProfile` not called. ·
+     ~~**WR-03** Simulate 500 on resolvable non-General audience~~ ✅ **CLOSED (`a0d03f7d`)** — the route
+     guards `resolveTier(audience) !== "Directional"` → 400 `audience_not_eligible` BEFORE `runSimulate`
+     (the runner throw is now defense-in-depth only); test locks socials-mode → 400, not 500, runner not called. ·
      ~~**WR-04** composer video path silent no-op + orphaned storage~~ ✅ **CLOSED s8 (`3245f7e7`)** — both
      video paths surfaced their pre-`stream.start` failures (Test → new `submitError`; profile → `evidenceError`)
      + profile path best-effort removes the staged blob on server reject (Test path async → deferred to a

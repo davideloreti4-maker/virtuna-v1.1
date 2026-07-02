@@ -4,7 +4,28 @@ created: 2026-06-29
 source: 05-REVIEW.md (phase-05 code review)
 severity: low-medium
 area: api/tools routes + composer
-status: pending
+status: done
+resolved: 2026-07-02
+resolution: all actionable WR findings shipped + tested (WR-01/03 a0d03f7d · WR-04 3245f7e7)
+---
+
+## ✅ RESOLVED 2026-07-02 (lane/refine s9 verify)
+
+Every actionable finding below is shipped + tested. Only the "Info (acknowledged, optional)"
+items remain, and those were explicitly non-commitments.
+- **WR-01** (upload size cap) — CLOSED `a0d03f7d`. Decoded-size caps (`MAX_FILE_TEXT_BYTES` ~1MB /
+  `MAX_IMAGE_BYTES` ~10MB) checked from the base64 length BEFORE decode in `api/tools/profile/route.ts`
+  → 400. Test: over-cap `file_text` → 400, `runProfile` not called (route.test.ts "upload size cap").
+- **WR-03** (Simulate non-General → 500) — CLOSED `a0d03f7d`. Route guards
+  `resolveTier(audience) !== "Directional"` → 400 `audience_not_eligible` BEFORE `runSimulate`; the
+  runner throw is now defense-in-depth only. Test: socials-mode → 400 (not 500), runner not called.
+- **WR-04** (composer video silent no-op + orphaned storage) — CLOSED s8 `3245f7e7` (see
+  `simulate-reaction-person-framing.md` sibling / audit s8 block). Browser-proven.
+
+Info items (over-matching `detectSubjectKind` regex, profile-poll budget, dead
+`assertBlocksInRegistry`, inert 23505 fallback) are acknowledged-optional — no commitment,
+address opportunistically if touched.
+
 ---
 
 # Phase 05 code-review follow-ups (non-blocking)
