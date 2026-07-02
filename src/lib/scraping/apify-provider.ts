@@ -229,9 +229,32 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   private client: ApifyClient;
 
   constructor(token?: string) {
-    this.client = new ApifyClient({
-      token: token ?? process.env.APIFY_TOKEN!,
-    });
+    // #10: fail fast on a missing token. The old `?? process.env.APIFY_TOKEN!` non-null
+    // assertion let an unset env fall through to an empty/undefined token, which surfaced
+    // downstream as an opaque Apify 401. Refuse to construct with no token instead.
+    const resolved = token ?? process.env.APIFY_TOKEN;
+    if (!resolved) {
+      throw new Error(
+        "ApifyScrapingProvider: no Apify token — pass one or set APIFY_TOKEN " +
+          "(refusing to start with an empty token, which would 401 opaquely).",
+      );
+    }
+    this.client = new ApifyClient({ token: resolved });
+  }
+
+  /**
+   * #8: fetch a finished run's dataset items behind a `defaultDatasetId` guard. `.call()`
+   * returns a run object even for FAILED/timed-out runs, and while Apify normally populates
+   * the id, a missing one would make `.dataset(undefined)` throw opaquely — fail with a
+   * contextful message instead. Centralizes the repeated `.dataset(run.defaultDatasetId)`.
+   */
+  private async listRunItems(run: { defaultDatasetId?: string }, ctx: string) {
+    if (!run.defaultDatasetId) {
+      throw new Error(
+        `Apify ${ctx}: actor run returned no defaultDatasetId (the run likely failed or timed out).`,
+      );
+    }
+    return this.client.dataset(run.defaultDatasetId).listItems();
   }
 
   async scrapeProfile(handle: string): Promise<ProfileData> {
@@ -242,9 +265,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
         { waitSecs: 60 },
       );
 
-    const { items } = await this.client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await this.listRunItems(run, "scrape");
 
     if (!items.length) {
       throw new Error(`No profile data returned for handle: ${handle}`);
@@ -293,7 +314,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       { waitSecs: 240 },
     );
 
-    const { items } = await this.client.dataset(run.defaultDatasetId).listItems();
+    const { items } = await this.listRunItems(run, "scrape");
 
     if (!items.length) {
       throw new Error(`No profile data returned for handle: ${handle}`);
@@ -332,9 +353,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       .actor(DISCOVER_VIDEO_ACTOR)
       .call(input, { waitSecs: 120 });
 
-    const { items } = await this.client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await this.listRunItems(run, "scrape");
 
     return items
       .map((item) => remapClockworksVideo(item))
@@ -362,9 +381,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new IngestError("scrape_failed", url, cause);
     }
 
-    const { items } = await this.client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await this.listRunItems(run, "scrape");
 
     // Empty dataset — unexpected (actor returned no rows at all)
     if (items.length === 0) {
@@ -450,9 +467,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new IngestError("scrape_failed", url, cause);
     }
 
-    const { items } = await this.client
-      .dataset(run.defaultDatasetId)
-      .listItems();
+    const { items } = await this.listRunItems(run, "scrape");
 
     // Empty dataset — unexpected (actor returned no rows at all).
     if (items.length === 0) {

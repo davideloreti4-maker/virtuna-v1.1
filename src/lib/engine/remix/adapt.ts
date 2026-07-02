@@ -152,8 +152,6 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
         { signal: controller.signal },
       );
 
-      clearTimeout(timer);
-
       const raw     = completion.choices[0]?.message?.content ?? "";
       const cleaned = stripModelOutput(raw); // strips <think>...</think> + fences
       const parsed  = JSON.parse(cleaned) as unknown;
@@ -174,11 +172,15 @@ export async function generateAdaptConcepts(input: AdaptInput): Promise<AdaptCon
       return result.data.concepts as AdaptConcept[];
 
     } catch (err: unknown) {
-      clearTimeout(timer);
       lastError = err;
       const isAbort = err instanceof Error && err.name === "AbortError";
       log.warn("adapt attempt failed", { attempt, error: String(err), isAbort });
       if (attempt >= MAX_RETRIES) break;
+    } finally {
+      // #11: clear the abort timer on EVERY exit path — including the Zod-fail `continue`
+      // above, which previously skipped clearTimeout and leaked the timer (a spurious
+      // controller.abort() would fire TIMEOUT_MS later on the already-settled request).
+      clearTimeout(timer);
     }
   }
 
