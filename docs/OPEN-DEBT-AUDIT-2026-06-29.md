@@ -54,6 +54,28 @@ the false "no importers" claim — it is hereby retired.
 
 ---
 
+## ✅ CLOSED — refine-lane session 5 (2026-07-02)
+
+Committed to `lane/refine` (`81f8294d`), merged to main via the lane PR (2026-07-02):
+
+1. **Brand-deals (Partnerships) removed from MVP** (owner decision) — the whole self-contained vertical
+   deleted in ONE `git revert`-able commit (**45 files, −4,216**): route `(app)/brand-deals/` + 21
+   components + `api/{deals,earnings,affiliate-links,programs}` + 4 query hooks + `types/brand-deals` +
+   `lib/{deal-utils,affiliate-programs,affiliate/cj-client,mappers}`. Shared-file edits restored by the
+   same revert: Sidebar nav item + `Handshake` import + `isOnBrandDeals`; hooks-barrel re-exports;
+   middleware `PROTECTED_PREFIXES`; 2 tests (`reskin-matte`, `Sidebar.a11y`). Cluster boundary was grep-
+   verified self-contained before deletion. `tsc --noEmit`: **0 new source errors**; 2 edited tests green
+   (15/15). **Restore later: `git revert 81f8294d`.**
+2. **`earnings-chart.tsx:97` next-build tsc blocker — GONE** (the file is deleted by #1). Superseded, not
+   fixed — do NOT re-open it as a work item. (Updates GSI carry-forward #3 below.)
+3. **`polish/cards-next` stranded WIP — verified DISCARD-safe** (inspected, NOT pruned — owner "hold
+   worktrees" + it carries a live auto-wip Stop-hook). Main is more evolved than the 06-27 snapshot
+   (`account-read-block` 400 lines vs WIP 329; rebasing the WIP onto main adds only 5 lines); the WIP's
+   own commit reads "HOLD — do not PR alone … foundation … throwaway harness." Superseded by #80 + later
+   PRs. When ready: `git worktree remove ~/virtuna-polish` + `git branch -D polish/cards-next` loses nothing.
+
+---
+
 ## 🔴 Blocking
 
 ### 1. Production is stuck on the January init commit
@@ -107,11 +129,10 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
      — the baked **person** SIM reacts like a generic **content** critic ("scroll", "first second") not the
      person reacting to the *message*; `runSimulate` uses the content-reaction frame and doesn't import
      `behavioral-core.ts` (Pitfall 5). Chain renders/chains fine; only the reaction *framing* is off.
-  3. **`next build` tsc baseline** — `src/components/app/brand-deals/earnings-chart.tsx:97`
-     `<Tooltip content={EarningsTooltip}>` recharts-3 type mismatch fails the full-project tsc step
-     (`next dev` skips it). Pre-existing since 05-01; part of the ~20-err baseline → see the eslint-refactor
-     debt below. **Confirmed on main.** S. ⚑ **SUPERSEDED by the MVP brand-deals removal (owner, 2026-06-30,
-     HANDOFF "MVP decisions"):** deleting `brand-deals/**` removes this file → blocker gone. Do NOT fix; remove.
+  3. ~~**`next build` tsc baseline** — `src/components/app/brand-deals/earnings-chart.tsx:97` recharts-3
+     type mismatch~~ ✅ **CLOSED (session 5, `81f8294d`)** — the file was deleted by the MVP brand-deals
+     removal, so the blocker is gone. Do NOT re-open. *(The full-project tsc still carries the ~17 pre-existing
+     `Audience.mode` test-fixture errors — separate baseline, tracked under the eslint-refactor debt below.)*
   4. **06-REVIEW (Predict verb) — appears UNRESOLVED on main** (06-REVIEW left "issues_found", not in any
      todo; see `WORKTREE-MERGE-AUDIT-2026-06-29.md` §C):
      **WR-01 (M)** `coercePredictResponse` salvages lean casing but not length/archetype overflow → a common
@@ -283,8 +304,8 @@ full lint coverage. **Real fix = refactor each, then un-ignore.** M total, file-
 - **PR #60 (creator-voice) is CLOSED, not merged** — branch `feat/creator-voice-sample` is
   330 ahead / 76 behind (the un-mergeable monster). Re-extract clean during GSI grounding §4.3. M.
 - **polish/cards-next has 3 stranded WIP commits** (auto-wip ×2 + `wip(account-read): densified
-  text-patterns half + throwaway harness`). Memory says the skill-card lane fully shipped → decide
-  prune vs resurrect. S.
+  text-patterns half + throwaway harness`). ✅ **Verified DISCARD-safe (session 5)** — fully superseded
+  by main (#80 + later); rebasing the WIP adds only 5 lines. Prune when the owner lifts the worktree hold. S.
 - **Stale merged branches to prune (origin):** `feat/frame-library-cover-echo`,
   `fix/frame-empty-state-token`, `fix/frame-glass-confirm-dialog`, `fix/frame-token-hygiene`,
   `polish/account-read-tierc`, `polish/skill-cards`. S.

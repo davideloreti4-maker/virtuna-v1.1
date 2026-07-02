@@ -5,17 +5,18 @@
 > The four audit docs are the detail; this is the map + the **"merged-but-not-visible-in-UI"** catalog
 > (the thing the owner flagged: a lot is shipped but you can't find it in the running app).
 
-## ⚑ MVP decisions (owner, 2026-06-30) — do these
-- **Remove brand-deals (Partnerships) from MVP; restore at a later stage.** It was added to the sidebar this
-  session (`2c139870`); pull it back out. Do it as ONE clean removal commit so `git revert <sha>` restores it
-  whole later. Scope + bonus (kills the `earnings-chart.tsx:97` tsc blocker) in "Suggested first moves" #3.
-  *This is the next session's FIRST task.*
+## ⚑ MVP decisions (owner) — status
+- ✅ **DONE (session 5, `81f8294d`) — Remove brand-deals (Partnerships) from MVP.** Whole vertical deleted
+  in one `git revert`-able commit (45 files, −4,216); shared-file edits (nav/barrel/middleware/2 tests)
+  restored by the same revert. `tsc`: 0 new source errors; the `earnings-chart.tsx:97` blocker is gone.
+  **Restore later: `git revert 81f8294d`.** Detail in OPEN-DEBT "CLOSED — session 5".
 
-## ⏱ Lane status (end of refine session 4, 2026-06-30)
-`origin/lane/refine` tip **`4b98435d`** — 8 commits this session (5 code + 3 docs), all pushed, **NOT merged
-to main**. Trunk clean on `origin/main`. Shipped this lane: GSI verbs surfaced · `/discover`→`/feed` ·
-3 routes→nav · Theme-C glass deleted · Marcus-Reyes dedup (code+prod-DB). Docs (this file + OPEN-DEBT) fully
-reconciled through session 4. **Open question for the owner: merge `lane/refine` to main, or keep batching?**
+## ⏱ Lane status (end of refine session 5, 2026-07-02)
+`lane/refine` **MERGED to main** via the lane PR (2026-07-02). Session-5 work: brand-deals removal
+(`81f8294d`) + doc reconcile. Prior lane content (sessions 1–4): GSI verbs surfaced · `/discover`→`/feed` ·
+3 routes→nav · Theme-C glass deleted · Marcus-Reyes dedup + profile-dedup fix. Trunk now carries all of it.
+**Next by value:** 06-REVIEW Predict WR-01 (coercion overflow 500s the now-surfaced Predict verb) ·
+`auth-guard.tsx:71` raw `#0A0A0A` · P0 route skeletons (home/analyze). See §"open-work backlog".
 
 ## Start here
 ```
@@ -70,9 +71,8 @@ not-built**, in 5 buckets:
 The sidebar had only **Audience / Library / Feed**. These shipped routes had **no nav entry**:
 - `/competitors`, `/competitors/[handle]`, `/competitors/compare` — **✅ added to sidebar `2c139870`** (Binoculars).
   (Also where the `video-card` lucide + the eslint-`globalIgnores`'d `competitors/**` live — both still open.)
-- `/brand-deals` — **✅ added to sidebar `2c139870`** as "Partnerships" (Handshake). ⚑ **OWNER DECISION
-  (2026-06-30): REMOVE from MVP, restore later** — see "MVP decisions" at top. (Removing it also deletes
-  the `earnings-chart.tsx:97` next-build tsc error → no separate fix needed.)
+- `/brand-deals` — ✅ **REMOVED from MVP (session 5, `81f8294d`)** per owner decision; whole vertical gone,
+  restore with `git revert 81f8294d`. (This also deleted `earnings-chart.tsx` → its tsc error is gone.)
 - `/referrals` — **✅ added to sidebar `2c139870`** (Gift). Renders a Pro-gated upsell.
 - `/discover`, `/discover/...` — **✅ now `redirect("/feed")` `f508a6df`** (was a live duplicate of `/feed`).
 - `/saved` — **already** a `redirect("/library")` (handoff was stale — it was never a live duplicate).
@@ -115,13 +115,9 @@ The sidebar had only **Audience / Library / Feed**. These shipped routes had **n
    3 routes wired to the sidebar.
 2. ⚠️ **PARTLY DONE (session 2)** — quick wins: ✅ Marcus-Reyes dedup, ✅ Theme C dead-glass deletes; the
    `ai/*.ts` delete was ❌ FALSE (files live — not done, retired). Still open: **A6 caption one-liners**.
-3. **⚑ FIRST next session (owner decision 2026-06-30): remove brand-deals from MVP** (restore later).
-   One clean removal commit so `git revert` brings it back: drop the **Partnerships nav item** (revert that
-   part of `2c139870` in `Sidebar.tsx` — the `Handshake` import, the `isOnBrandDeals` line, the NavItem) ·
-   remove the route `src/app/(app)/brand-deals/` (page + `loading.tsx`) · the components `src/components/app/brand-deals/**`
-   · the api routes `src/app/api/{deals,earnings,affiliate-links,programs}` (verify none shared elsewhere first).
-   **Bonus:** this deletes `earnings-chart.tsx` → the `earnings-chart.tsx:97` next-build tsc blocker is gone,
-   so DON'T separately "fix earnings-chart" — it's superseded. Verify `next build` / tsc after.
+3. ✅ **DONE (session 5, `81f8294d`)** — brand-deals removed from MVP as one `git revert`-able commit
+   (route + components + api + hooks + types/libs + nav/barrel/middleware/2 tests). `tsc`: 0 new source
+   errors; the `earnings-chart.tsx:97` blocker is gone (superseded). Restore later: `git revert 81f8294d`.
 4. **Then** **06-REVIEW Predict WR-01** (coercion overflow 500s the now-surfaced Predict verb) · `auth-guard`
    raw `#0A0A0A` · P0 route skeletons (home/analyze) · video-card lucide→phosphor.
 5. **Then** pick from the backlog by value (the Vercel deploy is the only true launch-blocker).
