@@ -78,7 +78,24 @@ export function useArchiveThread() {
       if (!res.ok) throw new Error("Failed to delete thread");
       return threadId;
     },
-    onSuccess: () => {
+    // A7: optimistically drop the row so the sidebar updates instantly; roll back if the DELETE fails.
+    onMutate: async (threadId: string) => {
+      await queryClient.cancelQueries({ queryKey: queryKeys.threads.list() });
+      const previous = queryClient.getQueryData<ThreadSummary[]>(
+        queryKeys.threads.list(),
+      );
+      queryClient.setQueryData<ThreadSummary[]>(
+        queryKeys.threads.list(),
+        (old) => old?.filter((t) => t.id !== threadId) ?? [],
+      );
+      return { previous };
+    },
+    onError: (_err, _threadId, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKeys.threads.list(), context.previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
     },
   });
