@@ -98,6 +98,12 @@ const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
 const ERROR_NON_TIKTOK =
   "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
+// WR-04 — Test upload pre-flight failures. These branches return BEFORE stream.start,
+// so stream.phase never owns the error; without these the button just went dead-quiet.
+const ERROR_SESSION_EXPIRED =
+  "Your session expired. Refresh the page and sign in again to run this.";
+const ERROR_UPLOAD_FAILED =
+  "That upload didn't go through. Check your connection and try again.";
 
 // Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
 // Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat — P5. Script/Remix — P6 (06-05).
@@ -416,6 +422,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [file, setFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
+  // The URL path uses showUrlError; the analysis stream owns post-start errors. This
+  // covers the gap where the upload path returns before stream.start (was a silent no-op).
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // ── Evidence-drop affordance state (D-07 — additive Profile inbox) ──────────
   // evidenceFile = the staged chat/screenshot/clip; evidenceError = the inline
@@ -860,14 +870,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
     setProfiling(true);
     setEvidenceError(null);
+    // WR-04 — track a staged clip so a downstream failure can clean it up (no orphaned
+    // blob). Safe here because /api/tools/profile is synchronous: a non-ok response means
+    // the server rejected the read, so the file is ours to remove.
+    const supabase = createClient();
+    let stagedPath: string | null = null;
     try {
       let res: Response;
       if (kind === 'video') {
         // Stage the clip to storage, then post the sanitized key (the route re-checks it).
-        const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) {
+          // WR-04: was a silent no-op — surface the expired session via the evidence slot.
+          setEvidenceError(EVIDENCE_RUN_FAILED);
           setProfiling(false);
           return;
         }
@@ -884,6 +900,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           setProfiling(false);
           return;
         }
+        stagedPath = path;
         res = await fetch('/api/tools/profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -908,6 +925,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: EVIDENCE_RUN_FAILED }));
         setEvidenceError((err as { error?: string }).error ?? EVIDENCE_RUN_FAILED);
+        // WR-04: the server rejected the read — drop the staged clip so it doesn't orphan.
+        if (stagedPath) void supabase.storage.from('videos').remove([stagedPath]).catch(() => {});
         return;
       }
       // Persisted to the open thread — clear the chip + surface the profile-read card.
@@ -915,6 +934,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       await reloadProfileThread();
     } catch {
       setEvidenceError(EVIDENCE_RUN_FAILED);
+      // WR-04: request threw after the clip was staged — best-effort cleanup.
+      if (stagedPath) void supabase.storage.from('videos').remove([stagedPath]).catch(() => {});
     } finally {
       setProfiling(false);
     }
@@ -1183,12 +1204,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
       captureUserTurn(file.name);
+      setSubmitError(null);
       setSubmitting(true);
       try {
         const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
         const userId = userData.user?.id;
         if (!userId) {
+          // WR-04: was a silent no-op — the spinner reset with zero feedback.
+          setSubmitError(ERROR_SESSION_EXPIRED);
           setSubmitting(false);
           return;
         }
@@ -1201,6 +1225,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             upsert: false,
           });
         if (error) {
+          // WR-04: surface the storage failure instead of silently resetting.
+          setSubmitError(ERROR_UPLOAD_FAILED);
           setSubmitting(false);
           return;
         }
@@ -1208,6 +1234,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         // so the null->string flip it produces SHOULD navigate (unlike a
         // hydration-sourced id, which never arms this).
         pendingNavRef.current = true;
+        // WR-04: no client-side storage cleanup on failure here (unlike the profile path).
+        // /api/analyze consumes video_storage_path in a background job, so deleting the blob
+        // on a stream error would race the server that may still read it. Orphans on the Test
+        // path are left to a server-side sweep.
         await stream
           .start({
             input_mode: "video_upload",
@@ -1225,6 +1255,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
     if (!isValidTikTok) return;
     captureUserTurn(trimmedUrl); // A3 optimistic echo (drives testSubmitTurn)
+    setSubmitError(null);
     setSubmitting(true);
     try {
       // WR-05: arm navigation for this real submission (see upload path above).
@@ -1896,6 +1927,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         {showUrlError && (
           <p className="mt-2 px-1 text-sm text-error" role="alert">
             {ERROR_NON_TIKTOK}
+          </p>
+        )}
+
+        {/* WR-04 — Test upload pre-flight failure (session-expired / storage-upload). Was a
+            silent no-op: the button reset with no feedback. Cleared on the next submit. */}
+        {submitError && (
+          <p className="mt-2 px-1 text-sm text-error" role="alert">
+            {submitError}
           </p>
         )}
 
