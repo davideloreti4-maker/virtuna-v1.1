@@ -1,5 +1,9 @@
 # Open Debt Audit — 2026-06-29
 
+> 📌 **For the current clean pick-up index of what's still open/deferred (as of 2026-07-02), see
+> [`docs/OPEN-WORK-BACKLOG.md`](./OPEN-WORK-BACKLOG.md).** This file is the detailed session log /
+> provenance behind it.
+>
 > Point-in-time audit of OPEN technical debt across all Virtuna worktrees, taken after
 > the `lane/shell` premium-thread initiative shipped (PRs #85, #88) and was verified
 > running live on `main` (real-engine browser pass, 0 console errors).
