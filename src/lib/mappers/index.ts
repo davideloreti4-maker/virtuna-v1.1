@@ -1,1 +1,0 @@
-export { mapDealRowToUI } from "./deals";

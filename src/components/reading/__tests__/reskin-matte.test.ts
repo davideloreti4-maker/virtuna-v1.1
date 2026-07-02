@@ -123,8 +123,8 @@ describe('matte-lint — transplanted charts carry no flat-warm violations (SC-3
 // ─────────────────────────────────────────────────────────────────────────────
 // Matte-lint (secondary chrome) — lane/frame dead-glass sweep gate.
 //
-// Locks the flat-warm pass on the app's pill/chip primitive + the competitors /
-// brand-deals chrome. These files carried the Raycast holdout that the audit
+// Locks the flat-warm pass on the app's pill/chip primitive + the competitors
+// chrome. These files carried the Raycast holdout that the audit
 // surfaced — the 137deg glass gradient, backdrop-blur, dead surface hex literals
 // (#18191a / #222326 / #0A0A0A), and the dead `var(--color-muted)` token (the real
 // token is --color-foreground-muted) — and are now matte. This gate keeps them clean.
@@ -146,9 +146,6 @@ const CLEANED_CHROME_FILES = [
   'components/app/legend-pills.tsx',
   'components/app/context-bar.tsx',
   'components/app/filter-pills.tsx',
-  'components/app/brand-deals/deal-card.tsx',
-  'components/app/brand-deals/deal-filter-bar.tsx',
-  'components/app/brand-deals/earnings-chart.tsx',
   'components/competitors/comparison/comparison-metric-card.tsx',
   'components/competitors/intelligence/strategy-analysis-card.tsx',
   'components/competitors/charts/chart-tooltip.tsx',
@@ -170,7 +167,7 @@ function findChromeViolations(src: string): string[] {
   return violations;
 }
 
-describe('matte-lint (secondary chrome) — pill primitive + competitors/brand-deals chrome are flat-warm (lane/frame dead-glass sweep)', () => {
+describe('matte-lint (secondary chrome) — pill primitive + competitors chrome are flat-warm (lane/frame dead-glass sweep)', () => {
   it.each(CLEANED_CHROME_FILES)('%s carries no Raycast glass / dead literal / dead token', (rel) => {
     const src = readFileSync(join(SRC, rel), 'utf8');
     const violations = findChromeViolations(src);

@@ -48,7 +48,7 @@ describe('Sidebar a11y', () => {
   it('exposes top-level nav items: New Thread, Audience, Library, Feed + the surfaced routes (IA-01)', () => {
     render(<Sidebar />);
     // Top-level nav nouns: New Thread (CTA) + Audience · Library · Feed and the
-    // refine-lane surfaced routes (Competitors · Partnerships · Referrals).
+    // refine-lane surfaced routes (Competitors · Referrals).
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
@@ -56,7 +56,6 @@ describe('Sidebar a11y', () => {
     expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Feed' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Competitors' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Partnerships' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Referrals' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
     // The relabeled history section header reads "Thread" (the old "Simulations"

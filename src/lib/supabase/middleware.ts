@@ -12,7 +12,6 @@ import {
 const PROTECTED_PREFIXES = [
   "/home",           // D-23 — default authed landing (defense-in-depth on top of the (app) layout getUser gate)
   "/analyze",        // D-25 — /dashboard sunset
-  "/brand-deals",
   "/settings",
   "/welcome",
   "/referrals",
