@@ -30,13 +30,12 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
-import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 
@@ -105,20 +104,10 @@ export async function POST(request: Request): Promise<Response> {
   const profileRow = rawProfileRow as unknown as ProfileRow | null;
 
   // ── (4) Resolve the active audience SERVER-SIDE (CR-01 — never from the body) ─
-  // Read active_audience_id off the user's open thread, then getAudience under the session.
-  // NULL = General default (no DB query). A load failure degrades to General (never blocks).
-  let audience: Audience = GENERAL_AUDIENCE;
+  // Read active_audience_id off the user's open thread, then resolve under the session.
+  // NULL = General default; a missing id or load failure degrades to General (never blocks).
   const openThread = await createOpenThreadLazy(user.id);
-  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
-  const activeAudienceId = rawThread.active_audience_id ?? null;
-  if (activeAudienceId) {
-    try {
-      const loaded = await getAudience(supabase, activeAudienceId);
-      if (loaded) audience = loaded;
-    } catch {
-      // Non-fatal: fall back to General if the audience load fails (no regression).
-    }
-  }
+  const audience = await resolveThreadAudience(supabase, openThread);
 
   // ── (5) Build the niche panel + audience repaint (shared helper — Task 1) ───
   // The SAME construction ideas-runner / hooks-runner use, so the typed thought
