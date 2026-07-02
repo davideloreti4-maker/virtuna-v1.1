@@ -1,4 +1,4 @@
-import { Eye, Heart, MessageCircle, Share2 } from "lucide-react";
+import { Eye, Heart, ChatCircle, ShareNetwork } from "@phosphor-icons/react";
 import { formatCount } from "@/lib/competitors-utils";
 
 export interface VideoCardData {
@@ -76,11 +76,11 @@ export function VideoCard({ video }: { video: VideoCardData }) {
           <span className="text-xs text-foreground">{formatCount(video.likes)}</span>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <MessageCircle className="w-3.5 h-3.5 text-foreground-muted" />
+          <ChatCircle className="w-3.5 h-3.5 text-foreground-muted" />
           <span className="text-xs text-foreground">{formatCount(video.comments)}</span>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <Share2 className="w-3.5 h-3.5 text-foreground-muted" />
+          <ShareNetwork className="w-3.5 h-3.5 text-foreground-muted" />
           <span className="text-xs text-foreground">{formatCount(video.shares)}</span>
         </div>
       </div>
