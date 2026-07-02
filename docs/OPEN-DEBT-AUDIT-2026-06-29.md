@@ -129,6 +129,44 @@ current code (the owner asked to confirm accuracy) — several were stale or int
 
 ---
 
+## ✅ CLOSED / CORRECTED — refine-lane session 8 (2026-07-02, refactor + audit-verify)
+
+Batched on `lane/refine` (not yet merged). One fix shipped; two queue items verified out.
+
+**Fixed:**
+1. **E2 — shared `resolveThreadAudience` helper** (`52f657fe`) — the per-thread active-audience read
+   (D-04 pin) was duplicated as a ~10-line block across 6 generative tool routes
+   (ideas/hooks/script/chat/react/explore). Extracted to
+   `src/lib/audience/resolve-thread-audience.ts`. **Net −67 lines**; dropped the stale
+   `as … & { active_audience_id }` casts + now-unused `Audience` imports. Placed in its OWN module
+   (not audience-repo) so the helper's `getAudience`/`GENERAL_AUDIENCE` imports resolve through the
+   cross-module binding — the existing route-test mocks (react's `getAudience` spy + CR-01 assertion,
+   explore's full module replace) keep passing **unchanged**. +5-case unit test. 50 tests green, tsc + eslint clean.
+
+**CORRECTED (verified NOT the low-risk items the auditor rated — do not re-open as quick wins):**
+- **A6 `(supabase as any)` casts — MIS-SCOPED, NOT a low-risk strip.** Two distinct blockers:
+  (1) `database.types.ts` is stale — the generated `audiences` Row is missing `mode` /
+  `success_criterion` / `custom_context` (added by migrations `20260619`/`20260624`/`20260627`), so
+  typed `.insert`/`.select` would error on those columns; (2) `audience-repo.ts` deliberately types
+  `AudienceRow` with `unknown` / `unknown[]`, which is NOT assignable to the generated `Json`-based
+  types — the `any` cast bridges that gap. Removing it cleanly needs either a **live-DB types regen**
+  (wide blast radius) or a **type-reconciliation refactor**, not a cast strip. The `cron/audience-drift`
+  half is more tractable (its client is genuinely `SupabaseClient<Database>` and all its columns exist)
+  but stripping the client `any` just relocates casts onto the `.update()` payload (domain `unknown`
+  fields → generated `Json`) + the `data as PersonalAudienceRow[]` narrowing — marginal. **Deferred:**
+  do it as part of a proper `database.types.ts` regen, owner-gated (touches generated file + wants
+  live-DB verify).
+- **#9 SSRF bare-apex allowlist — NOT a real vulnerability.** `apify-provider.ts`
+  `isAllowedPostUrl`/`isAllowedMp4Host` gate on HTTPS + private-IP rejection + suffix allowlist
+  (`host === suffix.slice(1) || host.endsWith(suffix)`). `endsWith(".tiktok.com")` requires controlling
+  a real subdomain of `tiktok.com` (`eviltiktok.com` / `tiktok.com.evil.com` both fail — the leading `.`
+  blocks suffix confusion); the bare-apex clause admits only the legit registrable apex (TikTok/Apify
+  owned) and is plausibly needed for canonical apex URLs; raw/encoded IPs can't pass a `.tiktok.com`
+  suffix anyway. Tightening the apex clause = zero security gain, risk of breaking legit URLs. Auditor
+  over-rated it — confirmed non-issue, close it.
+
+---
+
 ## 🔴 Blocking
 
 ### 1. Production is stuck on the January init commit
@@ -159,7 +197,7 @@ opportunistically when touching the file). The 🟠 cluster (#7/#8/#11/#12) is w
 | ~~#11~~ | ✅ **CLOSED s7 `da68f37a`** — abort timer cleared in a `finally` | ✅ |
 | ~~#12~~ | ✅ **STALE (s7)** — `AdaptFrameBody` was deleted; effect no longer exists | ✅ |
 | ~~#10~~ | ✅ **CLOSED s7 `da68f37a`** — constructor fails fast on a missing token | ✅ |
-| #9  | Remix SSRF allowlist permits bare-apex (`apify.com`, `tiktokcdn.com`) — auditor over-rated; low, open | 🟢 |
+| ~~#9~~  | ✅ **NOT REAL (s8)** — suffix allowlist + HTTPS + private-IP gate is safe; bare-apex admits only legit owned apexes. Close. See session-8 CORRECTED | ✅ |
 
 ---
 
@@ -207,9 +245,9 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 |----|------|------|------|
 | R3 | 0.5/0.5 video blend asserted, never calibrated | `aggregator.ts` | S |
 | R5 | `wave0 confidence:1.0` fabricated; `applyCtaPenalty`/`FeatureVector` unused | — | S |
-| E2 | 10-line audience-resolve block copy-pasted into ~7 tool routes → extract helper | tool routes | S |
+| ~~E2~~ | ✅ **CLOSED s8 `52f657fe`** — shared `resolveThreadAudience` helper; 6 routes, −67 lines, +5 tests | ✅ |
 | G3 | no-op stub | `cron/refresh-corpus/route.ts:23` | S |
-| A6 | `(supabase as any)` casts throughout | `audience-repo.ts`, `cron/audience-drift` | S |
+| ~~A6~~ | ⚠️ **MIS-SCOPED (s8)** — blocked on stale `database.types.ts` (missing `mode`/`success_criterion`/`custom_context`) + repo's loose `unknown[]` `AudienceRow`; needs a types regen, not a cast strip. Owner-gated. See session-8 CORRECTED | 🟠 |
 | A-T | target 3-position model (STEER via attributes; weights→REACT+REFINE) not implemented | — | M (feature) |
 | S6 | `assertBlocksInRegistry` now caller-less after S4 cut → rewire vs cut | `block-registry.ts` | S |
 | — | **Gen latency ~110s** — `qwen3.7-plus` generation is the E2E bottleneck (SIM half fixed S3′) | gen pipeline | L |
@@ -217,7 +255,7 @@ SSOT: `docs/DISSECTION-BACKLOG.md`. Dissection scope COMPLETE (16 FIXED + 5 RESO
 | — | ~~Dead-file delete — `ai/deepseek.ts` + `gemini.ts`~~ ❌ **RETIRED — FALSE (see CLOSED §, session 2):** they're LIVE via `intelligence-service.ts` → `/competitors` + `/api/intelligence`. Do NOT delete. Real item = the provider-consolidation row above. | `src/lib/ai/` | — |
 | G-D/M2 | RAG dead — `engine/retrieval/` + `engine/corpus/` entangled (~2.4K LOC); surgical cut deferred | engine | L |
 | D-R1 | drop Read judgment fields → pure-sensor (atomic 5-file + version bump) | — | M |
-| — | Optional hardening (low): bounded gen-retry backoff, SSRF bare-apex tighten (#9), apify try/catch (#8/#10) | — | S each |
+| — | Optional hardening (low): bounded gen-retry backoff, ~~SSRF bare-apex tighten (#9)~~ ✅ closed-not-real s8, apify try/catch (#8/#10) | — | S each |
 
 ---
 
