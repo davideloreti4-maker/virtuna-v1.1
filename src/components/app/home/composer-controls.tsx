@@ -22,7 +22,8 @@
  * Replaces tool-chips.tsx (the old chip row + active-model field).
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
@@ -189,26 +190,58 @@ export function Ico({
 }
 
 // ─── Popover shell ───────────────────────────────────────────────────────────
-// Opens UPWARD, anchored bottom-left of its trigger. max-h + scroll so 9 rows
-// never clip. Mobile: clamps to viewport width (NO bottom sheet — popover everywhere).
+// Opens UPWARD, anchored bottom-left of its trigger. PORTALED to <body> with
+// fixed positioning (mirrors <AudiencePresence>) so the upward popover is NOT
+// clipped by the composer dock's `overflow-hidden` rounded-corner clip — the tall
+// skill menu would otherwise lose its top rows. max-h + scroll caps the height;
+// position is pinned above the trigger and kept in sync on scroll/resize.
+// NOTE: because it lives outside the controls root, the host's outside-click
+// handler must exclude it via `menuRef` (else the mousedown closes it before a
+// row's click fires).
 function Popover({
   open,
+  anchorRef,
+  menuRef,
   children,
   className,
   labelledBy,
 }: {
   open: boolean;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  menuRef?: React.RefObject<HTMLDivElement | null>;
   children: React.ReactNode;
   className?: string;
   labelledBy?: string;
 }) {
-  if (!open) return null;
-  return (
+  const [pos, setPos] = useState<{ left: number; bottom: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (!r) return;
+      // Anchor bottom-left of the trigger, 12px gap, growing upward.
+      setPos({ left: r.left, bottom: window.innerHeight - r.top + 12 });
+    };
+    place();
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, anchorRef]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
     <div
+      ref={menuRef}
       role="menu"
       aria-labelledby={labelledBy}
+      style={{ left: pos?.left ?? 0, bottom: pos?.bottom ?? 0 }}
       className={cn(
-        "absolute bottom-[calc(100%+12px)] left-0 z-50",
+        "fixed z-[60]",
         "min-w-[296px] max-w-[calc(100vw-28px)] max-h-[60vh] overflow-y-auto",
         "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
         "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
@@ -217,7 +250,8 @@ function Popover({
       )}
     >
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -430,6 +464,15 @@ export function ComposerControls({
 }: ComposerControlsProps) {
   const [pop, setPop] = useState<PopId>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  // The open popover is PORTALED to <body> (see Popover) so it lives outside
+  // rootRef — the outside-click handler below must also spare `menuRef`, else the
+  // mousedown on a menu row closes the popover before the row's click fires.
+  const menuRef = useRef<HTMLDivElement>(null);
+  // One trigger ref per control so the portaled popover can anchor above it.
+  const attachRef = useRef<HTMLButtonElement>(null);
+  const skillRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLButtonElement>(null);
+  const intentRef = useRef<HTMLButtonElement>(null);
 
   // ── Explore params popover local state (P11 / EXPLORE-01, D-06) ─────────────
   // Kept local to ComposerControls; the apply button lifts the values via
@@ -443,7 +486,9 @@ export function ComposerControls({
   useEffect(() => {
     if (!pop) return;
     const onDown = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setPop(null);
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setPop(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setPop(null);
@@ -469,6 +514,7 @@ export function ComposerControls({
       {/* + attach / upload */}
       <div className="relative">
         <button
+          ref={attachRef}
           type="button"
           aria-label="Upload or attach"
           aria-haspopup="menu"
@@ -478,7 +524,7 @@ export function ComposerControls({
         >
           <Ico name="plus" />
         </button>
-        <Popover open={pop === "attach"}>
+        <Popover open={pop === "attach"} anchorRef={attachRef} menuRef={menuRef}>
           <button
             type="button"
             role="menuitem"
@@ -522,6 +568,7 @@ export function ComposerControls({
       {/* Skill pill — the ONE accented, bordered control */}
       <div className="relative">
         <button
+          ref={skillRef}
           id="composer-skill-pill"
           type="button"
           aria-label={`Skill: ${skill.label}`}
@@ -537,7 +584,7 @@ export function ComposerControls({
           <span>{skill.label}</span>
           <Ico name="chev" size={14} className="text-foreground-muted" />
         </button>
-        <Popover open={pop === "skill"} labelledBy="composer-skill-pill">
+        <Popover open={pop === "skill"} anchorRef={skillRef} menuRef={menuRef} labelledBy="composer-skill-pill">
           <SkillRows
             active={activeTool}
             activeMode={activeMode}
@@ -560,6 +607,7 @@ export function ComposerControls({
       {activeTool === "explore" && (
         <div className="relative">
           <button
+            ref={searchRef}
             type="button"
             aria-label="Search"
             title="Search · refine the Explore pull"
@@ -570,7 +618,7 @@ export function ComposerControls({
           >
             <Ico name="search" size={16} />
           </button>
-          <Popover open={pop === "search"} className="min-w-[300px]">
+          <Popover open={pop === "search"} anchorRef={searchRef} menuRef={menuRef} className="min-w-[300px]">
             <div className="flex flex-col gap-3 p-2.5">
               {/* Niche or keywords */}
               <label className="flex flex-col gap-1.5">
@@ -675,6 +723,7 @@ export function ComposerControls({
       {/* Intent — icon-only, borderless (Grow / Sell segmented popover) */}
       <div className="relative">
         <button
+          ref={intentRef}
           type="button"
           aria-label={`Intent: ${intent === "sell" ? "Sell" : "Grow"}`}
           title={`Intent · ${intent === "sell" ? "Sell" : "Grow"}`}
@@ -685,7 +734,7 @@ export function ComposerControls({
         >
           <Ico name={intent === "sell" ? "tag" : "target"} size={16} />
         </button>
-        <Popover open={pop === "intent"} className="min-w-[260px]">
+        <Popover open={pop === "intent"} anchorRef={intentRef} menuRef={menuRef} className="min-w-[260px]">
           <div className="px-2.5 pb-1 pt-1.5 text-[11px] text-foreground-muted/55">
             How should your audience judge this?
           </div>
