@@ -28,6 +28,7 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
+  House,
   UsersThree,
   Books,
   FilmStrip,
@@ -368,6 +369,7 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
+  const isOnStart = pathname.startsWith("/start");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
@@ -468,6 +470,16 @@ export function Sidebar() {
           {/* ── Audience + Library ── */}
           <div className="pt-3">
             <div className="flex flex-col gap-0.5">
+              {/* Start — the flagship briefing landing (Surfaces milestone): your day,
+                  pre-tested on your people. The front door to the destinations; /home
+                  stays the thread/composer surface, so this never steals the thread flow. */}
+              <NavItem
+                icon={House}
+                label="Start"
+                isActive={isOnStart}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/start")}
+              />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem
                 icon={UsersThree}
