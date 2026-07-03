@@ -28,7 +28,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { AmbientFocus } from '@/components/audience-lens/ambient-presence-types';
+import type {
+  AmbientFocus,
+  AmbientPersonaReaction,
+} from '@/components/audience-lens/ambient-presence-types';
 
 /**
  * A focusable card descriptor derived from a rendered card's already-emitted reaction data.
@@ -39,6 +42,9 @@ export interface AmbientCardDescriptor {
   conceptText: string;
   fraction: string;
   scrollQuote: string;
+  /** The card's own real per-persona reactions (S3′) — registry-enum archetypes when present.
+   *  Threaded onto the focus so the Room's People cast + "Ask them why" list are named/real. */
+  personas?: AmbientPersonaReaction[];
 }
 
 /** The pure inputs the focus decision reads — no DOM, no time, no randomness. */
@@ -57,7 +63,12 @@ const TAP_RELEASE_SCROLL_PX = 64;
 
 /** A descriptor → the AmbientFocus shape the presence consumes. */
 function toFocus(d: AmbientCardDescriptor): AmbientFocus {
-  return { conceptText: d.conceptText, fraction: d.fraction, scrollQuote: d.scrollQuote };
+  return {
+    conceptText: d.conceptText,
+    fraction: d.fraction,
+    scrollQuote: d.scrollQuote,
+    personas: d.personas,
+  };
 }
 
 /**

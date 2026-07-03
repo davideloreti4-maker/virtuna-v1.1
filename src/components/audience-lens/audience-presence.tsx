@@ -38,7 +38,7 @@ import type { FlatPersonaReaction } from '@/components/board/audience/audience-d
 import { personaNameMap } from '@/lib/audience/persona-names';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLensContent } from './AudienceLensContent';
-import type { AmbientFocus } from './ambient-presence-types';
+import type { AmbientFocus, AmbientPersonaReaction } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
   Constellation,
@@ -60,6 +60,9 @@ export interface AudienceAsk {
   thought: string;
   fraction: string;
   scrollQuote: string;
+  /** The react route's real per-persona reactions (registry-enum archetypes) for this ask —
+   *  re-focusing on it keeps the named People cast intact. Absent on errored/legacy asks. */
+  personas?: AmbientPersonaReaction[];
   error?: boolean;
 }
 
@@ -138,10 +141,15 @@ export function AudiencePresence({
   const isPersonSim = audience?.mode === 'general' && personas.length === 1;
   const rosterCount = isPersonSim ? 1 : personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS;
 
-  const flatPersonas: FlatPersonaReaction[] = useMemo(
-    () => (focus ? cardScrollQuoteReactions(focus.fraction, focus.scrollQuote) : []),
-    [focus],
-  );
+  // Prefer the focus's REAL per-persona reactions (registry-enum archetypes carried from a
+  // generated card's own S3′ personas or the react route) — that lights up the named People
+  // cast + the "Ask them why →" chat. Only when they are absent do we honestly fall back to
+  // expanding the aggregate fraction into placeholder `viewer_N` reactions (chat gated off).
+  const flatPersonas: FlatPersonaReaction[] = useMemo(() => {
+    if (!focus) return [];
+    if (focus.personas && focus.personas.length > 0) return focus.personas;
+    return cardScrollQuoteReactions(focus.fraction, focus.scrollQuote);
+  }, [focus]);
   const stopRead = useMemo(() => (focus ? parseStop(focus.fraction) : null), [focus]);
 
   // The one-line pulse: a live read when focused, readiness (never a stale reaction) when idle.

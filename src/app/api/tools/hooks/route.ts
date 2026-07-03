@@ -220,6 +220,7 @@ export async function POST(request: Request): Promise<Response> {
               scrollQuote: b.props.scrollQuote,             // D-02/D-04: on the face
               model: b.props.model,
               channel: b.props.channel,
+              personas: b.props.personas,                   // S3′: real per-persona reactions → named ambient Room cast (Task B)
               // band/fraction deferred to score events
             },
           })),

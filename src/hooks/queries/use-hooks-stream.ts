@@ -27,7 +27,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookCardBlock } from '@/lib/tools/blocks';
+import type { HookCardBlock, ReactionPersona } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -47,6 +47,9 @@ export interface PartialHookCard {
   band?: 'Strong' | 'Mixed' | 'Weak';
   fraction?: string;
   scored: boolean;
+  // S3′: the card's real per-persona reactions (registry-enum archetypes) — threaded so the
+  // ambient Room shows the NAMED People cast live, before the thread reloads (The Room, Task B).
+  personas?: ReactionPersona[];
 }
 
 export interface UseHooksStreamReturn {
@@ -250,6 +253,9 @@ export function useHooksStream(): UseHooksStreamReturn {
                   channel: props.channel === null ? null : (props.channel ? String(props.channel) : null),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -420,6 +426,9 @@ export function useHooksStream(): UseHooksStreamReturn {
                   channel: props.channel === null ? null : (props.channel ? String(props.channel) : null),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -499,6 +508,7 @@ export function useHooksStream(): UseHooksStreamReturn {
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
         channel: c.channel,
+        personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
       },
     }));
   }, [streamingCards]);

@@ -1397,11 +1397,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     const fraction: string | undefined = p.fraction;
     const scrollQuote: string | undefined = p.scrollQuote;
     if (typeof concept !== "string" || typeof fraction !== "string") return null;
+    // S3′: a generated card carries its own 10-persona reaction (real registry-enum
+    // archetypes). Thread it onto the focus so the Room's People cast + "Ask them why"
+    // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
+    // the presence falls back to the honest fraction-expansion placeholders.
+    const personas = Array.isArray(p.personas) ? p.personas : undefined;
     return {
       id: `${kind}-${idx}`,
       conceptText: concept,
       fraction,
       scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
+      personas,
     };
   };
   const ambientDescriptors: AmbientCardDescriptor[] = (() => {
@@ -1449,12 +1455,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         });
         if (controller.signal.aborted) return;
         if (!res.ok) throw new Error("reaction_failed");
-        const data: { fraction?: string; scrollQuote?: string } = await res.json();
+        const data: {
+          fraction?: string;
+          scrollQuote?: string;
+          personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
+        } = await res.json();
         if (controller.signal.aborted) return;
         const fraction = data.fraction ?? "";
         const scrollQuote = data.scrollQuote ?? "";
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote }]);
-        focusByThought({ conceptText: text, fraction, scrollQuote }); // Lens shows this read
+        const personas = Array.isArray(data.personas) ? data.personas : undefined;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas }]);
+        // Lens shows this read — with the real named cast (react route returns registry-enum personas).
+        focusByThought({ conceptText: text, fraction, scrollQuote, personas });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
@@ -1478,7 +1490,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       asks={audienceAsks}
       asking={asking}
       onReask={(a) =>
-        focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
+        focusByThought({
+          conceptText: a.thought,
+          fraction: a.fraction,
+          scrollQuote: a.scrollQuote,
+          personas: a.personas,
+        })
       }
       onBuildAudience={() => setBuildOpen(true)}
       docked
