@@ -2068,6 +2068,7 @@ export type Database = {
           avatar_url: string | null
           company: string | null
           display_name: string | null
+          last_audience_id: string | null
           notification_email_updates: boolean
           notification_marketing: boolean
           notification_test_results: boolean
@@ -2080,6 +2081,7 @@ export type Database = {
           avatar_url?: string | null
           company?: string | null
           display_name?: string | null
+          last_audience_id?: string | null
           notification_email_updates?: boolean
           notification_marketing?: boolean
           notification_test_results?: boolean
@@ -2092,6 +2094,7 @@ export type Database = {
           avatar_url?: string | null
           company?: string | null
           display_name?: string | null
+          last_audience_id?: string | null
           notification_email_updates?: boolean
           notification_marketing?: boolean
           notification_test_results?: boolean
@@ -2100,7 +2103,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_settings_last_audience_id_fkey"
+            columns: ["last_audience_id"]
+            isOneToOne: false
+            referencedRelation: "audiences"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_subscriptions: {
         Row: {

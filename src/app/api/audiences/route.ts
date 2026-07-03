@@ -21,6 +21,7 @@ import {
   listAudiences,
   createAudience,
 } from "@/lib/audience/audience-repo";
+import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
 
 // ─── Input validation ──────────────────────────────────────────────────────────
 
@@ -90,7 +91,12 @@ export async function GET(): Promise<Response> {
 
   try {
     const audiences = await listAudiences(supabase);
-    return NextResponse.json({ audiences });
+    // The user-level last-used audience (resolveUserAudience) — seeds the composer's selected
+    // audience on mount so a page reload no longer resets the presence to General. General
+    // (the fallback) maps to null so the client treats it as "no calibrated pin".
+    const lastUsed = await resolveUserAudience(supabase, user.id);
+    const lastAudienceId = lastUsed.is_general ? null : lastUsed.id;
+    return NextResponse.json({ audiences, lastAudienceId });
   } catch {
     return NextResponse.json({ error: "list_failed" }, { status: 500 });
   }

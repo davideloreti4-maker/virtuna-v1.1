@@ -221,6 +221,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
   const hasUserSelectedToolRef = useRef(false);
+  // Tracks whether the creator has picked an audience this mount. Guards the mount-time
+  // seed of selectedAudienceId from the user-level last-used audience (the audiences fetch
+  // below) so a deliberate pick made while that fetch was in flight always wins.
+  const hasUserSelectedAudienceRef = useRef(false);
   // Evidence-drop file input (D-07) — declared here (ahead of the rest of the
   // evidence state) so handleUserSelectTool can open the Profile evidence picker
   // within the user-gesture call stack (a file input .click() must ride a real
@@ -658,8 +662,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       try {
         const res = await fetch("/api/audiences");
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { audiences?: Audience[] };
-        if (!cancelled) setAudiences(data.audiences ?? []);
+        const data = (await res.json()) as {
+          audiences?: Audience[];
+          lastAudienceId?: string | null;
+        };
+        if (cancelled) return;
+        const list = data.audiences ?? [];
+        setAudiences(list);
+        // Seed the active audience from the user-level last-used pin (resolveUserAudience)
+        // so a page reload restores the calibrated audience instead of resetting to General.
+        // Guarded so a deliberate pick made while this fetch was in flight always wins; and
+        // only seed an id that is actually in the loaded list (a stale/deleted id → General).
+        if (
+          !hasUserSelectedAudienceRef.current &&
+          data.lastAudienceId &&
+          list.some((a) => a.id === data.lastAudienceId)
+        ) {
+          setSelectedAudienceId(data.lastAudienceId);
+        }
       } catch {
         // silent — popover renders the empty state
       }
@@ -692,7 +712,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Non-fatal: the pill reflects optimistic state even if the PATCH fails.
   const handleSelectAudience = useCallback(async (audience: Audience) => {
     const newId = audience.is_general ? null : audience.id;
+    // Mark a deliberate pick so the mount-time last-used seed never clobbers it (race guard).
+    hasUserSelectedAudienceRef.current = true;
     setSelectedAudienceId(newId);
+    // Persist the USER-level last-used audience (resolveUserAudience) so the choice survives a
+    // page reload + seeds new threads/surfaces. Only a real audience UUID (or null=General) is a
+    // valid last-used pin — virtual preset ids stay session-local (like the thread pin, below).
+    // Fire-and-forget: non-fatal if it fails (the in-memory selection still reflects the pick).
+    if (newId === null || UUID_PATTERN.test(newId)) {
+      void fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: newId }),
+      }).catch(() => {});
+    }
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
     // Socials switch, which would silently router.push away + discard the draft),
@@ -729,7 +762,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     setAudiences((prev) =>
       prev.some((a) => a.id === saved.id) ? prev : [...prev, saved],
     );
+    hasUserSelectedAudienceRef.current = true;
     setSelectedAudienceId(saved.id);
+    // Persist the built SIM as the user-level last-used so it survives reload (mirrors
+    // handleSelectAudience). Real UUID by construction (a saved row). Fire-and-forget.
+    if (UUID_PATTERN.test(saved.id)) {
+      void fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: saved.id }),
+      }).catch(() => {});
+    }
     setBuildOpen(false);
   }, []);
 
