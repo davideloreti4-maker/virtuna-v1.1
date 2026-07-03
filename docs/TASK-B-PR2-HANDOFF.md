@@ -6,12 +6,13 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
-## ★★★★ SESSION UPDATE (2026-07-04 later) — PR-4 desktop rail + resolveUserAudience SHIPPED (2 open PRs)
+## ★★★★ SESSION UPDATE (2026-07-04 later) — PR-4 desktop rail + resolveUserAudience SHIPPED + MERGED
 
-**The three PR-4 scope calls were owner-confirmed (AskUserQuestion):** (1) rail sits **BESIDE**
-the composer (it stays); (2) `variant='thread'|'surface'` seam **stubbed + deferred** (surface =
-the sister surfaces session's pages); (3) `resolveUserAudience` shipped **first as its own PR**.
-Shipped as TWO stacked PRs (owner-review-then-merge, like #119 — NOT self-merged):
+**`milestone/the-room` is now at `39c10564` (merge commit for #124; local + origin in-sync, clean).
+Both PRs are MERGED.** The three PR-4 scope calls were owner-confirmed (AskUserQuestion): (1) rail
+sits **BESIDE** the composer (it stays); (2) `variant='thread'|'surface'` seam **stubbed + deferred**
+(surface = the sister surfaces session's pages); (3) `resolveUserAudience` shipped **first as its own
+PR**. Shipped as two stacked PRs, then owner-authorized the merge:
 
 **PR-A → PR #121** (`fix/user-default-audience` off `milestone/the-room`, commit `d381cff6`).
 Fixes "a page reload resets the audience to General": `selectedAudienceId` inits null + the only
@@ -23,10 +24,15 @@ writes on every pick); `GET /api/audiences` returns `lastAudienceId` → compose
 `selectedAudienceId` on mount (guarded: in-flight pick wins; only an id in the loaded list seeds).
 Also `database.types.ts` (hand-added the column — did NOT regen, to avoid pulling the surfaces
 session's tables). **VERIFIED LIVE**: pick Fitness Creators → DB writes UUID → reload restores it
-(was General); pick General → writes null, no latch.
+(was General); pick General → writes null, no latch. **MERGED via PR #121** (merge `c55dacf7`;
+`fix/user-default-audience` deleted).
 
-**PR-4 → PR #123** (`feat/the-room-desktop-rail` off `fix/user-default-audience` — STACKED;
-retarget to `milestone/the-room` after #121 merges; commit `15a79124`). At **≥ xl** the audience
+**PR-4 → MERGED via PR #124** (`feat/the-room-desktop-rail`, commit `15a79124`; merge `39c10564`).
+⚠ Opened as **#123** stacked on `fix/user-default-audience`; when that base was deleted on the #121
+merge, GitHub AUTO-CLOSED #123 (it won't retarget/reopen a PR whose base is gone) → recreated as
+**#124** off `milestone/the-room` (clean diff: only the rail files, PR-A already in the base) + merged.
+**Lesson for future stacked PRs: retarget the child to the trunk BEFORE deleting the parent branch.**
+At **≥ xl** the audience
 is a **persistent right rail** (spec = `the-room-desktop-v1.html`); ≤ xl keeps the shipped Bloom.
 4 files: `AudiencePresence` gains `layout='dock'|'rail'` (rail = identity+switcher header → an
 always-open `AmbientRoom` on focus, else an idle roster; no peek toggle / no Bloom sheet; the
@@ -43,9 +49,11 @@ no rail. tsc 21-baseline (0 production); presence **29 (+3 rail)**/home/matte gr
 keeps the Bloom (not a regression). **Deferred (out of scope):** `variant='surface'` impl; the
 rail-inset persona chat (`.chat` in the prototype — currently reuses `PersonaChatDrawer`).
 
-**➡ NEXT:** merge #121 → retarget + merge #123 (owner). Then the mobile Room + desktop rail are both
-feature-complete vs the v6 + desktop prototypes. Open follow-ups: `variant='surface'` (coordinate
-with the surfaces session), rail-inset chat polish.
+**➡ NEXT:** both #121 + #124 are MERGED — the mobile Room + desktop rail are now feature-complete vs
+the v6 + desktop prototypes. `milestone/the-room` (tip `39c10564`) is NOT yet merged to `main` (do
+that when the whole milestone is called done). Open follow-ups (own future PRs, low priority):
+`variant='surface'` impl (coordinate with the surfaces session — it owns the non-thread pages),
+rail-inset persona chat polish (the prototype `.chat`; currently reuses `PersonaChatDrawer`).
 
 ## ★★★ SESSION UPDATE (2026-07-04) — PR-3 SHIPPED + MERGED → next = PR-4 (owner scope-confirm)
 
