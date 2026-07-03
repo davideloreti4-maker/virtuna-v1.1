@@ -5,7 +5,8 @@
  * proactive "you're neglecting this pillar" nudge (the Stanley-referenced beat: a
  * calendar that knows your pillars, not just your dates).
  *
- * Honesty spine: the SHARE bar is real (derived from the account's posts); the tone dot
+ * Honesty spine: the SHARE bar renders MOCK fixtures today (real per-pillar derivation from
+ * the account's posts is a reserved slot — NOT yet wired to account data); the tone dot
  * is a DIRECTIONAL forecast of how the creator's people tend to respond to that pillar —
  * a reserved ambient slot, never a fabricated live reaction. Tapping a pillar seeds the
  * composer scoped to it (Make for that theme). Low-ambient, no Room dependency.

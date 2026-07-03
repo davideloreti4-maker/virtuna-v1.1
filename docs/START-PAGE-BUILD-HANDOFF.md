@@ -158,6 +158,10 @@ PORT=3400 NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist
 
 ## 11. Build status + graft readiness (updated 2026-07-03k)
 
+> **📋 Full cross-surface status audit: `docs/SURFACES-STATUS-AUDIT-2026-07-03.md`** — surface-by-surface
+> coverage (REAL / STUBBED / DEFERRED / GATED / MISSING), real-vs-mock data, polish/responsive, the graft
+> list, the OAuth/Composio ingestion reshaping, and the recommended next-tranche sequence. Read it first.
+
 ### Shipped + merged to `milestone/surfaces` (tip `a5309422`)
 - **Steps 1–2** — contract stub + responsive `/start` shell (#105).
 - **Nav** — `Start` entry in `Sidebar.tsx` → `/start` (#106). `/home` unchanged (still the thread surface).
