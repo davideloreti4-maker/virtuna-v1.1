@@ -30,6 +30,7 @@ import {
   CaretUpDown,
   House,
   CalendarDots,
+  ChartLineUp,
   UsersThree,
   Books,
   FilmStrip,
@@ -372,6 +373,7 @@ export function Sidebar() {
 
   const isOnStart = pathname.startsWith("/start");
   const isOnCalendar = pathname.startsWith("/calendar");
+  const isOnAnalytics = pathname.startsWith("/analytics");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
@@ -490,6 +492,15 @@ export function Sidebar() {
                 isActive={isOnCalendar}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/calendar")}
+              />
+              {/* Analytics — account metrics over 7/30/90d + recommendations (Surfaces
+                  milestone). Real numbers from account_snapshots; matte active state. */}
+              <NavItem
+                icon={ChartLineUp}
+                label="Analytics"
+                isActive={isOnAnalytics}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/analytics")}
               />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem
