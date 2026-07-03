@@ -191,10 +191,16 @@ Investigated before building (handoff §4 "confirm the split first"). Two halves
   connect; weekly deltas + sparklines accumulate over days. Migration applied to shared Supabase; unit tests 5/5.
 
 ### Buildable now WITHOUT the atoms — next-session candidates (recommended order)
-1. **Real "Views" tile (RECOMMENDED NEXT)** — the account-snapshots rig is fresh; add per-post view ingestion
-   (`scraper.scrapeVideos(handle)` already exists — used by `account-read`) → sum views for posts in the trailing
-   window → a real 5th stat-row tile. Extends the cron + `buildAccountStats`; same honesty rules (real or omit).
-2. **Loop write-path** — paste-URL → `useOutcomeSignature` (write half is real; the read/accuracy stays engine-gated, §4.4).
+1. **Real "Views" tile — ✅ BUILT (PR #114, OPEN → merge next).** The 5th stat-row tile = an honest sum of public
+   views across the creator's posts in the trailing **28-day window** (`account_snapshots.recent_views`, migration
+   applied to `qyxvxleheckijapurisj`). The daily cron now runs a **second** `scrapeVideos` → `sumRecentViews` (pure,
+   unit-tested) → `recent_views`, isolated so a video-only failure still writes the 4 core counters (`recent_views`
+   null → tile omitted). `buildAccountStats` appends the tile via `optionalTile` (latest carrying snapshot, or omit —
+   never fabricated; three-valued NULL/0/>0). `StatRow` grid is adaptive (`lg:grid-cols-5` with the 5th tile).
+   **Verified live w/ real Apify** (zachking → `recent_views` 63,898,300 → /start renders 5 tiles, Views "63.9M",
+   5-col desktop / 2-col mobile, no overflow). Unit 13/13; tsc + eslint clean. Files: `src/lib/account-metrics/*`,
+   cron `refresh-account-snapshots`, `src/components/surfaces/sections/stat-row.tsx`, migration `*_recent_views.sql`.
+2. **Loop write-path (RECOMMENDED NEXT)** — paste-URL → `useOutcomeSignature` (write half is real; the read/accuracy stays engine-gated, §4.4).
 3. **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
 
 > The graft tranche (§ above) stays **gated** — The Room's Task B (living-presence rebuild) was **reverted**
