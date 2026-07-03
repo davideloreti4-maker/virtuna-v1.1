@@ -23,6 +23,10 @@
       "schedule": "0 6 * * *"
     },
     {
+      "path": "/api/cron/refresh-account-snapshots",
+      "schedule": "0 7 * * *"
+    },
+    {
       "path": "/api/cron/validate-rules",
       "schedule": "0 2 * * *"
     },

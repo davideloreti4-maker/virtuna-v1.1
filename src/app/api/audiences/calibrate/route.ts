@@ -23,6 +23,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { calibrateFromScrape } from "@/lib/audience/calibration";
 import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
+import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -162,6 +163,26 @@ export async function POST(request: Request): Promise<Response> {
 
         // reveal = the "it's real" showcase (§P.5): real scraped account + top posts.
         send("done", { audience: persistedAudience, reveal });
+
+        // Best-effort: seed the first account_snapshots point from this scrape so
+        // the /start stat-row shows real point-in-time numbers immediately (weekly
+        // deltas + sparklines then accumulate via the refresh-account-snapshots
+        // cron). Personal, scrapeable platforms only; never blocks calibration.
+        if (type === "personal" && platform !== "custom" && reveal?.profile) {
+          try {
+            await upsertAccountSnapshot(supabase, {
+              userId: user.id,
+              platform,
+              handle: reveal.profile.handle || handle || name,
+              followerCount: reveal.profile.followerCount,
+              followingCount: null, // reveal omits it — the daily cron fills it
+              heartCount: reveal.profile.heartCount,
+              videoCount: reveal.profile.videoCount,
+            });
+          } catch {
+            /* snapshot capture is best-effort — calibration already succeeded */
+          }
+        }
       } catch (err) {
         send("error", {
           message: err instanceof Error ? err.message : "Calibration failed. Check the handle and try again.",
