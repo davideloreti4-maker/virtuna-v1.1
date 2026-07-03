@@ -4,9 +4,15 @@
  * TheLoop — "what actually happened": receipts of predicted-vs-actual (we said 7 · you
  * got 7.2) + a rising accuracy figure. This is OUR surface and the moat's proof.
  *
- * ⚠️ The post-publish loop backend is BUILT but UNWIRED (handoff §6). This renders mock
- * receipts for now; wiring `use-outcome-signature` / `/api/outcomes/signature` is a later
- * build-order step (§4.4). The reconcile → recalibrate half is The Room's (recon #1).
+ * ⏸ DEFERRED TO MILESTONE END (owner call 2026-07-03g, handoff §4.4). This renders MOCK
+ * receipts/accuracy and stays that way until the end-of-milestone WIRE-OR-REMOVE gate.
+ * Reason it can't just be wired: the write path is real (`use-outcome-signature` /
+ * `/api/outcomes/signature`), but the numbers this section shows are not derivable from
+ * stored data — the receipt scalar ("we said 7") is never persisted (predicted/realized
+ * are 6-dim normalized SHARE vectors), and the accuracy % is undefined anywhere. Wiring
+ * real receipts = inventing a metric = the still-OPEN contract §6.1 ("don't design it
+ * twice"). At milestone end: EITHER wire it (owner metric call + §6.1 ownership + seeded
+ * data) OR remove this section for launch. The reconcile → recalibrate half is The Room's.
  */
 
 import type { Accuracy, Receipt } from "@/lib/room-contract/mock-room";
