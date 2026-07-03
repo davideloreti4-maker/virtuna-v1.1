@@ -29,7 +29,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { IdeaCardBlock } from '@/lib/tools/blocks';
+import type { IdeaCardBlock, ReactionPersona } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -52,6 +52,8 @@ export interface PartialIdeaCard {
   band?: 'Strong' | 'Mixed' | 'Weak';
   fraction?: string;
   scored: boolean;
+  // S3′: real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
+  personas?: ReactionPersona[];
 }
 
 export interface UseIdeasStreamReturn {
@@ -256,6 +258,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -429,6 +434,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -507,6 +515,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         scored: c.scored ?? false, // A4: drives ProofUnit's pending→scored treatment
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
+        personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
       },
     }));
   }, [streamingCards]);

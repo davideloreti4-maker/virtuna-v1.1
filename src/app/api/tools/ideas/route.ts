@@ -218,6 +218,7 @@ export async function POST(request: Request): Promise<Response> {
               format: b.props.format,
               scrollQuote: b.props.scrollQuote, // D-04 WARNING-4: on the face
               model: b.props.model,
+              personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               // band/fraction deferred to score event
             },
           })),

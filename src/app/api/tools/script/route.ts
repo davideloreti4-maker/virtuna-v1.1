@@ -193,6 +193,7 @@ export async function POST(request: Request): Promise<Response> {
               openingBeatSeed: b.props.openingBeatSeed,
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
+              personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               // band/fraction deferred to score event (content-first)
             },
           })),

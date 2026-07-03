@@ -26,7 +26,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ScriptCardBlock } from '@/lib/tools/blocks';
+import type { ScriptCardBlock, ReactionPersona } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -40,6 +40,8 @@ export interface PartialScriptCard {
   band?: 'Strong' | 'Mixed' | 'Weak';
   fraction?: string;
   scored: boolean;
+  // S3′: opener's real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
+  personas?: ReactionPersona[];
 }
 
 export interface UseScriptStreamReturn {
@@ -218,6 +220,9 @@ export function useScriptStream(): UseScriptStreamReturn {
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialScriptCard) => c.beats.length > 0);
@@ -275,6 +280,7 @@ export function useScriptStream(): UseScriptStreamReturn {
         fraction: c.fraction ?? '–',
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
+        personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
       },
     }));
   }, [streamingCards]);

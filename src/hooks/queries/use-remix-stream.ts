@@ -25,7 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RemixCardBlock } from '@/lib/tools/blocks';
+import type { RemixCardBlock, ReactionPersona } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -47,6 +47,8 @@ export interface PartialRemixCard {
   band?: 'Strong' | 'Mixed' | 'Weak';
   fraction?: string;
   scored: boolean;
+  // S3′: adapted hook's real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
+  personas?: ReactionPersona[];
 }
 
 export interface UseRemixStreamReturn {
@@ -222,6 +224,9 @@ export function useRemixStream(): UseRemixStreamReturn {
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
                   scored: false,
+                  personas: Array.isArray(props.personas)
+                    ? (props.personas as ReactionPersona[])
+                    : undefined,
                 };
               })
               .filter((c: PartialRemixCard) => c.adaptedHook.length > 0);
@@ -276,6 +281,7 @@ export function useRemixStream(): UseRemixStreamReturn {
         fraction: c.fraction ?? '–',
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
+        personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
       },
     }));
   }, [streamingCards]);
