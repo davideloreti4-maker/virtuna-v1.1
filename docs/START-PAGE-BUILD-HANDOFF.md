@@ -153,3 +153,30 @@ PORT=3400 NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist
 - [ ] Explore current `/home` composer + `Sidebar.tsx` to see what exists.
 - [ ] **Step 1:** stub the contract (types + mock module + stub `CardReaction` + stub surface dock).
 - [ ] **Step 2:** build the responsive start-page shell against it (mobile = v3; add `lg:` 3-col). Verify live mobile **and** desktop. Small PR.
+
+---
+
+## 11. Build status + graft readiness (updated 2026-07-03j)
+
+### Shipped + merged to `milestone/surfaces`
+- **Steps 1–2** — contract stub + responsive `/start` shell (#105).
+- **Nav** — `Start` entry in `Sidebar.tsx` → `/start` (#106). `/home` unchanged (still the thread surface).
+- **Pillars** — `ContentPillars` module + pillar-aware plan/calendar (#108).
+- **Loop** — DEFERRED to milestone end with a wire-or-remove gate (§4.4).
+- **Contract** — SIGNED OFF by The Room (all 4 seams; `THE-CONTRACT.md` §6 all resolved).
+
+### ⚠️ Graft-gated — do these WHEN The Room flags each atom as landed (don't stub further)
+Swap stub → real, don't rebuild. The Room said it'll flag each atom.
+- **Surface dock** — `SurfaceDock` → The Room's `AudiencePresence variant='surface'` (read-only panel per the sign-off delta).
+- **User-level audience** — swap `SurfaceDock`'s `MOCK_AUDIENCES`/local state → their `resolveUserAudience`.
+- **Embedded composer** — `EmbeddedComposer` → their `Composer mode='embedded'`; **fix the stub `onLaunch` to `(input, verb, audience)` + add an `audience` prop** (contract Seam 4).
+- **Card reactions** — the `CardReaction` chip + `RoomDrawer` `Read` → their real card/Read payloads.
+- **Feed / Library passive echoes** — a per-item "for your people" verdict needs the sim to have run on each item (engine). **Do NOT fabricate reactions on real feed/library content** (honesty spine). The feed's ambient entry already exists (`Remix → Read`); the passive verdict is a graft, not a stub.
+- **The loop** — wire the engine's predicted-vs-actual read-shape (once exposed) OR remove for launch (§4.4 gate).
+
+### Buildable now WITHOUT the atoms (next-session candidates)
+- **Stat-row real analytics** — a real slice: account-connect + metrics ingestion (the `first-run` connect CTA is wired to a stub `onConnect`). Bigger; unlocks real numbers and later feeds the loop.
+- **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
+
+### Pre-existing infra flag (not a Surfaces code bug)
+`milestone/surfaces` Vercel **preview** deploys fail on a **serverless-function-memory limit** (identical on disjoint PRs → project/plan-level). Fix (bump function memory/plan, or trim the heavy route) **before the milestone → main**.
