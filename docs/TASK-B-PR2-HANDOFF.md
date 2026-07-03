@@ -6,6 +6,38 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
+## ★★★ SESSION UPDATE (2026-07-04) — PR-3 SHIPPED → next = PR-4 (owner scope-confirm)
+
+**PR-3 (Rewrite lever on the Population weak-spot) DONE → PR #119** (`feat/the-room-rewrite`
+off `milestone/the-room`, commit `0c14ed83`). The v6 prototype's coral CTA "Rewrite to win back
+the N% who bounced →" is wired into the Room's Population footer. On tap the composer re-runs the
+ORIGINATING skill (hooks/idea/script) steered by the lead bouncer's real quote (the lever) through
+its OWN stream hook — the honest re-POST-to-runner: the SSE is read to completion (a fire-and-forget
+`fetch` resolves at headers, BEFORE persistence, so it can't drive a live delta), so the steered
+batch streams into the same thread + Read. On completion a composer effect lands focus on the
+WINNING (highest-stop) card of the fresh batch + bumps a `rewriteNonce` → the Room reveals the
+honest delta (prior → new). 4 files: `composer.tsx` (`onRoomRewrite` + completion effect +
+`canRoomRewrite`/`rewriteNonce`), `AmbientRoom.tsx` (CTA + delta, LIFTED out of the CTA so the
+payoff survives the CTA gating off — a 10/10 winner has no bounce left → CTA hides, delta stays),
+`audience-presence.tsx` (forward props), `+6 presence tests`.
+
+**Scope calls (documented in the PR for review):** rewrites the text-seedable skills
+(hooks/idea/script); **remix CTA is gated OFF** (URL-seeded — its runner rejects a lever re-POST,
+`chain-handoff.ts §Rewrite`; the prototype's CTA is conditional too). Chose the **stream-hook
+reseed** over reusing `buildCardRewrite`'s fetch because the Room is a LIVE surface (needs the
+SSE-to-completion signal + live blocks for the re-focus + delta).
+
+**VERIFIED LIVE (real regenerations):** General **2/10 → 6/10** then **3/10 → 7/10** ("the lever
+moved the room."); calibrated **Fitness Creators** CTA "70% who bounced" → real steered regen fired.
+Delta decoupling (≥90% winner → CTA gone, delta stays) is deterministic-unit-tested. tsc 21 baseline
++ matte guard green; 70 affected-suite tests pass; console clean. Side-by-side vs v6 = faithful.
+
+**➡ NEXT: PR-4 (desktop persistent rail + `variant='thread'|'surface'` + user-default audience).**
+It's an ARCHITECTURE change — **CONFIRM SCOPE WITH THE OWNER before building** (§3 PR-4 + the
+`the-room-desktop-v1.html` spec). Note a page reload currently resets the audience to General —
+that IS PR-4's `resolveUserAudience` (out of PR-3 scope). PR-3 branch is off `milestone/the-room`;
+merge #119 first, then branch PR-4 off `milestone/the-room`.
+
 ## ★★ SESSION UPDATE (2026-07-03 later) — PR-2 SHIPPED → next = PR-3
 
 **PR-2 (anchored-focus stepper + `⤺ all N` view-all) DONE → PR #115** (`feat/the-room-stepper`
