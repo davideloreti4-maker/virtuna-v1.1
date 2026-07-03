@@ -119,6 +119,18 @@ export interface AudiencePresenceProps {
   onRewrite?: (lever: string) => Promise<void>;
   /** Bumped once a reseed lands + the Room re-focuses — gates the honest delta reveal in the CTA. */
   rewriteNonce?: number;
+  // ── Desktop persistent rail + surface seam (PR-4) ──────────────────────────
+  /** 'dock' (default) = the mobile bottom-docked peek + Bloom panel. 'rail' = the desktop
+   *  persistent right-rail presentation: an identity header + an ALWAYS-open Room (an idle
+   *  roster when nothing is in focus), no peek toggle, no Bloom sheet. The host picks per
+   *  viewport (useMediaQuery ≥ xl) so exactly ONE presentation mounts — never a hidden second
+   *  AmbientRoom running its timers. */
+  layout?: 'dock' | 'rail';
+  /** 'thread' (default) = the /home making surface (the composer field drives asks). 'surface'
+   *  = a read-only presence for non-thread pages (app-wide peek, no composer field). The seam is
+   *  STUBBED here (accepted + surfaced as `data-variant`) and DEFERRED — only 'thread' is
+   *  implemented (owner scope-confirm 2026-07-04; the sister surfaces session owns those pages). */
+  variant?: 'thread' | 'surface';
 }
 
 export function AudiencePresence({
@@ -142,6 +154,8 @@ export function AudiencePresence({
   canRewrite,
   onRewrite,
   rewriteNonce,
+  layout = 'dock',
+  variant = 'thread',
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
@@ -160,7 +174,9 @@ export function AudiencePresence({
   // `overflow-hidden` rounded-corner clip (the dropdown opens UPWARD, well above
   // that surface). Anchored as a fixed box just above the trigger.
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const [menuPos, setMenuPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
+  // Anchored above (dock — the peek is bottom-pinned) or below (rail — the identity is at the
+  // TOP of the right rail). One of top/bottom is set per `layout`.
+  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
   // Named-people reframe (The Room, Task A): archetype→creator-label overrides so a renamed
@@ -198,6 +214,18 @@ export function AudiencePresence({
 
   const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
   const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
+  // The desktop rail's idle roster — one row per persona (or the General default roster). Derived
+  // from the SAME deterministic dot roster as the peek band so the names stay consistent across
+  // the presence. Built off an always-idle dot list (flat=[]) so the srLabel is a plain name, not
+  // a "name: verdict" (the idle rail shows who is READY, not a stale reaction).
+  const rosterRows = useMemo(() => {
+    const idleDots = buildDots(personas, [], 132, 30);
+    return idleDots.map((d) => ({
+      key: d.id,
+      name: d.srLabel,
+      initial: (d.srLabel.trim()[0] ?? '·').toUpperCase(),
+    }));
+  }, [personas]);
 
   // Esc closes the switcher first, then the panel.
   useEffect(() => {
@@ -230,7 +258,15 @@ export function AudiencePresence({
     const place = () => {
       const r = switcherRef.current?.getBoundingClientRect();
       if (!r) return;
-      setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width: 280 });
+      const width = 280;
+      if (layout === 'rail') {
+        // Rail identity sits at the top-right → open DOWNWARD; clamp so the menu stays on-screen.
+        const left = Math.min(r.left, window.innerWidth - width - 12);
+        setMenuPos({ left, top: r.bottom + 8, width });
+      } else {
+        // Dock peek is bottom-pinned → open UPWARD (anchored above the trigger).
+        setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width });
+      }
     };
     place();
     window.addEventListener('scroll', place, true);
@@ -239,7 +275,7 @@ export function AudiencePresence({
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };
-  }, [switcherOpen]);
+  }, [switcherOpen, layout]);
 
   const handleSelect = (a: Audience) => {
     onSelectAudience(a);
@@ -296,8 +332,176 @@ export function AudiencePresence({
     );
   };
 
+  // The switcher popover — PORTALED to <body> (fixed) so it escapes any overflow-clip. Opens
+  // UPWARD for the dock (bottom-pinned) or DOWNWARD for the rail (top-anchored) via `menuPos`.
+  // Extracted so BOTH the dock peek band and the desktop rail header render the same menu.
+  const switcherMenu = switcherOpen
+    ? createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          aria-label="Your audiences"
+          style={{
+            left: menuPos?.left ?? 0,
+            top: menuPos?.top,
+            bottom: menuPos?.bottom,
+            width: menuPos?.width ?? 280,
+          }}
+          className="fixed z-[60] max-h-[44vh] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+        >
+          {audiences.length === 0 && (
+            <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
+          )}
+
+          {/* ── Socials ── — baseline + presets + your socials audiences. */}
+          {socialsRows.length > 0 && (
+            <>
+              <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                {SOCIALS_LABEL}
+              </p>
+              {socialsRows.map(renderRow)}
+            </>
+          )}
+
+          {/* ── General ── — authored templates + your General SIMs. Rendered ONLY when a
+                General audience is owned (byte-identical: a Socials-only creator never sees it). */}
+          {generalRows.length > 0 && (
+            <>
+              <p className="mt-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
+                {GENERAL_LABEL}
+              </p>
+              {generalRows.map(renderRow)}
+            </>
+          )}
+
+          <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
+          {/* + Build an audience — opens the Build chooser (plain glyph, NO accent). */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBuildAudience?.();
+              setSwitcherOpen(false);
+            }}
+            className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
+          >
+            <Plus className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="flex-1">{BUILD_LABEL}</span>
+          </button>
+          <Link
+            href="/audience"
+            onClick={() => setSwitcherOpen(false)}
+            className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+          >
+            <span className="flex-1">{MANAGE_LABEL}</span>
+            <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
+          </Link>
+        </div>,
+        document.body,
+      )
+    : null;
+
+  // ── Desktop persistent rail (PR-4) ─────────────────────────────────────────
+  // The always-present right rail: an identity header (with the same switcher) + an ALWAYS-open
+  // Room (the AmbientRoom when a card is in focus, an idle roster otherwise). No peek toggle, no
+  // Bloom sheet — the audience is simply on screen beside the making surface. The host mounts
+  // this only at ≥ xl (useMediaQuery), so there is never a hidden second AmbientRoom.
+  if (layout === 'rail') {
+    return (
+      <aside
+        data-testid="audience-rail"
+        data-variant={variant}
+        aria-label="Your audience"
+        className="flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-background)]"
+      >
+        {/* Identity header — constellation + switchable audience name + one-line pulse. */}
+        <div className="relative flex shrink-0 items-center gap-2.5 border-b border-[var(--color-border)] px-4 py-4">
+          <div className="relative flex min-w-0 flex-1 items-center" ref={switcherRef}>
+            <button
+              type="button"
+              aria-haspopup="menu"
+              aria-expanded={switcherOpen}
+              aria-label={`Audience: ${audienceName}. Switch audience`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSwitcherOpen((v) => !v);
+              }}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-1.5 py-1 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+            >
+              <ConstellationMark width={52} />
+              <span className="min-w-0 flex-1">
+                <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--color-foreground-muted)]">
+                  Your audience
+                </span>
+                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-[var(--color-foreground)]">
+                  <span className="max-w-[190px] truncate">{audienceName}</span>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+                </span>
+              </span>
+            </button>
+            {switcherMenu}
+          </div>
+        </div>
+
+        {/* Body — the always-open Room (focus) or the idle roster (readiness). */}
+        <div className="flex min-h-0 flex-1 flex-col">
+          {focus ? (
+            <AmbientRoom
+              flatPersonas={flatPersonas}
+              conceptText={focus.conceptText}
+              fraction={focus.fraction}
+              reducedMotion={reducedMotion}
+              personaNameOverrides={personaNameOverrides}
+              focusId={focus.id}
+              siblings={focusList}
+              onStep={onStep}
+              kindLabel={kindLabel}
+              canRewrite={canRewrite}
+              onRewrite={onRewrite}
+              rewriteNonce={rewriteNonce}
+            />
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6 pt-4">
+              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
+                They react the moment you make something — then it opens the room on it.
+              </p>
+              {rosterRows.length > 0 && (
+                <ul className="mt-4 flex flex-col">
+                  {rosterRows.map((r) => (
+                    <li
+                      key={`roster_${r.key}`}
+                      className="flex items-center gap-3 border-t border-[var(--color-border)] px-1 py-2.5 first:border-t-0"
+                    >
+                      <span
+                        aria-hidden
+                        className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-[var(--color-hover)] text-[12px] font-bold text-[var(--color-foreground-secondary)]"
+                      >
+                        {r.initial}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground)]">
+                        {r.name}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* sr-only roster mirror — a11y parity with the dock band. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          <p>
+            {TITLE} — {pulseText}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
+          </p>
+        </div>
+      </aside>
+    );
+  }
+
   return (
-    <div className="relative w-full" data-testid="audience-presence">
+    <div className="relative w-full" data-testid="audience-presence" data-variant={variant}>
       {/* ── The content PANEL — expands UPWARD over the composer (anchored above the peek band,
             flush so peek + panel read as one surface). No scrim, no drawer; the composer below
             stays the input. ────────────────────────────────────────────────────────────── */}
@@ -430,67 +634,10 @@ export function AudiencePresence({
             </span>
           </button>
 
-          {/* Switcher popover — opens UPWARD (the presence is bottom-docked).
-              PORTALED to <body> (fixed, anchored above the trigger) so the upward
-              dropdown is not clipped by the composer surface's overflow-hidden. */}
-          {switcherOpen && createPortal(
-            <div
-              ref={menuRef}
-              role="menu"
-              aria-label="Your audiences"
-              style={{ left: menuPos?.left ?? 0, bottom: menuPos?.bottom ?? 0, width: menuPos?.width ?? 280 }}
-              className="fixed z-[60] max-h-[44vh] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
-            >
-              {audiences.length === 0 && (
-                <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
-              )}
-
-              {/* ── Socials ── — baseline + presets + your socials audiences. */}
-              {socialsRows.length > 0 && (
-                <>
-                  <p className="px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-                    {SOCIALS_LABEL}
-                  </p>
-                  {socialsRows.map(renderRow)}
-                </>
-              )}
-
-              {/* ── General ── — authored templates + your General SIMs. Rendered ONLY when a
-                    General audience is owned (byte-identical: a Socials-only creator never sees it). */}
-              {generalRows.length > 0 && (
-                <>
-                  <p className="mt-1 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-                    {GENERAL_LABEL}
-                  </p>
-                  {generalRows.map(renderRow)}
-                </>
-              )}
-
-              <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
-              {/* + Build an audience — opens the Build chooser (plain glyph, NO accent). */}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onBuildAudience?.();
-                  setSwitcherOpen(false);
-                }}
-                className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
-              >
-                <Plus className="h-4 w-4 shrink-0" aria-hidden />
-                <span className="flex-1">{BUILD_LABEL}</span>
-              </button>
-              <Link
-                href="/audience"
-                onClick={() => setSwitcherOpen(false)}
-                className="flex items-center gap-2.5 rounded-[8px] px-2 py-2 text-[13px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
-              >
-                <span className="flex-1">{MANAGE_LABEL}</span>
-                <ChevronRight className="h-3.5 w-3.5 opacity-50" aria-hidden />
-              </Link>
-            </div>,
-            document.body,
-          )}
+          {/* Switcher popover — opens UPWARD (the dock peek is bottom-pinned); shared with the
+              rail (which opens it downward). PORTALED to <body> so it is not clipped by the
+              composer surface's overflow-hidden. */}
+          {switcherMenu}
         </div>
 
         <div className="mx-1 h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />

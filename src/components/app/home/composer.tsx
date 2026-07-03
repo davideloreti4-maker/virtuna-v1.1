@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
@@ -46,6 +47,7 @@ import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
@@ -76,7 +78,7 @@ import { AccountReadThreadView } from "@/components/thread/account-read-thread-v
 import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
-import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
+import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
@@ -203,6 +205,12 @@ export interface ComposerProps {
 export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
+  // The Room, PR-4: at ≥ xl the audience becomes a PERSISTENT right rail (the desktop moat) —
+  // the mobile bottom-docked peek + Bloom is hidden and the same presence renders as a fixed rail
+  // beside the making surface. SSR-safe (false until measured), and the ONLY presence mounted at a
+  // time, so there is never a hidden second AmbientRoom running its timers. 1280px so the app
+  // sidebar + a readable work column + the 392px rail all fit; ≤1279 keeps the shipped Bloom.
+  const isDesktopRail = useMediaQuery("(min-width: 1280px)");
 
   // Layout signal: does a Simulation exist? Mirrors ContentForm L158.
   const params = useParams();
@@ -1626,36 +1634,52 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     [asking, focusByThought, intent],
   );
 
-  const audiencePresence = (
-    <AudiencePresence
-      audience={selectedAudience}
-      audiences={audiences}
-      selectedAudienceId={selectedAudienceId}
-      onSelectAudience={(a) => void handleSelectAudience(a)}
-      focus={ambientFocus}
-      reducedMotion={reducedMotion}
-      open={audienceOpen}
-      onOpenChange={setAudienceOpen}
-      asks={audienceAsks}
-      asking={asking}
-      onReask={(a) =>
-        focusByThought({
-          conceptText: a.thought,
-          fraction: a.fraction,
-          scrollQuote: a.scrollQuote,
-          personas: a.personas,
-        })
-      }
-      onBuildAudience={() => setBuildOpen(true)}
-      focusList={ambientDescriptors}
-      onStep={focusByTap}
-      kindLabel={ambientKindLabel}
-      canRewrite={canRoomRewrite}
-      onRewrite={onRoomRewrite}
-      rewriteNonce={rewriteNonce}
-      docked
-    />
-  );
+  // The presence props are shared by the mobile bottom-docked peek+Bloom (`docked`) and the
+  // desktop persistent rail (`layout="rail"`). Exactly ONE mounts per viewport (isDesktopRail),
+  // so there is never a hidden second AmbientRoom running its timers.
+  const presenceCommonProps: Omit<AudiencePresenceProps, "docked" | "layout"> = {
+    audience: selectedAudience,
+    audiences,
+    selectedAudienceId,
+    onSelectAudience: (a: Audience) => void handleSelectAudience(a),
+    focus: ambientFocus,
+    reducedMotion,
+    open: audienceOpen,
+    onOpenChange: setAudienceOpen,
+    asks: audienceAsks,
+    asking,
+    onReask: (a: AudienceAsk) =>
+      focusByThought({
+        conceptText: a.thought,
+        fraction: a.fraction,
+        scrollQuote: a.scrollQuote,
+        personas: a.personas,
+      }),
+    onBuildAudience: () => setBuildOpen(true),
+    focusList: ambientDescriptors,
+    onStep: focusByTap,
+    kindLabel: ambientKindLabel,
+    canRewrite: canRoomRewrite,
+    onRewrite: onRoomRewrite,
+    rewriteNonce,
+  };
+  const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
+
+  // Desktop persistent rail (PR-4) — a fixed right column, portaled to <body> so it escapes the
+  // scrolling main + any transform ancestor (always viewport-fixed). Gated on isDesktopRail so it
+  // mounts only at ≥ xl; /home reserves its width via `xl:pr` (HomePageLayout) so nothing hides
+  // under it. The dock peek is `xl:hidden`, so the two never show at once.
+  const railPortal = isDesktopRail
+    ? createPortal(
+        <aside
+          data-testid="audience-rail-portal"
+          className="fixed right-0 top-0 z-30 h-screen w-[392px]"
+        >
+          <AudiencePresence {...presenceCommonProps} layout="rail" />
+        </aside>,
+        document.body,
+      )
+    : null;
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2152,7 +2176,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         !reducedMotion && "transition-shadow duration-200",
       )}
     >
-      {audiencePresence}
+      {/* The bottom-docked peek + Bloom — hidden at ≥ xl, where the persistent rail takes over
+          (the composer field below stays the making input on all sizes). */}
+      <div className="xl:hidden">{audiencePresence}</div>
       {composerForm}
       {buildChooser}
     </div>
@@ -2222,6 +2248,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <div className="shrink-0 pb-4">
           {composerDock}
         </div>
+        {railPortal}
       </div>
     );
   }
@@ -2235,6 +2262,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {threadContent}
       {composerDock}
       {homeStarter}
+      {railPortal}
     </div>
   );
 }
