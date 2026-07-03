@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Juno">
+  <title>Juno — The Signal (alternate)</title>
+  <desc>Four audience signals converging in a symmetric fan into a single Read node.</desc>
+  <g fill="none" stroke="#ece7de" stroke-width="2.5" stroke-linecap="round">
+    <line x1="58" y1="70" x2="100" y2="144"/>
+    <line x1="84" y1="52" x2="100" y2="144"/>
+    <line x1="116" y1="52" x2="100" y2="144"/>
+    <line x1="142" y1="70" x2="100" y2="144"/>
+  </g>
+  <circle cx="58" cy="70" r="6" fill="#ece7de"/>
+  <circle cx="84" cy="52" r="6" fill="#ece7de"/>
+  <circle cx="116" cy="52" r="6" fill="#ece7de"/>
+  <circle cx="142" cy="70" r="6" fill="#ece7de"/>
+  <circle cx="100" cy="144" r="10" fill="#d97757"/>
+</svg>

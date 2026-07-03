@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Juno">
+  <title>Juno — favicon</title>
+  <desc>Simplified Resolve mark for micro sizes (top edges dropped for legibility below ~24px).</desc>
+  <g fill="none" stroke="#ece7de" stroke-width="7" stroke-linecap="round">
+    <line x1="60" y1="74" x2="100" y2="144"/>
+    <line x1="100" y1="52" x2="100" y2="144"/>
+    <line x1="140" y1="74" x2="100" y2="144"/>
+  </g>
+  <circle cx="60" cy="74" r="11" fill="#ece7de"/>
+  <circle cx="100" cy="52" r="11" fill="#ece7de"/>
+  <circle cx="140" cy="74" r="11" fill="#ece7de"/>
+  <circle cx="100" cy="144" r="15" fill="#d97757"/>
+</svg>

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Juno — brand marks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
+<style>
+  :root{--charcoal:#262624;--cream:#ece7de;--line:rgba(236,231,222,0.09);--muted:rgba(236,231,222,0.5)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--charcoal);color:var(--cream);font-family:Inter,system-ui,sans-serif;padding:72px 56px 100px}
+  .wrap{max-width:1000px;margin:0 auto}
+  .lab{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  h1{font-family:Newsreader,serif;font-weight:400;font-size:52px;margin:16px 0 10px}
+  p.sub{color:var(--muted);max-width:600px;line-height:1.6;margin:0 0 40px}
+  .grid{display:flex;gap:20px;flex-wrap:wrap}
+  .card{flex:1;min-width:200px;background:var(--charcoal);border:1px solid var(--line);border-radius:18px;height:240px;display:flex;align-items:center;justify-content:center;position:relative}
+  .card.light{background:var(--cream)}
+  .card .t{position:absolute;left:18px;bottom:14px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  .card.light .t{color:rgba(38,38,36,.5)}
+  .lock{display:flex;align-items:center;gap:22px}
+  .wm{font-family:Newsreader,serif;font-weight:500;font-size:54px}
+  h2{font-family:Newsreader,serif;font-weight:400;font-size:22px;margin:52px 0 20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="lab">Numen Machines · Juno</div>
+  <h1>Juno</h1>
+  <p class="sub">The mark: an interconnected audience that resolves into a single Read. Primary “The Resolve”; alternate “The Signal”. Cream on charcoal; terracotta marks the Read, once.</p>
+
+  <h2>Primary — The Resolve</h2>
+  <div class="grid">
+    <div class="card"><img src="juno-mark-resolve.svg" width="150" height="150" alt="Juno mark"><span class="t">dark</span></div>
+    <div class="card light"><img src="juno-mark-resolve-onlight.svg" width="150" height="150" alt="Juno mark on light"><span class="t">light</span></div>
+    <div class="card"><div class="lock"><img src="juno-mark-resolve.svg" width="62" height="62" alt="Juno"><span class="wm">Juno</span></div><span class="t">lockup</span></div>
+  </div>
+
+  <h2>Alternate — The Signal</h2>
+  <div class="grid">
+    <div class="card"><img src="juno-mark-signal.svg" width="150" height="150" alt="Juno signal mark"><span class="t">dark</span></div>
+    <div class="card"><img src="juno-favicon.svg" width="26" height="26" alt="favicon"><span class="t">favicon · 26px</span></div>
+    <div class="card"><div class="lock"><img src="juno-mark-signal.svg" width="58" height="58" alt="Juno"><span class="wm">Juno</span></div><span class="t">lockup</span></div>
+  </div>
+</div>
+</body>
+</html>
