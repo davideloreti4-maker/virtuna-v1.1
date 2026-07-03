@@ -49,7 +49,6 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
-  ModelTag,
   SkillRows,
   SKILLS,
   getSkill,
@@ -227,12 +226,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // within the user-gesture call stack (a file input .click() must ride a real
   // user gesture; an effect can't open it). The input itself is rendered below.
   const evidenceInputRef = useRef<HTMLInputElement | null>(null);
+  // Whether the Test upload drop zone is revealed. Test ABSORBS upload (v6 — §3.5): the
+  // zone shows when the creator INTENTIONALLY enters Test (picks the verb, or a hook /
+  // script "Test full →" handoff) — NOT on the bare default, so the empty home stays a
+  // clean topic composer (the prototype's default). A staged file also forces it visible.
+  const [showUpload, setShowUpload] = useState(false);
   // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
   // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
   // flip it — they are not the creator choosing where to land on reload.
   const handleUserSelectTool = useCallback((id: ToolId) => {
     hasUserSelectedToolRef.current = true;
     setActiveTool(id);
+    // Test absorbs upload (v6): reveal the drop zone when Test is explicitly chosen;
+    // hide it for any other verb so the clean field-only composer returns.
+    setShowUpload(id === "test");
     // ── Profile (07-04 / D-07): General "Profile" is NOT a topic submit ─────────
     // Selecting Profile opens the existing evidence-drop affordance (drop a chat /
     // screenshot / clip → POST /api/tools/profile) instead of arming the topic field.
@@ -254,8 +261,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // ── Build-an-audience chooser (UX-04 / D-03 / D-08) ─────────────────────────
   // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
   const [buildOpen, setBuildOpen] = useState(false);
-  // Per-run intent override: null = follow the active audience's goal_intent default (derived below).
-  const [intentOverride, setIntentOverride] = useState<Intent | null>(null);
 
   // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
   // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
@@ -269,11 +274,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Sent as the first-class platform param to the skill routes (derived, not picked).
   const platform: Platform = audienceToPlatform(selectedAudience?.platform);
 
-  // GAP-C2 (§P.10): the per-run intent LENS is DERIVED, not synced via effect — the displayed
-  // value is the user's explicit per-run flip (intentOverride) falling back to the active
-  // audience's goal_intent (4→2 lens). Switching audience clears the override in
-  // handleSelectAudience (an event handler, not an effect) → the new audience's default shows.
-  const intent: Intent = intentOverride ?? goalIntentToLens(selectedAudience?.goal_intent ?? null);
+  // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
+  // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
+  // Switching audience swaps the lens automatically. Still sent to the skill routes + askAudience
+  // (a calibrated audience re-frames the SIM verdict; General → no-op).
+  const intent: Intent = goalIntentToLens(selectedAudience?.goal_intent ?? null);
 
   // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
   // Captured on mount from GET /api/threads/open (returns threadId).
@@ -431,7 +436,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
@@ -689,8 +693,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const handleSelectAudience = useCallback(async (audience: Audience) => {
     const newId = audience.is_general ? null : audience.id;
     setSelectedAudienceId(newId);
-    // GAP-C2: clear any per-run intent flip so the lens falls back to the new audience's default.
-    setIntentOverride(null);
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
     // Socials switch, which would silently router.push away + discard the draft),
@@ -728,7 +730,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       prev.some((a) => a.id === saved.id) ? prev : [...prev, saved],
     );
     setSelectedAudienceId(saved.id);
-    setIntentOverride(null);
     setBuildOpen(false);
   }, []);
 
@@ -739,6 +740,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // CRITICAL: does NOT invoke any model on the hook text (D-05 honesty spine).
   const handleTestHook = useCallback((hookLine: string, audienceArchetype: string) => {
     setActiveTool("test");
+    setShowUpload(true); // Test absorbs upload — reveal the drop zone for the real video
     setTestBrief({ hookLine, audienceArchetype });
   }, []);
 
@@ -762,6 +764,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // CRITICAL: does NOT invoke any model on the script text (D-05 honesty spine).
   const handleTestScript = useCallback((openingBeatLine: string, _scriptBrief: string) => {
     setActiveTool("test");
+    setShowUpload(true); // Test absorbs upload — reveal the drop zone for the real video
     // Surface the script opener as the hook brief (matches the visual brief posture)
     setTestBrief({ hookLine: openingBeatLine, audienceArchetype: "script opener" });
   }, []);
@@ -1854,10 +1857,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             </div>
           )}
 
-          {/* Upload drop zone — only relevant for the Test tool path.
-              VideoUpload (bare) is always mounted (so its file input is part of
-              the composer); the + control reveals/hides it. A staged file forces
-              it visible so the preview never hides. */}
+          {/* Upload drop zone — Test ABSORBS the upload (v6 — THE-ROOM-HANDOFF §3.5): the
+              zone reveals when the creator INTENTIONALLY enters Test (showUpload, set on an
+              explicit Test pick or a hook/script "Test full →" handoff) or a file is staged,
+              so "Test = upload a video" needs no separate `+` control — and the empty-home
+              default stays a clean topic composer. VideoUpload (bare) is always mounted so
+              its file input is part of the composer; a staged file keeps it visible. */}
           <div
             className={cn(
               "overflow-hidden",
@@ -1869,43 +1874,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <VideoUpload bare file={file} onFileSelect={setFile} />
           </div>
 
-          {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
-              Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
-              tools it carries a URL; a `/` opens the skill command menu (above). */}
-          <textarea
-            rows={1}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={onFieldKeyDown}
-            placeholder={activePlaceholder}
-            aria-label={
-              activeTool === "idea"
-                ? "Idea topic or angle (leave empty for Auto)"
-                : activeTool === "hooks"
-                  ? "Hook topic (leave empty for Auto)"
-                  : activeTool === "chat"
-                    ? "Ask anything about your content"
-                    : activeTool === "script"
-                      ? "Script topic or leave empty to carry in a hook"
-                      : activeTool === "remix"
-                        ? "Paste a TikTok URL to decode and remix"
-                        : hasSimulation
-                          ? "Ask about this simulation"
-                          : "Paste a TikTok link"
-            }
-            aria-invalid={showUrlError || undefined}
-            className={cn(
-              "w-full resize-none bg-transparent px-1 pt-1 text-base text-foreground",
-              "placeholder:text-foreground-muted focus:outline-none",
-              "min-h-[44px] max-h-[150px] leading-[1.55]",
-            )}
-          />
-
-          {/* Control row (UX-01): [+] [skill ▾] [audience] [intent] ··· [model] [↑].
-              ComposerControls owns the left cluster + every popover; the model is a
-              read-only indicator (the skill decides it); send is the lone coral
-              affordance. Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
-          <div className="mt-3 flex items-center gap-1.5">
+          {/* Clean composer row (v6 — THE-ROOM-HANDOFF §3.5): [✦ Make ▾] · field · ↑.
+              The verb chip (ComposerControls) sits inline-left, the field grows in the
+              middle, a small evidence paperclip + the cream send sit right. Banners + the
+              Test upload zone stack ABOVE this row. Tool selection is NEVER a submit
+              (Pitfall #5 / WR-05); the Grow/Sell intent, `+` attach, and model tag are all
+              retired (intent → audience goal; Test absorbs upload; model implied by verb). */}
+          <div className="flex items-end gap-2">
             <ComposerControls
               activeTool={activeTool}
               onSelectTool={handleUserSelectTool}
@@ -1915,16 +1890,45 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               // DERIVED from the selected audience — null/Socials audience → "socials"
               // so the live creator render is byte-identical (Pitfall 2).
               activeMode={selectedAudience?.mode ?? "socials"}
-              intent={intent}
-              onIntentChange={setIntentOverride}
-              onUploadClick={() => setShowUpload(true)}
               onRunExplore={(params) => void explore.start(params)}
+              className="shrink-0"
             />
 
-            {/* Evidence-drop affordance (05-06 / D-07) — a minimal additive attach
-                control mounted ALONGSIDE the existing controls (never inside them, so the
-                creator path stays byte-identical). Opens a file picker; drag-and-drop is
-                handled by the form overlay. ≥44px touch target (pointer-coarse). */}
+            {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
+                Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
+                tools it carries a URL; a `/` opens the skill command menu (above). */}
+            <textarea
+              rows={1}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={onFieldKeyDown}
+              placeholder={activePlaceholder}
+              aria-label={
+                activeTool === "idea"
+                  ? "Idea topic or angle (leave empty for Auto)"
+                  : activeTool === "hooks"
+                    ? "Hook topic (leave empty for Auto)"
+                    : activeTool === "chat"
+                      ? "Ask anything about your content"
+                      : activeTool === "script"
+                        ? "Script topic or leave empty to carry in a hook"
+                        : activeTool === "remix"
+                          ? "Paste a TikTok URL to decode and remix"
+                          : hasSimulation
+                            ? "Ask about this simulation"
+                            : "Paste a TikTok link"
+              }
+              aria-invalid={showUrlError || undefined}
+              className={cn(
+                "min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base text-foreground",
+                "placeholder:text-foreground-muted focus:outline-none",
+                "min-h-[40px] max-h-[150px] leading-[1.5]",
+              )}
+            />
+
+            {/* Small in-input evidence paperclip (05-06 / D-07) — attach a chat / screenshot
+                (the Profile evidence door). The `+` VIDEO attach retired: Test absorbs the
+                video upload. Opens a file picker; drag-and-drop is handled by the form overlay. */}
             <input
               ref={evidenceInputRef}
               type="file"
@@ -1941,15 +1945,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               aria-label={EVIDENCE_ATTACH_LABEL}
               title={EVIDENCE_ATTACH_LABEL}
               onClick={() => evidenceInputRef.current?.click()}
-              className="grid h-[34px] w-[34px] place-items-center rounded-lg text-foreground-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-foreground-muted transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
             >
-              <Paperclip className="h-[18px] w-[18px]" />
+              <Paperclip className="h-[17px] w-[17px]" />
             </button>
-
-            <div className="flex-1" />
-
-            {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
-            <ModelTag activeTool={activeTool} />
 
             {/* Submit — neutral cream action (inherits primary variant). */}
             <Button

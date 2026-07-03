@@ -6,6 +6,39 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
+## ★ SESSION UPDATE (2026-07-03 late) — Task C SHIPPED + live ambient-audience audit
+
+**Task C (clean composer) DONE → PR #113** (`feat/the-room-composer` off `feat/the-room-bloom`,
+commit `0f2e33cc`, composer-only — no Room-body overlap). Bottom bar is now the v6 `✦ Make ▾ · input · ↑`:
+skill pill → **verb chip** (Make/Test/Ask, terracotta ✦ spark, new `VERB_BY_TOOL` in `composer-controls.tsx`);
+intent control removed (intent = audience `goal_intent`, dropped `intentOverride`); model tag removed
+(`ModelTag` component + its unit test kept, just not rendered); `+` attach removed → **Test absorbs upload**
+(drop zone reveals on INTENTIONAL Test entry — explicit pick or hook/script "Test full →" handoff — NOT the
+bare default, so the empty home stays a clean topic composer); small evidence paperclip kept. Menu group-collapse
+into Make/Test/Ask = **Phase 3** (chip collapses on its FACE only; SkillRows untouched); `mode='embedded'`/`onLaunch`
+start-page seam = **deferred** (sister-session dependency). tsc 21 baseline, vitest 50 pass. Files:
+`composer.tsx` + `composer-controls.tsx` + `__tests__/composer-controls.test.tsx`.
+
+**★ Branch note for PR-2:** PR-2 also edits `composer.tsx` (thread `focusList`/`onStep` into `<AudiencePresence>`),
+so **branch PR-2 off `feat/the-room-composer`** (inherits Task C's composer edits → no stacked-diff conflict).
+
+**Live ambient-audience audit (Room open on a General hooks thread) vs the v6 prototype — owner flagged the
+ambient audience "doesn't represent the prototype correctly yet." Concrete gaps found:**
+- **People tab:** ✓ Bloom rises + flush-merges · ✓ named voices + serif quotes + `ask →`. **✗ NO header stepper
+  `‹ Hook 1 of 3 ›` + `⤺ all 3` view-all** (header is just the serif score + concept) = **PR-2, the top gap.**
+  (Terminology: the header is only TWO things — the stepper + the `⤺ all N` view-all link. `⤺ all N` opens the
+  ranked list "How the room ranked your N hooks" → tap a row to re-focus the Room on it. "compare" is just the
+  prototype's CODE name — `openCompare`/`renderCompareHead`/`renderCompareBody` — NOT a user-facing control.)
+  ⚠ **avatar tonal coding is TOO SUBTLE** — sage `.ava.g` (stop) vs coral `.ava.r` (bounce) barely distinguishable
+  on dark; bump to the prototype's `rgba(142,166,138,.16)`/`#a6bfa1` legibility (POLISH). ⚠ confirm the
+  "▶ Replay how the room reacted" button + "+N more of your 10" footer render (not seen in first viewport).
+- **Population tab:** ✓ serif "500 stay / 500 bounce" hero · ✓ 90-dot swarm + "1,000 modeled from your 10 · ▶ Play"
+  · ✓ loved/bounced stats bar · ✓ WEAK-SPOT (bouncers + real words). **✗ NO "Rewrite to win back the N% who
+  bounced →" CTA** = **PR-3.**
+- **Verdict:** the Room is FAITHFUL on the Bloom shell + People voices + Population hero/swarm/stats/weak-spot;
+  the two missing INTERACTIONS are exactly **PR-2 (stepper + `⤺ all N` view-all)** + **PR-3 (Rewrite)**, plus avatar-tone + Replay
+  POLISH. Recommended order next session: **PR-2 → PR-3 → (avatar-tone + Replay polish) → PR-4 (scope-confirm).**
+
 ## 0. Setup (start here)
 ```bash
 cd ~/virtuna-the-room

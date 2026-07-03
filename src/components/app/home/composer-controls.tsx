@@ -143,6 +143,9 @@ const ICONS: Record<string, string> = {
   camera:
     '<rect x="2" y="4.5" width="12" height="8" rx="1.5"/><circle cx="8" cy="8.5" r="2.3"/><path d="M5.5 4.5l1-1.5h3l1 1.5"/>',
   search: '<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>',
+  // The verb-chip mark (v6 Room prototype `.vi` ✦) — a 4-point sparkle, the composer's
+  // ONE accent glyph (terracotta). Line-icon form (stroked) to stay on the no-emoji system.
+  spark: '<path d="M8 3c.6 3.4 1.6 4.4 5 5-3.4.6-4.4 1.6-5 5-.6-3.4-1.6-4.4-5-5 3.4-.6 4.4-1.6 5-5z"/>',
 };
 
 /** Map each skill id → its line-icon key. */
@@ -160,6 +163,29 @@ const SKILL_ICON: Record<ToolId, string> = {
   profile: "people",
   simulate: "target",
   predict: "crosshair",
+};
+
+/**
+ * The verb the chip shows for each skill (v6 IA — THE-ROOM-HANDOFF §3.5/§7): the
+ * composer collapses ~13 skills → three verbs. `Make` = anything you generate, `Test`
+ * = upload a real video, `Ask` = chat. This maps the CHIP LABEL only — the skill
+ * popover (SkillRows) still lists every skill by name; the full menu collapse into
+ * Make/Test/Ask groups is Phase 3 (§5). Keep in sync with SKILLS as new skills land.
+ */
+export const VERB_BY_TOOL: Record<ToolId, "Make" | "Test" | "Ask"> = {
+  test: "Test",
+  chat: "Ask",
+  idea: "Make",
+  hooks: "Make",
+  script: "Make",
+  remix: "Make",
+  explore: "Make",
+  account: "Make",
+  offer: "Make",
+  ad: "Make",
+  profile: "Make",
+  simulate: "Make",
+  predict: "Make",
 };
 
 export function Ico({
@@ -407,7 +433,7 @@ export function ModelTag({ activeTool, className }: { activeTool: ToolId; classN
 // ─── ComposerControls — the LEFT cluster ([+] · skill · audience · intent) ────
 // "search" added (P11): the Explore-only params popover trigger sits beside the
 // audience control; only mounts when activeTool === "explore".
-type PopId = "attach" | "skill" | "intent" | "search" | null;
+type PopId = "skill" | "search" | null;
 
 /**
  * Params the Explore "Search" popover passes up to onRunExplore (forwarded to
@@ -433,12 +459,12 @@ export interface ComposerControlsProps {
 
   // Audience identity + switching moved to <AudiencePresence> (P13 fork #3) — the
   // composer's icon-only audience chip retired. These controls no longer take it.
-
-  intent: Intent;
-  onIntentChange: (intent: Intent) => void;
-
-  /** Reveal the upload drop zone (the SIM-1 Max Test path). */
-  onUploadClick: () => void;
+  //
+  // Task C (v6 clean composer): the intent control retired too — intent is now a
+  // property of the audience's goal (`goal_intent`), never a per-run composer toggle
+  // (THE-ROOM-HANDOFF §3.5). And the `+` attach retired — Test absorbs the upload
+  // (selecting Test reveals the drop zone in the composer host), so `onUploadClick`
+  // is gone. The chip is now a VERB chip (Make / Test / Ask) over the same SkillRows.
 
   /**
    * Run an Explore pull from the params popover (P11 / EXPLORE-01). Wired by the
@@ -456,9 +482,6 @@ export function ComposerControls({
   activeTool,
   onSelectTool,
   activeMode = "socials",
-  intent,
-  onIntentChange,
-  onUploadClick,
   onRunExplore,
   className,
 }: ComposerControlsProps) {
@@ -469,10 +492,8 @@ export function ComposerControls({
   // mousedown on a menu row closes the popover before the row's click fires.
   const menuRef = useRef<HTMLDivElement>(null);
   // One trigger ref per control so the portaled popover can anchor above it.
-  const attachRef = useRef<HTMLButtonElement>(null);
   const skillRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLButtonElement>(null);
-  const intentRef = useRef<HTMLButtonElement>(null);
 
   // ── Explore params popover local state (P11 / EXPLORE-01, D-06) ─────────────
   // Kept local to ComposerControls; the apply button lifts the values via
@@ -511,61 +532,11 @@ export function ComposerControls({
 
   return (
     <div ref={rootRef} className={cn("flex items-center gap-1.5", className)}>
-      {/* + attach / upload */}
-      <div className="relative">
-        <button
-          ref={attachRef}
-          type="button"
-          aria-label="Upload or attach"
-          aria-haspopup="menu"
-          aria-expanded={pop === "attach"}
-          onClick={() => toggle("attach")}
-          className={ctl}
-        >
-          <Ico name="plus" />
-        </button>
-        <Popover open={pop === "attach"} anchorRef={attachRef} menuRef={menuRef}>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              onUploadClick();
-              setPop(null);
-            }}
-            className="flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#2b2926]"
-          >
-            <Ico name="video" className="text-foreground-secondary" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-[13.5px] font-medium text-foreground">Upload video</span>
-              <span className="mt-0.5 block text-[11.5px] text-foreground-muted">
-                Runs a full SIM-1 Max Test
-              </span>
-            </span>
-            <span className="shrink-0 rounded border border-white/[0.06] px-1.5 py-px text-[10px] text-foreground-muted/55">
-              ⌘U
-            </span>
-          </button>
-          {[
-            { icon: "image", label: "Add files or photos" },
-            { icon: "camera", label: "Take a screenshot" },
-          ].map((o) => (
-            <button
-              key={o.label}
-              type="button"
-              role="menuitem"
-              disabled
-              aria-disabled
-              className="flex w-full cursor-not-allowed items-center gap-3 rounded-lg px-2.5 py-2 text-left opacity-45"
-            >
-              <Ico name={o.icon} className="text-foreground-secondary" />
-              <span className="flex-1 text-[13.5px] font-medium text-foreground">{o.label}</span>
-              <span className="text-[10px] uppercase tracking-wide text-foreground-muted/45">soon</span>
-            </button>
-          ))}
-        </Popover>
-      </div>
-
-      {/* Skill pill — the ONE accented, bordered control */}
+      {/* Verb chip (v6) — Make / Test / Ask over the same SkillRows menu. The composer's
+          ONE accented control: a terracotta ✦ spark + the verb + a chevron. Opens the skill
+          popover (which still lists every skill by name — the menu's group collapse into
+          Make/Test/Ask is Phase 3). aria-label keeps "Skill: …" so the picker stays
+          discoverable to assistive tech + the existing tests reach it. */}
       <div className="relative">
         <button
           ref={skillRef}
@@ -576,13 +547,13 @@ export function ComposerControls({
           aria-expanded={pop === "skill"}
           onClick={() => toggle("skill")}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg border border-white/[0.06] bg-surface-elevated px-2.5 py-1.5",
-            "text-[13.5px] font-medium text-foreground transition-colors hover:border-white/[0.1]",
+            "inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-surface-elevated px-2.5 py-2",
+            "text-[13.5px] font-semibold text-foreground transition-colors hover:border-white/[0.1]",
           )}
         >
-          <Ico name={SKILL_ICON[activeTool]} className="text-foreground-secondary" />
-          <span>{skill.label}</span>
-          <Ico name="chev" size={14} className="text-foreground-muted" />
+          <Ico name="spark" size={15} className="text-accent-text" />
+          <span>{VERB_BY_TOOL[activeTool]}</span>
+          <Ico name="chev" size={13} className="text-foreground-muted" />
         </button>
         <Popover open={pop === "skill"} anchorRef={skillRef} menuRef={menuRef} labelledBy="composer-skill-pill">
           <SkillRows
@@ -720,59 +691,6 @@ export function ComposerControls({
         </div>
       )}
 
-      {/* Intent — icon-only, borderless (Grow / Sell segmented popover) */}
-      <div className="relative">
-        <button
-          ref={intentRef}
-          type="button"
-          aria-label={`Intent: ${intent === "sell" ? "Sell" : "Grow"}`}
-          title={`Intent · ${intent === "sell" ? "Sell" : "Grow"}`}
-          aria-haspopup="menu"
-          aria-expanded={pop === "intent"}
-          onClick={() => toggle("intent")}
-          className={ctl}
-        >
-          <Ico name={intent === "sell" ? "tag" : "target"} size={16} />
-        </button>
-        <Popover open={pop === "intent"} anchorRef={intentRef} menuRef={menuRef} className="min-w-[260px]">
-          <div className="px-2.5 pb-1 pt-1.5 text-[11px] text-foreground-muted/55">
-            How should your audience judge this?
-          </div>
-          <div className="flex gap-1.5 p-1.5">
-            {(
-              [
-                { id: "grow", icon: "target", label: "Grow", sub: "watch · share" },
-                { id: "sell", icon: "tag", label: "Sell", sub: "would-buy · price" },
-              ] as const
-            ).map((o) => {
-              const on = intent === o.id;
-              return (
-                <button
-                  key={o.id}
-                  type="button"
-                  aria-pressed={on}
-                  onClick={() => {
-                    onIntentChange(o.id);
-                    setPop(null);
-                  }}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-1 rounded-lg border px-3 py-2.5 text-[13px] transition-colors",
-                    on
-                      ? "border-border-hover bg-hover text-foreground"
-                      : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1]",
-                  )}
-                >
-                  <Ico name={o.icon} size={16} />
-                  <span className="font-medium">{o.label}</span>
-                  <span className={cn("text-[10.5px]", on ? "text-foreground-secondary" : "text-foreground-muted")}>
-                    {o.sub}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </Popover>
-      </div>
     </div>
   );
 }

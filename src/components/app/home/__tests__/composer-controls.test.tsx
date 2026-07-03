@@ -3,13 +3,15 @@
  * ComposerControls — the locked composer control row (UX-01, sketch 006 Variant 1).
  *
  * Asserts the wiring the old tool-chips test covered, adapted to the popover design:
- *  - The skill pill shows the active skill and opens a grouped Creator/Marketing popover.
+ *  - The verb chip (v6) shows the VERB (Make/Test/Ask) and opens the grouped Creator/Marketing popover.
  *  - Popover rows carry their `/command` label + a MAX badge where the video model fires.
  *  - The active skill is checked; selecting an enabled skill fires onSelectTool.
  *  - Explore is live (P11 / EXPLORE-01); not-yet-shipped skills (Offer/Ad) render disabled ("coming soon").
- *  - ModelTag is a read-only indicator: SIM-1 Max for Test/Ad, SIM-1 Flash otherwise.
- *  - Audience + intent popovers fire their change handlers.
+ *  - ModelTag is a read-only indicator (retired from the composer, still unit-tested): Max for Test/Ad, Flash otherwise.
  *  - SkillRows filters by query (the `/` slash menu reuses it).
+ *
+ * The intent (Grow/Sell) popover + the `+` attach retired with the v6 clean composer
+ * (intent → audience goal; Test absorbs upload) — no longer part of ComposerControls.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
@@ -31,9 +33,6 @@ function renderControls(over: Partial<React.ComponentProps<typeof ComposerContro
   const props: React.ComponentProps<typeof ComposerControls> = {
     activeTool: "test",
     onSelectTool: vi.fn(),
-    intent: "grow",
-    onIntentChange: vi.fn(),
-    onUploadClick: vi.fn(),
     ...over,
   };
   return { props, ...render(<ComposerControls {...props} />) };
@@ -172,13 +171,21 @@ describe("ModelTag — read-only model indicator (D-09)", () => {
   });
 });
 
-describe("ComposerControls — intent popover (audience switching retired to AudiencePresence)", () => {
-  it("fires onIntentChange when Sell is chosen", () => {
-    const onIntentChange = vi.fn();
-    renderControls({ onIntentChange });
-    fireEvent.click(screen.getByRole("button", { name: /intent:/i }));
-    fireEvent.click(screen.getByRole("button", { name: /sell/i }));
-    expect(onIntentChange).toHaveBeenCalledWith("sell");
+describe("ComposerControls — verb chip (v6 clean composer)", () => {
+  // The pill collapses ~13 skills → three verbs on the chip face (Make / Test / Ask).
+  // The popover still lists every skill by name (the group collapse is Phase 3); the
+  // chip's aria-label keeps "Skill: …" so assistive tech + openSkillPopover reach it.
+  it("labels the chip Make for a generation skill", () => {
+    renderControls({ activeTool: "hooks" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Make");
+  });
+  it("labels the chip Test for the Test skill", () => {
+    renderControls({ activeTool: "test" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Test");
+  });
+  it("labels the chip Ask for the Chat skill", () => {
+    renderControls({ activeTool: "chat" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Ask");
   });
 });
 
