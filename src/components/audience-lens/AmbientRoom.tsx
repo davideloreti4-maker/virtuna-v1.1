@@ -255,7 +255,7 @@ function PeopleView({
                     'mt-0.5 grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-[12px] font-semibold ' +
                     (bounced
                       ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]'
-                      : 'bg-white/[0.07] text-[var(--color-foreground-secondary)]')
+                      : 'bg-[rgba(142,166,138,0.16)] text-[#a6bfa1]')
                   }
                 >
                   {initialOf(name)}
@@ -361,7 +361,7 @@ function PopulationView({
       {/* HERO — the 1,000-strong room, modeled from your N. */}
       <div className="flex justify-center gap-8 pb-1 pt-1">
         <div className="text-center">
-          <span className="block font-serif text-[26px] leading-none text-foreground">{stayK}</span>
+          <span className="block font-serif text-[26px] leading-none text-[#8ea68a]">{stayK}</span>
           <span className="mt-1.5 block text-[10.5px] text-[var(--color-foreground-muted)]">
             would stay
           </span>
@@ -384,7 +384,7 @@ function PopulationView({
             aria-hidden
             className={
               'h-[6px] w-[6px] rounded-full transition-opacity duration-200 ' +
-              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[rgba(236,231,222,0.55)]')
+              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[#8ea68a]')
             }
             style={{ opacity: i < shownDots ? 0.95 : 0.16 }}
           />
@@ -410,12 +410,12 @@ function PopulationView({
       {/* STATS BAR — the exact split (loved / mixed / bounced). */}
       <div className="mt-4 border-t border-[var(--color-border)] pt-3.5">
         <div className="flex h-[6px] overflow-hidden rounded-[4px] bg-white/[0.05]">
-          <span className="h-full bg-[rgba(236,231,222,0.55)]" style={{ width: `${pct(stops.length)}%` }} />
+          <span className="h-full bg-[#8ea68a]" style={{ width: `${pct(stops.length)}%` }} />
           <span className="h-full bg-[var(--color-accent)]" style={{ width: `${pct(bounces.length)}%` }} />
         </div>
         <div className="mt-2 flex justify-between text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
           <span>
-            <b className="font-semibold text-foreground">{pct(stops.length)}%</b> loved
+            <b className="font-semibold text-[#8ea68a]">{pct(stops.length)}%</b> loved
           </span>
           <span>
             <b className="font-semibold text-[var(--color-accent-text)]">{pct(bounces.length)}%</b> bounced

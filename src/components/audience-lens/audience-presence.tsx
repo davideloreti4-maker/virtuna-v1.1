@@ -284,7 +284,7 @@ export function AudiencePresence({
           role="dialog"
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex h-[76vh] max-h-[calc(100dvh-104px)] flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+            'absolute bottom-full left-0 right-0 z-[55] flex h-[72vh] max-h-[calc(100dvh-128px)] flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
             (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
             (reducedMotion
               ? ''
