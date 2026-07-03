@@ -1,3 +1,6 @@
+> ⛔ **SUPERSEDED (2026-07-04) by `docs/SURFACES-STATUS-AUDIT-2026-07-04.md`.**
+> This audit predates calendar/analytics/grow and the real ship-blocker diagnosis. Do not trust it for ship-prep.
+
 # Surfaces Milestone — Status Audit (2026-07-03)
 
 > **Read-only audit.** Worktree `~/virtuna-surfaces`. Git state at audit time: checked-out branch
