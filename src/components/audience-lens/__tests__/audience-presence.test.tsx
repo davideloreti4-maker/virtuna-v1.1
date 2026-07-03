@@ -299,6 +299,39 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
   });
 });
 
+// ── PR-4 Desktop persistent rail ──
+describe('AudiencePresence — desktop rail (PR-4)', () => {
+  it('renders the persistent rail with an idle roster — NOT the dock peek/Bloom', () => {
+    setup({ layout: 'rail', focus: null });
+    const rail = screen.getByTestId('audience-rail');
+    expect(rail).toBeInTheDocument();
+    // The dock surfaces (peek band toggle + Bloom panel + the dock root) are absent in the rail.
+    expect(screen.queryByRole('button', { name: /open your audience/i })).toBeNull();
+    expect(screen.queryByTestId('audience-panel')).toBeNull();
+    expect(screen.queryByTestId('audience-presence')).toBeNull();
+    // Idle roster: one row per persona (calibrated10 → 10), and the readiness copy.
+    expect(rail.querySelectorAll('ul li').length).toBe(10);
+    expect(within(rail).getByText(/they react the moment you make/i)).toBeInTheDocument();
+    // The switcher lives in the rail header.
+    expect(screen.getByRole('button', { name: /audience: growth audience/i })).toBeInTheDocument();
+  });
+
+  it('surfaces the stubbed variant seam as data-variant (defaults to thread)', () => {
+    setup({ layout: 'rail', focus: null });
+    expect(screen.getByTestId('audience-rail').getAttribute('data-variant')).toBe('thread');
+  });
+
+  it('fills the rail with the Room (honest score + scale toggle) when a card is in focus', () => {
+    setup({ layout: 'rail', focus: FOCUS });
+    const rail = screen.getByTestId('audience-rail');
+    // AmbientRoom's honest serif score for the ONE in-focus concept (also mirrored sr-only).
+    expect(within(rail).getAllByText(/6 of 10/i).length).toBeGreaterThan(0);
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
+    // The idle roster/readiness is replaced by the Room.
+    expect(within(rail).queryByText(/they react the moment you make/i)).toBeNull();
+  });
+});
+
 // ── PR-3 Rewrite loop (Population weak-spot) ──
 describe('AudiencePresence — PR-3 Rewrite loop', () => {
   const openPopulation = () =>

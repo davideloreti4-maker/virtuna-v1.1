@@ -40,7 +40,10 @@ export function HomePageLayout() {
   }, []);
 
   return (
-    <div className="flex h-full w-full flex-col items-center px-4">
+    // The Room, PR-4: at ≥ xl the persistent audience rail is a fixed 392px right column
+    // (rendered by the composer, portaled to <body>). Reserve its width here so the greeting +
+    // thread + composer never slide under it. ≤ lg keeps the full width (the mobile Bloom).
+    <div className="flex h-full w-full flex-col items-center px-4 xl:pr-[392px]">
       <div className="flex w-full max-w-[760px] flex-col flex-1 min-h-0">
         {!hasConversation && !rehydrating && (
           <div
