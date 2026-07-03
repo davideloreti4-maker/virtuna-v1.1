@@ -246,13 +246,11 @@ describe('AudiencePresence — General reactor', () => {
 
 // ── PANEL (open) — the one Lens + the audience-chat conversation ──
 describe('AudiencePresence — PANEL (expanded over the composer)', () => {
-  it('mounts the ambient Room (The people ⇄ Population · 1,000) when open + focused', () => {
+  it('mounts the ONE shipped Lens content (Panel · 10 ⇄ Population) when open + focused', () => {
     setup({ open: true, focus: FOCUS });
     expect(screen.getByTestId('audience-panel')).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
-    // v6 IA (Task B): the scale toggle swaps The people ⇄ Population · 1,000.
-    expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /population · 1,000/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /panel · 10/i })).toBeInTheDocument();
   });
 
   it('shows the idle hero prompt (no fabricated reaction) when open + idle', () => {
