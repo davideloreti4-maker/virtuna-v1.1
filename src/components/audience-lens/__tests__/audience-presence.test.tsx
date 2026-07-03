@@ -16,7 +16,7 @@
  *  - Determinism guards: no Math.random / Date.now / new Date, mulberry32 seeded, reducedMotion gated.
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { render, cleanup, fireEvent, screen, within, act } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Audience, CalibratedPersona } from '@/lib/audience/audience-types';
@@ -104,6 +104,27 @@ const FOCUS: AmbientFocus = {
   conceptText: 'what if I open with a question?',
   fraction: '6/10 stop',
   scrollQuote: 'This made me stop scrolling.',
+};
+
+/** A card focus carrying REAL per-persona reactions (6 stops + 4 bouncers who SPOKE) — the shape
+ *  the Population weak-spot + the PR-3 Rewrite CTA need (a real bouncer quote to steer the lever). */
+const FOCUS_BOUNCERS: AmbientFocus = {
+  id: 'hook-0',
+  conceptText: 'quit your gym membership',
+  fraction: '6/10 stop',
+  scrollQuote: 'This made me stop.',
+  personas: [
+    ...Array.from({ length: 6 }, (_, i) => ({
+      archetype: ARCHETYPES[i % ARCHETYPES.length]!,
+      verdict: 'stop' as const,
+      quote: `stopped ${i}`,
+    })),
+    ...Array.from({ length: 4 }, (_, i) => ({
+      archetype: ARCHETYPES[(i + 6) % ARCHETYPES.length]!,
+      verdict: 'scroll' as const,
+      quote: `too preachy ${i}`,
+    })),
+  ],
 };
 
 function setup(over: Partial<React.ComponentProps<typeof AudiencePresence>> = {}) {
@@ -275,6 +296,98 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
   it('surfaces the "Reading the room…" loading state while asking', () => {
     setup({ open: true, focus: null, asking: true });
     expect(screen.getByText(/reading the room/i)).toBeInTheDocument();
+  });
+});
+
+// ── PR-3 Rewrite loop (Population weak-spot) ──
+describe('AudiencePresence — PR-3 Rewrite loop', () => {
+  const openPopulation = () =>
+    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+  const ctaMatcher = { name: /win back the viewers who bounced/i };
+
+  it('shows the coral "Rewrite to win back the N% who bounced →" CTA when the skill is rewritable + bouncers spoke', () => {
+    setup({ open: true, focus: FOCUS_BOUNCERS, canRewrite: true, onRewrite: vi.fn() });
+    openPopulation();
+    const cta = screen.getByRole('button', ctaMatcher);
+    expect(cta).toBeInTheDocument();
+    expect(cta.textContent).toMatch(/Rewrite to win back the \d+% who bounced/i);
+  });
+
+  it('hides the CTA when the skill is NOT rewritable (e.g. remix — canRewrite false)', () => {
+    setup({ open: true, focus: FOCUS_BOUNCERS, canRewrite: false, onRewrite: vi.fn() });
+    openPopulation();
+    expect(screen.queryByRole('button', ctaMatcher)).toBeNull();
+  });
+
+  it('keeps the CTA off the People tab (Population weak-spot only)', () => {
+    setup({ open: true, focus: FOCUS_BOUNCERS, canRewrite: true, onRewrite: vi.fn() });
+    // People is the default scale — the CTA must not be here.
+    expect(screen.queryByRole('button', ctaMatcher)).toBeNull();
+  });
+
+  it("fires onRewrite with the lead bouncer's real words (the lever) on tap", () => {
+    const onRewrite = vi.fn().mockResolvedValue(undefined);
+    setup({ open: true, focus: FOCUS_BOUNCERS, canRewrite: true, onRewrite });
+    openPopulation();
+    fireEvent.click(screen.getByRole('button', ctaMatcher));
+    expect(onRewrite).toHaveBeenCalledTimes(1);
+    expect(onRewrite.mock.calls[0]![0]).toMatch(/too preachy/i);
+  });
+
+  it('reveals the honest delta (prior → new stop-count) once the rewrite lands + the nonce advances', async () => {
+    const onRewrite = vi.fn().mockResolvedValue(undefined);
+    const { props, rerender } = setup({
+      open: true,
+      focus: FOCUS_BOUNCERS,
+      canRewrite: true,
+      onRewrite,
+      rewriteNonce: 0,
+    });
+    openPopulation();
+    // Tap sets the prior snapshot (6/10) on the mounted CTA instance.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', ctaMatcher));
+    });
+    // The composer lands a stronger steered rewrite (8/10) + bumps the nonce past tap-time; we
+    // re-render the SAME instance (keeps `prior`) so the delta is honest prior → new.
+    const NEW_FOCUS: AmbientFocus = { ...FOCUS_BOUNCERS, fraction: '8/10 stop' };
+    rerender(<AudiencePresence {...props} focus={NEW_FOCUS} rewriteNonce={1} />);
+    expect(await screen.findByText(/the lever moved the room/i)).toBeInTheDocument();
+    expect(screen.getByText(/8\/10 stop/i)).toBeInTheDocument();
+    expect(screen.getByText(/6\/10 stop/i)).toBeInTheDocument();
+  });
+
+  it('keeps the payoff delta visible even when the winning rewrite gates the CTA off (≥90% → nothing left to win back)', async () => {
+    const onRewrite = vi.fn().mockResolvedValue(undefined);
+    const { props, rerender } = setup({
+      open: true,
+      focus: FOCUS_BOUNCERS,
+      canRewrite: true,
+      onRewrite,
+      rewriteNonce: 0,
+    });
+    openPopulation();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', ctaMatcher));
+    });
+    // The rewrite lands a 10/10 winner — no bouncers left, so the CTA MUST gate off; the delta MUST stay.
+    const PERFECT: AmbientFocus = {
+      id: 'hook-0',
+      conceptText: 'the winning rewrite',
+      fraction: '10/10 stop',
+      scrollQuote: 'perfect',
+      personas: Array.from({ length: 10 }, (_, i) => ({
+        archetype: ARCHETYPES[i % ARCHETYPES.length]!,
+        verdict: 'stop' as const,
+        quote: '',
+      })),
+    };
+    rerender(<AudiencePresence {...props} focus={PERFECT} rewriteNonce={1} />);
+    // The payoff delta is present (6/10 → 10/10)…
+    expect(await screen.findByText(/the lever moved the room/i)).toBeInTheDocument();
+    expect(screen.getByText(/10\/10 stop/i)).toBeInTheDocument();
+    // …but the button is gone — nothing left to win back.
+    expect(screen.queryByRole('button', ctaMatcher)).toBeNull();
   });
 });
 
