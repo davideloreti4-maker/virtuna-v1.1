@@ -1426,6 +1426,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     return [];
   })();
 
+  // The batch's kind label for the Room's anchored-focus stepper (‹ Hook N of M ›) + view-all
+  // (PR-2). The descriptor set is already scoped to the active tool (all one kind), so a single
+  // singular label fits the whole batch.
+  const ambientKindLabel =
+    activeTool === "hooks"
+      ? "Hook"
+      : activeTool === "idea"
+        ? "Idea"
+        : activeTool === "script"
+          ? "Script"
+          : activeTool === "remix"
+            ? "Remix"
+            : "Concept";
+
   const {
     focus: ambientFocus,
     focusByTap,
@@ -1501,6 +1515,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         })
       }
       onBuildAudience={() => setBuildOpen(true)}
+      focusList={ambientDescriptors}
+      onStep={focusByTap}
+      kindLabel={ambientKindLabel}
       docked
     />
   );

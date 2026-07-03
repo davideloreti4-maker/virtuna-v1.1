@@ -38,7 +38,7 @@ import type { FlatPersonaReaction } from '@/components/board/audience/audience-d
 import { personaNameMap } from '@/lib/audience/persona-names';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AmbientRoom } from './AmbientRoom';
-import type { AmbientFocus, AmbientPersonaReaction } from './ambient-presence-types';
+import type { AmbientFocus, AmbientFocusSibling, AmbientPersonaReaction } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
   Constellation,
@@ -102,6 +102,14 @@ export interface AudiencePresenceProps {
   docked?: boolean;
   /** Open the Build-an-audience chooser (the `+ Build an audience` switcher row). Optional. */
   onBuildAudience?: () => void;
+  // ── Anchored-focus stepper + `⤺ all N` view-all (PR-2) — threaded from the composer. ──
+  /** The current batch's sibling cards (the composer's flat per-tool descriptor list). The Room
+   *  renders `‹ Hook N of M ›` + the ranked view-all only when this holds >1 sibling. */
+  focusList?: AmbientFocusSibling[];
+  /** Re-focus the Room on a sibling by id (= the composer's `focusByTap`) — the stepper callback. */
+  onStep?: (id: string) => void;
+  /** The batch's kind label ("Hook" | "Idea" | "Script" | "Remix") for the stepper + compare copy. */
+  kindLabel?: string;
 }
 
 export function AudiencePresence({
@@ -119,6 +127,9 @@ export function AudiencePresence({
   asking = false,
   docked = false,
   onBuildAudience,
+  focusList,
+  onStep,
+  kindLabel,
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
@@ -330,6 +341,10 @@ export function AudiencePresence({
                 fraction={focus.fraction}
                 reducedMotion={reducedMotion}
                 personaNameOverrides={personaNameOverrides}
+                focusId={focus.id}
+                siblings={focusList}
+                onStep={onStep}
+                kindLabel={kindLabel}
               />
             </div>
           ) : (
