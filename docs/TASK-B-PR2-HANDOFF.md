@@ -25,7 +25,10 @@ so **branch PR-2 off `feat/the-room-composer`** (inherits Task C's composer edit
 **Live ambient-audience audit (Room open on a General hooks thread) vs the v6 prototype — owner flagged the
 ambient audience "doesn't represent the prototype correctly yet." Concrete gaps found:**
 - **People tab:** ✓ Bloom rises + flush-merges · ✓ named voices + serif quotes + `ask →`. **✗ NO header stepper
-  `‹ Hook 1 of 3 ›` + `⤺ all 3` compare** (header is just the serif score + concept) = **PR-2, the top gap.**
+  `‹ Hook 1 of 3 ›` + `⤺ all 3` view-all** (header is just the serif score + concept) = **PR-2, the top gap.**
+  (Terminology: the header is only TWO things — the stepper + the `⤺ all N` view-all link. `⤺ all N` opens the
+  ranked list "How the room ranked your N hooks" → tap a row to re-focus the Room on it. "compare" is just the
+  prototype's CODE name — `openCompare`/`renderCompareHead`/`renderCompareBody` — NOT a user-facing control.)
   ⚠ **avatar tonal coding is TOO SUBTLE** — sage `.ava.g` (stop) vs coral `.ava.r` (bounce) barely distinguishable
   on dark; bump to the prototype's `rgba(142,166,138,.16)`/`#a6bfa1` legibility (POLISH). ⚠ confirm the
   "▶ Replay how the room reacted" button + "+N more of your 10" footer render (not seen in first viewport).
@@ -33,7 +36,7 @@ ambient audience "doesn't represent the prototype correctly yet." Concrete gaps 
   · ✓ loved/bounced stats bar · ✓ WEAK-SPOT (bouncers + real words). **✗ NO "Rewrite to win back the N% who
   bounced →" CTA** = **PR-3.**
 - **Verdict:** the Room is FAITHFUL on the Bloom shell + People voices + Population hero/swarm/stats/weak-spot;
-  the two missing INTERACTIONS are exactly **PR-2 (stepper/compare)** + **PR-3 (Rewrite)**, plus avatar-tone + Replay
+  the two missing INTERACTIONS are exactly **PR-2 (stepper + `⤺ all N` view-all)** + **PR-3 (Rewrite)**, plus avatar-tone + Replay
   POLISH. Recommended order next session: **PR-2 → PR-3 → (avatar-tone + Replay polish) → PR-4 (scope-confirm).**
 
 ## 0. Setup (start here)
