@@ -3,13 +3,17 @@
  * account_snapshots time-series. No DB, no I/O (the repo owns those) so this is
  * unit-testable and safe to run in a server component.
  *
- * Honesty spine: we ONLY surface what the profile scrape truthfully gives —
+ * Honesty spine: we ONLY surface what the scrape truthfully gives —
  * cumulative Followers / Likes (heartCount) / Posts (videoCount) counters, plus
  * the weekly follower gain derived from the series. There is NO account-level
- * "Views" counter on a TikTok profile, so we never fabricate one. Point-in-time
- * values are real on day one; deltas + sparklines fill in as the daily cron
- * accumulates snapshots — a single snapshot yields real totals with an honest
- * "—" delta and a flat spark, never a made-up trend.
+ * "Views" counter on a TikTok profile, so the Views tile is NOT a fabricated
+ * total: it is the honest SUM of public views across the creator's posts in the
+ * trailing window (`recent_views`, captured by the daily cron's video scrape).
+ * It is optional — a snapshot without it (calibration capture, a failed video
+ * scrape) simply omits the tile. Point-in-time values are real on day one;
+ * deltas + sparklines fill in as the daily cron accumulates snapshots — a single
+ * snapshot yields real totals with an honest "—" delta and a flat spark, never a
+ * made-up trend.
  */
 
 import type { StatCard } from "@/lib/room-contract/mock-room";
@@ -20,6 +24,42 @@ export interface AccountSnapshot {
   follower_count: number;
   heart_count: number;
   video_count: number;
+  /**
+   * Sum of public views across posts in the trailing window (the daily cron's
+   * video scrape). Optional/nullable: NULL = not captured (Views tile omitted),
+   * 0 = real no-recent-posts, >0 = real sum. Never fabricated.
+   */
+  recent_views?: number | null;
+}
+
+// ── views aggregation (ingestion-side, used by the daily cron) ──────────────────
+
+/** A scraped post, narrowed to the two fields the views sum needs. */
+export interface RecentVideo {
+  views: number;
+  postedAt: Date;
+}
+
+/**
+ * Sum public views across posts published within the trailing `windowDays` of `now`.
+ * Pure over (videos, windowDays, now) so the cron's ingestion is unit-testable. This
+ * is the ONLY honest account-level "Views" figure (TikTok exposes no profile total).
+ * A post with an out-of-window / future `postedAt` is excluded; a non-finite view
+ * count contributes 0 (never NaN-poisons the sum). Callers treat an EMPTY scrape as
+ * "no data" (store NULL), distinct from a real 0 returned here for a genuinely quiet
+ * window.
+ */
+export function sumRecentViews(
+  videos: ReadonlyArray<RecentVideo>,
+  windowDays: number,
+  now: Date,
+): number {
+  const cutoffMs = now.getTime() - windowDays * 24 * 60 * 60 * 1000;
+  return videos.reduce((sum, v) => {
+    const t = v.postedAt.getTime();
+    if (Number.isNaN(t) || t < cutoffMs || t > now.getTime()) return sum;
+    return sum + (Number.isFinite(v.views) ? v.views : 0);
+  }, 0);
 }
 
 // ── formatting ────────────────────────────────────────────────────────────────
@@ -118,12 +158,49 @@ export function buildAccountStats(snapshots: AccountSnapshot[]): StatCard[] | nu
     };
   })();
 
-  return [
+  const tiles: StatCard[] = [
     tile("Followers", (s) => s.follower_count),
     newFollowers,
     tile("Likes", (s) => s.heart_count),
     tile("Posts", (s) => s.video_count),
   ];
+
+  // Views (5th) — optional: only when the cron has captured recent_views on at least
+  // one snapshot. Real windowed sum, or omit the tile entirely (honesty spine).
+  const views = optionalTile("Views", series, (s) => s.recent_views);
+  if (views) tiles.push(views);
+
+  return tiles;
+}
+
+/**
+ * Build one tile from a metric that may be ABSENT on some snapshots (e.g. recent_views,
+ * which only lands once the daily cron has scraped videos). Filters to the snapshots
+ * that carry it, then applies the same latest/baseline/spark logic as the core tiles.
+ * Returns null when NO snapshot carries the metric → the caller omits the tile (honest).
+ */
+function optionalTile(
+  label: string,
+  series: AccountSnapshot[], // full series, oldest → newest
+  pick: (s: AccountSnapshot) => number | null | undefined,
+): StatCard | null {
+  const present = series.filter((s) => pick(s) != null);
+  if (present.length === 0) return null;
+
+  const vals = present.map((s) => pick(s) as number);
+  const latestVal = vals[vals.length - 1]!;
+  const points = sparkPoints(vals);
+
+  // Baseline = the oldest carrying snapshot within the trailing 7 days of the latest
+  // carrying one (mirrors the core tile()). <2 points → honest "—", no invented trend.
+  const latestDate = present[present.length - 1]!.snapshot_date;
+  const cutoff = daysAgo(latestDate, 7);
+  const windowed = present.filter((s) => s.snapshot_date >= cutoff);
+  if (windowed.length < 2) {
+    return { label, value: formatCount(latestVal), delta: "—", up: false, spark: points };
+  }
+  const change = latestVal - (pick(windowed[0]!) as number);
+  return { label, value: formatCount(latestVal), delta: formatDelta(change), up: change > 0, spark: points };
 }
 
 /** "YYYY-MM-DD" minus n days, as "YYYY-MM-DD" (UTC, string-comparable). */
