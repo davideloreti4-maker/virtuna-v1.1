@@ -24,9 +24,10 @@ export interface AccountSnapshot {
 
 // ── formatting ────────────────────────────────────────────────────────────────
 
-/** 42_100 → "42.1K", 1_240_000 → "1.2M", 820 → "820". */
+/** 42_100 → "42.1K", 1_240_000 → "1.2M", 1_300_000_000 → "1.3B", 820 → "820". */
 export function formatCount(n: number): string {
   const abs = Math.abs(n);
+  if (abs >= 1_000_000_000) return `${trim(n / 1_000_000_000)}B`;
   if (abs >= 1_000_000) return `${trim(n / 1_000_000)}M`;
   if (abs >= 1_000) return `${trim(n / 1_000)}K`;
   return `${Math.round(n)}`;

@@ -14,6 +14,8 @@ describe("formatCount", () => {
     expect(formatCount(12310)).toBe("12.3K");
     expect(formatCount(229400)).toBe("229.4K");
     expect(formatCount(1_240_000)).toBe("1.2M");
+    expect(formatCount(85_900_000)).toBe("85.9M");
+    expect(formatCount(1_300_000_000)).toBe("1.3B"); // large-account likes (regression: was "1300M")
     expect(formatCount(43)).toBe("43");
   });
 });
