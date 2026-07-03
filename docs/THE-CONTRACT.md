@@ -133,5 +133,8 @@ The Surfaces session **never rebuilds** the atom — it imports the shared compo
 2. **Audience context outside a thread.** The audience is per-thread pinned; non-thread surfaces have **no thread** → the presence
    has nothing to read. **Proposed:** add a **user-level active/default audience** (last-used) that `variant='surface'` reads; entering
    a thread pins from it. Small but load-bearing — needs The Room's OK since it touches audience resolution.
-3. **The card number — one or two.** One blended `stop` (punchier) vs. **craft + audience-fit as two signals** (more honest: the
-   craft score is audience-agnostic in the engine today). The Room owns the card, so it's their call; Surfaces follows. *Lean: two.*
+3. **The card number — one or two.** ✅ **RESOLVED 2026-07-03 — ONE blended `stop`** (owner call: cleaner/punchier on
+   the start page). Rejected the craft+audience-fit two-signal split despite its honesty edge (craft is audience-agnostic in
+   the engine today), preferring a simpler card. `CardReaction.stop` stays a single number; the two-signal breakdown lives
+   *inside* the Room drill, not on the card face. **Relay to The Room** — they own the shared card component, so both halves
+   must render one number. (Prototypes carry a toggle for the record; default = one.)
