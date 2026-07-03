@@ -1,0 +1,610 @@
+<meta charset="utf-8">
+<title>Juno — The Start Page (clickable prototype)</title>
+<!--
+  THROWAWAY prototype-as-spec for the Surfaces milestone.  Mobile-first phone frame,
+  flat-warm charcoal, matches The Room's card / dock / room visual language so the two
+  halves read as ONE product.  All data is stubbed to the shapes in docs/THE-CONTRACT.md
+  §3 (CardReaction / Read / Reaction / ActiveAudience).  NOT production code.
+  View: serve over `python3 -m http.server` (file:// is blocked in the MCP browser).
+-->
+<style>
+  :root{
+    --bg:#262624; --bg2:#211f1d; --surface:#2f2e2b; --surface2:#35332f;
+    --cream:#ece7de; --cream2:#cbc5ba; --muted:#8f8a80; --faint:#6a665e;
+    --accent:#d97757; --accent-soft:rgba(217,119,87,.16);
+    --good:#8ea68a; --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.12);
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box} body{margin:0}
+  .page{min-height:100vh;background:radial-gradient(120% 80% at 50% -10%,#2c2a27,var(--bg) 60%);color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 20px 60px}
+  .intro{max-width:400px;text-align:center}
+  .intro .eye{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  .intro h1{font-family:var(--serif);font-weight:500;font-size:30px;margin:0 0 6px;letter-spacing:-.01em}
+  .intro p{font-size:13px;color:var(--muted);margin:0;line-height:1.5}
+
+  .phone{width:336px;height:712px;background:var(--bg2);border:1px solid var(--border2);border-radius:38px;padding:16px 14px;position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 6px #1a1917}
+  .ph-top{display:flex;justify-content:center;padding:2px 0 10px}
+  .ph-top .pill{width:80px;height:5px;border-radius:3px;background:rgba(255,255,255,.09)}
+  .scr{position:absolute;inset:16px 14px;top:38px;display:flex;flex-direction:column;overflow:hidden}
+
+  .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px;scrollbar-width:none}
+  .content::-webkit-scrollbar{display:none}
+
+  /* ── briefing greeting (voice moment) ── */
+  .greet{padding:14px 6px 4px}
+  .greet .brand{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--accent);font-family:var(--serif);font-weight:700;font-size:20px;margin-bottom:12px}
+  .greet .date{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .greet h2{font-family:var(--serif);font-weight:500;font-size:23px;line-height:1.22;margin:0;color:var(--cream)}
+  .greet p{font-size:12.5px;color:var(--muted);margin:8px 0 0;line-height:1.5}
+  .greet p b{color:var(--cream2);font-weight:600}
+
+  /* ── section scaffolding ── */
+  .sec{padding:16px 4px 2px}
+  .sec-hd{display:flex;align-items:baseline;gap:8px;padding:0 4px 9px}
+  .sec-hd .lbl{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+  .sec-hd .act{margin-left:auto;font-size:11px;color:var(--muted);cursor:pointer}
+  .sec-hd .act:hover{color:var(--cream2)}
+  .pretested{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;letter-spacing:.06em;color:var(--good);border:1px solid rgba(142,166,138,.34);border-radius:5px;padding:1px 6px}
+
+  .two-legend{display:none;font-size:10.5px;color:var(--muted);padding:0 8px 10px;line-height:1.5}
+  .two-legend.on{display:block}
+  .two-legend b{color:var(--cream2);font-weight:600}
+
+  /* ── the shared card (a door to the room) ── */
+  .stack{display:flex;flex-direction:column;gap:8px}
+  .hcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 12px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+  .hcard:hover{border-color:var(--border2)}
+  .hcard.focused{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft)}
+  .hcard .rank{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.1em;display:flex;align-items:center;gap:6px}
+  .hcard .h{font-size:12.5px;color:var(--cream);line-height:1.4;margin-top:4px}
+  .react{display:flex;align-items:center;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);font-size:11px}
+  .dotc{width:8px;height:8px;border-radius:50%;flex:none}
+  .dotc.g{background:var(--good)}.dotc.r{background:var(--accent)}.dotc.n{background:rgba(255,255,255,.42)}
+  .react b{color:var(--cream);font-weight:600;white-space:nowrap}
+  .react .sep{color:var(--faint)}
+  .react .q{color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .react .open{margin-left:auto;color:var(--faint);font-size:15px;flex:none}
+  .react .predtag{font-family:var(--mono);font-size:8.5px;letter-spacing:.06em;color:var(--faint);border:1px solid var(--border);border-radius:4px;padding:0 4px;flex:none}
+
+  /* ── calendar week rail ── */
+  .cal{display:flex;gap:5px;padding:2px 2px 0}
+  .cal-day{flex:1;text-align:center}
+  .cal-day .dow{font-family:var(--mono);font-size:9px;color:var(--faint);margin-bottom:5px}
+  .cal-day .cell{height:38px;border-radius:9px;border:1px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:.15s}
+  .cal-day .cell:hover{border-color:var(--border2)}
+  .cal-day.today .dow{color:var(--cream2)}
+  .cal-day.today .cell{border-color:var(--border2)}
+  .cal-day.done .cell{background:var(--surface)}
+  .cal-day.plan .cell{background:var(--surface)}
+  .cal-day.empty .cell{border-style:dashed;border-color:rgba(255,255,255,.1)}
+  .cal-day .cd{width:7px;height:7px;border-radius:50%}
+  .cal-day .cd.g{background:var(--good)}.cal-day .cd.r{background:var(--accent)}.cal-day .cd.n{background:rgba(255,255,255,.42)}
+  .cal-day .pv{font-family:var(--mono);font-size:9px;color:var(--cream2)}
+  .cal-day.empty .pv{color:var(--faint);font-size:14px;line-height:1}
+  .cal-day .chk{color:var(--good);font-size:11px}
+  .slot-sug{margin-top:10px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 12px;cursor:pointer;transition:border-color .15s}
+  .slot-sug:hover{border-color:var(--border2)}
+  .slot-sug .st{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+  .slot-sug .sh{font-size:12.5px;color:var(--cream);line-height:1.4;margin-top:5px}
+  .slot-sug .sf{display:flex;align-items:center;gap:7px;margin-top:9px;padding-top:9px;border-top:1px solid var(--border);font-size:11px}
+  .slot-sug .fill{margin-left:auto;font-size:11px;color:var(--cream2);border:1px solid var(--border2);border-radius:7px;padding:3px 9px;flex:none}
+
+  /* ── feed outliers (scored for MY people) ── */
+  .outlier{display:flex;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px;cursor:pointer;transition:border-color .15s}
+  .outlier:hover{border-color:var(--border2)}
+  .outlier .thumb{width:46px;height:60px;border-radius:8px;background:linear-gradient(160deg,#3a3833,#2a2825);border:1px solid var(--border);flex:none;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;position:relative;overflow:hidden}
+  .outlier .thumb .pl{position:absolute;top:0;left:0;right:0;bottom:0;display:grid;place-items:center;color:var(--faint);font-size:15px}
+  .outlier .thumb .vw{position:relative;font-family:var(--mono);font-size:8px;color:var(--cream2);background:rgba(0,0,0,.45);border-radius:4px;padding:1px 4px}
+  .outlier .ob{flex:1;min-width:0}
+  .outlier .src{font-family:var(--mono);font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .outlier .ot{font-size:12.5px;color:var(--cream);line-height:1.35;margin-top:3px}
+  .outlier .oreact{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:11px}
+  .outlier .ins{font-size:11px;color:var(--cream2);margin-top:7px;line-height:1.4;font-style:italic}
+
+  /* ── the loop (receipts) ── */
+  .receipt{display:flex;align-items:center;gap:11px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 12px}
+  .receipt .chk{width:22px;height:22px;border-radius:50%;background:rgba(142,166,138,.16);color:var(--good);display:grid;place-items:center;font-size:12px;flex:none}
+  .receipt .rb{flex:1;min-width:0}
+  .receipt .rt{font-size:12.5px;color:var(--cream);line-height:1.35}
+  .receipt .rs{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:3px}
+  .receipt .rs .said{color:var(--cream2)}.receipt .rs .got{color:var(--good)}
+  .receipt .delta{font-family:var(--mono);font-size:10px;color:var(--good);border:1px solid rgba(142,166,138,.34);border-radius:6px;padding:3px 7px;flex:none;white-space:nowrap}
+  .acc{display:flex;align-items:center;gap:13px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 13px;margin-top:8px}
+  .acc b{font-family:var(--serif);font-size:24px;color:var(--cream);line-height:1;flex:none}
+  .acc .ab{flex:1}
+  .acc .at{font-size:11.5px;color:var(--cream2);line-height:1.4}
+  .acc .au{font-family:var(--mono);font-size:10px;color:var(--good);margin-top:3px}
+
+  /* ── first-run / empty state ── */
+  .firstrun{display:none;flex-direction:column;padding:20px 6px}
+  .firstrun.on{display:flex}
+  .firstrun .brand{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;color:var(--accent);font-family:var(--serif);font-weight:700;font-size:22px;margin-bottom:16px}
+  .firstrun h2{font-family:var(--serif);font-weight:500;font-size:24px;line-height:1.24;margin:0 0 10px;color:var(--cream)}
+  .firstrun p{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 8px}
+  .firstrun p b{color:var(--cream2);font-weight:600}
+  .fr-cta{margin-top:14px;background:var(--cream);color:var(--bg2);text-align:center;font-size:13px;font-weight:600;border-radius:10px;padding:12px;cursor:pointer}
+  .fr-cta:hover{background:#fff}
+  .fr-or{text-align:center;font-size:11.5px;color:var(--faint);margin-top:12px}
+  .fr-steps{margin-top:20px;display:flex;flex-direction:column;gap:2px}
+  .fr-step{display:flex;gap:10px;align-items:flex-start;padding:9px 4px;border-top:1px solid var(--border);font-size:12px;color:var(--cream2);line-height:1.4}
+  .fr-step:first-child{border-top:0}
+  .fr-step .n{font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px;flex:none;width:14px}
+
+  /* ── living presence (global dock) ── */
+  .presence{flex:none;display:flex;align-items:center;gap:9px;padding:9px 11px;margin-top:6px;background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--border2);border-radius:14px;cursor:pointer;position:relative;z-index:9;transition:border-radius .3s ease,border-color .3s ease}
+  .constell{width:54px;height:26px;flex:none}
+  .constell .cd{animation:breathe 3.4s ease-in-out infinite}
+  .constell .cd.g{fill:var(--good)}.constell .cd.r{fill:var(--accent)}
+  @keyframes breathe{0%,100%{opacity:.4}50%{opacity:1}}
+  .presence.reacting .constell .cd{animation:blink 1s ease infinite}
+  @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+  .pmid{flex:1;min-width:0;overflow:hidden}
+  .pname{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--cream);white-space:nowrap;overflow:hidden}
+  .pname .nmtxt{overflow:hidden;text-overflow:ellipsis}
+  .pname .chev{font-size:9px;color:var(--muted);flex:none}
+  .ppulse{font-size:11px;color:var(--cream2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ptier{flex:none;font-family:var(--mono);font-size:8.5px;letter-spacing:.04em;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:2px 5px}
+  .popen{flex:none;color:var(--muted);font-size:12px}
+
+  /* ── embedded composer (Seam 4) ── */
+  .composer{flex:none;display:flex;align-items:center;gap:8px;padding:8px 9px;margin-top:8px;background:var(--surface);border:1px solid var(--border2);border-radius:14px;transition:border-color .2s}
+  .composer.seeded{border-color:var(--accent)}
+  .verb{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;padding:7px 10px;cursor:pointer;transition:.15s;flex:none}
+  .verb:hover{border-color:var(--accent)}
+  .verb .vi{color:var(--accent);font-size:12px}
+  .verb .vl{font-size:12.5px;font-weight:600;color:var(--cream)}
+  .verb .chev{color:var(--muted);font-size:9px}
+  .cinput{flex:1;font-size:12.5px;color:var(--faint);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cinput.filled{color:var(--cream)}
+  .cgo{width:28px;height:28px;border-radius:9px;background:var(--cream);color:var(--bg2);display:grid;place-items:center;font-size:14px;flex:none;cursor:pointer}
+
+  .popmenu{position:absolute;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:6px;z-index:12;box-shadow:0 20px 50px rgba(0,0,0,.5);display:none}
+  .popmenu.on{display:block;animation:pop .18s ease}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .popmenu .pm-hd{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-family:var(--mono);padding:8px 10px 3px}
+  .pm{display:flex;flex-direction:column;gap:1px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:.12s}
+  .pm:hover{background:var(--surface2)}
+  .pm b{font-size:12.5px;color:var(--cream);font-weight:600}.pm span{font-size:10.5px;color:var(--muted)}
+  #verbMenu{left:10px;bottom:76px;width:224px}
+  #switcher{left:12px;right:12px;bottom:132px}
+  #switcher .sr{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:12.5px}
+  #switcher .sr:hover{background:var(--surface2)}
+  #switcher .sr .nm2{color:var(--cream);font-weight:500}
+  #switcher .sr .sub{color:var(--muted);font-size:10.5px}
+  #switcher .goal{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+
+  /* ── the room (bloom, door target) ── */
+  .sheet{position:absolute;background:var(--bg);display:flex;flex-direction:column;z-index:8;transition:transform .34s cubic-bezier(.32,.72,.3,1)}
+  #room{left:0;right:0;top:16%;bottom:104px;border-radius:20px 20px 0 0;border:1px solid var(--border2);border-bottom:0;box-shadow:0 -18px 44px rgba(0,0,0,.42);transform:translateY(calc(100% + 120px));transform-origin:bottom center}
+  #room.up{transform:translateY(0)}
+  .scr:has(#room.up) .presence{border-top-left-radius:0;border-top-right-radius:0;border-top-color:transparent}
+  .sheet .grab{display:flex;justify-content:center;padding:8px 0 2px;cursor:pointer}
+  .sheet .grab span{width:34px;height:4px;border-radius:3px;background:rgba(255,255,255,.18)}
+  #rhead{padding:2px 12px 6px}
+  .rhead-top{display:flex;align-items:center;gap:8px;min-height:24px}
+  .focuslbl{font-family:var(--mono);font-size:11px;color:var(--cream)}.focuslbl .kind{color:var(--muted)}
+  .openfull{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--muted);cursor:pointer;border:1px solid var(--border);border-radius:7px;padding:3px 8px;white-space:nowrap;flex:none}
+  .rscore{font-family:var(--serif);font-size:21px;color:var(--cream);margin-top:5px;line-height:1.1}
+  .rscore small{font-family:var(--sans);font-size:10.5px;color:var(--muted);display:block;margin-top:3px;line-height:1.35}
+  .x{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--muted);background:var(--surface);cursor:pointer;font-size:13px;flex:none}
+  .sbody{flex:1;overflow-y:auto;scrollbar-width:none;padding:2px 12px 6px}
+  .sbody::-webkit-scrollbar{display:none}
+  .prow{display:flex;gap:10px;align-items:flex-start;padding:10px 6px;border-top:1px solid var(--border);cursor:pointer;border-radius:8px;opacity:0;transform:translateY(6px);animation:rise .34s ease forwards}
+  @keyframes rise{to{opacity:1;transform:none}}
+  .prow:first-child{border-top:0}
+  .prow:hover{background:var(--surface)}
+  .ava{width:29px;height:29px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--bg2)}
+  .ava.g{background:var(--good)}.ava.r{background:var(--accent)}.ava.n{background:#8a857b}
+  .prow .b{flex:1;min-width:0}.prow .nm{font-size:12.5px;font-weight:600;color:var(--cream)}
+  .prow .ar{font-size:10.5px;color:var(--muted)}.prow .q{font-size:11.5px;color:var(--cream2);margin-top:3px;line-height:1.4}
+  .prow .ask{font-size:10.5px;color:var(--muted);font-family:var(--mono);flex:none;align-self:center}
+  .moreppl{text-align:center;font-size:11px;color:var(--muted);font-family:var(--mono);padding:9px}
+  .splitfoot{flex:none;padding:9px 14px;border-top:1px solid var(--border)}
+  .weakfix{font-size:11px;color:var(--cream2);line-height:1.5;margin-bottom:9px}
+  .weakfix b{color:var(--cream);font-weight:600}
+  .srow{display:flex;align-items:center;gap:8px;font-size:10.5px;color:var(--cream2);margin-bottom:5px}
+  .srow:last-child{margin-bottom:0}.srow .k{width:52px;color:var(--muted)}
+  .srow .bar{height:7px;border-radius:5px}.srow .p{font-variant-numeric:tabular-nums;margin-left:auto}
+  .cta{margin:8px 12px 12px;background:var(--accent);color:#2a1c14;text-align:center;font-size:12.5px;font-weight:600;border-radius:10px;padding:11px;cursor:pointer;flex:none}
+  .cta:hover{background:#e0805f}
+
+  .toast{position:absolute;left:20px;right:20px;bottom:150px;background:var(--bg2);border:1px solid var(--border2);border-left:2px solid var(--good);border-radius:11px;padding:11px 13px;font-size:12px;color:var(--cream2);z-index:13;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none;line-height:1.45}
+  .toast.on{opacity:1;transform:none}.toast b{color:var(--cream)}
+
+  /* ── control panel (owner picks the fork by feel) ── */
+  .caption{max-width:360px;width:100%}
+  .ctrl{display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .ctrl .row{display:flex;align-items:center;gap:10px}
+  .ctrl .rl{font-size:11px;color:var(--muted);flex:none;width:96px}
+  .ctrl .rl b{display:block;color:var(--cream2);font-size:11.5px;font-weight:600;margin-bottom:1px}
+  .seg{flex:1;display:flex;gap:5px}
+  .seg span{flex:1;text-align:center;font-size:11px;padding:7px;border-radius:8px;color:var(--muted);border:1px solid var(--border);cursor:pointer;transition:.15s}
+  .seg span.on{background:rgba(255,255,255,.06);color:var(--cream);border-color:var(--border2)}
+  .hint{font-size:12.5px;color:var(--cream2);min-height:20px;margin:12px 2px 0;line-height:1.45;text-align:center}.hint b{color:var(--accent)}
+  .reset{display:block;margin:10px auto 0;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:7px 14px;border-radius:8px;cursor:pointer}
+  .reset:hover{color:var(--cream);border-color:var(--cream2)}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.05s !important}}
+</style>
+
+<div class="page">
+  <div class="intro">
+    <p class="eye">Juno · surfaces · prototype · v1 · the start page</p>
+    <h1>The Start Page</h1>
+    <p>A proactive briefing that replaces the cold composer home. Same shell as The Room — audience present, composer at the ready — but the feed is what your room did overnight. Every card is a door back into the room.</p>
+  </div>
+
+  <div class="phone">
+    <div class="ph-top"><span class="pill"></span></div>
+    <div class="scr">
+      <div class="content" id="content">
+
+        <!-- ── BRIEFING STATE ── -->
+        <div id="briefing">
+          <div class="greet">
+            <div class="brand">n</div>
+            <div class="date">Friday · July 3</div>
+            <h2 id="greetH">Good morning, Davide.</h2>
+            <p id="greetP">While you slept, your room reacted to <b>6 things</b>. Three are worth your morning — here's what landed.</p>
+          </div>
+
+          <div class="two-legend" id="twoLegend"><b>Craft</b> = how well it's made (audience-agnostic). <b>Room</b> = how well it fits your people. When they disagree is where the signal is.</div>
+
+          <!-- pre-tested ideas -->
+          <div class="sec">
+            <div class="sec-hd"><span class="lbl">Fresh from your room</span><span class="pretested">✦ pre-tested</span><span class="act" data-verb="Make">make more ›</span></div>
+            <div class="stack" id="ideasStack"></div>
+          </div>
+
+          <!-- calendar -->
+          <div class="sec">
+            <div class="sec-hd"><span class="lbl">This week</span><span class="act" data-nav="calendar">open calendar ›</span></div>
+            <div class="cal" id="calRail"></div>
+            <div class="slot-sug" id="slotSug"></div>
+          </div>
+
+          <!-- feed outliers -->
+          <div class="sec">
+            <div class="sec-hd"><span class="lbl">Outliers · scored for your people</span><span class="act" data-nav="feed">open feed ›</span></div>
+            <div class="stack" id="outlierStack"></div>
+          </div>
+
+          <!-- the loop / receipts -->
+          <div class="sec">
+            <div class="sec-hd"><span class="lbl">The loop · what actually happened</span><span class="act" data-nav="loop">history ›</span></div>
+            <div class="stack" id="receiptStack"></div>
+            <div class="acc" id="accCard"></div>
+          </div>
+          <div style="height:8px"></div>
+        </div>
+
+        <!-- ── FIRST-RUN STATE ── -->
+        <div class="firstrun" id="firstrun">
+          <div class="brand">n</div>
+          <h2>Let's build your room.</h2>
+          <p>Juno hasn't met your audience yet. <b>Calibrate once</b> — then every morning opens with a briefing pre-tested on your real people, not generic best-practice.</p>
+          <div class="fr-cta" id="frCta">Calibrate your audience →</div>
+          <div class="fr-or">or just make something now ↓</div>
+          <div class="fr-steps">
+            <div class="fr-step"><span class="n">1</span><div>Point Juno at your account — it models ~10 named people from your real followers.</div></div>
+            <div class="fr-step"><span class="n">2</span><div>Make, Test, or Ask — they react before you post.</div></div>
+            <div class="fr-step"><span class="n">3</span><div>Publish. Juno checks its call against what really happened, and the model sharpens.</div></div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- LIVING PRESENCE (global dock) -->
+      <div class="presence" id="presence">
+        <svg class="constell" viewBox="0 0 132 34" aria-hidden="true">
+          <g stroke="rgba(255,255,255,0.12)" stroke-width="1">
+            <line x1="8" y1="20" x2="24" y2="10"/><line x1="24" y1="10" x2="46" y2="16"/>
+            <line x1="46" y1="16" x2="64" y2="24"/><line x1="64" y1="24" x2="80" y2="14"/>
+            <line x1="80" y1="14" x2="104" y2="12"/><line x1="104" y1="12" x2="120" y2="20"/>
+          </g>
+          <circle class="cd" cx="8" cy="20" r="2.6" fill="#ece7de" style="animation-delay:0s"/>
+          <circle class="cd g" cx="24" cy="10" r="2.6" style="animation-delay:.4s"/>
+          <circle class="cd" cx="30" cy="27" r="2.2" fill="#ece7de" style="animation-delay:1.2s"/>
+          <circle class="cd" cx="46" cy="16" r="2.6" fill="#ece7de" style="animation-delay:.8s"/>
+          <circle class="cd g" cx="58" cy="8" r="2.2" style="animation-delay:1.6s"/>
+          <circle class="cd r" cx="64" cy="24" r="2.6" style="animation-delay:.6s"/>
+          <circle class="cd" cx="80" cy="14" r="2.6" fill="#ece7de" style="animation-delay:1.9s"/>
+          <circle class="cd g" cx="92" cy="26" r="2.2" style="animation-delay:1s"/>
+          <circle class="cd" cx="104" cy="12" r="2.6" fill="#ece7de" style="animation-delay:.2s"/>
+          <circle class="cd" cx="120" cy="20" r="2.2" fill="#ece7de" style="animation-delay:1.4s"/>
+        </svg>
+        <div class="pmid">
+          <span class="pname" id="pName"><span class="nmtxt">Fitness Creators</span> <span class="chev">▾</span></span>
+          <div class="ppulse" id="pPulse">10 people · reacted overnight</div>
+        </div>
+        <span class="ptier" id="pTier">Validated</span>
+        <span class="popen">▲</span>
+      </div>
+
+      <!-- EMBEDDED COMPOSER -->
+      <div class="composer" id="composer">
+        <div class="verb" id="verbChip"><span class="vi">✦</span><span class="vl" id="verbLabel">Make</span><span class="chev">▾</span></div>
+        <span class="cinput" id="cinput">Type a topic, or tap anything above…</span>
+        <span class="cgo" id="cgo">↑</span>
+      </div>
+
+      <div class="popmenu" id="verbMenu">
+        <div class="pm-hd">Make</div>
+        <div class="pm" data-verb="Make"><b>Hooks · scripts · ideas</b><span>ranked, pre-tested on your people</span></div>
+        <div class="pm-hd">Test</div>
+        <div class="pm" data-verb="Test"><b>A real video</b><span>the full Read before you post</span></div>
+        <div class="pm-hd">Ask</div>
+        <div class="pm" data-verb="Ask"><b>The room</b><span>a raw thought, react instantly</span></div>
+      </div>
+
+      <div class="popmenu" id="switcher">
+        <div class="pm-hd">Your audiences</div>
+        <div class="sr" data-aud="fitness"><div class="ava g" style="width:22px;height:22px;font-size:10px">F</div><div><div class="nm2">Fitness Creators</div><div class="sub">tiktok · your following</div></div><span class="goal">GROW</span></div>
+        <div class="sr" data-aud="buyers"><div class="ava n" style="width:22px;height:22px;font-size:10px">C</div><div><div class="nm2">Conversion Audience</div><div class="sub">tiktok · buyers</div></div><span class="goal">SELL</span></div>
+        <div class="sr" data-aud="beginners"><div class="ava g" style="width:22px;height:22px;font-size:10px">N</div><div><div class="nm2">Nervous Beginners</div><div class="sub">tiktok · niche segment</div></div><span class="goal">GROW</span></div>
+      </div>
+
+      <!-- THE ROOM (bloom) -->
+      <div class="sheet" id="room">
+        <div class="grab" id="roomGrab"><span></span></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding-right:12px;gap:8px">
+          <div id="rhead" style="flex:1;min-width:0"></div>
+          <div class="x" id="roomClose" style="margin-top:2px">✕</div>
+        </div>
+        <div class="sbody" id="sbody"></div>
+        <div class="splitfoot" id="splitfoot"></div>
+        <div id="roomFoot"></div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <div class="caption">
+    <div class="ctrl">
+      <div class="row">
+        <div class="rl"><b>Card number</b>the open fork (contract §6.3)</div>
+        <div class="seg" id="segNum"><span class="on" data-num="one">One number</span><span data-num="two">Craft + Room</span></div>
+      </div>
+      <div class="row">
+        <div class="rl"><b>State</b></div>
+        <div class="seg" id="segState"><span class="on" data-state="briefing">Briefing</span><span data-state="firstrun">First-run</span></div>
+      </div>
+    </div>
+    <p class="hint" id="hint">Tap any card — it's a <b>door to the room</b>. Or tap the presence to switch audiences, or the composer to launch a thread.</p>
+    <button class="reset" id="reset">↺ replay from start</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};
+  var trunc=function(s,n){return s.length>n?s.slice(0,n-1)+'…':s};
+  var hint=function(h){$('hint').innerHTML=h};
+
+  // ── named people (shared with The Room — same audience, one product) ──
+  var PEOPLE={
+    maya:{ini:'M',name:'Maya',seg:'burnt-out professional'},
+    jordan:{ini:'J',name:'Jordan',seg:'gym rat'},
+    priya:{ini:'P',name:'Priya',seg:'nervous beginner'},
+    dev:{ini:'D',name:'Dev',seg:'weekend warrior'},
+    sam:{ini:'S',name:'Sam',seg:'busy parent'},
+    kai:{ini:'K',name:'Kai',seg:'aesthetics-focused'}
+  };
+  // ── ActiveAudience (contract Seam 3) ──
+  var AUDS={
+    fitness:{id:'fitness',name:'Fitness Creators',sub:'tiktok · your following',goal:'GROW',tier:'Validated',pulse:'10 people · reacted overnight'},
+    buyers:{id:'buyers',name:'Conversion Audience',sub:'tiktok · buyers',goal:'SELL',tier:'Directional',pulse:'10 people · reacted overnight'},
+    beginners:{id:'beginners',name:'Nervous Beginners',sub:'tiktok · niche segment',goal:'GROW',tier:'Directional',pulse:'10 people · reacted overnight'}
+  };
+
+  // helper: build a Reaction[] (contract Seam 2) from compact rows [pid,tone,verdict]
+  var rx=function(rows){return rows.map(function(r){var p=PEOPLE[r[0]];return{person:{id:r[0],name:p.name,segment:p.seg},tone:r[1],verdict:r[2]}})};
+
+  // ── briefing content — every card carries a CardReaction (§1) + a Read (§2) ──
+  // tone letters: g=loved, r=bounced, n=neutral.  craft=audience-agnostic quality; stop=room-fit.
+  var IDEAS=[
+    {cardId:'idea-cancel',kind:'IDEA',title:'“I cancelled my gym — here’s what actually happened”',
+     stop:7,craft:8,tone:'g',lead:'finally, honest',metric:'would watch',
+     weak:'Jordan & Kai (gym rats) read it as quitting on them.',fix:'Say “swapped” not “cancelled” — lead with the result.',
+     reactions:rx([['maya','g','finally someone honest — saved it'],['jordan','r','cancelling? instant unfollow'],['priya','g','literally me, sending to my sister'],['dev','n','eh, keep scrolling'],['sam','g','no time for the gym anyway, this helps'],['kai','r','home workouts won’t build a physique']])},
+    {cardId:'idea-cost',kind:'IDEA',title:'“The cost of my gym vs what I actually used it for”',
+     stop:7,craft:8,tone:'g',lead:'the money angle',metric:'would watch',
+     weak:'Kai wants the numbers to be real, not vibes.',fix:'Put the actual receipt on screen in the first 2 seconds.',
+     reactions:rx([['maya','g','oof, that math would hurt (the good way)'],['jordan','n','if the numbers are real, ok'],['priya','g','I need to see this'],['dev','g','money angle always works on me'],['sam','g','the receipts, yes'],['kai','n','depends how real it is']])},
+    {cardId:'idea-challenge',kind:'IDEA',title:'“What if I ran a 30-day no-gym challenge?”',
+     stop:8,craft:7,tone:'g',lead:'now THIS I’d follow',metric:'would join',
+     weak:'Sam needs to know the daily time cost up front.',fix:'Name the minutes-per-day in the hook — “15 min, 30 days”.',
+     reactions:rx([['maya','g','now THIS I’d follow along with'],['jordan','g','a challenge? ok you have me'],['priya','g','I’d join day one'],['dev','g','challenges always pull me in'],['sam','n','depends on the time commitment'],['kai','n','if there’s a real transformation, sure']])}
+  ];
+
+  var OUTLIERS=[
+    {cardId:'out-75hard',src:'@leanwithlin · 2.4M views',title:'“75 hard but make it soft” — the anti-discipline take',
+     stop:5,craft:9,tone:'n',lead:'not our vibe',metric:'for your people',
+     ins:'Blew up broadly — but your people split down the middle. Big number, wrong room.',
+     weak:'Maya & Priya find the “discipline” framing exhausting.',fix:'If you cover it, flip it to permission, not pressure.',
+     reactions:rx([['maya','r','the discipline thing is exhausting'],['jordan','g','I love a hard challenge'],['priya','r','this makes me feel behind'],['dev','n','seen 100 of these'],['sam','n','no time for 75 days of anything'],['kai','g','respect the grind']])},
+    {cardId:'out-15min',src:'@thehometrainer · 900K views',title:'“No equipment, 15-min full body” — done in a hallway',
+     stop:8,craft:7,tone:'g',lead:'this is exactly us',metric:'for your people',
+     ins:'This is your lane. Your people would love your take on it — and you’d do it better.',
+     weak:'Kai still wants to see it actually progress over weeks.',fix:'Add a “week 1 vs week 4” beat if you make your version.',
+     reactions:rx([['maya','g','saved — this is doable'],['jordan','n','fine for a rest day'],['priya','g','no equipment = I’ll actually try'],['dev','g','15 min I can commit to'],['sam','g','literally in my hallway, yes'],['kai','n','show me it progresses']])}
+  ];
+
+  // calendar week (Mon–Sun) — predicted scores are FORECASTS (honest: directional, not a reaction that happened)
+  var WEEK=[
+    {dow:'M',state:'done',cardId:'rcpt-cancel',title:'gym cancellation story',stop:7},
+    {dow:'T',state:'empty'},
+    {dow:'W',state:'plan',cardId:'idea-cost',title:'money-angle post',pred:7,tone:'g'},
+    {dow:'T',state:'empty',today:true},
+    {dow:'F',state:'empty'},
+    {dow:'S',state:'plan',cardId:'idea-challenge',title:'30-day challenge kickoff',pred:8,tone:'g'},
+    {dow:'S',state:'empty'}
+  ];
+  // the highlighted "next open slot" suggestion (predicted, seeds the composer)
+  var SLOT={dow:'Thursday',seed:'a 15-min no-equipment workout post',pred:8,tone:'g',
+    note:'Your room predicts a home-workout post lands here — Thursdays are when Sam & Priya are most active.'};
+
+  var RECEIPTS=[
+    {title:'gym cancellation story',posted:'posted Mon',said:7,got:'7.2',delta:'+3% followers'},
+    {title:'“what I eat, honestly” reel',posted:'posted Wed',said:6,got:'5.8',delta:'held'}
+  ];
+  var ACC={pct:'84%',up:'▲ 6 pts this month',line:'Predictions matching what actually happened. The more you post, the sharper your room gets.'};
+
+  // registry of every drillable card, by cardId → Read payload
+  var READS={};
+  IDEAS.concat(OUTLIERS).forEach(function(c){READS[c.cardId]=c});
+  // receipts + planned reuse an idea's read where relevant
+  READS['rcpt-cancel']=IDEAS[0];
+
+  var state={num:'one',view:'briefing',aud:'fitness',focus:null};
+
+  // ── render the shared reaction chip (the fork lives here) ──
+  function chip(c){
+    var dot='<span class="dotc '+c.tone+'"></span>';
+    var lead='<span class="q">· “'+esc(c.lead)+'”</span>';
+    if(state.num==='two'){
+      return dot+'<b>Craft '+c.craft+'</b><span class="sep">·</span><b>Room '+c.stop+'</b>'+lead+'<span class="open">›</span>';
+    }
+    return dot+'<b>'+c.stop+'/10 '+c.metric+'</b>'+lead+'<span class="open">›</span>';
+  }
+
+  function renderIdeas(){
+    $('ideasStack').innerHTML=IDEAS.map(function(c){
+      return '<div class="hcard" data-card="'+c.cardId+'"><div class="rank">'+c.kind+' · PRE-TESTED</div><div class="h">'+esc(c.title)+'</div><div class="react">'+chip(c)+'</div></div>';
+    }).join('');
+  }
+  function renderOutliers(){
+    $('outlierStack').innerHTML=OUTLIERS.map(function(c){
+      var dot='<span class="dotc '+c.tone+'"></span>';
+      var num=state.num==='two'?'<b>Craft '+c.craft+'</b><span class="sep">·</span><b>Room '+c.stop+'</b>':'<b>'+c.stop+'/10 '+c.metric+'</b>';
+      return '<div class="outlier" data-card="'+c.cardId+'"><div class="thumb"><span class="pl">▶</span><span class="vw">'+c.src.split('·')[1].trim()+'</span></div><div class="ob"><div class="src">'+esc(c.src.split('·')[0].trim())+'</div><div class="ot">'+esc(c.title)+'</div><div class="oreact">'+dot+num+'<span class="q" style="color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">· “'+esc(c.lead)+'”</span></div><div class="ins">'+esc(c.ins)+'</div></div></div>';
+    }).join('');
+  }
+  function renderCal(){
+    $('calRail').innerHTML=WEEK.map(function(d,i){
+      var inner;
+      if(d.state==='done')inner='<span class="chk">✓</span>';
+      else if(d.state==='plan')inner='<span class="cd '+d.tone+'"></span><span class="pv">'+(state.num==='two'?'R'+d.pred:d.pred)+'</span>';
+      else inner='<span class="pv">+</span>';
+      return '<div class="cal-day '+d.state+(d.today?' today':'')+'" data-day="'+i+'"><div class="dow">'+d.dow+'</div><div class="cell">'+inner+'</div></div>';
+    }).join('');
+    $('slotSug').innerHTML='<div class="st">Next open slot · '+SLOT.dow+'</div><div class="sh">'+esc(SLOT.note)+'</div><div class="sf"><span class="dotc '+SLOT.tone+'"></span><b>predicted '+SLOT.pred+'/10</b><span class="q" style="color:var(--faint);font-family:var(--mono);font-size:9px">forecast · directional</span><span class="fill">fill it →</span></div>';
+  }
+  function renderReceipts(){
+    $('receiptStack').innerHTML=RECEIPTS.map(function(r){
+      return '<div class="receipt"><span class="chk">✓</span><div class="rb"><div class="rt">'+esc(r.title)+'</div><div class="rs"><span class="said">we said '+r.said+'</span> · <span class="got">you got '+r.got+'</span> · '+r.posted+'</div></div><span class="delta">'+esc(r.delta)+'</span></div>';
+    }).join('');
+    $('accCard').innerHTML='<b>'+ACC.pct+'</b><div class="ab"><div class="at">'+esc(ACC.line)+'</div><div class="au">'+esc(ACC.up)+'</div></div>';
+  }
+  function renderAll(){renderIdeas();renderOutliers();renderCal();renderReceipts();wireCards();$('twoLegend').classList.toggle('on',state.num==='two');}
+
+  function wireCards(){
+    Array.prototype.forEach.call(document.querySelectorAll('[data-card]'),function(el){
+      el.onclick=function(){openRoom(el.getAttribute('data-card'))};
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.cal-day'),function(el){
+      el.onclick=function(){
+        var d=WEEK[+el.getAttribute('data-day')];
+        if(d.state==='empty'){seedComposer(SLOT.seed);hint('Empty slot → composer <b>seeded</b> with the predicted post. Tap ↑ to launch a thread.');}
+        else openRoom(d.cardId);
+      };
+    });
+    $('slotSug').onclick=function(){seedComposer(SLOT.seed);hint('Slot suggestion → composer <b>seeded</b>. Tapping ↑ launches a thread with this audience + seed (Seam 4).');};
+    Array.prototype.forEach.call(document.querySelectorAll('.sec-hd .act'),function(el){
+      el.onclick=function(e){e.stopPropagation();var n=el.getAttribute('data-nav');if(n)hint('→ In the app this routes to <b>/'+n+'</b>. Prototype scope = the start page.');else{$('verbLabel').textContent=el.getAttribute('data-verb');hint('Verb set to <b>'+el.getAttribute('data-verb')+'</b> — type a topic and launch.');}};
+    });
+  }
+
+  // ── the room drill (bloom up from presence — the "door") ──
+  function openRoom(cardId){
+    var c=READS[cardId]; if(!c)return;
+    state.focus=cardId; markFocused();
+    var g=c.reactions.filter(function(r){return r.tone==='g'}).length,
+        rr=c.reactions.filter(function(r){return r.tone==='r'}).length,
+        tot=c.reactions.length,pct=function(x){return Math.round(x/tot*100)};
+    var head=(state.num==='two')
+      ? c.stop+' fit · '+c.craft+' craft <small>'+esc(trunc(c.title,50))+'</small>'
+      : c.stop+' of 10 '+(c.metric||'hooked')+'<small>'+esc(trunc(c.title,54))+'</small>';
+    $('rhead').innerHTML='<div class="rhead-top"><div class="focuslbl"><span class="kind">'+(c.kind||'The room')+' · your people</span></div><div class="openfull" id="openFull">open full room ›</div></div><div class="rscore">'+head+'</div>';
+    $('sbody').innerHTML=c.reactions.map(function(r,i){
+      return '<div class="prow" data-p="'+r.person.id+'" style="animation-delay:'+(i*60)+'ms"><div class="ava '+r.tone+'">'+PEOPLE[r.person.id].ini+'</div><div class="b"><div class="nm">'+esc(r.person.name)+'</div><div class="ar">'+esc(r.person.segment)+'</div><div class="q">“'+esc(r.verdict)+'”</div></div><div class="ask">ask →</div></div>';
+    }).join('')+'<div class="moreppl">the 10 people who make up your room</div>';
+    $('splitfoot').innerHTML='<div class="weakfix"><b>Weak spot:</b> '+esc(c.weak)+'<br><b>The fix:</b> '+esc(c.fix)+'</div>'
+      +'<div class="srow"><span class="k">Loved it</span><span class="bar" style="background:var(--good);width:'+pct(g)+'%"></span><span class="p">'+pct(g)+'%</span></div>'
+      +'<div class="srow"><span class="k">Bounced</span><span class="bar" style="background:var(--accent);width:'+pct(rr)+'%"></span><span class="p">'+pct(rr)+'%</span></div>';
+    $('roomFoot').innerHTML='<div class="cta" id="devBtn">Develop this in a thread →</div>';
+    $('room').classList.add('up');
+    $('openFull').onclick=function(){hint('→ Opens the <b>full Room</b> (persona chat · population · rewrite) — owned by The Room, grafted in at integration.');};
+    $('devBtn').onclick=function(){launchThread(c.title,'Make');};
+    Array.prototype.forEach.call(document.querySelectorAll('#sbody .prow'),function(row){row.onclick=function(){hint('→ Persona chat with <b>'+esc(PEOPLE[row.getAttribute('data-p')].name)+'</b> lives in the full Room (The Room owns it).');};});
+    hint('This card opened the <b>room anchored on it</b> (Seam 1). Same drill you get in the thread.');
+  }
+  function closeRoom(){$('room').classList.remove('up');state.focus=null;markFocused();}
+  function markFocused(){Array.prototype.forEach.call(document.querySelectorAll('.hcard'),function(c){c.classList.toggle('focused',c.getAttribute('data-card')===state.focus)});}
+  $('roomClose').onclick=closeRoom; $('roomGrab').onclick=closeRoom;
+
+  // ── composer / handoff (Seam 4) ──
+  function seedComposer(seed){
+    $('cinput').textContent=seed; $('cinput').classList.add('filled'); $('composer').classList.add('seeded');
+    closeRoom();
+  }
+  function launchThread(seed,verb){
+    $('verbLabel').textContent=verb||$('verbLabel').textContent;
+    $('presence').classList.add('reacting'); $('pPulse').textContent='reading the room…';
+    closeRoom();
+    showToast('<b>Launching a thread</b> — '+esc(trunc(seed,44))+' · with Fitness Creators. In the app: create thread → route to /thread/:id (audience + seed carried).');
+    setTimeout(function(){$('presence').classList.remove('reacting');$('pPulse').textContent=AUDS[state.aud].pulse;},1600);
+    hint('That’s the <b>one contract point</b> (Seam 4): the start page hands off into The Room.');
+  }
+  $('cgo').onclick=function(){var v=$('cinput').classList.contains('filled')?$('cinput').textContent:'quitting the gym';launchThread(v,$('verbLabel').textContent);};
+  $('cinput').onclick=function(){seedComposer('');$('cinput').textContent='';$('cinput').classList.remove('filled');$('composer').classList.remove('seeded');hint('Type a topic (or tap a briefing item to seed it), then ↑ to launch.');};
+
+  // ── menus ──
+  var closeMenus=function(){$('verbMenu').classList.remove('on');$('switcher').classList.remove('on');};
+  $('verbChip').onclick=function(e){e.stopPropagation();$('switcher').classList.remove('on');$('verbMenu').classList.toggle('on');};
+  $('pName').onclick=function(e){e.stopPropagation();$('verbMenu').classList.remove('on');$('switcher').classList.toggle('on');};
+  document.addEventListener('click',closeMenus);
+  Array.prototype.forEach.call(document.querySelectorAll('#verbMenu .pm'),function(pm){pm.onclick=function(e){e.stopPropagation();closeMenus();$('verbLabel').textContent=pm.getAttribute('data-verb');hint('Verb → <b>'+pm.getAttribute('data-verb')+'</b>. Type a topic and launch a thread.');};});
+  Array.prototype.forEach.call(document.querySelectorAll('#switcher .sr'),function(sr){sr.onclick=function(e){e.stopPropagation();switchAud(sr.getAttribute('data-aud'));closeMenus();};});
+  $('presence').onclick=function(e){if(e.target.closest('#pName'))return;$('switcher').classList.toggle('on');};
+
+  function switchAud(id){
+    state.aud=id;var a=AUDS[id];
+    $('pName').innerHTML='<span class="nmtxt">'+esc(a.name)+'</span> <span class="chev">▾</span>';
+    $('pName').onclick=function(e){e.stopPropagation();$('verbMenu').classList.remove('on');$('switcher').classList.toggle('on');};
+    $('pPulse').textContent=a.pulse; $('pTier').textContent=a.tier;
+    hint('Switched to <b>'+esc(a.name)+'</b> — intent ('+a.goal+') rides the audience, no separate control. The whole briefing would re-score for this room.');
+  }
+
+  // ── controls (owner picks the fork) ──
+  Array.prototype.forEach.call($('segNum').children,function(s){s.onclick=function(){state.num=s.getAttribute('data-num');Array.prototype.forEach.call($('segNum').children,function(x){x.classList.toggle('on',x===s)});renderAll();if(state.focus)openRoom(state.focus);hint(state.num==='two'?'<b>Two signals</b> — Craft (how well it’s made) vs Room (how well it fits your people). Watch where they disagree (the 75-hard outlier: craft 9, room 5).':'<b>One number</b> — a single blended read. Punchier, less honest about craft-vs-fit.');};});
+  Array.prototype.forEach.call($('segState').children,function(s){s.onclick=function(){state.view=s.getAttribute('data-state');Array.prototype.forEach.call($('segState').children,function(x){x.classList.toggle('on',x===s)});setView();};});
+  function setView(){
+    var fr=state.view==='firstrun';
+    $('firstrun').classList.toggle('on',fr);
+    $('briefing').style.display=fr?'none':'block';
+    closeMenus();closeRoom();
+    if(fr){
+      $('pName').innerHTML='<span class="nmtxt">No audience yet</span>';
+      $('pPulse').textContent='calibrate to bring your room alive';
+      $('pTier').style.display='none';
+      $('presence').style.opacity='.6';
+      hint('<b>First-run</b> — no room yet. Presence is honest-idle (never fakes a reaction). Calibrate once, then every morning is a briefing.');
+    }else{
+      switchAud(state.aud);$('pTier').style.display='';$('presence').style.opacity='1';
+      hint('Tap any card — it’s a <b>door to the room</b>. Toggle the card number to compare the open fork.');
+    }
+  }
+  $('frCta').onclick=function(){hint('→ Routes to the audience calibration flow (owned here in Surfaces / audience mgmt).');};
+
+  function showToast(html){var t=$('toast');t.innerHTML=html;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},3400);}
+  $('reset').onclick=function(){location.reload()};
+
+  // init
+  renderAll();
+  $('reset');
+})();
+</script>
