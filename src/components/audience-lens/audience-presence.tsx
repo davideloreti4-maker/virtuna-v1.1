@@ -37,7 +37,7 @@ import { resolveTier } from '@/lib/audience/resolve-tier';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { personaNameMap } from '@/lib/audience/persona-names';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
-import { AudienceLensContent } from './AudienceLensContent';
+import { AmbientRoom } from './AmbientRoom';
 import type { AmbientFocus, AmbientPersonaReaction } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
@@ -113,13 +113,25 @@ export function AudiencePresence({
   reducedMotion = false,
   open,
   onOpenChange,
-  asks = [],
+  // `asks`/`onReask` stay in the props contract (the composer wires them), but the v6 Bloom
+  // reflects the CURRENT focus rather than a stacked ask history — the room re-focuses on a
+  // typed ask via the composer's `focusByThought`, so no in-room history list is rendered.
   asking = false,
-  onReask,
   docked = false,
   onBuildAudience,
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
+  // next tick so it grows UP out of the presence band (the signature moment). Reset on close.
+  const [risen, setRisen] = useState(false);
+  useEffect(() => {
+    if (!open) {
+      setRisen(false);
+      return;
+    }
+    const t = setTimeout(() => setRisen(true), 16);
+    return () => clearTimeout(t);
+  }, [open]);
   const switcherRef = useRef<HTMLDivElement | null>(null);
   // The switcher menu is PORTALED to <body> so it escapes the composer surface's
   // `overflow-hidden` rounded-corner clip (the dropdown opens UPWARD, well above
@@ -272,97 +284,70 @@ export function AudiencePresence({
           role="dialog"
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex max-h-[58vh] flex-col overflow-hidden border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
-            (docked
-              ? 'rounded-t-2xl shadow-none'
-              : 'rounded-t-[16px] shadow-[var(--shadow-float)]')
+            'absolute bottom-full left-0 right-0 z-[55] flex h-[76vh] max-h-[calc(100dvh-104px)] flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+            (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
+            (reducedMotion
+              ? ''
+              : 'transition-[transform,opacity] duration-300 ease-out ' +
+                (risen ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'))
           }
+          style={reducedMotion ? undefined : { willChange: 'transform' }}
         >
-          <div className="flex shrink-0 items-center justify-between px-4 pb-1.5 pt-3">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-              The room
-            </span>
-            <button
-              type="button"
-              aria-label="Collapse audience"
-              onClick={() => onOpenChange(false)}
-              className="grid h-7 w-7 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)]"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Grab handle — tap to close (mirrors the v6 room grab). */}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="Collapse your audience"
+            className="flex shrink-0 justify-center pb-1 pt-2.5"
+          >
+            <span className="h-1 w-9 rounded-full bg-white/[0.18]" />
+          </button>
+          {/* Close ✕ (top-right). */}
+          <button
+            type="button"
+            aria-label="Collapse your audience"
+            onClick={() => onOpenChange(false)}
+            className="absolute right-3 top-2.5 z-10 grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-border)] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground)]"
+          >
+            <span className="text-[12px] leading-none">✕</span>
+          </button>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-            {focus ? (
-              <AudienceLensContent
-                heatmap={null}
-                simResults={undefined}
+          {asking && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="shrink-0 px-5 pb-1 pt-1 text-[12px] font-medium text-[var(--color-foreground-muted)]"
+            >
+              {LOADING_COPY}
+            </p>
+          )}
+
+          {focus ? (
+            <div className="min-h-0 flex-1">
+              <AmbientRoom
                 flatPersonas={flatPersonas}
                 conceptText={focus.conceptText}
+                fraction={focus.fraction}
                 reducedMotion={reducedMotion}
                 personaNameOverrides={personaNameOverrides}
               />
-            ) : (
-              <div className="flex flex-col items-center gap-3 px-5 pb-4 pt-6 text-center">
-                <Constellation
-                  dots={heroDots}
-                  reducedMotion={reducedMotion}
-                  width="100%"
-                  height={110}
-                  vbW={320}
-                  vbH={110}
-                />
-                <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
-                <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
-                  Type below to test a thought — your {audienceName} reacts in real time.
-                </p>
-              </div>
-            )}
-
-            {asking && (
-              <p
-                role="status"
-                aria-live="polite"
-                className="px-5 pt-2 text-[13px] font-medium text-[var(--color-foreground-muted)]"
-              >
-                {LOADING_COPY}
+            </div>
+          ) : (
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pb-8 text-center">
+              <Constellation
+                dots={heroDots}
+                reducedMotion={reducedMotion}
+                width="100%"
+                height={110}
+                vbW={320}
+                vbH={110}
+              />
+              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+              <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
+                Type below to test a thought — your {audienceName} reacts in real time.
               </p>
-            )}
-
-            {/* The audience-chat conversation — every thought the composer sent + the room's read. */}
-            {asks.length > 0 && (
-              <div className="mt-2 border-t border-[var(--color-border)] px-5 pt-3">
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-foreground-muted)]">
-                  Your asks
-                </p>
-                <ul className="flex flex-col gap-2.5">
-                  {asks.map((a) => {
-                    const read = parseStop(a.fraction);
-                    return (
-                      <li key={a.id}>
-                        <button
-                          type="button"
-                          onClick={() => onReask?.(a)}
-                          className="w-full rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-left transition-colors hover:border-[var(--color-border-hover)]"
-                        >
-                          <span className="block truncate text-[13px] text-[var(--color-foreground)]">
-                            “{a.thought}”
-                          </span>
-                          <span className="mt-1 block text-[12px] text-[var(--color-foreground-muted)]">
-                            {a.error
-                              ? "Couldn't reach the room — tap to retry"
-                              : read
-                                ? `${read.stop} of ${read.total} would stop${a.scrollQuote ? ` · “${a.scrollQuote}”` : ''}`
-                                : 'The room reacted'}
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 

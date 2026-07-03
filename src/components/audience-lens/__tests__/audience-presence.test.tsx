@@ -10,8 +10,8 @@
  *  - PEEK focused: a live read pulse ("6 of 10 would stop"), never an aggregate fabrication.
  *  - Tapping the band toggles the panel via the controlled `onOpenChange`.
  *  - The PRESENCE owns switching: the switcher lists audiences + fires onSelectAudience.
- *  - open + focus → the ONE shipped Lens content (Panel · 10 ⇄ Population) mounts in the panel.
- *  - open + asks → the audience-chat conversation renders; tapping a turn re-asks (onReask).
+ *  - open + focus → the v6 Room body (The people ⇄ Population · 1,000) mounts in the Bloom panel.
+ *  - open + Population toggle → the stay/bounce hero + weak-spot render from the focus's reactions.
  *  - open + idle → the hero prompt ("type below to test a thought"), no fabricated reaction.
  *  - Determinism guards: no Math.random / Date.now / new Date, mulberry32 seeded, reducedMotion gated.
  */
@@ -21,7 +21,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Audience, CalibratedPersona } from '@/lib/audience/audience-types';
 import { ARCHETYPES } from '@/lib/engine/wave3/persona-registry';
-import { AudiencePresence, type AudienceAsk } from '../audience-presence';
+import { AudiencePresence } from '../audience-presence';
 import type { AmbientFocus } from '../ambient-presence-types';
 
 afterEach(() => {
@@ -246,11 +246,15 @@ describe('AudiencePresence — General reactor', () => {
 
 // ── PANEL (open) — the one Lens + the audience-chat conversation ──
 describe('AudiencePresence — PANEL (expanded over the composer)', () => {
-  it('mounts the ONE shipped Lens content (Panel · 10 ⇄ Population) when open + focused', () => {
+  it('mounts the v6 Room body (The people ⇄ Population · 1,000) when open + focused', () => {
     setup({ open: true, focus: FOCUS });
-    expect(screen.getByTestId('audience-panel')).toBeInTheDocument();
+    const panel = screen.getByTestId('audience-panel');
+    expect(panel).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /panel · 10/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /population · 1,000/i })).toBeInTheDocument();
+    // The honest serif score for the ONE in-focus concept lives in the room header.
+    expect(within(panel).getByText(/6 of 10/i)).toBeInTheDocument();
   });
 
   it('shows the idle hero prompt (no fabricated reaction) when open + idle', () => {
@@ -259,16 +263,13 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
     expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
   });
 
-  it('renders the audience-chat conversation and re-asks a turn on tap', () => {
-    const onReask = vi.fn();
-    const asks: AudienceAsk[] = [
-      { id: 'a1', thought: 'open with a stat', fraction: '7/10 stop', scrollQuote: 'whoa' },
-    ];
-    setup({ open: true, focus: FOCUS, asks, onReask });
-    const turn = screen.getByRole('button', { name: /open with a stat/i });
-    expect(turn.textContent).toMatch(/7 of 10 would stop/i);
-    fireEvent.click(turn);
-    expect(onReask).toHaveBeenCalledWith(asks[0]);
+  it('swaps to the v6 Population view (stay / bounce hero + weak spot) on the scale toggle', () => {
+    setup({ open: true, focus: FOCUS });
+    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+    const panel = screen.getByTestId('audience-panel');
+    expect(within(panel).getByText(/would stay/i)).toBeInTheDocument();
+    expect(within(panel).getByText(/would bounce/i)).toBeInTheDocument();
+    expect(within(panel).getByText(/1,000 modeled from your/i)).toBeInTheDocument();
   });
 
   it('surfaces the "Reading the room…" loading state while asking', () => {
