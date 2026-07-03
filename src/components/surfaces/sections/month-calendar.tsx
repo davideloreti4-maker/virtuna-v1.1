@@ -29,10 +29,16 @@ export function MonthCalendar({
   onEmptyDay: (day: number) => void;
   onPlannedDay: (day: number) => void;
 }) {
+  const plannedCount = days.filter((c) => c.tone).length;
   return (
     <div className="rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <div className="mb-[13px] flex items-center gap-1.5">
-        <span className="flex-1 text-[14px] font-semibold tracking-[-0.01em] text-foreground">{month}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold tracking-[-0.01em] text-foreground">{month}</span>
+          <span className="mt-px block font-mono text-[9.5px] text-foreground-muted">
+            {plannedCount} planned this month
+          </span>
+        </span>
         <button type="button" aria-label="Previous month" className="grid size-6 place-items-center rounded-md border border-border text-foreground-secondary transition-colors hover:border-border-hover hover:bg-[color:var(--color-surface-thread)]">
           <ChevronLeft className="size-[13px]" />
         </button>

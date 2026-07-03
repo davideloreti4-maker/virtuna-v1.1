@@ -28,9 +28,14 @@ export function TodaysPlan({
           onClick={() => onOpen(p.cardId)}
           className={`flex w-full items-center gap-2.5 py-[11px] text-left ${i > 0 ? "border-t border-border" : ""}`}
         >
-          <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: toneDot[p.tone] }} />
-          <span className="flex-1 text-[12.5px] text-foreground">{p.title}</span>
-          <span className="font-mono text-[10px] text-foreground-muted">
+          <span aria-hidden className="mt-[3px] size-2 shrink-0 self-start rounded-full" style={{ background: toneDot[p.tone] }} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12.5px] text-foreground">{p.title}</span>
+            <span className="mt-[3px] inline-block rounded-[4px] border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.04em] text-foreground-muted">
+              {p.pillar}
+            </span>
+          </span>
+          <span className="shrink-0 self-start font-mono text-[10px] text-foreground-muted">
             {p.day} · pred {p.predicted}/10
           </span>
         </button>
