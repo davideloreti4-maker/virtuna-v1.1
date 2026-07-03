@@ -119,13 +119,10 @@ export function StartPage({ initialFirstRun = false }: { initialFirstRun?: boole
 
         {firstRun ? (
           <FirstRun
-            onConnect={() =>
-              toast({
-                variant: "info",
-                title: "Connect your account",
-                description: "The connect/calibration flow is owned here in Surfaces — wiring next.",
-              })
-            }
+            // The real connect = build a personal audience from the creator's @handle
+            // (public scrape → ~10 named people). Route into the existing calibration flow;
+            // on done it lands on the new audience, and /start then resolves to the briefing.
+            onConnect={() => router.push("/audience/new")}
           />
         ) : (
           <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">

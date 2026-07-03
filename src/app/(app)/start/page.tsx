@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { listAudiences } from "@/lib/audience/audience-repo";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -16,9 +17,14 @@ export const metadata: Metadata = {
  * (mirrors /feed, /library). AppShell owns the <main>; this renders a plain client shell —
  * do NOT nest a second <main>.
  *
- * `?first=1` opens the first-run (no-audience) state for review; default is the briefing.
- * The build stubs the Room ⇄ Surfaces contract with mock data (see mock-room.ts) — swap
- * stub → real when The Room ships (a graft, not a rebuild). Does NOT touch the /home
+ * First-run detection is REAL (honesty spine): a user who hasn't connected an account yet
+ * has no calibrated audience, so we show the honest "connect your account" state instead of
+ * a fabricated briefing. Connected = at least one non-general audience carrying a frozen
+ * `signature` (present only for scrape-calibrated rows — null for General/presets/uncalibrated).
+ * Review overrides: `?first=1` forces first-run, `?first=0` forces the briefing.
+ *
+ * The briefing still stubs the Room ⇄ Surfaces contract with mock data (see mock-room.ts) —
+ * swap stub → real when The Room ships (a graft, not a rebuild). Does NOT touch the /home
  * composer/thread (The Room's).
  */
 export default async function StartRoute({
@@ -34,5 +40,20 @@ export default async function StartRoute({
   if (!user) return null;
 
   const { first } = await searchParams;
-  return <StartPage initialFirstRun={first === "1"} />;
+
+  // Honest default: has this user connected an account (⇒ a calibrated audience) yet?
+  // On any read error, fall back to first-run — never fabricate a briefing for a user we
+  // can't confirm has connected.
+  let hasCalibrated = false;
+  try {
+    const audiences = await listAudiences(supabase);
+    hasCalibrated = audiences.some((a) => !a.is_general && a.signature != null);
+  } catch {
+    hasCalibrated = false;
+  }
+
+  const initialFirstRun =
+    first === "1" ? true : first === "0" ? false : !hasCalibrated;
+
+  return <StartPage initialFirstRun={initialFirstRun} />;
 }

@@ -164,6 +164,7 @@ PORT=3400 NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist
 - **Pillars** — `ContentPillars` module + pillar-aware plan/calendar (#108).
 - **Loop** — DEFERRED to milestone end with a wire-or-remove gate (§4.4).
 - **Contract** — SIGNED OFF by The Room (all 4 seams; `THE-CONTRACT.md` §6 all resolved).
+- **Connect loop (real, 2026-07-03k)** — `/start` first-run detection is now REAL (honesty spine): a user with no calibrated audience (`!is_general && signature != null`) gets the honest "connect your account" state, not a fabricated briefing; connected users get the briefing. Review overrides `?first=1` (force first-run) / `?first=0` (force briefing). The `FirstRun` connect CTA now routes to the real calibration flow (`/audience/new` → `@handle` scrape → ~10 named people) instead of a stub toast. Surface-owned, no engine dep. Verified live.
 
 ### ⚠️ Graft-gated — do these WHEN The Room flags each atom as landed (don't stub further)
 Swap stub → real, don't rebuild. The Room said it'll flag each atom.
@@ -174,8 +175,22 @@ Swap stub → real, don't rebuild. The Room said it'll flag each atom.
 - **Feed / Library passive echoes** — a per-item "for your people" verdict needs the sim to have run on each item (engine). **Do NOT fabricate reactions on real feed/library content** (honesty spine). The feed's ambient entry already exists (`Remix → Read`); the passive verdict is a graft, not a stub.
 - **The loop** — wire the engine's predicted-vs-actual read-shape (once exposed) OR remove for launch (§4.4 gate).
 
-### Buildable now WITHOUT the atoms (next-session candidates)
-- **Stat-row real analytics** — a real slice: account-connect + metrics ingestion (the `first-run` connect CTA is wired to a stub `onConnect`). Bigger; unlocks real numbers and later feeds the loop.
+### Surface-vs-engine split for account-connect + stat-row — ✅ CONFIRMED (2026-07-03k, §6.1-style)
+Investigated before building (handoff §4 "confirm the split first"). Two halves, different owners:
+- **Connect = SURFACE (ours) — DONE.** There is NO OAuth anywhere; "connect" = capture a `@handle` → public
+  scrape (Apify). The real flow already exists (`/audience/new` → `CalibrationFlow` → `/api/audiences/calibrate`
+  SSE → frozen `signature` + ~10 named people). We wired the CTA to it + made first-run detection real (above).
+- **Stat-row L7D analytics (sparklines + day-over-day deltas) = ENGINE/INGESTION, net-new, contested owner —
+  GATED like the loop.** The scraper yields point-in-time follower/video counts, but there is **no own-account
+  daily-snapshot table, no cron, no aggregation endpoint** — and *"new followers L7D" + every sparkline/delta needs
+  an accumulated daily time-series that CANNOT be backfilled from a single scrape.* Real = clone `competitor_snapshots`
+  → an own-account snapshot table + a daily cron (mirror `/api/cron/refresh-competitors`) + an aggregation RPC +
+  `/api/stats` the `StatRow` hook consumes. That's a read-shape we *consume from ingestion*, not a UI slice — likely
+  the engine/The-Room owner's, not Surfaces'. **Until settled: `StatRow` stays clearly-commented mock (only shown to
+  connected users in the briefing), gated wire-or-remove like the loop (§4.4). Do NOT fabricate real analytics.**
+
+### Buildable now WITHOUT the atoms (remaining next-session candidates)
+- **Own-account snapshot ingestion** — only after the owner assigns the ingestion layer (above). Then `StatRow` → real.
 - **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
 
 ### Pre-existing infra flag (not a Surfaces code bug)
