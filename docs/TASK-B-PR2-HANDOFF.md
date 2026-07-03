@@ -28,14 +28,12 @@ renders; the footer reads "Your N people" — the HONEST copy, since PR-1 shows 
 LOCKED dosage. So the only real remaining interaction is **PR-3 (Rewrite)**.
 
 **➡ NEXT SESSION (start COLD, full budget — PR-3 is backend-touching): PR-3 — Rewrite lever.** Full
-plumbing in §3 below ("PR-3 — Rewrite lever on the Population weak-spot"). Branch off `feat/the-room-stepper`
-(inherits PR-2). Wire the existing `AudienceLensContent` `LensRewrite` contract (`endpoint`/`lever`/
+plumbing in §3 below ("PR-3 — Rewrite lever on the Population weak-spot"). Branch off `milestone/the-room` (the whole PR-2 stack is now merged there). Wire the existing `AudienceLensContent` `LensRewrite` contract (`endpoint`/`lever`/
 `platform`/`priorStopCount`/`priorTotal`/`onRewrite`) + mirror `RewriteCta` in `AmbientRoom`'s Population
 footer; the composer rewrite handler re-POSTs to the originating skill's runner with the lever as steering
 (see `card-rewrite.ts` / `CHAIN_HANDOFFS` self-handoff) → new card + Read in-thread → show the DELTA.
 Its live verify triggers a REAL regeneration, so budget for a heavy browser loop. **PR-4 (desktop rail)
-still needs owner scope sign-off before building.** Stack retarget still pending: when #109 → `milestone/the-room`,
-retarget #111 → #113 → #115 onto `milestone/the-room`.
+still needs owner scope sign-off before building.** The whole stack (#109 seam / #111 bloom / #113 composer / #115 stepper) is MERGED into `milestone/the-room` and the feature branches are deleted — so start PR-3 from `milestone/the-room`.
 
 ## ★ SESSION UPDATE (2026-07-03 late) — Task C SHIPPED + live ambient-audience audit
 
