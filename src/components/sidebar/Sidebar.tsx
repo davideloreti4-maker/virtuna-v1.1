@@ -29,6 +29,7 @@ import {
   SignOut,
   CaretUpDown,
   House,
+  CalendarDots,
   UsersThree,
   Books,
   FilmStrip,
@@ -370,6 +371,7 @@ export function Sidebar() {
   const { data: profile } = useProfile();
 
   const isOnStart = pathname.startsWith("/start");
+  const isOnCalendar = pathname.startsWith("/calendar");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
@@ -479,6 +481,15 @@ export function Sidebar() {
                 isActive={isOnStart}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/start")}
+              />
+              {/* Calendar — the standalone month planner (Surfaces milestone): the workspace
+                  behind /start's glanceable month widget. Matte active state like Library. */}
+              <NavItem
+                icon={CalendarDots}
+                label="Calendar"
+                isActive={isOnCalendar}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/calendar")}
               />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem

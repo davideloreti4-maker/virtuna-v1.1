@@ -171,10 +171,10 @@ export function StartPage({
                   month={data.calendar.month}
                   today={data.calendar.today}
                   days={data.calendar.days}
-                  onEmptyDay={(d) => seedComposer(`a post for July ${d}`)}
-                  onPlannedDay={(d) =>
-                    toast({ variant: "default", title: `July ${d}`, description: "A planned post — open the calendar for its Read." })
-                  }
+                  // The widget is the glance; the full month workspace lives at /calendar.
+                  // Tapping a day deep-links there anchored on it (planned or empty).
+                  onEmptyDay={(d) => router.push(`/calendar?day=${d}`)}
+                  onPlannedDay={(d) => router.push(`/calendar?day=${d}`)}
                 />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.3s" }}>
