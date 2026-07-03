@@ -1,12 +1,13 @@
 "use client";
 
 /**
- * StatRow — the L7D analytics tiles (Followers / New followers / Likes / Posts),
- * each with an area-fill sparkline + delta. 2×2 on mobile, 4-across on desktop.
- * Numbers are REAL — derived from the connected account's account_snapshots
- * time-series (`buildAccountStats`). Point-in-time values land on connect; weekly
- * deltas + sparklines fill in as the daily cron accumulates snapshots. When there
- * are no snapshots yet, the shell renders `StatRowEmpty` instead — never fake data.
+ * StatRow — the L7D analytics tiles (Followers / New followers / Likes / Posts, plus
+ * an optional 5th "Views" tile once the daily cron has scraped recent posts), each
+ * with an area-fill sparkline + delta. 2-col on mobile, N-across on desktop (4 or 5,
+ * matching the tile count). Numbers are REAL — derived from the connected account's
+ * account_snapshots time-series (`buildAccountStats`). Point-in-time values land on
+ * connect; weekly deltas + sparklines fill in as the daily cron accumulates snapshots.
+ * When there are no snapshots yet, the shell renders `StatRowEmpty` — never fake data.
  */
 
 import type { StatCard } from "@/lib/room-contract/mock-room";
@@ -36,8 +37,11 @@ function Sparkline({ points, up }: { points: string; up: boolean }) {
 }
 
 export function StatRow({ stats }: { stats: StatCard[] }) {
+  // Desktop columns track the tile count so the row stays gapless when the optional
+  // 5th (Views) tile is present. Mobile stays 2-col (a 5th tile flows to a 3rd row).
+  const lgCols = stats.length >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4";
   return (
-    <div className="grid grid-cols-2 gap-[9px] px-1 lg:grid-cols-4">
+    <div className={`grid grid-cols-2 gap-[9px] px-1 ${lgCols}`}>
       {stats.map((s) => (
         <div
           key={s.label}

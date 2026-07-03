@@ -21,6 +21,12 @@ export interface AccountSnapshotInput {
   followingCount?: number | null; // null on the calibration reveal path
   heartCount: number;
   videoCount: number;
+  /**
+   * Sum of public views across posts in the trailing window (daily cron video
+   * scrape). Omitted/null on the calibration-capture path (no video sum) and on a
+   * day the video scrape failed → the /start Views tile is omitted for that row.
+   */
+  recentViews?: number | null;
 }
 
 /** The (user, handle) pair the cron re-scrapes daily. */
@@ -48,6 +54,7 @@ export async function upsertAccountSnapshot(
       following_count: input.followingCount ?? null,
       heart_count: input.heartCount,
       video_count: input.videoCount,
+      recent_views: input.recentViews ?? null,
       snapshot_date: today,
     },
     { onConflict: "user_id,snapshot_date" },
@@ -62,7 +69,7 @@ export async function getAccountSnapshots(
 ): Promise<AccountSnapshot[]> {
   const { data, error } = await (supabase as unknown as UntypedClient)
     .from("account_snapshots")
-    .select("snapshot_date, follower_count, heart_count, video_count")
+    .select("snapshot_date, follower_count, heart_count, video_count, recent_views")
     .eq("user_id", userId)
     .order("snapshot_date", { ascending: false })
     .limit(limit);
@@ -73,6 +80,7 @@ export async function getAccountSnapshots(
     follower_count: Number(r.follower_count),
     heart_count: Number(r.heart_count),
     video_count: Number(r.video_count),
+    recent_views: r.recent_views == null ? null : Number(r.recent_views),
   }));
 }
 
