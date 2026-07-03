@@ -68,6 +68,23 @@ export interface PlanItem {
   cardId: string;
   predicted: number; // predicted stop (of 10)
   tone: Tone;
+  pillar: string; // short content-pillar label → "Money & cost"
+}
+
+/**
+ * A content pillar — one of the creator's recurring themes (derived from their account,
+ * so the SHARE is real; the response `tone` is a Directional forecast of how their people
+ * tend to respond to that pillar). `cadence` + `gap` drive the proactive "you're neglecting
+ * this pillar" nudge. Low-ambient: the tone dot is the reserved reaction slot, never faked.
+ */
+export interface Pillar {
+  id: string;
+  name: string;
+  share: number; // 0..1 share of this month's plan (bar + %)
+  count: number; // posts this month
+  tone: Tone; // Directional: how your people tend to respond to this pillar
+  cadence: string; // "posted 2 days ago" | "none in 3 weeks"
+  gap?: boolean; // under-served → surface a proactive nudge
 }
 
 export interface QuickAction {
@@ -103,6 +120,7 @@ export interface StartPageData {
   ideas: IdeaCard[];
   outliers: OutlierCard[];
   calendar: { month: string; today: number; days: CalendarDay[] };
+  pillars: Pillar[];
   plan: PlanItem[];
   quickActions: QuickAction[];
   receipts: Receipt[];
@@ -426,9 +444,15 @@ export function getMockStartPage(): StartPageData {
     ideas: MOCK_IDEAS,
     outliers: MOCK_OUTLIERS,
     calendar: { month: "July 2026", today: 3, days },
+    pillars: [
+      { id: "confessional", name: "Honest confessionals", share: 0.4, count: 5, tone: "loved", cadence: "posted 2 days ago" },
+      { id: "money", name: "Money & cost", share: 0.25, count: 3, tone: "loved", cadence: "posted this week" },
+      { id: "challenge", name: "Challenges", share: 0.2, count: 2, tone: "loved", cadence: "posted last week" },
+      { id: "myth", name: "Myth-busting", share: 0.15, count: 1, tone: "neutral", cadence: "none in 3 weeks", gap: true },
+    ],
     plan: [
-      { day: "Wed 8", title: "money-angle Reel", cardId: "idea-cost", predicted: 7, tone: "loved" },
-      { day: "Sat 11", title: "30-day challenge kickoff", cardId: "idea-challenge", predicted: 8, tone: "loved" },
+      { day: "Wed 8", title: "money-angle Reel", cardId: "idea-cost", predicted: 7, tone: "loved", pillar: "Money & cost" },
+      { day: "Sat 11", title: "30-day challenge kickoff", cardId: "idea-challenge", predicted: 8, tone: "loved", pillar: "Challenges" },
     ],
     quickActions: [
       { icon: "sparkle", label: "Make ideas", desc: "ranked + pre-tested", verb: "Make" },

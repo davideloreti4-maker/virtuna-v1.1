@@ -17,7 +17,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
-import type { QuickAction as QuickActionData } from "@/lib/room-contract/mock-room";
+import type { Pillar, QuickAction as QuickActionData } from "@/lib/room-contract/mock-room";
 import { getMockStartPage, MOCK_AUDIENCES } from "@/lib/room-contract/mock-room";
 import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
 import type { Verb } from "@/lib/room-contract/types";
@@ -27,6 +27,7 @@ import { StatRow } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
 import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
+import { ContentPillars } from "./sections/content-pillars";
 import { TodaysPlan } from "./sections/todays-plan";
 import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
@@ -91,6 +92,12 @@ export function StartPage({ initialFirstRun = false }: { initialFirstRun?: boole
     seedComposer(""); // focus the composer on the chosen verb
   };
 
+  // Tapping a pillar seeds the composer to Make for that theme (fills the gap it flags).
+  const handlePillar = (p: Pillar) => {
+    setVerb("Make");
+    seedComposer(`an idea for my “${p.name}” pillar`);
+  };
+
   return (
     <div
       className="relative min-h-full text-foreground"
@@ -152,6 +159,9 @@ export function StartPage({ initialFirstRun = false }: { initialFirstRun?: boole
 
             {/* Right rail — stacks under the main column on mobile (prototype order) */}
             <aside className="mt-[18px] flex flex-col gap-3 lg:mt-[18px] lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:pr-0.5 lg:sticky lg:top-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="rv-in" style={{ animationDelay: "0.24s" }}>
+                <ContentPillars pillars={data.pillars} onPillar={handlePillar} />
+              </div>
               <div className="rv-in" style={{ animationDelay: "0.26s" }}>
                 <MonthCalendar
                   month={data.calendar.month}
