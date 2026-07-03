@@ -37,7 +37,7 @@ import { resolveTier } from '@/lib/audience/resolve-tier';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { personaNameMap } from '@/lib/audience/persona-names';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
-import { AudienceLensContent } from './AudienceLensContent';
+import { AmbientRoom } from './AmbientRoom';
 import type { AmbientFocus, AmbientPersonaReaction } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
@@ -294,11 +294,10 @@ export function AudiencePresence({
 
           <div className="min-h-0 flex-1 overflow-y-auto pb-4">
             {focus ? (
-              <AudienceLensContent
-                heatmap={null}
-                simResults={undefined}
+              <AmbientRoom
                 flatPersonas={flatPersonas}
                 conceptText={focus.conceptText}
+                fraction={focus.fraction}
                 reducedMotion={reducedMotion}
                 personaNameOverrides={personaNameOverrides}
               />
