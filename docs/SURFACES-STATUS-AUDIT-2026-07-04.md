@@ -58,6 +58,14 @@ NODE_OPTIONS='--max-old-space-size=4096' node ./node_modules/next/dist/bin/next 
 ```
 `next build` runs full TypeScript + ESLint (both clean; pre-existing `__tests__` `Audience.mode` TS errors are untouched debt, not in the build path).
 
+## 3b. Live verification (Playwright, dev :3400, authed as the zachking e2e user)
+Not just source-read — driven live and asserted via `browser_evaluate`:
+- **`/start` (`?first=0`):** real stat-row renders real account numbers (**85.9M** followers · **1.3B** likes · 608 posts), not the empty state; "Directional" + the-loop present. Greeting shows the hardcoded "Good afternoon, Davide 👋" (the known leak).
+- **`/analytics`:** "Real from your connected account" note, 7/30/90 tabs, real 85.9M, deltas honestly "—" (thin history). Recs render **DIRECTIONAL** (pillar advice); the "From your numbers" cadence rec correctly does **not** fire on thin history — the honesty gate works end-to-end.
+- **`/grow`:** "a forecast from your people · not real sales" + Directional chip + "N/10 would buy"; the `$` figures are proposed offer prices, never claimed revenue.
+- **`/calendar`:** "Directional forecast — from your room's patterns, not yet tested"; no fabricated live-reaction claims.
+- **`/competitors/[handle]` (the fixed route):** runs cleanly — untracked handle → graceful not-found (no 500, no error boundary). Build-green already proves the createContext build error is gone (it was a build-time failure).
+
 ## 4. Deploy pipeline (needs owner) — the honest gap
 - The `virtuna-v1.1` Vercel project has had **no deploy since the Jan CLI init**; GitHub→Vercel auto-deploy appears **dormant**, and this worktree has no `.vercel/project.json` link (only `~/virtuna-v1.1/` does).
 - So merging `milestone/surfaces → main` will **not** automatically ship to production. Shipping needs one of: (a) reconnect/enable the Vercel Git integration for `main` (dashboard), or (b) a manual `vercel --prod` from the linked worktree, or (c) an owner-authorized MCP deploy.
