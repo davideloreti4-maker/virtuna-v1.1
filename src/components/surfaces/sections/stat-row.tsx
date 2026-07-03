@@ -1,9 +1,12 @@
 "use client";
 
 /**
- * StatRow — the L7D analytics tiles (Views / New followers / Interactions / Posts),
+ * StatRow — the L7D analytics tiles (Followers / New followers / Likes / Posts),
  * each with an area-fill sparkline + delta. 2×2 on mobile, 4-across on desktop.
- * Numbers are stubbed here; the real source is the connected account.
+ * Numbers are REAL — derived from the connected account's account_snapshots
+ * time-series (`buildAccountStats`). Point-in-time values land on connect; weekly
+ * deltas + sparklines fill in as the daily cron accumulates snapshots. When there
+ * are no snapshots yet, the shell renders `StatRowEmpty` instead — never fake data.
  */
 
 import type { StatCard } from "@/lib/room-contract/mock-room";
@@ -57,6 +60,24 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Honest empty state — a connected account with no snapshots captured yet.
+ * We never fabricate analytics, so this stands in until the first scrape lands
+ * (calibration capture) and the daily cron starts building the series.
+ */
+export function StatRowEmpty() {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-4 py-3.5">
+      <span className="text-foreground-muted" aria-hidden>
+        <SurfaceIcon name="up" size={15} strokeWidth={1.6} />
+      </span>
+      <p className="m-0 text-[11.5px] leading-[1.45] text-foreground-muted">
+        Gathering your account numbers — followers, likes, and posts land here as they come in.
+      </p>
     </div>
   );
 }

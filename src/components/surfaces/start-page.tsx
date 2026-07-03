@@ -17,13 +17,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
-import type { Pillar, QuickAction as QuickActionData } from "@/lib/room-contract/mock-room";
+import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage, MOCK_AUDIENCES } from "@/lib/room-contract/mock-room";
 import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
 import type { Verb } from "@/lib/room-contract/types";
 import { TopChrome } from "./sections/top-chrome";
 import { Greeting } from "./sections/greeting";
-import { StatRow } from "./sections/stat-row";
+import { StatRow, StatRowEmpty } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
 import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
@@ -36,7 +36,14 @@ import { SurfaceDock } from "./surface-dock";
 import { EmbeddedComposer } from "./embedded-composer";
 import { RoomDrawer, type RoomFocus } from "./room-drawer";
 
-export function StartPage({ initialFirstRun = false }: { initialFirstRun?: boolean }) {
+export function StartPage({
+  initialFirstRun = false,
+  accountStats = null,
+}: {
+  initialFirstRun?: boolean;
+  /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
+  accountStats?: StatCard[] | null;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const data = useMemo(() => getMockStartPage(), []);
@@ -132,7 +139,7 @@ export function StartPage({ initialFirstRun = false }: { initialFirstRun?: boole
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
               </div>
               <div className="rv-in mt-2.5" style={{ animationDelay: "0.08s" }}>
-                <StatRow stats={data.stats} />
+                {accountStats ? <StatRow stats={accountStats} /> : <StatRowEmpty />}
               </div>
               <div className="rv-in" style={{ animationDelay: "0.14s" }}>
                 <DailyIdeas

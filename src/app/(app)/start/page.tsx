@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { listAudiences } from "@/lib/audience/audience-repo";
+import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
+import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
+import type { StatCard } from "@/lib/room-contract/mock-room";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -55,5 +58,18 @@ export default async function StartRoute({
   const initialFirstRun =
     first === "1" ? true : first === "0" ? false : !hasCalibrated;
 
-  return <StartPage initialFirstRun={initialFirstRun} />;
+  // Real stat-row data (honesty spine): derived from the user's own account_snapshots
+  // time-series. Null when there are no snapshots yet → StartPage renders an honest
+  // "gathering your numbers" state instead of fabricated analytics. Skipped for
+  // first-run (no connected account to read).
+  let accountStats: StatCard[] | null = null;
+  if (!initialFirstRun) {
+    try {
+      accountStats = buildAccountStats(await getAccountSnapshots(supabase, user.id));
+    } catch {
+      accountStats = null;
+    }
+  }
+
+  return <StartPage initialFirstRun={initialFirstRun} accountStats={accountStats} />;
 }

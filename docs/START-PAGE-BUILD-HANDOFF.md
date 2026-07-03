@@ -180,17 +180,18 @@ Investigated before building (handoff §4 "confirm the split first"). Two halves
 - **Connect = SURFACE (ours) — DONE.** There is NO OAuth anywhere; "connect" = capture a `@handle` → public
   scrape (Apify). The real flow already exists (`/audience/new` → `CalibrationFlow` → `/api/audiences/calibrate`
   SSE → frozen `signature` + ~10 named people). We wired the CTA to it + made first-run detection real (above).
-- **Stat-row L7D analytics (sparklines + day-over-day deltas) = ENGINE/INGESTION, net-new, contested owner —
-  GATED like the loop.** The scraper yields point-in-time follower/video counts, but there is **no own-account
-  daily-snapshot table, no cron, no aggregation endpoint** — and *"new followers L7D" + every sparkline/delta needs
-  an accumulated daily time-series that CANNOT be backfilled from a single scrape.* Real = clone `competitor_snapshots`
-  → an own-account snapshot table + a daily cron (mirror `/api/cron/refresh-competitors`) + an aggregation RPC +
-  `/api/stats` the `StatRow` hook consumes. That's a read-shape we *consume from ingestion*, not a UI slice — likely
-  the engine/The-Room owner's, not Surfaces'. **Until settled: `StatRow` stays clearly-commented mock (only shown to
-  connected users in the briefing), gated wire-or-remove like the loop (§4.4). Do NOT fabricate real analytics.**
+- **Stat-row L7D analytics = SURFACE (ours) — ✅ BUILT 2026-07-03k (PR #112).** Ownership re-resolved: "Account"
+  + the scraping/cron infra are Surfaces scope; The Room owns the *thread/sim* engine, not account analytics — so
+  this was ours, not contested. Built the ingestion slice mirroring `competitor_snapshots`/`refresh-competitors`:
+  migration `account_snapshots` (owner-keyed daily counters, own-rows RLS) + capture-at-calibration (seeds the first
+  snapshot from the scrape reveal) + daily cron `/api/cron/refresh-account-snapshots` (07:00 UTC) + pure
+  `buildAccountStats` (Followers / New followers / Likes / Posts — real counters only, **no fabricated Views**) +
+  `/start` server-fetch → real `StatRow` or an honest "gathering your numbers" empty state. Point-in-time real on
+  connect; weekly deltas + sparklines accumulate over days. Migration applied to shared Supabase; unit tests 5/5.
 
 ### Buildable now WITHOUT the atoms (remaining next-session candidates)
-- **Own-account snapshot ingestion** — only after the owner assigns the ingestion layer (above). Then `StatRow` → real.
+- **Loop write-path** — paste-URL → `useOutcomeSignature` (write half is real; the read/accuracy stays engine-gated, §4.4).
+- **Real "Views" tile** — needs per-post view ingestion (scrapeVideos), a follow-up to the account-snapshots rig.
 - **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
 
 ### Pre-existing infra flag (not a Surfaces code bug)
