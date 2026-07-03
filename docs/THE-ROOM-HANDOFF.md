@@ -74,7 +74,11 @@ Steps 1–5 are the session; step 6 (ingest real outcomes → sharpen the model)
 
 ## 4. OPEN decisions (resolve early in the build)
 
-- **★ Room form: Bloom vs Floating** — the one crux still undecided. **Bloom** = full-width, grows up from the presence, one connected object (owner + author lean here). **Floating** = inset card hovering above, thread visible around it (lighter, more popover-ish). Prototype v5 has a toggle to compare; owner to pick by feel.
+- **★ Room form: Bloom vs Floating — DECIDED: Bloom (2026-07-03).** Floating removed entirely. The Room is full-width and grows up out of the presence band into one connected, flush-merged object. On **desktop** the model shifts to a **persistent audience rail** (audience always on screen; focusing a card fills the rail) — bloom is a mobile idiom, a side panel is the desktop idiom. See prototypes below.
+- **Prototypes are now local, interactive, and the working spec** (in `docs/prototypes/`, served over `python3 -m http.server`):
+  - `the-room-prototype-v6.html` — **current mobile spec.** Bloom-only. People tab = pure voices (serif quotes, ask→, Replay streams reactions in one-by-one). Population tab = swarm hero + stats bar + weak-spot (who bounced + why) + Rewrite. Thread = compact one-line cards (rank + score pill), batch headers ("3 HOOKS · best 7/10"). Room opens to ~77%.
+  - `the-room-desktop-v1.html` — **desktop spec.** Persistent right rail; idle shows the roster; focusing a card fills the rail with the Room; ask→ opens a chat overlay.
+  - `the-room-prototype-v5.html` — pre-refinement Bloom (reference only).
 - **"Reactions arrive" motion depth** — proposed: streamed-in one-by-one for the flagship **Test**; badge count elsewhere. Not finalized.
 - **Fuller Read for a real-video Test** (theme #4, deeper) — a Test should get a *richer Read card* in the thread (inline retention curve), not a one-line chip like a hook. First cut only exists.
 - **Scale/representation** — feed shows ~6 of 10 people ("+4 more"); Population is honest "1,000 modeled from your 10" (NOT 1,000 model calls). Confirm the copy/representation.
