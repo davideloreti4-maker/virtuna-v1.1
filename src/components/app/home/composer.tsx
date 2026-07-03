@@ -1447,6 +1447,95 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     registerThreadRegion,
   } = useAmbientFocus(ambientDescriptors);
 
+  // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
+  // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the
+  // ORIGINATING skill steered by the bouncers' real words (the `lever`), via the composer's OWN
+  // stream hook. That's the honest re-POST-to-runner: the SSE is read to completion (unlike a
+  // fire-and-forget fetch that resolves at headers, before persistence), so the regenerated batch
+  // streams into the SAME thread + Read, and on completion we land focus on the winning (highest-
+  // stop) card so the Room shows the real delta (prior → new). Only the text-seedable skills
+  // rewrite; remix (URL-seeded) has no lever-reseed path → the CTA is gated off there.
+  const canRoomRewrite =
+    activeTool === "hooks" || activeTool === "idea" || activeTool === "script";
+  // Bumped once a reseed lands + the Room re-focuses; the Room reveals the delta only after this
+  // advances past the value it captured at tap-time (so its "current" read is the post-rewrite one).
+  const [rewriteNonce, setRewriteNonce] = useState(0);
+  // Set the moment a rewrite fires; the completion effect below consumes it once the reseed's SSE
+  // closes. A ref (not state) so setting it never renders + it reads fresh inside the effect.
+  const roomRewriteExpectingRef = useRef(false);
+
+  const onRoomRewrite = useCallback(
+    async (lever: string) => {
+      const seed = lever.trim();
+      if (seed.length === 0) return;
+      // reset() clears the prior batch (isDone → false) BEFORE we arm the flag, so the completion
+      // effect can't misfire on the previous run; the reseed then streams a fresh steered batch.
+      if (activeTool === "hooks") {
+        hooks.reset();
+        roomRewriteExpectingRef.current = true;
+        await hooks.start(seed, platform, intent);
+      } else if (activeTool === "idea") {
+        ideas.reset();
+        roomRewriteExpectingRef.current = true;
+        await ideas.start(seed, platform, intent);
+      } else if (activeTool === "script") {
+        script.reset();
+        roomRewriteExpectingRef.current = true;
+        await script.start(seed, platform, undefined, intent);
+      }
+    },
+    [activeTool, hooks, ideas, script, platform, intent],
+  );
+
+  // Reseed completion: once the active skill's stream closes, land the Room's focus on the winning
+  // (highest-stop) card of the fresh batch, then bump the nonce so the Room reveals the delta. The
+  // fresh batch is the TAIL of the descriptor list (persisted history unchanged) — picking the best
+  // of that tail is robust to the positional descriptor ids. Early-returns unless a rewrite is
+  // pending, so normal generation (expecting = false) is never touched.
+  useEffect(() => {
+    if (!roomRewriteExpectingRef.current) return;
+    const stream =
+      activeTool === "hooks"
+        ? hooks
+        : activeTool === "idea"
+          ? ideas
+          : activeTool === "script"
+            ? script
+            : null;
+    if (!stream || stream.isStreaming || !stream.isDone) return;
+    const streamingCount =
+      activeTool === "hooks"
+        ? hooksBlocks.length
+        : activeTool === "idea"
+          ? ideasBlocks.length
+          : scriptBlocks.length;
+    if (streamingCount === 0) return;
+    roomRewriteExpectingRef.current = false;
+    const batch = ambientDescriptors.slice(-streamingCount);
+    if (batch.length === 0) return;
+    const stopOf = (d: AmbientCardDescriptor): number => {
+      const m = d.fraction.match(/(\d+)\s*\/\s*(\d+)/);
+      return m ? Number(m[1]) : -1;
+    };
+    let best = batch[0]!;
+    for (const d of batch) if (stopOf(d) > stopOf(best)) best = d;
+    focusByTap(best.id);
+    setRewriteNonce((n) => n + 1);
+  }, [
+    activeTool,
+    hooks.isDone,
+    hooks.isStreaming,
+    ideas.isDone,
+    ideas.isStreaming,
+    script.isDone,
+    script.isStreaming,
+    hooksBlocks.length,
+    ideasBlocks.length,
+    scriptBlocks.length,
+    ambientDescriptors,
+    focusByTap,
+  ]);
+
   // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
   // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
   // open, the COMPOSER FIELD becomes the audience-chat input (no second input): submit routes
@@ -1518,6 +1607,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       focusList={ambientDescriptors}
       onStep={focusByTap}
       kindLabel={ambientKindLabel}
+      canRewrite={canRoomRewrite}
+      onRewrite={onRoomRewrite}
+      rewriteNonce={rewriteNonce}
       docked
     />
   );

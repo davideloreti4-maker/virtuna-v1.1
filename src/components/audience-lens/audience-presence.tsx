@@ -110,6 +110,15 @@ export interface AudiencePresenceProps {
   onStep?: (id: string) => void;
   /** The batch's kind label ("Hook" | "Idea" | "Script" | "Remix") for the stepper + compare copy. */
   kindLabel?: string;
+  // ── Rewrite loop on the Population weak-spot (PR-3) — threaded from the composer. ──
+  /** The active skill is text-seedable (hooks/idea/script) ⇒ the Room's Population weak-spot shows
+   *  the "Rewrite to win back the N% who bounced →" CTA. Remix (URL-seeded) ⇒ the CTA stays off. */
+  canRewrite?: boolean;
+  /** Re-run the originating skill steered by the bouncers' words → new card + Read in-thread
+   *  (the composer owns the re-run via its own stream hook, then re-focuses the Room on the winner). */
+  onRewrite?: (lever: string) => Promise<void>;
+  /** Bumped once a reseed lands + the Room re-focuses — gates the honest delta reveal in the CTA. */
+  rewriteNonce?: number;
 }
 
 export function AudiencePresence({
@@ -130,6 +139,9 @@ export function AudiencePresence({
   focusList,
   onStep,
   kindLabel,
+  canRewrite,
+  onRewrite,
+  rewriteNonce,
 }: AudiencePresenceProps) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
@@ -345,6 +357,9 @@ export function AudiencePresence({
                 siblings={focusList}
                 onStep={onStep}
                 kindLabel={kindLabel}
+                canRewrite={canRewrite}
+                onRewrite={onRewrite}
+                rewriteNonce={rewriteNonce}
               />
             </div>
           ) : (

@@ -67,6 +67,19 @@ export interface AmbientRoomProps {
   onStep?: (id: string) => void;
   /** The batch's kind label ("Hook" | "Idea" | "Script" | "Remix") for the stepper + compare copy. */
   kindLabel?: string;
+  // ── Rewrite loop on the Population weak-spot (PR-3, LIVE-07) ───────────────────
+  /** The active skill is text-seedable (hooks/idea/script) ⇒ the Population weak-spot shows the
+   *  coral "Rewrite to win back the N% who bounced →" CTA. Remix (URL-seeded) has no lever-reseed
+   *  path, so the CTA is gated OFF there (the honest state — the prototype gates it conditionally too). */
+  canRewrite?: boolean;
+  /** Re-run the originating skill steered by the bouncers' real words (the `lever`) → a new card +
+   *  Read stream into the SAME thread; resolves when the reseed's SSE closes. The composer owns the
+   *  actual re-run (its own stream hook) + then re-focuses the Room on the winning card. */
+  onRewrite?: (lever: string) => Promise<void>;
+  /** Bumped by the composer once a reseed has landed AND the Room has re-focused on the winning
+   *  card — the CTA reveals the honest delta (prior → new stop-count) only after this advances past
+   *  tap-time, so the "current" read it compares against is guaranteed to be the post-rewrite one. */
+  rewriteNonce?: number;
 }
 
 type Scale = 'people' | 'population';
@@ -115,6 +128,9 @@ export function AmbientRoom({
   siblings,
   onStep,
   kindLabel = 'Concept',
+  canRewrite = false,
+  onRewrite,
+  rewriteNonce = 0,
 }: AmbientRoomProps) {
   const [scale, setScale] = useState<Scale>('people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
@@ -171,6 +187,55 @@ export function AmbientRoom({
   };
 
   const hasReaction = nodes.length > 0;
+
+  // ── Rewrite loop state (PR-3) — LIFTED here (not inside the CTA) so the delta survives the CTA
+  // hiding: a successful rewrite can push the winning card to 10/10 → no bounce left → the CTA
+  // gates off, but the payoff ("3/10 → 10/10 the lever moved the room") must still show. The
+  // prior is snapshotted at tap-time; the delta freezes when the composer bumps `rewriteNonce`
+  // (after it re-focuses the Room on the winning card); a later manual step clears the stale delta.
+  const [rewriteBusy, setRewriteBusy] = useState(false);
+  const [rewriteError, setRewriteError] = useState<string | null>(null);
+  const [rewriteDelta, setRewriteDelta] = useState<{
+    prior: { stop: number; total: number };
+    next: { stop: number; total: number };
+  } | null>(null);
+  const rewritePriorRef = useRef<{ stop: number; total: number } | null>(null);
+  const lastNonceRef = useRef(rewriteNonce);
+  const lastFocusRef = useRef(focusId);
+
+  useEffect(() => {
+    if (rewriteNonce !== lastNonceRef.current) {
+      // The rewrite landed (nonce advanced) — freeze the honest delta from the tap-time prior +
+      // the new focus's read. `next` is frozen so a later manual step doesn't mutate the readout.
+      lastNonceRef.current = rewriteNonce;
+      lastFocusRef.current = focusId;
+      if (rewritePriorRef.current) {
+        setRewriteDelta({ prior: rewritePriorRef.current, next: { stop: stopCount, total } });
+        rewritePriorRef.current = null;
+      }
+      return;
+    }
+    if (focusId !== lastFocusRef.current) {
+      // A manual step / re-target (focus changed with NO rewrite) — the delta is now stale.
+      lastFocusRef.current = focusId;
+      setRewriteDelta(null);
+    }
+  }, [rewriteNonce, focusId, stopCount, total]);
+
+  const handleRewriteTap = async (lever: string) => {
+    if (!onRewrite || rewriteBusy || lever.trim().length === 0) return;
+    rewritePriorRef.current = { stop: stopCount, total };
+    setRewriteError(null);
+    setRewriteBusy(true);
+    try {
+      await onRewrite(lever);
+    } catch {
+      setRewriteError("Couldn't rewrite right now. Your concept is saved — try again in a moment.");
+      rewritePriorRef.current = null;
+    } finally {
+      setRewriteBusy(false);
+    }
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -330,7 +395,17 @@ export function AmbientRoom({
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
             ) : (
-              <PopulationView nodes={nodes} total={total} reducedMotion={reducedMotion} />
+              <PopulationView
+                nodes={nodes}
+                total={total}
+                stopCount={stopCount}
+                reducedMotion={reducedMotion}
+                canRewrite={canRewrite}
+                onRewriteTap={handleRewriteTap}
+                rewriteBusy={rewriteBusy}
+                rewriteError={rewriteError}
+                rewriteDelta={rewriteDelta}
+              />
             )}
           </div>
         </>
@@ -469,11 +544,23 @@ function PeopleView({
 function PopulationView({
   nodes,
   total,
+  stopCount,
   reducedMotion,
+  canRewrite,
+  onRewriteTap,
+  rewriteBusy,
+  rewriteError,
+  rewriteDelta,
 }: {
   nodes: PersonaNode[];
   total: number;
+  stopCount: number;
   reducedMotion: boolean;
+  canRewrite: boolean;
+  onRewriteTap: (lever: string) => void | Promise<void>;
+  rewriteBusy: boolean;
+  rewriteError: string | null;
+  rewriteDelta: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
 }) {
   const stops = nodes.filter((n) => verdictOf(n) === 'stop');
   const bounces = nodes.filter((n) => verdictOf(n) === 'scroll');
@@ -510,6 +597,14 @@ function PopulationView({
   // The weak spot — the bouncers with their real words (empty-quote bouncers still count in
   // the headline but carry no fabricated words; we surface only those who actually spoke).
   const weakVoices = bounces.filter((n) => (n.quote ?? '').trim().length > 0);
+
+  // The Rewrite BUTTON (PR-3) shows only when it is HONEST + actionable: the active skill is
+  // text-seedable (canRewrite), there is a real bouncer quote to steer by (weakVoices > 0), and
+  // the concept isn't already near-perfect (prototype gates at stop ≥ 9/10 → we hide at ≥ 90%).
+  // The DELTA readout is gated separately (rewriteDelta) so the payoff survives the button hiding.
+  const showRewrite =
+    canRewrite && weakVoices.length > 0 && total > 0 && stopCount / total < 0.9;
+  const lever = weakVoices[0]?.quote ?? '';
 
   return (
     <div className="flex flex-col">
@@ -596,6 +691,55 @@ function PopulationView({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* REWRITE — the loop that IS the product: steer a fresh Read by the bouncers' real words,
+          then read the honest delta. (PR-3; mirrors the prototype's `renderFoot` coral CTA + its
+          before→after toast.) The DELTA renders whenever a rewrite has landed — even once the
+          button has gated off (a 10/10 winner has no bounce left to win back). */}
+      {(showRewrite || rewriteDelta || rewriteError) && (
+        <div className="mt-4 flex flex-col gap-2 border-t border-[var(--color-border)] pt-4">
+          {rewriteDelta && (
+            <p
+              className="text-center text-[12px] leading-snug text-foreground"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="text-[var(--color-foreground-muted)]">
+                {rewriteDelta.prior.stop}/{rewriteDelta.prior.total} stop
+              </span>
+              <span className="mx-1.5 text-[var(--color-foreground-muted)]">→</span>
+              <span className="font-semibold">
+                {rewriteDelta.next.stop}/{rewriteDelta.next.total} stop
+              </span>
+              <span className="ml-1.5 text-[var(--color-foreground-muted)]">
+                {rewriteDelta.next.stop > rewriteDelta.prior.stop
+                  ? 'the lever moved the room.'
+                  : rewriteDelta.next.stop < rewriteDelta.prior.stop
+                    ? 'the lever cost you stops.'
+                    : 'no change from the lever.'}
+              </span>
+            </p>
+          )}
+          {rewriteError && (
+            <p className="text-center text-[12px] text-[var(--color-error)]" role="alert">
+              {rewriteError}
+            </p>
+          )}
+          {showRewrite && (
+            <button
+              type="button"
+              onClick={() => void onRewriteTap(lever)}
+              disabled={rewriteBusy}
+              className="w-full rounded-[11px] bg-action px-4 py-3 text-center text-[12.5px] font-semibold tracking-[0.005em] text-action-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+              aria-label="Rewrite this concept to win back the viewers who bounced"
+            >
+              {rewriteBusy
+                ? 'Rewriting for the room…'
+                : `Rewrite to win back the ${pct(bounces.length)}% who bounced →`}
+            </button>
+          )}
         </div>
       )}
     </div>
