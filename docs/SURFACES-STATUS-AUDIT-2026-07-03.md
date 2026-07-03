@@ -192,3 +192,29 @@ Unblocked-first, per the handoff's own ordering plus what this audit found still
    no entry exists for `refresh-account-snapshots` or any other route, so if the limit is
    plan/project-level it is still unaddressed in-repo. **UNVERIFIED** root cause; treat as a
    go/no-go gate before `milestone/surfaces` → `main`, not a solved item.
+
+---
+
+## Addendum (owner Q, 2026-07-03): Stanley has dedicated PAGES; we have start-page SECTIONS
+
+Stanley ships several surfaces as **standalone pages** — a full **Calendar** page, plus ideas /
+analytics / a business-coach. **We do not.** Route inventory (`src/app/(app)/`): `analyze · audience ·
+competitors · discover · feed · home · library · referrals · saved · settings · start` — **no
+`calendar`, `ideas`, `analytics`, or `coach` route.** For us:
+
+| Stanley dedicated page | Ours today | Gap |
+|---|---|---|
+| **Calendar** (full month / scheduling) | `month-calendar.tsx` — a right-rail **widget** on `/start` | No standalone page; glanceable only |
+| Content ideas | `daily-ideas.tsx` — a `/start` **section** | No page (fine for now — `/start` IS the proactive home) |
+| Account analytics | `stat-row.tsx` — a `/start` **section** (real, #112/#114) | No page; no deep analytics view |
+| Business coach | — | **Missing entirely** (Stanley-adopt P1) |
+
+**Decision per surface: promote to a page, or keep as a `/start` section?**
+- **Calendar → strong candidate for a standalone page.** Full month/scheduling/planning view = clear
+  Stanley-parity, **UNBLOCKED** (low-ambient, no Room dependency; predicted-score slots are a reserved
+  slot, not a live reaction). The `/start` widget stays as the glanceable entry that deep-links into it.
+- Ideas / analytics: fine as `/start` sections for now; revisit if they need depth.
+- Business-coach: a distinct future surface, not yet scoped.
+
+**⇒ Added to §6 next-tranche candidates:** a **standalone Calendar/Planning page** ranks alongside
+OAuth/Composio ingestion + the loop write-path as unblocked, buildable-now work (no Room atoms needed).
