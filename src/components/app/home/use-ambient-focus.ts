@@ -61,9 +61,12 @@ export interface AmbientFocusInput {
 /** A deliberate scroll past this many px releases a sticky tap (returns to the ambient default). */
 const TAP_RELEASE_SCROLL_PX = 64;
 
-/** A descriptor → the AmbientFocus shape the presence consumes. */
+/** A descriptor → the AmbientFocus shape the presence consumes. Carries the card `id` so the
+ *  Room can place the anchored-focus stepper among the batch siblings (PR-2); a typed thought
+ *  (built directly, not via a descriptor) has no id → no stepper, which is the honest state. */
 function toFocus(d: AmbientCardDescriptor): AmbientFocus {
   return {
+    id: d.id,
     conceptText: d.conceptText,
     fraction: d.fraction,
     scrollQuote: d.scrollQuote,

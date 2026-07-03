@@ -46,13 +46,31 @@ export interface AmbientPersonaReaction {
  *
  * `null` ⇒ idle: the presence shows the roster at calm uniform cream with NO reaction — it
  * never invents a reaction to nothing (D-01 honesty spine).
+ *
+ * - `id` — the resolved card's stable descriptor id, present ONLY when the focus resolved from
+ *   a real thread card (tap/scroll/latest — carried by `AmbientCardDescriptor`). ABSENT for an
+ *   ad-hoc typed thought (type-to-room) — a thought is not a sibling in the card batch. The Room
+ *   uses it to place the anchored-focus stepper (‹ Hook N of M ›) among the batch siblings (PR-2).
  */
 export type AmbientFocus = {
+  id?: string;
   conceptText: string;
   fraction: string;
   scrollQuote: string;
   personas?: AmbientPersonaReaction[];
 } | null;
+
+/**
+ * The minimal shape the Room needs for one sibling card in the anchored-focus stepper + the
+ * `⤺ all N` ranked view-all (PR-2). It is a structural subset of `AmbientCardDescriptor` (the
+ * composer's flat per-tool card list), so the composer threads that list down verbatim; the
+ * Room ranks these by the parsed stop-count to render the stepper position + the compare rows.
+ */
+export interface AmbientFocusSibling {
+  id: string;
+  conceptText: string;
+  fraction: string;
+}
 
 /**
  * Props for the persistent `AmbientPresence` (built in isolation; composer-wired in 13-04).

@@ -6,6 +6,37 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
+## ★★ SESSION UPDATE (2026-07-03 later) — PR-2 SHIPPED → next = PR-3
+
+**PR-2 (anchored-focus stepper + `⤺ all N` view-all) DONE → PR #115** (`feat/the-room-stepper`
+off `feat/the-room-composer`, commit `f53c7052`, base = `feat/the-room-composer`). 5 files, exactly
+the §3 plan: `id?` on `AmbientFocus` + `AmbientFocusSibling` (`ambient-presence-types.ts`) · `toFocus()`
+carries the id (`use-ambient-focus.ts`) · composer threads `focusList={ambientDescriptors}` +
+`onStep={focusByTap}` + `kindLabel` (Hook/Idea/Script/Remix from `activeTool`) · `AudiencePresence`
+forwards → `AmbientRoom` renders v6 `renderDrillHead` (‹ Hook N of M › steps IN PLACE + `⤺ all N`) +
+`renderCompareHead/Body` (ranked "How the room ranked your N", sorted by parsed stop-count best-first,
+meter tone = prototype `toneOf` sage≥60%/coral≤40%/neutral). **Honesty: a typed thought has no id → no
+stepper.** Zero new model calls. **VERIFIED LIVE**: General (5 hooks — step, `⤺ all 5` compare, tap-row
+re-target+return-to-drill, thought→no-stepper) AND calibrated Fitness Creators (fresh gen, varied
+**7/6/5/5/2** → correct ranking + green/neutral/coral meters, voices ride along on step, re-target
+updates serif 5→7). Side-by-side vs v6 = faithful. tsc 21 baseline; presence+focus 34, matte 14 green.
+
+**POLISH items from the audit below = effectively already satisfied by PR-1** (don't re-open): the
+People avatar sage IS `rgba(142,166,138,.16)`/`#a6bfa1` (PR-1 fidelity fix `3c7ab746`); "▶ Replay"
+renders; the footer reads "Your N people" — the HONEST copy, since PR-1 shows all voices (the prototype's
+"+N more of your 10" implies hidden voices there aren't). Bumping sage brighter would re-derive past the
+LOCKED dosage. So the only real remaining interaction is **PR-3 (Rewrite)**.
+
+**➡ NEXT SESSION (start COLD, full budget — PR-3 is backend-touching): PR-3 — Rewrite lever.** Full
+plumbing in §3 below ("PR-3 — Rewrite lever on the Population weak-spot"). Branch off `feat/the-room-stepper`
+(inherits PR-2). Wire the existing `AudienceLensContent` `LensRewrite` contract (`endpoint`/`lever`/
+`platform`/`priorStopCount`/`priorTotal`/`onRewrite`) + mirror `RewriteCta` in `AmbientRoom`'s Population
+footer; the composer rewrite handler re-POSTs to the originating skill's runner with the lever as steering
+(see `card-rewrite.ts` / `CHAIN_HANDOFFS` self-handoff) → new card + Read in-thread → show the DELTA.
+Its live verify triggers a REAL regeneration, so budget for a heavy browser loop. **PR-4 (desktop rail)
+still needs owner scope sign-off before building.** Stack retarget still pending: when #109 → `milestone/the-room`,
+retarget #111 → #113 → #115 onto `milestone/the-room`.
+
 ## ★ SESSION UPDATE (2026-07-03 late) — Task C SHIPPED + live ambient-audience audit
 
 **Task C (clean composer) DONE → PR #113** (`feat/the-room-composer` off `feat/the-room-bloom`,

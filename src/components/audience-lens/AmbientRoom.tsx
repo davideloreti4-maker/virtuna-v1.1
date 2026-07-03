@@ -8,8 +8,12 @@
  * prototype: a named-people room, not an analytics panel.
  *
  *   • Focus header — the honest serif score for the ONE in-focus concept ("N of T would
- *     stop") + the concept it reacts to. (The anchored-focus stepper ‹N of M› / ⤺ compare
- *     land in PR-2 — they need the sibling descriptor list the composer must thread down.)
+ *     stop") + the concept it reacts to, PLUS the anchored-focus stepper ‹ Hook N of M › and
+ *     the `⤺ all N` view-all (PR-2). The stepper appears only when the focus resolved from a
+ *     real thread card (`focusId`) with sibling cards in the batch (`siblings`) — tapping ‹/›
+ *     re-focuses the Room on the prev/next sibling in place; `⤺ all N` opens the ranked
+ *     "How the room ranked your N" list → tap a row to re-focus. Ranked by the real stop-count;
+ *     an ad-hoc typed thought (no `focusId`) shows no stepper (the honest state).
  *   • The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the view.
  *   • The people = pure voices: each real persona is a named row — a TONAL avatar (calm
  *     cream for a stop; accent-soft for a bounce, the signal), the name, `ask →` (opens the
@@ -37,6 +41,7 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
+import type { AmbientFocusSibling } from './ambient-presence-types';
 
 export interface AmbientRoomProps {
   /** The focused concept's REAL per-persona reactions (from the ambient focus — PR-B1). */
@@ -51,6 +56,17 @@ export interface AmbientRoomProps {
   personaNameOverrides?: Record<string, string>;
   /** Platform for the persona-chat grounding (defaults tiktok). */
   platform?: 'tiktok' | 'instagram' | 'youtube';
+  // ── Anchored-focus stepper + `⤺ all N` view-all (PR-2) ────────────────────────
+  /** The resolved focus's card id — present only for a real card focus (absent for a typed
+   *  thought). Placed among `siblings` to render `‹ Hook N of M ›` + the ranked compare. */
+  focusId?: string;
+  /** The current batch's sibling cards (the composer's flat per-tool list). >1 ⇒ the stepper +
+   *  `⤺ all N` show; ranked by the parsed stop-count (best first) for both the stepper + compare. */
+  siblings?: AmbientFocusSibling[];
+  /** Re-focus the Room on a sibling by id (= the composer's `focusByTap`) — steps in place. */
+  onStep?: (id: string) => void;
+  /** The batch's kind label ("Hook" | "Idea" | "Script" | "Remix") for the stepper + compare copy. */
+  kindLabel?: string;
 }
 
 type Scale = 'people' | 'population';
@@ -80,6 +96,14 @@ const verdictOf = (n: PersonaNode): 'stop' | 'scroll' => (n.watchThrough >= 0.5 
 
 const initialOf = (label: string): string => (label.trim()[0] ?? '·').toUpperCase();
 
+/** The compare-row meter tone — sage ≥60% stop, coral ≤40%, else neutral (prototype `toneOf`).
+ *  Dosage LOCKED: coral is the bounce SIGNAL, sage the loved one; neither paints en masse. */
+const meterTone = (stop: number, total: number): string => {
+  if (total <= 0) return 'rgba(255,255,255,0.4)';
+  const r = stop / total;
+  return r >= 0.6 ? '#8ea68a' : r <= 0.4 ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)';
+};
+
 export function AmbientRoom({
   flatPersonas,
   conceptText,
@@ -87,9 +111,39 @@ export function AmbientRoom({
   reducedMotion = false,
   personaNameOverrides,
   platform = 'tiktok',
+  focusId,
+  siblings,
+  onStep,
+  kindLabel = 'Concept',
 }: AmbientRoomProps) {
   const [scale, setScale] = useState<Scale>('people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
+  // The `⤺ all N` ranked view-all (prototype code name: compare). Reset whenever the focus card
+  // changes (step, re-target, a new thought) so it never lingers over a stale batch.
+  const [compareOpen, setCompareOpen] = useState(false);
+  useEffect(() => {
+    setCompareOpen(false);
+  }, [focusId]);
+
+  // Rank the batch siblings by the REAL stop-count (best first, stable on ties) — the one order
+  // the stepper steps through AND the compare list shows ("How the room ranked your N"). PR-2.
+  const rankedSiblings = useMemo(() => {
+    if (!siblings || siblings.length === 0) return [];
+    return siblings
+      .map((s, i) => {
+        const p = parseStop(s.fraction);
+        return { id: s.id, conceptText: s.conceptText, stop: p?.stop ?? -1, total: p?.total ?? 0, order: i };
+      })
+      .sort((a, b) => b.stop - a.stop || a.order - b.order);
+  }, [siblings]);
+  const focusIdx = focusId ? rankedSiblings.findIndex((s) => s.id === focusId) : -1;
+  // The stepper shows only for a real card focus with >1 sibling in the batch (prototype `n>1`).
+  const showStepper = focusId != null && rankedSiblings.length > 1 && focusIdx >= 0;
+  const inCompare = compareOpen && showStepper;
+  const stepTo = (idx: number) => {
+    const target = rankedSiblings[idx];
+    if (target && onStep) onStep(target.id);
+  };
 
   // Real per-persona nodes (named cast). The cascade order (stops first, heaviest first)
   // is the same order the room reveals in — People rows read in that order too (D-06).
@@ -120,66 +174,167 @@ export function AmbientRoom({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* ── Focus header — the honest serif score for the ONE in-focus concept ── */}
-      <div className="shrink-0 px-5 pb-1 pt-1">
-        <p className="font-serif text-[22px] leading-tight tracking-[-0.01em] text-foreground">
-          {stopCount} of {total}{' '}
-          <span className="text-[var(--color-foreground-muted)]">would stop</span>
-        </p>
-        <p
-          className="mt-1.5 truncate text-[12px] leading-snug text-[var(--color-foreground-muted)]"
-          title={conceptText}
-        >
-          {conceptText}
-        </p>
-      </div>
+      {inCompare ? (
+        /* ── `⤺ all N` view-all — the ranked list "How the room ranked your N" (PR-2).
+              Tap a row to re-focus the Room on that sibling → back to the drill view. ── */
+        <>
+          <div className="shrink-0 px-5 pb-1 pt-1">
+            <div className="flex min-h-[24px] items-center gap-2">
+              <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-[var(--color-foreground-muted)]">
+                {kindLabel}s · ranked
+              </span>
+            </div>
+            <p className="mt-2 font-serif text-[18px] leading-tight tracking-[-0.01em] text-foreground">
+              How the room ranked your {rankedSiblings.length} {kindLabel.toLowerCase()}s
+            </p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">
+            <p className="px-1.5 pb-2 pt-1 text-[11px] text-[var(--color-foreground-muted)]">
+              Tap any one to open the room on it.
+            </p>
+            <ul className="flex flex-col">
+              {rankedSiblings.map((s, i) => {
+                const scoreLabel = s.total > 0 ? `${s.stop}/${s.total}` : '—';
+                const width = s.total > 0 ? `${Math.round((s.stop / s.total) * 100)}%` : '0%';
+                const isCurrent = s.id === focusId;
+                return (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onStep?.(s.id);
+                        setCompareOpen(false);
+                      }}
+                      aria-current={isCurrent ? 'true' : undefined}
+                      className="flex w-full items-center gap-[11px] rounded-[8px] border-t border-[var(--color-border)] px-2 py-[11px] text-left transition-colors hover:bg-white/[0.02]"
+                    >
+                      <span className="w-[15px] shrink-0 font-serif text-[17px] text-[var(--color-foreground-secondary)]">
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="line-clamp-2 text-[11.5px] leading-[1.35] text-foreground">
+                          {s.conceptText}
+                        </span>
+                        <span className="mt-1.5 block h-[6px] overflow-hidden rounded-[4px] bg-white/[0.08]">
+                          <span
+                            className="block h-full rounded-[4px]"
+                            style={{ width, background: meterTone(s.stop, s.total) }}
+                          />
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-mono text-[11.5px] text-foreground tabular-nums">
+                        {scoreLabel}
+                      </span>
+                      <span aria-hidden className="shrink-0 text-[var(--color-foreground-muted)]">
+                        ›
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* ── Focus header — the anchored-focus stepper (PR-2) + the honest serif score ── */}
+          <div className="shrink-0 px-5 pb-1 pt-1">
+            {showStepper && (
+              <div className="mb-2 flex min-h-[24px] items-center gap-2">
+                <div className="flex min-w-0 items-center gap-[7px]">
+                  <button
+                    type="button"
+                    disabled={focusIdx <= 0}
+                    onClick={() => stepTo(focusIdx - 1)}
+                    aria-label={`Previous ${kindLabel.toLowerCase()}`}
+                    className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                  >
+                    ‹
+                  </button>
+                  <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-foreground">
+                    <span className="text-[var(--color-foreground-muted)]">{kindLabel}</span> {focusIdx + 1}{' '}
+                    <span className="text-[var(--color-foreground-muted)]">of {rankedSiblings.length}</span>
+                  </span>
+                  <button
+                    type="button"
+                    disabled={focusIdx >= rankedSiblings.length - 1}
+                    onClick={() => stepTo(focusIdx + 1)}
+                    aria-label={`Next ${kindLabel.toLowerCase()}`}
+                    className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                  >
+                    ›
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCompareOpen(true)}
+                  aria-label={`View all ${rankedSiblings.length} ${kindLabel.toLowerCase()}s ranked`}
+                  className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] border border-[var(--color-border)] px-[9px] py-1 font-mono text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground-secondary)]"
+                >
+                  ⤺ all {rankedSiblings.length}
+                </button>
+              </div>
+            )}
+            <p className="font-serif text-[22px] leading-tight tracking-[-0.01em] text-foreground">
+              {stopCount} of {total}{' '}
+              <span className="text-[var(--color-foreground-muted)]">would stop</span>
+            </p>
+            <p
+              className="mt-1.5 truncate text-[12px] leading-snug text-[var(--color-foreground-muted)]"
+              title={conceptText}
+            >
+              {conceptText}
+            </p>
+          </div>
 
-      {/* ── The people ⇄ Population · 1,000 — swaps the view (each its own motion) ── */}
-      <div className="shrink-0 px-5 pt-3">
-        <div
-          role="group"
-          aria-label="Audience scale"
-          className="flex w-full gap-1 rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-[3px]"
-        >
-          {(
-            [
-              { value: 'people', label: 'The people' },
-              { value: 'population', label: 'Population · 1,000' },
-            ] as const
-          ).map((opt) => {
-            const active = opt.value === scale;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setScale(opt.value)}
-                className={
-                  'flex-1 rounded-[7px] px-3 py-1.5 text-center text-[12px] font-medium transition-colors ' +
-                  (active
-                    ? 'bg-[var(--color-active)] text-foreground'
-                    : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
-                }
-              >
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+          {/* ── The people ⇄ Population · 1,000 — swaps the view (each its own motion) ── */}
+          <div className="shrink-0 px-5 pt-3">
+            <div
+              role="group"
+              aria-label="Audience scale"
+              className="flex w-full gap-1 rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-[3px]"
+            >
+              {(
+                [
+                  { value: 'people', label: 'The people' },
+                  { value: 'population', label: 'Population · 1,000' },
+                ] as const
+              ).map((opt) => {
+                const active = opt.value === scale;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setScale(opt.value)}
+                    className={
+                      'flex-1 rounded-[7px] px-3 py-1.5 text-center text-[12px] font-medium transition-colors ' +
+                      (active
+                        ? 'bg-[var(--color-active)] text-foreground'
+                        : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
+                    }
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-      {/* ── The body (scrolls) ── */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
-        {!hasReaction ? (
-          <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
-            No reaction yet — test a concept to hear the room.
-          </p>
-        ) : scale === 'people' ? (
-          <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
-        ) : (
-          <PopulationView nodes={nodes} total={total} reducedMotion={reducedMotion} />
-        )}
-      </div>
+          {/* ── The body (scrolls) ── */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+            {!hasReaction ? (
+              <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
+                No reaction yet — test a concept to hear the room.
+              </p>
+            ) : scale === 'people' ? (
+              <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
+            ) : (
+              <PopulationView nodes={nodes} total={total} reducedMotion={reducedMotion} />
+            )}
+          </div>
+        </>
+      )}
 
       {/* In-context, in-voice persona chat — one person at a time (D-03). */}
       <PersonaChatDrawer
