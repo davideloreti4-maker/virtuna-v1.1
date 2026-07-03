@@ -26,6 +26,7 @@ import {
 } from "@/hooks/queries/use-feed";
 import type { FeedTab, FeedSort, FeedTile } from "@/lib/feed/feed-query";
 import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
+import { SurfaceHeader } from "@/components/surfaces/surface-header";
 import { FeedToolbar, type SortOption } from "@/components/feed/feed-toolbar";
 import { FeedFilters, type WatchedChannelOption } from "@/components/feed/feed-filters";
 import { FeedResults } from "@/components/feed/feed-results";
@@ -295,13 +296,11 @@ export function FeedClient() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <FeedViewTabs />
-      <header className="mb-6 mt-5">
-        <h1 className="text-2xl font-medium text-foreground">Videos</h1>
-        <p className="mt-1 text-sm text-foreground-secondary">
-          Outliers from the channels you watch, plus what&apos;s trending. Remix any winner
-          into a Read.
-        </p>
-      </header>
+      <SurfaceHeader
+        className="mb-6 mt-5"
+        title="Videos"
+        subtitle="Outliers from the channels you watch, plus what’s trending. Remix any winner into a Read."
+      />
 
       <FeedToolbar
         tab={tab}

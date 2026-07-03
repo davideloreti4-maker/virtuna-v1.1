@@ -93,7 +93,7 @@ export function CompetitorsClient({
     <div className="space-y-6">
       {/* Page header with view toggle and compare link */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-medium text-foreground">Competitors</h1>
+        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Competitors</h1>
         <div className="flex items-center gap-3">
           <AddCompetitorDialog
             trigger={
