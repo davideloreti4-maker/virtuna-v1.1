@@ -156,15 +156,16 @@ PORT=3400 NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist
 
 ---
 
-## 11. Build status + graft readiness (updated 2026-07-03j)
+## 11. Build status + graft readiness (updated 2026-07-03k)
 
-### Shipped + merged to `milestone/surfaces`
+### Shipped + merged to `milestone/surfaces` (tip `a5309422`)
 - **Steps 1–2** — contract stub + responsive `/start` shell (#105).
 - **Nav** — `Start` entry in `Sidebar.tsx` → `/start` (#106). `/home` unchanged (still the thread surface).
 - **Pillars** — `ContentPillars` module + pillar-aware plan/calendar (#108).
 - **Loop** — DEFERRED to milestone end with a wire-or-remove gate (§4.4).
 - **Contract** — SIGNED OFF by The Room (all 4 seams; `THE-CONTRACT.md` §6 all resolved).
-- **Connect loop (real, 2026-07-03k)** — `/start` first-run detection is now REAL (honesty spine): a user with no calibrated audience (`!is_general && signature != null`) gets the honest "connect your account" state, not a fabricated briefing; connected users get the briefing. Review overrides `?first=1` (force first-run) / `?first=0` (force briefing). The `FirstRun` connect CTA now routes to the real calibration flow (`/audience/new` → `@handle` scrape → ~10 named people) instead of a stub toast. Surface-owned, no engine dep. Verified live.
+- **Connect loop (real) — ✅ MERGED #110.** `/start` first-run detection is now REAL (honesty spine): a user with no calibrated audience (`!is_general && signature != null`) gets the honest "connect your account" state, not a fabricated briefing; connected users get the briefing. Review overrides `?first=1` (force first-run) / `?first=0` (force briefing). The `FirstRun` connect CTA routes to the real calibration flow (`/audience/new` → `@handle` scrape → ~10 named people). Surface-owned, no engine dep. Verified live.
+- **Real stat-row (own-account metrics ingestion) — ✅ MERGED #112.** Killed the fabricated stat-row. New `account_snapshots` rig (migration APPLIED to shared Supabase `qyxvxleheckijapurisj`, own-rows RLS) fed by (a) capture-at-calibration + (b) daily cron `/api/cron/refresh-account-snapshots` (07:00 UTC); pure `buildAccountStats` → **Followers / New followers / Likes / Posts** (real counters only, **no fabricated Views**; billions-safe). `/start` renders the real `StatRow` or an honest "gathering your numbers" empty state. **Verified live end-to-end with real Apify data** — both producers (capture writes `following=null` as designed; cron fills it) + all render states; unit 5/5. Files: `src/lib/account-metrics/*`, `src/app/api/cron/refresh-account-snapshots/`, capture in `src/app/api/audiences/calibrate/route.ts`, wire in `src/app/(app)/start/page.tsx` + `src/components/surfaces/{start-page,sections/stat-row}.tsx`.
 
 ### ⚠️ Graft-gated — do these WHEN The Room flags each atom as landed (don't stub further)
 Swap stub → real, don't rebuild. The Room said it'll flag each atom.
@@ -189,10 +190,16 @@ Investigated before building (handoff §4 "confirm the split first"). Two halves
   `/start` server-fetch → real `StatRow` or an honest "gathering your numbers" empty state. Point-in-time real on
   connect; weekly deltas + sparklines accumulate over days. Migration applied to shared Supabase; unit tests 5/5.
 
-### Buildable now WITHOUT the atoms (remaining next-session candidates)
-- **Loop write-path** — paste-URL → `useOutcomeSignature` (write half is real; the read/accuracy stays engine-gated, §4.4).
-- **Real "Views" tile** — needs per-post view ingestion (scrapeVideos), a follow-up to the account-snapshots rig.
-- **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
+### Buildable now WITHOUT the atoms — next-session candidates (recommended order)
+1. **Real "Views" tile (RECOMMENDED NEXT)** — the account-snapshots rig is fresh; add per-post view ingestion
+   (`scraper.scrapeVideos(handle)` already exists — used by `account-read`) → sum views for posts in the trailing
+   window → a real 5th stat-row tile. Extends the cron + `buildAccountStats`; same honesty rules (real or omit).
+2. **Loop write-path** — paste-URL → `useOutcomeSignature` (write half is real; the read/accuracy stays engine-gated, §4.4).
+3. **Mobile / onboarding polish** — `first-run` is already design-grade; low-lift refinements only.
+
+> The graft tranche (§ above) stays **gated** — The Room's Task B (living-presence rebuild) was **reverted**
+> (`86548ccc`), so the real `AudiencePresence variant='surface'` / `Composer mode='embedded'` / Read atoms are
+> not landed yet. Don't stub further; wait for The Room to flag each atom, then swap stub → real (one pass).
 
 ### Pre-existing infra flag (not a Surfaces code bug)
 `milestone/surfaces` Vercel **preview** deploys fail on a **serverless-function-memory limit** (identical on disjoint PRs → project/plan-level). Fix (bump function memory/plan, or trim the heavy route) **before the milestone → main**.
