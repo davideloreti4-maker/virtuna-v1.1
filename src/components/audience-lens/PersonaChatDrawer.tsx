@@ -5,9 +5,11 @@
  *
  * An in-context drawer over the AudienceLens cloud, scoped to the current Read, ONE persona
  * at a time (switching persona = a new sub-conversation). It:
- *   - POSTs { ask, personaGrounding: { archetype, reactionToConcept, conceptText } } to
- *     `/api/tools/chat` and streams the in-voice answer token-by-token (reuses the shipped
- *     SSE chat route — no new streaming machinery);
+ *   - POSTs { ask, personaGrounding: { archetype, personaName, reactionToConcept, conceptText } }
+ *     to `/api/tools/chat` and streams the in-voice answer token-by-token (reuses the shipped
+ *     SSE chat route — no new streaming machinery). `personaName` (The Room, Task A) makes the
+ *     viewer answer AS the named person (e.g. "Dev"); grounding + rehydration still key on
+ *     `archetype`;
  *   - on open, GETs the prior `persona-chat-turn` turns for THIS archetype from the Read's
  *     thread (sub-thread rehydration — the Q&A re-appears on reopen);
  *   - persists new turns via the route's persona-chat-turn persistence path (Task 2);
@@ -22,7 +24,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 
 export interface PersonaChatTarget {
+  /** Registry archetype slug — grounds the in-voice answer + keys sub-thread rehydration. */
   archetype: string;
+  /** The persona's real display NAME (The Room, Task A) — e.g. "Dev". What the creator sees + asks. */
+  name: string;
+  /** Optional slot descriptor for the header subtitle (e.g. "New viewers"). */
+  segment?: string;
   /** The persona's verdict + verbatim reaction to THIS concept (from the node). */
   reactionToConcept: { verdict: 'stop' | 'scroll'; quote: string };
 }
@@ -59,7 +66,10 @@ export function PersonaChatDrawer({
   const [lastQuestion, setLastQuestion] = useState('');
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // `archetype` keys GET rehydration + grounding; `speaker` is the named-person display string
+  // (The Room, Task A) — falls back to the archetype slug only if a name was somehow omitted.
   const archetype = target?.archetype ?? null;
+  const speaker = target?.name ?? archetype ?? null;
 
   // ── Sub-thread rehydration: load prior turns for THIS archetype on open (D-03) ──
   useEffect(() => {
@@ -124,6 +134,7 @@ export function PersonaChatDrawer({
             platform,
             personaGrounding: {
               archetype: target.archetype,
+              personaName: target.name,
               reactionToConcept: target.reactionToConcept,
               conceptText,
             },
@@ -192,27 +203,27 @@ export function PersonaChatDrawer({
         className="flex max-h-[80vh] flex-col gap-0 rounded-t-[20px] border-t border-[var(--color-border)] bg-background p-0"
       >
         <SheetTitle className="px-5 pt-5 text-[15px]">
-          {archetype ? `Ask ${archetype}` : 'Ask the audience'}
+          {speaker ? `Ask ${speaker}` : 'Ask the audience'}
         </SheetTitle>
 
         {/* Sub-thread transcript */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
           {turns.length === 0 && !isStreaming && !error && (
             <p className="py-6 text-center text-[14px] text-foreground-muted">
-              {archetype ? `Ask ${archetype} why they reacted this way.` : ''}
+              {speaker ? `Ask ${speaker} why they reacted this way.` : ''}
             </p>
           )}
 
           <div className="flex flex-col gap-3">
             {turns.map((t, i) => (
-              <TurnRow key={i} role={t.role} archetype={archetype ?? ''} text={t.text} />
+              <TurnRow key={i} role={t.role} speaker={speaker ?? ''} text={t.text} />
             ))}
             {isStreaming && streaming.length > 0 && (
-              <TurnRow role="assistant" archetype={archetype ?? ''} text={streaming} />
+              <TurnRow role="assistant" speaker={speaker ?? ''} text={streaming} />
             )}
             {isStreaming && streaming.length === 0 && (
               <p className="text-[13px] text-foreground-muted" aria-live="polite">
-                {archetype} is thinking…
+                {speaker} is thinking…
               </p>
             )}
           </div>
@@ -251,7 +262,7 @@ export function PersonaChatDrawer({
               }
             }}
             rows={1}
-            placeholder={archetype ? `Ask ${archetype}…` : 'Ask…'}
+            placeholder={speaker ? `Ask ${speaker}…` : 'Ask…'}
             className="min-h-[42px] flex-1 resize-none rounded-[8px] border border-[var(--color-border)] bg-surface px-3 py-2.5 text-[14px] text-foreground placeholder:text-foreground-muted focus:outline-none"
           />
           <button
@@ -274,11 +285,11 @@ const PERSONA_CHAT_ERROR =
 
 function TurnRow({
   role,
-  archetype,
+  speaker,
   text,
 }: {
   role: 'user' | 'assistant';
-  archetype: string;
+  speaker: string;
   text: string;
 }) {
   const isUser = role === 'user';
@@ -292,9 +303,9 @@ function TurnRow({
             : 'border border-[var(--color-border)] text-foreground')
         }
       >
-        {!isUser && archetype && (
+        {!isUser && speaker && (
           <p className="mb-0.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
-            {archetype}
+            {speaker}
           </p>
         )}
         <p className="whitespace-pre-wrap">{text}</p>

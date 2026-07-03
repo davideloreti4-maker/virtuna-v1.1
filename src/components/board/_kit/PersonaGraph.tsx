@@ -36,6 +36,14 @@ export interface PersonaNode {
    * — existing call sites stay byte-identical.
    */
   archetype?: string;
+  /**
+   * The persona's real DISPLAY NAME (e.g. "Dev") — the named-people reframe (The Room, Task A).
+   * Resolved from the audience's calibrated `label` or the stable archetype→name default
+   * (see `resolvePersonaName`). Additive + default-undefined so `label` (the archetype display
+   * string) stays the byte-identical fallback for every existing consumer (Reading/PersonaGraph);
+   * only the Room surfaces `name` over `label`.
+   */
+  name?: string;
 }
 
 export interface PersonaGraphProps {
