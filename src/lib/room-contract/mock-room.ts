@@ -113,6 +113,20 @@ export interface CalendarDay {
   tone?: Tone; // planned-slot predicted tone (dot); undefined = empty day
 }
 
+/**
+ * A planned post on a calendar day — MOCK for v1 (real `planned_posts` persistence is a
+ * follow-up PR). `tone`/`predicted` are a DIRECTIONAL forecast (how the creator's people
+ * tend to respond to this pillar/angle) — a reserved ambient slot, NEVER a fabricated live
+ * reaction on an unposted draft. `cardId` links to a tested idea's Read when one exists.
+ */
+export interface PlannedPost {
+  cardId?: string; // → a known Read (getReadByCardId) when this began as a tested idea
+  title: string;
+  pillarId: string; // → Pillar.id
+  tone: Tone; // Directional forecast
+  predicted: number; // predicted stop, of 10 (Directional)
+}
+
 export interface StartPageData {
   greeting: { headline: string; line: string };
   rings: RingStat[];
@@ -404,11 +418,43 @@ const MOCK_OUTLIERS: OutlierCard[] = outlierFixtures.map((f) => {
 
 // ── the rest of the surface ──
 
-const CALENDAR_DOTS: Record<number, Tone> = {
-  6: "loved", 8: "loved", 10: "neutral", 13: "bounced", 15: "bounced",
-  17: "loved", 20: "bounced", 22: "loved", 24: "neutral", 27: "bounced",
-  29: "loved", 31: "loved",
+/**
+ * The creator's recurring themes (share is real-shaped; the response `tone` is a Directional
+ * forecast). Shared by the /start pillar rail and the /calendar workspace so both agree.
+ */
+export const MOCK_PILLARS: Pillar[] = [
+  { id: "confessional", name: "Honest confessionals", share: 0.4, count: 5, tone: "loved", cadence: "posted 2 days ago" },
+  { id: "money", name: "Money & cost", share: 0.25, count: 3, tone: "loved", cadence: "posted this week" },
+  { id: "challenge", name: "Challenges", share: 0.2, count: 2, tone: "loved", cadence: "posted last week" },
+  { id: "myth", name: "Myth-busting", share: 0.15, count: 1, tone: "neutral", cadence: "none in 3 weeks", gap: true },
+];
+
+/**
+ * July 2026's planned posts, keyed by day-of-month — the ONE populated month in the mock.
+ * MOCK for v1 (honesty spine: `tone` is a Directional forecast, never a live reaction). The
+ * /start month widget derives its glance-dots from this, so widget + page + today's-plan
+ * agree. No post is tagged to the "myth" pillar on purpose — it stays the flagged gap.
+ */
+export const MOCK_MONTH_PLAN: Record<number, PlannedPost> = {
+  6: { title: "Why I quit the 5am club (honestly)", pillarId: "confessional", tone: "loved", predicted: 8 },
+  8: { cardId: "idea-cost", title: "The real cost of your gym vs what you used it for", pillarId: "money", tone: "loved", predicted: 7 },
+  10: { title: "I tried the viral 75-hard — day 1", pillarId: "challenge", tone: "neutral", predicted: 6 },
+  11: { cardId: "idea-challenge", title: "30-day no-gym challenge — kickoff", pillarId: "challenge", tone: "loved", predicted: 8 },
+  13: { title: "The influencer morning-routine lie", pillarId: "confessional", tone: "bounced", predicted: 5 },
+  15: { title: "How much I actually spent on supplements", pillarId: "money", tone: "bounced", predicted: 5 },
+  17: { title: "30-day challenge — the halfway wall", pillarId: "challenge", tone: "loved", predicted: 8 },
+  20: { title: "Nobody tells you the gym makes you insecure", pillarId: "confessional", tone: "bounced", predicted: 5 },
+  22: { title: "The $0 home gym that actually works", pillarId: "money", tone: "loved", predicted: 7 },
+  24: { title: "30-day challenge — what changed", pillarId: "challenge", tone: "neutral", predicted: 6 },
+  27: { title: "I read every gym contract so you don't have to", pillarId: "confessional", tone: "bounced", predicted: 5 },
+  29: { title: "Cancelling my membership on camera", pillarId: "money", tone: "loved", predicted: 8 },
+  31: { title: "30-day no-gym challenge — the results", pillarId: "challenge", tone: "loved", predicted: 8 },
 };
+
+/** Glance-dots for the /start widget — derived from the month plan (single SSOT). */
+const CALENDAR_DOTS: Record<number, Tone> = Object.fromEntries(
+  Object.entries(MOCK_MONTH_PLAN).map(([day, post]) => [Number(day), post.tone]),
+) as Record<number, Tone>;
 
 /** Every card keyed by id, so a surface can open the Room on a tapped card. */
 export const MOCK_READS: Record<string, Read> = Object.fromEntries(
@@ -444,12 +490,7 @@ export function getMockStartPage(): StartPageData {
     ideas: MOCK_IDEAS,
     outliers: MOCK_OUTLIERS,
     calendar: { month: "July 2026", today: 3, days },
-    pillars: [
-      { id: "confessional", name: "Honest confessionals", share: 0.4, count: 5, tone: "loved", cadence: "posted 2 days ago" },
-      { id: "money", name: "Money & cost", share: 0.25, count: 3, tone: "loved", cadence: "posted this week" },
-      { id: "challenge", name: "Challenges", share: 0.2, count: 2, tone: "loved", cadence: "posted last week" },
-      { id: "myth", name: "Myth-busting", share: 0.15, count: 1, tone: "neutral", cadence: "none in 3 weeks", gap: true },
-    ],
+    pillars: MOCK_PILLARS,
     plan: [
       { day: "Wed 8", title: "money-angle Reel", cardId: "idea-cost", predicted: 7, tone: "loved", pillar: "Money & cost" },
       { day: "Sat 11", title: "30-day challenge kickoff", cardId: "idea-challenge", predicted: 8, tone: "loved", pillar: "Challenges" },
@@ -469,5 +510,29 @@ export function getMockStartPage(): StartPageData {
       up: "6 pts this month",
       line: "Your room’s predictions vs what actually happened. Sharper every post.",
     },
+  };
+}
+
+export interface MockCalendar {
+  year: number;
+  monthIndex: number; // 0-based (June = 5, July = 6)
+  month: string; // "July 2026"
+  today: number; // day-of-month highlighted as today (in the populated month)
+  plan: Record<number, PlannedPost>;
+  pillars: Pillar[];
+}
+
+/**
+ * The /calendar workspace's data — the populated month (July 2026) + the shared pillars.
+ * MOCK for v1; swap for real `planned_posts` + account-derived pillars at the graft.
+ */
+export function getMockCalendar(): MockCalendar {
+  return {
+    year: 2026,
+    monthIndex: 6,
+    month: "July 2026",
+    today: 3,
+    plan: MOCK_MONTH_PLAN,
+    pillars: MOCK_PILLARS,
   };
 }
