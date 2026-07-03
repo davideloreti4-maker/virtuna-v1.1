@@ -6,6 +6,47 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
+## ★★★★ SESSION UPDATE (2026-07-04 later) — PR-4 desktop rail + resolveUserAudience SHIPPED (2 open PRs)
+
+**The three PR-4 scope calls were owner-confirmed (AskUserQuestion):** (1) rail sits **BESIDE**
+the composer (it stays); (2) `variant='thread'|'surface'` seam **stubbed + deferred** (surface =
+the sister surfaces session's pages); (3) `resolveUserAudience` shipped **first as its own PR**.
+Shipped as TWO stacked PRs (owner-review-then-merge, like #119 — NOT self-merged):
+
+**PR-A → PR #121** (`fix/user-default-audience` off `milestone/the-room`, commit `d381cff6`).
+Fixes "a page reload resets the audience to General": `selectedAudienceId` inits null + the only
+persistence was the per-THREAD pin, which the empty /home has no thread to read. Added a USER-level
+last-used audience. 7 files: migration `user_settings.last_audience_id uuid NULL REFERENCES
+audiences(id) ON DELETE SET NULL` (**APPLIED** to Supabase `qyxvxleheckijapurisj`); `resolveUserAudience(supabase,userId)`
+sibling to `resolveThreadAudience` (+6 unit tests); `PUT /api/settings/last-audience` (switcher
+writes on every pick); `GET /api/audiences` returns `lastAudienceId` → composer seeds
+`selectedAudienceId` on mount (guarded: in-flight pick wins; only an id in the loaded list seeds).
+Also `database.types.ts` (hand-added the column — did NOT regen, to avoid pulling the surfaces
+session's tables). **VERIFIED LIVE**: pick Fitness Creators → DB writes UUID → reload restores it
+(was General); pick General → writes null, no latch.
+
+**PR-4 → PR #123** (`feat/the-room-desktop-rail` off `fix/user-default-audience` — STACKED;
+retarget to `milestone/the-room` after #121 merges; commit `15a79124`). At **≥ xl** the audience
+is a **persistent right rail** (spec = `the-room-desktop-v1.html`); ≤ xl keeps the shipped Bloom.
+4 files: `AudiencePresence` gains `layout='dock'|'rail'` (rail = identity+switcher header → an
+always-open `AmbientRoom` on focus, else an idle roster; no peek toggle / no Bloom sheet; the
+portaled switcher menu is extracted + shared, opens UP for dock / DOWN for rail) + `variant='thread'|'surface'`
+stub (default 'thread', surfaced as `data-variant`, only 'thread' built). `composer.tsx` picks ONE
+presentation per viewport via `useMediaQuery('(min-width:1280px)')` — dock peek `xl:hidden`; the rail
+is a **fixed** column **portaled to `<body>`** (so exactly one `AmbientRoom` mounts, never a hidden
+second running timers); presence props DRY'd into one shared object. `home-page-layout.tsx` reserves
+the rail width via `xl:pr-[392px]`. **VERIFIED LIVE** (1440×900 + 390×844): desktop empty→idle roster,
+hooks thread→focused Room (stepper/score/named voices/ask→), switcher opens downward; mobile→Bloom,
+no rail. tsc 21-baseline (0 production); presence **29 (+3 rail)**/home/matte green; console clean.
+
+**Gate note:** 1280px so the app sidebar + a readable work column + the 392px rail all fit; 768–1279
+keeps the Bloom (not a regression). **Deferred (out of scope):** `variant='surface'` impl; the
+rail-inset persona chat (`.chat` in the prototype — currently reuses `PersonaChatDrawer`).
+
+**➡ NEXT:** merge #121 → retarget + merge #123 (owner). Then the mobile Room + desktop rail are both
+feature-complete vs the v6 + desktop prototypes. Open follow-ups: `variant='surface'` (coordinate
+with the surfaces session), rail-inset chat polish.
+
 ## ★★★ SESSION UPDATE (2026-07-04) — PR-3 SHIPPED + MERGED → next = PR-4 (owner scope-confirm)
 
 **PR-3 (Rewrite lever on the Population weak-spot) DONE + MERGED → PR #119** (merge commit
