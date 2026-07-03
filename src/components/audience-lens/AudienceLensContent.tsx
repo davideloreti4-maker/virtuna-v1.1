@@ -98,6 +98,13 @@ export interface AudienceLensContentProps {
    * turns — there is no regenerable concept object; D-05).
    */
   rewrite?: LensRewrite;
+  /**
+   * Archetype→creator-label overrides (The Room, Task A). The host (the presence) builds this
+   * from the active audience's `personas[].label` so a creator-renamed person wins; every other
+   * archetype falls back to its stable default name. Absent/`{}` ⇒ default names for all — still
+   * real, still recurring. Memoize in the host so the node build stays stable across renders.
+   */
+  personaNameOverrides?: Record<string, string>;
 }
 
 const SCALE_OPTIONS: ReadonlyArray<{ value: LensScale; label: string }> = [
@@ -121,6 +128,7 @@ export function AudienceLensContent({
   conceptText,
   platform = 'tiktok',
   rewrite,
+  personaNameOverrides,
 }: AudienceLensContentProps) {
   const [scale, setScale] = useLensScale();
   // The persona currently being asked "why" (null = drawer closed). One at a time (D-03).
@@ -161,7 +169,7 @@ export function AudienceLensContent({
     worstKey: SlotKey | null;
   } => {
     if (useFlat) {
-      const flatNodes = buildFlatPersonaNodes(flatPersonas!);
+      const flatNodes = buildFlatPersonaNodes(flatPersonas!, personaNameOverrides);
       const { groups: g, worstKey: w } = clusterFlatNodes(flatNodes);
       // Paint the worst cluster's nodes coral in the cloud (mirror the table — the one
       // coral cluster). WR-02: membership is decided by SLOT IDENTITY — a node is in the
@@ -174,8 +182,8 @@ export function AudienceLensContent({
     }
     const g = buildSegmentGroups(heatmap, simResults);
     const w = worstBadGroupKey(g);
-    return { nodes: buildPersonaNodes(heatmap, simResults, w), groups: g, worstKey: w };
-  }, [useFlat, flatPersonas, heatmap, simResults]);
+    return { nodes: buildPersonaNodes(heatmap, simResults, w, personaNameOverrides), groups: g, worstKey: w };
+  }, [useFlat, flatPersonas, heatmap, simResults, personaNameOverrides]);
 
   const hasReaction = nodes.length > 0;
 
@@ -236,6 +244,8 @@ export function AudienceLensContent({
                         onClick={() =>
                           setChatTarget({
                             archetype: n.archetype!,
+                            name: n.name ?? n.label,
+                            segment: n.segment,
                             reactionToConcept: {
                               verdict: n.watchThrough >= 0.5 ? 'stop' : 'scroll',
                               quote: n.quote ?? '',
@@ -244,7 +254,7 @@ export function AudienceLensContent({
                         }
                         className="flex w-full items-center justify-between rounded-[8px] px-2 py-1.5 text-left text-[13px] text-foreground transition-colors hover:bg-[var(--color-hover)]"
                       >
-                        <span>{n.label}</span>
+                        <span>{n.name ?? n.label}</span>
                         <span className="text-foreground-muted">Ask them why →</span>
                       </button>
                     </li>

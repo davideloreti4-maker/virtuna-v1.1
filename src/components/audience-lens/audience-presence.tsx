@@ -35,6 +35,7 @@ import { groupAudiences } from '@/components/audience/audience-display';
 // this `"use client"` surface). resolveTier reads only `audience.mode`.
 import { resolveTier } from '@/lib/audience/resolve-tier';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+import { personaNameMap } from '@/lib/audience/persona-names';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AudienceLensContent } from './AudienceLensContent';
 import type { AmbientFocus } from './ambient-presence-types';
@@ -124,6 +125,10 @@ export function AudiencePresence({
   const [menuPos, setMenuPos] = useState<{ left: number; bottom: number; width: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
+  // Named-people reframe (The Room, Task A): archetype→creator-label overrides so a renamed
+  // person wins in the Lens + persona chat; every other archetype falls back to its stable
+  // default name. Memoized off `personas` so the Lens node build stays stable.
+  const personaNameOverrides = useMemo(() => personaNameMap(personas), [personas]);
   const isGeneral = audience == null || audience.is_general || personas.length === 0;
   const audienceName = isGeneral ? 'General' : audience?.name ?? 'General';
   // A General person-SIM is exactly ONE persona (mode==='general' && personas.length===1):
@@ -287,6 +292,7 @@ export function AudiencePresence({
                 flatPersonas={flatPersonas}
                 conceptText={focus.conceptText}
                 reducedMotion={reducedMotion}
+                personaNameOverrides={personaNameOverrides}
               />
             ) : (
               <div className="flex flex-col items-center gap-3 px-5 pb-4 pt-6 text-center">

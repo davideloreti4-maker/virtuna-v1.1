@@ -17,6 +17,7 @@ import type { PersonaWeights } from '@/lib/engine/persona-weights';
 import type { PersonaNode } from '../_kit';
 import { resolveKeyframeUrl, type KeyframeSegmentLike } from '../_kit';
 import { ARCHETYPE_DISPLAY_NAME } from './audience-constants';
+import { resolvePersonaName } from '@/lib/audience/persona-names';
 
 export type SlotKey = 'fyp' | 'niche' | 'loyalist' | 'cross_niche';
 
@@ -438,6 +439,13 @@ export function buildPersonaNodes(
   heatmap: HeatmapPayload | null,
   simResults: PersonaSimulationResult[] | undefined,
   badKey: SlotKey | null,
+  /**
+   * Archetype→creator-label overrides (The Room, Task A). When an archetype is present here its
+   * creator-chosen name wins; otherwise the stable default name is used. Absent → default names
+   * for every known archetype (still real, still recurring). Additive + default `{}` so the three
+   * existing (heatmap, sim, badKey) call sites stay byte-identical apart from the new `.name`.
+   */
+  nameOverrides: Record<string, string> = {},
 ): PersonaNode[] {
   const personas = heatmap?.personas ?? [];
   if (personas.length === 0) return [];
@@ -478,6 +486,10 @@ export function buildPersonaNodes(
       // The registry archetype enum (when the heatmap persona carries one) — powers the
       // "Ask them why →" persona chat grounding (P9 / D-03). Undefined when unknown.
       archetype: p.archetype ?? undefined,
+      // The persona's real NAME (The Room, Task A) — creator label wins, else the stable
+      // archetype default; null (unknown archetype) leaves it undefined so `.label` stays the
+      // fallback. Presentation-only; never feeds the engine.
+      name: resolvePersonaName(p.archetype, nameOverrides[p.archetype ?? '']) ?? undefined,
     };
   });
 }
@@ -509,7 +521,11 @@ export interface FlatPersonaReaction {
  * - tone is left 'default'; the worst-cluster coral is applied by the flat clusterer,
  *   which mirrors worstBadGroupKey's <40%-stop rule.
  */
-export function buildFlatPersonaNodes(reactions: FlatPersonaReaction[]): PersonaNode[] {
+export function buildFlatPersonaNodes(
+  reactions: FlatPersonaReaction[],
+  /** Archetype→creator-label overrides (The Room, Task A). See buildPersonaNodes. Default `{}`. */
+  nameOverrides: Record<string, string> = {},
+): PersonaNode[] {
   return reactions.map((r, i) => {
     const slot = archetypeToSlot(r.archetype);
     return {
@@ -521,6 +537,9 @@ export function buildFlatPersonaNodes(reactions: FlatPersonaReaction[]): Persona
       tone: 'default' as const,
       quote: r.quote,
       archetype: r.archetype,
+      // The persona's real NAME (The Room, Task A) — creator label wins, else the stable
+      // archetype default; undefined leaves `.label` as the fallback.
+      name: resolvePersonaName(r.archetype, nameOverrides[r.archetype]) ?? undefined,
     };
   });
 }
