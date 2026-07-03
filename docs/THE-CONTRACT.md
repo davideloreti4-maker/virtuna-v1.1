@@ -5,7 +5,7 @@
 > and **the Surfaces** (`~/virtuna-surfaces`, `milestone/surfaces`) — everything besides the thread.
 > **Both sessions build to these four seams.** The Room owns the real implementations; the Surfaces
 > session builds against the interface and **stubs it with mock data** until the atom lands, then grafts.
-> Status: **proposed — 3 open items in §6 (2 cross-session reconciliations + the card-number call), pending The Room sign-off.** Don't treat as final until those close.
+> Status: **✅ SIGNED OFF by The Room 2026-07-03g** (their Task A shipped, PR #107 merged into `milestone/the-room`). **All 4 seams confirmed as specced. §6.1 + §6.2 RESOLVED; §6.3 confirmed (one blended number).** One design delta absorbed: `variant='surface'` presence is **read-only** (no ask input unless the surface hosts a composer) — see Seam 3. The Room owns the real atoms and will flag when each lands so the Surfaces swap stub → real.
 
 ---
 
@@ -90,6 +90,13 @@ interface ActiveAudience {
 Reuse The Room's switcher pattern: **portal to `<body>` + `position:fixed`** so it escapes `overflow-hidden`
 (their `audience-presence.tsx` already does this — mirror it).
 
+> **★ SIGN-OFF DELTA (2026-07-03g).** In the thread, the presence panel routes typing into audience-chat
+> via the composer field. A non-thread surface has no such field, so **`variant='surface'` = a PEEK band +
+> a READ-ONLY Read/lever panel — NO ask input.** If a surface wants asks, it must **host a composer (Seam 4).**
+> The start page does (the embedded composer), so asks work there; feed / calendar / library mount the dock
+> *read-only* unless they also mount a composer. Our `SurfaceDock` stub is already read-only (presence +
+> switcher only) — consistent. Portal-to-`<body>` + `position:fixed` unchanged.
+
 ### Seam 4 — The embeddable composer + handoff
 The Room's clean composer `✦ Make ▾ · input · ↑`, embeddable on the start page.
 ```ts
@@ -102,6 +109,11 @@ The Room's clean composer `✦ Make ▾ · input · ↑`, embeddable on the star
 // Handoff: on submit (or tapping a briefing item), 'embedded' creates a thread with the audience
 // context + seed, then routes to /thread/:id. This is the ONE contract point between the two halves.
 ```
+> **✅ CONFIRMED (2026-07-03g)** — The Room is exposing `mode='thread'|'embedded'` + `onLaunch(input, verb, audience)`;
+> `embedded` reuses the existing create→navigate loop (thread w/ audience+seed → `/thread/:id`). One handoff point.
+> **★ Stub drift to fix at graft:** our `EmbeddedComposer` stub's `onLaunch` is `(input, verb)` and it takes no
+> `audience` prop; the real signature is `(input, verb, audience)` with `audience` a prop. Mechanical to align when
+> we swap stub → real (we already hold `activeAudience` in scope) — tracked, no functional gap in the shell.
 
 ---
 
@@ -125,16 +137,19 @@ The Surfaces session **never rebuilds** the atom — it imports the shared compo
 
 ---
 
-## 6. ★ OPEN reconciliations (resolve with The Room before the graft)
+## 6. Reconciliations — ✅ ALL RESOLVED (The Room sign-off 2026-07-03g, PR #107)
 
-1. **The Outcome loop overlaps.** The Room's Phase 4 (account connect → predicted-vs-actual → model sharpens) is the same
-   as the Surfaces "post-publish loop." **Proposed split:** the *surface* (account connect, paste-URL, receipts, accuracy-rising)
-   = Surfaces; the *reconcile → recalibrate the twin* = The Room / engine. The Room marked it build-last, so timing is fine — the ask is only: don't design it twice.
-2. **Audience context outside a thread.** The audience is per-thread pinned; non-thread surfaces have **no thread** → the presence
-   has nothing to read. **Proposed:** add a **user-level active/default audience** (last-used) that `variant='surface'` reads; entering
-   a thread pins from it. Small but load-bearing — needs The Room's OK since it touches audience resolution.
-3. **The card number — one or two.** ✅ **RESOLVED 2026-07-03 — ONE blended `stop`** (owner call: cleaner/punchier on
-   the start page). Rejected the craft+audience-fit two-signal split despite its honesty edge (craft is audience-agnostic in
-   the engine today), preferring a simpler card. `CardReaction.stop` stays a single number; the two-signal breakdown lives
-   *inside* the Room drill, not on the card face. **Relay to The Room** — they own the shared card component, so both halves
-   must render one number. (Prototypes carry a toggle for the record; default = one.)
+1. **The Outcome loop overlap — ✅ RESOLVED (AGREE).** Split confirmed: the *surface* (account connect, paste-URL, receipts,
+   accuracy-rising) = **Surfaces**; the *reconcile → recalibrate-the-twin* = **The Room / engine.** **Condition (The Room's):
+   the predicted-vs-actual DELTA + the write-back to the calibration asset are ENGINE-SIDE** (honest, consistent with the sim).
+   Build-last is fine. **➜ Consequence for our loop:** we do NOT invent the receipt scalar / accuracy metric — the engine
+   computes the predicted-vs-actual delta and we *render* what it exposes. So the loop's read side is a **future engine read-shape
+   we consume**, not a metric we define. Still deferred to milestone end (`START-PAGE-BUILD-HANDOFF.md` §4.4): at the end, EITHER
+   wire it (once the engine exposes the delta/accuracy read-shape + there's seeded data to verify) OR remove the section for launch.
+2. **Audience context outside a thread — ✅ RESOLVED (The Room's to build).** They add a **user-level last-used audience**: the
+   switcher writes it; `variant='surface'` + new-thread creation seed from it; `thread.active_audience_id` stays SSOT once inside a
+   thread (`resolveThreadAudience` unchanged; they add a **`resolveUserAudience` sibling**). **➜ For us:** the `SurfaceDock` reads
+   this user-level audience at graft (swap our `MOCK_AUDIENCES`/local state → `resolveUserAudience`). Unblocks the app-wide dock.
+3. **The card number — ✅ CONFIRMED ONE (both halves).** `CardReaction.stop` = a single blended number; **The Room owns the shared
+   card and renders one.** A two-signal face would imply a per-audience craft/fit split the engine does not compute today (craft is
+   audience-agnostic). The breakdown lives *inside* the Room drill, never on the card face. (Prototypes carry a toggle for the record; default = one.)

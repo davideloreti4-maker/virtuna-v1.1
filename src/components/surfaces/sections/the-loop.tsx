@@ -7,12 +7,14 @@
  * ⏸ DEFERRED TO MILESTONE END (owner call 2026-07-03g, handoff §4.4). This renders MOCK
  * receipts/accuracy and stays that way until the end-of-milestone WIRE-OR-REMOVE gate.
  * Reason it can't just be wired: the write path is real (`use-outcome-signature` /
- * `/api/outcomes/signature`), but the numbers this section shows are not derivable from
- * stored data — the receipt scalar ("we said 7") is never persisted (predicted/realized
- * are 6-dim normalized SHARE vectors), and the accuracy % is undefined anywhere. Wiring
- * real receipts = inventing a metric = the still-OPEN contract §6.1 ("don't design it
- * twice"). At milestone end: EITHER wire it (owner metric call + §6.1 ownership + seeded
- * data) OR remove this section for launch. The reconcile → recalibrate half is The Room's.
+ * `/api/outcomes/signature`), but the numbers this section shows aren't ours to invent.
+ * §6.1 is RESOLVED (The Room sign-off): the predicted-vs-actual DELTA + write-back are
+ * ENGINE-SIDE, so the receipt scalar + accuracy come from a future engine read-shape we
+ * consume — not yet exposed. (We couldn't derive them locally anyway: predicted/realized
+ * are 6-dim normalized SHARE vectors; the stop-of-10 lives on CardReaction at sim-gen, not
+ * here; the accuracy % is defined nowhere.) At milestone end: EITHER wire it (engine
+ * exposes the delta/accuracy read-shape + seeded data to verify) OR remove this section
+ * for launch. The reconcile → recalibrate half is The Room's.
  */
 
 import type { Accuracy, Receipt } from "@/lib/room-contract/mock-room";
