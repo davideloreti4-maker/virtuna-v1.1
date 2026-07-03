@@ -2,7 +2,7 @@
   "functions": {
     "src/app/api/analyze/route.ts": {
       "maxDuration": 300,
-      "memory": 3008
+      "memory": 2048
     }
   },
   "crons": [
@@ -21,6 +21,10 @@
     {
       "path": "/api/cron/refresh-competitors",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/refresh-account-snapshots",
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/validate-rules",

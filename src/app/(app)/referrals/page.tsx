@@ -7,6 +7,7 @@ import { ReferralStatsCard } from "@/components/referral/ReferralStatsCard";
 import { FeatureGate } from "@/components/ui/feature-gate";
 import { getUserTier } from "@/lib/whop/subscription";
 import { ReferralsUpgradeFallback } from "@/components/referral/ReferralsUpgradeFallback";
+import { SurfaceHeader } from "@/components/surfaces/surface-header";
 
 export const metadata: Metadata = {
   title: "Referrals | Numen",
@@ -76,15 +77,11 @@ export default async function ReferralsPage() {
   return (
     <FeatureGate requiredTier="pro" userTier={tier} fallback={<ReferralsUpgradeFallback />}>
       <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
-        <div className="mb-2">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Referral Program
-          </h1>
-          <p className="text-foreground-secondary">
-            Invite friends to Numen and earn $10 for every successful
-            conversion.
-          </p>
-        </div>
+        <SurfaceHeader
+          className="mb-2"
+          title="Referral Program"
+          subtitle="Invite friends to Numen and earn $10 for every successful conversion."
+        />
 
         <ReferralLinkCard referralLink={referralLink} />
         <ReferralStatsCard

@@ -28,6 +28,10 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
+  House,
+  CalendarDots,
+  ChartLineUp,
+  Storefront,
   UsersThree,
   Books,
   FilmStrip,
@@ -368,6 +372,10 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
+  const isOnStart = pathname.startsWith("/start");
+  const isOnCalendar = pathname.startsWith("/calendar");
+  const isOnAnalytics = pathname.startsWith("/analytics");
+  const isOnGrow = pathname.startsWith("/grow");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
@@ -468,6 +476,43 @@ export function Sidebar() {
           {/* ── Audience + Library ── */}
           <div className="pt-3">
             <div className="flex flex-col gap-0.5">
+              {/* Start — the flagship briefing landing (Surfaces milestone): your day,
+                  pre-tested on your people. The front door to the destinations; /home
+                  stays the thread/composer surface, so this never steals the thread flow. */}
+              <NavItem
+                icon={House}
+                label="Start"
+                isActive={isOnStart}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/start")}
+              />
+              {/* Calendar — the standalone month planner (Surfaces milestone): the workspace
+                  behind /start's glanceable month widget. Matte active state like Library. */}
+              <NavItem
+                icon={CalendarDots}
+                label="Calendar"
+                isActive={isOnCalendar}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/calendar")}
+              />
+              {/* Analytics — account metrics over 7/30/90d + recommendations (Surfaces
+                  milestone). Real numbers from account_snapshots; matte active state. */}
+              <NavItem
+                icon={ChartLineUp}
+                label="Analytics"
+                isActive={isOnAnalytics}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/analytics")}
+              />
+              {/* Grow — the "Grow your business" strategy dashboard (Surfaces milestone):
+                  monetization readiness + pre-tested offers + funnel. Matte active state. */}
+              <NavItem
+                icon={Storefront}
+                label="Grow"
+                isActive={isOnGrow}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/grow")}
+              />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem
                 icon={UsersThree}

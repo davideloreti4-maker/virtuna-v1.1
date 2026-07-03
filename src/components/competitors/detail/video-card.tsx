@@ -1,4 +1,7 @@
-import { Eye, Heart, ChatCircle, ShareNetwork } from "@phosphor-icons/react";
+// Server component: import icons from the SSR-safe entry so Phosphor's
+// createContext-based IconContext is never evaluated in the RSC graph
+// (importing from the main entry breaks `next build` page-data collection).
+import { Eye, Heart, ChatCircle, ShareNetwork } from "@phosphor-icons/react/dist/ssr";
 import { formatCount } from "@/lib/competitors-utils";
 
 export interface VideoCardData {
