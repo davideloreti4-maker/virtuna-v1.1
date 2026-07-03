@@ -6,10 +6,12 @@
 > re-derivation — swapping the prototype's green for cream — was caught in review and reverted;
 > **when in doubt, match the prototype exactly**).
 
-## ★★★ SESSION UPDATE (2026-07-04) — PR-3 SHIPPED → next = PR-4 (owner scope-confirm)
+## ★★★ SESSION UPDATE (2026-07-04) — PR-3 SHIPPED + MERGED → next = PR-4 (owner scope-confirm)
 
-**PR-3 (Rewrite lever on the Population weak-spot) DONE → PR #119** (`feat/the-room-rewrite`
-off `milestone/the-room`, commit `0c14ed83`). The v6 prototype's coral CTA "Rewrite to win back
+**PR-3 (Rewrite lever on the Population weak-spot) DONE + MERGED → PR #119** (merge commit
+`15f2379f`; was `feat/the-room-rewrite` off `milestone/the-room`, feat `0c14ed83`). The worktree is
+back ON `milestone/the-room` (tip `15f2379f`, clean + in-sync with origin; feat branch deleted;
+tsc 0 non-test + presence 26/26 green post-merge). The v6 prototype's coral CTA "Rewrite to win back
 the N% who bounced →" is wired into the Room's Population footer. On tap the composer re-runs the
 ORIGINATING skill (hooks/idea/script) steered by the lead bouncer's real quote (the lever) through
 its OWN stream hook — the honest re-POST-to-runner: the SSE is read to completion (a fire-and-forget
@@ -35,8 +37,12 @@ Delta decoupling (≥90% winner → CTA gone, delta stays) is deterministic-unit
 **➡ NEXT: PR-4 (desktop persistent rail + `variant='thread'|'surface'` + user-default audience).**
 It's an ARCHITECTURE change — **CONFIRM SCOPE WITH THE OWNER before building** (§3 PR-4 + the
 `the-room-desktop-v1.html` spec). Note a page reload currently resets the audience to General —
-that IS PR-4's `resolveUserAudience` (out of PR-3 scope). PR-3 branch is off `milestone/the-room`;
-merge #119 first, then branch PR-4 off `milestone/the-room`.
+that IS PR-4's `resolveUserAudience` (out of PR-3 scope). **PR-3 is already MERGED into
+`milestone/the-room` (tip `15f2379f`) — branch PR-4 off `milestone/the-room` directly.** Owner must
+first resolve THREE scope decisions before code (see §3 PR-4): (1) does the desktop rail sit BESIDE
+the thread+composer (`1fr var(--rail)`) or replace the bottom-composer flow? (2) build `surface` mode
+now or stub the `variant='thread'|'surface'` seam + defer? (3) is `resolveUserAudience` (last-used,
+survives reload) in PR-4 or its own small PR first?
 
 ## ★★ SESSION UPDATE (2026-07-03 later) — PR-2 SHIPPED → next = PR-3
 
