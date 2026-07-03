@@ -31,6 +31,7 @@ import {
   House,
   CalendarDots,
   ChartLineUp,
+  Storefront,
   UsersThree,
   Books,
   FilmStrip,
@@ -374,6 +375,7 @@ export function Sidebar() {
   const isOnStart = pathname.startsWith("/start");
   const isOnCalendar = pathname.startsWith("/calendar");
   const isOnAnalytics = pathname.startsWith("/analytics");
+  const isOnGrow = pathname.startsWith("/grow");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
@@ -501,6 +503,15 @@ export function Sidebar() {
                 isActive={isOnAnalytics}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/analytics")}
+              />
+              {/* Grow — the "Grow your business" strategy dashboard (Surfaces milestone):
+                  monetization readiness + pre-tested offers + funnel. Matte active state. */}
+              <NavItem
+                icon={Storefront}
+                label="Grow"
+                isActive={isOnGrow}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/grow")}
               />
               {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
               <NavItem
