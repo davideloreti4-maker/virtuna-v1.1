@@ -1,0 +1,186 @@
+"use client";
+
+/**
+ * AnalyticsView — the /analytics page: account metrics over 7 / 30 / 90 days + a
+ * "what to do next" recommendations block (Stanley analytics parity, on our wedge).
+ *
+ * Honesty spine: the metrics are REAL, derived from the connected account's
+ * account_snapshots time-series (`buildRangeMetrics`) — deltas are honestly "—" until
+ * the daily history is deep enough, never a fabricated trend; no snapshots → an honest
+ * connect state. Recommendations are TAGGED by grounding ("From your numbers" vs
+ * "Directional"); each carries a Seam-4 action.
+ */
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/components/ui/toast";
+import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
+import { buildRangeMetrics } from "@/lib/account-metrics/account-metrics";
+import type { Pillar } from "@/lib/room-contract/mock-room";
+import { buildRecommendations } from "@/lib/analytics/recommendations";
+import { SurfaceIcon } from "@/components/surfaces/icons";
+import { cn } from "@/lib/utils";
+
+const RANGES = [
+  { days: 7, label: "7 days" },
+  { days: 30, label: "30 days" },
+  { days: 90, label: "90 days" },
+] as const;
+
+function Sparkline({ points, up }: { points: string; up: boolean }) {
+  const arr = points.split(" ").map((p) => p.split(",").map(Number));
+  const first = arr[0] ?? [0, 18];
+  const last = arr[arr.length - 1] ?? [72, 18];
+  const color = up ? "#8ea68a" : "var(--color-foreground-muted)";
+  const area = `M${first[0]},18 L${arr.map((p) => `${p[0]},${p[1]}`).join(" L")} L${last[0]},18 Z`;
+  return (
+    <svg viewBox="0 0 72 18" preserveAspectRatio="none" className="mt-2.5 h-[22px] w-full">
+      <path d={area} fill={color} opacity={0.09} />
+      <polyline points={points} fill="none" stroke={color} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" opacity={0.9} vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+export function AnalyticsView({
+  snapshots,
+  pillars,
+}: {
+  snapshots: AccountSnapshot[];
+  pillars: Pillar[];
+}) {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [range, setRange] = useState<number>(7);
+
+  const metrics = useMemo(() => buildRangeMetrics(snapshots, range), [snapshots, range]);
+  const recommendations = useMemo(() => buildRecommendations(pillars, metrics), [pillars, metrics]);
+  const rangeLabel = RANGES.find((r) => r.days === range)!.label;
+  const points = metrics?.[0]?.points ?? 0;
+
+  const onRec = (rec: (typeof recommendations)[number]) => {
+    if (rec.action === "plan") {
+      router.push("/calendar");
+      return;
+    }
+    toast({
+      variant: "info",
+      title: "Make · launching a thread",
+      description: `${rec.seed ? `“${rec.seed}”` : rec.title} — with your people. (Seam 4: create thread → /thread/:id.)`,
+    });
+  };
+
+  return (
+    <div
+      className="relative min-h-full text-foreground"
+      style={{ background: "radial-gradient(120% 80% at 50% -10%, #2c2a27, var(--color-background) 60%)" }}
+    >
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
+        <header className="mb-4">
+          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Analytics</h1>
+          <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">your account, over time — real numbers</p>
+
+          <div className="mt-3 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Time range">
+            {RANGES.map((r) => (
+              <button
+                key={r.days}
+                type="button"
+                role="tab"
+                aria-selected={range === r.days}
+                onClick={() => setRange(r.days)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  range === r.days
+                    ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                    : "text-foreground-secondary hover:text-foreground",
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {metrics ? (
+          <>
+            <div className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
+              {metrics.map((m) => (
+                <div key={m.key} className="flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11.5px] font-medium text-foreground-secondary">{m.label}</span>
+                    <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-foreground-muted">{rangeLabel}</span>
+                  </div>
+                  <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
+                    {m.value}
+                  </div>
+                  <Sparkline points={m.spark} up={m.up} />
+                  <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "#8ea68a" : "var(--color-foreground-muted)" }}>
+                    {m.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
+                    {m.deltaPct ?? m.delta}
+                    {m.deltaPct && m.delta !== "—" && <span className="text-foreground-muted">· {m.delta}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 px-1 font-mono text-[9.5px] leading-[1.5] text-foreground-muted">
+              {points >= 2
+                ? `Real from your connected account, ${points} day${points === 1 ? "" : "s"} of history this range. Deeper trends sharpen as the daily capture builds.`
+                : "Real totals from your connected account — not enough daily history yet for a trend, so deltas read “—” until it builds."}
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-6 py-10 text-center">
+            <span className="text-foreground-muted" aria-hidden>
+              <SurfaceIcon name="up" size={20} strokeWidth={1.6} />
+            </span>
+            <div>
+              <p className="m-0 text-[13px] font-medium text-foreground">No account numbers yet</p>
+              <p className="mx-auto mt-1 max-w-[340px] text-[11.5px] leading-[1.5] text-foreground-muted">
+                Connect your account and your followers, likes, posts, and views land here — real, tracked daily. We never show made-up analytics.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/audience/new")}
+              className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+            >
+              Connect your account →
+            </button>
+          </div>
+        )}
+
+        {recommendations.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">What to do next</h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {recommendations.map((rec) => (
+                <div key={rec.id} className="flex flex-col rounded-xl border border-border bg-surface-elevated p-3.5">
+                  <div className="mb-1.5 flex items-start justify-between gap-2">
+                    <h3 className="m-0 text-[13px] font-semibold leading-[1.3] text-foreground">{rec.title}</h3>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-[4px] border px-1.5 py-px font-mono text-[8.5px] uppercase tracking-[0.05em]",
+                        rec.tag === "From your numbers"
+                          ? "border-border-hover text-foreground-secondary"
+                          : "border-border text-foreground-muted",
+                      )}
+                    >
+                      {rec.tag === "From your numbers" ? "your numbers" : "Directional"}
+                    </span>
+                  </div>
+                  <p className="flex-1 text-[11.5px] leading-[1.5] text-foreground-secondary">{rec.rationale}</p>
+                  <button
+                    type="button"
+                    onClick={() => onRec(rec)}
+                    className="mt-3 w-full rounded-[10px] border border-border px-3 py-2 text-[12px] font-medium text-foreground transition-colors hover:border-border-hover hover:bg-[color:var(--color-surface-thread)]"
+                  >
+                    {rec.actionLabel}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+    </div>
+  );
+}

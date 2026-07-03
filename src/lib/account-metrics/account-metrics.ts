@@ -203,6 +203,93 @@ function optionalTile(
   return { label, value: formatCount(latestVal), delta: formatDelta(change), up: change > 0, spark: points };
 }
 
+// ── analytics ranges (7 / 30 / 90d) ─────────────────────────────────────────────
+
+/**
+ * One metric over a selected range, for the /analytics page. `delta`/`deltaPct` are
+ * the change across the range vs the oldest snapshot inside it; both are honestly "—"/
+ * null when there aren't ≥2 snapshots in the window (a real total with no invented
+ * trend). `points` = how many real snapshots the window covers (drives the honesty note).
+ */
+export interface RangeMetric {
+  key: string;
+  label: string;
+  value: string; // formatted latest total
+  delta: string; // "+12K" | "flat" | "—"
+  deltaPct: string | null; // "+3.2%" | null when no baseline
+  up: boolean;
+  spark: string; // sparkline over the window
+  points: number; // real snapshots inside the window
+}
+
+/**
+ * Build the analytics metrics (Followers / Likes / Posts, + optional Views) over the
+ * trailing `windowDays`. Pure over the snapshot series. Returns null when there are no
+ * snapshots — the page renders an honest empty/connect state rather than fabricating.
+ */
+export function buildRangeMetrics(
+  snapshots: AccountSnapshot[],
+  windowDays: number,
+): RangeMetric[] | null {
+  if (snapshots.length === 0) return null;
+
+  const series = [...snapshots].sort((a, b) =>
+    a.snapshot_date < b.snapshot_date ? -1 : a.snapshot_date > b.snapshot_date ? 1 : 0,
+  );
+  const latest = series[series.length - 1]!;
+  const cutoff = daysAgo(latest.snapshot_date, windowDays);
+  const windowed = series.filter((s) => s.snapshot_date >= cutoff);
+  const baseline = windowed.length >= 2 ? windowed[0]! : null;
+
+  const pct = (change: number, base: number): string | null =>
+    base === 0 ? null : `${change >= 0 ? "+" : "-"}${Math.abs(Math.round((change / base) * 1000) / 10)}%`;
+
+  const metric = (
+    key: string,
+    label: string,
+    pick: (s: AccountSnapshot) => number,
+  ): RangeMetric => {
+    const value = pick(latest);
+    const spark = sparkPoints(windowed.map(pick));
+    if (!baseline) {
+      return { key, label, value: formatCount(value), delta: "—", deltaPct: null, up: false, spark, points: windowed.length };
+    }
+    const change = value - pick(baseline);
+    return {
+      key,
+      label,
+      value: formatCount(value),
+      delta: formatDelta(change),
+      deltaPct: pct(change, pick(baseline)),
+      up: change > 0,
+      spark,
+      points: windowed.length,
+    };
+  };
+
+  const metrics: RangeMetric[] = [
+    metric("followers", "Followers", (s) => s.follower_count),
+    metric("likes", "Likes", (s) => s.heart_count),
+    metric("posts", "Posts", (s) => s.video_count),
+  ];
+
+  // Views (optional) — same window, only over snapshots that carry recent_views.
+  const present = windowed.filter((s) => s.recent_views != null);
+  if (present.length > 0) {
+    const vLatest = present[present.length - 1]!.recent_views as number;
+    const vBaseline = present.length >= 2 ? (present[0]!.recent_views as number) : null;
+    const vspark = sparkPoints(present.map((s) => s.recent_views as number));
+    if (vBaseline == null) {
+      metrics.push({ key: "views", label: "Views", value: formatCount(vLatest), delta: "—", deltaPct: null, up: false, spark: vspark, points: present.length });
+    } else {
+      const change = vLatest - vBaseline;
+      metrics.push({ key: "views", label: "Views", value: formatCount(vLatest), delta: formatDelta(change), deltaPct: pct(change, vBaseline), up: change > 0, spark: vspark, points: present.length });
+    }
+  }
+
+  return metrics;
+}
+
 /** "YYYY-MM-DD" minus n days, as "YYYY-MM-DD" (UTC, string-comparable). */
 function daysAgo(date: string, n: number): string {
   const d = new Date(`${date}T00:00:00Z`);
