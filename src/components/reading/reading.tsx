@@ -207,7 +207,8 @@ export function Reading() {
         <ScoreDriversSection data={data} dims={dims} dropT={dropT} id={id} />
       </div>
 
-      {/* Audience & context — Niche rank distribution (audience deep-dive deferred). */}
+      {/* The audience — the v6 Room, inline (named voices + ask → + Population·1,000 +
+          weak-spot + the video-only timeline replay), with Niche rank kept below it. */}
       <div {...revealAt(120)}>
         <AudienceContextSection data={data} dims={dims} id={id} nicheRank={nicheRank} />
       </div>

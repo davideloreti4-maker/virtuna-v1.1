@@ -305,44 +305,43 @@ describe('drill-down: shareability panel (READ-09)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// audience panel — REVIVED into the accordion (S3): the "Audience" row drills the
-// persona deep-dive (demoted graph + ranked "who watches / who drops first" list).
-// The hero folds the breakout OVERVIEW; this row is the per-segment detail.
+// audience — the v6 Room, INLINE (Phase 3 · Option A): the persona deep-dive that
+// used to drill the old AudienceLens is now the Room, rendered in place (named voices
+// + The people ⇄ Population·1,000 + the video-only timeline replay). The hero still
+// folds the breakout OVERVIEW; the Room is the per-persona detail. `renderPanel('personas')`
+// stays intact (the old list panel is still directly renderable), just no longer the app path.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('drill-down: audience panel (READ-09)', () => {
-  it('opens the persona deep-dive inline when the Audience row is tapped', async () => {
-    const user = userEvent.setup();
+describe('audience — the inline Room (READ-09, Phase 3)', () => {
+  it('renders the Room inline (no drill) with the People/Population toggle + the timeline replay', () => {
     render(<Reading />);
-
-    expect(screen.queryByTestId('panel-personas-list')).not.toBeInTheDocument();
-    await user.click(screen.getByTestId('row-trigger-personas'));
-    // List-led: the ranked persona list IS the content; the graph is a demoted header.
-    expect(await screen.findByTestId('panel-personas-list')).toBeInTheDocument();
+    // Inline — present without any accordion tap.
+    expect(screen.getByTestId('reading-room')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
+    // The video carries a real per-persona attentions[] timeline → the TIMELINE replay
+    // (constellation lights up as the video plays), not the flat cascade.
+    expect(screen.getByRole('button', { name: /replay reactions/i })).toBeInTheDocument();
     expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
   });
 
-  it('renders on real data without throwing — the demoted graph + ranked list mount', () => {
+  it('renderPanel(personas) still mounts the legacy list panel directly (kept, not the app path)', () => {
     render(<>{renderPanel('personas', makeReadingResult(), undefined, 'sim-1')}</>);
     expect(screen.getByTestId('panel-personas-list')).toBeInTheDocument();
     expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
   });
 
-  it('empty personas → the Audience row is present but DISABLED (no empty drill, no fabricated shell)', async () => {
-    // personas:[] → buildAudienceNodes returns [] → the breakout overview omits
-    // itself AND the deep-dive row is disabled (honest: never an empty drill).
+  it('empty personas → the honest empty note, no Room, no fabricated shell', () => {
+    // personas:[] → buildAudienceNodes returns [] → the breakout overview omits itself
+    // AND the Room is not rendered (honest: never an empty Room).
     mockState = {
       id: 'sim-1',
       data: makeEmptyPersonasResult(),
       isLoading: false,
     };
-    const user = userEvent.setup();
     render(<Reading />);
 
     expect(screen.queryByTestId('audience-breakout')).toBeNull();
-    const trigger = screen.getByTestId('row-trigger-personas');
-    expect(trigger).toBeDisabled();
-    await user.click(trigger);
-    expect(screen.queryByTestId('panel-personas-list')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading-room')).toBeNull();
+    expect(screen.getByText(/no audience reaction landed/i)).toBeInTheDocument();
   });
 });
 

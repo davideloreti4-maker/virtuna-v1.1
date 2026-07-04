@@ -13,6 +13,7 @@ import { bandTone, type ScoreTone } from '@/components/board/verdict/verdict-der
 import { cn } from '@/lib/utils';
 import { renderPanel, buildAudienceNodes, type PanelId } from './reading-panels';
 import { ReadingSection } from './reading-section';
+import { ReadingRoom } from './reading-room';
 
 // ReadingAccordion (redesign 2026-06-15, hero-v6 system) — the drill-downs, now
 // grouped into two LABELED CARD SECTIONS instead of one undifferentiated stack:
@@ -183,33 +184,29 @@ function LeverItem({ row, children }: { row: LeverRow; children: ReactNode }) {
 // ── Audience & context ───────────────────────────────────────────────────────
 
 export function AudienceContextSection({ data, dims, id, nicheRank }: ReadingAccordionProps) {
-  // Two context rows, both expand-in-place:
-  //   Audience   → the persona DEEP-DIVE (ranked "who watches / who drops first"
-  //                list + demoted graph). The hero already folds the breakout
-  //                OVERVIEW; this is the per-segment detail. Disabled (honest, no
-  //                empty drill) when there are no personas.
-  //   Niche rank → where the score sits in the niche distribution (panel 'score').
-  const audienceCount = buildAudienceNodes(data).length;
+  // The Room (Phase 3 · Option A): the persona deep-dive that used to open the old
+  // AudienceLens drill is now the v6 Room, rendered INLINE — named voices + `ask →` +
+  // The people ⇄ Population·1,000 + weak-spot + the video-only timeline replay. The
+  // "Niche rank" context row stays below it (where the score sits in your niche);
+  // nothing is removed. Honest empty (no personas) → a calm note, never an empty Room.
+  const nodes = buildAudienceNodes(data);
   return (
-    <ReadingSection label="Audience & context">
-      <AccordionRoot
-        type="single"
-        collapsible
-        className="space-y-0"
-        data-testid="reading-audience-context"
-      >
-        <ContextItem
-          panel="personas"
-          label="Audience"
-          desc={audienceCount > 0 ? `${audienceCount} segments` : 'Not available'}
-          disabled={audienceCount === 0}
-        >
-          {renderPanel('personas', data, dims, id)}
-        </ContextItem>
-        <ContextItem panel="score" label="Niche rank" desc={nicheRank ?? 'vs your niche'}>
-          {renderPanel('score', data, dims, id)}
-        </ContextItem>
-      </AccordionRoot>
+    <ReadingSection label="The audience">
+      <div data-testid="reading-audience-context">
+        {nodes.length > 0 ? (
+          <ReadingRoom data={data} nodes={nodes} />
+        ) : (
+          <p className="px-5 py-8 text-center text-[13px] text-foreground-muted">
+            No audience reaction landed for this video.
+          </p>
+        )}
+        {/* Niche rank — where the score sits in your niche (kept; expand-in-place). */}
+        <AccordionRoot type="single" collapsible className="space-y-0 border-t border-[var(--color-border)]">
+          <ContextItem panel="score" label="Niche rank" desc={nicheRank ?? 'vs your niche'}>
+            {renderPanel('score', data, dims, id)}
+          </ContextItem>
+        </AccordionRoot>
+      </div>
     </ReadingSection>
   );
 }
