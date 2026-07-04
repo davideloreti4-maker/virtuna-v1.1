@@ -42,28 +42,44 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
   const lgCols = stats.length >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4";
   return (
     <div className={`grid grid-cols-2 gap-[9px] px-1 ${lgCols}`}>
-      {stats.map((s) => (
-        <div
-          key={s.label}
-          className="flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-[11.5px] font-medium text-foreground-secondary">{s.label}</span>
-            <span className="font-mono text-[8px] tracking-[0.08em] text-foreground-muted">L7D</span>
-          </div>
-          <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
-            {s.value}
-          </div>
-          <Sparkline points={s.spark} up={s.up} />
+      {stats.map((s) => {
+        // No weekly delta yet (single snapshot / not enough history), or no value at
+        // all (e.g. "New followers" before the first daily diff) → show a clean
+        // point-in-time number instead of an empty sparkline + a bare "—"/"7d" delta.
+        const hasTrend = s.value !== "—" && s.delta !== "—";
+        return (
           <div
-            className="mt-[7px] flex items-center gap-1 font-mono text-[9px]"
-            style={{ color: s.up ? "#8ea68a" : "var(--color-foreground-muted)" }}
+            key={s.label}
+            className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3"
           >
-            {s.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
-            {s.delta}
+            <div className="flex items-center justify-between">
+              <span className="text-[11.5px] font-medium text-foreground-secondary">{s.label}</span>
+              {hasTrend && (
+                <span className="font-mono text-[8px] tracking-[0.08em] text-foreground-muted">L7D</span>
+              )}
+            </div>
+            <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
+              {s.value}
+            </div>
+            {hasTrend ? (
+              <>
+                <Sparkline points={s.spark} up={s.up} />
+                <div
+                  className="mt-[7px] flex items-center gap-1 font-mono text-[9px]"
+                  style={{ color: s.up ? "#8ea68a" : "var(--color-foreground-muted)" }}
+                >
+                  {s.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
+                  {s.delta}
+                </div>
+              </>
+            ) : (
+              <div className="mt-[9px] font-mono text-[9px] leading-none text-foreground-muted">
+                trend builds daily
+              </div>
+            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

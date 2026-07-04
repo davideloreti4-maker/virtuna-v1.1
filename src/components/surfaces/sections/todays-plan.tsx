@@ -19,7 +19,7 @@ export function TodaysPlan({
   onAdd: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
+    <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <h3 className="m-0 mb-1.5 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Today’s plan</h3>
       {plan.map((p, i) => (
         <button

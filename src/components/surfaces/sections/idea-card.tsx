@@ -2,8 +2,12 @@
 
 /**
  * IdeaCard — a pre-tested idea. Type pill (Carousel/Reel) + "pre-tested" tag, the
- * title, a thumbnail, and the inline CardReaction (Seam 1). The whole card is a door:
- * tap → opens the Room anchored on this card.
+ * title, and the inline CardReaction (Seam 1). The whole card is a door: tap → opens
+ * the Room anchored on this card.
+ *
+ * Title-forward (2026-07-05 elevation): an idea is a concept, not a made video, so the
+ * old fake video-thumbnail was dropped — the type pill already carries the format, and
+ * the outliers below (real videos) keep the cover-forward treatment. Depth via .elev-lift.
  */
 
 import type { IdeaCard as IdeaCardData } from "@/lib/room-contract/mock-room";
@@ -25,9 +29,9 @@ export function IdeaCard({
       type="button"
       onClick={() => onOpen(idea.cardId)}
       className={cn(
-        "group w-full rounded-xl border border-border bg-surface-elevated p-3.5 text-left transition-all duration-150",
-        "hover:-translate-y-px hover:border-border-hover hover:shadow-[0_8px_22px_rgba(0,0,0,0.28)]",
-        focused && "border-accent shadow-[0_0_0_1px_var(--color-accent-soft)]",
+        "elev-lift group w-full rounded-xl border border-border bg-surface-elevated p-3.5 text-left",
+        "hover:border-border-hover hover:bg-white/[0.02]",
+        focused && "border-accent",
       )}
     >
       <div className="mb-[11px] flex items-center gap-2">
@@ -40,19 +44,7 @@ export function IdeaCard({
           pre-tested
         </span>
       </div>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-medium leading-[1.36] text-foreground">{idea.title}</div>
-        </div>
-        <div className="relative flex h-20 w-[62px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] border border-border bg-[linear-gradient(155deg,#3a3832,#232220)]">
-          <span className="absolute left-1.5 top-1.5 text-[11px] text-white/50">
-            <SurfaceIcon name={idea.type === "Carousel" ? "layers" : "play"} size={11} strokeWidth={1.6} />
-          </span>
-          <span className="px-[7px] text-center text-[8px] font-semibold leading-[1.3] text-foreground-secondary opacity-85">
-            {idea.thumb}
-          </span>
-        </div>
-      </div>
+      <div className="text-[14px] font-medium leading-[1.42] text-foreground">{idea.title}</div>
       <div className="mt-3 border-t border-border pt-[11px]">
         <CardReaction reaction={idea.reaction} metric={idea.metric} />
       </div>

@@ -175,3 +175,61 @@ describe('matte-lint (secondary chrome) — pill primitive + competitors chrome 
     expect(violations, `${rel} carries matte violations: ${violations.join(', ')}`).toEqual([]);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Matte-lint (Hybrid depth) — 2026-07-05 premium-elevation pass.
+//
+// The Hybrid elevation lever ADDS a matte depth scale (--shadow-rest/lift/press)
+// on top of the flat-warm system: cards gain a soft DARK drop-shadow floor + a
+// lift on hover. The de-Claude rules are UNCHANGED — the depth is monochrome
+// (black-alpha), so near-zero accent is untouched, and glass / glow-halo /
+// inset-shine / coral all stay banned.
+//
+// The distinction this gate locks: a MATTE drop has a non-zero vertical offset
+// (`0 10px 26px …`) and is ALLOWED; a GLOW halo has a zero offset (`0 0 Npx`)
+// and is BANNED. The GLOW_RE above already encodes exactly this — these tests
+// pin the intent so a future edit can't quietly widen the rule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('matte-lint (Hybrid depth) — matte drop-shadows allowed, glow halos banned', () => {
+  it('allows a matte dark drop-shadow (non-zero vertical offset)', () => {
+    // The approved depth-scale values (globals.css --shadow-rest/lift/press).
+    for (const shadow of [
+      '0 1px 2px rgba(0,0,0,0.28)',
+      '0 10px 26px -8px rgba(0,0,0,0.5)',
+      '0 2px 6px rgba(0,0,0,0.3)',
+    ]) {
+      expect(findViolations(`box-shadow: ${shadow};`)).toEqual([]);
+    }
+  });
+
+  it('still bans a zero-offset glow halo', () => {
+    expect(findViolations('box-shadow: 0 0 18px rgba(217,119,87,0.6);')).toContain(
+      'box-shadow: 0 0 Npx (glow halo)',
+    );
+  });
+});
+
+/**
+ * Surfaces that carry (or will carry) the Hybrid matte depth. They elevate via
+ * the .elev-* utilities / --shadow-* tokens — NOT via glass, glow, blur, or
+ * coral. This set locks them clean as the premium-elevation sweep adds depth
+ * surface by surface (extend it as each surface PR lands).
+ */
+const HYBRID_DEPTH_SURFACES = [
+  'components/audience/audience-card.tsx',
+  'components/audience/audience-manager.tsx',
+  'components/surfaces/start-page.tsx',
+  'components/surfaces/surface-canvas.ts',
+  'components/saved/saved-shelf.tsx',
+  'components/calendar/calendar-workspace.tsx',
+  'components/grow/grow-hub.tsx',
+] as const;
+
+describe('matte-lint (Hybrid depth) — elevated surfaces stay glass/glow/coral-free', () => {
+  it.each(HYBRID_DEPTH_SURFACES)('%s uses matte depth only (no glass, glow, blur, or coral)', (rel) => {
+    const src = readFileSync(join(SRC, rel), 'utf8');
+    const violations = findViolations(src);
+    expect(violations, `${rel} carries matte violations: ${violations.join(', ')}`).toEqual([]);
+  });
+});

@@ -190,10 +190,21 @@
   --shadow-md: 0 4px 6px oklch(0 0 0 / 0.15), 0 2px 4px oklch(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px oklch(0 0 0 / 0.15), 0 4px 6px oklch(0 0 0 / 0.1);
   --shadow-xl: 0 20px 25px oklch(0 0 0 / 0.15), 0 10px 10px oklch(0 0 0 / 0.1), 0 0 0 1px oklch(1 0 0 / 0.05);
-  /* Whisper-soft float — the ONLY allowed shadow, for GENUINELY floating surfaces (composer, popovers) — D-05 */
+  /* Whisper-soft float — for GENUINELY floating surfaces (composer, popovers) — D-05 */
   --shadow-float: 0 10px 30px rgba(0, 0, 0, 0.35);  /* [UAT] Frame A — composer/popover only */
   /* Button: flat matte (inset white-shine layers stripped). Hairline ring + soft drop, no shine. */
   --shadow-button: rgba(0, 0, 0, 0.5) 0px 0px 0px 2px, rgba(0, 0, 0, 0.2) 0px 1px 2px 0px;  /* [UAT] Frame A — flat matte */
+
+  /* --- Matte depth scale (Hybrid elevation — 2026-07-05) --- */
+  /* The premium-elevation lever: soft DARK drop-shadows that give cards a real
+   * resting floor and a lift on interaction. Matte ONLY — every value is a
+   * black-alpha drop with a vertical offset; NO glow (`0 0 Npx`), NO glass
+   * gradient, NO white inset-shine, NO coral. This is the codified form of the
+   * approved seed (feat/audience-polish · AudienceCard). Near-zero accent is
+   * untouched — depth is monochrome. Consume via the .elev-* utilities below. */
+  --shadow-rest: 0 1px 2px rgba(0, 0, 0, 0.28);          /* card floor — resting elevation */
+  --shadow-lift: 0 10px 26px -8px rgba(0, 0, 0, 0.5);    /* hover raise — tight matte, negative spread keeps it under the card */
+  --shadow-press: 0 2px 6px rgba(0, 0, 0, 0.3);          /* press settle — collapses toward the floor */
 
   /* --- Radius Scale --- */
   /* Source: raycast.com - 6px, 8px, 12px, 16px common */
@@ -569,4 +580,42 @@ body {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* ============================================
+ * MATTE DEPTH — interactive elevation (Hybrid, 2026-07-05)
+ * ============================================
+ * The premium-elevation motion language. Depth = the soft dark drop-shadow
+ * tokens (--shadow-rest / --shadow-lift / --shadow-press). MATTE ONLY — never
+ * glow (0 0 Npx), glass gradient, white inset-shine, or coral. Depth is
+ * monochrome; near-zero accent is untouched.
+ *
+ * Pair with a hover bg/border for colour feedback (e.g.
+ * `hover:border-white/[0.10] hover:bg-white/[0.03]`) — the shared transition
+ * below animates those props too, so surfaces get smooth 150ms feedback for
+ * free. Reduced-motion drops the lift transform and snaps depth instantly. */
+
+/* Static resting floor — elevated but non-interactive cards (stat tiles, cells). */
+.elev-rest { box-shadow: var(--shadow-rest); }
+
+/* Interactive card — rests on the floor, lifts −1px on hover, settles on press. */
+.elev-lift {
+  box-shadow: var(--shadow-rest);
+  transition-property: background-color, border-color, transform, box-shadow;
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-out);
+}
+.elev-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+}
+.elev-lift:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-press);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elev-lift { transition-duration: 1ms; }
+  .elev-lift:hover,
+  .elev-lift:active { transform: none; }
 }

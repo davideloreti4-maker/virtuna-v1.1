@@ -39,8 +39,55 @@ break is the **near-zero dosage**, not the hue — so as of **2026-06-24** the a
 
 ### Border / depth
 - Borders: `rgba(255,255,255,0.06)`, hover `rgba(255,255,255,0.1)`. (6% / 10% — unchanged from before.)
-- **Matte, not glass.** Glass 137° gradients, radial halos, white inset-shine, coral glow are all **REMOVED**.
-- Only `--shadow-float` (`0 10px 30px rgba(0,0,0,.35)`) — and only on genuinely floating surfaces (composer, popovers). Cards are flat (solid charcoal, border only).
+- **Matte, not glass.** Glass 137° gradients, radial halos, white inset-shine, coral glow are all **REMOVED** and stay banned.
+- **Depth is a soft DARK drop-shadow — never light, never glow.** This is the one lever the Hybrid elevation pass added (2026-07-05): cards are no longer flat, but the depth is monochrome (black-alpha drops with a vertical offset), so near-zero accent is untouched. The distinction the guard enforces: a matte drop has a **non-zero Y offset** (`0 10px 26px …`); a banned glow is a **zero-offset halo** (`0 0 Npx`).
+
+### Matte depth scale (Hybrid elevation — LOCKED 2026-07-05)
+A three-step resting/interactive scale plus the pre-existing float, all soft dark drops:
+
+| Token | Value | Use |
+|---|---|---|
+| `--shadow-rest` | `0 1px 2px rgba(0,0,0,.28)` | Card **floor** — resting elevation on every elevated card |
+| `--shadow-lift` | `0 10px 26px -8px rgba(0,0,0,.5)` | **Hover raise** — tight matte; negative spread keeps it under the card, no bloom |
+| `--shadow-press` | `0 2px 6px rgba(0,0,0,.3)` | **Press settle** — collapses back toward the floor |
+| `--shadow-float` | `0 10px 30px rgba(0,0,0,.35)` | Genuinely **floating** chrome only (composer, popovers) — unchanged |
+
+**Consume via utilities, don't hand-roll the shadows:**
+- `.elev-rest` — resting floor only, for elevated-but-**static** cards (stat tiles, calendar day cells).
+- `.elev-lift` — **interactive** cards: floor at rest → −1px lift + `--shadow-lift` on hover → settle + `--shadow-press` on `:active`. Ships the shared 150ms transition (see Motion).
+
+Pair `.elev-lift` with colour feedback in Tailwind (`hover:border-white/[0.10] hover:bg-white/[0.03]`) — the utility's transition animates those props too, so surfaces get smooth feedback for free. Depth stays monochrome; the hover **border/bg brighten is neutral white-alpha, never accent**.
+
+### Motion
+Motion is **calm and physical** — short, eased, purposeful; it confirms an action or reveals content, never decorates. Reduced-motion is a first-class state: every animation has a `prefers-reduced-motion: reduce` branch that snaps to rest.
+
+**Tokens (`globals.css` `@theme`):**
+- Durations: `--duration-fast: 150ms` (hover/press feedback), `--duration-normal: 200ms` (state changes), `--duration-slow: 300ms` (larger transitions).
+- Easings: `--ease-out` (`cubic-bezier(0.215,0.61,0.355,1)` — the default for entrances/lifts), `--ease-out-quart`, `--ease-in-out`, `--ease-spring` (reserve for the rare sanctioned bounce, e.g. a liveness badge-pop).
+
+**The interaction patterns:**
+- **Hover-lift / press-settle** — `.elev-lift` (above). 150ms `--ease-out`; lift −1px, settle to 0. This is the standard for any clickable card.
+- **Entrance** — `.rv-in` (`juno-fade-up`, 0.55s): staggered fade-up on first paint. The shared surface reveal; stagger children, not the sticky container.
+- **Liveness** — `constell-dot` breathe / `badge-pop` (the one sanctioned accent-fill, a genuine liveness event only). Motion + tone, never coral chrome.
+
+**Rules:** never animate `width`/`height`/`top`/`left` (layout thrash) — use `transform`/`opacity`/`box-shadow`. No infinite non-liveness loops. No bounce except `--ease-spring` on a real liveness moment. Every hover/entrance must degrade under reduced-motion.
+
+### Surface sectioning (zones)
+Group a surface's content into discrete **matte tone-zones** — NOT a diffuse background glow.
+(The `SURFACE_RADIAL_BG` top-glow was retired from `/start` in the elevation pass: a faint
+radial reads as low-fidelity, not premium. Prefer discrete zones.) A zone is a subtle
+lighter-charcoal panel that chunks a section's cards:
+- **Fill:** a hair lighter than the page bg — `#252320` over the `#1f1f1e` app bg (~1 tone-step).
+- **Shape:** `rounded-2xl`, generous padding (`px-4 py-4`), **no border, no shadow.** The tone +
+  padding do the grouping; the inner cards keep their own borders + `.elev-*` depth and pop
+  against the zone (avoids the double-border / stacked-shadow busyness).
+- **Rhythm:** a consistent `mt-4` between stacked zones.
+
+This gives the "lit sections" effect (cf. Stanley's glow-sectioning) with matte tone instead of
+glow, and mirrors how a card-based right rail already reads as sections. The human header
+(greeting) floats **above** the zones, unzoned. Reference impl: `start-page.tsx` (Numbers ·
+Daily ideas · Outliers zones). Any at-a-glance chrome (e.g. the progress rings) belongs anchored
+to its content (beside the greeting), not floating as a top-center band.
 
 ### Type
 - Sans: `--font-inter` — all UI chrome, all weights.
@@ -91,7 +138,7 @@ distinctiveness comes from, not the accent.
 reading components — keep it green. Generally:
 1. No `#fff` text → use `--cream-primary`.
 2. No `#FF7F50` / `#07080a` / `#18191a` (dead Raycast literals).
-3. No glass gradients, no glow, no inset white-shine. Flat + border + (rarely) `--shadow-float`.
+3. No glass gradients, no glow halo (`0 0 Npx`), no inset white-shine, no coral. Matte **dark** drop-shadows via the depth scale (`--shadow-rest`/`lift`/`press`/`float`, always with a vertical offset) ARE allowed — that is the Hybrid elevation lever.
 4. Consume tokens, never hardcode hex. (Known offenders to migrate: `saved-item-card.tsx:234,252`, `error.tsx`, `opengraph-image.tsx`.)
 
 ## Component map (target UI surfaces)
