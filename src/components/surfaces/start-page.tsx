@@ -136,7 +136,10 @@ export function StartPage({
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
                 <GreetingRings rings={data.rings} />
               </div>
-              <div className="rv-in mt-2.5" style={{ animationDelay: "0.08s" }}>
+              <div
+                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 py-4"
+                style={{ animationDelay: "0.08s" }}
+              >
                 {accountStats ? <StatRow stats={accountStats} /> : <StatRowEmpty />}
               </div>
               <div
