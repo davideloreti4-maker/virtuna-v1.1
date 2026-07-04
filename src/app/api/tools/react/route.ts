@@ -140,5 +140,9 @@ export async function POST(request: Request): Promise<Response> {
   const scrollQuote = selectLeadScrollQuote(personas);
 
   // ── (8) Return the reaction (NO persistence — type-to-room is ephemeral) ───
-  return Response.json({ fraction, scrollQuote });
+  // Also return the full per-persona reactions (real registry-enum archetypes) so the
+  // ambient Room shows the NAMED People cast + the "Ask them why →" chat for a typed
+  // thought — same as a generated card's own S3′ personas (The Room, Task B). Shape is
+  // { archetype, verdict, quote } (FlashPersona) — the exact AmbientPersonaReaction shape.
+  return Response.json({ fraction, scrollQuote, personas });
 }

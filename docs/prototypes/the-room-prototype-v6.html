@@ -1,0 +1,509 @@
+<meta charset="utf-8">
+<title>Numen — The Room (clickable prototype · v6)</title>
+<style>
+  :root{
+    --bg:#262624; --bg2:#211f1d; --surface:#2f2e2b; --surface2:#35332f;
+    --cream:#ece7de; --cream2:#cbc5ba; --muted:#8f8a80; --faint:#6a665e;
+    --accent:#d97757; --accent-soft:rgba(217,119,87,.16);
+    --good:#8ea68a; --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.12);
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box} body{margin:0}
+  .page{min-height:100vh;background:radial-gradient(120% 80% at 50% -10%,#2c2a27,var(--bg) 60%);color:var(--cream);font-family:var(--sans);display:flex;flex-direction:column;align-items:center;gap:16px;padding:32px 20px 60px}
+  .intro{max-width:380px;text-align:center}
+  .intro .eye{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 8px}
+  .intro h1{font-family:var(--serif);font-weight:500;font-size:30px;margin:0 0 6px;letter-spacing:-.01em}
+  .intro p{font-size:13px;color:var(--muted);margin:0;line-height:1.5}
+
+  .phone{width:336px;height:712px;background:var(--bg2);border:1px solid var(--border2);border-radius:38px;padding:16px 14px;position:relative;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 6px #1a1917}
+  .ph-top{display:flex;justify-content:center;padding:2px 0 10px}
+  .ph-top .pill{width:80px;height:5px;border-radius:3px;background:rgba(255,255,255,.09)}
+  .scr{position:absolute;inset:16px 14px;top:38px;display:flex;flex-direction:column;overflow:hidden}
+
+  .content{flex:1;overflow-y:auto;overflow-x:hidden;padding:2px;scrollbar-width:none}
+  .content::-webkit-scrollbar{display:none}
+  .greet{padding:14px 6px 2px;transition:opacity .35s ease,max-height .45s ease}
+  .greet .brand{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:var(--accent);font-family:var(--serif);font-weight:700;font-size:20px;margin-bottom:12px}
+  .greet h2{font-family:var(--serif);font-weight:500;font-size:22px;line-height:1.25;margin:0;color:var(--cream)}
+  .greet p{font-size:12px;color:var(--muted);margin:7px 0 0}
+
+  .thread{display:flex;flex-direction:column;gap:8px;padding:8px 2px 2px}
+  .userask{align-self:flex-end;background:rgba(255,255,255,.05);border-radius:12px 12px 3px 12px;padding:6px 11px;font-size:11.5px;color:var(--cream2);max-width:82%}
+  .stageline{font-size:11px;color:var(--muted);font-family:var(--mono);display:flex;align-items:center;gap:7px;padding:2px 4px}
+  .stageline .sp{width:9px;height:9px;border:2px solid var(--faint);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* v6 thread — scannable batches; each card = one line (what you made + its score). Detail lives in the Room. */
+  .batch{margin-top:2px}
+  .blabel{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;color:var(--faint);text-transform:uppercase;padding:12px 4px 6px;display:flex;align-items:baseline;gap:8px}
+  .blabel .best{letter-spacing:.02em;color:var(--muted);text-transform:none}
+  .hcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:11px 13px;opacity:0;transform:translateY(8px);animation:rise .4s ease forwards;cursor:pointer;transition:border-color .15s,background .15s}
+  .hcard:hover{border-color:var(--border2);background:var(--surface2)}
+  .hcard.focused{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent-soft)}
+  @keyframes rise{to{opacity:1;transform:none}}
+  .hc-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .hcard .rank{font-family:var(--mono);font-size:9px;color:var(--faint);letter-spacing:.11em}
+  .hcard .score{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--cream2);font-variant-numeric:tabular-nums;flex:none}
+  .hcard .score .sdot{width:7px;height:7px;border-radius:50%;flex:none}
+  .hcard .score.g .sdot{background:var(--good)}.hcard .score.r .sdot{background:var(--accent)}.hcard .score.n .sdot{background:rgba(255,255,255,.42)}
+  .hcard .score.band{color:var(--good);font-family:var(--mono);font-size:10.5px;border:1px solid rgba(142,166,138,.4);border-radius:5px;padding:1px 6px}
+  .hcard .h{font-size:13.5px;color:var(--cream);line-height:1.42}
+
+  /* ── LIVING PRESENCE (always visible) ── */
+  .presence{flex:none;display:flex;align-items:center;gap:10px;padding:9px 11px;margin-top:6px;background:linear-gradient(180deg,var(--surface2),var(--surface));border:1px solid var(--border2);border-radius:14px;cursor:pointer;position:relative;z-index:9;transition:border-radius .3s ease,border-color .3s ease}
+  .constell{width:74px;height:30px;flex:none}
+  .constell .cd{animation:breathe 3.4s ease-in-out infinite}
+  .constell .cd.g{fill:var(--good)}.constell .cd.r{fill:var(--accent)}
+  @keyframes breathe{0%,100%{opacity:.4}50%{opacity:1}}
+  .presence.reacting .constell .cd{animation:blink 1s ease infinite}
+  @keyframes blink{0%,100%{opacity:.35}50%{opacity:1}}
+  .pmid{flex:1;min-width:0}
+  .pname{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--cream)}
+  .pname .chev{font-size:9px;color:var(--muted)}
+  .ppulse{font-size:11px;color:var(--cream2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pnew{flex:none;display:none;align-items:center;gap:5px;background:var(--accent);color:#2a1c14;font-family:var(--mono);font-size:10px;font-weight:700;border-radius:20px;padding:3px 8px}
+  .pnew.on{display:inline-flex;animation:pop .3s ease}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1)}}
+  .popen{flex:none;color:var(--muted);font-size:12px}
+
+  /* ── CLEAN COMPOSER ── */
+  .composer{flex:none;display:flex;align-items:center;gap:8px;padding:8px 9px;margin-top:8px;background:var(--surface);border:1px solid var(--border2);border-radius:14px}
+  .verb{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border2);border-radius:9px;padding:7px 10px;cursor:pointer;transition:.15s;flex:none}
+  .verb:hover{border-color:var(--accent)}
+  .verb .vi{color:var(--accent);font-size:12px}
+  .verb .vl{font-size:12.5px;font-weight:600;color:var(--cream)}
+  .verb .chev{color:var(--muted);font-size:9px}
+  .cinput{flex:1;font-size:12.5px;color:var(--faint);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cgo{width:28px;height:28px;border-radius:9px;background:var(--cream);color:var(--bg2);display:grid;place-items:center;font-size:14px;flex:none}
+
+  .popmenu{position:absolute;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:6px;z-index:12;box-shadow:0 20px 50px rgba(0,0,0,.5);display:none}
+  .popmenu.on{display:block;animation:pop .18s ease}
+  .popmenu .pm-hd{font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-family:var(--mono);padding:8px 10px 3px}
+  .pm{display:flex;flex-direction:column;gap:1px;padding:8px 10px;border-radius:9px;cursor:pointer;transition:.12s}
+  .pm:hover{background:var(--surface2)}
+  .pm b{font-size:12.5px;color:var(--cream);font-weight:600}.pm span{font-size:10.5px;color:var(--muted)}
+  #verbMenu{left:10px;bottom:76px;width:224px}
+  #switcher{left:12px;right:12px;bottom:132px}
+  #switcher .sr{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:12.5px}
+  #switcher .sr:hover{background:var(--surface2)}
+  #switcher .sr .nm2{color:var(--cream);font-weight:500}
+  #switcher .sr .sub{color:var(--muted);font-size:10.5px}
+  #switcher .sr .ck{margin-left:auto;color:var(--good)}
+  #switcher .goal{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:1px 5px}
+
+  /* ── ROOM (two forms) ── */
+  .sheet{position:absolute;background:var(--bg);display:flex;flex-direction:column;z-index:8;transition:transform .34s cubic-bezier(.32,.72,.3,1),opacity .28s ease}
+  /* The Room grows UP OUT of the presence band — full-width, flush, one continuous surface (no gap, no seam). */
+  /* Closed: translate its full height + the 104px bottom offset (+slack) so it fully clears the screen — a plain 102% peeks because % is element-height-relative. */
+  #room.bloom{left:0;right:0;top:7%;bottom:104px;border-radius:20px 20px 0 0;border:1px solid var(--border2);border-bottom:0;box-shadow:0 -18px 44px rgba(0,0,0,.42);transform:translateY(calc(100% + 116px));transform-origin:bottom center}
+  #room.bloom.up{transform:translateY(0)}
+  /* presence squares its top + drops its top border so room + presence read as ONE object rising from the audience */
+  .scr:has(#room.up) .presence{border-top-left-radius:0;border-top-right-radius:0;border-top-color:transparent}
+  #chat{left:0;right:0;top:12%;bottom:0;border-radius:20px 20px 0 0;border-top:1px solid var(--border2);box-shadow:0 -18px 50px rgba(0,0,0,.5);transform:translateY(102%);z-index:10}
+  #chat.up{transform:none}
+  .sheet .grab{display:flex;justify-content:center;padding:8px 0 2px;cursor:pointer}
+  .sheet .grab span{width:34px;height:4px;border-radius:3px;background:rgba(255,255,255,.18)}
+
+  /* v6 header — calmer chrome, one-line title, more air */
+  #rhead{padding:4px 16px 8px}
+  .rhead-top{display:flex;align-items:center;gap:8px;min-height:24px}
+  .stepper{display:flex;align-items:center;gap:7px;min-width:0}
+  .stepbtn{width:23px;height:23px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--cream2);display:grid;place-items:center;cursor:pointer;font-size:12px;flex:none;transition:.15s}
+  .stepbtn:hover{border-color:var(--border2);color:var(--cream)}
+  .stepbtn.off{opacity:.25;pointer-events:none}
+  .focuslbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;color:var(--cream);white-space:nowrap}.focuslbl .kind{color:var(--muted)}
+  .cmplink{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:pointer;border:1px solid var(--border);border-radius:7px;padding:4px 9px;white-space:nowrap;flex:none;transition:.15s}
+  .cmplink:hover{color:var(--cream2);border-color:var(--border2)}
+  .rscore{font-family:var(--serif);font-size:22px;color:var(--cream);margin-top:9px;line-height:1.08;letter-spacing:-.01em}
+  .rscore small{font-family:var(--sans);font-size:11px;color:var(--muted);display:block;margin-top:5px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .x{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;color:var(--muted);background:transparent;border:1px solid var(--border);cursor:pointer;font-size:12px;flex:none;transition:.15s}
+  .x:hover{color:var(--cream);border-color:var(--border2)}
+
+  /* v6 scale toggle — quiet pill segmented control */
+  .scale{display:flex;gap:3px;margin:2px 16px 8px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:3px}
+  .scale span{flex:1;text-align:center;font-size:11px;padding:6px;border-radius:7px;color:var(--muted);cursor:pointer;transition:.15s}
+  .scale span.on{background:var(--surface2);color:var(--cream)}
+  .scale span:hover:not(.on){color:var(--cream2)}
+  .sbody{flex:1;overflow-y:auto;scrollbar-width:none;padding:2px 16px 6px}
+  .sbody::-webkit-scrollbar{display:none}
+
+  /* v6 — person = a voice. Name is a quiet label; the quote (serif) is the hero. One calm row, no archetype clutter. */
+  .prow{display:flex;gap:12px;align-items:flex-start;padding:13px 4px;cursor:pointer;border-radius:10px;opacity:0;transform:translateY(6px);animation:rise .34s ease forwards;transition:background .15s}
+  .prow + .prow{border-top:1px solid rgba(255,255,255,.045)}
+  .prow:hover{background:rgba(255,255,255,.02)}
+  .ava{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:600;margin-top:1px}
+  .ava.g{background:rgba(142,166,138,.16);color:#a6bfa1}.ava.r{background:var(--accent-soft);color:var(--accent)}.ava.n{background:rgba(255,255,255,.07);color:var(--cream2)}
+  .prow .b{flex:1;min-width:0}
+  .prow .nmrow{display:flex;align-items:center;gap:8px}
+  .prow .nm{font-size:12px;font-weight:600;color:var(--cream);letter-spacing:.01em}
+  .prow .ask{font-size:10px;color:var(--faint);font-family:var(--mono);flex:none;margin-left:auto;letter-spacing:.04em;transition:color .15s}
+  .prow:hover .ask{color:var(--accent)}
+  .prow .q{font-family:var(--serif);font-size:15px;color:var(--cream);margin-top:5px;line-height:1.4;letter-spacing:-.005em}
+  .replay{display:inline-flex;align-items:center;gap:6px;margin:12px 4px 2px;font-size:11px;color:var(--muted);background:transparent;border:1px solid var(--border);border-radius:8px;padding:7px 12px;cursor:pointer;transition:.15s}
+  .replay:hover{border-color:var(--border2);color:var(--cream2)}
+  .moreppl{text-align:center;font-size:10.5px;color:var(--faint);font-family:var(--mono);padding:11px;letter-spacing:.04em}
+
+  /* population swarm */
+  .swarm{display:flex;flex-wrap:wrap;gap:3px;padding:6px 4px 2px;justify-content:center}
+  .swarm i{width:6px;height:6px;border-radius:50%;opacity:.18;transition:opacity .25s ease}
+  .swarm i.show{opacity:.95}
+  .swarm i.g{background:var(--good)}.swarm i.r{background:var(--accent)}.swarm i.n{background:rgba(255,255,255,.4)}
+  .swarmlbl{text-align:center;font-size:10.5px;color:var(--muted);font-family:var(--mono);padding:7px 2px 2px;letter-spacing:.02em}
+  .swarmlbl #playBtn{color:var(--cream)!important;cursor:pointer}
+  .statsbar{margin-top:15px;padding-top:14px;border-top:1px solid var(--border)}
+  .swarmbig{display:flex;justify-content:center;gap:24px;padding:8px 0 2px}
+  .swarmbig .m{text-align:center}.swarmbig .m b{font-family:var(--serif);font-size:22px;color:var(--cream);line-height:1}
+  .swarmbig .m b.good{color:var(--good)}.swarmbig .m b.bad{color:var(--accent)}
+  .swarmbig .m span{display:block;font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.01em}
+  /* v6 population — the weak spot (who's bouncing + why) is the value; keep it above the fold */
+  .weakspot{margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
+  .wk-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .wk-row{display:flex;gap:12px;align-items:baseline;padding:5px 0}
+  .wk-nm{font-size:12px;font-weight:600;color:var(--accent);flex:none;width:48px}
+  .wk-q{font-family:var(--serif);font-size:13.5px;color:var(--cream2);line-height:1.32}
+
+  /* v6 honesty split — one slim segmented bar + a quiet caption */
+  .splitfoot{flex:none;padding:12px 16px 13px;border-top:1px solid var(--border)}
+  .splitbar{display:flex;height:6px;border-radius:4px;overflow:hidden;background:rgba(255,255,255,.05)}
+  .splitbar i{height:100%}
+  .splitcap{display:flex;justify-content:space-between;margin-top:9px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+  .splitcap b{color:var(--cream2);font-weight:600}
+  .splitcap b.good{color:var(--good)}.splitcap b.bad{color:var(--accent)}
+
+  .cmphead{font-size:11px;color:var(--muted);padding:4px 6px 8px}
+  .cmprow{display:flex;align-items:center;gap:11px;padding:11px 8px;border-top:1px solid var(--border);cursor:pointer;border-radius:8px}
+  .cmprow:hover{background:var(--surface)}
+  .cmprow .rk{font-family:var(--serif);font-size:17px;color:var(--cream2);width:15px;flex:none}
+  .cmprow .cb{flex:1;min-width:0}.cmprow .ct{font-size:11.5px;color:var(--cream);line-height:1.35;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .cmprow .meter{height:6px;border-radius:4px;background:rgba(255,255,255,.08);margin-top:6px;overflow:hidden}.cmprow .meter i{display:block;height:100%;border-radius:4px}
+  .cmprow .sc{font-family:var(--mono);font-size:11.5px;color:var(--cream);flex:none}.cmprow .go{color:var(--faint);flex:none}
+
+  .cta{margin:6px 16px 15px;background:var(--accent);color:#2a1c14;text-align:center;font-size:12.5px;font-weight:600;border-radius:11px;padding:12px;cursor:pointer;flex:none;letter-spacing:.005em;transition:background .15s,transform .1s}
+  .cta:hover{background:#e0805f}.cta:active{transform:translateY(1px)}
+
+  .chead{display:flex;gap:11px;align-items:center;padding:4px 14px 12px;border-bottom:1px solid var(--border)}
+  .chead .ava{width:36px;height:36px;font-size:14px}.chead .nm{font-size:14px;font-weight:600;color:var(--cream)}.chead .ar{font-size:11px;color:var(--muted)}
+  .chead .back{margin-left:auto;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--mono)}
+  .cbody{flex:1;overflow-y:auto;scrollbar-width:none;padding:12px}.cbody::-webkit-scrollbar{display:none}
+  .bub{max-width:82%;padding:9px 12px;border-radius:13px;font-size:12.5px;line-height:1.45;margin-bottom:9px;opacity:0;animation:rise .3s ease forwards}
+  .bub.them{background:var(--surface);color:var(--cream2);border:1px solid var(--border);border-bottom-left-radius:3px}
+  .bub.them .who{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:3px}
+  .bub.me{background:rgba(255,255,255,.08);color:var(--cream);margin-left:auto;border-bottom-right-radius:3px}
+  .typing{font-size:11.5px;color:var(--muted);padding:2px 4px 10px}
+  .cin{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--border)}
+  .cin input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 11px;font-size:12.5px;color:var(--cream);font-family:var(--sans);outline:none}
+  .cin input::placeholder{color:var(--faint)}
+  .cin button{background:var(--cream);color:var(--bg2);border:0;border-radius:9px;padding:0 14px;font-size:12.5px;font-weight:600;cursor:pointer}
+
+  .toast{position:absolute;left:20px;right:20px;bottom:140px;background:var(--bg2);border:1px solid var(--border2);border-left:2px solid var(--good);border-radius:11px;padding:11px 13px;font-size:12px;color:var(--cream2);z-index:13;opacity:0;transform:translateY(8px);transition:.3s;pointer-events:none}
+  .toast.on{opacity:1;transform:none}.toast b{color:var(--good)}
+
+  .caption{max-width:340px;text-align:center}
+  .hint{font-size:13px;color:var(--cream2);min-height:20px;margin:0 0 10px;transition:.2s}.hint b{color:var(--accent)}
+  .reset{background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:7px 14px;border-radius:8px;cursor:pointer}
+  .reset:hover{color:var(--cream);border-color:var(--cream2)}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.05s !important}}
+</style>
+
+<div class="page">
+  <div class="intro">
+    <p class="eye">Numen · prototype · v6 · refined</p>
+    <h1>The Room</h1>
+    <p>Audience always present + alive. Composer clean. The Room blooms up out of the presence — one connected object.</p>
+  </div>
+
+  <div class="phone">
+    <div class="ph-top"><span class="pill"></span></div>
+    <div class="scr">
+      <div class="content" id="content">
+        <div class="greet" id="greet">
+          <div class="brand">n</div>
+          <h2>What should we test on your audience today?</h2>
+          <p>Your audience reacts to everything you make — before you post.</p>
+        </div>
+        <div class="thread" id="thread"></div>
+      </div>
+
+      <!-- LIVING PRESENCE -->
+      <div class="presence" id="presence">
+        <svg class="constell" viewBox="0 0 132 34" aria-hidden="true">
+          <g stroke="rgba(255,255,255,0.12)" stroke-width="1">
+            <line x1="8" y1="20" x2="24" y2="10"/><line x1="24" y1="10" x2="46" y2="16"/>
+            <line x1="46" y1="16" x2="64" y2="24"/><line x1="64" y1="24" x2="80" y2="14"/>
+            <line x1="80" y1="14" x2="104" y2="12"/><line x1="104" y1="12" x2="120" y2="20"/>
+          </g>
+          <circle class="cd" cx="8" cy="20" r="2.6" fill="#ece7de" style="animation-delay:0s"/>
+          <circle class="cd g" cx="24" cy="10" r="2.6" style="animation-delay:.4s"/>
+          <circle class="cd" cx="30" cy="27" r="2.2" fill="#ece7de" style="animation-delay:1.2s"/>
+          <circle class="cd" cx="46" cy="16" r="2.6" fill="#ece7de" style="animation-delay:.8s"/>
+          <circle class="cd g" cx="58" cy="8" r="2.2" style="animation-delay:1.6s"/>
+          <circle class="cd r" cx="64" cy="24" r="2.6" style="animation-delay:.6s"/>
+          <circle class="cd" cx="80" cy="14" r="2.6" fill="#ece7de" style="animation-delay:1.9s"/>
+          <circle class="cd g" cx="92" cy="26" r="2.2" style="animation-delay:1s"/>
+          <circle class="cd" cx="104" cy="12" r="2.6" fill="#ece7de" style="animation-delay:.2s"/>
+          <circle class="cd" cx="120" cy="20" r="2.2" fill="#ece7de" style="animation-delay:1.4s"/>
+        </svg>
+        <div class="pmid">
+          <span class="pname" id="pName">Fitness Creators <span class="chev">▾</span></span>
+          <div class="ppulse" id="pPulse">10 people ready</div>
+        </div>
+        <span class="pnew" id="pNew"><span>💬</span><span id="pNewN">0</span></span>
+        <span class="popen" id="pOpen">▲</span>
+      </div>
+
+      <!-- CLEAN COMPOSER -->
+      <div class="composer">
+        <div class="verb" id="verbChip"><span class="vi">✦</span><span class="vl" id="verbLabel">Make</span><span class="chev">▾</span></div>
+        <span class="cinput">Type a topic…</span>
+        <span class="cgo">↑</span>
+      </div>
+
+      <div class="popmenu" id="verbMenu">
+        <div class="pm-hd">Make</div>
+        <div class="pm" data-gen="hooks"><b>Hooks</b><span>ranked scroll-stoppers</span></div>
+        <div class="pm" data-gen="scripts"><b>Scripts</b><span>beats + retention markers</span></div>
+        <div class="pm" data-gen="ideas"><b>Ideas</b><span>funnel-top angles</span></div>
+        <div class="pm-hd">Test</div>
+        <div class="pm" data-gen="test"><b>A real video</b><span>the full Read</span></div>
+        <div class="pm-hd">Ask</div>
+        <div class="pm" data-gen="ask"><b>The room</b><span>a raw thought</span></div>
+      </div>
+
+      <div class="popmenu" id="switcher">
+        <div class="pm-hd">Your audiences</div>
+        <div class="sr" data-aud="Fitness Creators"><div class="ava g" style="width:22px;height:22px;font-size:10px">F</div><div><div class="nm2">Fitness Creators</div><div class="sub">tiktok · your following</div></div><span class="goal">GROW</span></div>
+        <div class="sr" data-aud="Conversion Audience"><div class="ava n" style="width:22px;height:22px;font-size:10px">C</div><div><div class="nm2">Conversion Audience</div><div class="sub">tiktok · buyers</div></div><span class="goal">SELL</span></div>
+        <div class="sr" data-aud="Nervous Beginners"><div class="ava g" style="width:22px;height:22px;font-size:10px">N</div><div><div class="nm2">Nervous Beginners</div><div class="sub">tiktok · niche segment</div></div><span class="goal">GROW</span></div>
+      </div>
+
+      <!-- ROOM -->
+      <div class="sheet bloom" id="room">
+        <div class="grab" id="roomGrab"><span></span></div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;padding-right:12px;gap:8px">
+          <div id="rhead" style="flex:1;min-width:0"></div>
+          <div class="x" id="roomClose" style="margin-top:2px">✕</div>
+        </div>
+        <div class="scale" id="scale"><span class="on" id="scPeople">The people</span><span id="scPop">Population · 1,000</span></div>
+        <div class="sbody" id="sbody"></div>
+        <div class="splitfoot" id="splitfoot"></div>
+        <div id="roomFoot"></div>
+      </div>
+
+      <!-- CHAT -->
+      <div class="sheet" id="chat">
+        <div class="grab"><span></span></div>
+        <div class="chead"><div class="ava r" id="chatAva">J</div><div><div class="nm" id="chatName">Jordan</div><div class="ar" id="chatArch">gym rat</div></div><span class="back" id="chatBack">← room</span></div>
+        <div class="cbody" id="chatBody"></div>
+        <div class="cin"><input id="chatInput" placeholder="Ask…" autocomplete="off"><button id="chatSend">Send</button></div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+    </div>
+  </div>
+
+  <div class="caption">
+    <p class="hint" id="hint">Tap <b>Make ▾ → Hooks</b>. Watch the <b>presence</b> come alive, then open the room.</p>
+    <button class="reset" id="reset">↺ replay from start</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var esc=function(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')};
+  var PEOPLE={
+    maya:{ini:'M',name:'Maya',arch:'burnt-out professional',replies:['I save the ones that feel like a friend telling the truth, not a brand selling me.','Keep it confessional. The second it turns into "5 tips" I\'m gone.']},
+    jordan:{ini:'J',name:'Jordan',arch:'gym rat',replies:['Cancelling your gym is the opposite of my whole identity — felt like you quit on me.','"Swapped" instead of "quit" and I\'d actually watch. Lead with the result.','Yeah, show the result first, then I\'m in.']},
+    priya:{ini:'P',name:'Priya',arch:'nervous beginner',replies:['The gym terrifies me, so this is the permission I\'ve been waiting for.','Show the home version actually working and I\'ll watch every one you post.']},
+    dev:{ini:'D',name:'Dev',arch:'weekend warrior',replies:['Didn\'t hit me either way — seen this format a hundred times this week.','Give me a number or real stakes in the first second and you\'d have me.']},
+    sam:{ini:'S',name:'Sam',arch:'busy parent',replies:['Between kids and work the gym was never happening. This is the realistic version.','Show me it fits in 15 minutes and you own my attention.']},
+    kai:{ini:'K',name:'Kai',arch:'aesthetics-focused',replies:['I\'m here for real gains. This reads like cope to me.','Prove the home routine progressed overload and I\'ll reconsider. Receipts.']}
+  };
+  var BATCHES={
+    hooks:{id:'hooks',kind:'Hooks',noun:'hook',metric:'hooked',gen:false,items:[
+      {id:'h1',rank:1,stop:7,virality:72,watch:68,drop:'0:07',lead:'finally, honest',title:'“I cancelled my gym — here’s what actually happened”',react:[['maya','g','finally someone honest — saved it'],['jordan','r','cancelling? instant unfollow'],['priya','g','literally me, sending to my sister'],['dev','n','eh, keep scrolling'],['sam','g','no time for the gym anyway, this helps'],['kai','r','home workouts won’t build a physique']]},
+      {id:'h2',rank:2,stop:4,virality:51,watch:52,drop:'0:03',lead:'heard it a thousand times',title:'“The #1 mistake beginners make…”',react:[['maya','n','seen this exact format all week'],['jordan','r','boring, skipped'],['priya','g','wait — what mistake?'],['dev','r','heard it a thousand times'],['sam','n','maybe, if it’s quick'],['kai','r','generic listicle bait']]},
+      {id:'h3',rank:3,stop:6,virality:64,watch:61,drop:'0:05',lead:'ok, I’m listening',title:'“Nobody tells you this about home workouts”',react:[['maya','g','ok, I’m listening'],['jordan','n','go on then'],['priya','g','yes please tell me'],['dev','g','actually kind of curious'],['sam','g','saving for later'],['kai','r','prove it with receipts']]}
+    ]},
+    scripts:{id:'scripts',kind:'Scripts',noun:'script',metric:'stay',gen:false,items:[
+      {id:'s1',rank:1,stop:7,virality:70,watch:66,drop:'0:09',lead:'strong open',title:'Cold open — drop the packed gym bag by the door and walk past it',react:[['maya','g','that image is so me'],['jordan','n','visual’s decent, keep going'],['priya','g','oof, felt that'],['dev','g','strong open, ngl'],['sam','g','the bag by the door — yes'],['kai','r','cute, but where’s the payoff']]},
+      {id:'s2',rank:2,stop:5,virality:58,watch:57,drop:'0:04',lead:'timers feel gimmicky',title:'Open on a 15-minute timer starting, no intro',react:[['maya','g','love a no-intro open'],['jordan','r','timers feel gimmicky'],['priya','n','not sure yet'],['dev','n','seen the timer thing'],['sam','g','15 minutes I can do'],['kai','r','meh']]}
+    ]},
+    ideas:{id:'ideas',kind:'Ideas',noun:'idea',metric:'would watch',gen:false,items:[
+      {id:'i1',rank:1,stop:7,virality:71,watch:0,drop:'—',lead:'the money angle',title:'“The cost of my gym membership vs what I actually used it for”',react:[['maya','g','oof, that math would hurt (the good way)'],['jordan','n','if the numbers are real, ok'],['priya','g','I need to see this'],['dev','g','money angle always works on me'],['sam','g','the receipts, yes'],['kai','n','depends how it lands']]},
+      {id:'i2',rank:2,stop:4,virality:52,watch:0,drop:'—',lead:'oversaturated',title:'“What I eat in a day” but brutally honest and unaesthetic',react:[['maya','g','honesty sells me'],['jordan','r','WIEIAD is so played out'],['priya','n','maybe'],['dev','r','every creator does this'],['sam','g','the honest version is refreshing'],['kai','r','oversaturated']]}
+    ]},
+    test:{id:'test',kind:'Test',noun:'video',metric:'watched',read:true,gen:false,items:[
+      {id:'t1',rank:1,stop:7,virality:74,watch:69,drop:'0:08',band:'Strong',lead:'Strong · 74',title:'Your upload — “gym cancellation story · 0:22”',react:[['maya','g','held me the whole way'],['jordan','n','watched, didn’t love the middle'],['priya','g','cried a little ngl'],['dev','g','the 0:08 turn got me'],['sam','g','watched twice'],['kai','r','dragged after the hook']]}
+    ]},
+    ask:{id:'ask',kind:'The room',noun:'thought',metric:'into it',gen:false,items:[
+      {id:'a1',rank:1,stop:8,virality:76,watch:71,drop:'—',lead:'now THIS I’d follow',title:'Raw thought — “what if I ran a 30-day no-gym challenge?”',react:[['maya','g','now THIS I’d follow along with'],['jordan','g','a challenge? ok you have me'],['priya','g','I’d join day one'],['dev','g','challenges always pull me in'],['sam','n','depends on the time commitment'],['kai','n','if there’s a real transformation, sure']]}
+    ]}
+  };
+  var GEN_COPY={hooks:'Make 3 hooks about quitting the gym',scripts:'Write 2 scripts for the winning hook',ideas:'Give me idea angles',test:'Test my uploaded video',ask:'Ask the room: 30-day no-gym challenge?'};
+
+  var state={focus:null,scale:'people',chatIdx:{},newest:null,form:'bloom'};
+  var find=function(id){return BATCHES[id]}, findItem=function(b,i){var x=find(b);return x?x.items.find(function(y){return y.id===i}):null};
+  var toneOf=function(s){return s>=6?'g':s<=4?'r':'n'};
+  var hint=function(h){$('hint').innerHTML=h};
+  var closeMenus=function(){$('verbMenu').classList.remove('on');$('switcher').classList.remove('on')};
+  var trunc=function(s,n){return s.length>n?s.slice(0,n-1)+'…':s};
+
+  // composition
+  $('verbChip').addEventListener('click',function(e){e.stopPropagation();$('switcher').classList.remove('on');$('verbMenu').classList.toggle('on')});
+  $('pName').addEventListener('click',function(e){e.stopPropagation();$('verbMenu').classList.remove('on');$('switcher').classList.toggle('on')});
+  document.addEventListener('click',closeMenus);
+  Array.prototype.forEach.call(document.querySelectorAll('#verbMenu .pm'),function(pm){pm.addEventListener('click',function(e){e.stopPropagation();closeMenus();genBatch(pm.getAttribute('data-gen'))})});
+  Array.prototype.forEach.call(document.querySelectorAll('#switcher .sr'),function(sr){sr.addEventListener('click',function(e){e.stopPropagation();var nm=sr.getAttribute('data-aud');$('pName').innerHTML=esc(nm)+' <span class="chev">▾</span>';$('pName').addEventListener('click',function(ev){ev.stopPropagation();$('verbMenu').classList.remove('on');$('switcher').classList.toggle('on')});closeMenus();var goal=sr.querySelector('.goal').textContent;hint('Switched to <b>'+esc(nm)+'</b> — intent ('+goal+') rides the audience, no separate control.')})});
+
+  // presence open
+  $('presence').addEventListener('click',function(e){ if(e.target.closest('#pName'))return; if(state.newest){ var b=find(state.newest); b.items.length>1?openCompare(b.id):openRoom(b.id,b.items[0].id); } else if(state.focus){ openRoom(state.focus.b,state.focus.i); } else { hint('Make something first — then your audience has something to react to.'); } });
+
+  function setPulse(txt,live){ $('pPulse').textContent=txt; if(live===false)$('presence').classList.remove('reacting'); }
+
+  function genBatch(bid){
+    var b=find(bid); if(!b)return;
+    if(b.gen){ var c0=document.querySelector('.hcard[data-b="'+bid+'"]'); if(c0)c0.scrollIntoView({block:'center'}); hint('Already made — tap any '+b.noun+' card.'); return; }
+    b.gen=true; $('verbLabel').textContent=bid==='ask'?'Ask':bid==='test'?'Test':'Make';
+    var greet=$('greet'); greet.style.opacity='0'; greet.style.maxHeight='0'; greet.style.overflow='hidden';
+    var thread=$('thread');
+    var ask=document.createElement('div'); ask.className='userask'; ask.textContent=GEN_COPY[bid]; thread.appendChild(ask);
+    var stage=document.createElement('div'); stage.className='stageline'; stage.innerHTML='<span class="sp"></span> Generating · simulating your audience…'; thread.appendChild(stage);
+    $('content').scrollTop=$('content').scrollHeight;
+    $('presence').classList.add('reacting'); setPulse('reading the room…');
+    hint('The presence is alive — the room is reacting →');
+    setTimeout(function(){
+      stage.remove();
+      var group=document.createElement('div'); group.className='batch'; group.setAttribute('data-batch',b.id);
+      var lbl=document.createElement('div'); lbl.className='blabel'; lbl.innerHTML=b.items.length+' '+b.noun+(b.items.length>1?'s':'')+(b.items.length>1?'<span class="best">best '+b.items[0].stop+'/10</span>':''); group.appendChild(lbl);
+      thread.appendChild(group);
+      b.items.forEach(function(it,i){
+        setTimeout(function(){
+          var t=toneOf(it.stop);
+          var score=b.read?'<span class="score band">'+it.band+' · '+it.virality+'</span>':'<span class="score '+t+'"><i class="sdot"></i>'+it.stop+'/10 '+b.metric+'</span>';
+          var c=document.createElement('div'); c.className='hcard'; c.setAttribute('data-b',b.id); c.setAttribute('data-i',it.id);
+          c.innerHTML='<div class="hc-top"><span class="rank">'+b.kind.toUpperCase()+(b.items.length>1?' '+it.rank:'')+'</span>'+score+'</div><div class="h">'+esc(it.title)+'</div>';
+          c.addEventListener('click',function(){openRoom(b.id,it.id)});
+          group.appendChild(c); $('content').scrollTop=$('content').scrollHeight;
+          if(i===b.items.length-1) setTimeout(function(){arrive(b)},460);
+        },i*400);
+      });
+    },1050);
+  }
+  function arrive(b){
+    state.newest=b.id;
+    var top=b.items[0];
+    setPulse(top.stop+' of 10 '+b.metric+' · '+b.kind.replace(/s$/,'')+(b.items.length>1?' 1':''));
+    $('presence').classList.remove('reacting');
+    var pn=$('pNew'); pn.classList.add('on'); var n=0,t=setInterval(function(){n++;$('pNewN').textContent=n;if(n>=10)clearInterval(t)},80);
+    hint('The room weighed in — see the <b>presence</b> pulse. Tap it, or a card.');
+  }
+
+  // room
+  function showRoom(){ $('room').classList.add('up'); $('pNew').classList.remove('on'); markFocused(); }
+  $('roomClose').addEventListener('click',closeRoom); $('roomGrab').addEventListener('click',closeRoom);
+  function closeRoom(){ $('room').classList.remove('up'); state.focus=null; markFocused(); setPulse('10 people ready',false); hint('Idle again — the presence never fakes a reaction. Tap a card to re-open.'); }
+  function openRoom(bid,iid){ state.focus={b:bid,i:iid,compare:false}; state.scale='people'; renderRoom(); showRoom(); var it=findItem(bid,iid),b=find(bid); setPulse(it.stop+' of 10 '+b.metric+' · '+b.kind.replace(/s$/,'')+(b.items.length>1?' '+it.rank:'')); }
+  function openCompare(bid){ var b=find(bid); if(!b)return; state.focus={b:bid,compare:true}; setPulse('ranked · '+b.items.length+' '+b.noun+'s'); renderRoom(); showRoom(); }
+  function markFocused(){ Array.prototype.forEach.call(document.querySelectorAll('.hcard'),function(c){var on=state.focus&&!state.focus.compare&&c.getAttribute('data-b')===state.focus.b&&c.getAttribute('data-i')===state.focus.i;c.classList.toggle('focused',!!on)}) }
+
+  $('scPeople').addEventListener('click',function(){ if(!state.focus||state.focus.compare)return; state.scale='people'; renderRoom(); });
+  $('scPop').addEventListener('click',function(){ if(!state.focus||state.focus.compare)return; state.scale='pop'; renderRoom(); hint('Population · 1,000 — <b>1,000 modeled from your 10.</b> Hit Play.'); });
+
+  function renderRoom(){
+    var f=state.focus; if(!f)return; var b=find(f.b); if(!b)return;
+    if(f.compare){ $('scale').style.display='none'; $('splitfoot').style.display='none'; $('roomFoot').innerHTML=''; renderCompareHead(b); renderCompareBody(b); markFocused(); return; }
+    var it=findItem(f.b,f.i);
+    if(!it){ openCompare(f.b); return; }  // guard: never render an empty single view
+    $('scale').style.display='flex'; $('scPeople').classList.toggle('on',state.scale==='people'); $('scPop').classList.toggle('on',state.scale==='pop');
+    renderDrillHead(b,it); $('splitfoot').style.display='none';
+    if(state.scale==='people'){ $('roomFoot').innerHTML=''; renderPeople(b,it); } else { renderPopulation(b,it); renderFoot(b,it); }
+    markFocused();
+  }
+  function renderDrillHead(b,it){
+    var idx=b.items.indexOf(it),n=b.items.length,po=idx<=0?'off':'',no=idx>=n-1?'off':'';
+    var step=n>1?'<div class="stepper"><div class="stepbtn '+po+'" id="stepPrev">‹</div><div class="focuslbl"><span class="kind">'+b.kind.replace(/s$/,'')+'</span> '+it.rank+' <span class="kind">of '+n+'</span></div><div class="stepbtn '+no+'" id="stepNext">›</div></div>':'<div class="focuslbl"><span class="kind">'+b.kind+'</span></div>';
+    $('rhead').innerHTML='<div class="rhead-top">'+step+(n>1?'<div class="cmplink" id="cmpLink">⤺ all '+n+'</div>':'')+'</div><div class="rscore">'+it.stop+' of 10 '+b.metric+'<small>'+esc(trunc(it.title,52))+'</small></div>';
+    var p=$('stepPrev'),nx=$('stepNext'); if(p&&!po)p.addEventListener('click',function(){openRoom(b.id,b.items[idx-1].id)}); if(nx&&!no)nx.addEventListener('click',function(){openRoom(b.id,b.items[idx+1].id)});
+    var cl=$('cmpLink'); if(cl)cl.addEventListener('click',function(){openCompare(b.id)});
+  }
+  function renderCompareHead(b){ $('rhead').innerHTML='<div class="rhead-top"><div class="focuslbl"><span class="kind">'+b.kind+' · ranked</span></div></div><div class="rscore" style="font-size:18px">How the room ranked your '+b.items.length+' '+b.noun+'s</div>'; }
+  function renderCompareBody(b){
+    var html='<div class="cmphead">Tap any one to open the room on it.</div>';
+    b.items.slice().sort(function(a,c){return a.rank-c.rank}).forEach(function(it){var t=toneOf(it.stop),col=t==='g'?'var(--good)':t==='r'?'var(--accent)':'rgba(255,255,255,.4)';html+='<div class="cmprow" data-i="'+it.id+'"><div class="rk">'+it.rank+'</div><div class="cb"><div class="ct">'+esc(it.title)+'</div><div class="meter"><i style="width:'+(it.stop*10)+'%;background:'+col+'"></i></div></div><div class="sc">'+it.stop+'/10</div><div class="go">›</div></div>'});
+    $('sbody').innerHTML=html;
+    Array.prototype.forEach.call(document.querySelectorAll('#sbody .cmprow'),function(r){r.addEventListener('click',function(){openRoom(b.id,r.getAttribute('data-i'))})});
+  }
+  function scoreText(b,it){ return it.stop+' of 10 '+b.metric+' · '+b.kind.replace(/s$/,'')+(b.items.length>1?' '+it.rank:''); }
+  function personRow(r,delay){ var p=PEOPLE[r[0]]; var d=delay!=null?' style="animation-delay:'+delay+'ms"':''; return '<div class="prow" data-p="'+r[0]+'"'+d+'><div class="ava '+r[1]+'">'+p.ini+'</div><div class="b"><div class="nmrow"><span class="nm">'+p.name+'</span><span class="ask">ask →</span></div><div class="q">“'+esc(r[2])+'”</div></div></div>'; }
+  function bindPeopleRows(it){ Array.prototype.forEach.call(document.querySelectorAll('#sbody .prow'),function(row){row.addEventListener('click',function(){openChat(row.getAttribute('data-p'),it)})}); }
+  function peopleFootHTML(){ return '<div class="replay" id="replayBtn">▶ Replay how the room reacted</div><div class="moreppl">+ 4 more of your 10 · scroll</div>'; }
+  function renderPeople(b,it){
+    var html=''; it.react.forEach(function(r,i){ html+=personRow(r,i*45); });
+    html+=peopleFootHTML();
+    $('sbody').innerHTML=html; bindPeopleRows(it);
+    $('replayBtn').addEventListener('click',function(){ streamPeople(b,it); });
+  }
+  function streamPeople(b,it){
+    $('presence').classList.add('reacting'); setPulse('re-reading the room…'); $('sbody').innerHTML='';
+    var i=0; (function next(){
+      if(i>=it.react.length){ var f=document.createElement('div'); f.innerHTML=peopleFootHTML(); while(f.firstChild)$('sbody').appendChild(f.firstChild); bindPeopleRows(it); var rb=$('replayBtn'); if(rb)rb.addEventListener('click',function(){streamPeople(b,it)}); $('presence').classList.remove('reacting'); setPulse(scoreText(b,it)); return; }
+      var wrap=document.createElement('div'); wrap.innerHTML=personRow(it.react[i],0); var row=wrap.firstChild; $('sbody').appendChild(row); $('sbody').scrollTop=$('sbody').scrollHeight; (function(pid){row.addEventListener('click',function(){openChat(pid,it)})})(it.react[i][0]); i++; setTimeout(next,240);
+    })();
+  }
+  function renderPopulation(b,it){
+    var g=it.react.filter(function(r){return r[1]==='g'}).length,rr=it.react.filter(function(r){return r[1]==='r'}).length,tot=it.react.length,nn=tot-g-rr,reds=it.react.filter(function(r){return r[1]==='r'}),pct=function(x){return Math.round(x/tot*100)};
+    var N=90, gd=Math.round(g/tot*N), rd=Math.round(rr/tot*N);
+    var dots=''; for(var i=0;i<N;i++){ var cls=i<gd?'g':i<gd+rd?'r':'n'; dots+='<i class="'+cls+'"></i>'; }
+    // HERO — the 1,000-strong room, modeled from your 10
+    var hero='<div class="swarmbig"><div class="m"><b class="good">'+Math.round(g/tot*1000)+'</b><span>would stay</span></div><div class="m"><b class="bad">'+Math.round(rr/tot*1000)+'</b><span>would bounce</span></div></div><div class="swarm" id="swarm">'+dots+'</div><div class="swarmlbl">1,000 modeled from your 10 · <span id="playBtn" style="color:var(--cream);cursor:pointer">▶ Play</span></div>';
+    // STATS BAR — the exact split
+    var stats='<div class="statsbar"><div class="splitbar"><i style="background:var(--good);width:'+pct(g)+'%"></i><i style="background:rgba(255,255,255,.10);width:'+pct(nn)+'%"></i><i style="background:var(--accent);width:'+pct(rr)+'%"></i></div><div class="splitcap"><span><b class="good">'+pct(g)+'%</b> loved</span>'+(nn?'<span><b>'+pct(nn)+'%</b> mixed</span>':'')+'<span><b class="bad">'+pct(rr)+'%</b> bounced</span></div></div>';
+    // WEAK SPOT — who’s costing you, in their words
+    var weak='';
+    if(reds.length){ weak='<div class="weakspot"><div class="wk-h">Where you’re losing them · '+Math.round(rr/tot*1000)+' of 1,000</div>';
+      reds.forEach(function(r){var p=PEOPLE[r[0]];weak+='<div class="wk-row"><span class="wk-nm">'+p.name+'</span><span class="wk-q">“'+esc(r[2])+'”</span></div>';});
+      weak+='</div>'; }
+    $('sbody').innerHTML=hero+stats+weak;
+    var swarm=$('swarm');
+    var reveal=function(){ var d=swarm.querySelectorAll('i'); d.forEach(function(x){x.classList.remove('show')}); var k=0,t=setInterval(function(){ for(var j=0;j<5&&k<d.length;j++,k++)d[k].classList.add('show'); if(k>=d.length)clearInterval(t); },24); };
+    $('playBtn').addEventListener('click',reveal); setTimeout(reveal,120);
+  }
+  function renderSplit(it){
+    var g=it.react.filter(function(r){return r[1]==='g'}).length,rr=it.react.filter(function(r){return r[1]==='r'}).length,tot=it.react.length,nn=tot-g-rr,pct=function(x){return Math.round(x/tot*100)};
+    $('splitfoot').style.display='block';
+    $('splitfoot').innerHTML='<div class="splitbar"><i style="background:var(--good);width:'+pct(g)+'%"></i><i style="background:rgba(255,255,255,.10);width:'+pct(nn)+'%"></i><i style="background:var(--accent);width:'+pct(rr)+'%"></i></div><div class="splitcap"><span><b>'+pct(g)+'%</b> loved it</span><span><b>'+pct(rr)+'%</b> bounced</span></div>';
+  }
+  function renderFoot(b,it){
+    var red=it.react.find(function(r){return r[1]==='r'}); if(!red||it.stop>=9){$('roomFoot').innerHTML='';return;}
+    var rr=it.react.filter(function(r){return r[1]==='r'}).length, pct=Math.round(rr/it.react.length*100);
+    $('roomFoot').innerHTML='<div class="cta" id="rewriteBtn">Rewrite to win back the '+pct+'% who bounced →</div>';
+    $('rewriteBtn').addEventListener('click',function(){doRewrite(b,it,red[0])});
+  }
+  function doRewrite(b,it,redPid){
+    var btn=$('rewriteBtn'); if(btn.dataset.busy)return; btn.dataset.busy='1'; btn.textContent='Rewriting for the room…'; $('presence').classList.add('reacting');
+    setTimeout(function(){
+      var before=it.stop; it.stop=Math.min(10,it.stop+1);
+      it.react=it.react.map(function(r){return r[0]===redPid?[r[0],'g',PEOPLE[redPid].name+' came around — “ok, that version I’d watch”']:r});
+      it.title=it.title.replace('cancelled my gym','swapped the gym for 15-min home workouts').replace('quit','swap');
+      var card=document.querySelector('.hcard[data-b="'+b.id+'"][data-i="'+it.id+'"]'); if(card){var sc=card.querySelector('.score');if(sc){sc.className='score '+toneOf(it.stop);sc.innerHTML='<i class="sdot"></i>'+it.stop+'/10 '+b.metric;}card.querySelector('.h').textContent=it.title;}
+      $('presence').classList.remove('reacting'); setPulse(it.stop+' of 10 '+b.metric+' · '+b.kind.replace(/s$/,'')+' '+it.rank);
+      renderRoom(); showToast('<b>'+before+' → '+it.stop+' '+b.metric+'.</b> The lever moved the room — '+PEOPLE[redPid].name+' came back.');
+      hint('That’s the loop: point → hear why → fix → the number moves.');
+    },1000);
+  }
+  function openChat(pid,it){
+    var p=PEOPLE[pid],mine=(it.react.find(function(r){return r[0]===pid})||[0,'n','—']);
+    $('chatAva').className='ava '+mine[1]; $('chatAva').textContent=p.ini; $('chatName').textContent=p.name; $('chatArch').textContent=p.arch; $('chatInput').placeholder='Ask '+p.name+'…';
+    state.curP=pid; state.curName=p.name; if(state.chatIdx[pid]===undefined)state.chatIdx[pid]=0;
+    $('chatBody').innerHTML=''; addBub('them',p.name,'“'+mine[2]+'” — that was my take on this one.'); $('chat').classList.add('up'); hint('Ask '+p.name+' anything — they answer as themselves.');
+  }
+  $('chatBack').addEventListener('click',function(){$('chat').classList.remove('up')});
+  function addBub(role,who,text){var b=document.createElement('div');b.className='bub '+role;if(role==='them')b.innerHTML='<div class="who">'+esc(who)+'</div>'+esc(text);else b.textContent=text;$('chatBody').appendChild(b);$('chatBody').scrollTop=$('chatBody').scrollHeight;}
+  function sendChat(){var inp=$('chatInput'),v=inp.value.trim();if(!v)return;inp.value='';addBub('me','',v);var typ=document.createElement('div');typ.className='typing';typ.textContent=state.curName+' is thinking…';$('chatBody').appendChild(typ);$('chatBody').scrollTop=$('chatBody').scrollHeight;setTimeout(function(){typ.remove();var p=PEOPLE[state.curP],idx=state.chatIdx[state.curP]||0;addBub('them',p.name,p.replies[idx]||p.replies[p.replies.length-1]);state.chatIdx[state.curP]=idx+1;},640);}
+  $('chatSend').addEventListener('click',sendChat); $('chatInput').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();sendChat();}});
+  function showToast(html){var t=$('toast');t.innerHTML=html;t.classList.add('on');setTimeout(function(){t.classList.remove('on')},3000);}
+  $('reset').addEventListener('click',function(){location.reload()});
+})();
+</script>

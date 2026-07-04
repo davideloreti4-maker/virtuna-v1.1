@@ -82,6 +82,13 @@ export interface ChatPipelineInput {
     archetype: Archetype;
     reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
     conceptText: string;
+    /**
+     * The persona's real DISPLAY NAME (The Room, Task A) — e.g. "Dev". Presentation-derived
+     * (creator label or the stable archetype default), routed into the persona system prefix so
+     * the viewer answers AS that named person. Optional: absent → the byte-identical
+     * archetype-only prompt (Test 1 no-op preserved for legacy callers).
+     */
+    personaName?: string;
   };
 }
 
@@ -149,13 +156,23 @@ const PERSONA_ANCHOR_CAP = 2000;
 function buildPersonaSystemPrefix(
   archetype: Archetype,
   verdict: "stop" | "scroll",
+  personaName?: string,
 ): string {
   const definition = ARCHETYPE_DEFINITIONS[archetype];
   const triggers = ARCHETYPE_TRIGGERS[archetype];
   const stop = triggers.stop.join("; ");
   const scrollPast = triggers.scroll_past.join("; ");
+  // Named-people reframe (The Room, Task A): when the caller supplies a real name the viewer
+  // answers AS that person (first line + a "your name is" anchor); the archetype still drives
+  // the behaviour. `name` is a short presentation string (server-capped) — safe, non-user-authored
+  // in practice (derived from the registry default or the creator's own label).
+  const name = personaName?.trim();
+  const opener = name
+    ? `You are ${name}, a single real viewer, answering in first person, in-voice as yourself.`
+    : `You are a single viewer of this archetype, answering in first person, in-voice.`;
   return [
-    `You are a single viewer of this archetype, answering in first person, in-voice.`,
+    opener,
+    name ? `Your name is ${name}. If asked who you are, answer as ${name}.` : ``,
     `Archetype: ${archetype}.`,
     definition,
     `What makes you stop: ${stop}.`,
@@ -163,7 +180,9 @@ function buildPersonaSystemPrefix(
     `On the concept below you ${verdict === "stop" ? "STOPPED" : "SCROLLED past"}.`,
     `Answer the creator's question as THIS viewer about THIS concept — honest, specific,`,
     `first-person. Do not break character or describe yourself as an AI.`,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**
@@ -233,6 +252,7 @@ export async function runChatPipeline(
     ? buildPersonaSystemPrefix(
         personaGrounding.archetype,
         personaGrounding.reactionToConcept.verdict,
+        personaGrounding.personaName,
       )
     : undefined;
   const personaReactionAnchor = personaGrounding

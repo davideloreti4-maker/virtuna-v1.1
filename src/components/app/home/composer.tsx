@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
@@ -46,10 +47,10 @@ import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
-  ModelTag,
   SkillRows,
   SKILLS,
   getSkill,
@@ -77,7 +78,7 @@ import { AccountReadThreadView } from "@/components/thread/account-read-thread-v
 import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
 import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
 import { Spinner } from "@/components/ui/spinner";
-import { AudiencePresence, type AudienceAsk } from "@/components/audience-lens/audience-presence";
+import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
@@ -204,6 +205,12 @@ export interface ComposerProps {
 export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
+  // The Room, PR-4: at ≥ xl the audience becomes a PERSISTENT right rail (the desktop moat) —
+  // the mobile bottom-docked peek + Bloom is hidden and the same presence renders as a fixed rail
+  // beside the making surface. SSR-safe (false until measured), and the ONLY presence mounted at a
+  // time, so there is never a hidden second AmbientRoom running its timers. 1280px so the app
+  // sidebar + a readable work column + the 392px rail all fit; ≤1279 keeps the shipped Bloom.
+  const isDesktopRail = useMediaQuery("(min-width: 1280px)");
 
   // Layout signal: does a Simulation exist? Mirrors ContentForm L158.
   const params = useParams();
@@ -222,17 +229,29 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
   const hasUserSelectedToolRef = useRef(false);
+  // Tracks whether the creator has picked an audience this mount. Guards the mount-time
+  // seed of selectedAudienceId from the user-level last-used audience (the audiences fetch
+  // below) so a deliberate pick made while that fetch was in flight always wins.
+  const hasUserSelectedAudienceRef = useRef(false);
   // Evidence-drop file input (D-07) — declared here (ahead of the rest of the
   // evidence state) so handleUserSelectTool can open the Profile evidence picker
   // within the user-gesture call stack (a file input .click() must ride a real
   // user gesture; an effect can't open it). The input itself is rendered below.
   const evidenceInputRef = useRef<HTMLInputElement | null>(null);
+  // Whether the Test upload drop zone is revealed. Test ABSORBS upload (v6 — §3.5): the
+  // zone shows when the creator INTENTIONALLY enters Test (picks the verb, or a hook /
+  // script "Test full →" handoff) — NOT on the bare default, so the empty home stays a
+  // clean topic composer (the prototype's default). A staged file also forces it visible.
+  const [showUpload, setShowUpload] = useState(false);
   // Wrap every USER-initiated tool pick (slash menu + chip picker) so the restore
   // guard above flips. Programmatic switches (handoffs, refine) intentionally do NOT
   // flip it — they are not the creator choosing where to land on reload.
   const handleUserSelectTool = useCallback((id: ToolId) => {
     hasUserSelectedToolRef.current = true;
     setActiveTool(id);
+    // Test absorbs upload (v6): reveal the drop zone when Test is explicitly chosen;
+    // hide it for any other verb so the clean field-only composer returns.
+    setShowUpload(id === "test");
     // ── Profile (07-04 / D-07): General "Profile" is NOT a topic submit ─────────
     // Selecting Profile opens the existing evidence-drop affordance (drop a chat /
     // screenshot / clip → POST /api/tools/profile) instead of arming the topic field.
@@ -254,8 +273,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // ── Build-an-audience chooser (UX-04 / D-03 / D-08) ─────────────────────────
   // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
   const [buildOpen, setBuildOpen] = useState(false);
-  // Per-run intent override: null = follow the active audience's goal_intent default (derived below).
-  const [intentOverride, setIntentOverride] = useState<Intent | null>(null);
 
   // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
   // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
@@ -269,11 +286,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Sent as the first-class platform param to the skill routes (derived, not picked).
   const platform: Platform = audienceToPlatform(selectedAudience?.platform);
 
-  // GAP-C2 (§P.10): the per-run intent LENS is DERIVED, not synced via effect — the displayed
-  // value is the user's explicit per-run flip (intentOverride) falling back to the active
-  // audience's goal_intent (4→2 lens). Switching audience clears the override in
-  // handleSelectAudience (an event handler, not an effect) → the new audience's default shows.
-  const intent: Intent = intentOverride ?? goalIntentToLens(selectedAudience?.goal_intent ?? null);
+  // Task C (v6): intent is a PROPERTY OF THE AUDIENCE's goal (goal_intent → grow/sell lens),
+  // never a per-run composer toggle (the Grow/Sell control retired — THE-ROOM-HANDOFF §3.5).
+  // Switching audience swaps the lens automatically. Still sent to the skill routes + askAudience
+  // (a calibrated audience re-frames the SIM verdict; General → no-op).
+  const intent: Intent = goalIntentToLens(selectedAudience?.goal_intent ?? null);
 
   // ── Open thread id (07-05 — D-04 per-thread pin for AudienceChip) ───────────
   // Captured on mount from GET /api/threads/open (returns threadId).
@@ -431,7 +448,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
@@ -654,8 +670,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       try {
         const res = await fetch("/api/audiences");
         if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { audiences?: Audience[] };
-        if (!cancelled) setAudiences(data.audiences ?? []);
+        const data = (await res.json()) as {
+          audiences?: Audience[];
+          lastAudienceId?: string | null;
+        };
+        if (cancelled) return;
+        const list = data.audiences ?? [];
+        setAudiences(list);
+        // Seed the active audience from the user-level last-used pin (resolveUserAudience)
+        // so a page reload restores the calibrated audience instead of resetting to General.
+        // Guarded so a deliberate pick made while this fetch was in flight always wins; and
+        // only seed an id that is actually in the loaded list (a stale/deleted id → General).
+        if (
+          !hasUserSelectedAudienceRef.current &&
+          data.lastAudienceId &&
+          list.some((a) => a.id === data.lastAudienceId)
+        ) {
+          setSelectedAudienceId(data.lastAudienceId);
+        }
       } catch {
         // silent — popover renders the empty state
       }
@@ -688,9 +720,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Non-fatal: the pill reflects optimistic state even if the PATCH fails.
   const handleSelectAudience = useCallback(async (audience: Audience) => {
     const newId = audience.is_general ? null : audience.id;
+    // Mark a deliberate pick so the mount-time last-used seed never clobbers it (race guard).
+    hasUserSelectedAudienceRef.current = true;
     setSelectedAudienceId(newId);
-    // GAP-C2: clear any per-run intent flip so the lens falls back to the new audience's default.
-    setIntentOverride(null);
+    // Persist the USER-level last-used audience (resolveUserAudience) so the choice survives a
+    // page reload + seeds new threads/surfaces. Only a real audience UUID (or null=General) is a
+    // valid last-used pin — virtual preset ids stay session-local (like the thread pin, below).
+    // Fire-and-forget: non-fatal if it fails (the in-memory selection still reflects the pick).
+    if (newId === null || UUID_PATTERN.test(newId)) {
+      void fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: newId }),
+      }).catch(() => {});
+    }
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
     // Socials switch, which would silently router.push away + discard the draft),
@@ -727,8 +770,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     setAudiences((prev) =>
       prev.some((a) => a.id === saved.id) ? prev : [...prev, saved],
     );
+    hasUserSelectedAudienceRef.current = true;
     setSelectedAudienceId(saved.id);
-    setIntentOverride(null);
+    // Persist the built SIM as the user-level last-used so it survives reload (mirrors
+    // handleSelectAudience). Real UUID by construction (a saved row). Fire-and-forget.
+    if (UUID_PATTERN.test(saved.id)) {
+      void fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: saved.id }),
+      }).catch(() => {});
+    }
     setBuildOpen(false);
   }, []);
 
@@ -739,6 +791,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // CRITICAL: does NOT invoke any model on the hook text (D-05 honesty spine).
   const handleTestHook = useCallback((hookLine: string, audienceArchetype: string) => {
     setActiveTool("test");
+    setShowUpload(true); // Test absorbs upload — reveal the drop zone for the real video
     setTestBrief({ hookLine, audienceArchetype });
   }, []);
 
@@ -762,6 +815,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // CRITICAL: does NOT invoke any model on the script text (D-05 honesty spine).
   const handleTestScript = useCallback((openingBeatLine: string, _scriptBrief: string) => {
     setActiveTool("test");
+    setShowUpload(true); // Test absorbs upload — reveal the drop zone for the real video
     // Surface the script opener as the hook brief (matches the visual brief posture)
     setTestBrief({ hookLine: openingBeatLine, audienceArchetype: "script opener" });
   }, []);
@@ -1397,11 +1451,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     const fraction: string | undefined = p.fraction;
     const scrollQuote: string | undefined = p.scrollQuote;
     if (typeof concept !== "string" || typeof fraction !== "string") return null;
+    // S3′: a generated card carries its own 10-persona reaction (real registry-enum
+    // archetypes). Thread it onto the focus so the Room's People cast + "Ask them why"
+    // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
+    // the presence falls back to the honest fraction-expansion placeholders.
+    const personas = Array.isArray(p.personas) ? p.personas : undefined;
     return {
       id: `${kind}-${idx}`,
       conceptText: concept,
       fraction,
       scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
+      personas,
     };
   };
   const ambientDescriptors: AmbientCardDescriptor[] = (() => {
@@ -1417,12 +1477,115 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     return [];
   })();
 
+  // The batch's kind label for the Room's anchored-focus stepper (‹ Hook N of M ›) + view-all
+  // (PR-2). The descriptor set is already scoped to the active tool (all one kind), so a single
+  // singular label fits the whole batch.
+  const ambientKindLabel =
+    activeTool === "hooks"
+      ? "Hook"
+      : activeTool === "idea"
+        ? "Idea"
+        : activeTool === "script"
+          ? "Script"
+          : activeTool === "remix"
+            ? "Remix"
+            : "Concept";
+
   const {
     focus: ambientFocus,
     focusByTap,
     focusByThought,
     registerThreadRegion,
   } = useAmbientFocus(ambientDescriptors);
+
+  // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
+  // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the
+  // ORIGINATING skill steered by the bouncers' real words (the `lever`), via the composer's OWN
+  // stream hook. That's the honest re-POST-to-runner: the SSE is read to completion (unlike a
+  // fire-and-forget fetch that resolves at headers, before persistence), so the regenerated batch
+  // streams into the SAME thread + Read, and on completion we land focus on the winning (highest-
+  // stop) card so the Room shows the real delta (prior → new). Only the text-seedable skills
+  // rewrite; remix (URL-seeded) has no lever-reseed path → the CTA is gated off there.
+  const canRoomRewrite =
+    activeTool === "hooks" || activeTool === "idea" || activeTool === "script";
+  // Bumped once a reseed lands + the Room re-focuses; the Room reveals the delta only after this
+  // advances past the value it captured at tap-time (so its "current" read is the post-rewrite one).
+  const [rewriteNonce, setRewriteNonce] = useState(0);
+  // Set the moment a rewrite fires; the completion effect below consumes it once the reseed's SSE
+  // closes. A ref (not state) so setting it never renders + it reads fresh inside the effect.
+  const roomRewriteExpectingRef = useRef(false);
+
+  const onRoomRewrite = useCallback(
+    async (lever: string) => {
+      const seed = lever.trim();
+      if (seed.length === 0) return;
+      // reset() clears the prior batch (isDone → false) BEFORE we arm the flag, so the completion
+      // effect can't misfire on the previous run; the reseed then streams a fresh steered batch.
+      if (activeTool === "hooks") {
+        hooks.reset();
+        roomRewriteExpectingRef.current = true;
+        await hooks.start(seed, platform, intent);
+      } else if (activeTool === "idea") {
+        ideas.reset();
+        roomRewriteExpectingRef.current = true;
+        await ideas.start(seed, platform, intent);
+      } else if (activeTool === "script") {
+        script.reset();
+        roomRewriteExpectingRef.current = true;
+        await script.start(seed, platform, undefined, intent);
+      }
+    },
+    [activeTool, hooks, ideas, script, platform, intent],
+  );
+
+  // Reseed completion: once the active skill's stream closes, land the Room's focus on the winning
+  // (highest-stop) card of the fresh batch, then bump the nonce so the Room reveals the delta. The
+  // fresh batch is the TAIL of the descriptor list (persisted history unchanged) — picking the best
+  // of that tail is robust to the positional descriptor ids. Early-returns unless a rewrite is
+  // pending, so normal generation (expecting = false) is never touched.
+  useEffect(() => {
+    if (!roomRewriteExpectingRef.current) return;
+    const stream =
+      activeTool === "hooks"
+        ? hooks
+        : activeTool === "idea"
+          ? ideas
+          : activeTool === "script"
+            ? script
+            : null;
+    if (!stream || stream.isStreaming || !stream.isDone) return;
+    const streamingCount =
+      activeTool === "hooks"
+        ? hooksBlocks.length
+        : activeTool === "idea"
+          ? ideasBlocks.length
+          : scriptBlocks.length;
+    if (streamingCount === 0) return;
+    roomRewriteExpectingRef.current = false;
+    const batch = ambientDescriptors.slice(-streamingCount);
+    if (batch.length === 0) return;
+    const stopOf = (d: AmbientCardDescriptor): number => {
+      const m = d.fraction.match(/(\d+)\s*\/\s*(\d+)/);
+      return m ? Number(m[1]) : -1;
+    };
+    let best = batch[0]!;
+    for (const d of batch) if (stopOf(d) > stopOf(best)) best = d;
+    focusByTap(best.id);
+    setRewriteNonce((n) => n + 1);
+  }, [
+    activeTool,
+    hooks.isDone,
+    hooks.isStreaming,
+    ideas.isDone,
+    ideas.isStreaming,
+    script.isDone,
+    script.isStreaming,
+    hooksBlocks.length,
+    ideasBlocks.length,
+    scriptBlocks.length,
+    ambientDescriptors,
+    focusByTap,
+  ]);
 
   // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
   // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
@@ -1449,12 +1612,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         });
         if (controller.signal.aborted) return;
         if (!res.ok) throw new Error("reaction_failed");
-        const data: { fraction?: string; scrollQuote?: string } = await res.json();
+        const data: {
+          fraction?: string;
+          scrollQuote?: string;
+          personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
+        } = await res.json();
         if (controller.signal.aborted) return;
         const fraction = data.fraction ?? "";
         const scrollQuote = data.scrollQuote ?? "";
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote }]);
-        focusByThought({ conceptText: text, fraction, scrollQuote }); // Lens shows this read
+        const personas = Array.isArray(data.personas) ? data.personas : undefined;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas }]);
+        // Lens shows this read — with the real named cast (react route returns registry-enum personas).
+        focusByThought({ conceptText: text, fraction, scrollQuote, personas });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
@@ -1465,25 +1634,52 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     [asking, focusByThought, intent],
   );
 
-  const audiencePresence = (
-    <AudiencePresence
-      audience={selectedAudience}
-      audiences={audiences}
-      selectedAudienceId={selectedAudienceId}
-      onSelectAudience={(a) => void handleSelectAudience(a)}
-      focus={ambientFocus}
-      reducedMotion={reducedMotion}
-      open={audienceOpen}
-      onOpenChange={setAudienceOpen}
-      asks={audienceAsks}
-      asking={asking}
-      onReask={(a) =>
-        focusByThought({ conceptText: a.thought, fraction: a.fraction, scrollQuote: a.scrollQuote })
-      }
-      onBuildAudience={() => setBuildOpen(true)}
-      docked
-    />
-  );
+  // The presence props are shared by the mobile bottom-docked peek+Bloom (`docked`) and the
+  // desktop persistent rail (`layout="rail"`). Exactly ONE mounts per viewport (isDesktopRail),
+  // so there is never a hidden second AmbientRoom running its timers.
+  const presenceCommonProps: Omit<AudiencePresenceProps, "docked" | "layout"> = {
+    audience: selectedAudience,
+    audiences,
+    selectedAudienceId,
+    onSelectAudience: (a: Audience) => void handleSelectAudience(a),
+    focus: ambientFocus,
+    reducedMotion,
+    open: audienceOpen,
+    onOpenChange: setAudienceOpen,
+    asks: audienceAsks,
+    asking,
+    onReask: (a: AudienceAsk) =>
+      focusByThought({
+        conceptText: a.thought,
+        fraction: a.fraction,
+        scrollQuote: a.scrollQuote,
+        personas: a.personas,
+      }),
+    onBuildAudience: () => setBuildOpen(true),
+    focusList: ambientDescriptors,
+    onStep: focusByTap,
+    kindLabel: ambientKindLabel,
+    canRewrite: canRoomRewrite,
+    onRewrite: onRoomRewrite,
+    rewriteNonce,
+  };
+  const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
+
+  // Desktop persistent rail (PR-4) — a fixed right column, portaled to <body> so it escapes the
+  // scrolling main + any transform ancestor (always viewport-fixed). Gated on isDesktopRail so it
+  // mounts only at ≥ xl; /home reserves its width via `xl:pr` (HomePageLayout) so nothing hides
+  // under it. The dock peek is `xl:hidden`, so the two never show at once.
+  const railPortal = isDesktopRail
+    ? createPortal(
+        <aside
+          data-testid="audience-rail-portal"
+          className="fixed right-0 top-0 z-30 h-screen w-[392px]"
+        >
+          <AudiencePresence {...presenceCommonProps} layout="rail" />
+        </aside>,
+        document.body,
+      )
+    : null;
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -1837,10 +2033,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             </div>
           )}
 
-          {/* Upload drop zone — only relevant for the Test tool path.
-              VideoUpload (bare) is always mounted (so its file input is part of
-              the composer); the + control reveals/hides it. A staged file forces
-              it visible so the preview never hides. */}
+          {/* Upload drop zone — Test ABSORBS the upload (v6 — THE-ROOM-HANDOFF §3.5): the
+              zone reveals when the creator INTENTIONALLY enters Test (showUpload, set on an
+              explicit Test pick or a hook/script "Test full →" handoff) or a file is staged,
+              so "Test = upload a video" needs no separate `+` control — and the empty-home
+              default stays a clean topic composer. VideoUpload (bare) is always mounted so
+              its file input is part of the composer; a staged file keeps it visible. */}
           <div
             className={cn(
               "overflow-hidden",
@@ -1852,43 +2050,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <VideoUpload bare file={file} onFileSelect={setFile} />
           </div>
 
-          {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
-              Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
-              tools it carries a URL; a `/` opens the skill command menu (above). */}
-          <textarea
-            rows={1}
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onKeyDown={onFieldKeyDown}
-            placeholder={activePlaceholder}
-            aria-label={
-              activeTool === "idea"
-                ? "Idea topic or angle (leave empty for Auto)"
-                : activeTool === "hooks"
-                  ? "Hook topic (leave empty for Auto)"
-                  : activeTool === "chat"
-                    ? "Ask anything about your content"
-                    : activeTool === "script"
-                      ? "Script topic or leave empty to carry in a hook"
-                      : activeTool === "remix"
-                        ? "Paste a TikTok URL to decode and remix"
-                        : hasSimulation
-                          ? "Ask about this simulation"
-                          : "Paste a TikTok link"
-            }
-            aria-invalid={showUrlError || undefined}
-            className={cn(
-              "w-full resize-none bg-transparent px-1 pt-1 text-base text-foreground",
-              "placeholder:text-foreground-muted focus:outline-none",
-              "min-h-[44px] max-h-[150px] leading-[1.55]",
-            )}
-          />
-
-          {/* Control row (UX-01): [+] [skill ▾] [audience] [intent] ··· [model] [↑].
-              ComposerControls owns the left cluster + every popover; the model is a
-              read-only indicator (the skill decides it); send is the lone coral
-              affordance. Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
-          <div className="mt-3 flex items-center gap-1.5">
+          {/* Clean composer row (v6 — THE-ROOM-HANDOFF §3.5): [✦ Make ▾] · field · ↑.
+              The verb chip (ComposerControls) sits inline-left, the field grows in the
+              middle, a small evidence paperclip + the cream send sit right. Banners + the
+              Test upload zone stack ABOVE this row. Tool selection is NEVER a submit
+              (Pitfall #5 / WR-05); the Grow/Sell intent, `+` attach, and model tag are all
+              retired (intent → audience goal; Test absorbs upload; model implied by verb). */}
+          <div className="flex items-end gap-2">
             <ComposerControls
               activeTool={activeTool}
               onSelectTool={handleUserSelectTool}
@@ -1898,16 +2066,45 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               // DERIVED from the selected audience — null/Socials audience → "socials"
               // so the live creator render is byte-identical (Pitfall 2).
               activeMode={selectedAudience?.mode ?? "socials"}
-              intent={intent}
-              onIntentChange={setIntentOverride}
-              onUploadClick={() => setShowUpload(true)}
               onRunExplore={(params) => void explore.start(params)}
+              className="shrink-0"
             />
 
-            {/* Evidence-drop affordance (05-06 / D-07) — a minimal additive attach
-                control mounted ALONGSIDE the existing controls (never inside them, so the
-                creator path stays byte-identical). Opens a file picker; drag-and-drop is
-                handled by the form overlay. ≥44px touch target (pointer-coarse). */}
+            {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
+                Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
+                tools it carries a URL; a `/` opens the skill command menu (above). */}
+            <textarea
+              rows={1}
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={onFieldKeyDown}
+              placeholder={activePlaceholder}
+              aria-label={
+                activeTool === "idea"
+                  ? "Idea topic or angle (leave empty for Auto)"
+                  : activeTool === "hooks"
+                    ? "Hook topic (leave empty for Auto)"
+                    : activeTool === "chat"
+                      ? "Ask anything about your content"
+                      : activeTool === "script"
+                        ? "Script topic or leave empty to carry in a hook"
+                        : activeTool === "remix"
+                          ? "Paste a TikTok URL to decode and remix"
+                          : hasSimulation
+                            ? "Ask about this simulation"
+                            : "Paste a TikTok link"
+              }
+              aria-invalid={showUrlError || undefined}
+              className={cn(
+                "min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base text-foreground",
+                "placeholder:text-foreground-muted focus:outline-none",
+                "min-h-[40px] max-h-[150px] leading-[1.5]",
+              )}
+            />
+
+            {/* Small in-input evidence paperclip (05-06 / D-07) — attach a chat / screenshot
+                (the Profile evidence door). The `+` VIDEO attach retired: Test absorbs the
+                video upload. Opens a file picker; drag-and-drop is handled by the form overlay. */}
             <input
               ref={evidenceInputRef}
               type="file"
@@ -1924,15 +2121,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               aria-label={EVIDENCE_ATTACH_LABEL}
               title={EVIDENCE_ATTACH_LABEL}
               onClick={() => evidenceInputRef.current?.click()}
-              className="grid h-[34px] w-[34px] place-items-center rounded-lg text-foreground-secondary transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-foreground-muted transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
             >
-              <Paperclip className="h-[18px] w-[18px]" />
+              <Paperclip className="h-[17px] w-[17px]" />
             </button>
-
-            <div className="flex-1" />
-
-            {/* Read-only model indicator — flips Flash ↔ Max with the skill (D-09). */}
-            <ModelTag activeTool={activeTool} />
 
             {/* Submit — neutral cream action (inherits primary variant). */}
             <Button
@@ -1984,7 +2176,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         !reducedMotion && "transition-shadow duration-200",
       )}
     >
-      {audiencePresence}
+      {/* The bottom-docked peek + Bloom — hidden at ≥ xl, where the persistent rail takes over
+          (the composer field below stays the making input on all sizes). */}
+      <div className="xl:hidden">{audiencePresence}</div>
       {composerForm}
       {buildChooser}
     </div>
@@ -2054,6 +2248,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <div className="shrink-0 pb-4">
           {composerDock}
         </div>
+        {railPortal}
       </div>
     );
   }
@@ -2067,6 +2262,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {threadContent}
       {composerDock}
       {homeStarter}
+      {railPortal}
     </div>
   );
 }

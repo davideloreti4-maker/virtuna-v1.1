@@ -17,6 +17,21 @@
 import type { Audience } from '@/lib/audience/audience-types';
 
 /**
+ * One person's REAL reaction to the focused concept — the exact `{archetype, verdict, quote}`
+ * shape a SIM emits (structurally identical to `ReactionPersona` / `FlashPersona` /
+ * `FlatPersonaReaction`, kept local so this types-only module stays dependency-light).
+ *
+ * `archetype` is a genuine persona-registry enum (`high_engager`, `tough_crowd`, …) when it
+ * rode along from a generated card's own `personas[]` (S3′) or `POST /api/tools/react` — which
+ * is what lights up the NAMED People cast + the "Ask them why →" chat (The Room, Task A/B).
+ */
+export interface AmbientPersonaReaction {
+  archetype: string;
+  verdict: 'stop' | 'scroll';
+  quote: string;
+}
+
+/**
  * The ONE in-focus concept the spotlight reacts to, or `null` for the honest idle state.
  *
  * - `conceptText` — the labeled subject (`reacting to: {conceptText}`): a hook line, an idea
@@ -24,15 +39,38 @@ import type { Audience } from '@/lib/audience/audience-types';
  * - `fraction` — the concept's real `"N/T stop"` aggregate (already emitted by the skill, or
  *   returned by `POST /api/tools/react` for a typed thought). Feeds `cardScrollQuoteReactions`.
  * - `scrollQuote` — the single real verbatim lead quote for the concept (no fabrication).
+ * - `personas` — the concept's REAL per-persona reactions with registry-enum archetypes, when
+ *   the card block (S3′ `personas[]`) or the react route carried them. Present ⇒ the presence
+ *   feeds these straight to the Lens so People-tab voices + the named "Ask them why" list are
+ *   real; absent ⇒ the Lens honestly falls back to `cardScrollQuoteReactions` placeholders.
  *
  * `null` ⇒ idle: the presence shows the roster at calm uniform cream with NO reaction — it
  * never invents a reaction to nothing (D-01 honesty spine).
+ *
+ * - `id` — the resolved card's stable descriptor id, present ONLY when the focus resolved from
+ *   a real thread card (tap/scroll/latest — carried by `AmbientCardDescriptor`). ABSENT for an
+ *   ad-hoc typed thought (type-to-room) — a thought is not a sibling in the card batch. The Room
+ *   uses it to place the anchored-focus stepper (‹ Hook N of M ›) among the batch siblings (PR-2).
  */
 export type AmbientFocus = {
+  id?: string;
   conceptText: string;
   fraction: string;
   scrollQuote: string;
+  personas?: AmbientPersonaReaction[];
 } | null;
+
+/**
+ * The minimal shape the Room needs for one sibling card in the anchored-focus stepper + the
+ * `⤺ all N` ranked view-all (PR-2). It is a structural subset of `AmbientCardDescriptor` (the
+ * composer's flat per-tool card list), so the composer threads that list down verbatim; the
+ * Room ranks these by the parsed stop-count to render the stepper position + the compare rows.
+ */
+export interface AmbientFocusSibling {
+  id: string;
+  conceptText: string;
+  fraction: string;
+}
 
 /**
  * Props for the persistent `AmbientPresence` (built in isolation; composer-wired in 13-04).

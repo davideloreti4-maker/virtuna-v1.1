@@ -42,10 +42,15 @@ type PersonaGrounding = {
   archetype: Archetype;
   reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
   conceptText: string;
+  /** The persona's real display name (The Room, Task A) — server-capped, optional. */
+  personaName?: string;
 };
 
 /** Server-side cap on the persona concept/quote anchors (WARNING-5 — no new boundary). */
 const PERSONA_TEXT_CAP = 2000;
+
+/** Tight cap on the persona name (a first-name label, not free text) — trims + bounds it. */
+const PERSONA_NAME_CAP = 60;
 
 /**
  * Validate + length-cap the optional personaGrounding from the request body. Returns null
@@ -65,10 +70,14 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
   const quote = typeof r.quote === "string" ? r.quote.slice(0, PERSONA_TEXT_CAP) : "";
   const conceptText = typeof g.conceptText === "string" ? g.conceptText.slice(0, PERSONA_TEXT_CAP) : "";
   if (conceptText.length === 0) return null;
+  // Optional persona name (The Room, Task A) — trim + cap. Absent/blank → omitted, and the runner
+  // degrades to the byte-identical archetype-only prompt.
+  const rawName = typeof g.personaName === "string" ? g.personaName.trim().slice(0, PERSONA_NAME_CAP) : "";
   return {
     archetype: archetype as Archetype,
     reactionToConcept: { verdict, quote },
     conceptText,
+    ...(rawName.length > 0 ? { personaName: rawName } : {}),
   };
 }
 
