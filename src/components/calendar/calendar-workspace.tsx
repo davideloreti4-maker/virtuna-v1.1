@@ -90,7 +90,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
     >
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         {/* Header — title + planned density + month nav */}
-        <header className="mb-4 flex items-center gap-3">
+        <header className="rv-in mb-4 flex items-center gap-3" style={{ animationDelay: "0.02s" }}>
           <div className="min-w-0 flex-1">
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
               Calendar
@@ -125,7 +125,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
 
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
           {/* Hero — the month grid */}
-          <div className="min-w-0">
+          <div className="rv-in min-w-0" style={{ animationDelay: "0.08s" }}>
             <MonthGrid
               year={year}
               monthIndex={monthIndex}
@@ -145,7 +145,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
 
           {/* Right rail — day detail (desktop, inline) + pillar rail */}
           <aside className="mt-4 flex flex-col gap-3 lg:sticky lg:top-4 lg:mt-0">
-            <div className="hidden lg:block">
+            <div className="hidden lg:block rv-in" style={{ animationDelay: "0.14s" }}>
               {selectedDay != null ? (
                 <DayDetail
                   monthShort={monthShort}
@@ -161,7 +161,9 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
                 </div>
               )}
             </div>
-            <ContentPillars pillars={base.pillars} onPillar={handlePillar} />
+            <div className="rv-in" style={{ animationDelay: "0.18s" }}>
+              <ContentPillars pillars={base.pillars} onPillar={handlePillar} />
+            </div>
           </aside>
         </div>
       </div>
