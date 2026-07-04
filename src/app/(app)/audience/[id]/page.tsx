@@ -17,9 +17,19 @@ import {
 } from "@/components/audience/audience-display";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "@phosphor-icons/react";
+
+/** Full-bleed radial surface shell — matches /start · /audience · /grow. */
+function ProfileShell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+      <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-6 sm:px-6">{children}</div>
+    </div>
+  );
+}
 
 function DetailSkeleton() {
   return (
@@ -71,28 +81,30 @@ export default function AudienceDetailPage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6">
+      <ProfileShell>
         <DetailSkeleton />
-      </div>
+      </ProfileShell>
     );
   }
 
   if (error || !audience) {
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
-        <p className="text-sm text-error">{error ?? "Audience not found."}</p>
-        <Button variant="secondary" onClick={() => router.push("/audience")}>
-          Back to audiences
-        </Button>
-      </div>
+      <ProfileShell>
+        <div className="space-y-6">
+          <p className="text-sm text-error">{error ?? "Audience not found."}</p>
+          <Button variant="secondary" onClick={() => router.push("/audience")}>
+            Back to audiences
+          </Button>
+        </div>
+      </ProfileShell>
     );
   }
 
   const status = getCalibrationStatus(audience);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6">
-      <div className="flex items-center gap-3 mb-6">
+    <ProfileShell>
+      <div className="rv-in flex items-center gap-3 mb-6">
         <button
           type="button"
           onClick={() => router.push("/audience")}
@@ -121,11 +133,13 @@ export default function AudienceDetailPage() {
         )}
       </div>
 
-      {isEdit ? (
-        <AudienceForm existing={audience} />
-      ) : (
-        <AudienceProfileView audience={audience} />
-      )}
-    </div>
+      <div className="rv-in" style={{ animationDelay: "0.06s" }}>
+        {isEdit ? (
+          <AudienceForm existing={audience} />
+        ) : (
+          <AudienceProfileView audience={audience} />
+        )}
+      </div>
+    </ProfileShell>
   );
 }

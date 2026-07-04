@@ -1,7 +1,9 @@
 /**
- * /audience — Audience Manager list page.
+ * /audience — Audience Manager list page (the MOAT surface).
  * Renders inside (app)/layout.tsx → AppShell (sidebar, AuthGuard, providers).
- * AppShell owns the page <main>; this is an in-shell content <div> (no nested <main>).
+ * AppShell owns the page <main>; AudienceManager renders the full-bleed radial
+ * surface shell itself (relative min-h-full), mirroring /start · /grow — so do
+ * NOT wrap it in a max-w container here.
  */
 
 import { AudienceManager } from "@/components/audience/audience-manager";
@@ -11,9 +13,5 @@ export const metadata = {
 };
 
 export default function AudiencePage() {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:p-6 space-y-6">
-      <AudienceManager />
-    </div>
-  );
+  return <AudienceManager />;
 }
