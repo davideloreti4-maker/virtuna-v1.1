@@ -106,15 +106,21 @@ describe("AudienceForm — mode preset (D-08)", () => {
 });
 
 describe("/audience/new page wiring (non-conditional)", () => {
-  function findForm(tree: React.ReactElement): React.ReactElement | null {
-    const children = (tree.props as { children?: React.ReactNode }).children;
-    const flat = Array.isArray(children) ? children : [children];
-    for (const c of flat) {
-      if (c && typeof c === "object" && "type" in c && (c as React.ReactElement).type === AudienceForm) {
-        return c as React.ReactElement;
+  // Recurses the returned tree — the page now nests AudienceForm inside the shared
+  // radial surface shell, so a shallow direct-children scan no longer finds it. The
+  // wiring contract asserted below (initialMode value) is unchanged.
+  function findForm(node: React.ReactNode): React.ReactElement | null {
+    if (!node || typeof node !== "object") return null;
+    if (Array.isArray(node)) {
+      for (const c of node) {
+        const found = findForm(c);
+        if (found) return found;
       }
+      return null;
     }
-    return null;
+    const el = node as React.ReactElement;
+    if ("type" in el && el.type === AudienceForm) return el;
+    return findForm((el.props as { children?: React.ReactNode }).children);
   }
 
   it("?mode=general ⇒ initialMode='general' passed to AudienceForm", async () => {

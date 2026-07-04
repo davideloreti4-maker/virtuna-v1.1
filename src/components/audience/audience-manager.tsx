@@ -16,6 +16,7 @@ import { AudienceCard } from "./audience-card";
 import { groupAudiences } from "./audience-display";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -30,7 +31,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { Scales } from "@phosphor-icons/react";
+import { Scales, Sparkle, ArrowRight } from "@phosphor-icons/react";
 
 interface AudienceManagerProps {
   className?: string;
@@ -41,6 +42,47 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="mb-2 ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
       {children}
     </p>
+  );
+}
+
+/**
+ * RailCard — a right-rail action card (desktop). An icon + title + one-line
+ * "why it matters" + a full-width CTA. The rail is where the moat's primary
+ * action (Calibrate from your @handle) and Compare live on wide viewports;
+ * mobile falls back to the compact header buttons.
+ */
+function RailCard({
+  icon,
+  title,
+  body,
+  cta,
+  onClick,
+  primary = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  cta: string;
+  onClick: () => void;
+  primary?: boolean;
+}) {
+  return (
+    <div className={cn(READING_CARD, "p-4")}>
+      <div className="flex items-center gap-2">
+        {icon}
+        <p className="text-[13px] font-medium text-foreground">{title}</p>
+      </div>
+      <p className="mt-1.5 text-xs leading-relaxed text-foreground-secondary">{body}</p>
+      <Button
+        variant={primary ? "primary" : "secondary"}
+        size="sm"
+        onClick={onClick}
+        className="mt-3 w-full pointer-coarse:h-11"
+      >
+        {cta}
+        <ArrowRight weight="bold" className="ml-1.5 h-3.5 w-3.5" />
+      </Button>
+    </div>
   );
 }
 
@@ -175,7 +217,6 @@ export function AudienceManager({ className }: AudienceManagerProps) {
   }
 
   const { baseline, templates, generalTemplates, yours } = groupAudiences(audiences);
-  const userAudienceCount = yours.length;
 
   function renderAudienceCard(audience: Audience) {
     const isUserOwned = !audience.is_general && !audience.is_preset;
@@ -213,184 +254,214 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     );
   }
 
+  const renderSections = () => {
+    const sections: { key: string; label: string; items: Audience[] }[] = [
+      { key: "yours", label: "Yours", items: yours },
+      { key: "baseline", label: "Baseline", items: baseline },
+      { key: "templates", label: "Templates", items: templates },
+      { key: "generalTemplates", label: "General templates", items: generalTemplates },
+    ];
+    let delay = 0.02;
+    const rendered: React.ReactNode[] = [];
+    for (const { key, label, items } of sections) {
+      if (items.length === 0) continue;
+      rendered.push(
+        <section key={key} className="rv-in" style={{ animationDelay: `${delay}s` }}>
+          <SectionLabel>{label}</SectionLabel>
+          <div className="flex flex-col gap-3">{items.map(renderAudienceCard)}</div>
+        </section>,
+      );
+      delay += 0.06;
+    }
+    return rendered;
+  };
+
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Your audiences</h1>
-          {/* A1-COUPLED-COPY: revise if weights→generation wires */}
-          <p className="mt-1 text-sm text-foreground-secondary">
-            {selectionMode
-              ? "Pick two audiences to compare."
-              : "Who's in the room when you run a Read."}
-          </p>
-        </div>
-        {selectionMode ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-foreground-secondary tabular-nums" aria-live="polite">
-              {selectedIds.length}/2 selected
-            </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={exitSelectionMode}
-              className="pointer-coarse:h-11"
-            >
-              Cancel
-            </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span>
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={selectedIds.length !== 2 || comparing}
-                    onClick={() => void handleCompare()}
-                    className="pointer-coarse:h-11"
-                  >
-                    {comparing ? <Spinner size="sm" /> : "Compare these two →"}
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              {selectedIds.length !== 2 && (
-                <TooltipContent side="bottom" className="text-xs">
-                  Select two audiences
-                </TooltipContent>
-              )}
-            </Tooltip>
+    <div
+      className={cn("relative min-h-full text-foreground", className)}
+      style={{ background: SURFACE_RADIAL_BG }}
+    >
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
+        <header className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
+              Your audiences
+            </h1>
+            {/* A1-COUPLED-COPY: revise if weights→generation wires */}
+            <p className="mt-1 text-sm text-foreground-secondary">
+              {selectionMode
+                ? "Pick two audiences to compare."
+                : "Who's in the room when you run a Read."}
+            </p>
           </div>
-        ) : (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setSelectionMode(true)}
-              className="pointer-coarse:h-11"
-            >
-              <Scales weight="bold" className="w-4 h-4 mr-1.5" />
-              Compare
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => router.push("/audience/new")}
-              className="pointer-coarse:h-11"
-            >
+          {/* Mobile/tablet quick actions — desktop uses the rail cards instead. */}
+          {!selectionMode && !loading && !error && audiences.length > 0 && (
+            <div className="flex shrink-0 items-center gap-2 lg:hidden">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setSelectionMode(true)}
+                className="pointer-coarse:h-11"
+              >
+                <Scales weight="bold" className="mr-1.5 h-4 w-4" />
+                Compare
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => router.push("/audience/new")}
+                className="pointer-coarse:h-11"
+              >
+                Create
+              </Button>
+            </div>
+          )}
+        </header>
+
+        {loading && <AudienceListSkeleton />}
+
+        {!loading && error && (
+          <p className="py-8 text-center text-sm text-error">{error}</p>
+        )}
+
+        {!loading && !error && audiences.length === 0 && (
+          <div className={cn(READING_CARD, "mx-auto flex max-w-xl flex-col items-center px-6 py-12 text-center")}>
+            <ConstellationMark width={80} litNodeIndex={-1} className="mb-5 opacity-80" />
+            <p className="mb-2 text-base font-semibold text-foreground">No custom audiences yet</p>
+            <p className="mx-auto mb-5 max-w-md text-sm text-foreground-secondary">
+              {`You're using `}
+              <strong className="text-foreground">General</strong>
+              {` — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
+            </p>
+            <Button variant="primary" onClick={() => router.push("/audience/new")}>
               Create audience
             </Button>
           </div>
         )}
+
+        {/* Default — roster + sticky rail (desktop); roster only (mobile). */}
+        {!loading && !error && audiences.length > 0 && !selectionMode && (
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
+            <div className="flex min-w-0 flex-col gap-6">{renderSections()}</div>
+
+            <aside className="mt-6 hidden flex-col gap-3 lg:mt-0 lg:flex lg:sticky lg:top-4">
+              <div className="rv-in" style={{ animationDelay: "0.06s" }}>
+                <RailCard
+                  icon={<Sparkle weight="fill" className="h-4 w-4 text-[color:var(--color-accent)]" />}
+                  title="Calibrate a new audience"
+                  body="Read your public @handle once → the ~10 real people who actually watch you. That's the room every Read is tested in."
+                  cta="Calibrate from your @handle"
+                  onClick={() => router.push("/audience/new")}
+                  primary
+                />
+              </div>
+              <div className="rv-in" style={{ animationDelay: "0.1s" }}>
+                <RailCard
+                  icon={<Scales weight="bold" className="h-4 w-4 text-foreground-secondary" />}
+                  title="Compare two rooms"
+                  body="Run one concept across two audiences and see who leans in — and who scrolls past."
+                  cta="Compare audiences"
+                  onClick={() => setSelectionMode(true)}
+                />
+              </div>
+              <p
+                className="rv-in px-1 pt-1 text-[11px] leading-relaxed text-foreground-muted"
+                style={{ animationDelay: "0.14s" }}
+              >
+                Your calibrated audience grounds every Read, hook, and remix you run — the
+                moat that makes a prediction yours, not generic.
+              </p>
+            </aside>
+          </div>
+        )}
+
+        {/* Compare mode — single column, full width, roster becomes selectable. */}
+        {!loading && !error && audiences.length > 0 && selectionMode && (
+          <div className="flex flex-col gap-6">
+            <div className={cn(READING_CARD, "flex flex-col gap-3 p-4")}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Scales weight="bold" className="h-4 w-4 text-foreground-secondary" />
+                  <p className="text-sm font-medium text-foreground">Compare two rooms</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="tabular-nums text-xs text-foreground-secondary" aria-live="polite">
+                    {selectedIds.length}/2 selected
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={exitSelectionMode}
+                    className="pointer-coarse:h-11"
+                  >
+                    Cancel
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          disabled={selectedIds.length !== 2 || comparing}
+                          onClick={() => void handleCompare()}
+                          className="pointer-coarse:h-11"
+                        >
+                          {comparing ? <Spinner size="sm" /> : "Compare these two →"}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    {selectedIds.length !== 2 && (
+                      <TooltipContent side="bottom" className="text-xs">
+                        Select two audiences
+                      </TooltipContent>
+                    )}
+                  </Tooltip>
+                </div>
+              </div>
+              <Input
+                value={compareConcept}
+                onChange={(e) => setCompareConcept(e.target.value)}
+                placeholder="A concept to compare — e.g. “a 30-second morning routine”"
+                maxLength={2000}
+                aria-label="Concept to compare"
+                className="pointer-coarse:h-11"
+              />
+              {compareNote && <p className="text-xs text-warning">{compareNote}</p>}
+            </div>
+
+            {compareBlock && (
+              <div className={cn(READING_CARD, "p-4")}>
+                <MultiAudienceReadBlockRenderer block={compareBlock} />
+              </div>
+            )}
+
+            <div className="flex flex-col gap-6">{renderSections()}</div>
+          </div>
+        )}
+
+        <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+          <DialogContent size="sm">
+            <DialogHeader>
+              <DialogTitle>Delete audience</DialogTitle>
+              <DialogDescription>
+                {`Delete "${deleteTarget?.name}"? This removes the calibrated audience and its personas. Threads already generated under it keep their results. This can't be undone.`}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button variant="secondary" disabled={deleting}>Keep audience</Button>
+              </DialogClose>
+              <Button
+                variant="destructive"
+                disabled={deleting}
+                onClick={() => void handleDelete()}
+              >
+                {deleting ? <Spinner size="sm" /> : "Delete"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {selectionMode && (
-        <div className="flex flex-col gap-2">
-          <Input
-            value={compareConcept}
-            onChange={(e) => setCompareConcept(e.target.value)}
-            placeholder="A concept to compare — e.g. “a 30-second morning routine”"
-            maxLength={2000}
-            aria-label="Concept to compare"
-            className="pointer-coarse:h-11"
-          />
-          {compareNote && <p className="text-xs text-warning">{compareNote}</p>}
-        </div>
-      )}
-
-      {selectionMode && compareBlock && (
-        <div className={cn(READING_CARD, "p-4")}>
-          <MultiAudienceReadBlockRenderer block={compareBlock} />
-        </div>
-      )}
-
-      {loading && <AudienceListSkeleton />}
-
-      {!loading && error && (
-        <p className="text-sm text-error py-8 text-center">{error}</p>
-      )}
-
-      {!loading && !error && audiences.length === 0 && (
-        <div className={cn(READING_CARD, "flex flex-col items-center px-6 py-12 text-center")}>
-          <ConstellationMark width={80} litNodeIndex={-1} className="mb-5 opacity-80" />
-          <p className="text-base font-semibold text-foreground mb-2">No custom audiences yet</p>
-          <p className="text-sm text-foreground-secondary max-w-md mx-auto mb-5">
-            {`You're using `}
-            <strong className="text-foreground">General</strong>
-            {` — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
-          </p>
-          <Button variant="primary" onClick={() => router.push("/audience/new")}>
-            Create audience
-          </Button>
-        </div>
-      )}
-
-      {!loading && !error && audiences.length > 0 && (
-        <div className="flex flex-col gap-6">
-          {baseline.length > 0 && (
-            <section>
-              <SectionLabel>Baseline</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {baseline.map(renderAudienceCard)}
-              </div>
-            </section>
-          )}
-
-          {templates.length > 0 && (
-            <section>
-              <SectionLabel>Templates</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {templates.map(renderAudienceCard)}
-              </div>
-            </section>
-          )}
-
-          {generalTemplates.length > 0 && (
-            <section>
-              <SectionLabel>General templates</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {generalTemplates.map(renderAudienceCard)}
-              </div>
-            </section>
-          )}
-
-          {yours.length > 0 && (
-            <section>
-              <SectionLabel>Yours</SectionLabel>
-              <div className="flex flex-col gap-3">
-                {yours.map(renderAudienceCard)}
-              </div>
-            </section>
-          )}
-
-          {userAudienceCount === 0 && (
-            <p className="text-xs text-foreground-muted px-1">
-              No custom audiences yet. Create one to calibrate from your @handle.
-            </p>
-          )}
-        </div>
-      )}
-
-      <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <DialogContent size="sm">
-          <DialogHeader>
-            <DialogTitle>Delete audience</DialogTitle>
-            <DialogDescription>
-              {`Delete "${deleteTarget?.name}"? This removes the calibrated audience and its personas. Threads already generated under it keep their results. This can't be undone.`}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button variant="secondary" disabled={deleting}>Keep audience</Button>
-            </DialogClose>
-            <Button
-              variant="destructive"
-              disabled={deleting}
-              onClick={() => void handleDelete()}
-            >
-              {deleting ? <Spinner size="sm" /> : "Delete"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
