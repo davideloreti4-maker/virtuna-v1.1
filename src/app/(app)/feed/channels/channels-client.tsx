@@ -132,7 +132,7 @@ export function ChannelsClient() {
     <div className="mx-auto max-w-6xl px-6 py-8">
       <FeedViewTabs />
       <header className="mb-6 mt-5">
-        <h1 className="text-2xl font-medium text-foreground">Channels</h1>
+        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Channels</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
           Pick which channels to include in your Videos feed.
         </p>

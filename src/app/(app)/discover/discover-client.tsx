@@ -143,7 +143,7 @@ export function DiscoverClient() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-2xl font-medium text-foreground">Find what&apos;s already working</h1>
+        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Find what&apos;s already working</h1>
         {state === "idle" && (
           <p className="text-sm text-foreground-muted max-w-xl">
             Paste a creator&apos;s @handle or a niche to surface their outliers — the posts

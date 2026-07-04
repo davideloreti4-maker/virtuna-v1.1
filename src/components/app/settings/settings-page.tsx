@@ -39,7 +39,7 @@ const TABS = [
 export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
   return (
     <div className="mx-auto max-w-4xl p-6">
-      <h1 className="mb-8 text-2xl font-semibold text-foreground">Settings</h1>
+      <h1 className="mb-8 text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Settings</h1>
 
       <Tabs.Root
         defaultValue={defaultTab}
