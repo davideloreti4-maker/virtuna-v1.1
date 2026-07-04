@@ -109,11 +109,21 @@ The Room's clean composer `✦ Make ▾ · input · ↑`, embeddable on the star
 // Handoff: on submit (or tapping a briefing item), 'embedded' creates a thread with the audience
 // context + seed, then routes to /thread/:id. This is the ONE contract point between the two halves.
 ```
-> **✅ CONFIRMED (2026-07-03g)** — The Room is exposing `mode='thread'|'embedded'` + `onLaunch(input, verb, audience)`;
-> `embedded` reuses the existing create→navigate loop (thread w/ audience+seed → `/thread/:id`). One handoff point.
-> **★ Stub drift to fix at graft:** our `EmbeddedComposer` stub's `onLaunch` is `(input, verb)` and it takes no
-> `audience` prop; the real signature is `(input, verb, audience)` with `audience` a prop. Mechanical to align when
-> we swap stub → real (we already hold `activeAudience` in scope) — tracked, no functional gap in the shell.
+> **❌ NOT IN CODE — corrected 2026-07-04 (Seam-4 verify).** The earlier "✅ CONFIRMED (2026-07-03g)" was WRONG.
+> The Room's real `Composer` (`src/components/app/home/composer.tsx`) exposes NONE of this contract — its props are
+> `{ className?, onThreadChange?, onConversationChange?, onRehydratingChange? }` (no `mode` / `onLaunch` / `audience`
+> / `seed`). It is a self-contained /home component that owns audience selection + the thread create→navigate
+> internally; `<Composer />` is mounted ONLY on /home (always prop-less). The surfaces' `EmbeddedComposer` is a
+> separate, self-owned stub (`onLaunch:(input,verb)`) wired to a `launchThread` **toast** (no real routing). So Seam 4
+> is NOT "mechanical stub-drift" — it is a genuine gap on BOTH sides. (Verified by whole-tree sweep: `onLaunch` /
+> `mode='embedded'` appear only in the surfaces' own files.)
+>
+> **Two viable graft paths (owner's call — not decided here):**
+> - **A — shared atom:** the Room extracts an embeddable `Composer` (`mode='embedded'` + `onLaunch(input,verb,audience)`),
+>   decoupled from /home's thread / params / streaming. A real Room refactor (~1,400-line component), not trivial.
+> - **B — surfaces own the embedded UI + handoff (pragmatic):** the surfaces keep their `EmbeddedComposer` and wire the
+>   real create→navigate themselves (POST create thread w/ audience+seed → `/thread/:id`); the Room owns only the thread
+>   destination. Closest to today's state (stub + toast already there). Seam 4 is then a HANDOFF, not a shared component.
 
 ---
 
