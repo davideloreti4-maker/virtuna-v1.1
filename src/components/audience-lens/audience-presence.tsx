@@ -49,6 +49,8 @@ import {
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
 const LOADING_COPY = 'Reading the room…';
+/** Reactions-arrive count-up cadence (Phase 2) — one tick per persona, calm + deterministic. */
+const ARRIVAL_STEP_MS = 80;
 const MANAGE_LABEL = 'Manage audiences';
 const SOCIALS_LABEL = 'Socials';
 const GENERAL_LABEL = 'General';
@@ -119,6 +121,11 @@ export interface AudiencePresenceProps {
   onRewrite?: (lever: string) => Promise<void>;
   /** Bumped once a reseed lands + the Room re-focuses — gates the honest delta reveal in the CTA. */
   rewriteNonce?: number;
+  // ── Reactions-arrive dopamine (Phase 2) ────────────────────────────────────
+  /** A room-reaction generation is IN FLIGHT (the composer's ideas/hooks/script/remix stream).
+   *  While true the presence reads "Reading the room…" + the lit constellation blinks (anticipation);
+   *  on the true→false edge a "N new" badge pops + counts up (the arrival). Motion-gated. */
+  reacting?: boolean;
   // ── Desktop persistent rail + surface seam (PR-4) ──────────────────────────
   /** 'dock' (default) = the mobile bottom-docked peek + Bloom panel. 'rail' = the desktop
    *  persistent right-rail presentation: an identity header + an ALWAYS-open Room (an idle
@@ -154,6 +161,7 @@ export function AudiencePresence({
   canRewrite,
   onRewrite,
   rewriteNonce,
+  reacting = false,
   layout = 'dock',
   variant = 'thread',
 }: AudiencePresenceProps) {
@@ -211,6 +219,71 @@ export function AudiencePresence({
   const pulseText = stopRead
     ? `${stopRead.stop} of ${stopRead.total} would stop`
     : readinessText;
+
+  // ── Reactions-arrive dopamine (Phase 2) ──────────────────────────────────────
+  // While a generation is in flight the pulse reads "Reading the room…" (the anticipation
+  // beat — the lit constellation blinks alongside). When it finishes, the pulse settles back
+  // to the honest score/readiness and the arrival badge (below) pops.
+  const displayPulse = reacting ? LOADING_COPY : pulseText;
+
+  // The "N new" arrival badge: on the reacting true→false edge (the room just finished
+  // reacting), a terracotta pill pops onto the presence and counts up to the roster size —
+  // "N people just weighed in." Deterministic (a known integer count); reduced-motion snaps
+  // straight to the final N (no pop, no count). Cleared once the Room opens (acknowledged).
+  const [badgeCount, setBadgeCount] = useState<number | null>(null);
+  const prevReactingRef = useRef(reacting);
+  useEffect(() => {
+    const was = prevReactingRef.current;
+    prevReactingRef.current = reacting;
+    if (rosterCount <= 0) return;
+    if (!was && reacting) {
+      // A new read begins (rising edge) → clear any stale "N new" from the prior arrival, so the
+      // pulse can read "Reading the room…" cleanly until the fresh badge pops.
+      setBadgeCount(null);
+      return;
+    }
+    if (!(was && !reacting)) return; // otherwise act only on the true→false edge (the arrival)
+    if (reducedMotion) {
+      setBadgeCount(rosterCount); // reduced-motion: snap straight to the final N (no pop, no count)
+      return;
+    }
+    setBadgeCount(0);
+    let n = 0;
+    const t = setInterval(() => {
+      n += 1;
+      setBadgeCount(n);
+      if (n >= rosterCount) clearInterval(t);
+    }, ARRIVAL_STEP_MS);
+    return () => clearInterval(t);
+  }, [reacting, rosterCount, reducedMotion]);
+  // Clear the badge once the creator opens the Room (the arrival has been seen).
+  useEffect(() => {
+    if (open) setBadgeCount(null);
+  }, [open]);
+
+  // The arrival badge element — a DOCK affordance ("N new — come look"): it marks reactions that
+  // landed while the Room is closed, and clears when the creator opens it. The desktop RAIL keeps
+  // the Room always on screen, so the arrival is self-evident there (the eyebrow blink + the live
+  // update carry it) — the badge would only linger with nothing to acknowledge it, so it's dock-only.
+  // Dosage: the one sanctioned accent-FILL, for a genuine liveness event (dark glyph on terracotta =
+  // the prototype `.pnew`). Ephemeral: it pops, then clears on open.
+  const arrivalBadge =
+    layout !== 'rail' && badgeCount !== null && badgeCount > 0 ? (
+      <span
+        role="status"
+        aria-live="polite"
+        aria-label={`${badgeCount} new ${badgeCount === 1 ? 'reaction' : 'reactions'}`}
+        className={
+          'inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-[3px] font-mono text-[10px] font-bold leading-none ' +
+          (reducedMotion ? '' : 'animate-badge-pop')
+        }
+        style={{ background: 'var(--color-accent)', color: '#2a1c14' }}
+      >
+        <span aria-hidden>✦</span>
+        <span className="tabular-nums">{badgeCount}</span>
+        <span>new</span>
+      </span>
+    ) : null;
 
   const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
   const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
@@ -428,10 +501,10 @@ export function AudiencePresence({
               }}
               className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-1.5 py-1 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
             >
-              <ConstellationMark width={52} />
+              <ConstellationMark width={52} reacting={reacting} />
               <span className="min-w-0 flex-1">
                 <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--color-foreground-muted)]">
-                  Your audience
+                  {reacting ? LOADING_COPY : 'Your audience'}
                 </span>
                 <span className="flex items-center gap-1.5 text-[15px] font-semibold text-[var(--color-foreground)]">
                   <span className="max-w-[190px] truncate">{audienceName}</span>
@@ -441,6 +514,7 @@ export function AudiencePresence({
             </button>
             {switcherMenu}
           </div>
+          {arrivalBadge}
         </div>
 
         {/* Body — the always-open Room (focus) or the idle roster (readiness). */}
@@ -462,7 +536,7 @@ export function AudiencePresence({
             />
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6 pt-4">
-              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
               <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
                 They react the moment you make something — then it opens the room on it.
               </p>
@@ -493,7 +567,7 @@ export function AudiencePresence({
         {/* sr-only roster mirror — a11y parity with the dock band. */}
         <div className="sr-only" role="status" aria-live="polite">
           <p>
-            {TITLE} — {pulseText}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
+            {TITLE} — {displayPulse}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
           </p>
         </div>
       </aside>
@@ -575,8 +649,10 @@ export function AudiencePresence({
                 height={110}
                 vbW={320}
                 vbH={110}
+                reacting={reacting}
               />
-              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{pulseText}</p>
+              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
+              {arrivalBadge}
               <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
                 Type below to test a thought — your {audienceName} reacts in real time.
               </p>
@@ -622,7 +698,7 @@ export function AudiencePresence({
             }}
             className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
           >
-            <ConstellationMark width={56} />
+            <ConstellationMark width={56} reacting={reacting} />
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
               <span className="max-w-[120px] truncate">{audienceName}</span>
               {!reducedMotion && (
@@ -646,8 +722,9 @@ export function AudiencePresence({
           className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
           title={focus?.conceptText}
         >
-          {pulseText}
+          {displayPulse}
         </span>
+        {arrivalBadge}
         {open ? (
           <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
         ) : (

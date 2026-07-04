@@ -1637,6 +1637,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // The presence props are shared by the mobile bottom-docked peek+Bloom (`docked`) and the
   // desktop persistent rail (`layout="rail"`). Exactly ONE mounts per viewport (isDesktopRail),
   // so there is never a hidden second AmbientRoom running its timers.
+  // ── Reactions-arrive signal (Phase 2) ────────────────────────────────────────
+  // True while a ROOM-REACTION generation is streaming. Only the skills that produce audience
+  // reactions count (ideas/hooks/script/remix) — chat/explore/account are conversation/ideation,
+  // so the presence must NOT claim "reading the room" for them. Drives the presence's reacting
+  // pulse + constellation blink, and — on its true→false edge — the "N new" arrival badge.
+  const audienceReacting =
+    ideas.isStreaming || hooks.isStreaming || script.isStreaming || remix.isStreaming;
+
   const presenceCommonProps: Omit<AudiencePresenceProps, "docked" | "layout"> = {
     audience: selectedAudience,
     audiences,
@@ -1662,6 +1670,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     canRewrite: canRoomRewrite,
     onRewrite: onRoomRewrite,
     rewriteNonce,
+    reacting: audienceReacting,
   };
   const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
 
