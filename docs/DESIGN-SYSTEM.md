@@ -72,6 +72,23 @@ Motion is **calm and physical** — short, eased, purposeful; it confirms an act
 
 **Rules:** never animate `width`/`height`/`top`/`left` (layout thrash) — use `transform`/`opacity`/`box-shadow`. No infinite non-liveness loops. No bounce except `--ease-spring` on a real liveness moment. Every hover/entrance must degrade under reduced-motion.
 
+### Surface sectioning (zones)
+Group a surface's content into discrete **matte tone-zones** — NOT a diffuse background glow.
+(The `SURFACE_RADIAL_BG` top-glow was retired from `/start` in the elevation pass: a faint
+radial reads as low-fidelity, not premium. Prefer discrete zones.) A zone is a subtle
+lighter-charcoal panel that chunks a section's cards:
+- **Fill:** a hair lighter than the page bg — `#252320` over the `#1f1f1e` app bg (~1 tone-step).
+- **Shape:** `rounded-2xl`, generous padding (`px-4 py-4`), **no border, no shadow.** The tone +
+  padding do the grouping; the inner cards keep their own borders + `.elev-*` depth and pop
+  against the zone (avoids the double-border / stacked-shadow busyness).
+- **Rhythm:** a consistent `mt-4` between stacked zones.
+
+This gives the "lit sections" effect (cf. Stanley's glow-sectioning) with matte tone instead of
+glow, and mirrors how a card-based right rail already reads as sections. The human header
+(greeting) floats **above** the zones, unzoned. Reference impl: `start-page.tsx` (Numbers ·
+Daily ideas · Outliers zones). Any at-a-glance chrome (e.g. the progress rings) belongs anchored
+to its content (beside the greeting), not floating as a top-center band.
+
 ### Type
 - Sans: `--font-inter` — all UI chrome, all weights.
 - Serif: `--font-serif` — **voice-moments ONLY** (greeting line, hero). Never body/chrome.
