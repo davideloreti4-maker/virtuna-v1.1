@@ -10,13 +10,10 @@ import {
   buildSegmentGroups,
   worstBadGroupKey,
 } from '@/components/board/audience/audience-derive';
-import { useState } from 'react';
-import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { AudienceLens } from '@/components/audience-lens/AudienceLens';
 import { ScoreDistribution } from '@/components/board/verdict/ScoreDistribution';
 import { confidenceRange, deriveBehavioralTiles } from '@/components/board/verdict/verdict-derive';
 import { useComparisons } from '@/components/board/verdict/use-comparisons';
-import { PersonaGraph, type PersonaNode } from '@/components/board/_kit/PersonaGraph';
+import { type PersonaNode } from '@/components/board/_kit/PersonaGraph';
 import { StatTileRow, type StatTileData } from '@/components/board/_kit/StatTile';
 
 import { PanelShell, LegendKey, PanelEmpty } from './panel-shell';
@@ -38,14 +35,10 @@ export { PanelEmpty };
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Closed allow-list for the drill panel (Security V5 — never reflect a raw key). */
-export type PanelId = 'hook' | 'retention' | 'shareability' | 'personas' | 'score';
+export type PanelId = 'hook' | 'retention' | 'shareability' | 'score';
 
 const NEUTRAL_FILL =
   'linear-gradient(90deg, rgba(236,231,222,0.22), rgba(236,231,222,0.38))';
-
-function clamp01(v: number): number {
-  return Math.max(0, Math.min(1, v));
-}
 
 /** Render the body for a drill panel (already allow-list-validated by the caller). */
 export function renderPanel(
@@ -66,8 +59,6 @@ export function renderPanel(
       return (
         <ShareabilityPanel data={data} dim={dims?.find((d) => d.name === 'share_pull')} />
       );
-    case 'personas':
-      return <PersonasPanel data={data} />;
     case 'score':
       return <ScorePanel data={data} id={id} />;
   }
@@ -171,7 +162,7 @@ function HookPanel({
 
 // ── Audience ──────────────────────────────────────────────────────────────────
 
-/** Build the persona nodes the cloud + list share (same call PersonaCloud makes). */
+/** Build the persona nodes the audience Room renders (same call PersonaCloud makes). */
 export function buildAudienceNodes(data: PredictionResult): PersonaNode[] {
   const heatmap = data.heatmap ?? null;
   const badKey = worstBadGroupKey(buildSegmentGroups(heatmap, data.persona_simulation_results));
@@ -180,11 +171,11 @@ export function buildAudienceNodes(data: PredictionResult): PersonaNode[] {
 
 /**
  * The concept text this Reading's audience reacted to — grounds the "Ask them why →"
- * persona chat in the AudienceLens (LIVE-03). Sourced HONESTLY from the real engine
+ * persona chat in the Room (LIVE-03). Sourced HONESTLY from the real engine
  * output (never fabricated): the verbatim hook (spoken + on-screen text from the first
  * ~3s, the thing the room reacted to) is the primary signal; when no hook verbatim is
  * present we fall back to the first segment's verbatim. Returns undefined when no real
- * verbatim exists at all — the Lens then correctly gates chat off (no concept to ground).
+ * verbatim exists at all — the Room then correctly gates chat off (no concept to ground).
  */
 export function readingConceptText(data: PredictionResult): string | undefined {
   const v = data.verbatim;
@@ -205,119 +196,6 @@ export function readingConceptText(data: PredictionResult): string | undefined {
     if (segParts.length > 0) return segParts.join('\n');
   }
   return undefined;
-}
-
-/** PersonasPanel (D-03) — list-led (UX rework): the ranked persona list IS the
- *  content; the graph is demoted to a small header strip. Empty nodes → PanelEmpty. */
-function PersonasPanel({ data }: { data: PredictionResult }) {
-  const reducedMotion = usePrefersReducedMotion();
-  const nodes = buildAudienceNodes(data);
-  if (nodes.length === 0) return <PanelEmpty />;
-  return <AudienceList nodes={nodes} reducedMotion={reducedMotion} data={data} />;
-}
-
-function AudienceList({
-  nodes,
-  reducedMotion,
-  data,
-}: {
-  nodes: PersonaNode[];
-  reducedMotion: boolean;
-  data: PredictionResult;
-}) {
-  // The onOpen seam → opens the living AudienceLens (Pitfall 1: previously a dead
-  // stub wired to no consumer). The inline graph below is wrapped in a ≥44px
-  // tap/keyboard affordance whose handler opens the Lens with this Reading's
-  // heatmap + sim results (the rich-signal surface that carries the timeline).
-  const [lensOpen, setLensOpen] = useState(false);
-  // Rank best watch-through → worst, so the coral "drops first" cluster sinks to
-  // the bottom where it reads as the thing to fix.
-  const sorted = [...nodes].sort((a, b) => b.watchThrough - a.watchThrough);
-  return (
-    <PanelShell
-      subtitle="Who watches — and who drops first."
-      legend={<LegendKey tone="accent">drops first</LegendKey>}
-    >
-      {/* demoted graph: a small textured header, not the load-bearing visual.
-          Tapping it opens the living AudienceLens (onOpen seam — Pitfall 1 closed). */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Open the living audience lens"
-        onClick={() => setLensOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setLensOpen(true);
-          }
-        }}
-        className="cursor-pointer overflow-hidden rounded-[8px] border border-[var(--color-border)] transition-colors hover:bg-[var(--color-hover)]"
-        style={{ minHeight: 44 }}
-      >
-        <PersonaGraph personas={nodes} height={120} reducedMotion={reducedMotion} />
-      </div>
-
-      {/* The living AudienceLens — opened from the seam above. No Read block on the
-          video Reading surface (it carries a heatmap timeline, not a Read card), so
-          the header is omitted and the Lens leads with the replayable constellation.
-          conceptText = the verbatim the room reacted to (LIVE-03) — grounds the
-          "Ask them why →" chat on this rich-signal surface where real registry-enum
-          archetype nodes already flow. Undefined when no verbatim → chat stays gated
-          (honest: no concept to ground on). */}
-      <AudienceLens
-        heatmap={data.heatmap ?? null}
-        simResults={data.persona_simulation_results}
-        conceptText={readingConceptText(data)}
-        reducedMotion={reducedMotion}
-        open={lensOpen}
-        onOpenChange={setLensOpen}
-      />
-      {/* the readable instrument: segment · drop time · watch-through */}
-      <ul data-testid="panel-personas-list" className="flex flex-col">
-        {sorted.map((n) => {
-          const accent = n.tone === 'accent';
-          const pct = Math.round(clamp01(n.watchThrough) * 100);
-          const dotFill = accent
-            ? 'var(--color-cream-secondary)'
-            : `rgba(236, 231, 222, ${(0.3 + clamp01(n.watchThrough) * 0.5).toFixed(2)})`;
-          return (
-            <li
-              key={n.id}
-              className="flex items-center gap-3 border-t border-[var(--color-border)] py-2 first:border-t-0"
-            >
-              <span
-                className="inline-block h-2 w-2 shrink-0 rounded-full"
-                style={{ background: dotFill }}
-              />
-              <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
-                {n.segment || n.label}
-              </span>
-              {n.dropAt && (
-                <span className="shrink-0 text-[12px] tabular-nums text-foreground-muted">
-                  ↓ {n.dropAt}
-                </span>
-              )}
-              <span className="hidden h-[5px] w-20 shrink-0 rounded-full bg-[var(--color-border)] sm:block">
-                <span
-                  className="block h-full rounded-full"
-                  style={{
-                    width: `${pct}%`,
-                    background: accent ? 'var(--color-cream-secondary)' : 'rgba(236,231,222,0.35)',
-                  }}
-                />
-              </span>
-              <span
-                className="w-10 shrink-0 text-right text-[13px] font-semibold tabular-nums text-foreground"
-                style={accent ? { color: 'var(--color-cream-secondary)' } : undefined}
-              >
-                {pct}%
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </PanelShell>
-  );
 }
 
 // ── Shareability ─────────────────────────────────────────────────────────────
