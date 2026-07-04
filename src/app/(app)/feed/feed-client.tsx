@@ -1,18 +1,20 @@
 "use client";
 
 /**
- * FeedClient — Discover Feed Phase 2.2 orchestrator for /feed.
+ * FeedClient — the Watching/Trending body of the DISCOVER hub (Surfaces IA rationalization).
  *
- * The persistent Videos feed: a Watched | Trending tab switch over GET /api/feed, a
- * filter sidebar, a sort menu, and an infinite-scroll tile grid (DiscoverGrid/OutlierTile
- * reused verbatim). Every tile keeps the moat actions — Remix → Read launches the
- * discover→remix chain (CHAIN_HANDOFFS, mirrors discover-client), Save persists to the
- * Library shelf (self-contained in the tile), and Track adds the channel to the watchlist.
+ * Shell-less: the hub (discover-hub.tsx) owns the radial backdrop, page header, and the
+ * Watching·Trending·Competitors tab bar, and drives the corpus via the controlled `tab`
+ * prop. This renders the feed's own control bar + filter sidebar + infinite-scroll tile grid
+ * over GET /api/feed. Every tile keeps the moat actions — Remix → Read launches the
+ * discover→remix chain (CHAIN_HANDOFFS), Save persists to the Library shelf, Track adds the
+ * channel to the watchlist.
  *
- * Tab-aware by construction: trending rows carry no outlier_multiplier, so the trending tab
- * drops the outlier sort/filter and per-channel narrowing (otherwise the NOT-NULL keyset
- * would empty the grid). The tracked-handle set is read from the Channels watchlist cache so
- * a Track here lights up the tile and the Channels page together.
+ * Tab-aware by construction: trending rows carry no outlier_multiplier, so Trending drops the
+ * outlier sort/filter and per-channel narrowing (otherwise the NOT-NULL keyset would empty
+ * the grid). That reset now fires from an effect on `tab` (the hub owns the switch). The
+ * tracked-handle set is read from the Channels watchlist cache so a Track here lights up the
+ * tile and the Channels page together.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -25,8 +27,6 @@ import {
   type FeedFilterState,
 } from "@/hooks/queries/use-feed";
 import type { FeedTab, FeedSort, FeedTile } from "@/lib/feed/feed-query";
-import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
-import { SurfaceHeader } from "@/components/surfaces/surface-header";
 import { FeedToolbar, type SortOption } from "@/components/feed/feed-toolbar";
 import { FeedFilters, type WatchedChannelOption } from "@/components/feed/feed-filters";
 import { FeedResults } from "@/components/feed/feed-results";
@@ -84,12 +84,13 @@ function toCsv(tiles: FeedTile[]): string {
   return [header, ...rows].map((r) => r.map(esc).join(",")).join("\n");
 }
 
-export function FeedClient() {
+export function FeedClient({ tab }: { tab: FeedTab }) {
   const router = useRouter();
   const { toast } = useToast();
 
-  const [tab, setTab] = useState<FeedTab>("watched");
-  const [sort, setSort] = useState<FeedSort>("outlier");
+  // `tab` is owned by the DISCOVER hub bar. Seed the sort from it (Trending has no outlier
+  // sort) so a deep-link straight to Trending doesn't first fetch with the wrong sort.
+  const [sort, setSort] = useState<FeedSort>(tab === "trending" ? "views" : "outlier");
   const [filters, setFilters] = useState<FeedFilterState>({});
   const [filtersResetKey, setFiltersResetKey] = useState(0);
   const [showFilters, setShowFilters] = useState(true);
@@ -146,21 +147,21 @@ export function FeedClient() {
     return n;
   }, [filters]);
 
-  const handleTabChange = (next: FeedTab) => {
-    if (next === tab) return;
-    setTab(next);
-    if (next === "trending") {
-      // Drop the watched-only dimensions so the trending NOT-NULL keyset isn't emptied.
-      if (sort === "outlier") setSort("views");
-      setFilters((f) => ({
-        ...f,
-        minOutlier: undefined,
-        maxOutlier: undefined,
-        channels: undefined,
-      }));
-      setFiltersResetKey((k) => k + 1); // re-seed the sidebar drafts (clears the outlier inputs)
-    }
-  };
+  // The hub bar owns the Watching|Trending switch now. When it lands us on Trending, drop
+  // the watched-only dimensions (outlier sort + outlier/channel filters) so the trending
+  // NOT-NULL keyset isn't emptied. Fires only when `tab` flips (deps: [tab]); the guarded
+  // updaters no-op when there's nothing to clear so this never loops.
+  useEffect(() => {
+    if (tab !== "trending") return;
+    setSort((s) => (s === "outlier" ? "views" : s));
+    setFilters((f) =>
+      f.minOutlier === undefined && f.maxOutlier === undefined && f.channels === undefined
+        ? f
+        : { ...f, minOutlier: undefined, maxOutlier: undefined, channels: undefined },
+    );
+    setFiltersResetKey((k) => k + 1); // re-seed the sidebar drafts (clears the outlier inputs)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   // Save / restore filters (localStorage). Restore remounts the sidebar so its drafts re-seed.
   useEffect(() => {
@@ -294,17 +295,8 @@ export function FeedClient() {
   );
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <FeedViewTabs />
-      <SurfaceHeader
-        className="mb-6 mt-5"
-        title="Videos"
-        subtitle="Outliers from the channels you watch, plus what’s trending. Remix any winner into a Read."
-      />
-
+    <>
       <FeedToolbar
-        tab={tab}
-        onTabChange={handleTabChange}
         sort={sort}
         onSortChange={setSort}
         sortOptions={sortOptions}
@@ -342,6 +334,6 @@ export function FeedClient() {
           results
         )}
       </div>
-    </div>
+    </>
   );
 }

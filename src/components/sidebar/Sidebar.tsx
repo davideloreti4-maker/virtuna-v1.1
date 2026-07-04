@@ -33,7 +33,6 @@ import {
   Storefront,
   UsersThree,
   Books,
-  FilmStrip,
   Binoculars,
   Trash,
   Check,
@@ -379,8 +378,9 @@ export function Sidebar() {
     pathname.startsWith("/referrals");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
-  const isOnFeed = pathname.startsWith("/feed");
-  const isOnCompetitors = pathname.startsWith("/competitors");
+  // Discover is a hub: /competitors redirects into it, so both light the item.
+  const isOnDiscover =
+    pathname.startsWith("/feed") || pathname.startsWith("/competitors");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -523,24 +523,15 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/library")}
               />
-              {/* Feed — the persistent Videos feed (Discover Feed milestone): watched
-                  channels' outliers + Trending. Matte active state like Library. */}
-              <NavItem
-                icon={FilmStrip}
-                label="Feed"
-                isActive={isOnFeed}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/feed")}
-              />
-              {/* Competitors — competitor-intel subsystem (handles, compare). Was
-                  shipped without a nav entry (reachable only by deep-link); surfaced
-                  here (refine lane, 2026-06-29). */}
+              {/* Discover — the outward-looking hub (Surfaces IA): Watching (watched
+                  channels' outliers) · Trending · Competitors, as tabs at /feed.
+                  /competitors redirects here. Matte active state like Library. */}
               <NavItem
                 icon={Binoculars}
-                label="Competitors"
-                isActive={isOnCompetitors}
+                label="Discover"
+                isActive={isOnDiscover}
                 isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/competitors")}
+                onClick={() => router.push("/feed")}
               />
             </div>
           </div>

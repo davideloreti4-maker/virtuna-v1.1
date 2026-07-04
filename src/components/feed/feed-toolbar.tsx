@@ -1,15 +1,15 @@
 "use client";
 
 /**
- * FeedToolbar — the Videos feed control bar (Discover Feed Phase 2.2).
+ * FeedToolbar — the feed control bar for the DISCOVER hub's Watching/Trending body.
  *
- * Left: the Watched | Trending tab switch (drives which corpus the feed reads).
- * Right: a total-count readout, Sort menu (tab-aware options), "Add video URL"
- * (a popover that launches the Remix → Read chain on a one-off URL — the same moat
- * action as a tile's Remix), "Customize channels" (→ /feed/channels), and Export.
+ * The Watched | Trending switch now lives in the hub's tab bar (discover-hub.tsx), so this
+ * is pure controls: a total-count readout (left), then Sort menu (tab-aware options), "Add
+ * video URL" (a popover that launches the Remix → Read chain on a one-off URL — the same
+ * moat action as a tile's Remix), links to the Channels + Hooks sub-surfaces, and Export.
  *
- * Flat-warm matte: the tabs use the shared pill Tabs; every button is secondary chrome.
- * No coral here — the feed's single accent lives on each tile's Remix CTA.
+ * Flat-warm matte: every button is secondary chrome. No coral here — the feed's single
+ * accent lives on each tile's Remix CTA.
  */
 import { useState } from "react";
 import Link from "next/link";
@@ -17,11 +17,11 @@ import {
   CaretDown,
   Plus,
   Faders,
+  Quotes,
   FunnelSimple,
   DownloadSimple,
   LinkSimple,
 } from "@phosphor-icons/react";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import type { FeedTab, FeedSort } from "@/lib/feed/feed-query";
+import type { FeedSort } from "@/lib/feed/feed-query";
 
 export interface SortOption {
   value: FeedSort;
@@ -41,8 +41,6 @@ export interface SortOption {
 }
 
 interface FeedToolbarProps {
-  tab: FeedTab;
-  onTabChange: (tab: FeedTab) => void;
   sort: FeedSort;
   onSortChange: (sort: FeedSort) => void;
   sortOptions: SortOption[];
@@ -63,8 +61,6 @@ interface FeedToolbarProps {
 }
 
 export function FeedToolbar({
-  tab,
-  onTabChange,
   sort,
   onSortChange,
   sortOptions,
@@ -93,25 +89,12 @@ export function FeedToolbar({
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
-      {/* Tab switch — Watched | Trending */}
-      <Tabs value={tab} onValueChange={(v) => onTabChange(v as FeedTab)}>
-        <TabsList>
-          <TabsTrigger value="watched" size="sm">
-            Watched
-          </TabsTrigger>
-          <TabsTrigger value="trending" size="sm">
-            Trending
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Left: count readout (the Watched|Trending switch now lives in the hub tab bar). */}
+      <span className="text-xs text-foreground-muted tabular-nums">
+        {total > 0 && `Showing ${loaded.toLocaleString()} of ${total.toLocaleString()}`}
+      </span>
 
       <div className="flex flex-wrap items-center gap-2">
-        {total > 0 && (
-          <span className="mr-1 text-xs text-foreground-muted tabular-nums">
-            Showing {loaded.toLocaleString()} of {total.toLocaleString()}
-          </span>
-        )}
-
         {/* Filters toggle — filled when open; badge shows the active-filter count. */}
         <button
           type="button"
@@ -201,6 +184,14 @@ export function FeedToolbar({
           <Link href="/feed/channels">
             <Faders size={14} aria-hidden="true" />
             Customize channels
+          </Link>
+        </Button>
+
+        {/* Hooks vault — kept reachable from the hub now that the feed view-tabs are gone. */}
+        <Button asChild variant="secondary" size="sm">
+          <Link href="/feed/hooks">
+            <Quotes size={14} aria-hidden="true" />
+            Hooks
           </Link>
         </Button>
 
