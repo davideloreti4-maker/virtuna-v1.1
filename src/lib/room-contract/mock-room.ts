@@ -10,7 +10,6 @@
  */
 
 import type {
-  ActiveAudience,
   CardReaction,
   Person,
   Reaction,
@@ -199,40 +198,6 @@ function build(input: {
     },
   };
 }
-
-// ── audiences (user-level active audience — THE-CONTRACT.md §6.2) ──
-
-const peopleRoster: Person[] = Object.values(MOCK_PEOPLE);
-
-export const MOCK_AUDIENCES: ActiveAudience[] = [
-  {
-    id: "fitness",
-    name: "Fitness Creators",
-    people: peopleRoster,
-    tier: "Validated",
-    pulse: "10 people · reacted overnight",
-    goal: "Grow",
-    platform: "tiktok · your following",
-  },
-  {
-    id: "buyers",
-    name: "Conversion Audience",
-    people: peopleRoster,
-    tier: "Directional",
-    pulse: "10 people · reacted overnight",
-    goal: "Sell",
-    platform: "tiktok · buyers",
-  },
-  {
-    id: "beginners",
-    name: "Nervous Beginners",
-    people: peopleRoster,
-    tier: "Directional",
-    pulse: "10 people · reacted overnight",
-    goal: "Grow",
-    platform: "tiktok · niche segment",
-  },
-];
 
 // ── ideas ──
 

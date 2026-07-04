@@ -18,12 +18,14 @@ Legend: 🟢 landed & usable · 🟡 partial / adapter needed · 🔴 stubbed bo
 
 | Seam | Contract shape | Room-side status (real atom) | Surfaces stub | Delta to graft |
 |---|---|---|---|---|
-| **1 — Card** (`CardReaction`) | `types.ts` §1 | 🟢 **LANDED.** `readToCardReaction(read): CardReaction` shipped (`src/lib/room-contract/read-to-card-reaction.ts`, unit-tested) — pure, derives the glance-tier card face from a Seam-2 `Read` (tone banded off `stop` like the Room's `meterTone`; `lead` a real reaction verbatim, never fabricated). | `mock-room.ts` `MOCK_READS` → `getReadByCardId` | **Surfaces-side only:** feed a real card face via `readToCardReaction(predictionResultToRead(data, id))` instead of mock. |
-| **2 — Read** (`Read`) | `types.ts` §2b | 🟢 **LANDED.** `predictionResultToRead(data, contentId)` shipped (`src/components/reading/prediction-to-read.ts`, unit-tested) — pure, builds the same nodes the Phase-3 Room does (`buildAudienceNodes`), maps `PredictionResult → Read{stop,split,weakSpot,fix,reactions,population}` (all real engine output; names never the enum; honest population). | `mock-room.ts` `MOCK_READS` | **Surfaces-side only:** feed a real analysis through the adapter instead of `getReadByCardId` / `MOCK_READS`. Shapes align 1:1. |
-| **3 — Presence** (`AudiencePresence variant='surface'`) | `types.ts` §3 | 🟢 **LANDED (Room side).** The read-only `'surface'` render branch is implemented (`audience-presence.tsx` — peek band always + on-focus read-only `AmbientRoom`; the Rewrite CTA + "type below" prompt gated off) **and** the `audienceToActiveAudience` adapter shipped (`audience-to-active.ts`, unit-tested). Data atom `resolveUserAudience` already landed. | `surface-dock.tsx` renders local `AudienceConstellation` + switcher, fed `MOCK_AUDIENCES` | **Surfaces-side only:** swap the `surface-dock.tsx` stub → `<AudiencePresence variant='surface'>` fed `resolveUserAudience → audienceToActiveAudience`. See §2.4. |
+| **1 — Card** (`CardReaction`) | `types.ts` §1 | 🟢 **LANDED.** `readToCardReaction(read): CardReaction` shipped (`src/lib/room-contract/read-to-card-reaction.ts`, unit-tested) — pure, derives the glance-tier card face from a Seam-2 `Read` (tone banded off `stop` like the Room's `meterTone`; `lead` a real reaction verbatim, never fabricated). | `mock-room.ts` `MOCK_READS` → `getReadByCardId` | ⛔ **BLOCKED on a real surface-card data source (2026-07-05).** The producer works, but the start-page's daily-ideas/outliers are *fabricated* content with **no 1:1 `analysis_results` backing** — feeding a real face onto a mock card = a mismatched verdict (violates the honesty spine). Needs the surfaces to SOURCE cards from real analyses (a new pipeline: generate+sim ideas → persist, or attach per-audience analyses to feed/competitor rows) — a product build, not a graft. Also collides with the live design rewrite of `idea-card.tsx`/`outlier-card.tsx`. |
+| **2 — Read** (`Read`) | `types.ts` §2b | 🟢 **LANDED.** `predictionResultToRead(data, contentId)` shipped (`src/components/reading/prediction-to-read.ts`, unit-tested) — pure, builds the same nodes the Phase-3 Room does (`buildAudienceNodes`), maps `PredictionResult → Read{stop,split,weakSpot,fix,reactions,population}` (all real engine output; names never the enum; honest population). | `mock-room.ts` `MOCK_READS` | ⛔ **BLOCKED — same data-sourcing gap as Seam 1.** `room-drawer.tsx` already renders whatever `Read` a tapped card carries (via `RoomFocus.read`); the swap is `predictionResultToRead(data,id)` → but `data` must be the card's REAL `PredictionResult`, and mock cards have none. Unblocks the moment a real surface-card source lands (no adapter work — shapes align 1:1). |
+| **3 — Presence** (`AudiencePresence variant='surface'`) | `types.ts` §3 | 🟢 **LANDED (Room side).** The read-only `'surface'` render branch is implemented (`audience-presence.tsx` — peek band always + on-focus read-only `AmbientRoom`; the Rewrite CTA + "type below" prompt gated off) **and** the `audienceToActiveAudience` adapter shipped (`audience-to-active.ts`, unit-tested). Data atom `resolveUserAudience` already landed. | ~~`surface-dock.tsx` renders local `AudienceConstellation` + switcher, fed `MOCK_AUDIENCES`~~ **RETIRED** | ✅ **MOUNTED 2026-07-05** (`feat/seam-mount-live`). `surface-dock.tsx` now wraps `<AudiencePresence variant='surface' layout='dock'>` fed **raw `Audience[]`** from the `/start` server route (`listAudiences` + `resolveUserAudience`) — **NOT** via `audienceToActiveAudience` (type-flow trap, §2.4). `MOCK_AUDIENCES` + the `AudienceConstellation` stub deleted. Browser-verified (real switcher, live select, persist-across-reload). |
 | **4 — Embedded composer** (`Composer mode='embedded'`) | `THE-CONTRACT §3` | 🟢 **SHIPPED via Path A (2026-07-05, PR #151).** Embedding is a *handoff*, not an inline run, so the Room built a dedicated decoupled atom instead of refactoring the /home monolith: `EmbeddedComposer` (`src/components/app/home/embedded-composer.tsx` — drop-in superset of the old stub API) + `buildThreadLaunchHref` (`src/lib/room-contract/thread-launch.ts`, pure). The contract's `/thread/:id` doesn't exist → the launch lands on `/home`; a one-shot seed inlet in `composer.tsx` maps verb→skill, pre-fills the field, and auto-runs on `run=1` (non-runnable verbs degrade to pre-fill). | ~~`surfaces/embedded-composer.tsx` stub~~ **DELETED** — `start-page.tsx` now imports the Room atom + pushes the real launch. | **DONE (Room side + start-page graft).** Audience not carried yet (surface switcher still mock → /home uses its last-used; helper accepts `audienceId`, forward-ready for the Seam-3 real-audience graft). |
 
 **Headline (updated 2026-07-05):** ALL FOUR seams are now **landed on the Room side** — Seam 1 `readToCardReaction` (card face), Seam 2 `predictionResultToRead` (the Read), Seam 3 `audienceToActiveAudience` + the read-only `variant='surface'` presentation (+ the `resolveUserAudience` atom), and Seam 4 the `EmbeddedComposer` atom + `buildThreadLaunchHref` launch handoff (PR #151, Path A — `start-page.tsx` already grafted). Remaining is purely the **surfaces-side mount of the 3 data producers** (§2.4/§5 — swap the card-face / dock / read-panel stubs onto the real adapters) + the **Phase-4 outcome loop** (blocked on account-connect). No shared-atom work left on the Room side.
+
+**Update 2026-07-05b (surfaces-side mount session, `feat/seam-mount-live`):** **Seam 3 is MOUNTED + browser-verified** — the /start dock now renders the real `AudiencePresence` on live audiences (mock retired). Seams **1 + 2 are BLOCKED**, not on adapters (both producers work + unit-test green) but on a **real surface-card data source**: the start-page's daily-ideas/outliers are fabricated cards with no `analysis_results` behind them, so a real Read/face on them would be a *mismatched* verdict (honesty-spine violation). They unblock only when the surfaces SOURCE cards from real analyses — a product/pipeline decision (see the Seam 1/2 rows), which also collides with the live design rewrite of those card components. **Net:** the seam **plumbing** is done everywhere it can honestly be; what's left for 1/2 is **surface content sourcing**, not seam mounting.
 
 ---
 
@@ -69,16 +71,29 @@ The switcher already **writes** `user_settings.last_audience_id` on every select
 - **One presentation per viewport.** `layout='dock'` (mobile bottom-pinned) vs `'rail'` (desktop right-rail) already exists; the host picks via media query so exactly one `AmbientRoom` mounts (no hidden second timer).
 - The surfaces currently mount `AudienceConstellation` (a stub of the breathing dots). At graft, swap the whole `SurfaceDock` internals for `<AudiencePresence variant='surface' …>`; the Room's component owns the real brand `Constellation` (`src/components/brand/constellation.tsx`).
 
-### 2.4 The swap in `surface-dock.tsx`
-```diff
-- import { AudienceConstellation } from "./audience-constellation";      // stub
-- <AudienceConstellation reacting={reacting} />                          // + local switcher markup
-+ import { AudiencePresence } from "@/components/audience-lens/audience-presence";
-+ <AudiencePresence variant='surface' layout={isDesktop ? 'rail' : 'dock'}
-+   audience={active} audiences={all} selectedAudienceId={active?.id ?? null}
-+   onSelectAudience={onSwitch} focus={null} open={open} onOpenChange={setOpen} />
+### 2.4 The swap in `surface-dock.tsx` — ✅ DONE (as-built 2026-07-05)
+
+> ⚠️ The original diff below was **INACCURATE** on two points — the real mount corrects both:
+> **(1) TYPE — feed RAW `Audience`, not the adapter.** `AudiencePresence` consumes the DB `Audience`
+> type (`audience: Audience | null`, `audiences: Audience[]`, `onSelectAudience: (Audience) => void`
+> — `audience-presence.tsx:86-92,147`), **not** the contract `ActiveAudience` that
+> `audienceToActiveAudience` emits. So the dock is fed raw `Audience[]` straight from the server;
+> the adapter is **bypassed for the dock** (it stays for a future card layer that genuinely consumes
+> `ActiveAudience`). **(2) LAYOUT — `layout='dock'` at every breakpoint**, not `isDesktop ? 'rail'`:
+> /start pins dock+composer as one bottom object and its content right-rail already owns the desktop
+> right column, so /home's `rail` presentation doesn't apply here.
+
+As-built: `surface-dock.tsx` is a thin host wrapper owning only `open` + `reducedMotion`:
+```tsx
+<AudiencePresence variant='surface' layout='dock'
+  audience={audience} audiences={audiences} selectedAudienceId={selectedAudienceId}
+  onSelectAudience={onSelectAudience} focus={null}
+  open={open} onOpenChange={setOpen} reducedMotion={reducedMotion}
+  reacting={reacting} onBuildAudience={() => router.push('/audience/new')} />
 ```
-Feed `active`/`all` from `resolveUserAudience` (server) → `audienceToActiveAudience` instead of `MOCK_AUDIENCES`.
+`audiences` + `selectedAudienceId` come from the `/start` server route (`listAudiences` +
+`resolveUserAudience`); `start-page.tsx` owns the selected state + persists on select
+(`PUT /api/settings/last-audience`, UUID-guarded — mirrors `composer.handleSelectAudience`).
 
 ---
 
@@ -94,7 +109,7 @@ Feed `active`/`all` from `resolveUserAudience` (server) → `audienceToActiveAud
 
 ## 5. Suggested graft sequence
 1. ✅ **DONE (Room).** `audienceToActiveAudience` + the read-only `variant='surface'` branch (peek-only at rest; the on-focus read-only Room is forward-ready). Additive — shipped behind nothing.
-2. **← NEXT (Surfaces).** Swap `SurfaceDock` stub → `AudiencePresence variant='surface'`, fed `resolveUserAudience → audienceToActiveAudience`. Verify in a real browser on `/start` + one read-only surface.
-3. (Later) add the read-only Read panel once the Seam-2 `PredictionResult → Read` adapter lands, so a surface card can open the room.
+2. ✅ **DONE (Surfaces, 2026-07-05).** `SurfaceDock` stub → `AudiencePresence variant='surface' layout='dock'`, fed **raw `Audience[]`** from the server (`listAudiences` / `resolveUserAudience`) — NOT via `audienceToActiveAudience` (type-flow trap, §2.4). Browser-verified on `/start` (switcher lists real audiences, live select, persist-across-reload).
+3. ⛔ **BLOCKED (not adapter work).** The Seam-2 `predictionResultToRead` adapter already landed — but a surface card can only open a real Read when the card carries a real `PredictionResult`, and the start-page's cards are fabricated (no `analysis_results`). This step unblocks once the surfaces SOURCE cards from real analyses (see Seam 1/2 ledger rows) — a content/pipeline build, not a seam mount.
 
 _Cross-refs: [`THE-CONTRACT.md`](./THE-CONTRACT.md) §3 Seam 3 + §6.2 · `src/lib/audience/resolve-user-audience.ts` · `src/components/audience-lens/audience-presence.tsx:136` · `src/components/surfaces/surface-dock.tsx` · `src/lib/room-contract/types.ts`._
