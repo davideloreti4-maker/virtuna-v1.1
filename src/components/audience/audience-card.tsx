@@ -77,10 +77,12 @@ export function AudienceCard({
       className={cn(
         READING_CARD,
         "group relative flex items-start gap-4 p-4 pointer-coarse:min-h-[88px]",
-        // Considered matte micro-interaction: lift + border-brighten on hover, settle on press.
-        "transition-[background-color,border-color,transform] duration-150 ease-out",
+        // Considered matte micro-interaction: subtle resting elevation, lift + deepen on
+        // hover, settle on press. Matte (soft dark shadow) — no glass, no glow.
+        "transition-[background-color,border-color,transform,box-shadow] duration-150 ease-out",
+        "shadow-[0_1px_2px_rgba(0,0,0,0.28)]",
         isNavigable &&
-          "cursor-pointer hover:-translate-y-px hover:border-white/[0.10] hover:bg-white/[0.03] active:translate-y-0 active:bg-white/[0.05]",
+          "cursor-pointer hover:-translate-y-px hover:border-white/[0.10] hover:bg-white/[0.03] hover:shadow-[0_10px_26px_-8px_rgba(0,0,0,0.5)] active:translate-y-0 active:bg-white/[0.05] active:shadow-[0_2px_6px_rgba(0,0,0,0.3)]",
         selectionMode && isSelected && "border-white/[0.14] bg-white/[0.05]",
         className,
       )}
