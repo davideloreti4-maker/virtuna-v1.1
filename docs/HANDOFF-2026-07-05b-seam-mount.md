@@ -58,6 +58,16 @@ section) is a trap:** it's cheap, but it silently downgrades the flagship surfac
 recap that duplicates /library and abandons the wedge. Use Option 3 *only* as a throwaway render
 demo if you must see the seam light up before building — never as the shipped answer.
 
+### What "pre-tested" actually requires (don't over-build this)
+A card is honestly "pre-tested" whenever its reaction is a **real** sim result — *not* because the
+sim ran overnight. Overnight-batch vs on-first-visit vs on-tap is an **implementation detail**, not a
+product-truth question. And the **interaction is already wired**: tapping a card opens the real Read
+in the room (`room-drawer.tsx`) and "Develop/Remix in a thread →" hands off into the thread (Seam 4).
+So the job is narrower than "build a proactive pipeline" — it is **get a real `PredictionResult`
+behind each card and cache it.** The engine already generates+sims+ranks (the `ideas` skill does all
+three in one call; `react` sims a given piece) — you're **reusing** that + persisting the result, not
+building scoring from scratch.
+
 **Both real options are the SAME mechanism — sim real content against the user's audience, persist
 the Read — applied to two sections.** Sequence by tractability:
 
@@ -73,23 +83,25 @@ needed — just:
    real `room-drawer` Read (Seam 1 + Seam 2 both land here).
 4. Persist so it's not re-simmed every load (cost — see below).
 
-### Step B (then) — DAILY-IDEAS: generate → pre-sim → surface
-Bigger, because the content must be **generated** first. The engine already does generate→sim→rank
-**in-thread** (`src/app/api/tools/ideas` + `react`/the KC pipeline) — this step **exposes it as a
-proactive surface producer**: generate candidate ideas from the user's pillars/account → sim each
-against their audience → keep the top N as pre-tested cards → same adapter chain onto
-`idea-card.tsx`. This is the fuller moat but the heavier lift.
+### Step B (then) — DAILY-IDEAS: run the ideas skill, cache, render
+The content must be **generated** first — but the `ideas` skill (`src/app/api/tools/ideas`) **already
+generates + sims + ranks in ONE call**. So this is NOT a from-scratch pipeline: **run the ideas skill
+for the user, cache its ranked result, render the top N as the day's cards** (each already carries a
+real Read). One batch per user per refresh-period — not N separate sims. Same adapter chain onto
+`idea-card.tsx`; tapping opens the room / hands to a thread (already wired).
 
-### ⚠️ Cost / cadence (the real gate on both)
-Proactive sims cost Readings (see memory `pricing-strategy`). A daily pre-sim for every user is not
-free. **Before building, decide:** how many outliers/ideas, how often (daily cron? on-visit lazy?),
-and cache/reuse (persist the Read; only re-sim on new content or audience change). This cost model
-is the thing that makes 1/2 a scoped milestone, not a quick graft — get an owner call on it.
+### Cost / cadence — a caching knob, NOT a blocker
+Sims cost Readings ([[pricing-strategy]]), so you don't want to re-run on every page load — but this
+is a **caching/refresh decision, not a gate.** Reuse ONE gen→sim batch per user, **persist the Read**,
+and pick a refresh trigger: daily cron, or lazy on the first `/start` visit of the day, or on new
+content / audience change. The owner picks the refresh cadence (how fresh vs how cheap); any of them
+ships. Don't inflate this into a proactive-everything pipeline — cache + a sane refresh is enough.
 
 ---
 
 ## 4. Ordered next steps
-1. **Confirm the cost/cadence model** with the owner (how many, how often, cache strategy). Gates everything.
+1. **Pick a refresh cadence** with the owner (daily cron / lazy-on-first-visit / on-change) + cache the
+   Read. A tuning knob, not a hard gate — any choice ships; just don't re-sim on every load.
 2. **Step A — outliers** (most tractable): source feed/competitor videos → sim vs audience → persist →
    `predictionResultToRead → readToCardReaction` onto `outlier-card.tsx` + `room-drawer`. Retire the
    mock outlier `read`/`reaction`.
