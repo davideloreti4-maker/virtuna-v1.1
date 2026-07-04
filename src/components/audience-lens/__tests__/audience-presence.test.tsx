@@ -500,6 +500,56 @@ describe('AudiencePresence — PR-3 Rewrite loop', () => {
   });
 });
 
+// ── variant='surface' — the read-only app-wide presence (Seam 3) ──
+describe("AudiencePresence — variant='surface' (read-only)", () => {
+  const ctaMatcher = { name: /win back the viewers who bounced/i };
+  const openPopulation = () =>
+    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+
+  it('surfaces the seam on the dock + rail roots as data-variant', () => {
+    setup({ variant: 'surface', focus: null });
+    expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('surface');
+    cleanup();
+    setup({ variant: 'surface', layout: 'rail', focus: null });
+    expect(screen.getByTestId('audience-rail').getAttribute('data-variant')).toBe('surface');
+  });
+
+  it('keeps the peek band + the honest readiness pulse (no fabricated reaction)', () => {
+    setup({ variant: 'surface', focus: null, open: false });
+    expect(screen.getByRole('button', { name: /open your audience/i })).toBeInTheDocument();
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 personas ready/i);
+  });
+
+  it('drops the composer "type below" prompt for a read-only idle description (dock)', () => {
+    setup({ variant: 'surface', open: true, focus: null });
+    expect(screen.getByText(/here on every surface/i)).toBeInTheDocument();
+    expect(screen.queryByText(/type below to test a thought/i)).toBeNull();
+  });
+
+  it('drops the composer "make something" copy for a read-only description (rail)', () => {
+    setup({ variant: 'surface', layout: 'rail', focus: null });
+    const rail = screen.getByTestId('audience-rail');
+    expect(within(rail).getByText(/here on every surface/i)).toBeInTheDocument();
+    expect(within(rail).queryByText(/they react the moment you make/i)).toBeNull();
+  });
+
+  it('GATES the Rewrite CTA off even when canRewrite=true + bouncers spoke (no composer to re-run)', () => {
+    setup({ variant: 'surface', open: true, focus: FOCUS_BOUNCERS, canRewrite: true, onRewrite: vi.fn() });
+    openPopulation();
+    // The weak spot still renders (it's read-only diagnostic value)…
+    expect(screen.getByText(/where you.?re losing them/i)).toBeInTheDocument();
+    // …but the composer-bound Rewrite CTA is forced off (contrast: thread shows it — PR-3 tests).
+    expect(screen.queryByRole('button', ctaMatcher)).toBeNull();
+  });
+
+  it('still opens the on-focus read-only Room (people ⇄ population), forward-compatible', () => {
+    setup({ variant: 'surface', open: true, focus: FOCUS });
+    const panel = screen.getByTestId('audience-panel');
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
+    expect(within(panel).getByText(/6 of 10/i)).toBeInTheDocument();
+  });
+});
+
 // ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {

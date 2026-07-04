@@ -20,10 +20,10 @@ Legend: 🟢 landed & usable · 🟡 partial / adapter needed · 🔴 stubbed bo
 |---|---|---|---|---|
 | **1 — Card** (`CardReaction`) | `types.ts` §1 | 🟡 Per-card reaction data already rides thread cards (`audienceArchetype`/`scrollQuote`/`stop`, THE-CONTRACT §5). No contract-shaped `CardReaction` **producer** for non-thread cards yet. | `mock-room.ts` `MOCK_READS` → `getReadByCardId` | A producer `content → CardReaction{cardId,tone,stop,lead}` for feed tiles / calendar slots / saved cards. Derivable where a real card exists (saved cards already echo thread cards). |
 | **2 — Read** (`Read`) | `types.ts` §2b | 🟡 The real Read renders today via `AmbientRoom` (Phase 3 embedded). Engine emits `PredictionResult`. No `PredictionResult → contract Read` adapter. | `mock-room.ts` `MOCK_READS` | An adapter `PredictionResult → Read{stop,split,weakSpot,fix,reactions,population}`. Shapes already align 1:1 (see Phase-3 `reading-room.tsx`). |
-| **3 — Presence** (`AudiencePresence variant='surface'`) | `types.ts` §3 | 🔴 **The target.** `AudiencePresence` *accepts* `variant` but only stores it as `data-variant` — **only `'thread'` is implemented** (`audience-presence.tsx:136-140`). **Data atom `resolveUserAudience` IS landed** (`resolve-user-audience.ts`, §6.2 resolved). | `surface-dock.tsx` renders local `AudienceConstellation` + switcher, fed `MOCK_AUDIENCES` | **Build the `'surface'` render branch** (read-only) + an `Audience → ActiveAudience` adapter. Data is ready; this is component work. **See §2.** |
+| **3 — Presence** (`AudiencePresence variant='surface'`) | `types.ts` §3 | 🟢 **LANDED (Room side).** The read-only `'surface'` render branch is implemented (`audience-presence.tsx` — peek band always + on-focus read-only `AmbientRoom`; the Rewrite CTA + "type below" prompt gated off) **and** the `audienceToActiveAudience` adapter shipped (`audience-to-active.ts`, unit-tested). Data atom `resolveUserAudience` already landed. | `surface-dock.tsx` renders local `AudienceConstellation` + switcher, fed `MOCK_AUDIENCES` | **Surfaces-side only:** swap the `surface-dock.tsx` stub → `<AudiencePresence variant='surface'>` fed `resolveUserAudience → audienceToActiveAudience`. See §2.4. |
 | **4 — Embedded composer** (`Composer mode='embedded'`) | `THE-CONTRACT §3` | 🟡 **Verify.** No explicit `mode='embedded'` / `onLaunch(input,verb,audience)` prop found in `composer.tsx` (contract §112 claims it confirmed). The `/home` composer may serve embedded without an explicit mode. | `surfaces/embedded-composer.tsx` (`onLaunch` is `(input,verb)`, no `audience` prop — §3 "stub drift") | Confirm the real embedded surface + align the `onLaunch(…, audience)` signature. Out of scope for Seam 3. |
 
-**Headline:** Seam 3's *data* is ready (`resolveUserAudience`). What's missing is the **read-only surface presentation** in `AudiencePresence` + a small **adapter**. That is the whole graft.
+**Headline:** Seam 3 is **landed on the Room side** — the read-only `variant='surface'` presentation in `AudiencePresence` + the `audienceToActiveAudience` adapter (+ the already-landed `resolveUserAudience` data atom) all ship. The only remaining step is the **surfaces-side swap** of the `surface-dock.tsx` stub (§2.4).
 
 ---
 
@@ -83,8 +83,8 @@ Feed `active`/`all` from `resolveUserAudience` (server) → `audienceToActiveAud
 ---
 
 ## 3. What the Room must build (the deferred work)
-1. **Implement the `'surface'` branch in `audience-presence.tsx`** — today it only sets `data-variant` (`:138`). Read-only: render the peek band + (on focus) the read-only `AmbientRoom` body; gate off the composer-field routing, the ask input, and the Rewrite CTA. Reuse the existing `AmbientRoom` (Phase 3 gave it `personaNodes` + `embedded`; add/confirm a read-only guard so no ask affordance renders when there's no host composer).
-2. **`audienceToActiveAudience(audience): ActiveAudience`** — pure function + unit test (mapping in §2.2). Room-owned (`src/lib/audience/` or `room-contract`), so both sessions import one source.
+1. ✅ **DONE — the `'surface'` render branch in `audience-presence.tsx`.** Read-only: the peek band always + (on focus) the read-only `AmbientRoom` body; the composer-bound affordances are gated off (`canRewrite=false` → no Rewrite CTA; the "type below" idle prompt swapped for a read-only description). Guarded by `isSurface` so `variant='thread'` stays byte-identical. Reuses the Phase-3 `AmbientRoom` (`personaNodes` + `embedded`). Browser-verified (dock + rail; the on-focus Population weak-spot renders, CTA absent even with `canRewrite=true`).
+2. ✅ **DONE — `audienceToActiveAudience(audience): ActiveAudience`** (`src/lib/audience/audience-to-active.ts`) — pure + unit-tested (13 cases; mapping in §2.2). Room-owned so both sessions import one source.
 3. **(Later, Seam 2)** a `PredictionResult → Read` adapter, so a surface can open the read-only panel on a *real* card, not mock.
 
 ## 4. Open questions for the Surfaces sync
@@ -93,8 +93,8 @@ Feed `active`/`all` from `resolveUserAudience` (server) → `audienceToActiveAud
 - **Seam 4 truth:** is the real embedded composer a `mode='embedded'` prop or just `composer.tsx` mounted directly? (ledger row 4 — verify before the composer graft.)
 
 ## 5. Suggested graft sequence
-1. Room builds `audienceToActiveAudience` + implements `variant='surface'` (peek-only first — no Read panel). **Ship behind nothing; it's additive.**
-2. Surfaces swap `SurfaceDock` stub → `AudiencePresence variant='surface'`, fed `resolveUserAudience`. Verify in a real browser on `/start` + one read-only surface.
+1. ✅ **DONE (Room).** `audienceToActiveAudience` + the read-only `variant='surface'` branch (peek-only at rest; the on-focus read-only Room is forward-ready). Additive — shipped behind nothing.
+2. **← NEXT (Surfaces).** Swap `SurfaceDock` stub → `AudiencePresence variant='surface'`, fed `resolveUserAudience → audienceToActiveAudience`. Verify in a real browser on `/start` + one read-only surface.
 3. (Later) add the read-only Read panel once the Seam-2 `PredictionResult → Read` adapter lands, so a surface card can open the room.
 
 _Cross-refs: [`THE-CONTRACT.md`](./THE-CONTRACT.md) §3 Seam 3 + §6.2 · `src/lib/audience/resolve-user-audience.ts` · `src/components/audience-lens/audience-presence.tsx:136` · `src/components/surfaces/surface-dock.tsx` · `src/lib/room-contract/types.ts`._
