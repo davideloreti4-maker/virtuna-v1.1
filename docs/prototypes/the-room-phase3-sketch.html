@@ -133,6 +133,26 @@
   .p3 .chip.hide { color:var(--faint); text-decoration:line-through; text-decoration-color:var(--faint); }
   .p3 .chip.mode { color:var(--cream2); border-color:var(--border2); }
 
+  /* Sketch C — before/after section stacks */
+  .p3 .cols { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:820px){ .p3 .cols{ grid-template-columns:1fr; } }
+  .p3 .col h4 { font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 12px; }
+  .p3 .col.now h4 { color:var(--muted); }
+  .p3 .col.next h4 { color:var(--accent); }
+  .p3 .stack { display:flex; flex-direction:column; gap:8px; }
+  .p3 .blk { border:1px solid var(--border); border-radius:10px; padding:11px 13px; background:var(--surface); position:relative; }
+  .p3 .blk .bt { font-size:12.5px; font-weight:600; color:var(--cream); }
+  .p3 .blk .bd { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
+  .p3 .blk.dim { opacity:.66; }
+  .p3 .blk.stub { border-style:dashed; border-color:var(--border2); }
+  .p3 .blk.room { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft); background:linear-gradient(180deg,rgba(217,119,87,.06),var(--surface)); }
+  .p3 .blk.room .bt { color:var(--accent); }
+  .p3 .blk .mini { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+  .p3 .blk .mini span { font-family:var(--mono); font-size:9px; color:var(--cream2); border:1px solid var(--border2); border-radius:5px; padding:2px 6px; }
+  .p3 .blk .same { position:absolute; top:11px; right:12px; font-family:var(--mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:var(--good); }
+  .p3 .cnote { max-width:680px; margin:18px auto 0; font-size:13px; color:var(--cream2); text-align:center; }
+  .p3 .cnote b { color:var(--accent); }
+
   .p3 .foot { max-width:640px; margin:56px auto 0; padding-top:20px; border-top:1px solid var(--border); font-size:12.5px; color:var(--muted); }
   .p3 .foot b { color:var(--cream2); }
 </style>
@@ -289,6 +309,40 @@
           </div>
         </aside>
       </div>
+    </section>
+
+    <!-- SKETCH C -->
+    <section class="sketch">
+      <div class="shead">
+        <span class="stag">Sketch C</span>
+        <h2>The Read page &mdash; today &rarr; Phase 3</h2>
+        <span class="sub">Option A: the Room embeds in place</span>
+      </div>
+      <div class="cols">
+        <div class="col now">
+          <h4>Today &middot; the /analyze Read page</h4>
+          <div class="stack">
+            <div class="blk dim"><div class="bt">Hero &mdash; score gauge</div><div class="bd">82 &middot; Strong &middot; 71 virality &middot; 68% watch-through</div></div>
+            <div class="blk dim"><div class="bt">Score drivers</div><div class="bd">Hook &middot; Retention &middot; Shareability lever rows</div></div>
+            <div class="blk stub"><div class="bt">Audience &amp; context</div><div class="bd">Niche-rank distribution only &mdash; <b style="color:var(--accent)">the persona deep-dive is deferred (a stub)</b></div></div>
+            <div class="blk dim"><div class="bt">Fix First</div><div class="bd">your single weakest lever</div></div>
+            <div class="blk dim"><div class="bt">Deeper Read</div><div class="bd">the expanded analysis</div></div>
+            <div class="blk dim"><div class="bt">Follow-up Chat</div><div class="bd">persistent Q&amp;A on the Read</div></div>
+          </div>
+        </div>
+        <div class="col next">
+          <h4>Phase 3 &middot; Option A (embed)</h4>
+          <div class="stack">
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Hero &mdash; score gauge</div><div class="bd">82 &middot; Strong &middot; 71 virality &middot; 68% watch-through</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Score drivers</div><div class="bd">Hook &middot; Retention &middot; Shareability lever rows</div></div>
+            <div class="blk room"><div class="bt">Audience &mdash; the Room</div><div class="bd">the deferred stub becomes the full interrogable Room, inline:</div><div class="mini"><span>named voices</span><span>ask &rarr;</span><span>Population &middot; 1,000</span><span>weak-spot</span><span>&#9654; timeline replay</span></div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Fix First</div><div class="bd">your single weakest lever</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Deeper Read</div><div class="bd">the expanded analysis</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Follow-up Chat</div><div class="bd">persistent Q&amp;A on the Read</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="cnote">Only the <b>Audience</b> section changes &mdash; and it&rsquo;s a stub today, so nothing rich is removed. Everything else on the Read page stays exactly as it is.</p>
     </section>
 
     <p class="foot"><b>These are sketches, not builds.</b> Approve the direction (or redline any piece &mdash; the 13&rarr;3 mapping, a verb's contents, the Test layout) and I'll turn it into the Phase 3 plan. The map above keeps every skill reachable; nothing is deleted, only reorganized by intent.</p>
