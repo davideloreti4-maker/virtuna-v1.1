@@ -121,7 +121,7 @@ export function HooksClient() {
     <div className="mx-auto max-w-5xl px-6 py-8">
       <FeedViewTabs />
       <header className="mb-6 mt-5">
-        <h1 className="text-2xl font-medium text-foreground">Hooks</h1>
+        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Hooks</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
           Manage your vault of viral hooks — adapt any one into a script for your audience.
         </p>

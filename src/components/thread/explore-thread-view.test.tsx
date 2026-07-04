@@ -167,9 +167,10 @@ describe('ExploreThreadView — honesty spine (D-02)', () => {
       />,
     );
 
-    expect(
-      screen.getByText(/Pulling outliers and scoring them for your audience/),
-    ).toBeInTheDocument();
+    // stages>0 → the consolidated ProgressChecklist stepper (honest, no fake %),
+    // not the ThreadLoadingSkeleton caption (that path is stages.length === 0).
+    expect(screen.getByLabelText('Skill run progress')).toBeInTheDocument();
+    expect(screen.getByText('Pulling outliers')).toBeInTheDocument();
     // Idle quick-actions are gone once a pull is in flight.
     expect(
       screen.queryByRole('button', { name: 'Top performers in my niche today' }),

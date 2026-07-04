@@ -31,7 +31,7 @@
     "learning": "npx tsx scripts/run-learning.ts"
   },
   "dependencies": {
-    "@phosphor-icons/react": "^2.1.10",
+    "@phosphor-icons/react": "2.1.10",
     "@pmndrs/detect-gpu": "6.0.6",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -69,7 +69,7 @@
     "react-intersection-observer": "^10.0.2",
     "react-markdown": "^10.1.0",
     "react-scan": "^0.5.6",
-    "recharts": "^3.7.0",
+    "recharts": "3.9.1",
     "rehype-sanitize": "^6.0.0",
     "sugar-high": "^0.9.5",
     "tailwind-merge": "^3.4.0",

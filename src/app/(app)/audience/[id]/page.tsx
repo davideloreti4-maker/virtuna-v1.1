@@ -102,7 +102,7 @@ export default function AudienceDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-medium text-foreground truncate">{audience.name}</h1>
+          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px] truncate">{audience.name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-sm text-foreground-secondary">
               {getPlatformLabel(audience)} · {getTypeLabel(audience)}

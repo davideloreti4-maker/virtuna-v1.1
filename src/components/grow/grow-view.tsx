@@ -12,6 +12,7 @@
  */
 
 import { useMemo } from "react";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { useToast } from "@/components/ui/toast";
 import { getMockGrow, type Offer } from "@/lib/grow/mock-grow";
 import { toneDot } from "@/components/surfaces/tone";
@@ -35,7 +36,7 @@ export function GrowView() {
   return (
     <div
       className="relative min-h-full text-foreground"
-      style={{ background: "radial-gradient(120% 80% at 50% -10%, #2c2a27, var(--color-background) 60%)" }}
+      style={{ background: SURFACE_RADIAL_BG }}
     >
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-5">

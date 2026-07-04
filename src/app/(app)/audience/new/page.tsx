@@ -22,7 +22,7 @@ export default async function NewAudiencePage({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-medium text-foreground">Create audience</h1>
+        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Create audience</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
           Name your audience, then calibrate it from your @handle or a description.
         </p>

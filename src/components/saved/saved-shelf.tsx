@@ -90,7 +90,7 @@ export function SavedShelf() {
       {/* Header */}
       <header className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-2xl font-semibold text-foreground">Library</h1>
+          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Library</h1>
           <p className="max-w-xl text-sm text-foreground-muted">
             Everything you&rsquo;ve made — Reads, ideas, hooks, scripts, outliers — ready to pull
             back into a thread.

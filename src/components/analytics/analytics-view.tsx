@@ -12,6 +12,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
@@ -72,7 +73,7 @@ export function AnalyticsView({
   return (
     <div
       className="relative min-h-full text-foreground"
-      style={{ background: "radial-gradient(120% 80% at 50% -10%, #2c2a27, var(--color-background) 60%)" }}
+      style={{ background: SURFACE_RADIAL_BG }}
     >
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-4">

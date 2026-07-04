@@ -217,7 +217,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     <div className={cn("flex flex-col gap-6", className)}>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-medium text-foreground">Your audiences</h1>
+          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Your audiences</h1>
           {/* A1-COUPLED-COPY: revise if weights→generation wires */}
           <p className="mt-1 text-sm text-foreground-secondary">
             {selectionMode
