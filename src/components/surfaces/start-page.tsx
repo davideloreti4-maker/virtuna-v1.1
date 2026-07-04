@@ -208,9 +208,6 @@ export function StartPage({
               onAttach={() =>
                 toast({ variant: "default", title: "Attach", description: "Drop a video to Test, or a reference to steer." })
               }
-              onMic={() =>
-                toast({ variant: "default", title: "Voice", description: "Speak your idea — Juno tests it against the room." })
-              }
             />
           </div>
         </div>

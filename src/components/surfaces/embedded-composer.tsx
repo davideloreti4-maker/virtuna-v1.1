@@ -23,13 +23,20 @@ const VERB_MENU: { verb: Verb; title: string; sub: string }[] = [
   { verb: "Ask", title: "The room", sub: "a raw thought, react instantly" },
 ];
 
+// Placeholder per verb — mirrors the real composer's verb-appropriate copy
+// (composer.tsx PLACEHOLDER_BY_TOOL) so /start reads the same as the thread.
+const VERB_PLACEHOLDER: Record<Verb, string> = {
+  Make: "What do you want to make? Hooks, a script, ideas…",
+  Test: "Paste a TikTok link or drop a video…",
+  Ask: "Ask anything, or tap an idea…",
+};
+
 export function EmbeddedComposer({
   verb,
   onVerbChange,
   seed,
   onLaunch,
   onAttach,
-  onMic,
   disabled,
 }: {
   verb: Verb;
@@ -38,7 +45,6 @@ export function EmbeddedComposer({
   seed?: { text: string; nonce: number } | null;
   onLaunch: (input: string, verb: Verb) => void;
   onAttach?: () => void;
-  onMic?: () => void;
   disabled?: boolean;
 }) {
   const [value, setValue] = useState("");
@@ -122,15 +128,12 @@ export function EmbeddedComposer({
               launch();
             }
           }}
-          placeholder="Ask anything, or tap an idea…"
+          placeholder={VERB_PLACEHOLDER[verb]}
           disabled={disabled}
           className="min-w-0 flex-1 bg-transparent text-[12.5px] text-foreground placeholder:text-foreground-muted focus:outline-none"
         />
         <button type="button" onClick={onAttach} aria-label="Attach" className="grid size-6 shrink-0 place-items-center text-foreground-muted transition-colors hover:text-foreground-secondary">
-          <SurfaceIcon name="plus" size={16} strokeWidth={1.8} />
-        </button>
-        <button type="button" onClick={onMic} aria-label="Voice" className="grid size-6 shrink-0 place-items-center text-foreground-muted transition-colors hover:text-foreground-secondary">
-          <SurfaceIcon name="mic" size={15} />
+          <SurfaceIcon name="paperclip" size={16} />
         </button>
         <button
           type="button"
