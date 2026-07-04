@@ -6,7 +6,7 @@ import { getMockCalendar } from "@/lib/room-contract/mock-room";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
 
 export const metadata: Metadata = {
-  title: "Analytics | Juno",
+  title: "Analytics | Maven",
   description: "Your account over 7 / 30 / 90 days — real numbers, and what to do next.",
 };
 

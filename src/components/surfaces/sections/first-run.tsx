@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * FirstRun — the no-audience state. Honest: Juno hasn't met your followers yet, so it
+ * FirstRun — the no-audience state. Honest: Maven hasn't met your followers yet, so it
  * never fakes a reaction. Connect once → every card arrives pre-tested. The composer
  * stays live below (owned by the shell); this is just the empty-state body + the 3-step loop.
  */
@@ -10,9 +10,9 @@ import { NumenMark } from "@/components/brand/numen-logo";
 
 export function FirstRun({ onConnect }: { onConnect: () => void }) {
   const steps = [
-    "Connect — Juno builds your room from your real followers.",
+    "Connect — Maven builds your room from your real followers.",
     "Ideas, outliers, and calendar slots all arrive scored for your people.",
-    "Publish → Juno checks its call against what happened → the model sharpens.",
+    "Publish → Maven checks its call against what happened → the model sharpens.",
   ];
   return (
     <div className="flex flex-col px-1.5 py-4">
@@ -23,7 +23,7 @@ export function FirstRun({ onConnect }: { onConnect: () => void }) {
         Let’s build your room.
       </h2>
       <p className="m-0 mb-2 text-[13px] leading-[1.55] text-foreground-muted">
-        Juno hasn’t met your audience yet. <b className="font-semibold text-foreground-secondary">Connect your account</b> — it
+        Maven hasn’t met your audience yet. <b className="font-semibold text-foreground-secondary">Connect your account</b> — it
         models ~10 named people from your real followers, then every card here comes pre-tested on them.
       </p>
       <button

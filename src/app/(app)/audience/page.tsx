@@ -7,7 +7,7 @@
 import { AudienceManager } from "@/components/audience/audience-manager";
 
 export const metadata = {
-  title: "Your audiences | Numen",
+  title: "Your audiences | Maven",
 };
 
 export default function AudiencePage() {

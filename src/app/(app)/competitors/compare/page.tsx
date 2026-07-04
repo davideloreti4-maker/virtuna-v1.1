@@ -10,7 +10,7 @@ import {
 import { ComparisonClient } from "./comparison-client";
 
 export const metadata: Metadata = {
-  title: "Compare | Competitors | Numen",
+  title: "Compare | Competitors | Maven",
 };
 
 export interface ComparisonData {

@@ -6,7 +6,7 @@
 import { AudienceForm } from "@/components/audience/audience-form";
 
 export const metadata = {
-  title: "Create audience | Numen",
+  title: "Create audience | Maven",
 };
 
 export default async function NewAudiencePage({
