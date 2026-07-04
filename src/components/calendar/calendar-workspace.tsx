@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { getMockCalendar } from "@/lib/room-contract/mock-room";
@@ -85,9 +86,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
   return (
     <div
       className="relative min-h-full text-foreground"
-      style={{
-        background: "radial-gradient(120% 80% at 50% -10%, #2c2a27, var(--color-background) 60%)",
-      }}
+      style={{ background: SURFACE_RADIAL_BG }}
     >
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         {/* Header — title + planned density + month nav */}
