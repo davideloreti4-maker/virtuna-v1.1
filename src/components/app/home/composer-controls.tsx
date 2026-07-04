@@ -73,22 +73,29 @@ export interface SkillMeta {
   enabled: boolean;
 }
 
-// Order mirrors sketch 006 + the handoff table.
+// Order mirrors the Phase 3 sketch (Make → Test → Ask), so the verb-grouped popover
+// AND the `/` slash menu render in that intent order. Row LABELS under Test/Ask read
+// as their verb flavor ("A real video" / "Your account" / "The room") — a "Test" row
+// under a "Test" header would be redundant; the underlying skill id + /command are the
+// stable SSOT (VERB_BY_TOOL is the id→verb map; SkillRows groups on it).
 export const SKILLS: SkillMeta[] = [
-  // ── Socials (creator) — byte-identical render; every entry tagged ["socials"] ──
-  { id: "explore", label: "Explore",          desc: "Audience-curated discovery",          command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "idea",    label: "Ideas",            desc: "Funnel-top idea cards",               command: "/ideas",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "hooks",   label: "Hooks",            desc: "Ranked scroll-stoppers",              command: "/hooks",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "script",  label: "Script",           desc: "Beats + retention markers",           command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "remix",   label: "Remix",            desc: "Decode a winner → your version",      command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "test",    label: "Test",             desc: "Full Read on a real video",           command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
-  { id: "account", label: "Account Read",     desc: "A Read on your own account",          command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "chat",    label: "Chat",             desc: "Ask Numen anything",                  command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // ── Make — create net-new (Socials/creator). Grouped under the "Make" verb. ──
+  { id: "hooks",   label: "Hooks",   desc: "Ranked scroll-stoppers",         command: "/hooks",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "idea",    label: "Ideas",   desc: "Funnel-top idea cards",          command: "/ideas",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "script",  label: "Script",  desc: "Beats + retention markers",      command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "remix",   label: "Remix",   desc: "Decode a winner → your version", command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "explore", label: "Explore", desc: "Audience-curated discovery",     command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // ── Test — judge something real (a video · your own account). ──
+  { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
+  { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // ── Ask — converse / probe. ──
+  { id: "chat",    label: "The room", desc: "Drop a raw thought",             command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // ── Marketing — hidden until enabled (enabled:false → SkillRows never renders them). ──
   { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
   { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
-  // ── General — the three verbs surfaced only when a General audience is active.
-  //    `group: "creator"` is inert here (the outer filter is mode; group only sub-headers
-  //    the Socials section). NO accent — reuse the existing row visual language. ──
+  // ── General — the three verbs surfaced when a General audience is active. They keep
+  //    their own always-visible "General" group in the menu (not folded into Make/Test/
+  //    Ask); `group: "creator"` is inert here. NO accent — reuse the existing row visual. ──
   { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
   { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: true },
   { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
@@ -166,21 +173,23 @@ const SKILL_ICON: Record<ToolId, string> = {
 };
 
 /**
- * The verb the chip shows for each skill (v6 IA — THE-ROOM-HANDOFF §3.5/§7): the
- * composer collapses ~13 skills → three verbs. `Make` = anything you generate, `Test`
- * = upload a real video, `Ask` = chat. This maps the CHIP LABEL only — the skill
- * popover (SkillRows) still lists every skill by name; the full menu collapse into
- * Make/Test/Ask groups is Phase 3 (§5). Keep in sync with SKILLS as new skills land.
+ * The intent verb each skill sits under (v6 IA — THE-ROOM-HANDOFF §3.5/§7). SSOT for
+ * BOTH the chip face AND the Phase 3 verb-grouped popover (SkillRows groups on this):
+ *   Make = create net-new · Test = judge something real · Ask = converse / probe.
+ * LOCKED mapping — Explore stays under Make (discovery feeds what you make); Account
+ * Read stays under Test (it judges something real — your own posts). The General verbs
+ * (profile/simulate/predict) keep "Make" here for the chip, but the menu renders them
+ * in their own "General" group, not folded into Make. Keep in sync with SKILLS.
  */
 export const VERB_BY_TOOL: Record<ToolId, "Make" | "Test" | "Ask"> = {
   test: "Test",
+  account: "Test", // Account Read = judge something real (your own posts) — owner-locked
   chat: "Ask",
   idea: "Make",
   hooks: "Make",
   script: "Make",
   remix: "Make",
-  explore: "Make",
-  account: "Make",
+  explore: "Make", // discovery feeds what you make — owner-locked under Make
   offer: "Make",
   ad: "Make",
   profile: "Make",
@@ -281,15 +290,10 @@ function Popover({
   );
 }
 
-function GroupLabel({ children, badge }: { children: React.ReactNode; badge?: boolean }) {
+function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-foreground-muted/70">
       {children}
-      {badge && (
-        <span className="rounded-full border border-border px-1.5 text-[9px] tracking-[0.04em] text-foreground-secondary">
-          MARKETING
-        </span>
-      )}
     </div>
   );
 }
@@ -304,27 +308,30 @@ export function SkillRows({
   active: ToolId;
   filter?: string;
   onSelect: (id: ToolId) => void;
-  /** Active Audience mode (UX-02 / D-01). Gates the list BEFORE the Creator/Marketing
-   *  group partition. Defaults to "socials" so the live Socials render is byte-identical
-   *  until 07-04 threads the real mode. */
+  /** Active Audience mode (UX-02 / D-01). Gates the list BEFORE the Make/Test/Ask verb
+   *  partition (socials) vs the General group. Defaults to "socials". */
   activeMode?: SkillMode;
 }) {
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
     !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
-  // Visibility partition (UX-02 / D-01, refine lane): the General verbs are ALWAYS
-  // shown in their own group; Creator/Marketing surface only in socials mode. The
-  // shared isSkillVisible() keeps this list and the `/` slash menu in lock-step.
   const mode = activeMode ?? "socials";
+  // Phase 3 (v6 IA): the Socials skills collapse under three INTENT verbs — Make
+  // (create net-new) · Test (judge something real) · Ask (converse). VERB_BY_TOOL is
+  // the id→verb SSOT the menu groups on. Disabled skills (Offer/Ad) are HIDDEN until
+  // enabled (`s.enabled` filter — no "coming soon" rows). The three General verbs keep
+  // their own always-visible "General" group so they stay discoverable from a creator
+  // context. isSkillVisible() keeps this list + the `/` slash menu in lock-step.
+  const socials = SKILLS.filter(
+    (s) => s.modes.includes("socials") && s.enabled && isSkillVisible(s, mode) && match(s),
+  );
+  const make = socials.filter((s) => VERB_BY_TOOL[s.id] === "Make");
+  const test = socials.filter((s) => VERB_BY_TOOL[s.id] === "Test");
+  const ask = socials.filter((s) => VERB_BY_TOOL[s.id] === "Ask");
   const general = SKILLS.filter(
-    (s) => s.modes.includes("general") && isSkillVisible(s, mode) && match(s),
+    (s) => s.modes.includes("general") && s.enabled && isSkillVisible(s, mode) && match(s),
   );
-  const creator = SKILLS.filter(
-    (s) => s.group === "creator" && s.modes.includes("socials") && isSkillVisible(s, mode) && match(s),
-  );
-  const marketing = SKILLS.filter(
-    (s) => s.group === "marketing" && isSkillVisible(s, mode) && match(s),
-  );
+  const hasSocials = make.length + test.length + ask.length > 0;
 
   const Row = (s: SkillMeta) => (
     <button
@@ -385,27 +392,25 @@ export function SkillRows({
         <Ico name="search" size={14} />
         type to filter · ↵ to select
       </div>
-      {creator.length > 0 && <GroupLabel>Creator</GroupLabel>}
-      {creator.map(Row)}
-      {marketing.length > 0 && (
-        <>
-          <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />
-          <GroupLabel badge>Marketing</GroupLabel>
-        </>
-      )}
-      {marketing.map(Row)}
+      {/* Make / Test / Ask — the three intent verbs (Socials mode). Section headers
+          alone separate them (no dividers); each row is a skill under that verb. */}
+      {make.length > 0 && <GroupLabel>Make</GroupLabel>}
+      {make.map(Row)}
+      {test.length > 0 && <GroupLabel>Test</GroupLabel>}
+      {test.map(Row)}
+      {ask.length > 0 && <GroupLabel>Ask</GroupLabel>}
+      {ask.map(Row)}
       {/* General verbs — always shown so they stay discoverable from a creator
-          context. Divider/label drop when this is the only group (general mode). */}
+          context. A divider separates them from the verb sections; in general mode
+          (no Socials skills) they are the only group. */}
       {general.length > 0 && (
         <>
-          {(creator.length > 0 || marketing.length > 0) && (
-            <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />
-          )}
+          {hasSocials && <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />}
           <GroupLabel>General</GroupLabel>
         </>
       )}
       {general.map(Row)}
-      {creator.length === 0 && marketing.length === 0 && general.length === 0 && (
+      {!hasSocials && general.length === 0 && (
         <div className="px-2.5 py-3 text-[12px] text-foreground-muted">No skills match.</div>
       )}
     </>
@@ -534,9 +539,8 @@ export function ComposerControls({
     <div ref={rootRef} className={cn("flex items-center gap-1.5", className)}>
       {/* Verb chip (v6) — Make / Test / Ask over the same SkillRows menu. The composer's
           ONE accented control: a terracotta ✦ spark + the verb + a chevron. Opens the skill
-          popover (which still lists every skill by name — the menu's group collapse into
-          Make/Test/Ask is Phase 3). aria-label keeps "Skill: …" so the picker stays
-          discoverable to assistive tech + the existing tests reach it. */}
+          popover, now grouped under the same three verbs (Phase 3). aria-label keeps
+          "Skill: …" so the picker stays discoverable to assistive tech + the tests reach it. */}
       <div className="relative">
         <button
           ref={skillRef}

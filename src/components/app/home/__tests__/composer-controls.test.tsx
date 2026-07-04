@@ -3,10 +3,10 @@
  * ComposerControls — the locked composer control row (UX-01, sketch 006 Variant 1).
  *
  * Asserts the wiring the old tool-chips test covered, adapted to the popover design:
- *  - The verb chip (v6) shows the VERB (Make/Test/Ask) and opens the grouped Creator/Marketing popover.
+ *  - The verb chip (v6) shows the VERB (Make/Test/Ask) and opens the popover grouped under the same three verbs (Phase 3).
  *  - Popover rows carry their `/command` label + a MAX badge where the video model fires.
  *  - The active skill is checked; selecting an enabled skill fires onSelectTool.
- *  - Explore is live (P11 / EXPLORE-01); not-yet-shipped skills (Offer/Ad) render disabled ("coming soon").
+ *  - Explore is live (P11 / EXPLORE-01); not-yet-shipped skills (Offer/Ad) are HIDDEN until enabled.
  *  - ModelTag is a read-only indicator (retired from the composer, still unit-tested): Max for Test/Ad, Flash otherwise.
  *  - SkillRows filters by query (the `/` slash menu reuses it).
  *
@@ -45,22 +45,26 @@ function openSkillPopover() {
 beforeEach(() => cleanup());
 
 describe("ComposerControls — skill pill + popover", () => {
-  it("shows the active skill on the pill (Test)", () => {
+  it("shows the active skill on the pill (Test verb + aria)", () => {
     renderControls({ activeTool: "test" });
-    expect(screen.getByRole("button", { name: /skill: test/i })).toBeInTheDocument();
+    // The chip face shows the VERB (Test); the aria-label carries the skill's row label
+    // ("A real video" under the Test verb — a "Test" row under a "Test" header is redundant).
+    const pill = screen.getByRole("button", { name: /skill: a real video/i });
+    expect(pill).toHaveTextContent("Test");
   });
 
-  it("opens a popover grouped Creator / Marketing with /command labels + MAX badges", () => {
+  it("opens a popover grouped Make / Test / Ask with /command labels + MAX badge", () => {
     renderControls();
     openSkillPopover();
     const menu = screen.getByRole("menu");
-    expect(within(menu).getByText("Creator")).toBeInTheDocument();
-    expect(within(menu).getByText("Marketing")).toBeInTheDocument();
-    // /command labels are present
+    expect(within(menu).getByText("Make")).toBeInTheDocument();
+    expect(within(menu).getByText("Test")).toBeInTheDocument();
+    expect(within(menu).getByText("Ask")).toBeInTheDocument();
+    // /command labels are present (the id + command stay stable under the relabeled rows)
     expect(within(menu).getByText("/test")).toBeInTheDocument();
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
-    // MAX badge appears for the video skills (Test row + Ad row both show MAX)
-    expect(within(menu).getAllByText("MAX").length).toBeGreaterThanOrEqual(2);
+    // MAX badge appears for the video skill (Test row); Ad is hidden until enabled.
+    expect(within(menu).getAllByText("MAX").length).toBeGreaterThanOrEqual(1);
   });
 
   it("marks the active skill with aria-checked", () => {
@@ -88,27 +92,25 @@ describe("ComposerControls — skill pill + popover", () => {
     expect(onSelectTool).toHaveBeenCalledWith("explore");
   });
 
-  it("renders not-yet-shipped skills disabled (Offer/Ad) and does not fire on click", () => {
-    const onSelectTool = vi.fn();
-    renderControls({ onSelectTool });
+  it("hides not-yet-shipped skills (Offer/Ad) until enabled", () => {
+    renderControls();
     openSkillPopover();
-    for (const name of [/offer validation/i, /ad creative/i]) {
-      const row = screen.getByRole("menuitemradio", { name });
-      expect(row).toBeDisabled();
-      fireEvent.click(row);
-    }
-    expect(onSelectTool).not.toHaveBeenCalled();
+    const menu = screen.getByRole("menu");
+    // enabled:false → SkillRows never renders them (no "coming soon" rows in v6).
+    expect(within(menu).queryByRole("menuitemradio", { name: /offer validation/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /ad creative/i })).toBeNull();
   });
 });
 
 describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
-  it("defaults to Socials when no activeMode is passed → Creator + Marketing + always-visible General", () => {
-    // No activeMode prop → "socials" default → Creator/Marketing headers + creator skills.
+  it("defaults to Socials when no activeMode is passed → Make/Test/Ask + always-visible General", () => {
+    // No activeMode prop → "socials" default → the three verb headers + creator skills.
     renderControls();
     openSkillPopover();
     const menu = screen.getByRole("menu");
-    expect(within(menu).getByText("Creator")).toBeInTheDocument();
-    expect(within(menu).getByText("Marketing")).toBeInTheDocument();
+    expect(within(menu).getByText("Make")).toBeInTheDocument();
+    expect(within(menu).getByText("Test")).toBeInTheDocument();
+    expect(within(menu).getByText("Ask")).toBeInTheDocument();
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
     expect(within(menu).getByText("/test")).toBeInTheDocument();
     // The General verbs are ALWAYS surfaced (refine lane) — own "General" group,
@@ -131,9 +133,10 @@ describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
     expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
     expect(within(menu).queryByText("/hooks")).toBeNull();
     expect(within(menu).queryByText("/test")).toBeNull();
-    // General mode hides the Creator/Marketing sub-headers (General is the only group).
-    expect(within(menu).queryByText("Creator")).toBeNull();
-    expect(within(menu).queryByText("Marketing")).toBeNull();
+    // General mode hides the Make/Test/Ask verb headers (General is the only group).
+    expect(within(menu).queryByText("Make")).toBeNull();
+    expect(within(menu).queryByText("Test")).toBeNull();
+    expect(within(menu).queryByText("Ask")).toBeNull();
   });
 
   it("SkillRows surfaces the General verbs in BOTH modes (the `/` slash menu reuses it)", () => {
@@ -173,8 +176,8 @@ describe("ModelTag — read-only model indicator (D-09)", () => {
 
 describe("ComposerControls — verb chip (v6 clean composer)", () => {
   // The pill collapses ~13 skills → three verbs on the chip face (Make / Test / Ask).
-  // The popover still lists every skill by name (the group collapse is Phase 3); the
-  // chip's aria-label keeps "Skill: …" so assistive tech + openSkillPopover reach it.
+  // The popover groups every skill under those same three verbs (Phase 3); the chip's
+  // aria-label keeps "Skill: …" so assistive tech + openSkillPopover reach it.
   it("labels the chip Make for a generation skill", () => {
     renderControls({ activeTool: "hooks" });
     expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Make");
