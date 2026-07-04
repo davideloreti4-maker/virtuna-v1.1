@@ -16,6 +16,7 @@ import {
   LayoutGrid,
   MessageCircle,
   Mic,
+  Paperclip,
   Play,
   Plus,
   Repeat,
@@ -39,6 +40,7 @@ export type SurfaceIconName =
   | "upright"
   | "plus"
   | "mic"
+  | "paperclip"
   | "layers"
   | "film"
   | "check"
@@ -59,6 +61,7 @@ export const SURFACE_ICONS: Record<SurfaceIconName, LucideIcon> = {
   upright: ArrowUpRight,
   plus: Plus,
   mic: Mic,
+  paperclip: Paperclip,
   layers: Layers,
   film: Film,
   check: Check,
