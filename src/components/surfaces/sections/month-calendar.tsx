@@ -31,7 +31,7 @@ export function MonthCalendar({
 }) {
   const plannedCount = days.filter((c) => c.tone).length;
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
+    <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <div className="mb-[13px] flex items-center gap-1.5">
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold tracking-[-0.01em] text-foreground">{month}</span>

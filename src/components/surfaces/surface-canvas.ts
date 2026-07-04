@@ -6,4 +6,4 @@
  * `style={{ background: SURFACE_RADIAL_BG }}`.
  */
 export const SURFACE_RADIAL_BG =
-  "radial-gradient(120% 80% at 50% -10%, #2c2a27, var(--color-background) 60%)";
+  "radial-gradient(130% 90% at 50% -20%, #34322e, var(--color-background) 70%)";

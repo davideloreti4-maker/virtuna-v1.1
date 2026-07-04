@@ -113,7 +113,6 @@ export function StartPage({
     >
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-40 pt-6 lg:px-6">
         <TopChrome
-          rings={data.rings}
           onLayout={() =>
             toast({ variant: "default", title: "Layout options", description: "Coming soon — density + section order." })
           }

@@ -22,7 +22,7 @@ import { SurfaceIcon } from "../icons";
 
 export function TheLoop({ receipts, accuracy }: { receipts: Receipt[]; accuracy: Accuracy }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
+    <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <h3 className="m-0 mb-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
         The loop · what actually happened
       </h3>

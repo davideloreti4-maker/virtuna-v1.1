@@ -31,7 +31,7 @@ export function OutlierCard({
           onOpen(outlier.cardId);
         }
       }}
-      className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-[#1c1b19] transition-all duration-150 hover:-translate-y-px hover:border-border-hover"
+      className="elev-lift group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-[#1c1b19] hover:border-border-hover"
     >
       <div
         className={cn(

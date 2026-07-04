@@ -474,7 +474,7 @@ export function getMockStartPage(): StartPageData {
   return {
     greeting: {
       headline: "Good afternoon, Davide 👋",
-      line: "Your room reacted to 6 things overnight — and last week’s calls landed. Here’s your day.",
+      line: "Your room reacted to 6 things overnight — and 84% of last week’s calls landed. Here’s your day.",
     },
     rings: [
       { icon: "flame", pct: 0.71, value: "5-day", accent: false, label: "5-day streak" },

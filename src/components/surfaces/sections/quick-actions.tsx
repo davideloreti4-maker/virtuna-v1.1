@@ -16,7 +16,7 @@ export function QuickActions({
   onAction: (action: QuickAction) => void;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated px-3.5 pb-2.5 pt-0">
+    <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 pb-2.5 pt-0">
       <h3 className="m-0 mb-1 mt-[13px] text-[15px] font-semibold tracking-[-0.01em] text-foreground">Quick actions</h3>
       {actions.map((a, i) => (
         <button

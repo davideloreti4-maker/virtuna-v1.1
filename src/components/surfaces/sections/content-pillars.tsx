@@ -26,7 +26,7 @@ export function ContentPillars({
   const gap = pillars.find((p) => p.gap);
 
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
+    <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <div className="mb-2 flex items-baseline gap-2">
         <h3 className="m-0 flex-1 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
           Content pillars
@@ -60,7 +60,7 @@ export function ContentPillars({
                 )}
               </span>
               <span className="mt-1.5 flex items-center gap-2">
-                <span className="h-1 flex-1 overflow-hidden rounded-full bg-[color:var(--color-surface-thread)]">
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
                   <span
                     className="block h-full rounded-full"
                     style={{ width: `${Math.round(p.share * 100)}%`, background: toneBar[p.tone] }}
