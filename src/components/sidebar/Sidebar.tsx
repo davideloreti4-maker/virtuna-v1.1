@@ -473,9 +473,14 @@ export function Sidebar() {
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Audience + Library ── */}
-          <div className="pt-3">
+          {/* ── Destinations, grouped (Surfaces IA, P1): Create · Analyze · Assets.
+              Umbrella labels over pairs — the ratified 5-group IA collapses to 3 scannable
+              sections (single-item labels would just echo their item's name). Labels hide in
+              the collapsed rail; the gap-3 between groups still chunks the icon stack. ── */}
+          <div className="pt-3 flex flex-col gap-3">
+            {/* CREATE — make & schedule content */}
             <div className="flex flex-col gap-0.5">
+              {!effectiveCollapsed && <SectionLabel>Create</SectionLabel>}
               {/* Start — the flagship briefing landing (Surfaces milestone): your day,
                   pre-tested on your people. The front door to the destinations; /home
                   stays the thread/composer surface, so this never steals the thread flow. */}
@@ -487,7 +492,7 @@ export function Sidebar() {
                 onClick={() => router.push("/start")}
               />
               {/* Calendar — the standalone month planner (Surfaces milestone): the workspace
-                  behind /start's glanceable month widget. Matte active state like Library. */}
+                  behind /start's glanceable month widget. */}
               <NavItem
                 icon={CalendarDots}
                 label="Calendar"
@@ -495,9 +500,14 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/calendar")}
               />
+            </div>
+
+            {/* ANALYZE — your numbers + the outside world */}
+            <div className="flex flex-col gap-0.5">
+              {!effectiveCollapsed && <SectionLabel>Analyze</SectionLabel>}
               {/* Grow — the business hub (Surfaces IA): Numbers (real account metrics) ·
                   Monetize (offers + funnel) · Referrals, as tabs. /analytics + /referrals
-                  redirect here. Matte active state. */}
+                  redirect here. */}
               <NavItem
                 icon={Storefront}
                 label="Grow"
@@ -505,7 +515,22 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/grow")}
               />
-              {/* Audience Manager — above Thread history, D-04 per-thread pin entry point */}
+              {/* Discover — the outward-looking hub (Surfaces IA): Watching (watched
+                  channels' outliers) · Trending · Competitors, as tabs at /feed.
+                  /competitors redirects here. */}
+              <NavItem
+                icon={Binoculars}
+                label="Discover"
+                isActive={isOnDiscover}
+                isCollapsed={effectiveCollapsed}
+                onClick={() => router.push("/feed")}
+              />
+            </div>
+
+            {/* ASSETS — your persistent substrate */}
+            <div className="flex flex-col gap-0.5">
+              {!effectiveCollapsed && <SectionLabel>Assets</SectionLabel>}
+              {/* Audience Manager — the calibrated-audience moat; D-04 per-thread pin entry point. */}
               <NavItem
                 icon={UsersThree}
                 label="Audience"
@@ -513,25 +538,14 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/audience")}
               />
-              {/* Library — State surface (IA-01 / D-01). NO accent: its active
-                  state is matte white/[0.06] — the nav's one accent belongs to
-                  "New Thread". */}
+              {/* Library — saved State surface (IA-01 / D-01). NO accent: its active
+                  state is matte white/[0.06] — the nav's one accent belongs to "New Thread". */}
               <NavItem
                 icon={Books}
                 label="Library"
                 isActive={isOnLibrary}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/library")}
-              />
-              {/* Discover — the outward-looking hub (Surfaces IA): Watching (watched
-                  channels' outliers) · Trending · Competitors, as tabs at /feed.
-                  /competitors redirects here. Matte active state like Library. */}
-              <NavItem
-                icon={Binoculars}
-                label="Discover"
-                isActive={isOnDiscover}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/feed")}
               />
             </div>
           </div>
