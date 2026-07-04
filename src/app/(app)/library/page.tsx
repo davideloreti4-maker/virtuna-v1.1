@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { SavedShelf } from "@/components/saved/saved-shelf";
 
 export const metadata: Metadata = {
@@ -29,8 +30,10 @@ export default async function LibraryPage() {
   if (!user) return null;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:p-6">
-      <SavedShelf />
+    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
+        <SavedShelf />
+      </div>
     </div>
   );
 }

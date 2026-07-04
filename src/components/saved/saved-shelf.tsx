@@ -88,7 +88,7 @@ export function SavedShelf() {
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
-      <header className="flex items-start justify-between gap-4">
+      <header className="rv-in flex items-start justify-between gap-4" style={{ animationDelay: "0.02s" }}>
         <div className="flex flex-col gap-1">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Library</h1>
           <p className="max-w-xl text-sm text-foreground-muted">
@@ -104,7 +104,7 @@ export function SavedShelf() {
       </header>
 
       {/* Toolbar — live search + sort + grid⇄list density toggle */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="rv-in flex flex-wrap items-center gap-3" style={{ animationDelay: "0.06s" }}>
         <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
           <MagnifyingGlass
             size={15}
@@ -164,8 +164,8 @@ export function SavedShelf() {
 
       {/* Flat type-filter — a segmented control (client-side filter, NOT folders) */}
       <div
-        className="flex flex-wrap gap-1 self-start rounded-[var(--radius-md)] p-1"
-        style={{ backgroundColor: "var(--color-charcoal-chip)" }}
+        className="rv-in flex flex-wrap gap-1 self-start rounded-[var(--radius-md)] p-1"
+        style={{ backgroundColor: "var(--color-charcoal-chip)", animationDelay: "0.09s" }}
         role="tablist"
         aria-label="Filter saved items by type"
       >
@@ -206,6 +206,7 @@ export function SavedShelf() {
       </div>
 
       {/* Body: loading / error / empty / grid / list */}
+      <div className="rv-in" style={{ animationDelay: "0.12s" }}>
       {isLoading ? (
         <SavedShelfSkeleton />
       ) : isError ? (
@@ -222,7 +223,7 @@ export function SavedShelf() {
         />
       ) : view === "grid" ? (
         // Masonry — packs mixed-height cards tight (CSS multicol; no row-locked gaps).
-        <div className="columns-1 [column-gap:1rem] sm:columns-2 lg:columns-3">
+        <div className="columns-1 [column-gap:1rem] sm:columns-2 lg:columns-3 xl:columns-4">
           {visible.map((item) => (
             <div key={item.id} className="mb-4 break-inside-avoid">
               <SavedItemCard item={item} variant="card" />
@@ -236,6 +237,7 @@ export function SavedShelf() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
