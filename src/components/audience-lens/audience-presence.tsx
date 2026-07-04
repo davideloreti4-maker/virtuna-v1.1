@@ -55,6 +55,9 @@ const MANAGE_LABEL = 'Manage audiences';
 const SOCIALS_LABEL = 'Socials';
 const GENERAL_LABEL = 'General';
 const BUILD_LABEL = 'Build an audience';
+/** variant='surface' idle sub-copy — a read-only description of the app-wide presence on a
+ *  non-thread page. Deliberately implies NO input here (no "type below" / composer affordance). */
+const SURFACE_IDLE_SUB = 'Here on every surface — your room reacts to everything you post.';
 
 /** One in-thread ask + the room's read (the audience-chat turn; host-owned, fetched once). */
 export interface AudienceAsk {
@@ -134,9 +137,13 @@ export interface AudiencePresenceProps {
    *  AmbientRoom running its timers. */
   layout?: 'dock' | 'rail';
   /** 'thread' (default) = the /home making surface (the composer field drives asks). 'surface'
-   *  = a read-only presence for non-thread pages (app-wide peek, no composer field). The seam is
-   *  STUBBED here (accepted + surfaced as `data-variant`) and DEFERRED — only 'thread' is
-   *  implemented (owner scope-confirm 2026-07-04; the sister surfaces session owns those pages). */
+   *  = a READ-ONLY presence for non-thread pages (the app-wide peek, no composer field). Both
+   *  layouts render the SAME presentation EXCEPT the composer-bound affordances are gated off: the
+   *  Rewrite CTA is forced off (`canRewrite=false`) and the idle copy drops the "type below" prompt
+   *  (§3 sign-off delta — no ask input / Rewrite unless the surface hosts a composer). Peek band
+   *  always; the on-focus read-only AmbientRoom shows only where the host anchors a focus (peek-only
+   *  at rest). The sister surfaces session mounts this (`surface-dock.tsx`), fed `resolveUserAudience`
+   *  → `audienceToActiveAudience`. See `docs/SURFACE-SEAM-SPEC.md` §2. */
   variant?: 'thread' | 'surface';
 }
 
@@ -165,6 +172,13 @@ export function AudiencePresence({
   layout = 'dock',
   variant = 'thread',
 }: AudiencePresenceProps) {
+  // variant='surface' (non-thread pages) is READ-ONLY: it reuses the exact dock/rail presentation
+  // but gates every composer-bound affordance — the Rewrite CTA (there is no composer to re-run the
+  // skill) and the "type below" idle prompt. Everything else (the peek band, the switcher, the
+  // constellation, the roster, the on-focus AmbientRoom) is already read-only. Guarded so
+  // variant='thread' stays byte-identical (§3 sign-off delta; docs/SURFACE-SEAM-SPEC.md §2.1).
+  const isSurface = variant === 'surface';
+  const effectiveCanRewrite = isSurface ? false : canRewrite;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
   // next tick so it grows UP out of the presence band (the signature moment). Reset on close.
@@ -530,7 +544,7 @@ export function AudiencePresence({
               siblings={focusList}
               onStep={onStep}
               kindLabel={kindLabel}
-              canRewrite={canRewrite}
+              canRewrite={effectiveCanRewrite}
               onRewrite={onRewrite}
               rewriteNonce={rewriteNonce}
             />
@@ -538,7 +552,9 @@ export function AudiencePresence({
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6 pt-4">
               <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
               <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
-                They react the moment you make something — then it opens the room on it.
+                {isSurface
+                  ? SURFACE_IDLE_SUB
+                  : 'They react the moment you make something — then it opens the room on it.'}
               </p>
               {rosterRows.length > 0 && (
                 <ul className="mt-4 flex flex-col">
@@ -635,7 +651,7 @@ export function AudiencePresence({
                 siblings={focusList}
                 onStep={onStep}
                 kindLabel={kindLabel}
-                canRewrite={canRewrite}
+                canRewrite={effectiveCanRewrite}
                 onRewrite={onRewrite}
                 rewriteNonce={rewriteNonce}
               />
@@ -654,7 +670,9 @@ export function AudiencePresence({
               <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
               {arrivalBadge}
               <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
-                Type below to test a thought — your {audienceName} reacts in real time.
+                {isSurface
+                  ? SURFACE_IDLE_SUB
+                  : `Type below to test a thought — your ${audienceName} reacts in real time.`}
               </p>
             </div>
           )}
