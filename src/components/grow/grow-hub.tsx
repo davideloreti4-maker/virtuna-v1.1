@@ -11,7 +11,6 @@
  */
 
 import { useState } from "react";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
@@ -55,7 +54,7 @@ export function GrowHub({
   };
 
   return (
-    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-4">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Grow</h1>

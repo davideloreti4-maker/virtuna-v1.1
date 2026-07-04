@@ -36,7 +36,7 @@ export function GrowView() {
   return (
     <div>
       {/* Monetization readiness */}
-      <section className="rounded-xl border border-border bg-surface-elevated p-4">
+      <section className="rounded-2xl bg-[#252320] px-4 py-4">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
             Monetization readiness
@@ -78,7 +78,7 @@ export function GrowView() {
       </section>
 
       {/* Offer ideas */}
-      <section className="mt-7">
+      <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Offer ideas</h2>
           <span className="shrink-0 font-mono text-[9px] text-foreground-muted">
@@ -87,7 +87,7 @@ export function GrowView() {
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {data.offers.map((o) => (
-            <div key={o.id} className="flex flex-col rounded-xl border border-border bg-surface-elevated p-3.5">
+            <div key={o.id} className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated p-3.5">
               <div className="flex items-center gap-2">
                 <span className="rounded-[5px] border border-border-hover px-1.5 py-0.5 font-mono text-[11px] font-semibold text-foreground">
                   {o.price}
@@ -115,7 +115,7 @@ export function GrowView() {
       </section>
 
       {/* Pricing & funnel */}
-      <section className="mt-7 rounded-xl border border-border bg-surface-elevated p-4">
+      <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
         <h2 className="m-0 mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Pricing &amp; funnel</h2>
         <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-stretch">
           {data.funnel.map((step, i) => (
@@ -124,7 +124,7 @@ export function GrowView() {
                 className={cn(
                   "flex min-w-[104px] flex-1 flex-col gap-0.5 rounded-[10px] border px-3 py-2.5",
                   step.filled
-                    ? "border-border bg-[color:var(--color-surface-thread)]"
+                    ? "elev-rest border-border bg-[color:var(--color-surface-thread)]"
                     : "border-dashed border-border-hover",
                 )}
               >

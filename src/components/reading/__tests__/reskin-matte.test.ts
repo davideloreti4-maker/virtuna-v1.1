@@ -224,6 +224,9 @@ const HYBRID_DEPTH_SURFACES = [
   'components/saved/saved-shelf.tsx',
   'components/calendar/calendar-workspace.tsx',
   'components/grow/grow-hub.tsx',
+  'components/analytics/analytics-view.tsx',
+  'components/grow/grow-view.tsx',
+  'components/grow/tabs/referrals-tab.tsx',
 ] as const;
 
 describe('matte-lint (Hybrid depth) — elevated surfaces stay glass/glow/coral-free', () => {

@@ -20,6 +20,7 @@ import { buildRangeMetrics } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { buildRecommendations } from "@/lib/analytics/recommendations";
 import { SurfaceIcon } from "@/components/surfaces/icons";
+import { ContentPillars } from "@/components/surfaces/sections/content-pillars";
 import { cn } from "@/lib/utils";
 
 const RANGES = [
@@ -70,85 +71,112 @@ export function AnalyticsView({
     });
   };
 
+  // Tapping a pillar in the content-mix zone → the one Seam-4 handoff (Make for that theme),
+  // mirroring the recommendations' make action.
+  const onPillar = (p: Pillar) =>
+    toast({
+      variant: "info",
+      title: "Make · launching a thread",
+      description: `an idea for your “${p.name}” pillar — with your people. (Seam 4: create thread → /thread/:id.)`,
+    });
+
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-[10px] text-foreground-muted">your account, over time — real numbers</p>
-        <div className="inline-flex rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Time range">
-          {RANGES.map((r) => (
-            <button
-              key={r.days}
-              type="button"
-              role="tab"
-              aria-selected={range === r.days}
-              onClick={() => setRange(r.days)}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
-                range === r.days
-                  ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
-                  : "text-foreground-secondary hover:text-foreground",
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {metrics ? (
-        <>
-          <div className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
-            {metrics.map((m) => (
-              <div key={m.key} className="flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11.5px] font-medium text-foreground-secondary">{m.label}</span>
-                  <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-foreground-muted">{rangeLabel}</span>
-                </div>
-                <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
-                  {m.value}
-                </div>
-                <Sparkline points={m.spark} up={m.up} />
-                <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "#8ea68a" : "var(--color-foreground-muted)" }}>
-                  {m.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
-                  {m.deltaPct ?? m.delta}
-                  {m.deltaPct && m.delta !== "—" && <span className="text-foreground-muted">· {m.delta}</span>}
-                </div>
-              </div>
+      {/* Zone · the numbers — real account metrics over the selected range */}
+      <section className="rounded-2xl bg-[#252320] px-4 py-4">
+        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
+          <p className="font-mono text-[10px] text-foreground-muted">your account, over time — real numbers</p>
+          <div className="inline-flex rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Time range">
+            {RANGES.map((r) => (
+              <button
+                key={r.days}
+                type="button"
+                role="tab"
+                aria-selected={range === r.days}
+                onClick={() => setRange(r.days)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  range === r.days
+                    ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                    : "text-foreground-secondary hover:text-foreground",
+                )}
+              >
+                {r.label}
+              </button>
             ))}
           </div>
-          <p className="mt-3 px-1 font-mono text-[9.5px] leading-[1.5] text-foreground-muted">
-            {points >= 2
-              ? `Real from your connected account, ${points} day${points === 1 ? "" : "s"} of history this range. Deeper trends sharpen as the daily capture builds.`
-              : "Real totals from your connected account — not enough daily history yet for a trend, so deltas read “—” until it builds."}
-          </p>
-        </>
-      ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-6 py-10 text-center">
-          <span className="text-foreground-muted" aria-hidden>
-            <SurfaceIcon name="up" size={20} strokeWidth={1.6} />
-          </span>
-          <div>
-            <p className="m-0 text-[13px] font-medium text-foreground">No account numbers yet</p>
-            <p className="mx-auto mt-1 max-w-[340px] text-[11.5px] leading-[1.5] text-foreground-muted">
-              Connect your account and your followers, likes, posts, and views land here — real, tracked daily. We never show made-up analytics.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => router.push("/audience/new")}
-            className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
-          >
-            Connect your account →
-          </button>
         </div>
-      )}
+
+        {metrics ? (
+          <>
+            <div className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
+              {metrics.map((m) => {
+                // No weekly delta yet (not enough daily history) → a clean point-in-time
+                // number instead of a flat empty sparkline + a bare "—" (mirrors StatRow).
+                const hasTrend = m.value !== "—" && m.delta !== "—";
+                return (
+                  <div key={m.key} className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11.5px] font-medium text-foreground-secondary">{m.label}</span>
+                      {hasTrend && (
+                        <span className="font-mono text-[8px] uppercase tracking-[0.08em] text-foreground-muted">{rangeLabel}</span>
+                      )}
+                    </div>
+                    <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
+                      {m.value}
+                    </div>
+                    {hasTrend ? (
+                      <>
+                        <Sparkline points={m.spark} up={m.up} />
+                        <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "#8ea68a" : "var(--color-foreground-muted)" }}>
+                          {m.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
+                          {m.deltaPct ?? m.delta}
+                          {m.deltaPct && m.delta !== "—" && <span className="text-foreground-muted">· {m.delta}</span>}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="mt-[9px] font-mono text-[9px] leading-none text-foreground-muted">
+                        trend builds daily
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-3 px-1 font-mono text-[9.5px] leading-[1.5] text-foreground-muted">
+              {points >= 2
+                ? `Real from your connected account, ${points} day${points === 1 ? "" : "s"} of history this range. Deeper trends sharpen as the daily capture builds.`
+                : "Real totals from your connected account — not enough daily history yet for a trend, so deltas read “—” until it builds."}
+            </p>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-6 py-10 text-center">
+            <span className="text-foreground-muted" aria-hidden>
+              <SurfaceIcon name="up" size={20} strokeWidth={1.6} />
+            </span>
+            <div>
+              <p className="m-0 text-[13px] font-medium text-foreground">No account numbers yet</p>
+              <p className="mx-auto mt-1 max-w-[340px] text-[11.5px] leading-[1.5] text-foreground-muted">
+                Connect your account and your followers, likes, posts, and views land here — real, tracked daily. We never show made-up analytics.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/audience/new")}
+              className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+            >
+              Connect your account →
+            </button>
+          </div>
+        )}
+      </section>
 
       {recommendations.length > 0 && (
-        <section className="mt-8">
+        <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
           <h2 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">What to do next</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {recommendations.map((rec) => (
-              <div key={rec.id} className="flex flex-col rounded-xl border border-border bg-surface-elevated p-3.5">
+              <div key={rec.id} className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated p-3.5">
                 <div className="mb-1.5 flex items-start justify-between gap-2">
                   <h3 className="m-0 text-[13px] font-semibold leading-[1.3] text-foreground">{rec.title}</h3>
                   <span
@@ -175,6 +203,12 @@ export function AnalyticsView({
           </div>
         </section>
       )}
+
+      {/* Content mix — the creator's recurring themes (share is Directional, labeled as such).
+          Ties the Numbers tab to the recurring pillar system + gives the page a real footer. */}
+      <div className="mt-4">
+        <ContentPillars pillars={pillars} onPillar={onPillar} />
+      </div>
     </div>
   );
 }
