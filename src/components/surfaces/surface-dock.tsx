@@ -1,29 +1,44 @@
 "use client";
 
 /**
- * SurfaceDock — STUB of the app-wide living-presence dock (Seam 3, THE-CONTRACT.md §3).
+ * SurfaceDock — the app-wide living-presence dock (Seam 3, THE-CONTRACT.md §3), now REAL.
  *
- * The Room's always-visible presence, made mountable OUTSIDE the thread
- * (`AudiencePresence variant='surface'`). Shows the breathing constellation + the
- * active audience + its pulse + tier, and opens an audience switcher. On non-thread
- * surfaces it reads a USER-LEVEL active audience (THE-CONTRACT.md §6.2, still open).
+ * Was a stub (a local `AudienceConstellation` + switcher fed `MOCK_AUDIENCES`). GRAFTED
+ * 2026-07-05: a thin host wrapper around the Room-owned `<AudiencePresence variant='surface'>`,
+ * fed the user's REAL audiences (`listAudiences` / `resolveUserAudience`, resolved server-side in
+ * `/start`). One presence atom, Room-owned, so /start and /home never drift.
  *
- * ⚠️ STUB: The Room owns the real component (portals its switcher to <body> +
- * position:fixed to escape overflow). This mirrors the shape + interactions so the
- * shell is ambient-READY; swap stub → real at the graft.
+ * ⚠️ TYPE-FLOW (SURFACE-SEAM-SPEC §2.4 correction): `AudiencePresence` consumes the DB `Audience`
+ * type (`audience-presence.tsx:86-92`), NOT the contract `ActiveAudience`. So this dock is fed the
+ * RAW `Audience[]` from the server — the `audienceToActiveAudience` adapter is bypassed here (it
+ * only matters where the contract `ActiveAudience` shape is genuinely consumed, e.g. a card layer).
+ *
+ * Read-only (§3 sign-off delta): `variant='surface'` gates off the composer-bound affordances (no
+ * ask input, Rewrite CTA forced off) — a surface has no composer field to route asks into. The
+ * start page's own embedded composer (Seam 4) is what makes asks work there.
+ *
+ * `layout='dock'` at every breakpoint: /start pins the dock + composer as ONE bottom object across
+ * all widths (its content right-rail already occupies the desktop right column), so the /home-style
+ * desktop `layout='rail'` presentation does not apply here.
  */
 
 import { useState } from "react";
-import { ChevronUp } from "lucide-react";
-import type { ActiveAudience } from "@/lib/room-contract/types";
+import { useRouter } from "next/navigation";
+import type { Audience } from "@/lib/audience/audience-types";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { AudiencePresence } from "@/components/audience-lens/audience-presence";
 import { cn } from "@/lib/utils";
-import { AudienceConstellation } from "./audience-constellation";
 
 export interface SurfaceDockProps {
-  audience: ActiveAudience | null;
-  audiences: ActiveAudience[];
-  onSwitch: (audienceId: string) => void;
-  /** The card the room is anchored on (null = honest idle). Drives the "reacting" pulse. */
+  /** The active audience (null = General — the presence renders the General state, no crash). */
+  audience: Audience | null;
+  /** All selectable audiences (from `listAudiences` — includes the General baseline + presets). */
+  audiences: Audience[];
+  /** The selected audience id (null = General) — drives the switcher's checked row. */
+  selectedAudienceId: string | null;
+  /** Switch the active audience (the host persists user_settings.last_audience_id). */
+  onSelectAudience: (audience: Audience) => void;
+  /** A room-reaction is in flight → the constellation blinks + "N new" arrival badge. */
   reacting?: boolean;
   className?: string;
 }
@@ -31,87 +46,36 @@ export interface SurfaceDockProps {
 export function SurfaceDock({
   audience,
   audiences,
-  onSwitch,
+  selectedAudienceId,
+  onSelectAudience,
   reacting = false,
   className,
 }: SurfaceDockProps) {
+  const router = useRouter();
+  const reducedMotion = usePrefersReducedMotion();
+  // The panel open state is host-owned in the presence contract; on a read-only surface the dock
+  // simply owns it locally (no composer field to coordinate with — cf. /home, where it's shared).
   const [open, setOpen] = useState(false);
-  const idle = !audience;
 
   return (
     <div className={cn("relative", className)}>
-      {open && !idle && (
-        <>
-          <button
-            type="button"
-            aria-label="Close audience switcher"
-            className="fixed inset-0 z-10 cursor-default"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 rounded-2xl border border-border-hover bg-surface-elevated p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <div className="px-2.5 pb-1 pt-2 font-mono text-[9.5px] uppercase tracking-[0.1em] text-foreground-muted">
-              Your audiences
-            </div>
-            {audiences.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                onClick={() => {
-                  onSwitch(a.id);
-                  setOpen(false);
-                }}
-                className="flex w-full items-center gap-[9px] rounded-lg px-2.5 py-[9px] text-left transition-colors hover:bg-[color:var(--color-surface-thread)]"
-              >
-                <span
-                  className="grid size-[22px] shrink-0 place-items-center rounded-full text-[10px] font-bold text-[color:var(--color-background)]"
-                  style={{ background: a.goal === "Sell" ? "#8a857b" : "#8ea68a" }}
-                >
-                  {a.name[0]}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] font-medium text-foreground">
-                    {a.name}
-                  </span>
-                  <span className="block truncate text-[10.5px] text-foreground-muted">
-                    {a.platform}
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-[5px] border border-border px-1.5 py-px font-mono text-[9.5px] uppercase text-foreground-muted">
-                  {a.goal}
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      <button
-        type="button"
-        onClick={() => !idle && setOpen((v) => !v)}
-        className={cn(
-          "flex w-full items-center gap-[9px] rounded-2xl border px-[11px] py-[9px] text-left transition-colors",
-          "border-border-hover bg-[color:var(--color-surface-thread)]",
-          idle ? "cursor-default opacity-60" : "cursor-pointer hover:border-[color:var(--color-border-hover)]",
-        )}
-        aria-label={idle ? "No audience connected" : `Active audience: ${audience.name}`}
-      >
-        <AudienceConstellation reacting={reacting} className="shrink-0" />
-        <span className="min-w-0 flex-1 overflow-hidden">
-          <span className="flex items-center gap-1.5 text-[13px] font-semibold text-foreground">
-            <span className="truncate">{idle ? "No audience yet" : audience.name}</span>
-            {!idle && <span className="shrink-0 text-[9px] text-foreground-muted">▾</span>}
-          </span>
-          <span className="mt-px block truncate text-[11px] text-foreground-secondary">
-            {idle ? "connect to bring your room alive" : audience.pulse}
-          </span>
-        </span>
-        {!idle && (
-          <span className="shrink-0 rounded-[5px] border border-border px-1.5 py-0.5 font-mono text-[8.5px] tracking-[0.04em] text-foreground-muted">
-            {audience.tier}
-          </span>
-        )}
-        {!idle && <ChevronUp aria-hidden className="size-[13px] shrink-0 text-foreground-muted" />}
-      </button>
+      <AudiencePresence
+        variant="surface"
+        layout="dock"
+        audience={audience}
+        audiences={audiences}
+        selectedAudienceId={selectedAudienceId}
+        onSelectAudience={onSelectAudience}
+        // Peek-only at rest (SURFACE-SEAM-SPEC §2.1): no card is anchored on the /start dock, so
+        // the presence shows the honest idle band ("General · N people ready"), never a focus.
+        focus={null}
+        open={open}
+        onOpenChange={setOpen}
+        reducedMotion={reducedMotion}
+        reacting={reacting}
+        // The switcher's `+ Build an audience` row → the real calibration flow (mirrors FirstRun).
+        onBuildAudience={() => router.push("/audience/new")}
+      />
     </div>
   );
 }

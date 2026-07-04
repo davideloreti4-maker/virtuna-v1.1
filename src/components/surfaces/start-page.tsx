@@ -19,8 +19,9 @@ import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
-import { getMockStartPage, MOCK_AUDIENCES } from "@/lib/room-contract/mock-room";
+import { getMockStartPage } from "@/lib/room-contract/mock-room";
 import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
+import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
 import { TopChrome } from "./sections/top-chrome";
@@ -40,26 +41,56 @@ import { SurfaceDock } from "./surface-dock";
 import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { RoomDrawer, type RoomFocus } from "./room-drawer";
 
+/** Real audience-row UUID (or null=General) — the only shapes the last-audience persist accepts
+ *  (virtual preset ids aren't UUIDs → stay session-local, never PUT). Mirrors composer.tsx. */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function StartPage({
   initialFirstRun = false,
   accountStats = null,
+  audiences = [],
+  initialSelectedAudienceId = null,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
   accountStats?: StatCard[] | null;
+  /** The user's real audiences (Seam 3) — feeds the app-wide dock switcher (incl. General). */
+  audiences?: Audience[];
+  /** The user-level last-used audience id (null = General) — the dock's initial selection. */
+  initialSelectedAudienceId?: string | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const data = useMemo(() => getMockStartPage(), []);
 
   const [firstRun, setFirstRun] = useState(initialFirstRun);
-  const [audienceId, setAudienceId] = useState(MOCK_AUDIENCES[0]!.id);
+  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(
+    initialSelectedAudienceId,
+  );
   const [verb, setVerb] = useState<Verb>("Make");
   const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
   const [focus, setFocus] = useState<RoomFocus | null>(null);
   const [reacting, setReacting] = useState(false);
 
-  const activeAudience = MOCK_AUDIENCES.find((a) => a.id === audienceId) ?? MOCK_AUDIENCES[0]!;
+  // The active audience the dock renders (null = General — the presence shows the General state).
+  const activeAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
+
+  // Switch the dock's audience + persist it as the USER-level last-used (resolveUserAudience), so
+  // the pick survives a reload and seeds /home's next thread — mirrors composer.handleSelectAudience.
+  // Only a real UUID (or null=General) is a valid last-used pin; presets stay session-local.
+  // Fire-and-forget: the in-memory pick reflects instantly regardless of the persist.
+  const handleSelectAudience = (audience: Audience) => {
+    const newId = audience.is_general ? null : audience.id;
+    setSelectedAudienceId(newId);
+    if (newId === null || UUID_PATTERN.test(newId)) {
+      void fetch("/api/settings/last-audience", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ audienceId: newId }),
+      }).catch(() => {});
+    }
+  };
 
   // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2).
   const roomFocusFor = (cardId: string): RoomFocus | null => {
@@ -81,8 +112,10 @@ export function StartPage({
   // thread host: there is no `/thread/:id` route — the thread lives on /home — so this pushes a
   // `/home?v=…&seed=…&run=1` URL that the /home Composer consumes (maps the verb → its skill,
   // pre-fills the field, and fires on arrival). The explicit send here IS the user's fire.
-  // NOTE: the audience is not carried yet — the surface's switcher is still mock (MOCK_AUDIENCES);
-  // /home uses its own user-level last-used audience until the Seam-3 real-audience graft lands.
+  // NOTE: the launch doesn't carry the audience id yet, but it no longer needs to — the dock's
+  // switcher now persists the USER-level last-used audience (Seam 3, resolveUserAudience), and
+  // /home seeds its next thread from that SAME read. So a pick on /start already follows into the
+  // thread. (Passing the id explicitly on the URL is a later belt-and-suspenders enhancement.)
   const launchThread = (input: string, launchVerb: Verb) => {
     closeRoom();
     setReacting(true);
@@ -197,9 +230,10 @@ export function StartPage({
         <div className="bg-[color:var(--color-background)] px-4 pb-4">
           <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 lg:max-w-[680px]">
             <SurfaceDock
-              audience={firstRun ? null : activeAudience}
-              audiences={MOCK_AUDIENCES}
-              onSwitch={setAudienceId}
+              audience={activeAudience}
+              audiences={audiences}
+              selectedAudienceId={selectedAudienceId}
+              onSelectAudience={handleSelectAudience}
               reacting={reacting}
             />
             <EmbeddedComposer

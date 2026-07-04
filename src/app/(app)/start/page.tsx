@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { listAudiences } from "@/lib/audience/audience-repo";
+import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
+import type { Audience } from "@/lib/audience/audience-types";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
@@ -44,16 +46,22 @@ export default async function StartRoute({
 
   const { first } = await searchParams;
 
-  // Honest default: has this user connected an account (⇒ a calibrated audience) yet?
-  // On any read error, fall back to first-run — never fabricate a briefing for a user we
-  // can't confirm has connected.
-  let hasCalibrated = false;
+  // The user's audiences (Seam 3): fed to the app-wide dock's switcher. Includes the General
+  // baseline + presets (listAudiences prepends them). On any read error, fall back to an empty
+  // list → honest first-run (never fabricate a briefing for a user we can't confirm has connected).
+  let audiences: Audience[] = [];
   try {
-    const audiences = await listAudiences(supabase);
-    hasCalibrated = audiences.some((a) => !a.is_general && a.signature != null);
+    audiences = await listAudiences(supabase);
   } catch {
-    hasCalibrated = false;
+    audiences = [];
   }
+  const hasCalibrated = audiences.some((a) => !a.is_general && a.signature != null);
+
+  // The active audience on the dock = the user-level last-used (resolveUserAudience — the same
+  // read /home seeds new threads from, so the dock and the thread agree). Always resolves
+  // (General on any failure). A General resolution ⇒ null id (the switcher's General row).
+  const activeAudience = await resolveUserAudience(supabase, user.id);
+  const initialSelectedAudienceId = activeAudience.is_general ? null : activeAudience.id;
 
   const initialFirstRun =
     first === "1" ? true : first === "0" ? false : !hasCalibrated;
@@ -71,5 +79,12 @@ export default async function StartRoute({
     }
   }
 
-  return <StartPage initialFirstRun={initialFirstRun} accountStats={accountStats} />;
+  return (
+    <StartPage
+      initialFirstRun={initialFirstRun}
+      accountStats={accountStats}
+      audiences={audiences}
+      initialSelectedAudienceId={initialSelectedAudienceId}
+    />
+  );
 }
