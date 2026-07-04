@@ -304,6 +304,26 @@ const ideaFixtures: (Omit<IdeaCard, "reaction" | "read"> & {
       ["kai", "n", "if there’s a real transformation, sure"],
     ]),
   },
+  {
+    cardId: "idea-mistakes",
+    type: "Carousel",
+    title: "5 Beginner Gym Mistakes I Made So You Don’t Have To",
+    thumb: "mistakes I made",
+    metric: "would save",
+    stop: 8,
+    tone: "g",
+    lead: "saving this one",
+    weakSpot: "Dev bounces if it reads like generic listicle advice.",
+    fix: "Make mistake #1 specific and personal — a real one you made.",
+    reactions: rx([
+      ["maya", "g", "saving this, wish I’d seen it sooner"],
+      ["jordan", "g", "mistake #3 got me for a year"],
+      ["priya", "g", "sending to my brother who just joined"],
+      ["dev", "n", "hope it’s not the same 5 everyone says"],
+      ["sam", "g", "practical, I’ll actually use this"],
+      ["kai", "g", "solid if the tips are real"],
+    ]),
+  },
 ];
 
 const MOCK_IDEAS: IdeaCard[] = ideaFixtures.map((f) => {
@@ -474,7 +494,7 @@ export function getMockStartPage(): StartPageData {
   return {
     greeting: {
       headline: "Good afternoon, Davide 👋",
-      line: "Your room reacted to 6 things overnight — and 84% of last week’s calls landed. Here’s your day.",
+      line: "Your room reacted to 6 things overnight — and last week’s calls landed. Here’s your day.",
     },
     rings: [
       { icon: "flame", pct: 0.71, value: "5-day", accent: false, label: "5-day streak" },

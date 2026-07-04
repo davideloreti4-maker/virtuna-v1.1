@@ -15,7 +15,6 @@
  */
 
 import { useMemo, useState } from "react";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
@@ -24,6 +23,7 @@ import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-ro
 import type { Verb } from "@/lib/room-contract/types";
 import { TopChrome } from "./sections/top-chrome";
 import { Greeting } from "./sections/greeting";
+import { GreetingRings } from "./sections/greeting-rings";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
 import { Outliers } from "./sections/outliers";
@@ -107,10 +107,7 @@ export function StartPage({
   };
 
   return (
-    <div
-      className="relative min-h-full text-foreground"
-      style={{ background: SURFACE_RADIAL_BG }}
-    >
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-40 pt-6 lg:px-6">
         <TopChrome
           onLayout={() =>
@@ -132,13 +129,20 @@ export function StartPage({
           <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
             {/* Main column */}
             <div className="min-w-0">
-              <div className="rv-in" style={{ animationDelay: "0.02s" }}>
+              <div
+                className="rv-in flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                style={{ animationDelay: "0.02s" }}
+              >
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
+                <GreetingRings rings={data.rings} />
               </div>
               <div className="rv-in mt-2.5" style={{ animationDelay: "0.08s" }}>
                 {accountStats ? <StatRow stats={accountStats} /> : <StatRowEmpty />}
               </div>
-              <div className="rv-in" style={{ animationDelay: "0.14s" }}>
+              <div
+                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 pb-[18px]"
+                style={{ animationDelay: "0.14s" }}
+              >
                 <DailyIdeas
                   ideas={data.ideas}
                   focusedCardId={focus?.read.contentId ?? null}
@@ -148,7 +152,10 @@ export function StartPage({
                   }
                 />
               </div>
-              <div className="rv-in" style={{ animationDelay: "0.2s" }}>
+              <div
+                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 pb-[18px]"
+                style={{ animationDelay: "0.2s" }}
+              >
                 <Outliers
                   outliers={data.outliers}
                   onOpen={openRoom}
