@@ -29,7 +29,7 @@ export async function generateMetadata({
 }: DetailPageProps): Promise<Metadata> {
   const { handle } = await params;
   return {
-    title: `@${handle} | Competitors | Numen`,
+    title: `@${handle} | Competitors | Maven`,
   };
 }
 

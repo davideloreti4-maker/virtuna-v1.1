@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 
 export const metadata: Metadata = {
-  title: "Calendar | Juno",
+  title: "Calendar | Maven",
   description: "Plan your month — every post pre-tested on your people before you make it.",
 };
 

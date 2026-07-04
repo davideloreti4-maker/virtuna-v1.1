@@ -4,7 +4,7 @@ interface PageProps { params: Promise<{ id: string }>; }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  return { title: `Analysis ${id} | Numen`, description: 'View your TikTok content analysis results.' };
+  return { title: `Analysis ${id} | Maven`, description: 'View your TikTok content analysis results.' };
 }
 
 /**

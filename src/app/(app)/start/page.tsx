@@ -7,7 +7,7 @@ import type { StatCard } from "@/lib/room-contract/mock-room";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
-  title: "Start | Juno",
+  title: "Start | Maven",
   description:
     "Your day, pre-tested on your people — daily ideas, outliers to remix, the plan, and what actually happened.",
 };

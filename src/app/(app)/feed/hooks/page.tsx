@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { HooksClient } from "./hooks-client";
 
 export const metadata: Metadata = {
-  title: "Hooks | Numen",
+  title: "Hooks | Maven",
   description: "Your vault of viral hook templates — adapt any one into a script for your audience.",
 };
 

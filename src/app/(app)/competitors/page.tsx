@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { CompetitorsClient } from "./competitors-client";
 
 export const metadata: Metadata = {
-  title: "Competitors | Numen",
+  title: "Competitors | Maven",
   description: "Track and analyze your TikTok competitors.",
 };
 
