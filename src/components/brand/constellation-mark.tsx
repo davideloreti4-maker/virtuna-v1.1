@@ -10,6 +10,9 @@ export interface ConstellationMarkProps {
   width?: number;
   /** Which node index is lit (0-based, default 3 = top-right in sketch layout). Pass -1 for all-neutral (no accent). */
   litNodeIndex?: number;
+  /** The room is reacting (a generation is in flight) → the lit node BLINKS (prototype
+   *  breathe→blink). Motion-only; reduced-motion disables it via the keyframe guard. */
+  reacting?: boolean;
   className?: string;
   'aria-hidden'?: boolean;
 }
@@ -34,6 +37,7 @@ const LINES = [
 export function ConstellationMark({
   width = 64,
   litNodeIndex = 3,
+  reacting = false,
   className,
   'aria-hidden': ariaHidden = true,
 }: ConstellationMarkProps) {
@@ -64,7 +68,7 @@ export function ConstellationMark({
         const isLit = litNodeIndex >= 0 && i === litNodeIndex;
         if (isLit) {
           return (
-            <g key={`node-${i}`}>
+            <g key={`node-${i}`} className={reacting ? 'animate-presence-blink' : undefined}>
               <circle
                 cx={node.cx}
                 cy={node.cy}

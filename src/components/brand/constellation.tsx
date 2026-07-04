@@ -133,6 +133,9 @@ export interface ConstellationProps {
   vbH: number;
   /** Override default aria-label. */
   ariaLabel?: string;
+  /** The room is reacting (a generation is in flight) → dots pulse FAST (breathe→blink,
+   *  ~1s) instead of the calm 3–6s breathe. Motion-only (reducedMotion still wins). */
+  reacting?: boolean;
 }
 
 /** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
@@ -144,6 +147,7 @@ export function Constellation({
   vbW,
   vbH,
   ariaLabel,
+  reacting = false,
 }: ConstellationProps) {
   return (
     <svg
@@ -170,8 +174,8 @@ export function Constellation({
             {!reducedMotion && !d.accent && (
               <animate
                 attributeName="opacity"
-                values="0.78;1;0.78"
-                dur={`${(3 + (i % 4)).toFixed(0)}s`}
+                values={reacting ? '0.4;1;0.4' : '0.78;1;0.78'}
+                dur={reacting ? '1s' : `${(3 + (i % 4)).toFixed(0)}s`}
                 begin={`${(d.phase * -2).toFixed(2)}s`}
                 repeatCount="indefinite"
               />

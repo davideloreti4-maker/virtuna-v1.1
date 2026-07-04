@@ -342,6 +342,48 @@
   }
 }
 
+/* The Room (Phase 2) — reactions-arrive dopamine. The "N new" badge POPS onto the
+ * presence the instant the room finishes reacting (prototype `pop`: a single small
+ * bounce — the one sanctioned accent-fill for a genuine liveness event); the lit
+ * constellation node BLINKS faster while the room is reading (prototype breathe→blink).
+ * Both are motion-only — reduced-motion snaps to the resting state (guard below). */
+@keyframes badge-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-badge-pop {
+  animation: badge-pop 0.3s ease both;
+}
+
+@keyframes presence-blink {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.animate-presence-blink {
+  animation: presence-blink 1s ease infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-badge-pop,
+  .animate-presence-blink {
+    animation: none;
+  }
+}
+
 /* ============================================
  * UTILITY CLASSES
  * ============================================ */

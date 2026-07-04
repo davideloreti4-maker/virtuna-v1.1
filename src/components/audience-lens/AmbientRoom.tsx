@@ -463,12 +463,19 @@ function PeopleView({
   return (
     <div className="flex flex-col">
       <ul className="flex flex-col">
-        {shown.map((n) => {
+        {shown.map((n, i) => {
           const name = n.name ?? n.label;
           const canAsk = isGroundable(n);
           const bounced = verdictOf(n) === 'scroll';
           return (
-            <li key={n.id} className="border-t border-white/[0.045] first:border-t-0">
+            // Reactions-arrive rise-in (Phase 2): each voice rises in staggered as the room's
+            // reactions land (prototype `.prow` rise). Reuses `.reading-reveal` (self-disables
+            // under reduced-motion via its media query, so the inline delay is harmless there).
+            <li
+              key={n.id}
+              className="reading-reveal border-t border-white/[0.045] first:border-t-0"
+              style={reducedMotion ? undefined : { animationDelay: `${i * 40}ms` }}
+            >
               <button
                 type="button"
                 onClick={() => onAsk(n)}

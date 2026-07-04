@@ -177,6 +177,82 @@ describe('AudiencePresence — PEEK band (readiness)', () => {
   });
 });
 
+// ── Reactions-arrive dopamine (Phase 2) — the anticipation + the arrival badge ──
+describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
+  it('reads "Reading the room…" while a generation is in flight (reacting)', () => {
+    setup({ focus: null, reacting: true });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/reading the room/i);
+  });
+
+  it('does NOT pop a badge on mount without a preceding reacting=true', () => {
+    setup({ focus: null, reacting: false });
+    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
+  });
+
+  it('pops a "N new" badge on the reacting true→false edge; reduced-motion snaps to the roster', () => {
+    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
+    // No badge while the room is still reacting.
+    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
+    // The room finishes → the badge lands at the full roster (10 personas), immediately.
+    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+    expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
+  });
+
+  it('counts the badge up one-per-persona when motion is allowed', () => {
+    vi.useFakeTimers();
+    try {
+      const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: false });
+      act(() => rerender(<AudiencePresence {...props} reacting={false} reducedMotion={false} />));
+      act(() => vi.advanceTimersByTime(80 * 3));
+      expect(screen.getByRole('status', { name: /3 new reactions/i })).toBeInTheDocument();
+      act(() => vi.advanceTimersByTime(80 * 10));
+      expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('clears the arrival badge once the Room opens (acknowledged)', () => {
+    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
+    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+    expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
+    act(() => rerender(<AudiencePresence {...props} reacting={false} open />));
+    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
+  });
+
+  it('clears a stale badge when a NEW read begins (rising edge → "Reading the room…")', () => {
+    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
+    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+    expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
+    // A fresh generation starts → the stale "N new" clears; the pulse reads "Reading the room…".
+    act(() => rerender(<AudiencePresence {...props} reacting={true} />));
+    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/reading the room/i);
+  });
+
+  it('suppresses the arrival badge on the desktop rail (the Room is always visible there)', () => {
+    const { props, rerender } = setup({
+      focus: null,
+      reacting: true,
+      reducedMotion: true,
+      layout: 'rail',
+    });
+    act(() => rerender(<AudiencePresence {...props} reacting={false} layout="rail" />));
+    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
+  });
+
+  it('guards the arrival keyframes with a reduced-motion media query (motion-only)', () => {
+    const css = readFileSync(
+      join(process.cwd(), 'src/app/globals.css'),
+      'utf8',
+    );
+    expect(css).toMatch(/@keyframes badge-pop/);
+    expect(css).toMatch(/@keyframes presence-blink/);
+    // Both arrival animations are disabled under prefers-reduced-motion.
+    expect(css).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*animate-badge-pop[\s\S]*animation:\s*none/);
+  });
+});
+
 // ── General / null audience ──
 describe('AudiencePresence — General / null audience (no crash)', () => {
   it('renders the General readiness pulse + a default roster of 10', () => {
