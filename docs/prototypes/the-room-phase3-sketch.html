@@ -1,0 +1,350 @@
+<style>
+  /* The Room &mdash; Phase 3 sketch. Honors the LOCKED flat-warm charcoal system
+     (tokens verbatim from the-room-prototype-v6.html). Dark-committed: this mocks
+     the app's own single-theme world, so no light variant by design. */
+  :root {
+    --bg:#262624; --bg2:#211f1d; --surface:#2f2e2b; --surface2:#35332f;
+    --cream:#ece7de; --cream2:#cbc5ba; --muted:#8f8a80; --faint:#6a665e;
+    --accent:#d97757; --accent-soft:rgba(217,119,87,.16); --accent-ink:#2a1c14;
+    --good:#8ea68a; --good-soft:rgba(142,166,138,.16);
+    --border:rgba(255,255,255,.07); --border2:rgba(255,255,255,.12);
+    --serif:'Newsreader',Georgia,'Times New Roman',serif;
+    --sans:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  * { box-sizing:border-box; }
+  .p3 {
+    min-height:100vh; margin:0;
+    background:radial-gradient(130% 90% at 50% -10%,#2c2a27,var(--bg) 55%);
+    color:var(--cream); font-family:var(--sans);
+    padding:44px 22px 72px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .p3 .wrap { max-width:1060px; margin:0 auto; }
+
+  /* ── Intro ── */
+  .p3 .intro { max-width:640px; margin:0 auto 8px; }
+  .p3 .eye { font-family:var(--mono); font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:0 0 10px; }
+  .p3 h1 { font-family:var(--serif); font-weight:500; font-size:31px; line-height:1.18; letter-spacing:-.015em; margin:0 0 12px; text-wrap:balance; }
+  .p3 .lede { font-size:14px; color:var(--cream2); margin:0; }
+  .p3 .lede b { color:var(--cream); font-weight:600; }
+
+  /* ── Section scaffold ── */
+  .p3 .sketch { margin-top:56px; }
+  .p3 .shead { display:flex; align-items:baseline; gap:12px; margin-bottom:20px; padding-bottom:14px; border-bottom:1px solid var(--border); }
+  .p3 .stag { font-family:var(--mono); font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-ink); background:var(--accent); border-radius:20px; padding:3px 9px; font-weight:700; flex:none; }
+  .p3 .shead h2 { font-family:var(--serif); font-weight:500; font-size:22px; letter-spacing:-.01em; margin:0; color:var(--cream); }
+  .p3 .shead .sub { font-size:12.5px; color:var(--muted); margin-left:auto; text-align:right; }
+
+  .p3 .grid { display:grid; grid-template-columns:336px 1fr; gap:34px; align-items:start; }
+  @media (max-width:820px){ .p3 .grid{ grid-template-columns:1fr; gap:26px; } .p3 .phone{ margin:0 auto; } }
+
+  /* ── Phone frame (verbatim proportions from the v6 prototype) ── */
+  .p3 .phone { width:336px; height:712px; background:var(--bg2); border:1px solid var(--border2); border-radius:38px; padding:15px 13px; position:relative; overflow:hidden; box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 0 0 6px #1a1917; display:flex; flex-direction:column; }
+  .p3 .scr { flex:1; display:flex; flex-direction:column; min-height:0; position:relative; }
+
+  /* dim thread behind the menu */
+  .p3 .wm { font-family:var(--mono); font-size:9.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--faint); padding:4px 6px 10px; }
+  .p3 .ghost { opacity:.4; padding:0 4px; }
+  .p3 .ghost .gl { font-size:11px; color:var(--muted); margin:0 0 8px; line-height:1.4; }
+  .p3 .gcard { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+  .p3 .gcard .h { font-size:12px; color:var(--cream2); line-height:1.35; }
+  .p3 .gcard .r { font-family:var(--mono); font-size:8.5px; letter-spacing:.11em; color:var(--faint); text-transform:uppercase; margin-bottom:5px; }
+
+  /* ── the verb popmenu (the focus of Sketch A) ── */
+  .p3 .menu { position:absolute; left:2px; right:2px; bottom:52px; background:var(--surface); border:1px solid var(--border2); border-radius:16px; padding:7px; box-shadow:0 24px 60px rgba(0,0,0,.62); z-index:5; }
+  .p3 .mh { font-family:var(--mono); font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); padding:9px 10px 4px; }
+  .p3 .mrow { display:flex; align-items:baseline; gap:8px; padding:7px 10px; border-radius:9px; cursor:default; }
+  .p3 .mrow:hover { background:var(--surface2); }
+  .p3 .mrow b { font-size:12.5px; color:var(--cream); font-weight:600; flex:none; }
+  .p3 .mrow span { font-size:10.5px; color:var(--muted); margin-left:auto; text-align:right; }
+  .p3 .mrow.kept b::after { content:'kept'; font-family:var(--mono); font-size:8px; letter-spacing:.1em; text-transform:uppercase; color:var(--good); background:var(--good-soft); border-radius:5px; padding:1px 5px; margin-left:7px; vertical-align:middle; }
+  .p3 .msep { height:1px; background:var(--border); margin:6px 6px; }
+  .p3 .maud { display:flex; align-items:center; gap:8px; padding:8px 10px; }
+  .p3 .maud b { font-size:12.5px; color:var(--cream); font-weight:500; }
+  .p3 .maud .chev { color:var(--muted); font-size:9px; }
+  .p3 .maud .goal { margin-left:auto; font-family:var(--mono); font-size:9px; color:var(--muted); border:1px solid var(--border); border-radius:5px; padding:1px 6px; }
+
+  /* composer bar */
+  .p3 .composer { margin-top:auto; display:flex; align-items:center; gap:8px; padding:8px 9px; background:var(--surface); border:1px solid var(--border2); border-radius:14px; position:relative; z-index:6; }
+  .p3 .verb { display:inline-flex; align-items:center; gap:6px; background:var(--surface2); border:1px solid var(--accent); border-radius:9px; padding:7px 10px; flex:none; }
+  .p3 .verb .vi { color:var(--accent); font-size:12px; }
+  .p3 .verb .vl { font-size:12.5px; font-weight:600; color:var(--cream); }
+  .p3 .verb .chev { color:var(--muted); font-size:9px; }
+  .p3 .cin { flex:1; font-size:12px; color:var(--faint); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .p3 .cgo { width:28px; height:28px; border-radius:9px; background:var(--cream); color:var(--bg2); display:grid; place-items:center; font-size:14px; flex:none; }
+
+  /* pointer note pinned inside the phone */
+  .p3 .ptr { position:absolute; z-index:7; font-family:var(--mono); font-size:9px; letter-spacing:.04em; color:var(--accent); background:var(--bg2); border:1px solid var(--accent); border-radius:7px; padding:4px 7px; box-shadow:0 6px 18px rgba(0,0,0,.5); }
+
+  /* ── Sketch B: the Read ── */
+  .p3 .read { flex:1; overflow:hidden; display:flex; flex-direction:column; gap:10px; padding:2px; }
+  .p3 .rhead { display:flex; gap:11px; align-items:center; }
+  .p3 .thumb { width:46px; height:64px; border-radius:8px; background:linear-gradient(150deg,#3a3833,#211f1d); border:1px solid var(--border2); flex:none; position:relative; }
+  .p3 .thumb::after { content:'\25B6'; position:absolute; inset:0; display:grid; place-items:center; color:var(--cream2); font-size:13px; }
+  .p3 .rscore { flex:1; }
+  .p3 .rscore .big { font-family:var(--serif); font-size:26px; color:var(--cream); line-height:1; }
+  .p3 .rscore .big small { font-size:12px; color:var(--good); font-family:var(--mono); margin-left:6px; }
+  .p3 .rscore .meta { font-family:var(--mono); font-size:10px; color:var(--muted); margin-top:5px; letter-spacing:.02em; }
+  .p3 .rtabs { display:flex; gap:5px; }
+  .p3 .rtab { font-size:10.5px; color:var(--muted); border:1px solid var(--border); border-radius:7px; padding:4px 9px; }
+  .p3 .rtab.on { color:var(--cream); background:var(--surface2); border-color:var(--border2); }
+  .p3 .rtab.video { color:var(--cream2); }
+  .p3 .panel { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:11px 12px; }
+  .p3 .plabel { font-family:var(--mono); font-size:8.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin-bottom:8px; display:flex; align-items:center; gap:7px; }
+  .p3 .plabel .vpill { color:var(--cream2); background:var(--surface2); border-radius:5px; padding:1px 5px; letter-spacing:.06em; }
+  /* retention curve */
+  .p3 .curve { height:44px; position:relative; }
+  .p3 .curve svg { width:100%; height:100%; display:block; }
+  .p3 .drop { font-family:var(--mono); font-size:9px; color:var(--accent); margin-top:4px; }
+  /* the Room-as-audience panel */
+  .p3 .panel.room { border-color:var(--accent-soft); box-shadow:0 0 0 1px var(--accent-soft); }
+  .p3 .roomtog { display:flex; gap:3px; background:rgba(255,255,255,.03); border:1px solid var(--border); border-radius:9px; padding:3px; margin-bottom:10px; }
+  .p3 .roomtog span { flex:1; text-align:center; font-size:10px; padding:5px; border-radius:6px; color:var(--muted); }
+  .p3 .roomtog span.on { background:var(--surface2); color:var(--cream); }
+  .p3 .voice { display:flex; gap:9px; align-items:flex-start; padding:8px 2px; border-top:1px solid rgba(255,255,255,.045); }
+  .p3 .voice:first-of-type { border-top:0; }
+  .p3 .ava { width:26px; height:26px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11px; font-weight:600; margin-top:1px; }
+  .p3 .ava.g { background:var(--good-soft); color:#a6bfa1; }
+  .p3 .ava.r { background:var(--accent-soft); color:var(--accent); }
+  .p3 .vbody { min-width:0; flex:1; }
+  .p3 .vtop { display:flex; align-items:center; gap:6px; }
+  .p3 .vname { font-size:11.5px; font-weight:600; color:var(--cream); }
+  .p3 .vask { margin-left:auto; font-family:var(--mono); font-size:9px; color:var(--muted); }
+  .p3 .vq { font-family:var(--serif); font-size:13px; color:var(--cream); line-height:1.35; margin-top:3px; }
+  .p3 .replay { margin-top:9px; display:flex; align-items:center; gap:7px; font-size:10.5px; color:var(--accent); border:1px dashed var(--accent-soft); border-radius:8px; padding:7px 9px; }
+
+  /* ── Annotation notes ── */
+  .p3 .notes { display:flex; flex-direction:column; gap:16px; padding-top:4px; }
+  .p3 .note h3 { font-size:13px; color:var(--cream); margin:0 0 6px; display:flex; align-items:center; gap:8px; }
+  .p3 .note h3 .n { font-family:var(--mono); font-size:10px; color:var(--accent); border:1px solid var(--accent-soft); border-radius:6px; padding:1px 6px; flex:none; }
+  .p3 .note p { font-size:13px; color:var(--cream2); margin:0; }
+  .p3 .note p b { color:var(--cream); font-weight:600; }
+  .p3 .note .accent { color:var(--accent); }
+  .p3 .note .sage { color:var(--good); }
+
+  /* the intent table */
+  .p3 .intents { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin-top:4px; }
+  .p3 .intents dt { font-weight:600; color:var(--cream); font-size:13px; }
+  .p3 .intents dd { margin:0; font-size:13px; color:var(--muted); }
+
+  .p3 .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .p3 .chip { font-family:var(--mono); font-size:10px; letter-spacing:.03em; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--muted); }
+  .p3 .chip.hide { color:var(--faint); text-decoration:line-through; text-decoration-color:var(--faint); }
+  .p3 .chip.mode { color:var(--cream2); border-color:var(--border2); }
+
+  /* Sketch C — before/after section stacks */
+  .p3 .cols { display:grid; grid-template-columns:1fr 1fr; gap:22px; }
+  @media (max-width:820px){ .p3 .cols{ grid-template-columns:1fr; } }
+  .p3 .col h4 { font-family:var(--mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 12px; }
+  .p3 .col.now h4 { color:var(--muted); }
+  .p3 .col.next h4 { color:var(--accent); }
+  .p3 .stack { display:flex; flex-direction:column; gap:8px; }
+  .p3 .blk { border:1px solid var(--border); border-radius:10px; padding:11px 13px; background:var(--surface); position:relative; }
+  .p3 .blk .bt { font-size:12.5px; font-weight:600; color:var(--cream); }
+  .p3 .blk .bd { font-size:11px; color:var(--muted); margin-top:3px; line-height:1.4; }
+  .p3 .blk.dim { opacity:.66; }
+  .p3 .blk.stub { border-style:dashed; border-color:var(--border2); }
+  .p3 .blk.room { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent-soft); background:linear-gradient(180deg,rgba(217,119,87,.06),var(--surface)); }
+  .p3 .blk.room .bt { color:var(--accent); }
+  .p3 .blk .mini { display:flex; gap:6px; flex-wrap:wrap; margin-top:9px; }
+  .p3 .blk .mini span { font-family:var(--mono); font-size:9px; color:var(--cream2); border:1px solid var(--border2); border-radius:5px; padding:2px 6px; }
+  .p3 .blk .same { position:absolute; top:11px; right:12px; font-family:var(--mono); font-size:8px; letter-spacing:.08em; text-transform:uppercase; color:var(--good); }
+  .p3 .cnote { max-width:680px; margin:18px auto 0; font-size:13px; color:var(--cream2); text-align:center; }
+  .p3 .cnote b { color:var(--accent); }
+
+  .p3 .foot { max-width:640px; margin:56px auto 0; padding-top:20px; border-top:1px solid var(--border); font-size:12.5px; color:var(--muted); }
+  .p3 .foot b { color:var(--cream2); }
+</style>
+
+<div class="p3">
+  <div class="wrap">
+    <header class="intro">
+      <p class="eye">The Room &middot; Phase 3 &middot; sketch for approval</p>
+      <h1>Collapse the doing into three verbs. Unify the seeing into one Room.</h1>
+      <p class="lede">Two pre-build mocks to react to before any code. <b>A &mdash;</b> the composer's 13 skills reorganized into <b>Make &middot; Test &middot; Ask</b>. <b>B &mdash;</b> a video Test's audience surface becoming the same <b>Room</b> the Make skills already use. Nothing here is built yet &mdash; redline freely.</p>
+    </header>
+
+    <!-- ══════════ SKETCH A ══════════ -->
+    <section class="sketch">
+      <div class="shead">
+        <span class="stag">Sketch A</span>
+        <h2>Make &middot; Test &middot; Ask &mdash; the composer menu</h2>
+        <span class="sub">tap the <b style="color:var(--accent)">&#10022;</b> chip &rarr; this opens</span>
+      </div>
+      <div class="grid">
+        <div class="phone">
+          <div class="scr">
+            <div class="wm">Numen</div>
+            <div class="ghost">
+              <p class="gl">#1 is your strongest. Want me to turn it into a script?</p>
+              <div class="gcard"><div class="r">Hook &middot; General</div><div class="h">POV: your $50 gym fee was renting space to feel judged&hellip;</div></div>
+              <div class="gcard"><div class="r">Hook &middot; General</div><div class="h">Stop letting a stranger grade your squat form&hellip;</div></div>
+            </div>
+
+            <!-- the open verb menu -->
+            <div class="menu">
+              <div class="mh">Make</div>
+              <div class="mrow"><b>Hooks</b><span>ranked scroll-stoppers</span></div>
+              <div class="mrow"><b>Ideas</b><span>funnel-top angles</span></div>
+              <div class="mrow"><b>Script</b><span>beats + retention markers</span></div>
+              <div class="mrow"><b>Remix</b><span>decode a winner &rarr; yours</span></div>
+              <div class="mrow kept"><b>Explore</b><span>audience-curated discovery</span></div>
+              <div class="mh">Test</div>
+              <div class="mrow"><b>A real video</b><span>watch-through + full Read</span></div>
+              <div class="mrow kept"><b>Your account</b><span>a Read on your posts</span></div>
+              <div class="mh">Ask</div>
+              <div class="mrow"><b>The room</b><span>drop a raw thought</span></div>
+              <div class="msep"></div>
+              <div class="mh">Your audiences</div>
+              <div class="maud"><b>General</b><span class="chev">&#9662;</span><span class="goal">grow</span></div>
+            </div>
+
+            <div class="composer">
+              <div class="verb"><span class="vi">&#10022;</span><span class="vl">Make</span><span class="chev">&#9662;</span></div>
+              <div class="cin">What do you want to make?</div>
+              <div class="cgo">&uarr;</div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="notes">
+          <div class="note">
+            <h3><span class="n">why</span> Three intents, not thirteen tools</h3>
+            <p>The verbs split by your <b>relationship to the artifact</b> &mdash; which is the real difference between the old skills:</p>
+            <dl class="intents">
+              <dt class="accent">Make</dt><dd>create net-new &mdash; you have nothing yet</dd>
+              <dt class="accent">Test</dt><dd>judge something real &mdash; a video, your account</dd>
+              <dt class="accent">Ask</dt><dd>converse / probe &mdash; just a question</dd>
+            </dl>
+          </div>
+          <div class="note">
+            <h3><span class="n">flow</span> One field, three modes</h3>
+            <p><b>Default is Make</b> &mdash; type a topic, hit &uarr;, hooks generate and the room reacts. That's the 90% path; the menu never opens. The chip is a <b>mode-switch</b> on the same input: pick <b>Test</b> and it swaps to the upload affordance; pick <b>Ask</b> and the placeholder becomes "ask the room&hellip;". Two levels, <b>not lossy</b> &mdash; Make expands to its flavors.</p>
+          </div>
+          <div class="note">
+            <h3><span class="n">kept</span> Explore + Account stay <span style="color:var(--good)">&#10003;</span></h3>
+            <p>Per your call &mdash; <b>Explore</b> sits under <span class="accent">Make</span> (discovery feeds what you make); <b>Account Read</b> sits under <span class="accent">Test</span> (it judges something real &mdash; your own posts). Both keep a home in the menu.</p>
+          </div>
+          <div class="note">
+            <h3><span class="n">context</span> The menu is audience-aware</h3>
+            <p>A <b>General SIM</b> audience swaps the creator verbs for the simulator flow (already mode-gated in the data):</p>
+            <div class="chips">
+              <span class="chip mode">Profile</span><span class="chip mode">Simulate</span><span class="chip mode">Predict</span>
+              <span class="chip hide">Offer Validation</span><span class="chip hide">Ad Creative</span>
+            </div>
+            <p style="margin-top:8px; font-size:12px; color:var(--muted)">Offer / Ad stay hidden until enabled &mdash; struck through above.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ══════════ SKETCH B ══════════ -->
+    <section class="sketch">
+      <div class="shead">
+        <span class="stag">Sketch B</span>
+        <h2>Test &rarr; the Room</h2>
+        <span class="sub">the audience panel becomes the Room</span>
+      </div>
+      <div class="grid">
+        <div class="phone">
+          <div class="scr">
+            <div class="read">
+              <div class="rhead">
+                <div class="thumb"></div>
+                <div class="rscore">
+                  <div class="big">82 <small>Strong</small></div>
+                  <div class="meta">71 virality &middot; 68% watch-through</div>
+                </div>
+              </div>
+              <div class="rtabs">
+                <span class="rtab on">Score</span>
+                <span class="rtab video">Hook</span>
+                <span class="rtab video">Retention</span>
+                <span class="rtab">Room</span>
+              </div>
+
+              <!-- video-only panel: retention scrubber (STAYS) -->
+              <div class="panel">
+                <div class="plabel">Retention <span class="vpill">video only</span></div>
+                <div class="curve">
+                  <svg viewBox="0 0 300 44" preserveAspectRatio="none">
+                    <polyline points="0,6 40,10 70,14 95,30 130,33 180,36 240,39 300,41" fill="none" stroke="#8ea68a" stroke-width="2"/>
+                    <line x1="95" y1="0" x2="95" y2="44" stroke="#d97757" stroke-width="1.5" stroke-dasharray="3 3"/>
+                    <circle cx="95" cy="30" r="3" fill="#d97757"/>
+                  </svg>
+                </div>
+                <div class="drop">&#9660; biggest drop at 0:07 &mdash; "the setup ran long"</div>
+              </div>
+
+              <!-- the CHANGE: audience panel = the Room -->
+              <div class="panel room">
+                <div class="plabel">The audience <span class="vpill" style="color:var(--accent)">now the Room</span></div>
+                <div class="roomtog"><span class="on">The people</span><span>Population &middot; 1,000</span></div>
+                <div class="voice"><div class="ava g">M</div><div class="vbody"><div class="vtop"><span class="vname">Maya</span><span class="vask">ask &rarr;</span></div><div class="vq">"Hooked me &mdash; but I'd have bailed at the slow middle."</div></div></div>
+                <div class="voice"><div class="ava g">D</div><div class="vbody"><div class="vtop"><span class="vname">Dev</span><span class="vask">ask &rarr;</span></div><div class="vq">"The payoff earned the wait. I'd rewatch."</div></div></div>
+                <div class="voice"><div class="ava r">P</div><div class="vbody"><div class="vtop"><span class="vname">Priya</span><span class="vask">ask &rarr;</span></div><div class="vq">"Lost me at 7 seconds &mdash; nothing pulled me in."</div></div></div>
+                <div class="replay"><span>&#9654;</span> Replay in timeline &mdash; voices light up <b style="color:var(--cream)">&nbsp;as the video plays</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="notes">
+          <div class="note">
+            <h3><span class="n">changes</span> The audience panel &rarr; the Room</h3>
+            <p>Today a video Test renders its audience through the <b>old <span class="accent">AudienceLens</span></b>; the Make skills use the new v6 <b>Room</b>. Phase 3 makes the Test speak the Room's language &mdash; <b>named voices you can <span class="accent">ask &rarr;</span></b>, the population, the weak-spot, the rewrite. One audience surface, whether you Made or Tested.</p>
+          </div>
+          <div class="note">
+            <h3><span class="n">stays</span> The video-only Read is already good</h3>
+            <p>You already reskinned these for flat-warm &mdash; they <b>stay</b>: the Hook decomposition, the <b class="sage">Retention scrubber</b> (the frame-by-frame watch-journey + the drop moment), the Score distribution. The Room <b>replaces the personas panel</b>, not the whole Read.</p>
+          </div>
+          <div class="note">
+            <h3><span class="n">new</span> The video earns a timeline Replay</h3>
+            <p>A real video carries a per-second attention trace that text can't. So the video-Test Room adds one thing the text Room can't have: <b>&#9654; Replay in timeline</b> &mdash; the voices react <b>as the video plays</b>, lighting up at the exact moment each viewer leans in or bails. The "full Read" the flagship skill deserves.</p>
+          </div>
+          <div class="note">
+            <h3><span class="n">one line</span></h3>
+            <p style="font-family:var(--serif); font-size:15px; color:var(--cream); line-height:1.4;">Collapse the <span class="accent">doing</span> into Make / Test / Ask, and unify the <span class="accent">seeing</span> into one Room &mdash; so Test stops being a separate analytics world and becomes "the Room, on a real video, with a retention curve."</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- SKETCH C -->
+    <section class="sketch">
+      <div class="shead">
+        <span class="stag">Sketch C</span>
+        <h2>The Read page &mdash; today &rarr; Phase 3</h2>
+        <span class="sub">Option A: the Room embeds in place</span>
+      </div>
+      <div class="cols">
+        <div class="col now">
+          <h4>Today &middot; the /analyze Read page</h4>
+          <div class="stack">
+            <div class="blk dim"><div class="bt">Hero &mdash; score gauge</div><div class="bd">82 &middot; Strong &middot; 71 virality &middot; 68% watch-through</div></div>
+            <div class="blk dim"><div class="bt">Score drivers</div><div class="bd">Hook &middot; Retention &middot; Shareability lever rows</div></div>
+            <div class="blk stub"><div class="bt">Audience &amp; context</div><div class="bd">Niche-rank distribution only &mdash; <b style="color:var(--accent)">the persona deep-dive is deferred (a stub)</b></div></div>
+            <div class="blk dim"><div class="bt">Fix First</div><div class="bd">your single weakest lever</div></div>
+            <div class="blk dim"><div class="bt">Deeper Read</div><div class="bd">the expanded analysis</div></div>
+            <div class="blk dim"><div class="bt">Follow-up Chat</div><div class="bd">persistent Q&amp;A on the Read</div></div>
+          </div>
+        </div>
+        <div class="col next">
+          <h4>Phase 3 &middot; Option A (embed)</h4>
+          <div class="stack">
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Hero &mdash; score gauge</div><div class="bd">82 &middot; Strong &middot; 71 virality &middot; 68% watch-through</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Score drivers</div><div class="bd">Hook &middot; Retention &middot; Shareability lever rows</div></div>
+            <div class="blk room"><div class="bt">Audience &mdash; the Room</div><div class="bd">the deferred stub becomes the full interrogable Room, inline:</div><div class="mini"><span>named voices</span><span>ask &rarr;</span><span>Population &middot; 1,000</span><span>weak-spot</span><span>&#9654; timeline replay</span></div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Fix First</div><div class="bd">your single weakest lever</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Deeper Read</div><div class="bd">the expanded analysis</div></div>
+            <div class="blk"><span class="same">unchanged</span><div class="bt">Follow-up Chat</div><div class="bd">persistent Q&amp;A on the Read</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="cnote">Only the <b>Audience</b> section changes &mdash; and it&rsquo;s a stub today, so nothing rich is removed. Everything else on the Read page stays exactly as it is.</p>
+    </section>
+
+    <p class="foot"><b>These are sketches, not builds.</b> Approve the direction (or redline any piece &mdash; the 13&rarr;3 mapping, a verb's contents, the Test layout) and I'll turn it into the Phase 3 plan. The map above keeps every skill reachable; nothing is deleted, only reorganized by intent.</p>
+  </div>
+</div>
