@@ -157,15 +157,15 @@ describe('Reading — READ-10 no-cut-data regression guard (T-02-11)', () => {
     const user = userEvent.setup();
     const { container } = render(<Reading />);
 
-    // Expand each drill panel in turn (inline accordion — Hook, Retention,
-    // Shareability, Audience, Niche rank). The expanded panel is the richest raw-data
-    // surface, so sweep the whole thread with each one open.
+    // The audience deep-dive is now the inline Room (Phase 3) — always rendered, so its
+    // raw-data surface (persona voices) is swept on every iteration via container.textContent
+    // below, no drill needed. Sweep the remaining expand-in-place panels (Hook, Retention,
+    // Shareability, Niche rank), each the richest raw-data surface for its dimension.
     const panels: Array<[string, string]> = [
       ['row-trigger-score', 'score-distribution'],
       ['row-trigger-hook', 'panel-hook'],
       ['row-trigger-retention', 'retention-scrubber-cluster'],
       ['row-trigger-shareability', 'panel-shareability'],
-      ['row-trigger-personas', 'panel-personas-list'],
     ];
     for (const [trigger, content] of panels) {
       await user.click(screen.getByTestId(trigger));

@@ -174,12 +174,14 @@ describe('Reading container — composition + hero (READ-01/03/04/07)', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('shows the audience overview (breakout) under the hero AND the revived deep-dive drill row', () => {
+  it('shows the audience overview (breakout) under the hero AND the inline Room deep-dive', () => {
     render(<Reading />);
-    // The hero folds in the breakout cascade (audience OVERVIEW); the persona deep-dive
-    // is now also revived as the "Audience" accordion row (S3 2026-06-15).
+    // The hero folds in the breakout cascade (audience OVERVIEW); the persona deep-dive is
+    // now the v6 Room, rendered INLINE (Phase 3 · Option A) — not a drill row. The People ⇄
+    // Population toggle is the Room's signature.
     expect(screen.getByTestId('audience-breakout')).toBeInTheDocument();
-    expect(screen.getByTestId('row-trigger-personas')).toBeInTheDocument();
+    expect(screen.getByTestId('reading-room')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
   });
 
   it('has no a11y violations in the healthy state', async () => {

@@ -44,8 +44,21 @@ import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import type { AmbientFocusSibling } from './ambient-presence-types';
 
 export interface AmbientRoomProps {
-  /** The focused concept's REAL per-persona reactions (from the ambient focus — PR-B1). */
-  flatPersonas: FlatPersonaReaction[];
+  /** The focused concept's REAL per-persona reactions (from the ambient focus — PR-B1).
+   *  The flat text-skill shape (binary verdict + quote); rebuilt into nodes here. Optional
+   *  when `personaNodes` is supplied instead (the rich video-Read path). */
+  flatPersonas?: FlatPersonaReaction[];
+  /** Pre-built rich PersonaNodes (the video Read's `buildAudienceNodes` — real names,
+   *  quotes, archetypes, continuous watch-through). When present it is used DIRECTLY,
+   *  bypassing the flat rebuild, so the video's richer signal is not binarised away. The
+   *  per-segment timeline it carries drives the SEPARATE ReplayController (D-06); this
+   *  Room reads only the verdict/quote/name from it, exactly like the flat path. */
+  personaNodes?: PersonaNode[];
+  /** Embedded variant (the video Read's Audience section, Phase 3). Drops the fixed-height
+   *  Bloom layout (no `h-full`, no internal scroll — the Read page scrolls) and hides the
+   *  focus header (the Read carries its own Hero + section label). The people/population
+   *  toggle + body render at natural height inline. */
+  embedded?: boolean;
   /** The concept the room is reacting to (grounds the header + the persona chat). */
   conceptText: string;
   /** The concept's real `"N/T stop"` aggregate — drives the honest score header. */
@@ -119,6 +132,8 @@ const meterTone = (stop: number, total: number): string => {
 
 export function AmbientRoom({
   flatPersonas,
+  personaNodes,
+  embedded = false,
   conceptText,
   fraction,
   reducedMotion = false,
@@ -163,9 +178,11 @@ export function AmbientRoom({
 
   // Real per-persona nodes (named cast). The cascade order (stops first, heaviest first)
   // is the same order the room reveals in — People rows read in that order too (D-06).
+  // Rich video-Read path passes pre-built nodes directly; the flat text path rebuilds
+  // from the {archetype, verdict, quote} reactions.
   const nodes = useMemo(
-    () => buildFlatPersonaNodes(flatPersonas, personaNameOverrides),
-    [flatPersonas, personaNameOverrides],
+    () => personaNodes ?? buildFlatPersonaNodes(flatPersonas ?? [], personaNameOverrides),
+    [personaNodes, flatPersonas, personaNameOverrides],
   );
   const ordered = useMemo(() => {
     const rank = new Map(cascadeOrder(nodes).map((id, i) => [id, i]));
@@ -238,7 +255,7 @@ export function AmbientRoom({
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className={embedded ? 'flex flex-col' : 'flex h-full min-h-0 flex-col'}>
       {inCompare ? (
         /* ── `⤺ all N` view-all — the ranked list "How the room ranked your N" (PR-2).
               Tap a row to re-focus the Room on that sibling → back to the drill view. ── */
@@ -302,7 +319,10 @@ export function AmbientRoom({
         </>
       ) : (
         <>
-          {/* ── Focus header — the anchored-focus stepper (PR-2) + the honest serif score ── */}
+          {/* ── Focus header — the anchored-focus stepper (PR-2) + the honest serif score.
+                Hidden in the embedded (video-Read) variant: the Read carries its own Hero +
+                "The audience" section label, so a second serif score would double up. ── */}
+          {!embedded && (
           <div className="shrink-0 px-5 pb-1 pt-1">
             {showStepper && (
               <div className="mb-2 flex min-h-[24px] items-center gap-2">
@@ -351,6 +371,7 @@ export function AmbientRoom({
               {conceptText}
             </p>
           </div>
+          )}
 
           {/* ── The people ⇄ Population · 1,000 — swaps the view (each its own motion) ── */}
           <div className="shrink-0 px-5 pt-3">
@@ -386,8 +407,9 @@ export function AmbientRoom({
             </div>
           </div>
 
-          {/* ── The body (scrolls) ── */}
-          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4">
+          {/* ── The body — scrolls inside the Bloom; renders at natural height when embedded
+                in the Read (the page owns the scroll). ── */}
+          <div className={embedded ? 'px-5 pb-5 pt-4' : 'min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-4'}>
             {!hasReaction ? (
               <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
                 No reaction yet — test a concept to hear the room.
