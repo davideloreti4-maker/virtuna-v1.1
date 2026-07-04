@@ -22,6 +22,7 @@ import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/roo
 import { getMockStartPage, MOCK_AUDIENCES } from "@/lib/room-contract/mock-room";
 import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
 import type { Verb } from "@/lib/room-contract/types";
+import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
 import { TopChrome } from "./sections/top-chrome";
 import { Greeting } from "./sections/greeting";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
@@ -34,7 +35,9 @@ import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
 import { FirstRun } from "./sections/first-run";
 import { SurfaceDock } from "./surface-dock";
-import { EmbeddedComposer } from "./embedded-composer";
+// Seam 4 GRAFT — the Room-owned embeddable composer atom (was the surfaces `./embedded-composer`
+// stub, now retired). One composer atom, Room-owned, so /start and /home never drift.
+import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { RoomDrawer, type RoomFocus } from "./room-drawer";
 
 export function StartPage({
@@ -74,17 +77,16 @@ export function StartPage({
   };
   const closeRoom = () => setFocus(null);
 
-  // Seam 4 — the ONE handoff. In the app: create thread with audience + seed → /thread/:id.
-  // Stubbed until The Room's composer rework lands (don't couple to the old /home composer).
+  // Seam 4 — the ONE handoff (THE-CONTRACT.md §3), now REAL. Carry the composed intent into the
+  // thread host: there is no `/thread/:id` route — the thread lives on /home — so this pushes a
+  // `/home?v=…&seed=…&run=1` URL that the /home Composer consumes (maps the verb → its skill,
+  // pre-fills the field, and fires on arrival). The explicit send here IS the user's fire.
+  // NOTE: the audience is not carried yet — the surface's switcher is still mock (MOCK_AUDIENCES);
+  // /home uses its own user-level last-used audience until the Seam-3 real-audience graft lands.
   const launchThread = (input: string, launchVerb: Verb) => {
     closeRoom();
     setReacting(true);
-    window.setTimeout(() => setReacting(false), 1600);
-    toast({
-      variant: "info",
-      title: `${launchVerb} · launching a thread`,
-      description: `“${input.length > 48 ? `${input.slice(0, 47)}…` : input}” — with ${activeAudience.name}. (Seam 4: create thread → /thread/:id, carrying audience + seed.)`,
-    });
+    router.push(buildThreadLaunchHref({ input, verb: launchVerb, run: true }));
   };
 
   const seedComposer = (text: string) =>

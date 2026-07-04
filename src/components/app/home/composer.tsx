@@ -89,12 +89,23 @@ import { detectRefineIntent } from "@/lib/tools/refine";
 // server check. ContentForm's SOCIAL_URL_PATTERN ALSO allows Instagram — the
 // slim composer must NOT (TikTok-only for v1).
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
+import type { Verb } from "@/lib/room-contract/types";
+import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
 
 // Matches a canonical v1–v5 UUID. Used to gate the per-thread audience pin: only a
 // real audience-row UUID (or null=General) may PATCH threads.active_audience_id (uuid
 // column); virtual preset ids like "preset-growth" must never reach it (would 500).
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+// Seam 4 (THE-CONTRACT.md §3) — the verb a surface launch carries → the /home skill it lands
+// on. Make defaults to Hooks (the first Make skill), Test to the real-video Read, Ask to the
+// room chat. One default per verb; the full verb↔skill SSOT is VERB_BY_TOOL (composer-controls).
+const LAUNCH_VERB_TOOL: Record<Verb, ToolId> = {
+  Make: "hooks",
+  Test: "test",
+  Ask: "chat",
+};
 
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
@@ -233,6 +244,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // seed of selectedAudienceId from the user-level last-used audience (the audiences fetch
   // below) so a deliberate pick made while that fetch was in flight always wins.
   const hasUserSelectedAudienceRef = useRef(false);
+  // Seam 4 — one-shot guard for the launch-seed inlet (below): a surface handoff
+  // (/home?v=…&seed=…&run=1) is consumed exactly once per mount.
+  const seedConsumedRef = useRef(false);
+  // Armed by the seed inlet when the launched verb is runnable + run=1; a separate effect
+  // fires the skill once the seeded field + tool have committed (so handleSubmit reads them).
+  const [pendingAutoRun, setPendingAutoRun] = useState(false);
   // Evidence-drop file input (D-07) — declared here (ahead of the rest of the
   // evidence state) so handleUserSelectTool can open the Profile evidence picker
   // within the user-gesture call stack (a file input .click() must ride a real
@@ -1341,6 +1358,63 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread]);
+
+  // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
+  // A surface (the start page's embedded composer) hands a composed intent off as a
+  // `/home?v=…&seed=…&run=1` URL (buildThreadLaunchHref). Consume it ONCE on mount: map the
+  // verb → its default skill, pre-fill the field, and — when run=1 and the verb is runnable
+  // from a text seed — arm a one-shot auto-run. The explicit surface send IS the fire, so this
+  // is honesty-spine-safe (never a silent auto-fire). Reads window.location.search directly
+  // (not useSearchParams) so /home needs no Suspense boundary and never de-opts to client-only
+  // static render. The launched audience (`aud`) is intentionally NOT consumed yet — /home uses
+  // its own user-level last-used audience until the Seam-3 real-audience graft lands surfaces-side.
+  useEffect(() => {
+    if (seedConsumedRef.current || typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const verbParam = sp.get(LAUNCH_PARAM.verb) as Verb | null;
+    const seedParam = sp.get(LAUNCH_PARAM.seed);
+    const runParam = sp.get(LAUNCH_PARAM.run) === "1";
+    if (!verbParam && !seedParam) return; // no launch to consume
+    seedConsumedRef.current = true;
+
+    const tool: ToolId = (verbParam && LAUNCH_VERB_TOOL[verbParam]) || "test";
+    // Mark a deliberate pick so the open-thread rehydration never overrides the launched verb.
+    hasUserSelectedToolRef.current = true;
+    // One-shot handoff consumption on mount — setState here is intentional (a client-only
+    // window.location read can't seed lazy initial state); seedConsumedRef makes it fire once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setActiveTool(tool);
+    if (tool === "test") setShowUpload(true); // Test absorbs upload — reveal its drop zone (v6)
+    if (seedParam) setUrl(seedParam);
+
+    // Runnable from a text seed? Make (hooks/idea/script) runs even empty (Auto mode). Ask
+    // (chat) needs a thought. Test can only run headless from a valid TikTok URL — a video
+    // upload needs a file the surface can't carry, so it degrades to pre-fill (the safe fallback).
+    const runnable =
+      tool === "hooks" || tool === "idea" || tool === "script"
+        ? true
+        : tool === "chat"
+          ? !!seedParam?.trim()
+          : tool === "test"
+            ? !!seedParam && TIKTOK_URL_PATTERN.test(seedParam.trim())
+            : false;
+    if (runParam && runnable) setPendingAutoRun(true);
+
+    // Strip the launch params so a refresh / re-render never re-seeds or re-fires.
+    router.replace("/home", { scroll: false });
+  }, [router]);
+
+  // Fire the armed auto-run once — in a LATER commit than the seed inlet, so setActiveTool +
+  // setUrl have landed and handleSubmit's closure reads the seeded verb + field. One-shot
+  // (pendingAutoRun self-clears; seedConsumedRef already tripped), so a normal render never
+  // re-fires. Test's path navigates to /analyze/[id]; Make/Ask stream into the /home thread.
+  useEffect(() => {
+    if (!pendingAutoRun) return;
+    // One-shot: clear the arm before firing so the run never repeats.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingAutoRun(false);
+    void handleSubmit();
+  }, [pendingAutoRun, handleSubmit]);
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
