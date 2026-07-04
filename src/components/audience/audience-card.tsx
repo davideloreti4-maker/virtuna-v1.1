@@ -76,9 +76,12 @@ export function AudienceCard({
     <div
       className={cn(
         READING_CARD,
-        "group relative flex items-start gap-4 p-4 transition-colors pointer-coarse:min-h-[88px]",
-        isNavigable && "cursor-pointer hover:bg-white/[0.02]",
-        selectionMode && isSelected && "bg-white/[0.04]",
+        "group relative flex items-start gap-4 p-4 pointer-coarse:min-h-[88px]",
+        // Considered matte micro-interaction: lift + border-brighten on hover, settle on press.
+        "transition-[background-color,border-color,transform] duration-150 ease-out",
+        isNavigable &&
+          "cursor-pointer hover:-translate-y-px hover:border-white/[0.10] hover:bg-white/[0.03] active:translate-y-0 active:bg-white/[0.05]",
+        selectionMode && isSelected && "border-white/[0.14] bg-white/[0.05]",
         className,
       )}
       onClick={handleClick}

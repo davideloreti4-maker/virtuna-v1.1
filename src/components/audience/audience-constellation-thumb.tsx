@@ -59,12 +59,16 @@ function buildThumbDots(count: number, seed: number, vbW: number, vbH: number): 
     const cx = padX + t * usableW;
     const jitter = (rnd() - 0.5) * (vbH * 0.46);
     const cy = vbH / 2 + jitter;
+    // Crisper, less uniform: a few brighter "stars" among dimmer dots reads as a
+    // designed constellation rather than a faint even scatter.
+    const r = vbH * (0.13 + rnd() * 0.07);
+    const op = 0.46 + rnd() * 0.3;
     out.push({
       id: `roster_${i}`,
       cx,
       cy,
-      r: vbH * 0.15,
-      fill: `rgba(${CREAM}, 0.5)`,
+      r,
+      fill: `rgba(${CREAM}, ${op.toFixed(2)})`,
       phase: rnd(),
     });
   }
@@ -95,6 +99,22 @@ function ThumbConstellation({
       role="img"
       aria-hidden
     >
+      {/* Faint constellation edges — connect consecutive nodes into a path (drawn
+          under the dots). Reinforces the identity motif vs. a loose dot scatter. */}
+      {dots.slice(1).map((d, i) => {
+        const prev = dots[i]!;
+        return (
+          <line
+            key={`edge_${d.id}`}
+            x1={prev.cx.toFixed(2)}
+            y1={prev.cy.toFixed(2)}
+            x2={d.cx.toFixed(2)}
+            y2={d.cy.toFixed(2)}
+            stroke={`rgba(${CREAM}, 0.1)`}
+            strokeWidth={0.6}
+          />
+        );
+      })}
       {dots.map((d, i) => (
         <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
           {!reducedMotion && (
