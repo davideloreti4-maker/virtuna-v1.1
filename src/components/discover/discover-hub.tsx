@@ -16,7 +16,6 @@
  */
 
 import { useState } from "react";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import type { FeedTab } from "@/lib/feed/feed-query";
 import type { CompetitorsData } from "@/lib/competitors/competitors-data";
 import { FeedClient } from "@/app/(app)/feed/feed-client";
@@ -53,7 +52,7 @@ export function DiscoverHub({
   const feedTab: FeedTab = tab === "trending" ? "trending" : "watched";
 
   return (
-    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-4">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Discover</h1>

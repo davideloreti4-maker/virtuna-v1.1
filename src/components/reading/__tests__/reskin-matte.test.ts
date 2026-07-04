@@ -227,6 +227,10 @@ const HYBRID_DEPTH_SURFACES = [
   'components/analytics/analytics-view.tsx',
   'components/grow/grow-view.tsx',
   'components/grow/tabs/referrals-tab.tsx',
+  'components/discover/discover-hub.tsx',
+  'components/feed/feed-card.tsx',
+  'components/feed/feed-filters.tsx',
+  'components/feed/feed-results.tsx',
 ] as const;
 
 describe('matte-lint (Hybrid depth) — elevated surfaces stay glass/glow/coral-free', () => {

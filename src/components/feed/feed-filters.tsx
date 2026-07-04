@@ -154,10 +154,6 @@ export function FeedFilters({
   const [postedValue, setPostedValue] = useState(numStr(filters.postedWithinDays));
   const [postedUnit, setPostedUnit] = useState("1");
 
-  // Status (Analyzed / Unanalyzed) — rendered for parity; not yet wired to the query.
-  const [statusAnalyzed, setStatusAnalyzed] = useState(true);
-  const [statusUnanalyzed, setStatusUnanalyzed] = useState(true);
-
   useEffect(() => {
     const t = setTimeout(() => {
       const v = toNum(postedValue);
@@ -187,7 +183,7 @@ export function FeedFilters({
   const platformValue = useMemo(() => filters.platform ?? "all", [filters.platform]);
 
   return (
-    <aside className="space-y-5 rounded-xl border border-white/[0.06] bg-background-elevated p-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <aside className="elev-rest space-y-5 rounded-xl border border-white/[0.06] bg-background-elevated p-4 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-medium text-foreground">Filters</h2>
         {activeCount > 0 && (
@@ -279,22 +275,6 @@ export function FeedFilters({
         />
       </div>
 
-      {/* Status — parity stub (no analyzed flag tracked yet). */}
-      <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-foreground-muted">
-          Status
-        </p>
-        <div className="flex flex-wrap gap-1.5">
-          <StatusChip label="Analyzed" checked={statusAnalyzed} onToggle={() => setStatusAnalyzed((v) => !v)} />
-          <StatusChip
-            label="Unanalyzed"
-            checked={statusUnanalyzed}
-            onToggle={() => setStatusUnanalyzed((v) => !v)}
-          />
-        </div>
-        <p className="text-[11px] text-foreground-muted/80">Filtering by status — coming soon.</p>
-      </div>
-
       {/* Per-channel narrowing — watched tab only (your tracked creators). */}
       {tab === "watched" && watchedChannels.length > 0 && (
         <div className="space-y-1.5">
@@ -355,43 +335,5 @@ export function FeedFilters({
         )}
       </div>
     </aside>
-  );
-}
-
-/** A Status checkbox-chip (parity stub — toggles local state only). */
-function StatusChip({
-  label,
-  checked,
-  onToggle,
-}: {
-  label: string;
-  checked: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked}
-      onClick={onToggle}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors",
-        focusRing,
-        checked
-          ? "bg-white/[0.08] text-foreground"
-          : "text-foreground-secondary hover:bg-white/[0.04] hover:text-foreground",
-      )}
-    >
-      <span
-        className={cn(
-          "flex h-3.5 w-3.5 items-center justify-center rounded-[4px] border",
-          checked ? "border-white/30 bg-white/20" : "border-white/20",
-        )}
-        aria-hidden="true"
-      >
-        {checked && <span className="h-1.5 w-1.5 rounded-[1px] bg-foreground" />}
-      </span>
-      {label}
-    </button>
   );
 }

@@ -71,7 +71,7 @@ function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-background-elevated px-4 py-20 text-center">
+    <div className="elev-rest flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-background-elevated px-4 py-20 text-center">
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
         {icon}
       </div>
