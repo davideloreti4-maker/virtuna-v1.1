@@ -30,13 +30,11 @@ import {
   CaretUpDown,
   House,
   CalendarDots,
-  ChartLineUp,
   Storefront,
   UsersThree,
   Books,
   FilmStrip,
   Binoculars,
-  Gift,
   Trash,
   Check,
   X,
@@ -374,13 +372,15 @@ export function Sidebar() {
 
   const isOnStart = pathname.startsWith("/start");
   const isOnCalendar = pathname.startsWith("/calendar");
-  const isOnAnalytics = pathname.startsWith("/analytics");
-  const isOnGrow = pathname.startsWith("/grow");
+  // Grow is a hub: /analytics + /referrals redirect into it, so all three light the item.
+  const isOnGrow =
+    pathname.startsWith("/grow") ||
+    pathname.startsWith("/analytics") ||
+    pathname.startsWith("/referrals");
   const isOnAudience = pathname.startsWith("/audience");
   const isOnLibrary = pathname.startsWith("/library");
   const isOnFeed = pathname.startsWith("/feed");
   const isOnCompetitors = pathname.startsWith("/competitors");
-  const isOnReferrals = pathname.startsWith("/referrals");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -495,17 +495,9 @@ export function Sidebar() {
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/calendar")}
               />
-              {/* Analytics — account metrics over 7/30/90d + recommendations (Surfaces
-                  milestone). Real numbers from account_snapshots; matte active state. */}
-              <NavItem
-                icon={ChartLineUp}
-                label="Analytics"
-                isActive={isOnAnalytics}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/analytics")}
-              />
-              {/* Grow — the "Grow your business" strategy dashboard (Surfaces milestone):
-                  monetization readiness + pre-tested offers + funnel. Matte active state. */}
+              {/* Grow — the business hub (Surfaces IA): Numbers (real account metrics) ·
+                  Monetize (offers + funnel) · Referrals, as tabs. /analytics + /referrals
+                  redirect here. Matte active state. */}
               <NavItem
                 icon={Storefront}
                 label="Grow"
@@ -549,15 +541,6 @@ export function Sidebar() {
                 isActive={isOnCompetitors}
                 isCollapsed={effectiveCollapsed}
                 onClick={() => router.push("/competitors")}
-              />
-              {/* Referrals — referral stats / invite surface. Surfaced from
-                  deep-link-only (refine lane). */}
-              <NavItem
-                icon={Gift}
-                label="Referrals"
-                isActive={isOnReferrals}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/referrals")}
               />
             </div>
           </div>
