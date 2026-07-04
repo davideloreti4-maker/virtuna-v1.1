@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SavedShelf } from "@/components/saved/saved-shelf";
 
 export const metadata: Metadata = {
-  title: "Library | Numen",
+  title: "Library | Maven",
   description:
     "Everything you've saved — Reads, ideas, hooks, scripts, outliers — ready to pull back into a thread.",
 };

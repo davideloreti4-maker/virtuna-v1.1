@@ -88,7 +88,7 @@ export function DayDetail({
             No post planned for {monthShort} {day}.
           </p>
           <p className="mt-1 font-mono text-[9px] text-foreground-muted">
-            Plan one — Juno pre-tests it on your people before you post.
+            Plan one — Maven pre-tests it on your people before you post.
           </p>
           <button
             type="button"

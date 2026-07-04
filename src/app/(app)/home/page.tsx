@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { HomePageLayout } from "@/components/app/home/home-page-layout";
 
 export const metadata: Metadata = {
-  title: "Home | Numen",
+  title: "Home | Maven",
   description: "Start a Simulation — paste a TikTok link or upload a video.",
 };
 

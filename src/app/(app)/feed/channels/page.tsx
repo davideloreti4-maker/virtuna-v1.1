@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { ChannelsClient } from "./channels-client";
 
 export const metadata: Metadata = {
-  title: "Channels | Numen",
+  title: "Channels | Maven",
   description: "Watch TikTok creators to build your persistent Videos feed.",
 };
 

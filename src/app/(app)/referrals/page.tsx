@@ -10,7 +10,7 @@ import { ReferralsUpgradeFallback } from "@/components/referral/ReferralsUpgrade
 import { SurfaceHeader } from "@/components/surfaces/surface-header";
 
 export const metadata: Metadata = {
-  title: "Referrals | Numen",
+  title: "Referrals | Maven",
   description: "Share Numen and earn rewards for every conversion.",
 };
 

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { GrowView } from "@/components/grow/grow-view";
 
 export const metadata: Metadata = {
-  title: "Grow | Juno",
+  title: "Grow | Maven",
   description: "Turn your audience into income — offers pre-tested on your people.",
 };
 

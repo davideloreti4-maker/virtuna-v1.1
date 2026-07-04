@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { FeedClient } from "./feed-client";
 
 export const metadata: Metadata = {
-  title: "Videos | Numen",
+  title: "Videos | Maven",
   description: "Outliers from the channels you watch, plus what's trending — Remix any winner into a Read.",
 };
 
