@@ -65,7 +65,6 @@ vi.mock('@/hooks/queries/use-permalink-analysis', () => ({
 vi.mock('@/hooks/useIsMobile', () => ({ useIsMobile: () => false, useIsMobileHydrated: () => ({ isMobile: false, hydrated: true }) }));
 
 import { Reading } from '../reading';
-import { renderPanel } from '../reading-panels';
 
 beforeEach(() => {
   mockState = { id: 'sim-1', data: makeReadingResult(), isLoading: false };
@@ -308,8 +307,8 @@ describe('drill-down: shareability panel (READ-09)', () => {
 // audience — the v6 Room, INLINE (Phase 3 · Option A): the persona deep-dive that
 // used to drill the old AudienceLens is now the Room, rendered in place (named voices
 // + The people ⇄ Population·1,000 + the video-only timeline replay). The hero still
-// folds the breakout OVERVIEW; the Room is the per-persona detail. `renderPanel('personas')`
-// stays intact (the old list panel is still directly renderable), just no longer the app path.
+// folds the breakout OVERVIEW; the Room is the per-persona detail. The legacy list panel
+// (the old renderPanel('personas') drill) is now deleted — this is the sole audience path.
 // ─────────────────────────────────────────────────────────────────────────────
 describe('audience — the inline Room (READ-09, Phase 3)', () => {
   it('renders the Room inline (no drill) with the People/Population toggle + the timeline replay', () => {
@@ -320,12 +319,6 @@ describe('audience — the inline Room (READ-09, Phase 3)', () => {
     // The video carries a real per-persona attentions[] timeline → the TIMELINE replay
     // (constellation lights up as the video plays), not the flat cascade.
     expect(screen.getByRole('button', { name: /replay reactions/i })).toBeInTheDocument();
-    expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
-  });
-
-  it('renderPanel(personas) still mounts the legacy list panel directly (kept, not the app path)', () => {
-    render(<>{renderPanel('personas', makeReadingResult(), undefined, 'sim-1')}</>);
-    expect(screen.getByTestId('panel-personas-list')).toBeInTheDocument();
     expect(screen.getByTestId('persona-graph')).toBeInTheDocument();
   });
 
