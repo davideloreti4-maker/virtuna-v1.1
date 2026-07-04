@@ -1,0 +1,105 @@
+"use client";
+
+/**
+ * DiscoverHub — the DISCOVER hub shell (Surfaces IA rationalization): one destination that
+ * folds the old /feed and /competitors surfaces into three tabs (Watching · Trending ·
+ * Competitors). Owns the radial backdrop, page header, and segmented tab bar; each tab is a
+ * shell-less body (FeedClient / CompetitorsClient).
+ *
+ * Watching + Trending share ONE FeedClient instance — they are the same feed with a
+ * different corpus, so only the `tab` prop flips (no remount → loaded pages + scroll
+ * survive the switch). The rv-in fade-up replays only when the BODY changes (feed ⇄
+ * competitors), not on watching ⇄ trending.
+ *
+ * /competitors redirects here with ?tab=competitors (deep-link preservation, mirrors
+ * /analytics → /grow). URL is kept in sync client-side via history.replaceState (no refetch).
+ */
+
+import { useState } from "react";
+import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
+import type { FeedTab } from "@/lib/feed/feed-query";
+import type { CompetitorsData } from "@/lib/competitors/competitors-data";
+import { FeedClient } from "@/app/(app)/feed/feed-client";
+import { CompetitorsClient } from "@/app/(app)/competitors/competitors-client";
+import { cn } from "@/lib/utils";
+
+export type DiscoverTab = "watching" | "trending" | "competitors";
+
+const TABS: { id: DiscoverTab; label: string }[] = [
+  { id: "watching", label: "Watching" },
+  { id: "trending", label: "Trending" },
+  { id: "competitors", label: "Competitors" },
+];
+
+export function DiscoverHub({
+  initialTab,
+  competitors,
+  snapshotMap,
+  videosMap,
+}: {
+  initialTab: DiscoverTab;
+} & CompetitorsData) {
+  const [tab, setTab] = useState<DiscoverTab>(initialTab);
+
+  const select = (t: DiscoverTab) => {
+    setTab(t);
+    // Keep the URL shareable/deep-linkable without a navigation (no server refetch).
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", t === "watching" ? "/feed" : `/feed?tab=${t}`);
+    }
+  };
+
+  // Watching/Trending map onto the feed's two corpora.
+  const feedTab: FeedTab = tab === "trending" ? "trending" : "watched";
+
+  return (
+    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
+        <header className="mb-4">
+          <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Discover</h1>
+          <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
+            outliers, trends, and rivals — remix any winner into a Read
+          </p>
+
+          <div
+            className="mt-3 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5"
+            role="tablist"
+            aria-label="Discover sections"
+          >
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={tab === t.id}
+                onClick={() => select(t.id)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                  tab === t.id
+                    ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                    : "text-foreground-secondary hover:text-foreground",
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </header>
+
+        {/* Key on the BODY (feed vs competitors), not the tab: watching↔trending keep the
+            same FeedClient so its loaded pages survive; feed↔competitors replays rv-in. */}
+        <div key={tab === "competitors" ? "competitors" : "feed"} className="rv-in">
+          {tab === "competitors" ? (
+            <CompetitorsClient
+              competitors={competitors}
+              snapshotMap={snapshotMap}
+              videosMap={videosMap}
+            />
+          ) : (
+            <FeedClient tab={feedTab} />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
