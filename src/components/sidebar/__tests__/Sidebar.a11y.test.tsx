@@ -67,4 +67,13 @@ describe('Sidebar a11y', () => {
     // copy is gone — the positive New Thread / Thread assertions above prove it).
     expect(screen.getByText('Threads')).toBeInTheDocument();
   });
+
+  it('groups destinations under Create / Analyze / Assets section labels (Surfaces IA P1)', () => {
+    render(<Sidebar />);
+    // The 9→5 IA collapse is made visible: destinations grouped under three umbrella
+    // section labels (uppercased via CSS; DOM text stays title-case).
+    expect(screen.getByText('Create')).toBeInTheDocument();
+    expect(screen.getByText('Analyze')).toBeInTheDocument();
+    expect(screen.getByText('Assets')).toBeInTheDocument();
+  });
 });
