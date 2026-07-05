@@ -158,11 +158,13 @@ NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist/bin/next 
 - This doc · `docs/SURFACE-SEAM-SPEC.md` (Seam 1/2 rows + §2.4 + 2026-07-05b headline) ·
   `docs/THE-CONTRACT.md` (the 4 seams). Memory auto-loads `the-room-phase3-built.md`.
 
-## Seam status
-**Outliers:** `1 🟢 · 2 🟢` (MOUNTED 2026-07-05c, `feat/seam12-outliers` — real Flash sim → `AmbientRoom` +
-`personasToCardFace`, cached in `surface_reactions`, browser-verified). **Daily-ideas:** `1 ⛔ · 2 ⛔`
-(next PR — same mechanism: run the `ideas` skill, cache its personas, render onto `idea-card.tsx`).
-`3 🟢 MOUNTED` · `4 🟢` (start-page graft).
+## Seam status — ✅ SEAMS 1/2 COMPLETE for /start (both sections real)
+**Outliers:** `1 🟢 · 2 🟢` (MOUNTED 2026-07-05c, PR #161 merged — real Flash sim of competitor videos).
+**Daily-ideas:** `1 🟢 · 2 🟢` (MOUNTED 2026-07-05d, `feat/seam12-ideas` — the `ideas` skill generate→sim→ranks,
+its S3′ personas cached + rendered). Both: `personasToCardFace` (Seam 1) + real `AmbientRoom` fed `flatPersonas`
+(Seam 2), cached in `surface_reactions` (kind `outlier`/`idea`), lazy re-warm on first /start visit of the day,
+browser-verified. `mock-room.ts` outlier fixtures retired; idea fixtures kept ONLY for the still-mock /calendar
+(`getReadByCardId`). `3 🟢 MOUNTED` · `4 🟢`. **All 4 seams live on /start.**
 
 > **Correction the 07-05c mount proved:** start-page cards sim via **Flash** (`{archetype,verdict,quote}`),
 > not the heavy `PredictionResult` — so Seam 2's render is the **real `AmbientRoom` fed `flatPersonas`**,
