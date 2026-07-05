@@ -223,6 +223,8 @@ const HYBRID_DEPTH_SURFACES = [
   'components/surfaces/surface-canvas.ts',
   'components/saved/saved-shelf.tsx',
   'components/calendar/calendar-workspace.tsx',
+  'components/calendar/month-grid.tsx',
+  'components/calendar/day-detail.tsx',
   'components/grow/grow-hub.tsx',
   'components/analytics/analytics-view.tsx',
   'components/grow/grow-view.tsx',
