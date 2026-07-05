@@ -1,34 +1,41 @@
 "use client";
 
 /**
- * MonthCalendar — the month grid with predicted-tone dots on planned/empty slots.
- * Right rail on desktop, stacked card on mobile. The predicted score is a FORECAST
- * (honest: Directional) — an empty day taps through to a seeded composer.
+ * MonthCalendar — the glanceable /start month widget: a Mon-first grid with a predicted-tone
+ * dot on each planned day. Right rail on desktop, stacked card on mobile. The dots come from
+ * the REAL plan (the day's pre-tested ideas projected onto upcoming days — see month-plan.ts),
+ * so the widget agrees with the full /calendar workspace. Tapping a day deep-links to /calendar.
+ *
+ * Geometry (lead/trail) is computed from `monthLayout(year, monthIndex)` — never hardcoded — so
+ * the widget renders correctly for any month, not just the one it shipped on.
  */
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import type { CalendarDay } from "@/lib/room-contract/mock-room";
+import type { WidgetDay } from "@/lib/surfaces/month-plan";
+import { monthLayout } from "@/lib/calendar/month-layout";
 import { toneDot } from "../tone";
 import { cn } from "@/lib/utils";
 
 const DAY_HEADS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-// July 2026 starts on a Wednesday → Mon-first grid leads with Jun 29/30.
-const LEAD = [29, 30];
-const TRAIL = [1, 2];
 
 export function MonthCalendar({
   month,
+  year,
+  monthIndex,
   today,
   days,
   onEmptyDay,
   onPlannedDay,
 }: {
   month: string;
+  year: number;
+  monthIndex: number; // 0-based
   today: number;
-  days: CalendarDay[];
+  days: WidgetDay[];
   onEmptyDay: (day: number) => void;
   onPlannedDay: (day: number) => void;
 }) {
+  const { lead, trail } = monthLayout(year, monthIndex);
   const plannedCount = days.filter((c) => c.tone).length;
   return (
     <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
@@ -36,7 +43,7 @@ export function MonthCalendar({
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-semibold tracking-[-0.01em] text-foreground">{month}</span>
           <span className="mt-px block font-mono text-[9.5px] text-foreground-muted">
-            {plannedCount} planned this month
+            {plannedCount > 0 ? `${plannedCount} planned · pre-tested` : "nothing planned yet"}
           </span>
         </span>
         <button type="button" aria-label="Previous month" className="grid size-6 place-items-center rounded-md border border-border text-foreground-secondary transition-colors hover:border-border-hover hover:bg-[color:var(--color-surface-thread)]">
@@ -52,7 +59,7 @@ export function MonthCalendar({
             {h}
           </div>
         ))}
-        {LEAD.map((d) => (
+        {lead.map((d) => (
           <div key={`lead-${d}`} className="grid aspect-square place-items-center rounded-[9px] text-[12px] text-foreground-muted opacity-50">
             {d}
           </div>
@@ -83,7 +90,7 @@ export function MonthCalendar({
             </button>
           );
         })}
-        {TRAIL.map((d) => (
+        {trail.map((d) => (
           <div key={`trail-${d}`} className="grid aspect-square place-items-center rounded-[9px] text-[12px] text-foreground-muted opacity-50">
             {d}
           </div>

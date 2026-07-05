@@ -1,92 +1,139 @@
 "use client";
 
 /**
- * CalendarWorkspace — the standalone /calendar month planner (the milestone's second real
- * surface after /start). The dedicated page behind the glanceable /start month widget:
- * a full month grid + a day-detail panel (desktop right rail · mobile bottom sheet) + the
- * content-pillar rail. Mobile-first, `lg:` desktop.
+ * CalendarWorkspace — the standalone /calendar month planner. A full month grid + a day-detail
+ * panel (desktop right rail · mobile bottom sheet) + the content-pillar rail. Mobile-first, `lg:`.
  *
- * All data is MOCK for v1 (real `planned_posts` persistence is a follow-up PR). Honesty
- * spine: predicted tone/score = a labeled Directional forecast, never a fabricated live
- * reaction. The "Make" handoff is the one Seam-4 launch (stubbed as the /start page stubs
- * it) — grafted to a real thread when The Room ships.
+ * The plan is REAL (Seams 1/2): the day's pre-tested ideas (the SAME `surface_reactions` cache the
+ * /start daily-ideas section warms) projected onto upcoming days (buildLivePlan). A cache miss
+ * warms lazily on first visit (useLazyWarm — the shared StrictMode-safe dedupe). Honesty spine:
+ * each planned day's tone/score is the REAL Flash reaction (personasToCardFace); the DAY is a
+ * labeled suggestion, and tapping "See the room" opens the actual AmbientRoom on those personas.
+ * `pillars` stay MOCK for now (account-derived pillars is a separate follow-up).
  */
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
-import { getMockCalendar } from "@/lib/room-contract/mock-room";
-import type { Pillar, PlannedPost } from "@/lib/room-contract/mock-room";
+import { MOCK_PILLARS } from "@/lib/room-contract/mock-room";
+import type { Pillar } from "@/lib/room-contract/mock-room";
+import type { CurrentMonth } from "@/lib/calendar/current-month";
 import { monthLayout } from "@/lib/calendar/month-layout";
+import { buildLivePlan } from "@/lib/surfaces/month-plan";
+import type { LivePlannedPost } from "@/lib/surfaces/month-plan";
+import type { LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
+import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
 import { ContentPillars } from "@/components/surfaces/sections/content-pillars";
+import { RoomDrawer, type RoomFocus } from "@/components/surfaces/room-drawer";
 import { MonthGrid } from "./month-grid";
 import { DayDetail } from "./day-detail";
 
-export function CalendarWorkspace({ initialDay = null }: { initialDay?: number | null }) {
+export function CalendarWorkspace({
+  initialDay = null,
+  calendarMonth,
+  initialIdeas = null,
+  canWarm = false,
+}: {
+  initialDay?: number | null;
+  calendarMonth: CurrentMonth;
+  /** Fresh cached ideas (Seams 1/2); null = warm lazily on first visit. */
+  initialIdeas?: LiveIdeaCard[] | null;
+  /** Gates the warm off for uncalibrated users (no audience to test against → honest empty grid). */
+  canWarm?: boolean;
+}) {
   const { toast } = useToast();
-  const base = useMemo(() => getMockCalendar(), []);
-  const pillarsById = useMemo(
-    () => new Map(base.pillars.map((p) => [p.id, p.name])),
-    [base.pillars],
-  );
-  const pillarName = (id: string) => pillarsById.get(id) ?? id;
+  const router = useRouter();
+  const pillars = MOCK_PILLARS;
 
-  // Month nav: an offset (in months) from the populated base month (July 2026).
+  // Real content source: the same pre-tested ideas cache the /start daily-ideas section warms.
+  const { items: ideas, status: ideasStatus } = useLazyWarm<LiveIdeaCard>(
+    initialIdeas,
+    "/api/surfaces/ideas",
+    "ideas",
+    canWarm,
+  );
+
+  // Month nav: an offset (in months) from the current ("today") month.
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<number | null>(initialDay);
+  const [focus, setFocus] = useState<RoomFocus | null>(null);
 
-  // Escape closes the mobile day sheet.
+  // Escape closes the mobile day sheet (only when the Room drawer isn't the top layer).
   useEffect(() => {
-    if (selectedDay == null) return;
+    if (selectedDay == null || focus) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setSelectedDay(null);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectedDay]);
+  }, [selectedDay, focus]);
 
   // Resolve the viewed month from the offset.
-  const viewedMonthIndex = base.monthIndex + monthOffset;
-  const year = base.year + Math.floor(viewedMonthIndex / 12);
+  const viewedMonthIndex = calendarMonth.monthIndex + monthOffset;
+  const year = calendarMonth.year + Math.floor(viewedMonthIndex / 12);
   const monthIndex = ((viewedMonthIndex % 12) + 12) % 12;
   const { label } = monthLayout(year, monthIndex);
   const monthShort = label.split(" ")[0]!;
   const isBaseMonth = monthOffset === 0;
 
-  // Plan + today apply only to the populated base month — other months are honestly empty.
-  const plan = isBaseMonth ? base.plan : {};
-  const todayDay = isBaseMonth ? base.today : null;
+  // Plan + today apply only to the current ("today") month — other months are honestly empty.
+  const plan = useMemo<Record<number, LivePlannedPost>>(
+    () =>
+      isBaseMonth
+        ? buildLivePlan(ideas, { today: calendarMonth.today, daysInMonth: calendarMonth.daysInMonth })
+        : {},
+    [isBaseMonth, ideas, calendarMonth.today, calendarMonth.daysInMonth],
+  );
+  const todayDay = isBaseMonth ? calendarMonth.today : null;
   const plannedCount = Object.keys(plan).length;
-  const selectedPost: PlannedPost | undefined = selectedDay != null ? plan[selectedDay] : undefined;
+  const warming = isBaseMonth && ideasStatus === "warming";
+  const selectedPost: LivePlannedPost | undefined = selectedDay != null ? plan[selectedDay] : undefined;
 
-  // The desktop rail defaults to today's plan so it's never an empty "select a day" card
-  // (and the rail stands ≈ as tall as the grid, closing the dead space). The MOBILE sheet
-  // stays keyed on `selectedDay` (explicit tap only) so it never auto-opens on load.
+  // The desktop rail defaults to today's plan so it's never an empty "select a day" card. The
+  // MOBILE sheet stays keyed on `selectedDay` (explicit tap only) so it never auto-opens on load.
   const railDay = selectedDay ?? todayDay;
-  const railPost: PlannedPost | undefined = railDay != null ? plan[railDay] : undefined;
+  const railPost: LivePlannedPost | undefined = railDay != null ? plan[railDay] : undefined;
 
   const goMonth = (delta: number) => {
     setMonthOffset((o) => o + delta);
     setSelectedDay(null);
   };
 
-  // Seam 4 — the one handoff (stubbed as /start stubs it; grafted to a real thread later).
-  const handleMake = (day: number, post?: PlannedPost) => {
-    toast({
-      variant: "info",
-      title: `Make · ${monthShort} ${day}`,
-      description: post
-        ? `“${post.title}” — launching a thread to test it with your people. (Seam 4: create thread → /thread/:id.)`
-        : `A new post for ${monthShort} ${day}, pre-tested on your people. (Seam 4: create thread → /thread/:id.)`,
-    });
+  // Tap "See the room" → open the actual AmbientRoom on the post's REAL personas (Seam 1 → 2).
+  const openRoom = (contentId: string) => {
+    const idea = ideas.find((i) => i.contentId === contentId);
+    if (idea) {
+      setFocus({
+        cardId: idea.contentId,
+        title: idea.title,
+        kind: "Idea",
+        metric: "would watch",
+        personas: idea.personas,
+        conceptText: idea.title,
+      });
+    }
   };
-  const handlePillar = (p: Pillar) => {
-    toast({
-      variant: "default",
-      title: `Make for “${p.name}”`,
-      description: "Seeds a thread scoped to that pillar. (Seam 4.)",
-    });
+
+  // Seam 4 — the one handoff: launch a thread to develop/test the idea (mirrors /start).
+  const launchThread = (input: string) => {
+    setFocus(null);
+    router.push(buildThreadLaunchHref({ input, verb: "Make", run: true }));
   };
+
+  const handleMake = (day: number, post?: LivePlannedPost) => {
+    if (post) {
+      launchThread(post.title);
+    } else {
+      toast({
+        variant: "info",
+        title: `Make · ${monthShort} ${day}`,
+        description: "Launching a thread to make a new post, pre-tested on your people.",
+      });
+    }
+  };
+  const handlePillar = (p: Pillar) => launchThread(`an idea for my “${p.name}” pillar`);
 
   return (
     <div className="relative min-h-full text-foreground">
@@ -98,8 +145,11 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
               Calendar
             </h1>
             <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
-              {plannedCount > 0 ? `${plannedCount} planned this month` : "nothing planned this month"}
-              {" · pre-tested on your people"}
+              {warming
+                ? "testing today’s ideas on your people…"
+                : plannedCount > 0
+                  ? `${plannedCount} planned · pre-tested on your people`
+                  : "nothing planned this month"}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -136,11 +186,10 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
               plan={plan}
               selectedDay={selectedDay}
               onSelectDay={setSelectedDay}
-              pillarName={pillarName}
             />
             {!isBaseMonth && (
               <p className="mt-3 text-center font-mono text-[10px] text-foreground-muted">
-                Nothing planned for {label} yet — tap a day to add an idea.
+                Nothing planned for {label} yet — your pre-tested ideas slot into the current month.
               </p>
             )}
           </div>
@@ -153,9 +202,9 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
                   monthShort={monthShort}
                   day={railDay}
                   post={railPost}
-                  pillarName={pillarName}
                   onMake={handleMake}
                   onAdd={(d) => handleMake(d)}
+                  onOpenRoom={openRoom}
                 />
               ) : (
                 <div className="rounded-xl border border-dashed border-border p-4 text-center font-mono text-[10px] text-foreground-muted">
@@ -164,7 +213,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
               )}
             </div>
             <div className="rv-in" style={{ animationDelay: "0.18s" }}>
-              <ContentPillars pillars={base.pillars} onPillar={handlePillar} />
+              <ContentPillars pillars={pillars} onPillar={handlePillar} />
             </div>
           </aside>
         </div>
@@ -191,14 +240,28 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
                 monthShort={monthShort}
                 day={selectedDay}
                 post={selectedPost}
-                pillarName={pillarName}
                 onMake={handleMake}
                 onAdd={(d) => handleMake(d)}
+                onOpenRoom={openRoom}
               />
             </div>
           </div>
         </div>
       )}
+
+      {/* Tap a planned day's "See the room" → the actual AmbientRoom on its real personas. */}
+      <RoomDrawer
+        focus={focus}
+        onClose={() => setFocus(null)}
+        onDevelop={(f) => launchThread(f.title)}
+        onOpenFull={() =>
+          toast({
+            variant: "info",
+            title: "The full Room",
+            description: "Population swarm · rewrite loop · the whole cast — open in a thread.",
+          })
+        }
+      />
     </div>
   );
 }

@@ -13,7 +13,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { readToCardReaction } from '../read-to-card-reaction';
-import { MOCK_READS } from '../mock-room';
 import type { Read, Reaction, Tone } from '../types';
 
 function reaction(tone: Tone, verdict: string): Reaction {
@@ -80,9 +79,18 @@ describe('readToCardReaction — lead (real verbatim, tone-agreeing)', () => {
   });
 });
 
-describe('readToCardReaction — against a real contract Read', () => {
-  it('derives the card face from a MOCK_READS entry (the same shape the graft feeds)', () => {
-    const cr = readToCardReaction(MOCK_READS['idea-cancel']!);
+describe('readToCardReaction — against a full contract Read', () => {
+  it('derives the card face from a complete Read (the same shape the graft feeds)', () => {
+    const cr = readToCardReaction(
+      mkRead({
+        contentId: 'idea-cancel',
+        stop: 7,
+        reactions: [
+          reaction('loved', 'finally someone honest — saved it'),
+          reaction('bounced', 'cancelling? instant unfollow'),
+        ],
+      }),
+    );
     expect(cr.cardId).toBe('idea-cancel');
     expect(cr.stop).toBe(7);
     expect(cr.tone).toBe('loved'); // 7/10 → loved band
