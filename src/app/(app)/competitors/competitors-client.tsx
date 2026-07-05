@@ -91,42 +91,48 @@ export function CompetitorsClient({
 
   return (
     <div className="space-y-6">
-      {/* Page header with view toggle and compare link */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Competitors</h1>
-        <div className="flex items-center gap-3">
-          <AddCompetitorDialog
-            trigger={
-              <Button variant="primary" size="sm">
-                <Plus size={14} className="mr-1.5" />
-                Add Competitor
-              </Button>
-            }
-          />
-          {cards.length >= 2 && (
-            <Link
-              href="/competitors/compare"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-foreground border border-white/[0.06] hover:bg-white/[0.02] rounded-lg transition-colors"
+      {/* Control row — the hub tab bar already labels this "Competitors", so no redundant H1
+          here (mirrors the Feed body). Only shown when tracking someone; the empty state
+          carries its own Add CTA. Chrome parity with FeedToolbar → secondary buttons, no accent. */}
+      {cards.length > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-xs text-foreground-muted tabular-nums">
+            {cards.length} tracked
+          </span>
+          <div className="flex items-center gap-2">
+            <AddCompetitorDialog
+              trigger={
+                <Button variant="secondary" size="sm">
+                  <Plus size={14} className="mr-1.5" />
+                  Add Competitor
+                </Button>
+              }
+            />
+            {cards.length >= 2 && (
+              <Link
+                href="/competitors/compare"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-foreground-muted hover:text-foreground border border-white/[0.06] hover:bg-white/[0.02] rounded-lg transition-colors"
+              >
+                <ArrowLeftRight size={14} />
+                Compare
+              </Link>
+            )}
+            <Tabs
+              value={viewMode}
+              onValueChange={(v) => setViewMode(v as "grid" | "table")}
             >
-              <ArrowLeftRight size={14} />
-              Compare
-            </Link>
-          )}
-          <Tabs
-            value={viewMode}
-            onValueChange={(v) => setViewMode(v as "grid" | "table")}
-          >
-            <TabsList>
-              <TabsTrigger value="grid" size="sm">
-                Grid
-              </TabsTrigger>
-              <TabsTrigger value="table" size="sm">
-                Table
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+              <TabsList>
+                <TabsTrigger value="grid" size="sm">
+                  Grid
+                </TabsTrigger>
+                <TabsTrigger value="table" size="sm">
+                  Table
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content: empty state, card grid, or table */}
       {cards.length === 0 ? (
