@@ -14,12 +14,16 @@
  * when The Room ships (a graft, not a rebuild).
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
+import { buildLivePlan, planToWidgetDays, planToList } from "@/lib/surfaces/month-plan";
+import type { CurrentMonth } from "@/lib/calendar/current-month";
+import { monthLayout } from "@/lib/calendar/month-layout";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
@@ -46,66 +50,6 @@ import { RoomDrawer, type RoomFocus } from "./room-drawer";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/**
- * De-dupe concurrent warms of the SAME endpoint into ONE request. React StrictMode double-invokes
- * effects in dev (and a fast re-mount can too), which would otherwise fire the expensive generate/
- * sim pipeline twice; sharing the in-flight promise means both callers resolve to the same result
- * from a single run. Cleared when the request settles, so a genuine later visit re-warms.
- */
-const warmInFlight = new Map<string, Promise<Record<string, unknown>>>();
-function warmOnce(endpoint: string): Promise<Record<string, unknown>> {
-  let p = warmInFlight.get(endpoint);
-  if (!p) {
-    p = fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-    })
-      .then((r) => (r.ok ? (r.json() as Promise<Record<string, unknown>>) : Promise.reject(new Error("warm failed"))))
-      .finally(() => warmInFlight.delete(endpoint));
-    warmInFlight.set(endpoint, p);
-  }
-  return p;
-}
-
-/**
- * Lazy warm for a pre-tested section (Seams 1/2, owner cadence). A fresh server cache seeds
- * `initial` (→ ready immediately); a miss (`initial === null`) warms on the first visit of the
- * day — POST the refresh route, which gens/sims + persists + returns the cards. `enabled` gates it
- * off for first-run (no calibrated audience to test against). Honest degrade: any failure → [].
- */
-function useLazyWarm<T>(
-  initial: T[] | null,
-  endpoint: string,
-  responseKey: string,
-  enabled: boolean,
-): { items: T[]; status: "warming" | "ready" } {
-  const [items, setItems] = useState<T[]>(initial ?? []);
-  const [status, setStatus] = useState<"warming" | "ready">(
-    initial === null && enabled ? "warming" : "ready",
-  );
-
-  useEffect(() => {
-    if (!enabled || initial !== null) return;
-    let cancelled = false;
-    warmOnce(endpoint)
-      .then((json) => {
-        if (!cancelled) setItems((json[responseKey] as T[]) ?? []);
-      })
-      .catch(() => {
-        if (!cancelled) setItems([]); // honest empty state — never a fabricated card
-      })
-      .finally(() => {
-        if (!cancelled) setStatus("ready");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [enabled, initial, endpoint, responseKey]);
-
-  return { items, status };
-}
-
 export function StartPage({
   initialFirstRun = false,
   accountStats = null,
@@ -113,6 +57,7 @@ export function StartPage({
   initialSelectedAudienceId = null,
   initialOutliers = null,
   initialIdeas = null,
+  calendarMonth,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -125,6 +70,9 @@ export function StartPage({
   initialOutliers?: LiveOutlierCard[] | null;
   /** Real pre-tested daily ideas from a fresh cache (Seams 1/2); null = warm lazily on first visit. */
   initialIdeas?: LiveIdeaCard[] | null;
+  /** Server-resolved current month (SSR-safe) — the month widget + today's-plan project the real
+   *  ideas onto these days (buildLivePlan). Never read `new Date()` client-side (hydration). */
+  calendarMonth: CurrentMonth;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -147,6 +95,24 @@ export function StartPage({
     "ideas",
     !initialFirstRun,
   );
+
+  // Real "plan" (Seams 1/2): the SAME warmed daily-ideas, projected onto upcoming days as a
+  // suggested, pre-tested content plan — ONE source of truth feeding the month widget + today's
+  // plan (the /calendar workspace reads the same ideas cache, so all three agree). Reactions are
+  // real (personasToCardFace); the DAY is a labeled suggestion, never a fabricated reaction.
+  const plan = useMemo(
+    () => buildLivePlan(ideas, { today: calendarMonth.today, daysInMonth: calendarMonth.daysInMonth }),
+    [ideas, calendarMonth.today, calendarMonth.daysInMonth],
+  );
+  const monthLabel = useMemo(
+    () => monthLayout(calendarMonth.year, calendarMonth.monthIndex).label,
+    [calendarMonth.year, calendarMonth.monthIndex],
+  );
+  const widgetDays = useMemo(
+    () => planToWidgetDays(plan, calendarMonth.daysInMonth),
+    [plan, calendarMonth.daysInMonth],
+  );
+  const planList = useMemo(() => planToList(plan), [plan]);
 
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
@@ -311,9 +277,11 @@ export function StartPage({
               </div>
               <div className="rv-in" style={{ animationDelay: "0.26s" }}>
                 <MonthCalendar
-                  month={data.calendar.month}
-                  today={data.calendar.today}
-                  days={data.calendar.days}
+                  month={monthLabel}
+                  year={calendarMonth.year}
+                  monthIndex={calendarMonth.monthIndex}
+                  today={calendarMonth.today}
+                  days={widgetDays}
                   // The widget is the glance; the full month workspace lives at /calendar.
                   // Tapping a day deep-links there anchored on it (planned or empty).
                   onEmptyDay={(d) => router.push(`/calendar?day=${d}`)}
@@ -321,7 +289,13 @@ export function StartPage({
                 />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.3s" }}>
-                <TodaysPlan plan={data.plan} onOpen={openRoom} onAdd={() => seedComposer("")} />
+                <TodaysPlan
+                  plan={planList}
+                  year={calendarMonth.year}
+                  monthIndex={calendarMonth.monthIndex}
+                  onOpen={openRoom}
+                  onAdd={() => seedComposer("")}
+                />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.34s" }}>
                 <QuickActions actions={data.quickActions} onAction={handleQuickAction} />

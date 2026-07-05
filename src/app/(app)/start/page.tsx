@@ -8,6 +8,7 @@ import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import { currentMonth } from "@/lib/calendar/current-month";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -102,6 +103,9 @@ export default async function StartRoute({
       initialSelectedAudienceId={initialSelectedAudienceId}
       initialOutliers={initialOutliers}
       initialIdeas={initialIdeas}
+      // Server-resolved "today" month (SSR-safe) — the month widget + today's-plan project the
+      // real ideas onto these days. Never read the clock client-side (hydration mismatch).
+      calendarMonth={currentMonth()}
     />
   );
 }

@@ -2,16 +2,16 @@
 
 /**
  * MonthGrid — the /calendar workspace hero: a full Mon-first month grid where each
- * planned day shows its post (title + pillar tag + Directional tone-dot) and empty
- * days offer an add affordance. Compact on mobile (day + dot → tap opens the day
- * sheet); expands to content-bearing cells on `lg`. Shares `monthLayout` + `toneDot`
- * with the glanceable /start widget so both read as the same object.
+ * planned day shows its post (title + format tag + tone-dot) and empty days offer an
+ * add affordance. Compact on mobile (day + dot → tap opens the day sheet); expands to
+ * content-bearing cells on `lg`. Shares `monthLayout` + `toneDot` with the glanceable
+ * /start widget so both read as the same object.
  *
- * Honesty spine: the tone-dot is a DIRECTIONAL forecast (a reserved ambient slot),
- * never a fabricated live reaction on an unposted draft.
+ * Honesty spine: the tone-dot is the REAL pre-tested reaction (personasToCardFace over
+ * the idea's Flash personas) projected onto a suggested day — never a fabricated reaction.
  */
 
-import type { PlannedPost } from "@/lib/room-contract/mock-room";
+import type { LivePlannedPost } from "@/lib/surfaces/month-plan";
 import { monthLayout, WEEKDAY_HEADS } from "@/lib/calendar/month-layout";
 import { toneDot } from "@/components/surfaces/tone";
 import { cn } from "@/lib/utils";
@@ -24,16 +24,14 @@ export function MonthGrid({
   plan,
   selectedDay,
   onSelectDay,
-  pillarName,
 }: {
   year: number;
   monthIndex: number;
   monthShort: string; // "July" — for aria labels
   todayDay: number | null; // null when the viewed month isn't the "today" month
-  plan: Record<number, PlannedPost>;
+  plan: Record<number, LivePlannedPost>;
   selectedDay: number | null;
   onSelectDay: (day: number) => void;
-  pillarName: (pillarId: string) => string;
 }) {
   const { daysInMonth, lead, trail } = monthLayout(year, monthIndex);
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
@@ -101,7 +99,7 @@ export function MonthGrid({
                   <span
                     aria-hidden
                     className="size-[6px] shrink-0 rounded-full lg:hidden"
-                    style={{ background: toneDot[post!.tone] }}
+                    style={{ background: toneDot[post!.face.tone] }}
                   />
                 )}
               </span>
@@ -113,14 +111,14 @@ export function MonthGrid({
                     <span
                       aria-hidden
                       className="mt-[5px] size-[6px] shrink-0 rounded-full"
-                      style={{ background: toneDot[post!.tone] }}
+                      style={{ background: toneDot[post!.face.tone] }}
                     />
                     <span className="line-clamp-2 text-[11px] leading-[1.25] text-foreground">
                       {post!.title}
                     </span>
                   </span>
                   <span className="mt-auto w-fit max-w-full truncate font-mono text-[8px] uppercase tracking-[0.04em] text-foreground-muted/75">
-                    {pillarName(post!.pillarId)}
+                    {post!.type} · {post!.face.stop}/10
                   </span>
                 </span>
               )}
@@ -161,7 +159,7 @@ export function MonthGrid({
           <span className="size-1.5 rounded-full" style={{ background: toneDot.neutral }} />
           neutral
         </span>
-        <span className="text-foreground-muted/70">· Directional forecast</span>
+        <span className="text-foreground-muted/70">· pre-tested on your people</span>
       </div>
     </div>
   );

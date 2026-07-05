@@ -1,34 +1,34 @@
 "use client";
 
 /**
- * DayDetail — the selected day's plan. Rendered inline in the desktop right rail and
- * inside the mobile bottom sheet (same card, both breakpoints). Shows the planned
- * post, its pillar, and the DIRECTIONAL forecast (labeled as such — a reserved
- * ambient slot, NEVER a claimed live reaction), plus the one Seam-4 "Make" handoff.
- * Empty days offer an honest "add an idea," never a fabricated plan.
+ * DayDetail — the selected day's plan. Rendered inline in the desktop right rail and inside the
+ * mobile bottom sheet (same card, both breakpoints). Shows the planned post, its format, and the
+ * REAL pre-tested reaction — tone + N/10 would stop + one real reaction verbatim (from the idea's
+ * Flash personas, personasToCardFace). "See the room" opens the actual AmbientRoom on those
+ * personas; "Make for this day" is the Seam-4 handoff. Empty days offer an honest "add an idea".
+ *
+ * Honesty upgrade: the day's score is a REAL reaction ("pre-tested on your people"), not the old
+ * "Directional forecast — not yet tested" — because the idea IS simmed against the audience.
  */
 
-import type { PlannedPost } from "@/lib/room-contract/mock-room";
-import { getReadByCardId } from "@/lib/room-contract/mock-room";
+import type { LivePlannedPost } from "@/lib/surfaces/month-plan";
 import { toneDot, toneLabel } from "@/components/surfaces/tone";
 
 export function DayDetail({
   monthShort,
   day,
   post,
-  pillarName,
   onMake,
   onAdd,
+  onOpenRoom,
 }: {
   monthShort: string; // "July"
   day: number;
-  post?: PlannedPost;
-  pillarName: (pillarId: string) => string;
-  onMake: (day: number, post: PlannedPost) => void;
+  post?: LivePlannedPost;
+  onMake: (day: number, post: LivePlannedPost) => void;
   onAdd: (day: number) => void;
+  onOpenRoom: (contentId: string) => void;
 }) {
-  const read = post?.cardId ? getReadByCardId(post.cardId) : undefined;
-
   return (
     <div className="elev-rest rounded-xl border border-border bg-surface p-3.5">
       <div className="mb-3">
@@ -45,39 +45,45 @@ export function DayDetail({
           <p className="text-[13px] leading-[1.4] text-foreground">{post.title}</p>
           <div className="mt-2">
             <span className="inline-flex rounded-[4px] border border-border px-1.5 py-px font-mono text-[9px] uppercase tracking-[0.04em] text-foreground-muted">
-              {pillarName(post.pillarId)}
+              {post.type}
             </span>
           </div>
 
-          {/* Directional forecast — labeled, honest; never a live reaction */}
+          {/* Real reaction — pre-tested on the user's people (never a fabricated forecast). */}
           <div className="mt-3 rounded-lg border border-border bg-[color:var(--color-surface-thread)] p-2.5">
             <div className="flex items-center gap-2">
               <span
                 aria-hidden
                 className="size-2 shrink-0 rounded-full"
-                style={{ background: toneDot[post.tone] }}
+                style={{ background: toneDot[post.face.tone] }}
               />
-              <span className="text-[12px] font-semibold text-foreground">{toneLabel[post.tone]}</span>
+              <span className="text-[12px] font-semibold text-foreground">{toneLabel[post.face.tone]}</span>
               <span className="ml-auto font-mono text-[11px] tabular-nums text-foreground-secondary">
-                pred {post.predicted}/10
+                {post.face.stop}/10 would stop
               </span>
             </div>
             <p className="mt-1.5 font-mono text-[9px] leading-[1.5] text-foreground-muted">
-              Directional forecast — from your room’s patterns, not yet tested. Make it to get the
-              real Read.
+              Pre-tested on your people — {post.face.fraction}. Tap in to hear them.
             </p>
           </div>
 
-          {read && (
+          {post.face.lead && (
             <p className="mt-2.5 text-[11px] leading-[1.5] text-foreground-secondary">
-              <b className="font-semibold text-foreground">Known note:</b> {read.fix}
+              <b className="font-semibold text-foreground">One of them:</b> “{post.face.lead}”
             </p>
           )}
 
           <button
             type="button"
+            onClick={() => onOpenRoom(post.contentId)}
+            className="mt-3 w-full rounded-[10px] border border-border px-3 py-[10px] text-center text-[12.5px] text-foreground transition-colors hover:border-border-hover hover:bg-[color:var(--color-surface-thread)]"
+          >
+            See the room →
+          </button>
+          <button
+            type="button"
             onClick={() => onMake(day, post)}
-            className="mt-3 w-full rounded-[10px] bg-[color:var(--color-action)] px-3 py-[11px] text-center text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+            className="mt-2 w-full rounded-[10px] bg-[color:var(--color-action)] px-3 py-[11px] text-center text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
           >
             Make for this day →
           </button>

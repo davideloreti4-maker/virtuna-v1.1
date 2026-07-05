@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
-import { getMockCalendar } from "@/lib/room-contract/mock-room";
+import { MOCK_PILLARS } from "@/lib/room-contract/mock-room";
 import { generateReferralCode } from "@/lib/referral/code-generator";
 import { getUserTier } from "@/lib/whop/subscription";
 import { hasAccessToTier } from "@/lib/whop/config";
@@ -46,7 +46,7 @@ export default async function GrowRoute({
   } catch {
     snapshots = [];
   }
-  const pillars = getMockCalendar().pillars;
+  const pillars = MOCK_PILLARS;
 
   // Referrals tab — Pro-gated; only fetch the code + stats when the user is eligible.
   const tier = await getUserTier();
