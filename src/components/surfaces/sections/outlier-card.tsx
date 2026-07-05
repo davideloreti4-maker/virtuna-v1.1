@@ -1,46 +1,50 @@
 "use client";
 
 /**
- * OutlierCard — a feed outlier scored for YOUR people. Video preview (handle · caption ·
- * ↗mult · 👁views), the inline CardReaction, and a Remix action that launches a thread
- * (Seam 4). Tapping the card body opens the Room; Remix stops propagation.
+ * OutlierCard — a feed outlier simmed for YOUR people (Seams 1/2, now REAL).
+ *
+ * Video preview (handle · caption · ↗mult · 👁views — real scraped_videos data), the inline
+ * CardReaction DERIVED from the card's real Flash personas (`personasToCardFace` — honest,
+ * never fabricated), and a Remix action that launches a thread (Seam 4). Tapping the card body
+ * opens the Room anchored on this outlier (its real personas); Remix stops propagation.
  */
 
-import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
+import { useMemo } from "react";
+import type { LiveOutlierCard } from "@/lib/surfaces/live-cards";
+import { personasToCardFace } from "@/lib/surfaces/live-cards";
+import type { CardReaction as CardReactionData } from "@/lib/room-contract/types";
 import { CardReaction } from "../card-reaction";
 import { SurfaceIcon } from "../icons";
-import { cn } from "@/lib/utils";
 
 export function OutlierCard({
   outlier,
   onOpen,
   onRemix,
 }: {
-  outlier: OutlierCardData;
+  outlier: LiveOutlierCard;
   onOpen: (cardId: string) => void;
-  onRemix: (outlier: OutlierCardData) => void;
+  onRemix: (outlier: LiveOutlierCard) => void;
 }) {
+  // The glance-tier face — derived from the REAL per-audience personas (honesty spine).
+  const reaction = useMemo<CardReactionData>(() => {
+    const face = personasToCardFace(outlier.personas);
+    return { cardId: outlier.contentId, tone: face.tone, stop: face.stop, lead: face.lead };
+  }, [outlier.personas, outlier.contentId]);
+
   return (
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onOpen(outlier.cardId)}
+      onClick={() => onOpen(outlier.contentId)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpen(outlier.cardId);
+          onOpen(outlier.contentId);
         }
       }}
       className="elev-lift group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-[#1c1b19] hover:border-border-hover"
     >
-      <div
-        className={cn(
-          "relative flex h-[238px] flex-col",
-          outlier.light
-            ? "bg-[linear-gradient(165deg,#54524b,#20303f)]"
-            : "bg-[linear-gradient(165deg,#312f2b,#181715)]",
-        )}
-      >
+      <div className="relative flex h-[238px] flex-col bg-[linear-gradient(165deg,#312f2b,#181715)]">
         <div className="flex items-center gap-2 p-[11px]">
           <span className="size-[26px] shrink-0 rounded-full border border-white/20 bg-[linear-gradient(135deg,#6a8f7a,#3a4a58)]" />
           <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-white">
@@ -64,7 +68,7 @@ export function OutlierCard({
         </div>
       </div>
       <div className="p-[11px]">
-        <CardReaction reaction={outlier.reaction} metric={outlier.metric} hideOpen />
+        <CardReaction reaction={reaction} metric="for your people" hideOpen />
         <button
           type="button"
           onClick={(e) => {

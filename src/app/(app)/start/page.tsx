@@ -6,6 +6,8 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
+import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
+import type { LiveOutlierCard } from "@/lib/surfaces/live-cards";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -79,12 +81,26 @@ export default async function StartRoute({
     }
   }
 
+  // Pre-tested outliers (Seams 1/2): serve a FRESH cached batch for the active audience so the
+  // page renders them instantly. A miss (or a stale/first-of-the-day cache) leaves this null →
+  // StartPage warms it lazily via POST /api/surfaces/outliers. Skipped for first-run (no audience).
+  let initialOutliers: LiveOutlierCard[] | null = null;
+  if (!initialFirstRun) {
+    initialOutliers = await getFreshSurfaceCards<LiveOutlierCard>(
+      supabase,
+      user.id,
+      audienceKeyOf(activeAudience),
+      "outlier",
+    );
+  }
+
   return (
     <StartPage
       initialFirstRun={initialFirstRun}
       accountStats={accountStats}
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
+      initialOutliers={initialOutliers}
     />
   );
 }
