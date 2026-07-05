@@ -8,7 +8,7 @@
  *  - the TrustBadge reads Validated for a mode='socials' audience and Directional for
  *    a mode='general' one — derived strictly from `resolveTier` (T-03-11 never-mis-badge);
  *  - a grounded persona (non-empty `evidence`) shows its quote inline on the card;
- *  - an evidence-free card renders the muted "no evidence — Directional" affordance and
+ *  - an evidence-free card renders the muted "personas modeled · receipts pending" affordance and
  *    NOT an evidence quote;
  *  - a mode='general' authored template shows its "Authored template — Directional"
  *    provenance subline (POP-04), not the generic ungrounded line.
@@ -140,7 +140,7 @@ describe("AudienceCard surfaces persona provenance honestly (D-05 / TRUST-02)", 
     render(<AudienceCard audience={grounded} />);
     expect(screen.getByText(EVIDENCE_QUOTE)).toBeInTheDocument();
     // The muted ungrounded affordance is NOT shown when a persona is grounded.
-    expect(screen.queryByText("no evidence — Directional")).toBeNull();
+    expect(screen.queryByText("personas modeled · receipts pending")).toBeNull();
   });
 
   it("an evidence-free card shows the muted ungrounded affordance and NO quote", () => {
@@ -150,7 +150,7 @@ describe("AudienceCard surfaces persona provenance honestly (D-05 / TRUST-02)", 
       personas: [calibratedPersona()],
     });
     render(<AudienceCard audience={ungrounded} />);
-    expect(screen.getByText("no evidence — Directional")).toBeInTheDocument();
+    expect(screen.getByText("personas modeled · receipts pending")).toBeInTheDocument();
     expect(screen.queryByText(EVIDENCE_QUOTE)).toBeNull();
   });
 
@@ -164,7 +164,7 @@ describe("AudienceCard surfaces persona provenance honestly (D-05 / TRUST-02)", 
     render(<AudienceCard audience={template} />);
     expect(screen.getByText("Authored template — Directional")).toBeInTheDocument();
     // The general-template provenance line replaces the generic ungrounded line.
-    expect(screen.queryByText("no evidence — Directional")).toBeNull();
+    expect(screen.queryByText("personas modeled · receipts pending")).toBeNull();
   });
 
   it("a mode='general' template never shows a confident 'Calibrated' status chip (WR-01)", () => {

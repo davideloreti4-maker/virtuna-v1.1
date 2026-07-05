@@ -16,7 +16,6 @@ import { AudienceCard } from "./audience-card";
 import { groupAudiences } from "./audience-display";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -277,10 +276,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
   };
 
   return (
-    <div
-      className={cn("relative min-h-full text-foreground", className)}
-      style={{ background: SURFACE_RADIAL_BG }}
-    >
+    <div className={cn("relative min-h-full text-foreground", className)}>
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">

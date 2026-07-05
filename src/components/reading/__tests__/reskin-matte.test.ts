@@ -219,6 +219,8 @@ describe('matte-lint (Hybrid depth) — matte drop-shadows allowed, glow halos b
 const HYBRID_DEPTH_SURFACES = [
   'components/audience/audience-card.tsx',
   'components/audience/audience-manager.tsx',
+  'components/audience/audience-constellation-thumb.tsx',
+  'components/audience/audience-profile-view.tsx',
   'components/surfaces/start-page.tsx',
   'components/surfaces/surface-canvas.ts',
   'components/saved/saved-shelf.tsx',

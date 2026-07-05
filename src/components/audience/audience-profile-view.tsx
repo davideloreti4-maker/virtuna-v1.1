@@ -171,13 +171,15 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
     signature?.provenance.handle ?? audience.calibration?.handle;
 
   return (
-    <div className={cn("flex flex-col gap-6", className)}>
+    // Matte resting depth on each ReadingSection card (targets `section > div` — the
+    // READING_CARD — so the shared component itself is untouched). No glow, no coral.
+    <div className={cn("flex flex-col gap-6 [&_section>div]:shadow-[var(--shadow-rest)]", className)}>
       <ReadingSection label="Audience map">
         {personaNodes.length > 0 ? (
-          <div className="px-4 py-4">
+          <div className="px-4 py-3">
             <PersonaGraph
               personas={personaNodes}
-              height={220}
+              height={184}
               reducedMotion={reducedMotion}
             />
           </div>
