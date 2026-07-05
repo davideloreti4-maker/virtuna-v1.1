@@ -17,15 +17,14 @@ import {
 } from "@/components/audience/audience-display";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "@phosphor-icons/react";
 
-/** Full-bleed radial surface shell — matches /start · /audience · /grow. */
+/** Matte surface shell — the radial top-glow was retired in the premium-elevation pass. */
 function ProfileShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative min-h-full text-foreground" style={{ background: SURFACE_RADIAL_BG }}>
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-4xl px-4 pb-24 pt-6 sm:px-6">{children}</div>
     </div>
   );

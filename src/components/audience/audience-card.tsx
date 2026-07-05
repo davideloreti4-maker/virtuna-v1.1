@@ -76,9 +76,13 @@ export function AudienceCard({
     <div
       className={cn(
         READING_CARD,
-        "group relative flex items-start gap-4 p-4 transition-colors pointer-coarse:min-h-[88px]",
-        isNavigable && "cursor-pointer hover:bg-white/[0.02]",
-        selectionMode && isSelected && "bg-white/[0.04]",
+        "group relative flex items-start gap-4 p-4 pointer-coarse:min-h-[88px]",
+        // Matte depth (folds the approved seed): a resting floor on every card; navigable
+        // cards additionally lift + brighten on hover and settle on press (.elev-lift).
+        isNavigable
+          ? "elev-lift cursor-pointer hover:border-white/[0.10] hover:bg-white/[0.03]"
+          : "elev-rest",
+        selectionMode && isSelected && "border-white/[0.14] bg-white/[0.05]",
         className,
       )}
       onClick={handleClick}
@@ -156,8 +160,11 @@ export function AudienceCard({
             {templateProvenance}
           </p>
         ) : (
-          <p className="mt-2 text-[11px] text-foreground-muted/80 italic truncate">
-            no evidence — Directional
+          // Evidence state — NOT a tier. The top badge already carries the model tier
+          // (Validated/Directional); this line describes THIS audience's persona receipts,
+          // so it must not re-use the tier word (that read as "Validated … Directional").
+          <p className="mt-2 text-[11px] text-foreground-muted/80 truncate">
+            personas modeled · receipts pending
           </p>
         )}
       </div>
