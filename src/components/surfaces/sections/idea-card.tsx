@@ -10,7 +10,10 @@
  * the outliers below (real videos) keep the cover-forward treatment. Depth via .elev-lift.
  */
 
-import type { IdeaCard as IdeaCardData } from "@/lib/room-contract/mock-room";
+import { useMemo } from "react";
+import type { LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import { personasToCardFace } from "@/lib/surfaces/live-cards";
+import type { CardReaction as CardReactionData } from "@/lib/room-contract/types";
 import { CardReaction } from "../card-reaction";
 import { SurfaceIcon } from "../icons";
 import { cn } from "@/lib/utils";
@@ -20,14 +23,20 @@ export function IdeaCard({
   focused,
   onOpen,
 }: {
-  idea: IdeaCardData;
+  idea: LiveIdeaCard;
   focused?: boolean;
   onOpen: (cardId: string) => void;
 }) {
+  // The glance-tier face — derived from the REAL per-audience personas (honesty spine).
+  const reaction = useMemo<CardReactionData>(() => {
+    const face = personasToCardFace(idea.personas);
+    return { cardId: idea.contentId, tone: face.tone, stop: face.stop, lead: face.lead };
+  }, [idea.personas, idea.contentId]);
+
   return (
     <button
       type="button"
-      onClick={() => onOpen(idea.cardId)}
+      onClick={() => onOpen(idea.contentId)}
       className={cn(
         "elev-lift group w-full rounded-xl border border-border bg-surface-elevated p-3.5 text-left",
         "hover:border-border-hover hover:bg-white/[0.02]",
@@ -46,7 +55,7 @@ export function IdeaCard({
       </div>
       <div className="text-[14px] font-medium leading-[1.42] text-foreground">{idea.title}</div>
       <div className="mt-3 border-t border-border pt-[11px]">
-        <CardReaction reaction={idea.reaction} metric={idea.metric} />
+        <CardReaction reaction={reaction} metric="would watch" />
       </div>
     </button>
   );

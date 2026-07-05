@@ -7,7 +7,7 @@ import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo"
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
-import type { LiveOutlierCard } from "@/lib/surfaces/live-cards";
+import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -81,17 +81,17 @@ export default async function StartRoute({
     }
   }
 
-  // Pre-tested outliers (Seams 1/2): serve a FRESH cached batch for the active audience so the
-  // page renders them instantly. A miss (or a stale/first-of-the-day cache) leaves this null →
-  // StartPage warms it lazily via POST /api/surfaces/outliers. Skipped for first-run (no audience).
+  // Pre-tested cards (Seams 1/2): serve a FRESH cached batch for the active audience so the page
+  // renders instantly. A miss (or a stale/first-of-the-day cache) leaves these null → StartPage
+  // warms each lazily via POST /api/surfaces/{outliers,ideas}. Skipped for first-run (no audience).
+  const audienceKey = audienceKeyOf(activeAudience);
   let initialOutliers: LiveOutlierCard[] | null = null;
+  let initialIdeas: LiveIdeaCard[] | null = null;
   if (!initialFirstRun) {
-    initialOutliers = await getFreshSurfaceCards<LiveOutlierCard>(
-      supabase,
-      user.id,
-      audienceKeyOf(activeAudience),
-      "outlier",
-    );
+    [initialOutliers, initialIdeas] = await Promise.all([
+      getFreshSurfaceCards<LiveOutlierCard>(supabase, user.id, audienceKey, "outlier"),
+      getFreshSurfaceCards<LiveIdeaCard>(supabase, user.id, audienceKey, "idea"),
+    ]);
   }
 
   return (
@@ -101,6 +101,7 @@ export default async function StartRoute({
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
       initialOutliers={initialOutliers}
+      initialIdeas={initialIdeas}
     />
   );
 }

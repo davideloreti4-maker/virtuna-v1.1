@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
-import type { LiveOutlierCard } from "@/lib/surfaces/live-cards";
+import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
@@ -28,7 +28,7 @@ import { Greeting } from "./sections/greeting";
 import { GreetingRings } from "./sections/greeting-rings";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
-import { Outliers, type OutliersStatus } from "./sections/outliers";
+import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
 import { ContentPillars } from "./sections/content-pillars";
 import { TodaysPlan } from "./sections/todays-plan";
@@ -46,12 +46,73 @@ import { RoomDrawer, type RoomFocus } from "./room-drawer";
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+/**
+ * De-dupe concurrent warms of the SAME endpoint into ONE request. React StrictMode double-invokes
+ * effects in dev (and a fast re-mount can too), which would otherwise fire the expensive generate/
+ * sim pipeline twice; sharing the in-flight promise means both callers resolve to the same result
+ * from a single run. Cleared when the request settles, so a genuine later visit re-warms.
+ */
+const warmInFlight = new Map<string, Promise<Record<string, unknown>>>();
+function warmOnce(endpoint: string): Promise<Record<string, unknown>> {
+  let p = warmInFlight.get(endpoint);
+  if (!p) {
+    p = fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    })
+      .then((r) => (r.ok ? (r.json() as Promise<Record<string, unknown>>) : Promise.reject(new Error("warm failed"))))
+      .finally(() => warmInFlight.delete(endpoint));
+    warmInFlight.set(endpoint, p);
+  }
+  return p;
+}
+
+/**
+ * Lazy warm for a pre-tested section (Seams 1/2, owner cadence). A fresh server cache seeds
+ * `initial` (→ ready immediately); a miss (`initial === null`) warms on the first visit of the
+ * day — POST the refresh route, which gens/sims + persists + returns the cards. `enabled` gates it
+ * off for first-run (no calibrated audience to test against). Honest degrade: any failure → [].
+ */
+function useLazyWarm<T>(
+  initial: T[] | null,
+  endpoint: string,
+  responseKey: string,
+  enabled: boolean,
+): { items: T[]; status: "warming" | "ready" } {
+  const [items, setItems] = useState<T[]>(initial ?? []);
+  const [status, setStatus] = useState<"warming" | "ready">(
+    initial === null && enabled ? "warming" : "ready",
+  );
+
+  useEffect(() => {
+    if (!enabled || initial !== null) return;
+    let cancelled = false;
+    warmOnce(endpoint)
+      .then((json) => {
+        if (!cancelled) setItems((json[responseKey] as T[]) ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]); // honest empty state — never a fabricated card
+      })
+      .finally(() => {
+        if (!cancelled) setStatus("ready");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, initial, endpoint, responseKey]);
+
+  return { items, status };
+}
+
 export function StartPage({
   initialFirstRun = false,
   accountStats = null,
   audiences = [],
   initialSelectedAudienceId = null,
   initialOutliers = null,
+  initialIdeas = null,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -62,6 +123,8 @@ export function StartPage({
   initialSelectedAudienceId?: string | null;
   /** Real pre-tested outliers from a fresh cache (Seams 1/2); null = warm lazily on first visit. */
   initialOutliers?: LiveOutlierCard[] | null;
+  /** Real pre-tested daily ideas from a fresh cache (Seams 1/2); null = warm lazily on first visit. */
+  initialIdeas?: LiveIdeaCard[] | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -69,39 +132,21 @@ export function StartPage({
 
   const [firstRun, setFirstRun] = useState(initialFirstRun);
 
-  // Real outliers (Seams 1/2). A fresh server cache seeds them ready; a miss warms lazily on the
-  // first visit of the day (owner cadence) — the client sims + persists via the refresh route.
-  const [outliers, setOutliers] = useState<LiveOutlierCard[]>(initialOutliers ?? []);
-  const [outliersStatus, setOutliersStatus] = useState<OutliersStatus>(
-    initialOutliers === null ? "warming" : "ready",
+  // Real pre-tested cards (Seams 1/2). A fresh server cache seeds each section ready; a miss warms
+  // lazily on the first visit of the day (owner cadence) — the client gens/sims + persists via the
+  // refresh route. Gated off for first-run (no calibrated audience to test against).
+  const { items: outliers, status: outliersStatus } = useLazyWarm<LiveOutlierCard>(
+    initialOutliers,
+    "/api/surfaces/outliers",
+    "outliers",
+    !initialFirstRun,
   );
-
-  useEffect(() => {
-    // Only warm for a real (non-first-run) user whose cache missed. First-run has no calibrated
-    // audience to test against, and a fresh cache needs no warming.
-    if (initialFirstRun || initialOutliers !== null) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/surfaces/outliers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: "{}",
-        });
-        if (!res.ok) throw new Error("warm failed");
-        const json = (await res.json()) as { outliers?: LiveOutlierCard[] };
-        if (!cancelled) setOutliers(json.outliers ?? []);
-      } catch {
-        // Honest degrade: an empty set → the section's "no outliers yet" state (never fabricated).
-        if (!cancelled) setOutliers([]);
-      } finally {
-        if (!cancelled) setOutliersStatus("ready");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialFirstRun, initialOutliers]);
+  const { items: ideas, status: ideasStatus } = useLazyWarm<LiveIdeaCard>(
+    initialIdeas,
+    "/api/surfaces/ideas",
+    "ideas",
+    !initialFirstRun,
+  );
 
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
@@ -130,14 +175,23 @@ export function StartPage({
     }
   };
 
-  // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2). Ideas still
-  // carry a mock Read (their real-sim PR is next); outliers carry REAL personas → the actual Room.
+  // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2). Both ideas
+  // and outliers carry REAL Flash personas now → the actual Room (AmbientRoom).
   const roomFocusFor = (cardId: string): RoomFocus | null => {
-    const idea = data.ideas.find((i) => i.cardId === cardId);
-    if (idea) return { read: idea.read, title: idea.title, kind: "Idea", metric: idea.metric };
+    const idea = ideas.find((i) => i.contentId === cardId);
+    if (idea)
+      return {
+        cardId: idea.contentId,
+        title: idea.title,
+        kind: "Idea",
+        metric: "would watch",
+        personas: idea.personas,
+        conceptText: idea.title,
+      };
     const outlier = outliers.find((o) => o.contentId === cardId);
     if (outlier)
       return {
+        cardId: outlier.contentId,
         title: outlier.caption,
         kind: "Outlier",
         metric: "for your people",
@@ -227,8 +281,9 @@ export function StartPage({
                 style={{ animationDelay: "0.14s" }}
               >
                 <DailyIdeas
-                  ideas={data.ideas}
-                  focusedCardId={focus?.read?.contentId ?? null}
+                  ideas={ideas}
+                  status={ideasStatus}
+                  focusedCardId={focus?.cardId ?? null}
                   onOpen={openRoom}
                   onRefresh={() =>
                     toast({ variant: "default", title: "Refreshing ideas", description: "Re-scoring against your room…" })
@@ -312,11 +367,8 @@ export function StartPage({
           toast({
             variant: "info",
             title: "The full Room",
-            description: "Persona chat · population · rewrite — grafted from The Room at integration.",
+            description: "Population swarm · rewrite loop · the whole cast — open in a thread.",
           })
-        }
-        onAskPerson={(name) =>
-          toast({ variant: "default", title: `Ask ${name}`, description: "Persona chat lives in the full Room." })
         }
       />
 
