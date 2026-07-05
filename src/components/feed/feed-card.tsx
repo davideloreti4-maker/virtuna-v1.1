@@ -13,9 +13,14 @@
  * in-thread). The hover bar uses an @media(hover:hover) gate: hover-revealed on pointers,
  * always-visible on touch (so the actions never become unreachable). White-on-scrim over
  * photos is the house pattern; only the outlier pill carries semantic color — views +
- * engagement stay neutral matte (restrained vs Sandcastles' rainbow). Cover-less rows
- * (much of Trending) degrade to a clean film-icon panel, never a broken image.
+ * engagement stay neutral matte (restrained vs Sandcastles' rainbow).
+ *
+ * Cover-less rows (much of Trending) AND rows whose ephemeral CDN cover 403s at render
+ * (expired TikTok signatures) degrade to a designed caption POSTER — the caption on a cream
+ * serif card over a matte gradient (the /start OutlierCard idiom), never a broken/blank box.
+ * The poster carries the caption, so the body drops its caption line to avoid the echo.
  */
+import { useState } from "react";
 import {
   Check,
   Plus,
@@ -24,7 +29,6 @@ import {
   TrendUp,
   TrendDown,
   Play,
-  FilmStrip,
 } from "@phosphor-icons/react";
 import { SaveAffordance } from "@/components/thread/save-affordance";
 import type { FeedTile } from "@/lib/feed/feed-query";
@@ -86,7 +90,10 @@ export function FeedCard({
   trackPending,
   tracked,
 }: FeedCardProps) {
-  const hasCover = Boolean(tile.coverUrl);
+  // The cover is an ephemeral CDN URL (TikTok signatures expire → 403 at render). Track a
+  // load failure so a dead cover falls through to the designed poster, not a blank box.
+  const [coverFailed, setCoverFailed] = useState(false);
+  const showCover = Boolean(tile.coverUrl) && !coverFailed;
   const PlatformIcon = PLATFORM_ICON[tile.platform] ?? PLATFORM_ICON.tiktok!;
 
   // Hover bar: hover-revealed on pointer devices, always-on for touch (no unreachable actions).
@@ -94,23 +101,26 @@ export function FeedCard({
     "opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:group-focus-within:opacity-100";
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-background-elevated transition-colors hover:border-white/[0.12]">
+    <article className="elev-lift group flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-background-elevated hover:border-white/[0.12]">
       {/* Cover (div, not a link — the hover bar holds the interactive bits, no nested <a>). */}
       <div className="relative aspect-[9/16] overflow-hidden bg-white/[0.03]">
-        {hasCover ? (
+        {showCover ? (
           // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
           <img
             src={tile.coverUrl}
             alt=""
             loading="lazy"
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
+            onError={() => setCoverFailed(true)}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center">
-            <FilmStrip size={36} weight="thin" className="text-foreground-muted/60" />
+          // Designed poster — the caption on a cream serif card over a matte gradient
+          // (echoes /start's OutlierCard). Turns a missing/expired cover into an editorial
+          // tile instead of a broken image.
+          <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(160deg,#312f2b,#181715)] p-3">
+            <p className="line-clamp-5 rounded-md bg-[#f4f1ea] px-3 py-2.5 text-center font-serif text-[12px] font-semibold leading-[1.3] text-[#17150f]">
+              {tile.caption || "Untitled"}
+            </p>
           </div>
         )}
 
@@ -175,11 +185,14 @@ export function FeedCard({
         </div>
       </div>
 
-      {/* Body — title, handle + relative time, then the measured pill row. */}
+      {/* Body — title (only when the cover carries the image; the poster already shows the
+          caption), handle + relative time, then the measured pill row. */}
       <div className="flex flex-1 flex-col gap-2 p-3">
-        <p className="line-clamp-1 text-sm text-foreground" title={tile.caption || undefined}>
-          {tile.caption || "Untitled"}
-        </p>
+        {showCover && (
+          <p className="line-clamp-1 text-sm text-foreground" title={tile.caption || undefined}>
+            {tile.caption || "Untitled"}
+          </p>
+        )}
 
         <div className="flex items-center justify-between gap-2 text-xs text-foreground-muted">
           <span className="min-w-0 truncate">{tile.source}</span>
