@@ -174,6 +174,20 @@ export function FeedClient({ tab }: { tab: FeedTab }) {
     }
   }, []);
 
+  // Collapse the filter rail by default on mobile so the grid leads (the full rail otherwise
+  // buries the tiles below it). The toggle still opens it. Effect-only — not a lazy
+  // initializer — to avoid an SSR/client hydration mismatch, same as the saved-filter read
+  // above. Desktop (lg+) keeps the rail open.
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 1023px)").matches
+    ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setShowFilters(false);
+    }
+  }, []);
+
   const handleSaveFilter = useCallback(() => {
     try {
       localStorage.setItem(SAVED_FILTER_KEY, JSON.stringify(filters));

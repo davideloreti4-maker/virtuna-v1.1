@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import {
   formatCount,
@@ -40,8 +39,10 @@ interface CompetitorCardProps {
 /**
  * Competitor card displaying key stats, sparkline trend, and growth velocity.
  *
- * Composes Card, Avatar, Badge, CompetitorSparkline, and GrowthDelta components.
- * Handles missing data gracefully with "--" fallbacks.
+ * Hybrid-elevation matte tile (2026-07-05): shares the sibling FeedCard shell so the
+ * Competitors grid sits flush beside the Feed grid — a resting floor that lifts on hover
+ * (.elev-lift), 6% hairline that brightens to 12% on hover, matte elevated surface. No
+ * glass / glow / coral (near-zero accent). Handles missing data with "--" fallbacks.
  */
 export function CompetitorCard({ data }: CompetitorCardProps) {
   const velocity = computeGrowthVelocity(data.snapshots);
@@ -53,80 +54,79 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
   const fallbackInitials = data.tiktok_handle.slice(0, 2).toUpperCase();
 
   return (
-    <Link href={`/competitors/${data.tiktok_handle}`}>
-      <Card className="cursor-pointer group">
-        <CardContent className="p-4 relative">
-          {/* Remove button (visible on hover) */}
-          <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-            <RemoveCompetitorButton competitorId={data.id} handle={data.tiktok_handle} />
-          </div>
+    <Link
+      href={`/competitors/${data.tiktok_handle}`}
+      className="elev-lift group relative block overflow-hidden rounded-xl border border-white/[0.06] bg-background-elevated p-4 hover:border-white/[0.12]"
+    >
+      {/* Remove button (visible on hover) */}
+      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+        <RemoveCompetitorButton competitorId={data.id} handle={data.tiktok_handle} />
+      </div>
 
-          {/* Top row: Avatar + Handle */}
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar
-              src={data.avatar_url ?? undefined}
-              alt={data.tiktok_handle}
-              fallback={fallbackInitials}
-              size="md"
+      {/* Top row: Avatar + Handle */}
+      <div className="flex items-center gap-3 mb-4">
+        <Avatar
+          src={data.avatar_url ?? undefined}
+          alt={data.tiktok_handle}
+          fallback={fallbackInitials}
+          size="md"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-foreground truncate">
+            @{data.tiktok_handle}
+          </p>
+          {data.display_name && (
+            <p className="text-xs text-foreground-muted truncate">
+              {data.display_name}
+            </p>
+          )}
+          <StaleIndicator lastScrapedAt={data.last_scraped_at} />
+          {data.scrape_status === "failed" && (
+            <span className="text-[10px] text-error font-medium">Scrape failed</span>
+          )}
+        </div>
+      </div>
+
+      {/* Stats grid: 3 columns */}
+      <div className="grid grid-cols-3 gap-3 mb-4">
+        <div>
+          <p className="text-xs text-foreground-muted">Followers</p>
+          <p className="text-sm font-medium text-foreground">
+            {formatCount(data.follower_count)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-foreground-muted">Total Likes</p>
+          <p className="text-sm font-medium text-foreground">
+            {formatCount(data.heart_count)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-foreground-muted">Videos</p>
+          <p className="text-sm font-medium text-foreground">
+            {formatCount(data.video_count)}
+          </p>
+        </div>
+      </div>
+
+      {/* Bottom row: Growth delta + Sparkline + Engagement rate */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {velocity && (
+            <GrowthDelta
+              percentage={velocity.percentage}
+              direction={velocity.direction}
             />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground truncate">
-                @{data.tiktok_handle}
-              </p>
-              {data.display_name && (
-                <p className="text-xs text-foreground-muted truncate">
-                  {data.display_name}
-                </p>
-              )}
-              <StaleIndicator lastScrapedAt={data.last_scraped_at} />
-              {data.scrape_status === "failed" && (
-                <span className="text-[10px] text-error font-medium">Scrape failed</span>
-              )}
-            </div>
+          )}
+          <div>
+            <p className="text-xs text-foreground-muted">Eng. Rate</p>
+            <p className="text-sm font-medium text-foreground">
+              {engagementRate !== null ? `${engagementRate}%` : "--"}
+            </p>
           </div>
-
-          {/* Stats grid: 3 columns */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
-            <div>
-              <p className="text-xs text-foreground-muted">Followers</p>
-              <p className="text-sm font-medium text-foreground">
-                {formatCount(data.follower_count)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-foreground-muted">Total Likes</p>
-              <p className="text-sm font-medium text-foreground">
-                {formatCount(data.heart_count)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-foreground-muted">Videos</p>
-              <p className="text-sm font-medium text-foreground">
-                {formatCount(data.video_count)}
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom row: Growth delta + Sparkline + Engagement rate */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {velocity && (
-                <GrowthDelta
-                  percentage={velocity.percentage}
-                  direction={velocity.direction}
-                />
-              )}
-              <div>
-                <p className="text-xs text-foreground-muted">Eng. Rate</p>
-                <p className="text-sm font-medium text-foreground">
-                  {engagementRate !== null ? `${engagementRate}%` : "--"}
-                </p>
-              </div>
-            </div>
-            <CompetitorSparkline data={sparklineData} />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <CompetitorSparkline data={sparklineData} />
+      </div>
     </Link>
   );
 }

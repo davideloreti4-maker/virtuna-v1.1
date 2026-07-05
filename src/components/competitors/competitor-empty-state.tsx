@@ -18,7 +18,7 @@ export function CompetitorEmptyState() {
   const dots = useMemo(() => buildLoadingDots(120, 32, 8), []);
 
   return (
-    <div className="flex min-h-[360px] flex-col items-center justify-center gap-5 rounded-[var(--radius-lg)] border border-white/[0.06] px-6 py-16 text-center">
+    <div className="elev-rest flex min-h-[360px] flex-col items-center justify-center gap-5 rounded-[var(--radius-lg)] border border-white/[0.06] bg-background-elevated px-6 py-16 text-center">
       <Constellation
         dots={dots}
         reducedMotion={reducedMotion}

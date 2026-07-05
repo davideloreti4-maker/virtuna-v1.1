@@ -118,7 +118,7 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
   }
 
   return (
-    <div className="relative">
+    <div className="relative elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-background-elevated">
     <div className="w-full overflow-x-auto">
       <table className="w-full text-sm min-w-[800px]">
         <thead>
@@ -250,8 +250,9 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
         </tbody>
       </table>
     </div>
-    {/* Mobile scroll hint */}
-    <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--color-background)] to-transparent pointer-events-none md:hidden" />
+    {/* Mobile scroll hint — fades from the panel surface (the leaderboard now sits on an
+        elevated matte panel, not the page background). */}
+    <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[var(--color-background-elevated)] to-transparent pointer-events-none md:hidden" />
     </div>
   );
 }
