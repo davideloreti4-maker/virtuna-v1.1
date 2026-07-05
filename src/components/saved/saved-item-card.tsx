@@ -240,10 +240,10 @@ function ProofChip({
           </span>
         )}
         {pct != null && (
-          <span className="relative h-[3px] flex-1 overflow-hidden rounded-full bg-white/[0.08]">
+          <span className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/[0.10]">
             <span
               className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${pct}%`, backgroundColor: "var(--color-foreground-secondary)" }}
+              style={{ width: `${pct}%`, backgroundColor: "var(--color-foreground)" }}
             />
           </span>
         )}
@@ -410,7 +410,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
 
   // ── Full echo card (default — masonry grid) ────────────────────────────────
   return (
-    <div className="group flex break-inside-avoid flex-col overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface transition-[border-color,transform] hover:-translate-y-0.5 hover:border-white/[0.10]">
+    <div className="elev-lift group flex break-inside-avoid flex-col overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-surface hover:border-white/[0.10]">
       {/* Cover banner (outlier) — the real scrape thumbnail (clockworks videoMeta.coverUrl).
           Additive: renders ONLY when coverUrl is present, so a pre-cover save degrades to the
           text-first echo. Capped height — a full 9:16 in a masonry column would tower; object-cover

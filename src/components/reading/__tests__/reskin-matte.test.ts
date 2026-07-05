@@ -224,6 +224,7 @@ const HYBRID_DEPTH_SURFACES = [
   'components/surfaces/start-page.tsx',
   'components/surfaces/surface-canvas.ts',
   'components/saved/saved-shelf.tsx',
+  'app/(app)/library/page.tsx',
   'components/calendar/calendar-workspace.tsx',
   'components/calendar/month-grid.tsx',
   'components/calendar/day-detail.tsx',
