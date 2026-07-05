@@ -39,7 +39,7 @@ export function MonthGrid({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className="rounded-xl border border-border bg-surface-elevated p-2 sm:p-3">
+    <div className="rounded-2xl bg-[#252320] p-2 sm:p-3 sm:pb-3.5">
       <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
         {WEEKDAY_HEADS.map((h) => (
           <div
@@ -80,8 +80,10 @@ export function MonthGrid({
               className={cn(
                 "group relative flex min-h-[46px] flex-col rounded-[10px] border p-1 text-left transition-colors lg:min-h-[104px] lg:p-1.5",
                 isSelected
-                  ? "border-border-hover bg-[color:var(--color-surface-thread)]"
-                  : "border-transparent hover:border-border hover:bg-[color:var(--color-surface-thread)]",
+                  ? "elev-rest border-border-hover bg-surface-elevated ring-1 ring-inset ring-white/[0.10]"
+                  : planned
+                    ? "elev-rest border-border bg-surface-elevated hover:border-border-hover"
+                    : "border-transparent hover:border-border hover:bg-[color:var(--color-surface-thread)]",
               )}
             >
               <span className="flex items-center gap-1">
@@ -117,7 +119,7 @@ export function MonthGrid({
                       {post!.title}
                     </span>
                   </span>
-                  <span className="mt-auto inline-flex w-fit rounded-[4px] border border-border px-1 py-px font-mono text-[8.5px] uppercase tracking-[0.04em] text-foreground-muted">
+                  <span className="mt-auto w-fit max-w-full truncate font-mono text-[8px] uppercase tracking-[0.04em] text-foreground-muted/75">
                     {pillarName(post!.pillarId)}
                   </span>
                 </span>
@@ -142,6 +144,24 @@ export function MonthGrid({
             {d}
           </div>
         ))}
+      </div>
+
+      {/* Tone legend — decodes the Directional dots + gives the grid a footer (mirrors the
+          /start month widget), so the hero doesn't end on a bare edge. */}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3.5 gap-y-1 border-t border-border/70 pt-3 font-mono text-[9px] text-foreground-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full" style={{ background: toneDot.loved }} />
+          predicted win
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full" style={{ background: toneDot.bounced }} />
+          risky
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="size-1.5 rounded-full" style={{ background: toneDot.neutral }} />
+          neutral
+        </span>
+        <span className="text-foreground-muted/70">· Directional forecast</span>
       </div>
     </div>
   );

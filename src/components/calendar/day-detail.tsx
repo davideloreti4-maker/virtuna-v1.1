@@ -30,7 +30,7 @@ export function DayDetail({
   const read = post?.cardId ? getReadByCardId(post.cardId) : undefined;
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-3.5">
+    <div className="elev-rest rounded-xl border border-border bg-surface p-3.5">
       <div className="mb-3">
         <div className="font-mono text-[10px] uppercase tracking-[0.08em] text-foreground-muted">
           {monthShort} {day}

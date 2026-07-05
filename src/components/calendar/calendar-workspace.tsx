@@ -13,7 +13,6 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { getMockCalendar } from "@/lib/room-contract/mock-room";
@@ -60,6 +59,12 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
   const plannedCount = Object.keys(plan).length;
   const selectedPost: PlannedPost | undefined = selectedDay != null ? plan[selectedDay] : undefined;
 
+  // The desktop rail defaults to today's plan so it's never an empty "select a day" card
+  // (and the rail stands ≈ as tall as the grid, closing the dead space). The MOBILE sheet
+  // stays keyed on `selectedDay` (explicit tap only) so it never auto-opens on load.
+  const railDay = selectedDay ?? todayDay;
+  const railPost: PlannedPost | undefined = railDay != null ? plan[railDay] : undefined;
+
   const goMonth = (delta: number) => {
     setMonthOffset((o) => o + delta);
     setSelectedDay(null);
@@ -84,10 +89,7 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
   };
 
   return (
-    <div
-      className="relative min-h-full text-foreground"
-      style={{ background: SURFACE_RADIAL_BG }}
-    >
+    <div className="relative min-h-full text-foreground">
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         {/* Header — title + planned density + month nav */}
         <header className="rv-in mb-4 flex items-center gap-3" style={{ animationDelay: "0.02s" }}>
@@ -146,18 +148,18 @@ export function CalendarWorkspace({ initialDay = null }: { initialDay?: number |
           {/* Right rail — day detail (desktop, inline) + pillar rail */}
           <aside className="mt-4 flex flex-col gap-3 lg:sticky lg:top-4 lg:mt-0">
             <div className="hidden lg:block rv-in" style={{ animationDelay: "0.14s" }}>
-              {selectedDay != null ? (
+              {railDay != null ? (
                 <DayDetail
                   monthShort={monthShort}
-                  day={selectedDay}
-                  post={selectedPost}
+                  day={railDay}
+                  post={railPost}
                   pillarName={pillarName}
                   onMake={handleMake}
                   onAdd={(d) => handleMake(d)}
                 />
               ) : (
                 <div className="rounded-xl border border-dashed border-border p-4 text-center font-mono text-[10px] text-foreground-muted">
-                  Select a day to see its plan.
+                  Pick a day to plan it.
                 </div>
               )}
             </div>
