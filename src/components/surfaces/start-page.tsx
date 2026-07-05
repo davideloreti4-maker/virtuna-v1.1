@@ -14,12 +14,12 @@
  * when The Room ships (a graft, not a rebuild).
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
-import type { OutlierCard as OutlierCardData } from "@/lib/room-contract/mock-room";
+import type { LiveOutlierCard } from "@/lib/surfaces/live-cards";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
@@ -28,7 +28,7 @@ import { Greeting } from "./sections/greeting";
 import { GreetingRings } from "./sections/greeting-rings";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
-import { Outliers } from "./sections/outliers";
+import { Outliers, type OutliersStatus } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
 import { ContentPillars } from "./sections/content-pillars";
 import { TodaysPlan } from "./sections/todays-plan";
@@ -51,6 +51,7 @@ export function StartPage({
   accountStats = null,
   audiences = [],
   initialSelectedAudienceId = null,
+  initialOutliers = null,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -59,12 +60,49 @@ export function StartPage({
   audiences?: Audience[];
   /** The user-level last-used audience id (null = General) — the dock's initial selection. */
   initialSelectedAudienceId?: string | null;
+  /** Real pre-tested outliers from a fresh cache (Seams 1/2); null = warm lazily on first visit. */
+  initialOutliers?: LiveOutlierCard[] | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const data = useMemo(() => getMockStartPage(), []);
 
   const [firstRun, setFirstRun] = useState(initialFirstRun);
+
+  // Real outliers (Seams 1/2). A fresh server cache seeds them ready; a miss warms lazily on the
+  // first visit of the day (owner cadence) — the client sims + persists via the refresh route.
+  const [outliers, setOutliers] = useState<LiveOutlierCard[]>(initialOutliers ?? []);
+  const [outliersStatus, setOutliersStatus] = useState<OutliersStatus>(
+    initialOutliers === null ? "warming" : "ready",
+  );
+
+  useEffect(() => {
+    // Only warm for a real (non-first-run) user whose cache missed. First-run has no calibrated
+    // audience to test against, and a fresh cache needs no warming.
+    if (initialFirstRun || initialOutliers !== null) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/surfaces/outliers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!res.ok) throw new Error("warm failed");
+        const json = (await res.json()) as { outliers?: LiveOutlierCard[] };
+        if (!cancelled) setOutliers(json.outliers ?? []);
+      } catch {
+        // Honest degrade: an empty set → the section's "no outliers yet" state (never fabricated).
+        if (!cancelled) setOutliers([]);
+      } finally {
+        if (!cancelled) setOutliersStatus("ready");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialFirstRun, initialOutliers]);
+
   const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
   );
@@ -92,13 +130,20 @@ export function StartPage({
     }
   };
 
-  // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2).
+  // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2). Ideas still
+  // carry a mock Read (their real-sim PR is next); outliers carry REAL personas → the actual Room.
   const roomFocusFor = (cardId: string): RoomFocus | null => {
     const idea = data.ideas.find((i) => i.cardId === cardId);
     if (idea) return { read: idea.read, title: idea.title, kind: "Idea", metric: idea.metric };
-    const outlier = data.outliers.find((o) => o.cardId === cardId);
+    const outlier = outliers.find((o) => o.contentId === cardId);
     if (outlier)
-      return { read: outlier.read, title: outlier.caption, kind: "Outlier", metric: outlier.metric };
+      return {
+        title: outlier.caption,
+        kind: "Outlier",
+        metric: "for your people",
+        personas: outlier.personas,
+        conceptText: outlier.caption,
+      };
     return null;
   };
 
@@ -125,8 +170,8 @@ export function StartPage({
   const seedComposer = (text: string) =>
     setSeed({ text, nonce: (seed?.nonce ?? 0) + 1 });
 
-  const handleRemix = (outlier: OutlierCardData) =>
-    launchThread(`Remix @${outlier.handle} — ${outlier.caption}`, "Make");
+  const handleRemix = (outlier: LiveOutlierCard) =>
+    launchThread(`Remix ${outlier.handle} — ${outlier.caption}`, "Make");
 
   const handleDevelop = (f: RoomFocus) => launchThread(f.title, "Make");
 
@@ -183,7 +228,7 @@ export function StartPage({
               >
                 <DailyIdeas
                   ideas={data.ideas}
-                  focusedCardId={focus?.read.contentId ?? null}
+                  focusedCardId={focus?.read?.contentId ?? null}
                   onOpen={openRoom}
                   onRefresh={() =>
                     toast({ variant: "default", title: "Refreshing ideas", description: "Re-scoring against your room…" })
@@ -195,7 +240,8 @@ export function StartPage({
                 style={{ animationDelay: "0.2s" }}
               >
                 <Outliers
-                  outliers={data.outliers}
+                  outliers={outliers}
+                  status={outliersStatus}
                   onOpen={openRoom}
                   onRemix={handleRemix}
                   onViewAll={() => router.push("/feed")}

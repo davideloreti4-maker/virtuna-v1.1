@@ -32,19 +32,6 @@ export interface IdeaCard {
   read: Read;
 }
 
-export interface OutlierCard {
-  cardId: string;
-  handle: string;
-  caption: string;
-  mult: string; // "1.8x" outlier multiplier
-  views: string; // "118K"
-  light: boolean; // lighter thumbnail treatment
-  insight: string; // the one-line "for your people" verdict
-  metric: string; // "for your people"
-  reaction: CardReaction;
-  read: Read;
-}
-
 export interface StatCard {
   label: string;
   value: string;
@@ -131,7 +118,6 @@ export interface StartPageData {
   rings: RingStat[];
   stats: StatCard[];
   ideas: IdeaCard[];
-  outliers: OutlierCard[];
   calendar: { month: string; today: number; days: CalendarDay[] };
   pillars: Pillar[];
   plan: PlanItem[];
@@ -304,103 +290,6 @@ const MOCK_IDEAS: IdeaCard[] = ideaFixtures.map((f) => {
   };
 });
 
-// ── outliers to remix ──
-
-const outlierFixtures: (Omit<OutlierCard, "reaction" | "read"> & {
-  stop: number;
-  tone: keyof typeof TONE;
-  lead: string;
-  weakSpot: string;
-  fix: string;
-  reactions: Reaction[];
-})[] = [
-  {
-    cardId: "perf-cows",
-    handle: "lynnngugi",
-    caption: "How This 24 Year Old Makes KSh 450,000 Rearing 42 Cows",
-    mult: "1.8x",
-    views: "118K",
-    light: false,
-    insight: "Blew up, but off your lane. Your people wouldn’t follow the farming angle.",
-    metric: "for your people",
-    stop: 6,
-    tone: "n",
-    lead: "not your niche",
-    weakSpot: "Dev & Kai bounce — wrong topic for them.",
-    fix: "Only the “start with nothing” framing transfers to your niche.",
-    reactions: rx([
-      ["maya", "n", "not really my thing"],
-      ["jordan", "n", "cool but not for me"],
-      ["priya", "g", "the underdog story is nice"],
-      ["dev", "r", "wrong niche entirely"],
-      ["sam", "n", "eh"],
-      ["kai", "r", "irrelevant to me"],
-    ]),
-  },
-  {
-    cardId: "perf-parents",
-    handle: "samaraaalam",
-    caption: "no one talks about how brown parents STOP you from…",
-    mult: "1.2x",
-    views: "419K",
-    light: false,
-    insight: "This is your lane — the honest-confessional format your people reward. Remix it.",
-    metric: "for your people",
-    stop: 8,
-    tone: "g",
-    lead: "this is exactly us",
-    weakSpot: "Kai wants a takeaway, not just venting.",
-    fix: "End on the reframe you found, not the complaint.",
-    reactions: rx([
-      ["maya", "g", "felt this in my soul"],
-      ["jordan", "g", "real"],
-      ["priya", "g", "saving this"],
-      ["dev", "g", "the honesty lands"],
-      ["sam", "g", "so true"],
-      ["kai", "n", "needs a payoff though"],
-    ]),
-  },
-  {
-    cardId: "perf-road",
-    handle: "abbyindian_",
-    caption: "Not AI, just a view",
-    mult: "1.4x",
-    views: "459K",
-    light: true,
-    insight: "Aesthetic reach, but your people come for substance, not scenery.",
-    metric: "for your people",
-    stop: 5,
-    tone: "n",
-    lead: "pretty, but off-brand",
-    weakSpot: "Maya & Sam scroll past — no hook for them.",
-    fix: "If you use it, overlay a story — the view alone won’t hold your room.",
-    reactions: rx([
-      ["maya", "n", "pretty but so what"],
-      ["jordan", "r", "not why I follow you"],
-      ["priya", "g", "gorgeous tbh"],
-      ["dev", "n", "meh"],
-      ["sam", "n", "scrolled past"],
-      ["kai", "g", "clean visual"],
-    ]),
-  },
-];
-
-const MOCK_OUTLIERS: OutlierCard[] = outlierFixtures.map((f) => {
-  const { reaction, read } = build(f);
-  return {
-    cardId: f.cardId,
-    handle: f.handle,
-    caption: f.caption,
-    mult: f.mult,
-    views: f.views,
-    light: f.light,
-    insight: f.insight,
-    metric: f.metric,
-    reaction,
-    read,
-  };
-});
-
 // ── the rest of the surface ──
 
 /**
@@ -441,9 +330,11 @@ const CALENDAR_DOTS: Record<number, Tone> = Object.fromEntries(
   Object.entries(MOCK_MONTH_PLAN).map(([day, post]) => [Number(day), post.tone]),
 ) as Record<number, Tone>;
 
-/** Every card keyed by id, so a surface can open the Room on a tapped card. */
+/** Idea cards keyed by id, so a surface can open the Room on a tapped card (calendar planned
+ *  posts still link to these mock reads until the daily-ideas real-sim PR). Outliers are real
+ *  now (surface_reactions) and no longer keyed here. */
 export const MOCK_READS: Record<string, Read> = Object.fromEntries(
-  [...MOCK_IDEAS, ...MOCK_OUTLIERS].map((c) => [c.cardId, c.read]),
+  MOCK_IDEAS.map((c) => [c.cardId, c.read]),
 );
 
 export function getReadByCardId(cardId: string): Read | undefined {
@@ -473,7 +364,6 @@ export function getMockStartPage(): StartPageData {
       { label: "Posts", value: "12", delta: "+3", up: true, spark: "0,13 12,12 24,10 36,9 48,7 60,6 72,5" },
     ],
     ideas: MOCK_IDEAS,
-    outliers: MOCK_OUTLIERS,
     calendar: { month: "July 2026", today: 3, days },
     pillars: MOCK_PILLARS,
     plan: [

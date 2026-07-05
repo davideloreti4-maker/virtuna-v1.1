@@ -159,4 +159,12 @@ NODE_OPTIONS='--max-old-space-size=3072' node ./node_modules/next/dist/bin/next 
   `docs/THE-CONTRACT.md` (the 4 seams). Memory auto-loads `the-room-phase3-built.md`.
 
 ## Seam status
-`1 ⛔ · 2 ⛔` (blocked on the content pipeline above) · `3 🟢 MOUNTED` · `4 🟢` (start-page graft).
+**Outliers:** `1 🟢 · 2 🟢` (MOUNTED 2026-07-05c, `feat/seam12-outliers` — real Flash sim → `AmbientRoom` +
+`personasToCardFace`, cached in `surface_reactions`, browser-verified). **Daily-ideas:** `1 ⛔ · 2 ⛔`
+(next PR — same mechanism: run the `ideas` skill, cache its personas, render onto `idea-card.tsx`).
+`3 🟢 MOUNTED` · `4 🟢` (start-page graft).
+
+> **Correction the 07-05c mount proved:** start-page cards sim via **Flash** (`{archetype,verdict,quote}`),
+> not the heavy `PredictionResult` — so Seam 2's render is the **real `AmbientRoom` fed `flatPersonas`**,
+> NOT `predictionResultToRead`→contract-`Read` (which needs a weakSpot/fix the Flash sim never emits).
+> `predictionResultToRead` stays the adapter for the *full-video* Read (the /analyze embed), not these cards.
