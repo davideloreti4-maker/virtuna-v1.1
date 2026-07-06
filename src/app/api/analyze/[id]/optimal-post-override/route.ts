@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { Json } from '@/types/database.types';
 
 /**
  * POST /api/analyze/[id]/optimal-post-override
@@ -92,17 +93,17 @@ export async function POST(
   const updatePayload = isClear
     ? { optimal_post_override: null }
     : {
+        // opaque JSONB blob — cast the value to Json on the boundary (mirrors analyze/route.ts)
         optimal_post_override: {
           day_of_week: (parsed.data as z.infer<typeof SetSchema>).day_of_week,
           hour_range: (parsed.data as z.infer<typeof SetSchema>).hour_range,
           saved_at: new Date().toISOString(),
-        },
+        } as unknown as Json,
       };
 
   // Defense-in-depth: explicit .eq('user_id', user.id) even though RLS UPDATE policy
   // already restricts. Per RESEARCH item 10 security improvement over /override/route.ts.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e1 } = await (supabase as any)
+  const { error: e1 } = await supabase
     .from('analysis_results')
     .update(updatePayload)
     .eq('id', id)

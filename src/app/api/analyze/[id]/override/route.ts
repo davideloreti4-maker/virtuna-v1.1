@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import type { Json } from '@/types/database.types';
 
 /**
  * POST /api/analyze/[id]/override
@@ -61,16 +62,17 @@ export async function POST(
 
   const { weights, save_as_default } = parsed.data;
 
-  // Write per-analysis override (RLS on analysis_results enforces owner-only UPDATE)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: e1 } = await (supabase as any)
+  // Write per-analysis override (RLS on analysis_results enforces owner-only UPDATE).
+  // analysis_override is opaque JSONB — cast the value to Json on the boundary
+  // (mirrors analyze/route.ts) so the typed client checks the column name.
+  const { error: e1 } = await supabase
     .from('analysis_results')
     .update({
       analysis_override: {
         weights,
         weights_source: 'analysis_override',
         updated_at: new Date().toISOString(),
-      },
+      } as unknown as Json,
     })
     .eq('id', id);
 
@@ -80,10 +82,8 @@ export async function POST(
 
   // Optionally upsert creator default weights (cpw_upsert_own RLS enforces user_id = auth.uid())
   // creator_persona_weights table added in migration 20260527000000_audience_overrides.sql
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (save_as_default === true) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: e2 } = await (supabase as any)
+    const { error: e2 } = await supabase
       .from('creator_persona_weights')
       .upsert(
         {
