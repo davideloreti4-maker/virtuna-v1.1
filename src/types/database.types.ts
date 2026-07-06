@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_snapshots: {
+        Row: {
+          created_at: string
+          follower_count: number
+          following_count: number | null
+          handle: string
+          heart_count: number
+          id: string
+          platform: string
+          recent_views: number | null
+          snapshot_date: string
+          user_id: string
+          video_count: number
+        }
+        Insert: {
+          created_at?: string
+          follower_count: number
+          following_count?: number | null
+          handle: string
+          heart_count: number
+          id?: string
+          platform?: string
+          recent_views?: number | null
+          snapshot_date?: string
+          user_id: string
+          video_count: number
+        }
+        Update: {
+          created_at?: string
+          follower_count?: number
+          following_count?: number | null
+          handle?: string
+          heart_count?: number
+          id?: string
+          platform?: string
+          recent_views?: number | null
+          snapshot_date?: string
+          user_id?: string
+          video_count?: number
+        }
+        Relationships: []
+      }
       affiliate_clicks: {
         Row: {
           clicked_at: string | null
@@ -404,6 +446,7 @@ export type Database = {
           created_at: string
           creator_persona: Json | null
           cross_niche: number
+          custom_context: Json
           fyp: number
           goal_intent: string | null
           goal_label: string | null
@@ -411,12 +454,14 @@ export type Database = {
           is_general: boolean
           is_preset: boolean
           loyalist: number
+          mode: string
           name: string
           niche: number
           personas: Json
           platform: string
           profile: Json | null
           signature: Json | null
+          success_criterion: string | null
           type: string
           updated_at: string
           user_id: string
@@ -426,6 +471,7 @@ export type Database = {
           created_at?: string
           creator_persona?: Json | null
           cross_niche?: number
+          custom_context?: Json
           fyp?: number
           goal_intent?: string | null
           goal_label?: string | null
@@ -433,12 +479,14 @@ export type Database = {
           is_general?: boolean
           is_preset?: boolean
           loyalist?: number
+          mode?: string
           name: string
           niche?: number
           personas?: Json
           platform: string
           profile?: Json | null
           signature?: Json | null
+          success_criterion?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -448,6 +496,7 @@ export type Database = {
           created_at?: string
           creator_persona?: Json | null
           cross_niche?: number
+          custom_context?: Json
           fyp?: number
           goal_intent?: string | null
           goal_label?: string | null
@@ -455,12 +504,14 @@ export type Database = {
           is_general?: boolean
           is_preset?: boolean
           loyalist?: number
+          mode?: string
           name?: string
           niche?: number
           personas?: Json
           platform?: string
           profile?: Json | null
           signature?: Json | null
+          success_criterion?: string | null
           type?: string
           updated_at?: string
           user_id?: string
@@ -1675,6 +1726,36 @@ export type Database = {
           updated_at?: string | null
           video_url?: string | null
           views?: number | null
+        }
+        Relationships: []
+      }
+      surface_reactions: {
+        Row: {
+          audience_key: string
+          cards: Json
+          created_at: string
+          id: string
+          kind: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audience_key: string
+          cards: Json
+          created_at?: string
+          id?: string
+          kind: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audience_key?: string
+          cards?: Json
+          created_at?: string
+          id?: string
+          kind?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
