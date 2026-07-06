@@ -10,7 +10,7 @@ import { ExpertChatInput } from './ExpertChatInput';
 import { useExpertChat } from '@/hooks/queries/use-expert-chat';
 import { deriveSeedPrompts } from '@/lib/chat/seed-prompts';
 import type { AnalysisRow } from '@/lib/chat/seed-context';
-import { NumenMark } from '@/components/brand/numen-logo';
+import { MavenMark } from '@/components/brand/maven-logo';
 
 interface Props {
   /** Called when the embedded ContentForm submits a fresh analysis. */
@@ -197,7 +197,7 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-accent"><NumenMark size={16} /></span>
+                    <span className="text-accent"><MavenMark size={16} /></span>
                     <span className="text-xs font-medium text-foreground-muted">
                       Ask the expert
                     </span>

@@ -14,13 +14,13 @@ import {
 } from "@/components/marketing";
 
 export const metadata: Metadata = {
-  title: "Numen — Know if it'll pop before you post",
+  title: "Maven — Know if it'll pop before you post",
   description:
-    "Numen simulates how your audience reacts to a TikTok before you post it — so you know if it'll pop, and why.",
+    "Maven simulates how your audience reacts to a TikTok before you post it — so you know if it'll pop, and why.",
 };
 
 /**
- * Single-scroll marketing landing for Numen — Phase 4 complete.
+ * Single-scroll marketing landing for Maven — Phase 4 complete.
  *
  * Server component (no client directive). Owns the full single-scroll chrome:
  * a flat-matte header + a main of anchored story sections + a footer (the

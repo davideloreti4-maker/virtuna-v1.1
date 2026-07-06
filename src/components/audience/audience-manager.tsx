@@ -334,7 +334,7 @@ export function AudienceManager({ className }: AudienceManagerProps) {
           >
             {`You're using `}
             <strong className="text-foreground">General</strong>
-            {` — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
+            {` — Maven's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
           </SurfaceEmptyState>
         )}
 

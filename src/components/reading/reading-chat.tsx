@@ -250,7 +250,7 @@ function ChatBubble({
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-        Numen
+        Maven
       </span>
       <div className="reading-chat-prose max-w-[68ch] text-[15px] leading-relaxed text-foreground-secondary">
         <ReactMarkdown

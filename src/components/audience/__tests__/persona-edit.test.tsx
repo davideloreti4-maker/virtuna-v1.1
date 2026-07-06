@@ -212,7 +212,7 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
     // The D-06 protected-baseline caption is shown.
     expect(
       screen.getByText(
-        "General is Numen's protected baseline — read-only. Calibrate a personal or target audience to edit its personas.",
+        "General is Maven's protected baseline — read-only. Calibrate a personal or target audience to edit its personas.",
       ),
     ).toBeInTheDocument();
 

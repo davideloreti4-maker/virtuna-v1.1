@@ -231,7 +231,7 @@ export function ExploreThreadView({
                 Find what your audience would actually bite on.
               </h2>
               <p className="text-sm text-foreground-secondary leading-normal">
-                Numen pulls outliers from your niche and competitors, then scores each
+                Maven pulls outliers from your niche and competitors, then scores each
                 for <em>your</em> people — not borrowed view counts. Pick a starting
                 point, or set your own search.
               </p>

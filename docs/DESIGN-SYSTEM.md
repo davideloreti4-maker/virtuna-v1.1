@@ -133,6 +133,29 @@ never paint.
 **constellation / SIM motif**, the **serif voice**, copy, and layout. Invest there — that is where
 distinctiveness comes from, not the accent.
 
+## Brand mark & naming (updated 2026-07-07)
+
+**The mark is the Maven gull** — a single bird in flight drawn as one tapered ink-brush
+stroke (wings arched up, tips swept out, a soft dip at the body). **Monochrome, no color** —
+one closed path filled with `currentColor`, so it inherits the surrounding text color on any
+ground (cream on charcoal, charcoal on cream). It replaces the retired **stele "n"** mark.
+
+- **Component:** `src/components/brand/maven-logo.tsx` → `<MavenMark size />` (bare mark,
+  sidebar/favicon) and `<MavenLogo />` (mark + **"Maven"** wordmark, Inter, sentence-case).
+- **Standalone assets:** `public/brand/maven-mark.svg` (charcoal `#1c1b19`, for light grounds)
+  and `public/brand/maven-mark-light.svg` (cream `#ece7de`, for dark grounds).
+- **Favicons:** `src/app/icon.svg` and `src/app/apple-icon.svg` — the gull in cream on a
+  charcoal `#262624` tile (self-contained so it reads on any browser chrome).
+- **Path (locked):** `M34 66 Q50 30 84 24 Q106 20 120 48 Q134 20 156 24 Q190 30 206 66 Q192 38
+  158 34 Q138 32 120 58 Q102 32 82 34 Q48 38 34 66 Z` on `viewBox="0 0 240 96"`.
+
+**Naming boundary (house of brands):** **Maven** is the creator app (the product name users
+see — chrome, marketing, SEO/OG titles, the wordmark). **Numen Machines** is the company (it
+signs the footer `© … Numen Machines` and stays). The engine/model is **Anima**. So a
+Numen→Maven rename is *not* a blind find-replace: product strings → Maven; the company name,
+the internal `NumenTier` billing type, engine/system-prompt internals (e.g. the "Numen
+co-pilot" voice), and the `numen.*` localStorage keys deliberately stay Numen.
+
 ## Hard rules (the guard test enforces these)
 `src/components/reading/__tests__/reskin-matte.test.ts` asserts NO coral-glow / NO glass in
 reading components — keep it green. Generally:

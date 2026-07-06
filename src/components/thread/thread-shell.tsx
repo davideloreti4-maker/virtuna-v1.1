@@ -5,7 +5,7 @@
  *
  * Owns the 760px column rhythm (matches Reading) and turn framing:
  *  - User turn: right-aligned echo of the submitted composer draft (optimistic).
- *  - Assistant turn: quiet Numen label + children slot.
+ *  - Assistant turn: quiet Maven label + children slot.
  *
  * Flat-warm + matte; zero accent in shell chrome (dosage LOCKED).
  */
@@ -52,7 +52,7 @@ export function ThreadAssistantTurn({ children }: { children: React.ReactNode })
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
-        Numen
+        Maven
       </span>
       <div className="flex flex-col gap-3">{children}</div>
     </div>
