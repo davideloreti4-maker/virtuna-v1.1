@@ -7,6 +7,7 @@ import {
   upsertAccountSnapshot,
 } from "@/lib/account-metrics/account-metrics-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
+import { clusterPillarsForUser } from "@/lib/content-pillars/cluster";
 import { sumRecentViews } from "@/lib/account-metrics/account-metrics";
 import { createLogger } from "@/lib/logger";
 
@@ -118,6 +119,26 @@ export async function GET(request: Request) {
         recentViews,
       });
       refreshed++;
+
+      // Cluster/refresh this creator's content pillars from the posts we just
+      // persisted — cost-gated (the model only runs on first cluster or when there
+      // are unassigned posts) and isolated so a pillar failure never fails the snapshot.
+      try {
+        const cluster = await clusterPillarsForUser(supabase, account.user_id);
+        if (cluster.status !== "noop") {
+          log.info("content pillars refreshed", {
+            handle: account.handle,
+            status: cluster.status,
+            pillars: cluster.pillarCount,
+            assigned: cluster.assigned,
+          });
+        }
+      } catch (error) {
+        log.error("Failed to cluster content pillars (snapshot still written)", {
+          handle: account.handle,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     } catch (error) {
       log.error("Failed to refresh account snapshot", {
         handle: account.handle,
