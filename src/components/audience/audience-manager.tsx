@@ -17,6 +17,7 @@ import { groupAudiences } from "./audience-display";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
 import { READING_CARD } from "@/components/reading/reading-section";
 import { Button } from "@/components/ui/button";
+import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -321,18 +322,20 @@ export function AudienceManager({ className }: AudienceManagerProps) {
         )}
 
         {!loading && !error && audiences.length === 0 && (
-          <div className={cn(READING_CARD, "mx-auto flex max-w-xl flex-col items-center px-6 py-12 text-center")}>
-            <ConstellationMark width={80} litNodeIndex={-1} className="mb-5 opacity-80" />
-            <p className="mb-2 text-base font-semibold text-foreground">No custom audiences yet</p>
-            <p className="mx-auto mb-5 max-w-md text-sm text-foreground-secondary">
-              {`You're using `}
-              <strong className="text-foreground">General</strong>
-              {` — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
-            </p>
-            <Button variant="primary" onClick={() => router.push("/audience/new")}>
-              Create audience
-            </Button>
-          </div>
+          <SurfaceEmptyState
+            className="mx-auto max-w-xl"
+            icon={<ConstellationMark width={80} litNodeIndex={-1} className="opacity-80" />}
+            title="No custom audiences yet"
+            action={
+              <Button variant="primary" onClick={() => router.push("/audience/new")}>
+                Create audience
+              </Button>
+            }
+          >
+            {`You're using `}
+            <strong className="text-foreground">General</strong>
+            {` — Numen's universal audience. Calibrate a personal audience from your own @handle, or start from a template, to test against the people who actually watch you.`}
+          </SurfaceEmptyState>
         )}
 
         {/* Default — roster + sticky rail (desktop); roster only (mobile). */}

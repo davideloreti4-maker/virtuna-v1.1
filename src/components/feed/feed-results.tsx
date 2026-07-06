@@ -17,6 +17,7 @@ import Link from "next/link";
 import { FilmStrip, FunnelSimple, CircleNotch } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { SurfaceEmptyState, EmptyStateIcon } from "@/components/ui/surface-empty-state";
 import { FeedCard } from "@/components/feed/feed-card";
 import type { FeedTile, FeedTab } from "@/lib/feed/feed-query";
 
@@ -56,27 +57,6 @@ function FeedCardSkeleton() {
           <Skeleton className="h-5 w-10 rounded-md" />
         </div>
       </div>
-    </div>
-  );
-}
-
-/** Centered icon + message + optional action — the shared empty/CTA shape. */
-function EmptyState({
-  icon,
-  children,
-  action,
-}: {
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="elev-rest flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-background-elevated px-4 py-20 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04]">
-        {icon}
-      </div>
-      <p className="max-w-sm text-sm text-foreground-muted">{children}</p>
-      {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );
 }
@@ -147,8 +127,12 @@ export function FeedResults({
   // ── Watched tab, no channels yet → CTA to Channels ──────────────────────────────
   if (watchedEmpty) {
     return (
-      <EmptyState
-        icon={<FilmStrip size={32} weight="thin" className="text-foreground-muted" />}
+      <SurfaceEmptyState
+        icon={
+          <EmptyStateIcon>
+            <FilmStrip size={32} weight="thin" />
+          </EmptyStateIcon>
+        }
         action={
           <Button asChild variant="primary" size="sm">
             <Link href="/feed/channels">Add channels</Link>
@@ -157,15 +141,19 @@ export function FeedResults({
       >
         Watch creators to fill your Videos feed. Add a few channels and their outliers show up
         here.
-      </EmptyState>
+      </SurfaceEmptyState>
     );
   }
 
   // ── Empty result set (filters or an empty corpus) ──────────────────────────────
   if (tiles.length === 0) {
     return (
-      <EmptyState
-        icon={<FunnelSimple size={32} weight="thin" className="text-foreground-muted" />}
+      <SurfaceEmptyState
+        icon={
+          <EmptyStateIcon>
+            <FunnelSimple size={32} weight="thin" />
+          </EmptyStateIcon>
+        }
         action={
           filtersActive ? (
             <Button variant="secondary" size="sm" onClick={onClearFilters}>
@@ -179,7 +167,7 @@ export function FeedResults({
           : tab === "watched"
             ? "No videos from your channels yet — re-scrape from the Channels page."
             : "No trending videos right now. Check back soon."}
-      </EmptyState>
+      </SurfaceEmptyState>
     );
   }
 

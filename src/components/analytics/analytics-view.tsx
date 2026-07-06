@@ -15,6 +15,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
+import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import { buildRangeMetrics } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
@@ -150,24 +151,26 @@ export function AnalyticsView({
             </p>
           </>
         ) : (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-6 py-10 text-center">
-            <span className="text-foreground-muted" aria-hidden>
-              <SurfaceIcon name="up" size={20} strokeWidth={1.6} />
-            </span>
-            <div>
-              <p className="m-0 text-[13px] font-medium text-foreground">No account numbers yet</p>
-              <p className="mx-auto mt-1 max-w-[340px] text-[11.5px] leading-[1.5] text-foreground-muted">
-                Connect your account and your followers, likes, posts, and views land here — real, tracked daily. We never show made-up analytics.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => router.push("/audience/new")}
-              className="mt-1 rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
-            >
-              Connect your account →
-            </button>
-          </div>
+          <SurfaceEmptyState
+            compact
+            icon={
+              <span className="text-foreground-muted" aria-hidden>
+                <SurfaceIcon name="up" size={20} strokeWidth={1.6} />
+              </span>
+            }
+            title="No account numbers yet"
+            action={
+              <button
+                type="button"
+                onClick={() => router.push("/audience/new")}
+                className="rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
+              >
+                Connect your account →
+              </button>
+            }
+          >
+            Connect your account and your followers, likes, posts, and views land here — real, tracked daily. We never show made-up analytics.
+          </SurfaceEmptyState>
         )}
       </section>
 
