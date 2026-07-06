@@ -17,8 +17,22 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Disposition } from '@/lib/audience/audience-types';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
+
+/** The reconciled comparison the `done` event carries — powers the inline predicted-vs-actual
+ *  readout (buildOutcomeReadout) + the real public numbers. */
+export interface OutcomeCaptureResult {
+  predicted: Partial<Record<Disposition, number>>;
+  realized: Partial<Record<Disposition, number>>;
+  metrics: {
+    views: number | null;
+    saves: number | null;
+    shares: number | null;
+    comments: number | null;
+  };
+}
 
 export interface CaptureSignalsInput {
   analysis_id?: string | null;
@@ -41,6 +55,8 @@ export interface UseOutcomeSignatureReturn {
   error: string | null;
   /** True once the capture has completed (done event received). */
   isDone: boolean;
+  /** The reconciled comparison from the done event (predicted vs realized + real numbers). */
+  result: OutcomeCaptureResult | null;
   /** Start a capture. Resolves when the stream completes (success or error). */
   capture: (input: CaptureSignalsInput) => Promise<void>;
   /** Reset state for a new capture. */
@@ -54,6 +70,7 @@ export function useOutcomeSignature(): UseOutcomeSignatureReturn {
   const [isCapturing, setIsCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [result, setResult] = useState<OutcomeCaptureResult | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -71,6 +88,7 @@ export function useOutcomeSignature(): UseOutcomeSignatureReturn {
     setIsCapturing(false);
     setError(null);
     setIsDone(false);
+    setResult(null);
   }, []);
 
   const capture = useCallback(async (input: CaptureSignalsInput) => {
@@ -81,6 +99,7 @@ export function useOutcomeSignature(): UseOutcomeSignatureReturn {
     setStatusMessage(null);
     setError(null);
     setIsDone(false);
+    setResult(null);
     setIsCapturing(true);
 
     try {
@@ -133,6 +152,12 @@ export function useOutcomeSignature(): UseOutcomeSignatureReturn {
             if (isMountedRef.current) setStatusMessage(msg);
           } else if (eventType === 'done') {
             if (isMountedRef.current) {
+              // The done event carries the reconciled comparison (predicted/realized/metrics)
+              // — shape it into the typed result for the inline readout. Absent/legacy → null.
+              const d = data as Partial<OutcomeCaptureResult>;
+              if (d.predicted && d.realized && d.metrics) {
+                setResult({ predicted: d.predicted, realized: d.realized, metrics: d.metrics });
+              }
               setIsDone(true);
               setStatusMessage(null);
             }
@@ -157,5 +182,5 @@ export function useOutcomeSignature(): UseOutcomeSignatureReturn {
     }
   }, []);
 
-  return { statusMessage, isCapturing, error, isDone, capture, reset };
+  return { statusMessage, isCapturing, error, isDone, result, capture, reset };
 }

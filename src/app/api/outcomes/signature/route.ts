@@ -13,7 +13,8 @@
  * SSE event names (UI-SPEC §"Outcome capture — signature"):
  *   event: status  — { message } — "Reading the post…"
  *   event: error   — { message }  — generic copy ("Couldn't read that post…"), never echoes the URL
- *   event: done    — { reconciliation_id, outcome_id } — captured + reconciled
+ *   event: done    — { reconciliation_id, outcome_id, predicted, realized, metrics } —
+ *                    captured + reconciled (+ the vectors/real numbers for the inline readout)
  *
  * Honesty spine (Pitfall 3): a BLANK private field is EXCLUDED entirely (null channel),
  * never zero-filled. Each public channel is tagged public_scrape; each supplied private
@@ -236,7 +237,20 @@ export async function POST(request: Request): Promise<Response> {
           proposal_state: "logged",
         });
 
-        send("done", { reconciliation_id: recRow.id, outcome_id: pinned.id });
+        // Emit the comparison so the client can show an honest inline "predicted vs actual"
+        // readout (buildOutcomeReadout) + the real public numbers — no extra round-trip.
+        send("done", {
+          reconciliation_id: recRow.id,
+          outcome_id: pinned.id,
+          predicted: pinned.predicted_vector,
+          realized: realized.vector,
+          metrics: {
+            views: rawMetrics.views,
+            saves: rawMetrics.saves,
+            shares: rawMetrics.shares,
+            comments: rawMetrics.comments,
+          },
+        });
       } catch (err) {
         // Generic error — never echo the raw URL or DB internals.
         send("error", {
