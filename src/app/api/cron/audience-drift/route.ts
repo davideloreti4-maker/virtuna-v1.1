@@ -43,6 +43,7 @@ import {
   type CalibrationResult,
 } from "@/lib/audience/calibration";
 import { reconcile } from "@/lib/flywheel/reconcile";
+import type { Json } from "@/types/database.types";
 import type { DispositionVector } from "@/lib/flywheel/outcome-repo";
 import type {
   CalibratedPersona,
@@ -111,8 +112,7 @@ export async function GET(request: Request) {
 
   try {
     // Personal, own-account audiences only — never General/preset (regression gate).
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase as any) // TODO(10-07): remove cast after types regen
+    const { data, error } = await supabase
       .from("audiences")
       .select(
         "id, user_id, type, is_general, is_preset, goal_intent, personas, calibration, platform, name",
@@ -178,15 +178,17 @@ export async function GET(request: Request) {
       // orthogonal to the learned-nudge loop (weights). A re-bake failure is logged but never
       // blocks drift detection below (the two are independent signals).
       const fresh = result.audience;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: rebakeErr } = await (supabase as any) // TODO(10-07): remove cast after types regen
+      // The signature/persona/profile/calibration columns are opaque JSONB domain blobs —
+      // cast the values to Json on the boundary (mirrors analyze/route.ts). This keeps the
+      // typed client (column names checked) instead of the old blanket `(supabase as any)`.
+      const { error: rebakeErr } = await supabase
         .from("audiences")
         .update({
-          signature: fresh.signature,
-          creator_persona: fresh.creator_persona,
-          profile: fresh.profile,
-          personas: fresh.personas,
-          calibration: fresh.calibration,
+          signature: fresh.signature as unknown as Json,
+          creator_persona: fresh.creator_persona as unknown as Json,
+          profile: fresh.profile as unknown as Json,
+          personas: fresh.personas as unknown as Json,
+          calibration: fresh.calibration as unknown as Json,
         })
         .eq("id", audience.id);
 
@@ -215,8 +217,7 @@ export async function GET(request: Request) {
       // ── Write the drift outcome_signature row (source='drift_scrape') ───────
       // user_id is derived from session inside the repo — but this is a service-role
       // background job with no session. Insert the row directly with the audience's user_id.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: outcomeRow, error: outcomeErr } = await (supabase as any) // TODO(10-07): remove cast
+      const { data: outcomeRow, error: outcomeErr } = await supabase
         .from("outcome_signatures")
         .insert({
           user_id: audience.user_id,
@@ -240,8 +241,7 @@ export async function GET(request: Request) {
       // ── SAME reconcile + log path as outcome capture (D-01) ─────────────────
       const reconciliation = reconcile(predicted, realized);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: recErr } = await (supabase as any) // TODO(10-07): remove cast
+      const { error: recErr } = await supabase
         .from("reconciliations")
         .insert({
           user_id: audience.user_id,
