@@ -66,3 +66,62 @@ export async function upsertAccountPosts(
     .from("account_posts")
     .upsert(rows, { onConflict: "user_id,platform,post_id" });
 }
+
+const POST_SELECT =
+  "post_id, caption, posted_at, views, likes, comments, shares, saves, hashtags, is_pinned, pillar_id";
+
+function normalizePost(r: Record<string, unknown>): AccountPost {
+  return {
+    post_id: String(r.post_id),
+    caption: (r.caption as string) ?? "",
+    posted_at: (r.posted_at as string) ?? null,
+    views: Number(r.views ?? 0),
+    likes: Number(r.likes ?? 0),
+    comments: Number(r.comments ?? 0),
+    shares: Number(r.shares ?? 0),
+    saves: Number(r.saves ?? 0),
+    hashtags: Array.isArray(r.hashtags) ? (r.hashtags as string[]) : [],
+    is_pinned: Boolean(r.is_pinned),
+    pillar_id: (r.pillar_id as string) ?? null,
+  };
+}
+
+/**
+ * Read a user's persisted posts, newest first (nulls last), capped. This is the
+ * shared input for BOTH clustering (captions → pillars) and the pillar builder
+ * (share / cadence / tone). We only persist the recent scrape window (~30/scrape),
+ * so "all persisted" is effectively "recent" — no separate time window needed.
+ * RLS-scoped when called with a user client; the cron passes the service client.
+ */
+export async function listAllPosts(
+  supabase: SupabaseClient,
+  userId: string,
+  cap = 80,
+): Promise<AccountPost[]> {
+  const { data, error } = await (supabase as unknown as UntypedClient)
+    .from("account_posts")
+    .select(POST_SELECT)
+    .eq("user_id", userId)
+    .order("posted_at", { ascending: false, nullsFirst: false })
+    .limit(cap);
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(normalizePost);
+}
+
+/**
+ * Assign a batch of posts to one pillar (clustering output). Scoped by user_id so
+ * the service client can't cross users. Best-effort — the caller isolates.
+ */
+export async function assignPostsToPillar(
+  supabase: SupabaseClient,
+  userId: string,
+  pillarId: string,
+  postIds: string[],
+): Promise<void> {
+  if (postIds.length === 0) return;
+  await (supabase as unknown as UntypedClient)
+    .from("account_posts")
+    .update({ pillar_id: pillarId, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("post_id", postIds);
+}
