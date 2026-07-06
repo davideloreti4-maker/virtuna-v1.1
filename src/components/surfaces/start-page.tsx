@@ -32,6 +32,7 @@ import { Greeting } from "./sections/greeting";
 import { GreetingRings } from "./sections/greeting-rings";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
 import { DailyIdeas } from "./sections/daily-ideas";
+import { OutcomeCapture } from "./sections/outcome-capture";
 import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
 import { ContentPillars } from "./sections/content-pillars";
@@ -276,6 +277,13 @@ export function StartPage({
                   onRefresh={() =>
                     toast({ variant: "default", title: "Refreshing ideas", description: "Re-scoring against your room…" })
                   }
+                />
+                {/* The flywheel's "measure" entry (FLYWHEEL-01): posted a pre-tested idea?
+                    Paste the link → real metrics reconciled vs this audience's prediction.
+                    Audience-scoped (pins are rank-1/audience-keyed) — copy stays honest. */}
+                <OutcomeCapture
+                  audienceId={selectedAudienceId}
+                  audienceLabel={activeAudience?.name ?? "your audience"}
                 />
               </div>
               <div
