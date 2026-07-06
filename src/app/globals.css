@@ -131,6 +131,10 @@
   --color-warning: var(--color-warning-raw);
   --color-error: var(--color-error-raw);
   --color-info: var(--color-info-raw);
+  /* Muted sage — a positive/"up"/loved signal on the surfaces (stat deltas, the  */
+  /* loop, ambient "loved"). DISTINCT from --color-success green: quieter, warmer, */
+  /* matte. Exact hex (not oklch) to hold the precise sage. See docs/DESIGN-SYSTEM. */
+  --color-positive: #8ea68a;
 
   /* --- Borders --- */
   /* Source: raycast.com universal border rgba(255,255,255,0.06), hover 0.1 */

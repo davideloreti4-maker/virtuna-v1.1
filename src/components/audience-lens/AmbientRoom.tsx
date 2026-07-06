@@ -127,7 +127,7 @@ const initialOf = (label: string): string => (label.trim()[0] ?? '·').toUpperCa
 const meterTone = (stop: number, total: number): string => {
   if (total <= 0) return 'rgba(255,255,255,0.4)';
   const r = stop / total;
-  return r >= 0.6 ? '#8ea68a' : r <= 0.4 ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)';
+  return r >= 0.6 ? 'var(--color-positive)' : r <= 0.4 ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)';
 };
 
 export function AmbientRoom({
@@ -640,7 +640,7 @@ function PopulationView({
       {/* HERO — the 1,000-strong room, modeled from your N. */}
       <div className="flex justify-center gap-8 pb-1 pt-1">
         <div className="text-center">
-          <span className="block font-serif text-[26px] leading-none text-[#8ea68a]">{stayK}</span>
+          <span className="block font-serif text-[26px] leading-none text-[var(--color-positive)]">{stayK}</span>
           <span className="mt-1.5 block text-[10.5px] text-[var(--color-foreground-muted)]">
             would stay
           </span>
@@ -663,7 +663,7 @@ function PopulationView({
             aria-hidden
             className={
               'h-[6px] w-[6px] rounded-full transition-opacity duration-200 ' +
-              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[#8ea68a]')
+              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-positive)]')
             }
             style={{ opacity: i < shownDots ? 0.95 : 0.16 }}
           />
@@ -689,12 +689,12 @@ function PopulationView({
       {/* STATS BAR — the exact split (loved / mixed / bounced). */}
       <div className="mt-4 border-t border-[var(--color-border)] pt-3.5">
         <div className="flex h-[6px] overflow-hidden rounded-[4px] bg-white/[0.05]">
-          <span className="h-full bg-[#8ea68a]" style={{ width: `${pct(stops.length)}%` }} />
+          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${pct(stops.length)}%` }} />
           <span className="h-full bg-[var(--color-accent)]" style={{ width: `${pct(bounces.length)}%` }} />
         </div>
         <div className="mt-2 flex justify-between text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
           <span>
-            <b className="font-semibold text-[#8ea68a]">{pct(stops.length)}%</b> loved
+            <b className="font-semibold text-[var(--color-positive)]">{pct(stops.length)}%</b> loved
           </span>
           <span>
             <b className="font-semibold text-[var(--color-accent-text)]">{pct(bounces.length)}%</b> bounced

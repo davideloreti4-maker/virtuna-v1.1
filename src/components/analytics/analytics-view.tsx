@@ -33,7 +33,7 @@ function Sparkline({ points, up }: { points: string; up: boolean }) {
   const arr = points.split(" ").map((p) => p.split(",").map(Number));
   const first = arr[0] ?? [0, 18];
   const last = arr[arr.length - 1] ?? [72, 18];
-  const color = up ? "#8ea68a" : "var(--color-foreground-muted)";
+  const color = up ? "var(--color-positive)" : "var(--color-foreground-muted)";
   const area = `M${first[0]},18 L${arr.map((p) => `${p[0]},${p[1]}`).join(" L")} L${last[0]},18 Z`;
   return (
     <svg viewBox="0 0 72 18" preserveAspectRatio="none" className="mt-2.5 h-[22px] w-full">
@@ -128,7 +128,7 @@ export function AnalyticsView({
                     {hasTrend ? (
                       <>
                         <Sparkline points={m.spark} up={m.up} />
-                        <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "#8ea68a" : "var(--color-foreground-muted)" }}>
+                        <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "var(--color-positive)" : "var(--color-foreground-muted)" }}>
                           {m.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
                           {m.deltaPct ?? m.delta}
                           {m.deltaPct && m.delta !== "—" && <span className="text-foreground-muted">· {m.delta}</span>}

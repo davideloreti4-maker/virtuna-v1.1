@@ -17,7 +17,7 @@ function Sparkline({ points, up }: { points: string; up: boolean }) {
   const arr = points.split(" ").map((p) => p.split(",").map(Number));
   const first = arr[0] ?? [0, 18];
   const last = arr[arr.length - 1] ?? [72, 18];
-  const color = up ? "#8ea68a" : "var(--color-foreground-muted)";
+  const color = up ? "var(--color-positive)" : "var(--color-foreground-muted)";
   const area = `M${first[0]},18 L${arr.map((p) => `${p[0]},${p[1]}`).join(" L")} L${last[0]},18 Z`;
   return (
     <svg viewBox="0 0 72 18" preserveAspectRatio="none" className="mt-[9px] h-[18px] w-full">
@@ -66,7 +66,7 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
                 <Sparkline points={s.spark} up={s.up} />
                 <div
                   className="mt-[7px] flex items-center gap-1 font-mono text-[9px]"
-                  style={{ color: s.up ? "#8ea68a" : "var(--color-foreground-muted)" }}
+                  style={{ color: s.up ? "var(--color-positive)" : "var(--color-foreground-muted)" }}
                 >
                   {s.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
                   {s.delta}

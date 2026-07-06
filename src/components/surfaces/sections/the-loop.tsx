@@ -28,17 +28,17 @@ export function TheLoop({ receipts, accuracy }: { receipts: Receipt[]; accuracy:
       </h3>
       {receipts.map((r, i) => (
         <div key={r.title} className={`flex items-center gap-[11px] py-[11px] ${i > 0 ? "border-t border-border" : ""}`}>
-          <span className="grid size-[22px] shrink-0 place-items-center rounded-full" style={{ background: "rgba(142,166,138,0.16)", color: "#8ea68a" }}>
+          <span className="grid size-[22px] shrink-0 place-items-center rounded-full" style={{ background: "rgba(142,166,138,0.16)", color: "var(--color-positive)" }}>
             <SurfaceIcon name="check" size={12} strokeWidth={2.2} />
           </span>
           <div className="min-w-0 flex-1">
             <div className="text-[12.5px] leading-[1.35] text-foreground">{r.title}</div>
             <div className="mt-[3px] font-mono text-[10px] text-foreground-muted">
               <span className="text-foreground-secondary">we said {r.said}</span> ·{" "}
-              <span style={{ color: "#8ea68a" }}>you got {r.got}</span> · posted {r.posted}
+              <span style={{ color: "var(--color-positive)" }}>you got {r.got}</span> · posted {r.posted}
             </div>
           </div>
-          <span className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[9.5px]" style={{ color: "#8ea68a", borderColor: "rgba(142,166,138,0.34)" }}>
+          <span className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[9.5px]" style={{ color: "var(--color-positive)", borderColor: "rgba(142,166,138,0.34)" }}>
             {r.delta}
           </span>
         </div>
@@ -47,7 +47,7 @@ export function TheLoop({ receipts, accuracy }: { receipts: Receipt[]; accuracy:
         <b className="shrink-0 font-serif text-[25px] leading-none text-foreground">{accuracy.pct}</b>
         <div className="flex-1 text-[11px] leading-[1.45] text-foreground-secondary">
           {accuracy.line}
-          <span className="mt-[3px] inline-flex items-center gap-1 font-mono text-[9.5px]" style={{ color: "#8ea68a" }}>
+          <span className="mt-[3px] inline-flex items-center gap-1 font-mono text-[9.5px]" style={{ color: "var(--color-positive)" }}>
             <SurfaceIcon name="up" size={9} strokeWidth={2.2} />
             {accuracy.up}
           </span>
