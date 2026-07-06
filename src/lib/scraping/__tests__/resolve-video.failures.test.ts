@@ -173,6 +173,20 @@ describe("resolveVideoUrl — failure taxonomy", () => {
     );
   });
 
+  it("throws IngestError{ kind: 'ssrf_rejected' } for the bare apex host (#9 — apex is not a labeled subdomain)", async () => {
+    // #9: the old `host === suffix.slice(1)` clause allowed the bare apex `apify.com`.
+    // Resolved mp4 hosts are always labeled subdomains (api.apify.com); reject the apex.
+    fMockState.listItemsResult = {
+      items: [makeBaseItem({ mediaUrls: ["https://apify.com/records/video.mp4"] })],
+    };
+
+    await expect(
+      provider.resolveVideoUrl("https://www.tiktok.com/@user/video/vid_001")
+    ).rejects.toSatisfy(
+      (e: unknown) => e instanceof IngestError && e.kind === "ssrf_rejected"
+    );
+  });
+
   it("throws IngestError{ kind: 'ssrf_rejected' } for internal IP addresses", async () => {
     fMockState.listItemsResult = {
       items: [makeBaseItem({ mediaUrls: ["https://192.168.1.1/video.mp4"] })],

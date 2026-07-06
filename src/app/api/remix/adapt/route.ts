@@ -153,35 +153,17 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     // ----------------------------------------------------------------
-    // 7. Read-merge-write into variants.remix.adapt (Pitfall 2 guard)
-    //    MUST spread current AND current.remix to preserve craft + decode
+    // 7. Atomic patch into variants.remix.adapt (Bug #7)
+    //    patch_analysis_variants DEEP-merges { remix: { adapt } } in ONE UPDATE,
+    //    preserving craft + remix.decode siblings — no read-modify-write window
+    //    under concurrency (a concurrent craft/decode writer can't clobber it).
+    //    p_user_id re-enforces ownership inside the RPC (matches the decode write).
     // ----------------------------------------------------------------
-    const { data: variantsRow, error: readErr } = await service
-      .from("analysis_results")
-      .select("variants")
-      .eq("id", analysis_id)
-      .single();
-
-    if (readErr || !variantsRow) {
-      log.warn("adapt variants read failed", { analysis_id, error: readErr?.message });
-      return Response.json({ error: "Failed to read analysis row" }, { status: 500 });
-    }
-
-    const current      = (variantsRow.variants ?? {}) as Record<string, unknown>;
-    const currentRemix = (current.remix ?? {}) as Record<string, unknown>;
-
-    const { error: writeErr } = await service
-      .from("analysis_results")
-      .update({
-        variants: {
-          ...current,
-          remix: {
-            ...currentRemix,
-            adapt: concepts,
-          },
-        } as unknown as Json,
-      })
-      .eq("id", analysis_id);
+    const { error: writeErr } = await service.rpc("patch_analysis_variants", {
+      p_id: analysis_id,
+      p_patch: { remix: { adapt: concepts } } as unknown as Json,
+      p_user_id: user.id,
+    });
 
     if (writeErr) {
       log.warn("adapt variants write failed", { analysis_id, error: writeErr.message });

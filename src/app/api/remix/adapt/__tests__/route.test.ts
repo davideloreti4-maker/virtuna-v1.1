@@ -7,7 +7,7 @@
  *   3 — cross-origin-403: returns 403 on cross-origin request
  *   4 — zod-body-400: returns 400 on malformed request body (Zod validation)
  *   5 — ownership-404: returns 404 when analysis_results row belongs to another user
- *   6 — read-merge-write: preserves pre-seeded variants.craft AND variants.remix.decode
+ *   6 — atomic-patch: persists variants.remix.adapt via patch_analysis_variants (Bug #7)
  *   7 — success-200: returns { concepts } when adapt engine succeeds
  *   8 — null-engine-500: returns 500 when generateAdaptConcepts returns null
  */
@@ -36,10 +36,11 @@ vi.mock('nanoid', () => ({ nanoid: vi.fn(() => 'test-req-id') }));
 
 // All mocked variables are declared via vi.hoisted() to avoid temporal dead zone
 // issues with vi.mock factory hoisting (see vitest docs on vi.hoisted).
-const { mockCreate, mockGetUser, mockFrom, mockGenerateAdaptConcepts } = vi.hoisted(() => ({
+const { mockCreate, mockGetUser, mockFrom, mockRpc, mockGenerateAdaptConcepts } = vi.hoisted(() => ({
   mockCreate: vi.fn(),
   mockGetUser: vi.fn(),
   mockFrom: vi.fn(),
+  mockRpc: vi.fn(),
   mockGenerateAdaptConcepts: vi.fn(),
 }));
 
@@ -57,6 +58,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/supabase/service', () => ({
   createServiceClient: vi.fn(() => ({
     from: mockFrom,
+    rpc: mockRpc,
   })),
 }));
 
@@ -119,7 +121,7 @@ function makeRequest(
   });
 }
 
-// Helper to build ownership + variants read chain
+// The single from() call the route makes: the ownership check (select user_id).
 function makeOwnershipFrom(userId: string) {
   return {
     select: vi.fn(() => ({
@@ -133,28 +135,6 @@ function makeOwnershipFrom(userId: string) {
   };
 }
 
-function makeVariantsReadFrom(variants: unknown) {
-  return {
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        single: vi.fn().mockResolvedValue({
-          data: { variants },
-          error: null,
-        }),
-      })),
-    })),
-  };
-}
-
-function makeVariantsWriteFrom(onUpdate?: (payload: unknown) => void) {
-  return {
-    update: vi.fn((payload: unknown) => {
-      onUpdate?.(payload);
-      return { eq: vi.fn().mockResolvedValue({ error: null }) };
-    }),
-  };
-}
-
 // =====================================================
 // Tests
 // =====================================================
@@ -162,6 +142,8 @@ function makeVariantsWriteFrom(onUpdate?: (payload: unknown) => void) {
 describe('/api/remix/adapt route (Wave 0)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: the atomic variants patch succeeds. Individual tests override as needed.
+    mockRpc.mockResolvedValue({ error: null });
   });
 
   it('auth-401: returns 401 when supabase.auth.getUser() returns no user', async () => {
@@ -218,10 +200,7 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     // "KSW5TluyRy0L" is a real nanoid(12) — the prior z.string().uuid() rejected
     // every real id with a 400, breaking the whole Adapt generation flow live.
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
-    mockFrom
-      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
-      .mockReturnValueOnce(makeVariantsReadFrom({}))
-      .mockReturnValueOnce(makeVariantsWriteFrom());
+    mockFrom.mockReturnValueOnce(makeOwnershipFrom(USER_ID));
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
     const req = makeRequest({ ...VALID_BODY, analysis_id: 'KSW5TluyRy0L' });
@@ -234,16 +213,7 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
 
     // from() → ownership check: returns a different user_id
-    mockFrom.mockReturnValueOnce({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({
-            data: { user_id: 'other-user-999' },
-            error: null,
-          }),
-        })),
-      })),
-    });
+    mockFrom.mockReturnValueOnce(makeOwnershipFrom('other-user-999'));
 
     const req = makeRequest(VALID_BODY);
     const res = await POST(req);
@@ -251,24 +221,9 @@ describe('/api/remix/adapt route (Wave 0)', () => {
     expect(res.status).toBe(404);
   });
 
-  it('read-merge-write: preserves variants.craft AND variants.remix.decode when writing variants.remix.adapt (Pitfall 2)', async () => {
+  it('atomic-patch: persists { remix: { adapt } } via patch_analysis_variants (Bug #7 — RPC deep-merges, preserving craft + decode)', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
-
-    const preSeededVariants = {
-      craft: { video_signals: { pacing_score: 0.8 } },
-      remix: {
-        decode: { hook_pattern: 'open-loop', repeatable: [] },
-      },
-    };
-
-    let capturedUpdate: unknown;
-
-    // Call sequence: 1=ownership check, 2=variants read, 3=variants write
-    mockFrom
-      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
-      .mockReturnValueOnce(makeVariantsReadFrom(preSeededVariants))
-      .mockReturnValueOnce(makeVariantsWriteFrom((p) => { capturedUpdate = p; }));
-
+    mockFrom.mockReturnValueOnce(makeOwnershipFrom(USER_ID));
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
     const req = makeRequest(VALID_BODY);
@@ -276,25 +231,21 @@ describe('/api/remix/adapt route (Wave 0)', () => {
 
     expect(res.status).toBe(200);
 
-    // Verify merged write preserved craft AND remix.decode
-    const update = capturedUpdate as { variants: Record<string, unknown> };
-    expect(update.variants).toMatchObject({
-      craft: preSeededVariants.craft,
-      remix: {
-        decode: preSeededVariants.remix.decode,
-        adapt: THREE_CONCEPTS,
-      },
-    });
+    // The write is a single atomic RPC patch — the RPC deep-merges { remix: { adapt } }
+    // server-side, so craft + remix.decode siblings survive with no read-modify-write window.
+    expect(mockRpc).toHaveBeenCalledWith(
+      'patch_analysis_variants',
+      expect.objectContaining({
+        p_id: ANALYSIS_ID,
+        p_user_id: USER_ID,
+        p_patch: { remix: { adapt: THREE_CONCEPTS } },
+      }),
+    );
   });
 
   it('success-200: returns { concepts: [...] } with 3 concepts when adapt engine succeeds', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
-
-    mockFrom
-      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
-      .mockReturnValueOnce(makeVariantsReadFrom({}))
-      .mockReturnValueOnce(makeVariantsWriteFrom());
-
+    mockFrom.mockReturnValueOnce(makeOwnershipFrom(USER_ID));
     mockGenerateAdaptConcepts.mockResolvedValueOnce(THREE_CONCEPTS);
 
     const req = makeRequest(VALID_BODY);
@@ -307,22 +258,15 @@ describe('/api/remix/adapt route (Wave 0)', () => {
 
   it('null-engine-500: returns 500 when generateAdaptConcepts returns null, variants NOT written', async () => {
     mockGetUser.mockResolvedValueOnce({ data: { user: { id: USER_ID } }, error: null });
-
-    const mockUpdateFn = vi.fn();
-
-    mockFrom
-      .mockReturnValueOnce(makeOwnershipFrom(USER_ID))
-      .mockReturnValueOnce(makeVariantsReadFrom({}))
-      .mockReturnValueOnce({ update: mockUpdateFn });
-
+    mockFrom.mockReturnValueOnce(makeOwnershipFrom(USER_ID));
     mockGenerateAdaptConcepts.mockResolvedValueOnce(null);
 
     const req = makeRequest(VALID_BODY);
     const res = await POST(req);
 
     expect(res.status).toBe(500);
-    // Variants must NOT be written when generator returns null
-    expect(mockUpdateFn).not.toHaveBeenCalled();
+    // Variants must NOT be written when the generator returns null.
+    expect(mockRpc).not.toHaveBeenCalled();
   });
 
   // =====================================================

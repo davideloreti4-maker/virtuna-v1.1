@@ -87,9 +87,10 @@ function isAllowedPostUrl(postUrl: string): boolean {
   if (parsed.protocol !== "https:") return false;
   const host = parsed.hostname;
   if (PRIVATE_IP_PATTERNS.some((re) => re.test(host))) return false;
-  return POST_URL_ALLOWLIST_SUFFIXES.some(
-    (suffix) => host === suffix.slice(1) || host.endsWith(suffix),
-  );
+  // #9: require a labeled subdomain (endsWith the dotted suffix). Do NOT allow the
+  // bare apex (host === "tiktok.com") — real post URLs are always subdomains
+  // (www./vm./vt.tiktok.com), and the apex needlessly widens the SSRF surface.
+  return POST_URL_ALLOWLIST_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
 
 function isAllowedMp4Host(mp4Url: string): boolean {
@@ -108,10 +109,11 @@ function isAllowedMp4Host(mp4Url: string): boolean {
   // Reject private/internal IPs
   if (PRIVATE_IP_PATTERNS.some((re) => re.test(host))) return false;
 
-  // Must match an allowlisted suffix
-  return SSRF_ALLOWLIST_SUFFIXES.some(
-    (suffix) => host === suffix.slice(1) || host.endsWith(suffix)
-  );
+  // Must match an allowlisted suffix as a labeled subdomain.
+  // #9: require `endsWith(".apify.com")` — resolved mp4 hosts are always subdomains
+  // (api.apify.com, vXX.tiktokcdn.com); reject the bare apex (apify.com / tiktokcdn.com),
+  // which the old `host === suffix.slice(1)` clause needlessly permitted.
+  return SSRF_ALLOWLIST_SUFFIXES.some((suffix) => host.endsWith(suffix));
 }
 
 /**
