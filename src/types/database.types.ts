@@ -72,7 +72,15 @@ export type Database = {
           user_id?: string
           views?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "account_posts_pillar_fk"
+            columns: ["pillar_id"]
+            isOneToOne: false
+            referencedRelation: "content_pillars"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       account_snapshots: {
         Row: {
@@ -862,6 +870,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      content_pillars: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          sort_order?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          user_id?: string
+        }
+        Relationships: []
       }
       creator_persona_weights: {
         Row: {
