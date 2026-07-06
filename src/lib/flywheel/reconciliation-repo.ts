@@ -97,7 +97,6 @@ export async function insertReconciliation(
 
   const payload = { ...parsed.data, user_id: user.id };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .insert(payload)
@@ -119,7 +118,6 @@ export async function listReconciliations(
   supabase: SupabaseClient,
   audienceId: string,
 ): Promise<Reconciliation[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .select("*")
@@ -131,6 +129,28 @@ export async function listReconciliations(
   }
 
   return (data ?? []) as Reconciliation[];
+}
+
+/**
+ * List the user's most recent reconciliations ACROSS all audiences (newest first, capped) —
+ * the /start "the loop" feed. RLS scopes to the authenticated user (no audience filter).
+ * Total: returns [] on error (the loop degrades to its honest empty state, never throws up).
+ */
+export async function listRecentReconciliations(
+  supabase: SupabaseClient,
+  limit = 8,
+): Promise<Reconciliation[]> {
+  try {
+    const { data, error } = await supabase
+      .from("reconciliations")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return (data ?? []) as Reconciliation[];
+  } catch {
+    return [];
+  }
 }
 
 /**
@@ -146,7 +166,6 @@ export async function updateProposalState(
   const patch: Record<string, unknown> = { proposal_state: state };
   if (confirmedAt !== undefined) patch.confirmed_at = confirmedAt;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await supabase
     .from("reconciliations")
     .update(patch)

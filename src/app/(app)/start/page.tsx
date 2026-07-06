@@ -8,6 +8,8 @@ import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import { listRecentReconciliations } from "@/lib/flywheel/reconciliation-repo";
+import { buildLoopReceipts, buildLoopAccuracy, nowMs, type LoopReceipt, type LoopAccuracy } from "@/lib/flywheel/loop-summary";
 import { currentMonth } from "@/lib/calendar/current-month";
 import { StartPage } from "@/components/surfaces/start-page";
 
@@ -95,9 +97,22 @@ export default async function StartRoute({
     ]);
   }
 
+  // Real "the loop" (FLYWHEEL): the user's recent reconciliations → honest predicted-vs-actual
+  // receipts + aggregate match %. Skipped for first-run (no history). `now` is stamped here (SSR)
+  // so the relative "when" labels never re-compute client-side (hydration). Total (never throws).
+  let loopReceipts: LoopReceipt[] = [];
+  let loopAccuracy: LoopAccuracy | null = null;
+  if (!initialFirstRun) {
+    const reconciliations = await listRecentReconciliations(supabase, 6);
+    loopReceipts = buildLoopReceipts(reconciliations, nowMs());
+    loopAccuracy = buildLoopAccuracy(reconciliations);
+  }
+
   return (
     <StartPage
       initialFirstRun={initialFirstRun}
+      loopReceipts={loopReceipts}
+      loopAccuracy={loopAccuracy}
       accountStats={accountStats}
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
