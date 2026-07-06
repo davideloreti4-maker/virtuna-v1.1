@@ -7,6 +7,7 @@ import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo"
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard, Pillar } from "@/lib/room-contract/mock-room";
 import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
+import { anyUnconfirmedPillars } from "@/lib/content-pillars/pillars-repo";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { listRecentReconciliations } from "@/lib/flywheel/reconciliation-repo";
@@ -89,11 +90,17 @@ export default async function StartRoute({
   // Skipped for first-run (no connected account). Empty on any read error or a low-post account
   // → StartPage renders the honest "learning your themes" empty state (never fabricated).
   let pillars: Pillar[] = [];
+  let pillarsNeedConfirm = false;
   if (!initialFirstRun) {
     try {
       pillars = await buildContentPillars(supabase, user.id);
+      // Show the one-time propose→confirm card only when there are pillars to review AND the
+      // creator hasn't reviewed them yet (both cheap; total, never fabricates).
+      pillarsNeedConfirm =
+        pillars.length > 0 && (await anyUnconfirmedPillars(supabase, user.id));
     } catch {
       pillars = [];
+      pillarsNeedConfirm = false;
     }
   }
 
@@ -128,6 +135,7 @@ export default async function StartRoute({
       loopAccuracy={loopAccuracy}
       accountStats={accountStats}
       pillars={pillars}
+      pillarsNeedConfirm={pillarsNeedConfirm}
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
       initialOutliers={initialOutliers}

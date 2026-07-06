@@ -40,6 +40,10 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
+function mean(xs: number[]): number {
+  return xs.length === 0 ? 0 : xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
 /** How hard the audience engaged per unit of reach. Null when a post has no views to rate. */
 function engagementRate(p: AccountPost): number | null {
   if (p.views <= 0) return null;
@@ -86,10 +90,11 @@ export function buildPillars(
   const totalAssigned = assigned.length;
   if (totalAssigned === 0) return [];
 
-  // Creator baseline = median engagement rate across the themed (assigned) posts, so a
-  // pillar's tone reads against the creator's own typical content (unassigned/untitled
-  // posts don't skew it).
-  const baseline = median(
+  // Creator baseline = MEAN engagement rate across the themed (assigned) posts. Mean (not
+  // median) on purpose: the median sits on whichever pillar has the most posts, which would
+  // pin that dominant pillar to "neutral" forever and starve "loved". The mean lets a genuinely
+  // strong theme clear the bar. Unassigned/untitled posts are excluded so they can't skew it.
+  const baseline = mean(
     assigned.map(engagementRate).filter((r): r is number => r != null),
   );
 

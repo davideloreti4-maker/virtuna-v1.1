@@ -16,16 +16,31 @@ export interface ContentPillarRow {
   id: string;
   name: string;
   sort_order: number;
+  confirmed: boolean;
 }
 
-const PILLAR_SELECT = "id, name, sort_order";
+const PILLAR_SELECT = "id, name, sort_order, confirmed";
 
 function normalizePillar(r: Record<string, unknown>): ContentPillarRow {
   return {
     id: String(r.id),
     name: (r.name as string) ?? "",
     sort_order: Number(r.sort_order ?? 0),
+    confirmed: Boolean(r.confirmed),
   };
+}
+
+/** True if the user has any pillar they haven't reviewed yet (drives the confirm card). */
+export async function anyUnconfirmedPillars(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<boolean> {
+  const { count } = await (supabase as unknown as UntypedClient)
+    .from("content_pillars")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("confirmed", false);
+  return (count ?? 0) > 0;
 }
 
 /** A user's pillars in display order. RLS-scoped (user client) / explicit (service). */
