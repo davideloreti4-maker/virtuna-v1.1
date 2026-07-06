@@ -26,6 +26,7 @@ import type { CurrentMonth } from "@/lib/calendar/current-month";
 import { monthLayout } from "@/lib/calendar/month-layout";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
+import type { LoopReceipt, LoopAccuracy } from "@/lib/flywheel/loop-summary";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
 import { TopChrome } from "./sections/top-chrome";
 import { Greeting } from "./sections/greeting";
@@ -59,6 +60,8 @@ export function StartPage({
   initialOutliers = null,
   initialIdeas = null,
   calendarMonth,
+  loopReceipts = [],
+  loopAccuracy = null,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -74,6 +77,10 @@ export function StartPage({
   /** Server-resolved current month (SSR-safe) — the month widget + today's-plan project the real
    *  ideas onto these days (buildLivePlan). Never read `new Date()` client-side (hydration). */
   calendarMonth: CurrentMonth;
+  /** Real "the loop" receipts from the user's recent reconciliations (SSR); [] = honest empty. */
+  loopReceipts?: LoopReceipt[];
+  /** Aggregate match % across measured posts; null = nothing measured yet. */
+  loopAccuracy?: LoopAccuracy | null;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -331,7 +338,7 @@ export function StartPage({
                 <QuickActions actions={data.quickActions} onAction={handleQuickAction} />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.38s" }}>
-                <TheLoop receipts={data.receipts} accuracy={data.accuracy} />
+                <TheLoop receipts={loopReceipts} accuracy={loopAccuracy} />
               </div>
             </aside>
           </div>
