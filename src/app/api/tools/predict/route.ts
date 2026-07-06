@@ -33,6 +33,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { getAudience } from "@/lib/audience/audience-repo";
 import { runPredict, readSubjectKind } from "@/lib/tools/runners/predict-runner";
@@ -55,6 +56,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (T-06-15) ──────────
   const guard = csrfGuard(request);
   if (guard) return guard;
+
+  // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
+  const limited = await rateLimitGuard(user.id, "predict");
+  if (limited) return limited;
 
   // ── (2) Parse + cap the body (accept `scenario` and/or `message`) ────────────
   let body: { audienceId?: unknown; scenario?: unknown; message?: unknown } = {};

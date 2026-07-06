@@ -46,6 +46,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
@@ -57,9 +58,7 @@ import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
-// ── Rate limit / cap constants (mirror chat route) ────────────────────────────
-const RATE_LIMIT_WINDOW_SECS = 60;
-const RATE_LIMIT_MAX_MSGS = 5; // ideas are heavier than chat turns; tighter window
+// ── Message cap constant ──────────────────────────────────────────────────────
 const MAX_MESSAGE_LENGTH = 2000; // chars — WARNING-5: enforced server-side, independent of client
 
 // ── SSE headers ───────────────────────────────────────────────────────────────
@@ -89,6 +88,10 @@ export async function POST(request: Request): Promise<Response> {
   const guard = csrfGuard(request);
   if (guard) return guard;
 
+  // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
+  const limited = await rateLimitGuard(user.id, "ideas");
+  if (limited) return limited;
+
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { ask?: unknown; platform?: unknown; intent?: unknown } = {};
   try {
@@ -114,16 +117,8 @@ export async function POST(request: Request): Promise<Response> {
   ) as "tiktok" | "instagram" | "youtube";
 
   // ── (3) Rolling rate limit (T-03-10) ─────────────────────────────────────
-  // We don't have an ideas-specific message table in v1; rate-limit via a lightweight
-  // in-memory approach is not durable. Mirror pattern: skip rate-limit for Ideas v1
-  // (no analysis_chats table; the ideas messages table is threads/messages). A full
-  // per-user rate-limit on the messages table requires a schema-aware count query
-  // which is deferred. The route is protected by auth and ask-cap; a dedicated
-  // rate-limit middleware or edge function is the v2 path.
-  // TODO (v2): add per-user rolling rate limit on the ideas route (RATE_LIMIT_WINDOW_SECS,
-  // RATE_LIMIT_MAX_MSGS defined above for when the messages-count query is wired).
-  void RATE_LIMIT_WINDOW_SECS;
-  void RATE_LIMIT_MAX_MSGS;
+  // Enforced durably at the auth gate above by rateLimitGuard(user.id, "ideas")
+  // (Upstash sliding window; the heavier ideas pipeline gets a tighter cap).
 
   // ── (4) Load creator profile (cold-start safe — D-14) ────────────────────
   // Null profile is valid; runIdeasPipeline degrades gracefully.
