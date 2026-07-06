@@ -143,7 +143,7 @@ describe("runScriptPipeline (runner)", () => {
 
     // Flash must be called ONCE, with the opener seed + "hook" framing
     expect(runFlashTextMode).toHaveBeenCalledTimes(1);
-    const [callSeed, callFraming, callPanel] = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [callSeed, callFraming, callPanel] = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(callSeed).toBe(openingBeatSeed);
     expect(callFraming).toBe("hook");
     expect(callPanel).toMatchObject({ contentType: null });
