@@ -80,20 +80,32 @@ export function StartPage({
 
   const [firstRun, setFirstRun] = useState(initialFirstRun);
 
+  // The audience key the pre-tested sections are warmed against (audienceKeyOf convention:
+  // 'general' or a calibrated UUID). It advances only AFTER a dock switch is persisted (see
+  // handleSelectAudience) — the refresh routes server-resolve the audience from that setting, so
+  // the re-warm POST must follow the PUT. When it changes, both sections re-sim against the new
+  // audience (a cache HIT server-side if that audience was already warmed today).
+  const [warmAudienceKey, setWarmAudienceKey] = useState<string>(
+    initialSelectedAudienceId ?? "general",
+  );
+
   // Real pre-tested cards (Seams 1/2). A fresh server cache seeds each section ready; a miss warms
   // lazily on the first visit of the day (owner cadence) — the client gens/sims + persists via the
-  // refresh route. Gated off for first-run (no calibrated audience to test against).
+  // refresh route. Gated off for first-run (no calibrated audience to test against). Re-warms when
+  // `warmAudienceKey` changes (a persisted dock switch) so the room re-reacts as the new audience.
   const { items: outliers, status: outliersStatus } = useLazyWarm<LiveOutlierCard>(
     initialOutliers,
     "/api/surfaces/outliers",
     "outliers",
     !initialFirstRun,
+    warmAudienceKey,
   );
   const { items: ideas, status: ideasStatus } = useLazyWarm<LiveIdeaCard>(
     initialIdeas,
     "/api/surfaces/ideas",
     "ideas",
     !initialFirstRun,
+    warmAudienceKey,
   );
 
   // Real "plan" (Seams 1/2): the SAME warmed daily-ideas, projected onto upcoming days as a
@@ -128,7 +140,9 @@ export function StartPage({
   // Switch the dock's audience + persist it as the USER-level last-used (resolveUserAudience), so
   // the pick survives a reload and seeds /home's next thread — mirrors composer.handleSelectAudience.
   // Only a real UUID (or null=General) is a valid last-used pin; presets stay session-local.
-  // Fire-and-forget: the in-memory pick reflects instantly regardless of the persist.
+  // The in-memory pick reflects instantly (dock); the pre-tested sections re-sim once the persist
+  // lands — we advance `warmAudienceKey` in the PUT's success handler (NOT before), because the
+  // refresh routes resolve the audience from this persisted setting (the POST must follow the PUT).
   const handleSelectAudience = (audience: Audience) => {
     const newId = audience.is_general ? null : audience.id;
     setSelectedAudienceId(newId);
@@ -137,8 +151,16 @@ export function StartPage({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ audienceId: newId }),
-      }).catch(() => {});
+      })
+        .then((r) => {
+          // Only re-warm once the switch is actually saved — a failed persist keeps the current
+          // cards (honest: never attribute a section to an audience the server didn't record).
+          if (r.ok) setWarmAudienceKey(newId ?? "general");
+        })
+        .catch(() => {});
     }
+    // Presets (non-UUID) stay session-local — not persistable, so not server-resolvable → no
+    // re-warm; the dock reflects the pick, the sections keep the last real-audience cards.
   };
 
   // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2). Both ideas

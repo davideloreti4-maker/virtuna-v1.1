@@ -24,7 +24,7 @@ import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { queryFeed, type FeedTile } from "@/lib/feed/feed-query";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { LiveOutlierCard } from "./live-cards";
-import { audienceKeyOf, upsertSurfaceCards } from "./surface-reactions-repo";
+import { audienceKeyOf, getFreshSurfaceCards, upsertSurfaceCards } from "./surface-reactions-repo";
 
 /** Cards shown on /start (the outlier rail is 3-across on desktop). */
 const OUTLIER_TARGET = 3;
@@ -61,6 +61,18 @@ export async function buildLiveOutliers(
 ): Promise<LiveOutlierCard[]> {
   // (1) The audience the room reacts as — the user-level last-used (same read the dock + threads use).
   const audience = await resolveUserAudience(supabase, userId);
+
+  // (1a) Cache-first. A fresh batch for THIS audience (within the TTL) is returned as-is — no
+  //      re-sim. This makes an audience switch on the dock a cache HIT for an already-warm
+  //      audience: the cost is one batched sim per never-seen audience, then served from cache
+  //      until the daily re-warm. A miss / stale entry falls through to a fresh sim below.
+  const cached = await getFreshSurfaceCards<LiveOutlierCard>(
+    supabase,
+    userId,
+    audienceKeyOf(audience),
+    "outlier",
+  );
+  if (cached) return cached;
 
   // (2) Creator profile → niche panel (cold-start safe; null → honest generic panel).
   const { data: rawProfile } = await supabase
