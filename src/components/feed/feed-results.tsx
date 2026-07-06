@@ -18,6 +18,7 @@ import { FilmStrip, FunnelSimple, CircleNotch } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { SurfaceEmptyState, EmptyStateIcon } from "@/components/ui/surface-empty-state";
+import { SurfaceErrorState } from "@/components/ui/surface-error-state";
 import { FeedCard } from "@/components/feed/feed-card";
 import type { FeedTile, FeedTab } from "@/lib/feed/feed-query";
 
@@ -111,16 +112,10 @@ export function FeedResults({
   // ── Error ─────────────────────────────────────────────────────────────────────
   if (isError) {
     return (
-      <div className="flex items-center justify-between rounded-lg border border-red-500/20 bg-red-500/[0.05] p-3">
-        <span className="text-sm text-red-400">Couldn&apos;t load your feed. Try again.</span>
-        <button
-          type="button"
-          onClick={onRetry}
-          className="ml-3 shrink-0 rounded-lg border border-white/[0.06] px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-white/[0.02]"
-        >
-          Retry
-        </button>
-      </div>
+      <SurfaceErrorState
+        message="Couldn't load your feed. Try again."
+        onRetry={onRetry}
+      />
     );
   }
 

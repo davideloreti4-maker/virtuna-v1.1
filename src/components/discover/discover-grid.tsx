@@ -24,6 +24,7 @@
 import { Compass } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SurfaceEmptyState, EmptyStateIcon } from "@/components/ui/surface-empty-state";
+import { SurfaceErrorState } from "@/components/ui/surface-error-state";
 import { OutlierTile, type OutlierTileData } from "./outlier-tile";
 
 export type DiscoverGridState = "idle" | "loading" | "error" | "results";
@@ -106,19 +107,10 @@ export function DiscoverGrid({
   // ── Error — inline banner + Retry (ScrapeErrorBanner shape) ─────────────────
   if (state === "error") {
     return (
-      <div className="border border-red-500/20 bg-red-500/[0.05] rounded-lg p-3 flex items-center justify-between">
-        <span className="text-sm text-red-400">
-          Couldn&apos;t reach that source. Check the handle or try a different niche.
-        </span>
-        <button
-          type="button"
-          onClick={onRetry}
-          disabled={!onRetry}
-          className="text-xs font-medium px-3 py-1.5 rounded-lg border border-white/[0.06] text-foreground hover:bg-white/[0.02] disabled:opacity-50 transition-colors shrink-0 ml-3"
-        >
-          Retry
-        </button>
-      </div>
+      <SurfaceErrorState
+        message="Couldn't reach that source. Check the handle or try a different niche."
+        onRetry={onRetry}
+      />
     );
   }
 

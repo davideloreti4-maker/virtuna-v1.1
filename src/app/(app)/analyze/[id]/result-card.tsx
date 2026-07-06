@@ -24,6 +24,7 @@
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { PANEL_IDS, type PanelId } from "@/lib/engine/panel-mapping";
 import { GlassPanel } from "@/components/primitives/GlassPanel";
+import { SurfaceErrorState } from "@/components/ui/surface-error-state";
 import { PanelSkeleton } from "./result-card-skeleton";
 
 // Permissive row shape — accepts both Supabase DB rows (Json fields) and
@@ -127,20 +128,11 @@ export function ResultCard({ analysisId, initialData }: ResultCardProps) {
 
       {/* Error region — shown when stream encounters a terminal error */}
       {phase === "error" && (
-        <div
-          role="alert"
-          className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
-        >
-          <p className="mb-2">
-            {error ?? "An error occurred during analysis."}
-          </p>
-          <button
-            onClick={reconnect}
-            className="rounded-md border border-white/[0.06] bg-white/[0.04] px-3 py-1.5 text-xs text-foreground hover:bg-white/[0.08] transition-colors"
-          >
-            Retry
-          </button>
-        </div>
+        <SurfaceErrorState
+          stacked
+          message={error ?? "An error occurred during analysis."}
+          onRetry={reconnect}
+        />
       )}
     </div>
   );
