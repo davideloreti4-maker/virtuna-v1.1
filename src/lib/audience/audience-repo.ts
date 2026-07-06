@@ -9,8 +9,10 @@
  *  - listAudiences, getAudience, createAudience, updateAudience, deleteAudience
  *    — all RLS-scoped to the authenticated user (session only, never input user_id)
  *
- * Cast convention: `(supabase as any).from('audiences')` until database.types.ts
- * is regenerated after the migration push in 07-05. Types are added via Task 3 of this plan.
+ * Row narrowing: `.from('audiences')` returns rows typed by the generated schema
+ * (database.types.ts, regenerated post-migration in #179). The DB types columns like
+ * mode/platform as `string` and the JSONB fields as `Json`; the domain-union narrowing
+ * happens on the boundary return via `rowToAudience` (mirrors tracked-accounts-repo).
  *
  * Security (CR-01): user_id is ALWAYS derived from the supabase session — never
  * accepted from input. The audiences table RLS (audiences_all_own policy) enforces
@@ -391,8 +393,7 @@ export function audienceToRow(
  * RLS ensures only the calling user's rows are returned.
  */
 export async function listAudiences(supabase: SupabaseClient): Promise<Audience[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("audiences")
     .select("*")
     .order("created_at", { ascending: true });
@@ -422,8 +423,7 @@ export async function getAudience(
   const virtual = VIRTUAL_BY_ID.get(id);
   if (virtual !== undefined) return virtual;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("audiences")
     .select("*")
     .eq("id", id)
@@ -460,8 +460,7 @@ export async function createAudience(
 
   const rowPayload = audienceToRow(input, user.id);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("audiences")
     .insert(rowPayload)
     .select("*")
@@ -572,8 +571,7 @@ export async function updateAudience(
   const rowPayload = audienceToRow(input, user.id);
   delete rowPayload.user_id; // do NOT overwrite user_id on update
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("audiences")
     .update(rowPayload)
     .eq("id", id)
@@ -601,8 +599,7 @@ export async function deleteAudience(
     throw new Error(`cannot delete virtual audience '${id}'`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("audiences")
     .delete()
     .eq("id", id);

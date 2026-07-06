@@ -214,8 +214,7 @@ export async function POST(request: Request): Promise<Response> {
         let goalIntent: GoalIntent | null = null;
         if (pinned.audience_id) {
           try {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: aud } = await (supabase as any)
+            const { data: aud } = await supabase
               .from("audiences")
               .select("goal_intent")
               .eq("id", pinned.audience_id)
