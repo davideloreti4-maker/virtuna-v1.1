@@ -21,7 +21,7 @@ import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { LiveIdeaCard } from "./live-cards";
-import { audienceKeyOf, upsertSurfaceCards } from "./surface-reactions-repo";
+import { audienceKeyOf, getFreshSurfaceCards, upsertSurfaceCards } from "./surface-reactions-repo";
 
 /** Cards shown on /start (the pipeline over-generates → ≤3 ranked blocks). */
 const IDEA_TARGET = 4;
@@ -41,6 +41,18 @@ export async function buildLiveIdeas(
 ): Promise<LiveIdeaCard[]> {
   // (1) The audience the room reacts as — the user-level last-used (same read the dock + threads use).
   const audience = await resolveUserAudience(supabase, userId);
+
+  // (1a) Cache-first. A fresh batch for THIS audience (within the TTL) is returned as-is — no
+  //      re-sim. This makes an audience switch on the dock a cache HIT for an already-warm
+  //      audience: the cost is one ideas run per never-seen audience, then served from cache until
+  //      the daily re-warm. A miss / stale entry falls through to a fresh generate→sim→rank below.
+  const cached = await getFreshSurfaceCards<LiveIdeaCard>(
+    supabase,
+    userId,
+    audienceKeyOf(audience),
+    "idea",
+  );
+  if (cached) return cached;
 
   // (2) Creator profile → grounds generation (cold-start safe; null degrades gracefully).
   const { data: rawProfile } = await supabase
