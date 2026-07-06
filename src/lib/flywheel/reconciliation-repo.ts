@@ -14,7 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { GoalIntent } from "@/lib/audience/audience-types";
 import type { DivergenceClass } from "./reconcile";
-import type { DispositionVector } from "./outcome-repo";
+import type { DispositionVector, RawMetrics } from "./outcome-repo";
 
 // ─── Domain shapes ───────────────────────────────────────────────────────────
 
@@ -38,6 +38,26 @@ export interface Reconciliation {
   proposed_delta: Record<string, number> | null;
   confirmed_at: string | null;
   created_at: string;
+}
+
+/**
+ * The public, glanceable slice of the linked outcome_signatures row — the "actual" side
+ * of a receipt: where the post lives + the raw public numbers it was measured from.
+ * (The reconciliation itself only stores normalized vectors; the real counts live here.)
+ */
+export interface OutcomeMetrics {
+  platform_post_url: string | null;
+  posted_at: string | null;
+  raw_metrics: RawMetrics | null;
+}
+
+/**
+ * A reconciliation enriched with its linked outcome signature (the /start "the loop" feed row).
+ * `outcome` is OPTIONAL so a bare `Reconciliation` stays structurally assignable (tests, callers
+ * that don't join) — absent/null when the FK is null or the signature couldn't be embedded.
+ */
+export interface LoopRow extends Reconciliation {
+  outcome?: OutcomeMetrics | null;
 }
 
 /** Writable insert shape — user_id is NEVER part of it (CR-01, session-derived). */
@@ -134,20 +154,32 @@ export async function listReconciliations(
 /**
  * List the user's most recent reconciliations ACROSS all audiences (newest first, capped) —
  * the /start "the loop" feed. RLS scopes to the authenticated user (no audience filter).
- * Total: returns [] on error (the loop degrades to its honest empty state, never throws up).
+ *
+ * Embeds the linked outcome_signatures row (many-to-one via `outcome_signature_id`) so each
+ * receipt can show the REAL public numbers + a link to the actual post — the "actual" half of
+ * predicted-vs-actual. The embed rides the same RLS (both tables are own-rows-only) and returns
+ * a single object (or null) per row. Total: returns [] on error (the loop degrades to its honest
+ * empty state, never throws up).
  */
 export async function listRecentReconciliations(
   supabase: SupabaseClient,
   limit = 8,
-): Promise<Reconciliation[]> {
+): Promise<LoopRow[]> {
   try {
     const { data, error } = await supabase
       .from("reconciliations")
-      .select("*")
+      .select("*, outcome_signatures(platform_post_url, posted_at, raw_metrics)")
       .order("created_at", { ascending: false })
       .limit(limit);
     if (error) return [];
-    return (data ?? []) as Reconciliation[];
+    return (data ?? []).map((raw): LoopRow => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { outcome_signatures, ...rec } = raw as any;
+      return {
+        ...(rec as Reconciliation),
+        outcome: (outcome_signatures as OutcomeMetrics | null) ?? null,
+      };
+    });
   } catch {
     return [];
   }

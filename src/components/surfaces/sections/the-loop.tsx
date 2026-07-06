@@ -33,35 +33,72 @@ export function TheLoop({
         </p>
       ) : (
         <>
-          {receipts.map((r, i) => (
-            <div
-              key={r.id}
-              className={`flex items-center gap-[11px] py-[11px] ${i > 0 ? "border-t border-border" : ""}`}
-            >
-              <span
-                className="grid size-[22px] shrink-0 place-items-center rounded-full"
-                style={{ background: "rgba(142,166,138,0.16)", color: "var(--color-positive)" }}
-              >
-                <SurfaceIcon name="check" size={12} strokeWidth={2.2} />
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-[12.5px] leading-[1.35] text-foreground">
-                  {r.headline ?? "Measured against your prediction"}
-                </div>
-                <div className="mt-[3px] font-mono text-[10px] text-foreground-muted">
-                  measured {r.whenLabel}
-                </div>
-              </div>
-              {r.matchPct != null && (
+          {receipts.map((r, i) => {
+            const rowClass = `flex items-center gap-[11px] py-[11px] ${i > 0 ? "border-t border-border" : ""}`;
+            const inner = (
+              <>
                 <span
-                  className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[9.5px]"
-                  style={{ color: "var(--color-positive)", borderColor: "rgba(142,166,138,0.34)" }}
+                  className="grid size-[22px] shrink-0 place-items-center rounded-full"
+                  style={{ background: "rgba(142,166,138,0.16)", color: "var(--color-positive)" }}
                 >
-                  {r.matchPct}% match
+                  <SurfaceIcon name="check" size={12} strokeWidth={2.2} />
                 </span>
-              )}
-            </div>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] leading-[1.35] text-foreground">
+                    {r.headline ?? "Measured against your prediction"}
+                  </div>
+                  <div className="mt-[3px] font-mono text-[10px] leading-[1.4] text-foreground-muted">
+                    {r.metrics.length > 0 ? (
+                      <>
+                        {r.metrics.map((m, j) => (
+                          <span key={m.label}>
+                            {j > 0 && " · "}
+                            <span className="text-foreground-secondary">{m.value}</span> {m.label}
+                          </span>
+                        ))}
+                        {" · "}
+                        {r.whenLabel}
+                      </>
+                    ) : (
+                      <>measured {r.whenLabel}</>
+                    )}
+                  </div>
+                </div>
+                {r.matchPct != null && (
+                  <span
+                    className="shrink-0 whitespace-nowrap rounded-md border px-[7px] py-[3px] font-mono text-[9.5px]"
+                    style={{ color: "var(--color-positive)", borderColor: "rgba(142,166,138,0.34)" }}
+                  >
+                    {r.matchPct}% match
+                  </span>
+                )}
+                {r.link && (
+                  <SurfaceIcon
+                    name="upright"
+                    size={12}
+                    strokeWidth={2}
+                    className="shrink-0 text-foreground-muted transition-colors group-hover:text-foreground-secondary"
+                  />
+                )}
+              </>
+            );
+            return r.link ? (
+              <a
+                key={r.id}
+                href={r.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Open this post"
+                className={`${rowClass} group`}
+              >
+                {inner}
+              </a>
+            ) : (
+              <div key={r.id} className={rowClass}>
+                {inner}
+              </div>
+            );
+          })}
 
           {accuracy && (
             <div className="mt-[13px] flex items-center gap-[13px] border-t border-border pt-[13px]">

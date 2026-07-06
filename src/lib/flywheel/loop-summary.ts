@@ -9,7 +9,14 @@
  */
 
 import { buildOutcomeReadout } from "./outcome-readout";
-import type { Reconciliation } from "./reconciliation-repo";
+import type { LoopRow, Reconciliation } from "./reconciliation-repo";
+import type { RawMetrics } from "./outcome-repo";
+
+/** One real public number ("12.4K" / "views") — the "actual" proof beside the match %. */
+export interface ReceiptMetric {
+  value: string;
+  label: string;
+}
 
 export interface LoopReceipt {
   id: string;
@@ -19,6 +26,10 @@ export interface LoopReceipt {
   headline: string | null;
   /** Pre-formatted relative label ("today" · "yesterday" · "3d ago" · "2w ago"). */
   whenLabel: string;
+  /** Real public numbers (views-first, ≤ 2, non-null only). Empty when none were captured. */
+  metrics: ReceiptMetric[];
+  /** The actual post's URL, or null — the receipt links out to the real thing when present. */
+  link: string | null;
 }
 
 export interface LoopAccuracy {
@@ -50,8 +61,47 @@ export function relativeWhen(iso: string, nowMs: number): string {
   return `${weeks}w ago`;
 }
 
+/** Compact a count for a glanceable receipt: 940 · 12.4K · 1.2M · 63.9M (no trailing .0). */
+export function compactCount(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "0";
+  const trim = (x: number): string => {
+    const s = x.toFixed(1);
+    return s.endsWith(".0") ? s.slice(0, -2) : s;
+  };
+  if (n >= 1_000_000) return `${trim(n / 1_000_000)}M`;
+  if (n >= 1_000) return `${trim(n / 1_000)}K`;
+  return String(Math.round(n));
+}
+
+/** Priority order for the ≤2 receipt numbers: reach first, then the strongest engagement signal. */
+const METRIC_ORDER: ReadonlyArray<{ key: keyof RawMetrics; label: string }> = [
+  { key: "views", label: "views" },
+  { key: "saves", label: "saves" },
+  { key: "likes", label: "likes" },
+  { key: "shares", label: "shares" },
+  { key: "comments", label: "comments" },
+];
+
+/**
+ * Pick the ≤2 most meaningful REAL public numbers off a raw-metrics blob — views first (reach),
+ * then the strongest available engagement signal. Only present, finite, non-negative counts show
+ * (never a fabricated or null number). Empty array when nothing was captured (honest).
+ */
+export function buildReceiptMetrics(raw: RawMetrics | null | undefined): ReceiptMetric[] {
+  if (!raw) return [];
+  const out: ReceiptMetric[] = [];
+  for (const { key, label } of METRIC_ORDER) {
+    const v = raw[key];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0) {
+      out.push({ value: compactCount(v), label });
+      if (out.length === 2) break;
+    }
+  }
+  return out;
+}
+
 /** Map recent reconciliation rows → honest receipts (newest first, as read). */
-export function buildLoopReceipts(rows: Reconciliation[], nowMs: number): LoopReceipt[] {
+export function buildLoopReceipts(rows: LoopRow[], nowMs: number): LoopReceipt[] {
   return rows.map((r) => {
     const readout = buildOutcomeReadout(r.predicted_vector, r.realized_vector);
     return {
@@ -59,6 +109,8 @@ export function buildLoopReceipts(rows: Reconciliation[], nowMs: number): LoopRe
       matchPct: readout.matchPct,
       headline: readout.headline,
       whenLabel: relativeWhen(r.created_at, nowMs),
+      metrics: buildReceiptMetrics(r.outcome?.raw_metrics),
+      link: r.outcome?.platform_post_url ?? null,
     };
   });
 }
