@@ -46,9 +46,11 @@ export function HomePageLayout() {
     <div className="flex h-full w-full flex-col items-center px-4 xl:pr-[392px]">
       <div className="flex w-full max-w-[760px] flex-col flex-1 min-h-0">
         {!hasConversation && !rehydrating && (
+          // Empty home: the serif greeting sits centered in the space ABOVE the composer,
+          // which the child pins to the bottom of the column (flex-1 hero + shrink-0 dock).
           <div
             className={cn(
-              "shrink-0 flex flex-col items-center pt-[clamp(3rem,18vh,7rem)] pb-8",
+              "flex flex-1 min-h-0 flex-col items-center justify-center pb-6",
               !reducedMotion && "transition-[padding] duration-300 ease-out",
             )}
           >

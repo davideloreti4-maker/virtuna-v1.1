@@ -37,7 +37,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Plus } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
@@ -2035,7 +2035,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <p className="text-sm text-foreground-secondary">{EVIDENCE_DROP_HINT}</p>
           </div>
         )}
-        <div className="relative p-3 pt-0">
+        <div className="relative p-3.5">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
               and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
@@ -2133,29 +2133,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <VideoUpload bare file={file} onFileSelect={setFile} />
           </div>
 
-          {/* Clean composer row (v6 — THE-ROOM-HANDOFF §3.5): [✦ Make ▾] · field · ↑.
-              The verb chip (ComposerControls) sits inline-left, the field grows in the
-              middle, a small evidence paperclip + the cream send sit right. Banners + the
-              Test upload zone stack ABOVE this row. Tool selection is NEVER a submit
-              (Pitfall #5 / WR-05); the Grow/Sell intent, `+` attach, and model tag are all
-              retired (intent → audience goal; Test absorbs upload; model implied by verb). */}
-          <div className="flex items-end gap-2">
-            <ComposerControls
-              activeTool={activeTool}
-              onSelectTool={handleUserSelectTool}
-              // ── activeMode threading (07-04 / UX-02 / D-07) ──────────────────
-              // The skill menu is mode-scoped (07-01): a General audience surfaces
-              // Profile/Simulate/Predict; everything else stays Socials. The mode is
-              // DERIVED from the selected audience — null/Socials audience → "socials"
-              // so the live creator render is byte-identical (Pitfall 2).
-              activeMode={selectedAudience?.mode ?? "socials"}
-              onRunExplore={(params) => void explore.start(params)}
-              className="shrink-0"
-            />
-
-            {/* Field — free text / URL / `/` slash entry. textarea (auto-multiline);
-                Enter submits, Shift+Enter newlines (onFieldKeyDown). For the Test/Remix
-                tools it carries a URL; a `/` opens the skill command menu (above). */}
+          {/* Two-row composer (Claude / Perplexity pattern): the field owns the FULL-WIDTH
+              top row so it has real height + breathing room; the controls sit on a bottom
+              row — [✦ Verb ▾] on the left, evidence attach + cream send on the right. This
+              replaces the old single cramped bar. Banners + the Test upload zone stack ABOVE.
+              Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
+          <div className="flex flex-col gap-2.5">
+            {/* Row 1 — the field. textarea (auto-multiline); Enter submits, Shift+Enter
+                newlines (onFieldKeyDown). Test/Remix carry a URL; `/` opens the skill menu. */}
             <textarea
               rows={1}
               value={url}
@@ -2179,48 +2164,65 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               }
               aria-invalid={showUrlError || undefined}
               className={cn(
-                "min-w-0 flex-1 resize-none bg-transparent px-1 py-2 text-base text-foreground",
+                "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-[15px] text-foreground",
                 "placeholder:text-foreground-muted focus:outline-none",
-                "min-h-[40px] max-h-[150px] leading-[1.5]",
+                "min-h-[46px] max-h-[200px] leading-[1.55]",
               )}
             />
 
-            {/* Small in-input evidence paperclip (05-06 / D-07) — attach a chat / screenshot
-                (the Profile evidence door). The `+` VIDEO attach retired: Test absorbs the
-                video upload. Opens a file picker; drag-and-drop is handled by the form overlay. */}
-            <input
-              ref={evidenceInputRef}
-              type="file"
-              accept={EVIDENCE_ACCEPT}
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) acceptEvidenceFile(f);
-                e.target.value = ""; // allow re-selecting the same file
-              }}
-            />
-            <button
-              type="button"
-              aria-label={EVIDENCE_ATTACH_LABEL}
-              title={EVIDENCE_ATTACH_LABEL}
-              onClick={() => evidenceInputRef.current?.click()}
-              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-lg text-foreground-muted transition-colors hover:bg-surface-elevated hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
-            >
-              <Paperclip className="h-[17px] w-[17px]" />
-            </button>
+            {/* Row 2 — controls. Verb/skill chip (ComposerControls) left; evidence attach +
+                the cream send right. The skill menu is mode-scoped (07-01/UX-02/D-07):
+                activeMode is DERIVED from the selected audience (null/Socials → "socials",
+                keeping the live creator render byte-identical — Pitfall 2). */}
+            <div className="flex items-center justify-between gap-2">
+              <ComposerControls
+                activeTool={activeTool}
+                onSelectTool={handleUserSelectTool}
+                activeMode={selectedAudience?.mode ?? "socials"}
+                onRunExplore={(params) => void explore.start(params)}
+                className="shrink-0"
+              />
 
-            {/* Submit — neutral cream action (inherits primary variant). */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
-              disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
-              loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
-              className="shrink-0 rounded-lg"
-            >
-              <ArrowUp className="h-4 w-4" />
-            </Button>
+              <div className="flex items-center gap-1.5">
+                {/* In-input evidence paperclip (05-06 / D-07) — attach a chat / screenshot
+                    (the Profile evidence door). Opens a file picker; drag-drop is the form overlay. */}
+                <input
+                  ref={evidenceInputRef}
+                  type="file"
+                  accept={EVIDENCE_ACCEPT}
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) acceptEvidenceFile(f);
+                    e.target.value = ""; // allow re-selecting the same file
+                  }}
+                />
+                <button
+                  type="button"
+                  aria-label={EVIDENCE_ATTACH_LABEL}
+                  title={EVIDENCE_ATTACH_LABEL}
+                  onClick={() => evidenceInputRef.current?.click()}
+                  className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-xl text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+                >
+                  <Plus className="h-5 w-5" strokeWidth={2} />
+                </button>
+
+                {/* Submit — clean cream disc (Claude-style). boxShadow is forced off inline so the
+                    primary variant's dark 2px ring (--shadow-button) can never re-add a border. */}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
+                  disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
+                  loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+                  style={{ boxShadow: "none" }}
+                  className="shrink-0 h-[40px] w-[40px] min-w-0 p-0 rounded-xl"
+                >
+                  <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2253,7 +2255,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     <div
       data-testid="composer-dock"
       className={cn(
-        "relative w-full rounded-2xl border border-white/[0.06] bg-surface-elevated",
+        "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
         !audienceOpen && "overflow-hidden",
         layout === "centered" && "shadow-float",
         !reducedMotion && "transition-shadow duration-200",
@@ -2276,12 +2278,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // General audience and routes to Build when none). onDemoComplete reloads the open
   // thread so the demo's profile-read card surfaces in-thread.
   const homeStarter = !hasConversationContent ? (
-    <HomeStarter
-      onChipTest={() => handleUserSelectTool("test")}
-      onChipProfile={() => handleUserSelectTool("profile")}
-      onChipPredict={() => handleUserSelectTool("predict")}
-      onDemoComplete={() => void reloadProfileThread()}
-    />
+    <div className="mb-4 w-full">
+      <HomeStarter
+        onChipTest={() => handleUserSelectTool("test")}
+        onChipProfile={() => handleUserSelectTool("profile")}
+        onChipPredict={() => handleUserSelectTool("predict")}
+        onDemoComplete={() => void reloadProfileThread()}
+      />
+    </div>
   ) : null;
 
   // ── Layout branches ────────────────────────────────────────────────────────
@@ -2341,10 +2345,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // (identity + "N personas ready", NO stale reaction, NO second input — fork #4). `ambientFocus`
   // is null here (no thread cards to focus), so the pulse reads readiness.
   return (
-    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col", className)}>
+    <div className={cn("w-full max-w-[760px] mx-auto flex flex-col pb-4", className)}>
       {threadContent}
-      {composerDock}
+      {/* Starter chips ride ABOVE the bottom-pinned composer (suggestion row), so the
+          empty home reads greeting (centered) → chips → composer at the bottom edge. */}
       {homeStarter}
+      {composerDock}
       {railPortal}
     </div>
   );

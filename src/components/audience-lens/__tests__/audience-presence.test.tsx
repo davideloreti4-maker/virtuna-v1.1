@@ -146,7 +146,7 @@ function setup(over: Partial<React.ComponentProps<typeof AudiencePresence>> = {}
 describe('AudiencePresence — PEEK band (readiness)', () => {
   it('shows the identity + a readiness pulse, never a fabricated reaction', () => {
     setup({ audience: calibrated10(), focus: null });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 personas ready/i);
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 ready/i);
     expect(screen.getByTestId('audience-pulse').textContent).not.toMatch(/would stop/i);
     expect(screen.getByRole('button', { name: /audience: growth audience/i })).toBeInTheDocument();
   });
@@ -257,13 +257,16 @@ describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
 describe('AudiencePresence — General / null audience (no crash)', () => {
   it('renders the General readiness pulse + a default roster of 10', () => {
     const { container } = setup({ audience: general(), focus: null });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/general · 10 personas ready/i);
+    // Name lives in the switcher chip now (dropped from the pulse to kill the mobile-dock dup).
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 ready/i);
+    expect(screen.getByRole('button', { name: /audience: general\. switch audience/i })).toBeInTheDocument();
     expect(container.querySelectorAll('.sr-only ul li').length).toBe(10);
   });
 
   it('treats a null audience as General without crashing', () => {
     setup({ audience: null, focus: null });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/general/i);
+    // A null audience presents as General — the name shows in the switcher chip.
+    expect(screen.getByRole('button', { name: /audience: general\. switch audience/i })).toBeInTheDocument();
   });
 });
 
@@ -328,14 +331,16 @@ describe('AudiencePresence — Mode-sectioned switcher', () => {
 describe('AudiencePresence — General reactor', () => {
   it('drives the reactor for a General panel SIM (multi-persona, no crash)', () => {
     const { container } = setup({ audience: generalPanel(), focus: null });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/analyst panel · 3 personas ready/i);
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/3 ready/i);
+    expect(screen.getByRole('button', { name: /audience: analyst panel\. switch audience/i })).toBeInTheDocument();
     expect(container.querySelectorAll('.sr-only ul li').length).toBe(3);
   });
 
   it('presents a General person SIM (1 persona) as a SINGLE reactor', () => {
     const { container } = setup({ audience: generalPerson(), focus: null });
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/mentor sim · 1 reactor ready/i);
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/1 ready/i);
     expect(screen.getByTestId('audience-pulse').textContent).not.toMatch(/personas ready/i);
+    expect(screen.getByRole('button', { name: /audience: mentor sim\. switch audience/i })).toBeInTheDocument();
     // A single reactor → exactly one dot in the sr-only roster mirror.
     expect(container.querySelectorAll('.sr-only ul li').length).toBe(1);
   });
@@ -517,7 +522,7 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
   it('keeps the peek band + the honest readiness pulse (no fabricated reaction)', () => {
     setup({ variant: 'surface', focus: null, open: false });
     expect(screen.getByRole('button', { name: /open your audience/i })).toBeInTheDocument();
-    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 personas ready/i);
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/10 ready/i);
   });
 
   it('drops the composer "type below" prompt for a read-only idle description (dock)', () => {
