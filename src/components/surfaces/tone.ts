@@ -11,14 +11,14 @@ import type { Tone } from "@/lib/room-contract/types";
 
 /** Solid dot fill per tone (inline style — exact prototype hex). */
 export const toneDot: Record<Tone, string> = {
-  loved: "#8ea68a", // muted sage — a win with your people
+  loved: "var(--color-positive)", // muted sage — a win with your people
   bounced: "var(--color-accent)", // terracotta — the room pushed back
   neutral: "rgba(255,255,255,0.42)",
 };
 
 /** Softer fill for split bars / avatars. */
 export const toneBar: Record<Tone, string> = {
-  loved: "#8ea68a",
+  loved: "var(--color-positive)",
   bounced: "var(--color-accent)",
   neutral: "#8a857b",
 };

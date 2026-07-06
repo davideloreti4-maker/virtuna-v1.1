@@ -55,7 +55,7 @@ export function GrowView() {
                   "mt-[3px] grid size-[15px] shrink-0 place-items-center rounded-full border text-[9px]",
                   r.met ? "border-transparent text-[color:var(--color-background)]" : "border-border-hover text-foreground-muted",
                 )}
-                style={r.met ? { background: "#8ea68a" } : undefined}
+                style={r.met ? { background: "var(--color-positive)" } : undefined}
               >
                 {r.met ? "✓" : ""}
               </span>

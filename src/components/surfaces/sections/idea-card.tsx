@@ -48,7 +48,7 @@ export function IdeaCard({
           <SurfaceIcon name={idea.type === "Carousel" ? "layers" : "film"} size={12} strokeWidth={1.6} className="text-foreground-muted" />
           {idea.type}
         </span>
-        <span className="ml-auto inline-flex items-center gap-1 font-mono text-[8.5px] tracking-[0.05em]" style={{ color: "#8ea68a" }}>
+        <span className="ml-auto inline-flex items-center gap-1 font-mono text-[8.5px] tracking-[0.05em]" style={{ color: "var(--color-positive)" }}>
           <SurfaceIcon name="sparkle" size={10} strokeWidth={1.7} />
           pre-tested
         </span>
