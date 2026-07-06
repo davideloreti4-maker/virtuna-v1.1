@@ -18,6 +18,7 @@ import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 import { archiveThread } from "@/lib/threads/threads";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import type { TablesUpdate } from "@/types/database.types";
 
 const PatchSchema = z.object({
   // null = General default; otherwise must be a real audience UUID (the column is uuid).
@@ -57,7 +58,7 @@ export async function PATCH(
     return Response.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const updatePayload: Record<string, unknown> = {};
+  const updatePayload: TablesUpdate<"threads"> = {};
   if ("active_audience_id" in parsed.data) {
     updatePayload.active_audience_id = parsed.data.active_audience_id ?? null;
   }
@@ -67,8 +68,7 @@ export async function PATCH(
   }
 
   // Update — RLS enforces ownership via session client
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("threads")
     .update(updatePayload)
     .eq("id", threadId)
