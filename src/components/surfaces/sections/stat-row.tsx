@@ -91,7 +91,7 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
  */
 export function StatRowEmpty() {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-surface-elevated px-4 py-3.5">
+    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-background-elevated px-4 py-3.5">
       <span className="text-foreground-muted" aria-hidden>
         <SurfaceIcon name="up" size={15} strokeWidth={1.6} />
       </span>

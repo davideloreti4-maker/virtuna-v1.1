@@ -23,6 +23,7 @@
 
 import { Compass } from "@phosphor-icons/react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SurfaceEmptyState, EmptyStateIcon } from "@/components/ui/surface-empty-state";
 import { OutlierTile, type OutlierTileData } from "./outlier-tile";
 
 export type DiscoverGridState = "idle" | "loading" | "error" | "results";
@@ -124,15 +125,16 @@ export function DiscoverGrid({
   // ── Empty / zero-result (valid pull, no standout outliers) ──────────────────
   if (state === "results" && tiles.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/[0.04] mb-4">
-          <Compass size={32} weight="thin" className="text-foreground-muted" />
-        </div>
-        <p className="text-sm text-foreground-muted text-center max-w-sm">
-          No standout outliers found for this {sourceLabel ?? "source"}. Try a broader
-          niche or another handle.
-        </p>
-      </div>
+      <SurfaceEmptyState
+        icon={
+          <EmptyStateIcon>
+            <Compass size={32} weight="thin" />
+          </EmptyStateIcon>
+        }
+      >
+        No standout outliers found for this {sourceLabel ?? "source"}. Try a broader
+        niche or another handle.
+      </SurfaceEmptyState>
     );
   }
 

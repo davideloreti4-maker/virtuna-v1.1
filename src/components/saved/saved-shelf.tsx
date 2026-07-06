@@ -19,6 +19,7 @@ import { useSavedItems } from "@/hooks/queries/use-saved-items";
 import type { SavedItem, SavedItemType } from "@/lib/shelf/shelf-repo";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { SurfaceEmptyState } from "@/components/ui/surface-empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Constellation, buildLoadingDots } from "@/components/brand/constellation";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -279,35 +280,34 @@ function EmptyState({ filtered, onClear }: { filtered: boolean; onClear: () => v
   const dots = useMemo(() => buildLoadingDots(120, 32, 8), []);
 
   return (
-    <div className="flex min-h-[360px] flex-col items-center justify-center gap-5 rounded-[var(--radius-lg)] border border-white/[0.06] px-6 py-16 text-center">
-      <Constellation
-        dots={dots}
-        reducedMotion={reducedMotion}
-        width={140}
-        height={38}
-        vbW={120}
-        vbH={32}
-        ariaLabel="Your library is waiting"
-      />
-      <div className="flex flex-col gap-2">
-        <p className="text-base font-semibold text-foreground">
-          {filtered ? "Nothing matches" : "Nothing in your Library yet"}
-        </p>
-        <p className="max-w-md text-sm text-foreground-muted">
-          {filtered
-            ? "Try another type or clear your search."
-            : "Save a Read, idea, hook, or outlier from any thread and it lands here — ready to pull back in."}
-        </p>
-      </div>
-      {filtered ? (
-        <Button variant="secondary" onClick={onClear}>
-          Clear filters
-        </Button>
-      ) : (
-        <Button variant="primary" onClick={() => router.push("/home")}>
-          Start a Simulation
-        </Button>
-      )}
-    </div>
+    <SurfaceEmptyState
+      icon={
+        <Constellation
+          dots={dots}
+          reducedMotion={reducedMotion}
+          width={140}
+          height={38}
+          vbW={120}
+          vbH={32}
+          ariaLabel="Your library is waiting"
+        />
+      }
+      title={filtered ? "Nothing matches" : "Nothing in your Library yet"}
+      action={
+        filtered ? (
+          <Button variant="secondary" onClick={onClear}>
+            Clear filters
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={() => router.push("/home")}>
+            Start a Simulation
+          </Button>
+        )
+      }
+    >
+      {filtered
+        ? "Try another type or clear your search."
+        : "Save a Read, idea, hook, or outlier from any thread and it lands here — ready to pull back in."}
+    </SurfaceEmptyState>
   );
 }
