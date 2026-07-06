@@ -6,6 +6,7 @@ import {
   listTrackedAccounts,
   upsertAccountSnapshot,
 } from "@/lib/account-metrics/account-metrics-repo";
+import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { sumRecentViews } from "@/lib/account-metrics/account-metrics";
 import { createLogger } from "@/lib/logger";
 
@@ -80,6 +81,25 @@ export async function GET(request: Request) {
           videos.length > 0
             ? sumRecentViews(videos, RECENT_WINDOW_DAYS, new Date())
             : null;
+        // Persist the posts we just scraped (caption + engagement) for content
+        // pillars — best-effort, isolated so a persist failure never loses the
+        // snapshot or recent_views we already computed.
+        if (videos.length > 0) {
+          try {
+            await upsertAccountPosts(
+              supabase,
+              account.user_id,
+              account.platform,
+              account.handle,
+              videos,
+            );
+          } catch (error) {
+            log.error("Failed to persist account posts (snapshot still written)", {
+              handle: account.handle,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+        }
       } catch (error) {
         log.error("Failed to scrape videos for recent_views (profile snapshot still written)", {
           handle: account.handle,
