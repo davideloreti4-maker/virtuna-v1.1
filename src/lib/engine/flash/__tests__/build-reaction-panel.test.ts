@@ -43,6 +43,7 @@ const calibratedAudience: Audience = {
   goal_label: "Grow",
   goal_intent: "grow",
   is_general: false,
+  mode: "socials",
   is_preset: false,
   persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
   personas: [
@@ -61,6 +62,7 @@ const generalAudience: Audience = {
   id: "general",
   name: "General",
   is_general: true,
+  mode: "general",
   personas: [],
 };
 

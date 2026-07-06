@@ -186,7 +186,7 @@ describe("POST /api/tools/script (SSE route)", () => {
 
     // insertMessage must have been called with the blocks + kcGenVersion
     expect(insertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0];
+    const [threadId, role, blocks, kcGenVersion] = (insertMessage as ReturnType<typeof vi.fn>).mock.calls[0]!;
     expect(threadId).toBe("thread-persist-check");
     expect(role).toBe("assistant");
     expect(Array.isArray(blocks)).toBe(true);

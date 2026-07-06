@@ -23,6 +23,7 @@ const generalAudience: Audience = {
   goal_label: null,
   goal_intent: null,
   is_general: true,
+  mode: "general",
   is_preset: false,
   persona_weights: { ...DEFAULT_MIX },
   personas: [],
@@ -39,6 +40,7 @@ const calibratedAudience: Audience = {
   type: "target",
   goal_intent: "sell",
   is_general: false,
+  mode: "socials",
   // non-default, already sums to 1.0 → resolver normalizes to the same values
   persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
 };

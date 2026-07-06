@@ -35,6 +35,7 @@ const generalAudience: Audience = {
   goal_label: null,
   goal_intent: null,
   is_general: true,
+  mode: "general",
   is_preset: false,
   persona_weights: { ...DEFAULT_MIX },
   personas: [],

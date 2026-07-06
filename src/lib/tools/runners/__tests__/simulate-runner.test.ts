@@ -30,7 +30,7 @@ import type { Audience, CalibratedPersona } from "@/lib/audience/audience-types"
 import type { Stimulus } from "@/lib/engine/stimulus/types";
 
 import { runSimulate } from "../simulate-runner";
-import type { PersonReaction } from "../simulate-runner";
+import type { PersonReaction, PersonReactInput } from "../simulate-runner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ function flashReturning(personas: FlashPersona[]) {
 
 /** A mocked personReact returning a fixed reaction (PERSON path). */
 function personReactReturning(reaction: PersonReaction) {
-  return vi.fn(async () => reaction);
+  return vi.fn<(input: PersonReactInput) => Promise<PersonReaction>>(async () => reaction);
 }
 
 const READ: PersonReaction = {
