@@ -1,5 +1,13 @@
 # Open Work — Consolidated Backlog
 
+> **⚠️ RECONCILED 2026-07-06** (`docs/HANDOFF-2026-07-06b-codehealth-bug7.md`). Since the 07-02 snapshot,
+> the deploy-readiness + code-health arc CLOSED: **rate-limiting** (#172), **supabase-as-any** (types
+> regen #179 + casts #181/#185), **coral scaffolding + JSDoc** (#170, file deleted), **Bug #7 variants
+> race** (#191, migration applied), plus tsc backlog (#177), db-types (#179), competitors eslint (#183),
+> search_path migration (#187, *authored not applied*). What TRULY remains: the **Vercel deploy** (still
+> the one launch gate), owner decisions (provider/glass), and design-gated (`SurfaceEmptyState` — mocks
+> started; lint-gate greening of Room components). Items below are struck ✅ where closed.
+>
 > **Snapshot: 2026-07-02.** Single index of everything still **open or deferred** after the
 > post-GSI refine lane (`lane/refine`) reached a clean state (0/0 with `main`, queue empty).
 > All refine-lane work is shipped + merged (PRs #92–#102). What remains is below.
@@ -32,10 +40,9 @@ this arc (A5, A6, spinner consolidation, optimistic delete) is **undeployed**.
 - **Note:** this is a **launch event** (5mo of never-in-prod work), not a code fix. Deferred by owner
   2026-07-02 to stay on local. Detail: audit §Blocking-1.
 
-### 2. Rate-limiting (HARDEN-01)
-6 tool routes unprotected (`src/app/api/tools/ideas/route.ts:117` has a voided TODO); only
-`analyze-chat` is wired. **Needs a store decision** — in-memory won't survive serverless; pick
-Vercel KV / Upstash. Size **M**. Detail: audit §Blocking-2.
+### 2. ~~Rate-limiting (HARDEN-01)~~ ✅ DONE (PR #172, 2026-07-06)
+All 11 `/api/tools/*` routes rate-limited via Upstash sliding window (`src/lib/http/rate-limit.ts`,
+fail-open). INERT until `UPSTASH_REDIS_REST_URL`/`_TOKEN` set in prod. See `rate-limit-shipped.md`.
 
 ---
 
@@ -43,11 +50,11 @@ Vercel KV / Upstash. Size **M**. Detail: audit §Blocking-2.
 
 | Item | What / why gated | Size |
 |------|------------------|------|
-| **Bug #7 — Remix variants JSONB race** | REAL data-loss bug: concurrent remix-variant writes read-modify-write and clobber each other. Fix = atomic `jsonb_set` RPC → **migration-gated**. Pre-launch. | M |
-| **supabase-as-any** | Code casts query results to `any` because generated `database.types.ts` is missing cols (`mode`/`success_criterion`/`custom_context`). Fix = **regenerate types from the live DB schema**, not strip casts. Needs DB access + which-DB-is-canonical call. | M |
+| ~~**Bug #7 — Remix variants JSONB race**~~ ✅ **DONE (PR #191)** | Fixed with an atomic deep-merge RPC (`patch_analysis_variants` + `jsonb_deep_merge`); all 4 writers rewired. Migration **applied** to `qyxvxleheckijapurisj`. | — |
+| ~~**supabase-as-any**~~ ✅ **DONE (#179/#181/#185)** | Types regenerated from the live DB; casts dropped across audience + non-audiences code. Only the required `.schema("storage")` cast remains. | — |
 | **Provider consolidation** | `src/lib/ai/*` deepseek/gemini modules look dead but are **LIVE at runtime**. Removing could break the engine. Needs owner call on which providers stay. Do NOT delete. | M |
 | **Shared-primitive glass** | `ui/{card,select,toast}` still carry `backdrop-filter` glass. Removing changes appearance **everywhere**, incl. GSI-owned surfaces → coordinated pass, not unilateral. | M |
-| **Coral type scaffolding** | `CoralStep`/`GradientToken 'coral'`/`colorVar('coral')` in `types/design-tokens.ts` are dead (unused outside file), but it's a foundational types file → do in a dead-code sweep you green-light. | S |
+| ~~**Coral type scaffolding**~~ ✅ **DONE (#170)** | `types/design-tokens.ts` deleted wholesale (0 importers) — supersedes the scaffolding + stale-JSDoc items. | — |
 | **Worktree / branch prune** | Retire stale worktrees/branches: #60 creator-voice (closed-unmerged), `chat-ethics-gate`, cursor WT, discover-feed. Destructive → each needs a "no stranded work" confirm. | S |
 
 ---
@@ -56,7 +63,7 @@ Vercel KV / Upstash. Size **M**. Detail: audit §Blocking-2.
 
 | Item | What / why deferred | Size |
 |------|---------------------|------|
-| **`SurfaceEmptyState` extract** | ~20+ screens hand-roll their own empty state. Extract one shared component + migrate. Real refactor + shared-API design, risk of flattening intentionally-different states. | M |
+| **`SurfaceEmptyState` extract** | ~27 screens hand-roll their own empty state (icon none/tiled/inline, border none/solid/dashed, title present-or-not, CTA some/none). 🎨 **Mocks started 2026-07-06** (canonical-look options artifact) — pick a variant, then it's a mechanical extract + migrate. | M |
 | **Account-Read persistence** | `/api/account-read` doesn't `insertMessage` → the result block is **session-only, lost on reload**. Finishes the skill shipped in PR #102. Small, self-contained. | S |
 | **`analyze` Reading-internal loading state** | Theme-B residual: `analyze/layout.tsx:26 fallback={null}` is inert; the real fix is a Reading-internal loading state (not a route skeleton). | M |
 | **Stale coral JSDoc** | Comment-level cleanup in `design-tokens.ts` (same file as the coral scaffolding above) — fold into that sweep. | XS |
