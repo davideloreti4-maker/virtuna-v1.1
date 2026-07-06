@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Sparkle } from "@phosphor-icons/react";
 import { Spinner } from "@/components/ui";
 import { StrategyAnalysisCard } from "./strategy-analysis-card";
@@ -209,12 +210,12 @@ export function IntelligenceSection({
               Track your own TikTok account to compare hashtag usage with this
               competitor.
             </p>
-            <a
+            <Link
               href="/competitors/compare"
               className="text-xs font-medium px-3 py-1.5 rounded-lg border border-white/[0.06] text-foreground hover:bg-white/[0.02] transition-colors"
             >
               Set Up Self-Tracking
-            </a>
+            </Link>
           </div>
         )}
 
