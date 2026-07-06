@@ -873,6 +873,7 @@ export type Database = {
       }
       content_pillars: {
         Row: {
+          confirmed: boolean
           created_at: string
           id: string
           name: string
@@ -880,6 +881,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          confirmed?: boolean
           created_at?: string
           id?: string
           name: string
@@ -887,6 +889,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          confirmed?: boolean
           created_at?: string
           id?: string
           name?: string
