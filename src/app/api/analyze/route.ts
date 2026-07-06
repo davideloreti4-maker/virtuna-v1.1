@@ -152,11 +152,10 @@ function cleanupRawUpload(
  * them into the existing `variants` JSONB — the same extensibility bag the filmstrip
  * background task uses for `filmstrip_segments`.
  *
- * Read-merge-write (NOT a wholesale variants overwrite): the filmstrip extract route also
- * merges into `variants`, and the two writers race (filmstrip extraction is fire-and-forget
- * and may land before OR after this call). Spreading the current variants preserves
- * `filmstrip_segments` regardless of order. Non-fatal: a failure here only blanks the Craft
- * pillars, never the analysis itself.
+ * Atomic single-key patch via patch_analysis_variants: the deep-merge runs inside one
+ * UPDATE, so a concurrent writer (apollo / decode / the fire-and-forget filmstrip extract)
+ * can never clobber a sibling key — no read-modify-write window (Bug #7). Non-fatal: a
+ * failure here only blanks the Craft pillars, never the analysis itself.
  */
 async function persistCraftToVariants(
   service: ServiceClient,
@@ -179,22 +178,14 @@ async function persistCraftToVariants(
     return;
   }
   try {
-    const { data: row, error: readErr } = await service
-      .from("analysis_results")
-      .select("variants")
-      .eq("id", id)
-      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
-      .single();
-    if (readErr || !row) {
-      log.warn("craft_variants_read_failed", { id, error: readErr?.message });
-      return;
-    }
-    const current = (row.variants ?? {}) as Record<string, unknown>;
-    const { error: writeErr } = await service
-      .from("analysis_results")
-      .update({ variants: { ...current, craft } as unknown as Json })
-      .eq("id", id)
-      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
+    // Atomic single-key patch — Postgres deep-merges `craft` into variants in one UPDATE,
+    // so there is no read-modify-write window that a concurrent apollo/decode/filmstrip
+    // writer can clobber (Bug #7 lost-update fix). p_user_id enforces CR-02 in the RPC.
+    const { error: writeErr } = await service.rpc("patch_analysis_variants", {
+      p_id: id,
+      p_patch: { craft } as unknown as Json,
+      p_user_id: userId,
+    });
     if (writeErr) {
       log.warn("craft_variants_write_failed", { id, error: writeErr.message });
     }
@@ -213,12 +204,12 @@ async function persistCraftToVariants(
 /**
  * Phase 03 Plan 04 (D-04) — Persist Apollo §4 output into variants.apollo.
  *
- * Read-merge-write (same pattern as persistCraftToVariants / persistDecodeToVariants)
- * to preserve sibling variants (craft, remix/decode) regardless of concurrent write order.
- * Non-fatal: a failure here only blanks the Apollo frame, never the row itself.
+ * Atomic key-patch (patch_analysis_variants): the RPC deep-merges apollo / engagement_range
+ * / hero into variants in one UPDATE, preserving craft + remix siblings under concurrency —
+ * no read-modify-write window. Non-fatal: a failure here only blanks the Apollo frame.
  *
- * Threat T-03-09: three-level spread (...current) ensures craft + remix survive.
- * Threat T-03-10: .eq("user_id") enforces V4 access control.
+ * Threat T-03-09: the deep merge preserves craft + remix (no wholesale overwrite).
+ * Threat T-03-10: p_user_id enforces V4 access control in the RPC's WHERE clause.
  *
  * Score-mode path only (NOT remix): called after the SSE upsert + craft persist.
  */
@@ -241,26 +232,18 @@ async function persistApolloToVariants(
   if (!apollo && !engagement_range && !hero) return;
 
   try {
-    const { data: row, error: readErr } = await service
-      .from("analysis_results")
-      .select("variants")
-      .eq("id", id)
-      .eq("user_id", userId) // T-03-10: V4 access control — never write across user boundary
-      .single();
-    if (readErr || !row) {
-      log.warn("apollo_variants_read_failed", { id, error: readErr?.message });
-      return;
-    }
-    const current = (row.variants ?? {}) as Record<string, unknown>;
-    const merged: Record<string, unknown> = { ...current };
-    if (apollo) merged.apollo = apollo;
-    if (engagement_range) merged.engagement_range = engagement_range;
-    if (hero) merged.hero = hero; // F42 — hero block survives permalink reload
-    const { error: writeErr } = await service
-      .from("analysis_results")
-      .update({ variants: merged as unknown as Json })
-      .eq("id", id)
-      .eq("user_id", userId); // T-03-10: V4 access control preserved on write
+    // Patch only the keys this writer owns; the RPC deep-merges them into variants
+    // atomically, preserving craft / remix / filmstrip_segments siblings under
+    // concurrency (Bug #7). p_user_id enforces V4 access control (T-03-10) in the RPC.
+    const patch: Record<string, unknown> = {};
+    if (apollo) patch.apollo = apollo;
+    if (engagement_range) patch.engagement_range = engagement_range;
+    if (hero) patch.hero = hero; // F42 — hero block survives permalink reload
+    const { error: writeErr } = await service.rpc("patch_analysis_variants", {
+      p_id: id,
+      p_patch: patch as unknown as Json,
+      p_user_id: userId,
+    });
     if (writeErr) {
       log.warn("apollo_variants_write_failed", { id, error: writeErr.message });
     }
@@ -275,11 +258,12 @@ async function persistApolloToVariants(
 /**
  * Phase 03 Plan 02 — Persist decode result into variants.remix.decode.
  *
- * Read-merge-write (three-level spread) to preserve sibling variants
- * (craft, filmstrip_segments) regardless of concurrent write order.
+ * Atomic nested patch (patch_analysis_variants): the RPC's DEEP merge sets
+ * variants.remix.decode while preserving remix.adapt + the craft / filmstrip_segments
+ * siblings — one UPDATE, no read-modify-write window under concurrency.
  * Non-fatal: a failure here only blanks the Decode frame, never the row itself.
  *
- * Threat T-03-04: three-level spread ensures craft + filmstrip_segments survive.
+ * Threat T-03-04: the deep merge preserves craft + filmstrip_segments + remix.adapt.
  */
 async function persistDecodeToVariants(
   service: ServiceClient,
@@ -289,23 +273,14 @@ async function persistDecodeToVariants(
   log: Logger,
 ): Promise<void> {
   try {
-    const { data: row, error: readErr } = await service
-      .from("analysis_results")
-      .select("variants")
-      .eq("id", id)
-      .eq("user_id", userId) // V4 access control — never read/write across user boundary (CR-02)
-      .single();
-    if (readErr || !row) {
-      log.warn("decode_variants_read_failed", { id, error: readErr?.message });
-      return;
-    }
-    const current = (row.variants ?? {}) as Record<string, unknown>;
-    const remix = (current.remix ?? {}) as Record<string, unknown>;
-    const { error: writeErr } = await service
-      .from("analysis_results")
-      .update({ variants: { ...current, remix: { ...remix, decode } } as unknown as Json })
-      .eq("id", id)
-      .eq("user_id", userId); // V4 access control preserved on write (CR-02)
+    // Nested patch: the RPC's DEEP merge sets variants.remix.decode while preserving
+    // remix.adapt / remix.filmstrip siblings — atomically, in one UPDATE, so a concurrent
+    // craft/apollo/filmstrip writer can't clobber it (Bug #7). CR-02 enforced via p_user_id.
+    const { error: writeErr } = await service.rpc("patch_analysis_variants", {
+      p_id: id,
+      p_patch: { remix: { decode } } as unknown as Json,
+      p_user_id: userId,
+    });
     if (writeErr) {
       log.warn("decode_variants_write_failed", { id, error: writeErr.message });
     }

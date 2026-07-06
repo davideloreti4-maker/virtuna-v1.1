@@ -5,7 +5,7 @@
  *   C2: remix branch NEVER calls runPredictionPipeline, NEVER upserts usage_tracking
  *   m3: placeholder row has overall_score:null + mode:'remix'; complete event carries same
  *   C4: resolveAndRehost cleanup() runs unconditionally; video_storage_path never written
- *   T-03-04: persistDecodeToVariants read-merge-write preserves sibling craft + filmstrip_segments
+ *   T-03-04: persistDecodeToVariants sends a narrow remix.decode patch (atomic RPC deep-merge)
  *   T-03-05: DAILY_LIMITS 429 guard still fires on remix mode
  *   DD-04: cleanup() invoked even when runDecode returns null
  *   DD-05: INSERT never sets video_storage_path on decode rows
@@ -23,6 +23,7 @@ const {
   mockGetUser,
   mockInsert,
   mockVariantsUpdate,
+  mockRpc,
   mockUsageTrackingUpsert,
   mockResolveAndRehost,
   mockAnalyzeVideoWithOmni,
@@ -31,6 +32,7 @@ const {
 } = vi.hoisted(() => {
   const mockInsert = vi.fn(async (_data?: unknown) => ({ error: null }));
   const mockVariantsUpdate = vi.fn(async (_data?: unknown) => ({ error: null }));
+  const mockRpc = vi.fn(async (_fn?: string, _args?: unknown) => ({ error: null }));
   const mockUsageTrackingUpsert = vi.fn(async () => ({ error: null }));
   const mockGetUser = vi.fn();
   const mockResolveAndRehost = vi.fn();
@@ -44,6 +46,7 @@ const {
     mockGetUser,
     mockInsert,
     mockVariantsUpdate,
+    mockRpc,
     mockUsageTrackingUpsert,
     mockResolveAndRehost,
     mockAnalyzeVideoWithOmni,
@@ -205,7 +208,7 @@ vi.mock("@/lib/supabase/service", () => ({
         remove: vi.fn(async () => ({ error: null })),
       })),
     },
-    rpc: vi.fn(async () => ({ error: null })),
+    rpc: mockRpc,
   })),
 }));
 
@@ -372,21 +375,21 @@ describe("C2: remix branch does not increment usage_tracking", () => {
 // T-03-04: read-merge-write preserves sibling craft + filmstrip_segments
 // =====================================================
 
-describe("T-03-04: persistDecodeToVariants read-merge-write", () => {
-  it("update payload preserves existing craft and filmstrip_segments", async () => {
+describe("T-03-04: persistDecodeToVariants atomic patch", () => {
+  it("patches ONLY variants.remix.decode via patch_analysis_variants (sibling preservation is the DB deep-merge's job)", async () => {
     const req = makeRemixRequest();
     const res = await POST(req);
     await readSSE(res);
 
-    expect(mockVariantsUpdate).toHaveBeenCalledWith(
+    // The old read-merge-write (spread `...current`) is gone: the route now sends a
+    // narrow `{ remix: { decode } }` patch and the RPC's deep-merge preserves craft /
+    // filmstrip_segments / remix.adapt atomically (Bug #7). CR-02 rides in p_user_id.
+    expect(mockRpc).toHaveBeenCalledWith(
+      "patch_analysis_variants",
       expect.objectContaining({
-        variants: expect.objectContaining({
-          craft: expect.objectContaining({ video_signals: expect.any(Object) }),
-          filmstrip_segments: expect.arrayContaining([expect.any(Object)]),
-          remix: expect.objectContaining({
-            decode: fakeDecodeResult,
-          }),
-        }),
+        p_id: expect.any(String),
+        p_patch: { remix: { decode: fakeDecodeResult } },
+        p_user_id: expect.any(String),
       })
     );
   });

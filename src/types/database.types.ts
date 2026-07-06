@@ -2331,6 +2331,7 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: undefined
       }
+      jsonb_deep_merge: { Args: { a: Json; b: Json }; Returns: Json }
       match_corpus_videos: {
         Args: {
           filter_follower_tier: string
@@ -2399,6 +2400,10 @@ export type Database = {
           trend_phase: string
           velocity_score: number
         }[]
+      }
+      patch_analysis_variants: {
+        Args: { p_id: string; p_patch: Json; p_user_id?: string }
+        Returns: undefined
       }
       refresh_niche_post_windows: { Args: never; Returns: undefined }
       waitlist_count: { Args: never; Returns: number }
