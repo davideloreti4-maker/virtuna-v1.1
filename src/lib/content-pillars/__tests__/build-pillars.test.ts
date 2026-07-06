@@ -31,10 +31,10 @@ function post(
 
 // rows in sort order A, B, C (+ D with no posts)
 const rows: ContentPillarRow[] = [
-  { id: "a", name: "Alpha", sort_order: 0 },
-  { id: "b", name: "Beta", sort_order: 1 },
-  { id: "c", name: "Gamma", sort_order: 2 },
-  { id: "d", name: "Delta", sort_order: 3 },
+  { id: "a", name: "Alpha", sort_order: 0, confirmed: true },
+  { id: "b", name: "Beta", sort_order: 1, confirmed: true },
+  { id: "c", name: "Gamma", sort_order: 2, confirmed: true },
+  { id: "d", name: "Delta", sort_order: 3, confirmed: true },
 ];
 
 // baseline = median of all rates [0.02,0.06,0.06,0.12,0.12] = 0.06

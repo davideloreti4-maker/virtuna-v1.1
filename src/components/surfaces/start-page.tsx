@@ -37,6 +37,7 @@ import { OutcomeCapture } from "./sections/outcome-capture";
 import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
 import { ContentPillars } from "./sections/content-pillars";
+import { PillarConfirmCard } from "./sections/pillar-confirm-card";
 import { TodaysPlan } from "./sections/todays-plan";
 import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
@@ -66,6 +67,7 @@ export function StartPage({
   loopReceipts = [],
   loopAccuracy = null,
   pillars = [],
+  pillarsNeedConfirm = false,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -87,6 +89,8 @@ export function StartPage({
   loopAccuracy?: LoopAccuracy | null;
   /** Real content pillars derived from the account's posts ([] = none yet → honest empty). */
   pillars?: Pillar[];
+  /** True = show the one-time propose→confirm card (unreviewed auto-clustered pillars exist). */
+  pillarsNeedConfirm?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -329,6 +333,11 @@ export function StartPage({
                   />
                 )}
               </div>
+              {pillarsNeedConfirm && (
+                <div className="rv-in" style={{ animationDelay: "0.23s" }}>
+                  <PillarConfirmCard pillars={pillars} />
+                </div>
+              )}
               <div className="rv-in" style={{ animationDelay: "0.24s" }}>
                 <ContentPillars pillars={pillars} onPillar={handlePillar} />
               </div>
