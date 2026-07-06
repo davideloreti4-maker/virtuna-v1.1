@@ -56,6 +56,7 @@ import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { rateLimitGuard } from "@/lib/http/rate-limit";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -91,6 +92,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
   const guard = csrfGuard(request);
   if (guard) return guard;
+
+  // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
+  const limited = await rateLimitGuard(user.id, "hooks");
+  if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { ask?: unknown; platform?: unknown; anchor?: unknown; intent?: unknown } = {};

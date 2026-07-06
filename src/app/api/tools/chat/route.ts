@@ -34,6 +34,7 @@ import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
+import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { ARCHETYPES, type Archetype } from "@/lib/engine/wave3/persona-registry";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -158,6 +159,10 @@ export async function POST(request: Request): Promise<Response> {
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
   const guard = csrfGuard(request);
   if (guard) return guard;
+
+  // ── Rate limit (HARDEN-01) — per user, per route; fail-open if unconfigured ──
+  const limited = await rateLimitGuard(user.id, "chat");
+  if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
   let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown } = {};
