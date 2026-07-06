@@ -79,6 +79,7 @@ describe("buildAudienceRepaint parity (SIM + fold share ONE projection)", () => 
     goal_label: null,
     goal_intent: "grow",
     is_general: false,
+    mode: "socials",
     is_preset: false,
     persona_weights: { fyp: 0.5, niche: 0.3, loyalist: 0.15, cross_niche: 0.05 },
     personas: [

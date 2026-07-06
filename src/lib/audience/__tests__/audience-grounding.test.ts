@@ -39,6 +39,7 @@ function makeCalibrated(): Audience {
     goal_label: "Grow my following",
     goal_intent: "grow",
     is_general: false,
+    mode: "socials",
     is_preset: false,
     persona_weights: { fyp: 0.60, niche: 0.25, loyalist: 0.10, cross_niche: 0.05 },
     personas: [

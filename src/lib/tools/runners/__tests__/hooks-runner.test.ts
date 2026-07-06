@@ -206,7 +206,6 @@ describe("runHooksPipeline (runner — S3′ generate-rate-rank)", () => {
         past_wins: null,
         past_flops: null,
         target_platforms: null,
-        user_id: "u1",
       },
       anchor: "an idea",
     });

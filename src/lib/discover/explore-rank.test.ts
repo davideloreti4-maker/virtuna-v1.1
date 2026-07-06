@@ -88,6 +88,7 @@ function calibratedAudience(overrides: Partial<Audience> = {}): Audience {
     goal_label: "grow my cooking channel",
     goal_intent: "grow",
     is_general: false,
+    mode: "socials",
     is_preset: false,
     persona_weights: DEFAULT_WEIGHTS,
     personas: [

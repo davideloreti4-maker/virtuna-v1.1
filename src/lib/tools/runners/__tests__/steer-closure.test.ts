@@ -117,6 +117,7 @@ const calibratedAudience: Audience = {
   goal_label: "Drive sales",
   goal_intent: "sell",
   is_general: false,
+  mode: "socials",
   is_preset: false,
   // Non-default weights — proves analysis_override is injected (source 'analysis_override')
   persona_weights: { fyp: 0.4, niche: 0.4, loyalist: 0.15, cross_niche: 0.05 },
@@ -143,6 +144,7 @@ const generalAudience: Audience = {
   goal_label: null,
   goal_intent: null,
   is_general: true,
+  mode: "general",
   is_preset: false,
   persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
   personas: [],

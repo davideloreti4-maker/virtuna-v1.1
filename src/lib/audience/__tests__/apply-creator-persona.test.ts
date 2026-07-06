@@ -31,6 +31,7 @@ function makeAudience(over: Partial<Audience> = {}): Audience {
     goal_label: null,
     goal_intent: "authority",
     is_general: false,
+    mode: "socials",
     is_preset: false,
     persona_weights: { fyp: 0.6, niche: 0.25, loyalist: 0.1, cross_niche: 0.05 },
     personas: [],
