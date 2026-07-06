@@ -6,6 +6,8 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { currentMonth } from "@/lib/calendar/current-month";
+import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
+import type { Pillar } from "@/lib/room-contract/mock-room";
 import { CalendarWorkspace } from "@/components/calendar/calendar-workspace";
 
 export const metadata: Metadata = {
@@ -65,12 +67,22 @@ export default async function CalendarRoute({
     );
   }
 
+  // Real content pillars (the creator's themes) for the rail. Empty on any read error or a
+  // low-post account → the rail shows its honest "learning your themes" empty state.
+  let pillars: Pillar[] = [];
+  try {
+    pillars = await buildContentPillars(supabase, user.id);
+  } catch {
+    pillars = [];
+  }
+
   return (
     <CalendarWorkspace
       initialDay={initialDay}
       calendarMonth={currentMonth()}
       initialIdeas={initialIdeas}
       canWarm={canWarm}
+      pillars={pillars}
     />
   );
 }

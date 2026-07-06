@@ -65,6 +65,7 @@ export function StartPage({
   calendarMonth,
   loopReceipts = [],
   loopAccuracy = null,
+  pillars = [],
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -84,6 +85,8 @@ export function StartPage({
   loopReceipts?: LoopReceipt[];
   /** Aggregate match % across measured posts; null = nothing measured yet. */
   loopAccuracy?: LoopAccuracy | null;
+  /** Real content pillars derived from the account's posts ([] = none yet → honest empty). */
+  pillars?: Pillar[];
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -327,7 +330,7 @@ export function StartPage({
                 )}
               </div>
               <div className="rv-in" style={{ animationDelay: "0.24s" }}>
-                <ContentPillars pillars={data.pillars} onPillar={handlePillar} />
+                <ContentPillars pillars={pillars} onPillar={handlePillar} />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.26s" }}>
                 <MonthCalendar

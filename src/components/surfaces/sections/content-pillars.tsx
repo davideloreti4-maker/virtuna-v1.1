@@ -25,6 +25,22 @@ export function ContentPillars({
 }) {
   const gap = pillars.find((p) => p.gap);
 
+  // Honest empty state: no clustered pillars yet (a new/low-post account). Never fabricate
+  // themes — say we're still learning them from the real posts.
+  if (pillars.length === 0) {
+    return (
+      <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
+        <h3 className="m-0 mb-2 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+          Content pillars
+        </h3>
+        <p className="m-0 text-[11.5px] leading-[1.55] text-foreground-muted">
+          Learning your themes from your recent posts — your pillars show up here once we’ve
+          seen enough to spot them.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="elev-rest rounded-xl border border-border bg-surface-elevated px-3.5 py-[15px]">
       <div className="mb-2 flex items-baseline gap-2">
