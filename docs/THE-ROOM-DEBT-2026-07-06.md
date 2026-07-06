@@ -14,7 +14,9 @@ architecture) and memory `the-room-phase3-built.md` (per-fact history).
 | #188 | (merged) | Delete dead legacy `mock-data.ts` (zero importers) |
 
 `/start` now carries **zero fabricated numbers** except the designated chrome (greeting,
-rings, quickActions) and `MOCK_PILLARS`.
+rings, quickActions). **UPDATE 2026-07-06: `MOCK_PILLARS` is now RETIRED — content pillars
+shipped real end-to-end (see the Content Pillars section below). /start's only remaining
+fabricated data is the designated chrome.**
 
 ## Worktree health (as surveyed 2026-07-06)
 
@@ -29,7 +31,7 @@ rings, quickActions) and `MOCK_PILLARS`.
 | # | Item | Type | Verdict |
 |---|------|------|---------|
 | 1 | ~~`mock-data.ts`~~ | dead code | ✅ deleted (#188) |
-| 2 | **`MOCK_PILLARS`** (SSOT for /start · /calendar · /grow) | live mock → **real feature** | **the one worth doing** — see Pillars Plan below |
+| 2 | ~~`MOCK_PILLARS`~~ (SSOT for /start · /calendar · /grow) | live mock → **real feature** | ✅ **SHIPPED** (#193 persist · #196 cluster · #197 SSOT+swap · #199 confirm card) — `MOCK_PILLARS` retired; see Pillars Plan below (now historical) |
 | 3 | greeting text · rings (streak / planned / prediction-accuracy) · quickActions | fabricated **chrome** | owner-designated keep (voice-moment + engagement chrome) |
 | 4 | `mock-grow.ts` (/grow strategy dashboard) | intentional mock | owner-picked shape — leave until /grow gets a real backend |
 | 5 | 9 "coming soon" stubs (hook auto-extract, niche compare, describe-a-channel, layout/theme toasts) | **honest** stubs | fine — ship with their phase; not fabricated data |
@@ -52,6 +54,14 @@ rings, quickActions) and `MOCK_PILLARS`.
 ---
 
 ## The Content Pillars feature — what it is & how to make it real
+
+> ✅ **SHIPPED 2026-07-06 (this plan is now historical).** Built exactly as planned below, on
+> Apify/clockworks (no OAuth/Composio): `account_posts` persists the captions the cron already
+> scraped (#193) → `cluster.ts` LLM-names 3–6 frozen pillars + assigns (#196) → `buildContentPillars`
+> SSOT feeds /start · /calendar · /grow with real share/count/cadence/gap + engagement-rate tone
+> (#197) → propose→confirm `PillarConfirmCard` (#199). `MOCK_PILLARS` retired. Tone baseline = mean
+> engagement rate vs the creator's own posts, `loved`/`bounced` on ±25% deviation. See memory
+> `content-pillars-real.md`. Only deferred: merge-two-pillars-into-one.
 
 ### What a "pillar" is
 
