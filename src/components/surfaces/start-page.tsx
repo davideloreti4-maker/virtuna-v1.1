@@ -46,6 +46,9 @@ import { SurfaceDock } from "./surface-dock";
 // stub, now retired). One composer atom, Room-owned, so /start and /home never drift.
 import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { RoomDrawer, type RoomFocus } from "./room-drawer";
+// The loop's "recalibrate" step — propose→confirm nudge, self-gated (renders null below the
+// server confidence gate). Mounted read-only here; it owns its own fetch (react-query).
+import { RecalibrationNudge } from "@/components/flywheel/recalibration-nudge";
 
 /** Real audience-row UUID (or null=General) — the only shapes the last-audience persist accepts
  *  (virtual preset ids aren't UUIDs → stay session-local, never PUT). Mirrors composer.tsx. */
@@ -309,6 +312,20 @@ export function StartPage({
 
             {/* Right rail — stacks under the main column on mobile (prototype order) */}
             <aside className="mt-[18px] flex flex-col gap-3 lg:mt-[18px] lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:pr-0.5 lg:sticky lg:top-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Recalibration nudge (FLYWHEEL-04/06) — the loop's "recalibrate" step. Surfaces
+                  ONLY when THIS audience's outcomes clear the server confidence gate (propose.ts:
+                  N≥5 consistent same-direction posts). Renders null below the gate and for
+                  General/preset → the self-collapsing wrapper ([&:empty]:hidden drops it from the
+                  flex flow) leaves no phantom rail gap in the common empty case. */}
+              <div className="rv-in [&:empty]:hidden" style={{ animationDelay: "0.22s" }}>
+                {activeAudience && (
+                  <RecalibrationNudge
+                    audienceId={activeAudience.id}
+                    audienceName={activeAudience.name}
+                    source="outcome"
+                  />
+                )}
+              </div>
               <div className="rv-in" style={{ animationDelay: "0.24s" }}>
                 <ContentPillars pillars={data.pillars} onPillar={handlePillar} />
               </div>

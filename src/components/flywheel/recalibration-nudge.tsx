@@ -56,10 +56,19 @@ function dispositionLabel(disposition: string): string {
   return DISPOSITION_LABEL[disposition] ?? disposition;
 }
 
+/** Outcome headline — disposition- AND direction-aware (never a hardcoded disposition). */
+function outcomeHeadline(p: RecalibrationProposal): string {
+  const who = dispositionLabel(p.disposition);
+  return p.direction === "up"
+    ? `Your ${who} ran warmer than we modeled.`
+    : `Your ${who} ran cooler than we modeled.`;
+}
+
 function outcomeBody(p: RecalibrationProposal, audienceName: string): string {
+  const moreLess = p.direction === "up" ? "more" : "less";
   return `Across your last ${p.n} posts, ${dispositionLabel(
     p.disposition,
-  )} showed up more than your audience predicted. Want to recalibrate "${audienceName}" to match?`;
+  )} showed up ${moreLess} than your audience predicted. Want to recalibrate "${audienceName}" to match?`;
 }
 
 function driftBody(audienceName: string): string {
@@ -94,7 +103,7 @@ export function RecalibrationNudge({
   const headline =
     source === "drift"
       ? "Your audience has shifted."
-      : "Your buyers ran warmer than we modeled.";
+      : outcomeHeadline(proposal);
   const body =
     source === "drift"
       ? driftBody(audienceName)
