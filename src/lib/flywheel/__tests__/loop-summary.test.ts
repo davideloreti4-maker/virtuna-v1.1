@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildLoopReceipts, buildLoopAccuracy, relativeWhen } from "../loop-summary";
-import type { Reconciliation } from "../reconciliation-repo";
+import {
+  buildLoopReceipts,
+  buildLoopAccuracy,
+  buildReceiptMetrics,
+  compactCount,
+  relativeWhen,
+} from "../loop-summary";
+import type { LoopRow } from "../reconciliation-repo";
 import type { Disposition } from "@/lib/audience/audience-types";
 
 const NOW = Date.UTC(2026, 6, 6, 12, 0, 0); // fixed reference (no Date.now in tests)
@@ -9,7 +15,7 @@ function predicted(): Record<Disposition, number> {
   return { scanner: 0.2, skeptic: 0.1, collector: 0.2, connector: 0.2, converter: 0.1, lurker: 0.2 };
 }
 
-function row(over: Partial<Reconciliation>): Reconciliation {
+function row(over: Partial<LoopRow>): LoopRow {
   return {
     id: "r",
     user_id: "u",
@@ -39,16 +45,76 @@ describe("relativeWhen", () => {
   });
 });
 
+describe("compactCount", () => {
+  it("formats reach honestly (no trailing .0)", () => {
+    expect(compactCount(940)).toBe("940");
+    expect(compactCount(12_000)).toBe("12K");
+    expect(compactCount(12_400)).toBe("12.4K");
+    expect(compactCount(999_000)).toBe("999K");
+    expect(compactCount(1_200_000)).toBe("1.2M");
+    expect(compactCount(63_900_000)).toBe("63.9M");
+    expect(compactCount(0)).toBe("0");
+    expect(compactCount(-5)).toBe("0"); // never a negative count
+  });
+});
+
+describe("buildReceiptMetrics", () => {
+  it("returns [] when nothing was captured", () => {
+    expect(buildReceiptMetrics(null)).toEqual([]);
+    expect(buildReceiptMetrics(undefined)).toEqual([]);
+    expect(buildReceiptMetrics({})).toEqual([]);
+  });
+
+  it("picks views first then the strongest engagement signal, capped at 2", () => {
+    const m = buildReceiptMetrics({ views: 12_400, likes: 800, saves: 340, shares: 20 });
+    expect(m).toEqual([
+      { value: "12.4K", label: "views" },
+      { value: "340", label: "saves" }, // saves outranks likes/shares
+    ]);
+  });
+
+  it("skips null/absent channels and falls through the priority order", () => {
+    const m = buildReceiptMetrics({ views: null, saves: null, likes: 1_500, comments: 12 });
+    expect(m).toEqual([
+      { value: "1.5K", label: "likes" },
+      { value: "12", label: "comments" },
+    ]);
+  });
+});
+
 describe("buildLoopReceipts", () => {
-  it("maps each row to a match %, standout, and when-label", () => {
-    const receipts = buildLoopReceipts([row({ id: "a" })], NOW);
+  it("maps each row to a match %, standout, when-label, real numbers, and link", () => {
+    const receipts = buildLoopReceipts(
+      [
+        row({
+          id: "a",
+          outcome: {
+            platform_post_url: "https://tiktok.com/@me/video/1",
+            posted_at: null,
+            raw_metrics: { views: 12_400, saves: 340 },
+          },
+        }),
+      ],
+      NOW,
+    );
     expect(receipts).toHaveLength(1);
     expect(receipts[0]).toMatchObject({
       id: "a",
       matchPct: 90,
       headline: "Your savers showed up stronger than the room predicted.",
       whenLabel: "today",
+      metrics: [
+        { value: "12.4K", label: "views" },
+        { value: "340", label: "saves" },
+      ],
+      link: "https://tiktok.com/@me/video/1",
     });
+  });
+
+  it("degrades honestly when no signature is embedded (no numbers, no link)", () => {
+    const receipts = buildLoopReceipts([row({ id: "b" })], NOW);
+    expect(receipts[0]!.metrics).toEqual([]);
+    expect(receipts[0]!.link).toBeNull();
   });
 });
 
