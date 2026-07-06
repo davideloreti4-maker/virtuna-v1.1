@@ -55,7 +55,7 @@ describe("pinPredictedSignature (FLYWHEEL-02, Pitfall 6)", () => {
     expect(ok).toBe(true);
     expect(insertOutcomeSignature).toHaveBeenCalledTimes(1);
 
-    const [, payload] = insertOutcomeSignature.mock.calls[0];
+    const [, payload] = insertOutcomeSignature.mock.calls[0]!;
     // The predicted vector written is EXACTLY predictedSignature(personas) (computed once).
     expect(payload.predicted_vector).toEqual(predictedSignature(personas));
     // The run's audience_id + analysis_id are pinned alongside the prediction.
@@ -69,7 +69,7 @@ describe("pinPredictedSignature (FLYWHEEL-02, Pitfall 6)", () => {
     });
 
     expect(ok).toBe(true);
-    const [, payload] = insertOutcomeSignature.mock.calls[0];
+    const [, payload] = insertOutcomeSignature.mock.calls[0]!;
     expect(payload.audience_id).toBeNull();
     expect(payload.analysis_id).toBeNull();
     expect(payload.predicted_vector).toEqual(predictedSignature(personas));
