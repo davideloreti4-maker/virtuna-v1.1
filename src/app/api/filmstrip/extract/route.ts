@@ -29,6 +29,7 @@ import { extractFrameAtTimestamp } from "@/lib/engine/filmstrip/extract";
 import { uploadFrameAndGetSignedUrl } from "@/lib/engine/filmstrip/storage";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
+import type { Json } from "@/types/database.types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -240,7 +241,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           ? (currentVariants.filmstrip_segments as Array<{ idx: number; keyframe_uri: string | null }>)
           : [];
 
-        // Merge new results into existing segments array (upsert by idx)
+        // Merge new results into existing segments array (upsert by idx). The array merge
+        // stays app-side (this extract is single-flight per analysis), but the WRITE patches
+        // ONLY filmstrip_segments atomically — so it can't clobber craft / apollo / remix
+        // written concurrently by the score/remix flows (Bug #7 lost-update fix).
         const merged = [...existingSegments];
         for (const result of successResults) {
           const existing = merged.findIndex((s) => s.idx === result.idx);
@@ -251,15 +255,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         }
 
-        const updatedVariants = {
-          ...currentVariants,
-          filmstrip_segments: merged,
-        };
-
-        const { error: writeError } = await supabase
-          .from("analysis_results")
-          .update({ variants: updatedVariants })
-          .eq("id", analysisId);
+        const { error: writeError } = await supabase.rpc("patch_analysis_variants", {
+          p_id: analysisId,
+          p_patch: { filmstrip_segments: merged } as unknown as Json,
+          // secret-authed service job (no session user) — keys on id, as the prior write did.
+        });
 
         if (writeError) {
           log.error("filmstrip: failed to persist keyframe_uri to variants", {
