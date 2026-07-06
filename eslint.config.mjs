@@ -38,8 +38,6 @@ const eslintConfig = defineConfig([
     // Batched here to green the gate before the GSI milestone branches off main.
     // TODO(post-GSI): real refactor — these are LIVE components losing full lint
     // coverage; tracked in docs/WORKTREE-DEBT-LEDGER.md §6.
-    "src/app/(app)/competitors/**",                          // dead competitor-intel subsystem
-    "src/components/competitors/**",                         // dead competitor-intel subsystem
     "src/components/app/cards/reference-creators-input.tsx",
     "src/components/app/cards/wins-flops-input.tsx",
     "src/components/app/home/use-ambient-focus.ts",

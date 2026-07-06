@@ -37,6 +37,51 @@ interface CompetitorTableProps {
 }
 
 /**
+ * Sortable column header. Hoisted to module scope (not redefined on every render of
+ * CompetitorTable) — `sort`/`onSort` ride in as props (react-hooks/static-components).
+ */
+function SortableHeader({
+  label,
+  sortKey,
+  align = "right",
+  sort,
+  onSort,
+}: {
+  label: string;
+  sortKey: SortKey;
+  align?: "left" | "right";
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+}) {
+  const isActive = sort.key === sortKey;
+  return (
+    <th
+      className={`py-3 px-4 font-medium text-foreground-muted text-xs cursor-pointer select-none transition-colors hover:text-foreground ${
+        align === "left" ? "text-left" : "text-right"
+      }`}
+      onClick={() => onSort(sortKey)}
+    >
+      <span
+        className={`inline-flex items-center gap-1 ${
+          align === "right" ? "justify-end" : "justify-start"
+        }`}
+      >
+        {label}
+        {isActive ? (
+          sort.dir === "desc" ? (
+            <ChevronDown size={12} />
+          ) : (
+            <ChevronUp size={12} />
+          )
+        ) : (
+          <ArrowUpDown size={12} className="opacity-40" />
+        )}
+      </span>
+    </th>
+  );
+}
+
+/**
  * Sortable leaderboard table of tracked competitors.
  *
  * Displays competitor data in a tabular format with clickable column headers
@@ -80,43 +125,6 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
     );
   }
 
-  function SortableHeader({
-    label,
-    sortKey,
-    align = "right",
-  }: {
-    label: string;
-    sortKey: SortKey;
-    align?: "left" | "right";
-  }) {
-    const isActive = sort.key === sortKey;
-    return (
-      <th
-        className={`py-3 px-4 font-medium text-foreground-muted text-xs cursor-pointer select-none transition-colors hover:text-foreground ${
-          align === "left" ? "text-left" : "text-right"
-        }`}
-        onClick={() => handleSort(sortKey)}
-      >
-        <span
-          className={`inline-flex items-center gap-1 ${
-            align === "right" ? "justify-end" : "justify-start"
-          }`}
-        >
-          {label}
-          {isActive ? (
-            sort.dir === "desc" ? (
-              <ChevronDown size={12} />
-            ) : (
-              <ChevronUp size={12} />
-            )
-          ) : (
-            <ArrowUpDown size={12} className="opacity-40" />
-          )}
-        </span>
-      </th>
-    );
-  }
-
   return (
     <div className="relative elev-rest overflow-hidden rounded-xl border border-white/[0.06] bg-background-elevated">
     <div className="w-full overflow-x-auto">
@@ -126,12 +134,12 @@ export function CompetitorTable({ competitors }: CompetitorTableProps) {
             <th className="py-3 px-4 text-left font-medium text-foreground-muted text-xs">
               Creator
             </th>
-            <SortableHeader label="Followers" sortKey="followers" />
-            <SortableHeader label="Likes" sortKey="likes" />
-            <SortableHeader label="Videos" sortKey="videos" />
-            <SortableHeader label="Eng. Rate" sortKey="engagement" />
-            <SortableHeader label="Growth" sortKey="growth" align="left" />
-            <SortableHeader label="Cadence" sortKey="cadence" />
+            <SortableHeader label="Followers" sortKey="followers" sort={sort} onSort={handleSort} />
+            <SortableHeader label="Likes" sortKey="likes" sort={sort} onSort={handleSort} />
+            <SortableHeader label="Videos" sortKey="videos" sort={sort} onSort={handleSort} />
+            <SortableHeader label="Eng. Rate" sortKey="engagement" sort={sort} onSort={handleSort} />
+            <SortableHeader label="Growth" sortKey="growth" align="left" sort={sort} onSort={handleSort} />
+            <SortableHeader label="Cadence" sortKey="cadence" sort={sort} onSort={handleSort} />
             <th className="py-3 px-4 text-right font-medium text-foreground-muted text-xs">
               Trend
             </th>
