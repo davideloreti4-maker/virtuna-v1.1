@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_posts: {
+        Row: {
+          caption: string
+          comments: number
+          created_at: string
+          handle: string
+          hashtags: string[]
+          id: string
+          is_pinned: boolean
+          likes: number
+          pillar_id: string | null
+          platform: string
+          post_id: string
+          posted_at: string | null
+          saves: number
+          shares: number
+          updated_at: string
+          user_id: string
+          views: number
+        }
+        Insert: {
+          caption?: string
+          comments?: number
+          created_at?: string
+          handle: string
+          hashtags?: string[]
+          id?: string
+          is_pinned?: boolean
+          likes?: number
+          pillar_id?: string | null
+          platform?: string
+          post_id: string
+          posted_at?: string | null
+          saves?: number
+          shares?: number
+          updated_at?: string
+          user_id: string
+          views?: number
+        }
+        Update: {
+          caption?: string
+          comments?: number
+          created_at?: string
+          handle?: string
+          hashtags?: string[]
+          id?: string
+          is_pinned?: boolean
+          likes?: number
+          pillar_id?: string | null
+          platform?: string
+          post_id?: string
+          posted_at?: string | null
+          saves?: number
+          shares?: number
+          updated_at?: string
+          user_id?: string
+          views?: number
+        }
+        Relationships: []
+      }
       account_snapshots: {
         Row: {
           created_at: string
