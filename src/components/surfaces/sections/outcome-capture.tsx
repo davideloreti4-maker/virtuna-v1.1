@@ -90,7 +90,7 @@ export function OutcomeCapture({
   };
 
   return (
-    <div className="mt-3 rounded-2xl border border-white/[0.06] bg-[#221f1d] px-4 py-3">
+    <div className="mt-3 rounded-2xl border border-white/[0.06] bg-surface-sunken px-4 py-3">
       {isDone ? (
         <div className="flex flex-col gap-2">
           <div className="flex items-start justify-between gap-3">

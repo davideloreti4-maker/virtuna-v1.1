@@ -17,7 +17,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
-import type { Pillar, QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
+import type { QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
@@ -28,7 +28,6 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { Verb } from "@/lib/room-contract/types";
 import type { LoopReceipt, LoopAccuracy } from "@/lib/flywheel/loop-summary";
 import { buildThreadLaunchHref } from "@/lib/room-contract/thread-launch";
-import { TopChrome } from "./sections/top-chrome";
 import { Greeting } from "./sections/greeting";
 import { GreetingRings } from "./sections/greeting-rings";
 import { StatRow, StatRowEmpty } from "./sections/stat-row";
@@ -36,8 +35,6 @@ import { DailyIdeas } from "./sections/daily-ideas";
 import { OutcomeCapture } from "./sections/outcome-capture";
 import { Outliers } from "./sections/outliers";
 import { MonthCalendar } from "./sections/month-calendar";
-import { ContentPillars } from "./sections/content-pillars";
-import { PillarConfirmCard } from "./sections/pillar-confirm-card";
 import { TodaysPlan } from "./sections/todays-plan";
 import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
@@ -66,8 +63,6 @@ export function StartPage({
   calendarMonth,
   loopReceipts = [],
   loopAccuracy = null,
-  pillars = [],
-  pillarsNeedConfirm = false,
 }: {
   initialFirstRun?: boolean;
   /** Real stat-row tiles from the connected account (null = no snapshots yet → honest empty). */
@@ -87,10 +82,6 @@ export function StartPage({
   loopReceipts?: LoopReceipt[];
   /** Aggregate match % across measured posts; null = nothing measured yet. */
   loopAccuracy?: LoopAccuracy | null;
-  /** Real content pillars derived from the account's posts ([] = none yet → honest empty). */
-  pillars?: Pillar[];
-  /** True = show the one-time propose→confirm card (unreviewed auto-clustered pillars exist). */
-  pillarsNeedConfirm?: boolean;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -240,24 +231,11 @@ export function StartPage({
     seedComposer(""); // focus the composer on the chosen verb
   };
 
-  // Tapping a pillar seeds the composer to Make for that theme (fills the gap it flags).
-  const handlePillar = (p: Pillar) => {
-    setVerb("Make");
-    seedComposer(`an idea for my “${p.name}” pillar`);
-  };
-
   return (
     <div className="relative min-h-full text-foreground">
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-40 pt-6 lg:px-6">
-        <TopChrome
-          onLayout={() =>
-            toast({ variant: "default", title: "Layout options", description: "Coming soon — density + section order." })
-          }
-          onTheme={() =>
-            toast({ variant: "default", title: "Theme", description: "Flat-warm charcoal is the one skin for now." })
-          }
-        />
-
+      {/* pt-16 on mobile clears the floating hamburger (fixed top-4, ~50px tall) so it never
+          overlaps the greeting; md: (≥768, where the sidebar is persistent) drops back to pt-10. */}
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-40 pt-16 md:pt-10 lg:px-6">
         {firstRun ? (
           <FirstRun
             // The real connect = build a personal audience from the creator's @handle
@@ -266,26 +244,22 @@ export function StartPage({
             onConnect={() => router.push("/audience/new")}
           />
         ) : (
-          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
-            {/* Main column */}
-            <div className="min-w-0">
+          <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_336px] lg:items-start lg:gap-10">
+            {/* Main column — bare sections on the page bg (no heavy #252320 boxes), generous
+                vertical rhythm. Less is more: the eye reads greeting → numbers → ideas →
+                outliers → what-landed, unboxed, the way Stanley lets content breathe. */}
+            <div className="min-w-0 space-y-8 lg:space-y-10">
               <div
-                className="rv-in flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                className="rv-in flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
                 style={{ animationDelay: "0.02s" }}
               >
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
                 <GreetingRings rings={data.rings} />
               </div>
-              <div
-                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 py-4"
-                style={{ animationDelay: "0.08s" }}
-              >
+              <div className="rv-in" style={{ animationDelay: "0.08s" }}>
                 {accountStats ? <StatRow stats={accountStats} /> : <StatRowEmpty />}
               </div>
-              <div
-                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 pb-[18px]"
-                style={{ animationDelay: "0.14s" }}
-              >
+              <div className="rv-in" style={{ animationDelay: "0.14s" }}>
                 <DailyIdeas
                   ideas={ideas}
                   status={ideasStatus}
@@ -298,15 +272,14 @@ export function StartPage({
                 {/* The flywheel's "measure" entry (FLYWHEEL-01): posted a pre-tested idea?
                     Paste the link → real metrics reconciled vs this audience's prediction.
                     Audience-scoped (pins are rank-1/audience-keyed) — copy stays honest. */}
-                <OutcomeCapture
-                  audienceId={selectedAudienceId}
-                  audienceLabel={activeAudience?.name ?? "your audience"}
-                />
+                <div className="mt-3">
+                  <OutcomeCapture
+                    audienceId={selectedAudienceId}
+                    audienceLabel={activeAudience?.name ?? "your audience"}
+                  />
+                </div>
               </div>
-              <div
-                className="rv-in mt-4 rounded-2xl bg-[#252320] px-4 pb-[18px]"
-                style={{ animationDelay: "0.2s" }}
-              >
+              <div className="rv-in" style={{ animationDelay: "0.2s" }}>
                 <Outliers
                   outliers={outliers}
                   status={outliersStatus}
@@ -315,10 +288,20 @@ export function StartPage({
                   onViewAll={() => router.push("/feed")}
                 />
               </div>
+              {/* The loop — "what actually happened." The closing band: the page reads
+                  who-you-are → your-numbers → today's-ideas → outliers → what-landed-last-time,
+                  so the retrospective sits where the eye ends. Self-carded. */}
+              <div className="rv-in" style={{ animationDelay: "0.26s" }}>
+                <TheLoop receipts={loopReceipts} accuracy={loopAccuracy} />
+              </div>
             </div>
 
-            {/* Right rail — stacks under the main column on mobile (prototype order) */}
-            <aside className="mt-[18px] flex flex-col gap-3 lg:mt-[18px] lg:max-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:pr-0.5 lg:sticky lg:top-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* Right rail — Stanley's exact 3: Calendar · Your plan · Quick actions. The Loop
+                moved to the main column's closing band; Content pillars moved off /start entirely
+                (it lives on /grow, the Analyze hub, where planning-strategy belongs — a glance
+                page shouldn't carry it). Scrolls WITH the page (a plain column, not a sticky
+                inner-scroll pane); stacks under the main column on mobile. */}
+            <aside className="mt-8 flex flex-col gap-4 lg:mt-0">
               {/* Recalibration nudge (FLYWHEEL-04/06) — the loop's "recalibrate" step. Surfaces
                   ONLY when THIS audience's outcomes clear the server confidence gate (propose.ts:
                   N≥5 consistent same-direction posts). Renders null below the gate and for
@@ -333,15 +316,7 @@ export function StartPage({
                   />
                 )}
               </div>
-              {pillarsNeedConfirm && (
-                <div className="rv-in" style={{ animationDelay: "0.23s" }}>
-                  <PillarConfirmCard pillars={pillars} />
-                </div>
-              )}
               <div className="rv-in" style={{ animationDelay: "0.24s" }}>
-                <ContentPillars pillars={pillars} onPillar={handlePillar} />
-              </div>
-              <div className="rv-in" style={{ animationDelay: "0.26s" }}>
                 <MonthCalendar
                   month={monthLabel}
                   year={calendarMonth.year}
@@ -354,7 +329,7 @@ export function StartPage({
                   onPlannedDay={(d) => router.push(`/calendar?day=${d}`)}
                 />
               </div>
-              <div className="rv-in" style={{ animationDelay: "0.3s" }}>
+              <div className="rv-in" style={{ animationDelay: "0.28s" }}>
                 <TodaysPlan
                   plan={planList}
                   year={calendarMonth.year}
@@ -363,11 +338,8 @@ export function StartPage({
                   onAdd={() => seedComposer("")}
                 />
               </div>
-              <div className="rv-in" style={{ animationDelay: "0.34s" }}>
+              <div className="rv-in" style={{ animationDelay: "0.32s" }}>
                 <QuickActions actions={data.quickActions} onAction={handleQuickAction} />
-              </div>
-              <div className="rv-in" style={{ animationDelay: "0.38s" }}>
-                <TheLoop receipts={loopReceipts} accuracy={loopAccuracy} />
               </div>
             </aside>
           </div>

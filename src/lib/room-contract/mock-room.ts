@@ -21,11 +21,11 @@ export interface StatCard {
 }
 
 export interface RingStat {
-  icon: "flame" | "calendar" | "trend";
+  icon: "flame" | "calendar" | "trend" | "upright";
   pct: number; // 0..1 arc fill
-  value: string; // "5-day" | "3 / 7" | "84%"
-  accent: boolean; // the ONE terracotta arc (accuracy)
-  label: string; // aria + tooltip
+  value: string; // "84" | "5-day" | "+12%"
+  accent: boolean; // the ONE terracotta arc (Score)
+  label: string; // caption under the ring + aria/tooltip
 }
 
 /**
@@ -61,12 +61,14 @@ export function getMockStartPage(): StartPageData {
   return {
     greeting: {
       headline: "Good afternoon, Davide 👋",
-      line: "Your room reacted to 6 things overnight — and last week’s calls landed. Here’s your day.",
+      // No subtitle — the headline carries the moment (less is more). The old
+      // "your room reacted to 6 things overnight…" line read as AI filler.
+      line: "",
     },
     rings: [
-      { icon: "flame", pct: 0.71, value: "5-day", accent: false, label: "5-day streak" },
-      { icon: "calendar", pct: 0.43, value: "3 / 7", accent: false, label: "3 of 7 planned this week" },
-      { icon: "trend", pct: 0.84, value: "84%", accent: true, label: "84% prediction accuracy" },
+      { icon: "trend", pct: 0.84, value: "84", accent: true, label: "Score" },
+      { icon: "flame", pct: 0.71, value: "5-day", accent: false, label: "Streak" },
+      { icon: "upright", pct: 0.62, value: "+12%", accent: false, label: "Growth" },
     ],
     quickActions: [
       { icon: "sparkle", label: "Make ideas", desc: "ranked + pre-tested", verb: "Make" },

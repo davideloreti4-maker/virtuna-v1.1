@@ -37,7 +37,7 @@ export function MonthGrid({
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
-    <div className="rounded-2xl bg-[#252320] p-2 sm:p-3 sm:pb-3.5">
+    <div className="rounded-2xl bg-surface-sunken p-2 sm:p-3 sm:pb-3.5">
       <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
         {WEEKDAY_HEADS.map((h) => (
           <div

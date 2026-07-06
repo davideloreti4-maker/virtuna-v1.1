@@ -45,9 +45,9 @@ export function Outliers({
           would react — show up here.
         </p>
       ) : (
-        <div className="flex snap-x snap-mandatory gap-[11px] overflow-x-auto px-1 pb-1.5 [scrollbar-width:none] lg:grid lg:grid-cols-3 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1.5 [scrollbar-width:none] lg:grid lg:grid-cols-3 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
           {outliers.map((o) => (
-            <div key={o.contentId} className="w-[210px] shrink-0 snap-start lg:w-auto">
+            <div key={o.contentId} className="w-[240px] shrink-0 snap-start lg:w-auto">
               <OutlierCard outlier={o} onOpen={onOpen} onRemix={onRemix} />
             </div>
           ))}
@@ -64,13 +64,13 @@ function WarmingRail() {
       <p className="mb-2 px-1 font-mono text-[10.5px] text-foreground-muted">
         Testing today’s outliers on your people…
       </p>
-      <div className="flex gap-[11px] px-1 pb-1.5 lg:grid lg:grid-cols-3">
+      <div className="flex gap-3 px-1 pb-1.5 lg:grid lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="elev-lift w-[210px] shrink-0 animate-pulse overflow-hidden rounded-xl border border-border bg-[#1c1b19] lg:w-auto"
+            className="elev-lift w-[240px] shrink-0 animate-pulse overflow-hidden rounded-xl border border-border bg-[#1c1b19] lg:w-auto"
           >
-            <div className="h-[238px] bg-[linear-gradient(165deg,#2a2825,#1a1917)]" />
+            <div className="aspect-[9/16] bg-[linear-gradient(165deg,#2a2825,#1a1917)]" />
             <div className="space-y-2 p-[11px]">
               <div className="h-3 w-3/4 rounded bg-white/[0.06]" />
               <div className="h-8 w-full rounded bg-white/[0.04]" />

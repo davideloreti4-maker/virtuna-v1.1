@@ -100,6 +100,10 @@
   --color-surface: var(--color-charcoal-composer);        /* [UAT] Frame A — was #18191a */
   --color-surface-elevated: var(--color-charcoal-chip);   /* [UAT] Frame A — was #222326 */
   --color-surface-thread: var(--color-charcoal-thread);     /* in-thread skill output frames */
+  /* Sunken — the dark, recessed "modal/well" panel tone (darker than the page bg). The one
+     surface for full-width section panels + info banners (start's outcome banner, calendar
+     month grid, grow/analytics/referrals sections). Reads premium + distinct from raised cards. */
+  --color-surface-sunken: #1a1918;
 
   /* --- Text (cream, never pure white — D-02) --- */
   --color-foreground: var(--color-cream-primary);         /* [UAT] Frame A — was var(--color-gray-50) #f9f9f9 */

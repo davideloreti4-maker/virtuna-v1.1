@@ -84,7 +84,7 @@ export function AnalyticsView({
   return (
     <div>
       {/* Zone · the numbers — real account metrics over the selected range */}
-      <section className="rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="rounded-2xl bg-surface-sunken px-4 py-4">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
           <p className="font-mono text-[10px] text-foreground-muted">your account, over time — real numbers</p>
           <div className="inline-flex rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Time range">
@@ -175,7 +175,7 @@ export function AnalyticsView({
       </section>
 
       {recommendations.length > 0 && (
-        <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
+        <section className="mt-4 rounded-2xl bg-surface-sunken px-4 py-4">
           <h2 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">What to do next</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
             {recommendations.map((rec) => (
