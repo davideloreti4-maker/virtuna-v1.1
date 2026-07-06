@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
-import { MOCK_PILLARS } from "@/lib/room-contract/mock-room";
+import type { Pillar } from "@/lib/room-contract/mock-room";
+import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
 import { generateReferralCode } from "@/lib/referral/code-generator";
 import { getUserTier } from "@/lib/whop/subscription";
 import { hasAccessToTier } from "@/lib/whop/config";
@@ -46,7 +47,14 @@ export default async function GrowRoute({
   } catch {
     snapshots = [];
   }
-  const pillars = MOCK_PILLARS;
+  // Real content pillars (the creator's themes) for the recommendations block + rail. Empty on
+  // any read error or a low-post account → the widget shows its honest "learning" empty state.
+  let pillars: Pillar[] = [];
+  try {
+    pillars = await buildContentPillars(supabase, user.id);
+  } catch {
+    pillars = [];
+  }
 
   // Referrals tab — Pro-gated; only fetch the code + stats when the user is eligible.
   const tier = await getUserTier();

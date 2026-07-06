@@ -16,7 +16,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
-import { MOCK_PILLARS } from "@/lib/room-contract/mock-room";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import type { CurrentMonth } from "@/lib/calendar/current-month";
 import { monthLayout } from "@/lib/calendar/month-layout";
@@ -35,6 +34,7 @@ export function CalendarWorkspace({
   calendarMonth,
   initialIdeas = null,
   canWarm = false,
+  pillars = [],
 }: {
   initialDay?: number | null;
   calendarMonth: CurrentMonth;
@@ -42,10 +42,11 @@ export function CalendarWorkspace({
   initialIdeas?: LiveIdeaCard[] | null;
   /** Gates the warm off for uncalibrated users (no audience to test against → honest empty grid). */
   canWarm?: boolean;
+  /** Real content pillars from the account's posts ([] = none yet → honest empty rail). */
+  pillars?: Pillar[];
 }) {
   const { toast } = useToast();
   const router = useRouter();
-  const pillars = MOCK_PILLARS;
 
   // Real content source: the same pre-tested ideas cache the /start daily-ideas section warms.
   const { items: ideas, status: ideasStatus } = useLazyWarm<LiveIdeaCard>(

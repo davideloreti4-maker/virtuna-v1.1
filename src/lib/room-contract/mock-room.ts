@@ -1,13 +1,11 @@
 /**
  * mockRoom — the REMAINING contract-shaped fixtures for the Surfaces build.
  *
- * The daily-ideas, outliers, month plan, calendar reads, the stat row, AND the loop (receipts +
- * accuracy) are all REAL now (Seams 1/2 + account-metrics + the outcome flywheel), so this module
- * is down to the /start sections that don't yet have a live producer: the greeting, rings, content
- * pillars, and quick actions. Swap each for live data as its producer lands.
- *
- * `MOCK_PILLARS` stays until account-derived pillars land (a separate follow-up); it feeds the
- * /start pillar rail, the /calendar pillar rail, and /grow.
+ * The daily-ideas, outliers, month plan, calendar reads, the stat row, the loop (receipts +
+ * accuracy), AND content pillars are all REAL now (Seams 1/2 + account-metrics + the outcome
+ * flywheel + content-pillars clustering), so this module is down to the /start chrome that has no
+ * live producer: the greeting, rings, and quick actions. Swap each for live data as its producer
+ * lands. The `Pillar` type stays here (the shared rail view-model that build-pillars produces).
  */
 
 import type { Tone, Verb } from "./types";
@@ -56,20 +54,8 @@ export interface QuickAction {
 export interface StartPageData {
   greeting: { headline: string; line: string };
   rings: RingStat[];
-  pillars: Pillar[];
   quickActions: QuickAction[];
 }
-
-/**
- * The creator's recurring themes (share is real-shaped; the response `tone` is a Directional
- * forecast). Shared by the /start pillar rail, the /calendar workspace, and /grow so all agree.
- */
-export const MOCK_PILLARS: Pillar[] = [
-  { id: "confessional", name: "Honest confessionals", share: 0.4, count: 5, tone: "loved", cadence: "posted 2 days ago" },
-  { id: "money", name: "Money & cost", share: 0.25, count: 3, tone: "loved", cadence: "posted this week" },
-  { id: "challenge", name: "Challenges", share: 0.2, count: 2, tone: "loved", cadence: "posted last week" },
-  { id: "myth", name: "Myth-busting", share: 0.15, count: 1, tone: "neutral", cadence: "none in 3 weeks", gap: true },
-];
 
 export function getMockStartPage(): StartPageData {
   return {
@@ -82,7 +68,6 @@ export function getMockStartPage(): StartPageData {
       { icon: "calendar", pct: 0.43, value: "3 / 7", accent: false, label: "3 of 7 planned this week" },
       { icon: "trend", pct: 0.84, value: "84%", accent: true, label: "84% prediction accuracy" },
     ],
-    pillars: MOCK_PILLARS,
     quickActions: [
       { icon: "sparkle", label: "Make ideas", desc: "ranked + pre-tested", verb: "Make" },
       { icon: "play", label: "Test a real video", desc: "the full Read before you post", verb: "Test" },
