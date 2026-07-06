@@ -12,6 +12,7 @@ import { describe, expect, it } from "vitest";
 import {
   remapApidojoVideo,
   remapApidojoProfile,
+  remapClockworksVideo,
 } from "../apify-provider";
 import { apifyVideoSchema } from "@/lib/schemas/competitor";
 
@@ -129,60 +130,58 @@ describe("remapApidojoProfile", () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Phase 10: single-post METRICS remap (scrapeSinglePostMetrics).
-// The single-URL outcome-capture path runs apidojo's `tiktok-scraper-api`
-// Single Post Query tier — its output shape is the SAME apidojo block
-// (views/likes/comments/shares/bookmarks) that the Discover actors return, so it
-// remaps through `remapApidojoVideo`, NOT the clockworks apifyVideoSchema (Pitfall 1).
-// These tests pin that single-post output → VideoData mapping for the flywheel.
+// Phase 10 / FLYWHEEL-01: single-post METRICS remap (scrapeSinglePostMetrics).
+// MIGRATED 2026-07-06: the single-URL outcome-capture path moved off the RETIRED
+// `apidojo/tiktok-scraper-api` actor onto `clockworks/tiktok-scraper` (postURLs tier —
+// the same actor resolveVideoUrl uses). So its output is now the CLOCKWORKS block
+// (playCount/diggCount/commentCount/shareCount/collectCount) and it remaps through
+// `remapClockworksVideo`, NOT the apidojo schema. These tests pin that single-post →
+// VideoData mapping for the flywheel (the 5 fields realizedSignature consumes) and guard
+// the Pitfall-1 silent-zero the OTHER way now (an apidojo-shaped item zeros through the
+// clockworks schema).
 // ─────────────────────────────────────────────────────────────────────────────
-describe("remapApidojoVideo — single-post metrics (apidojo tiktok-scraper-api)", () => {
-  // A single-post-query dataset item (one video; same apidojo field shape).
+describe("remapClockworksVideo — single-post metrics (clockworks postURLs tier)", () => {
+  // A single-post clockworks dataset item (one video; clockworks field shape).
   function singlePostItem(overrides: Record<string, unknown> = {}) {
     return {
-      id: 7_500_123, // single-post tier may return id as a NUMBER (kept in safe-int range)
+      id: "7500000000000000001",
       webVideoUrl: "https://www.tiktok.com/@creator/video/7500000000000000001",
-      title: "outcome capture probe",
-      uploadedAt: "2026-06-18T09:00:00.000Z",
-      views: 563_600,
-      likes: 98_700,
-      comments: 1_334,
-      shares: 127,
-      bookmarks: 58_618, // apidojo saves field (collectCount equivalent)
-      hashtags: ["fyp"],
-      video: { duration: 31 },
+      text: "outcome capture probe",
+      createTime: 1_781_000_000, // unix seconds → remap coerces to Date
+      playCount: 563_600,
+      diggCount: 98_700,
+      commentCount: 1_334,
+      shareCount: 127,
+      collectCount: 58_618, // clockworks saves field (→ VideoData.saves)
+      hashtags: [{ name: "fyp" }],
+      videoMeta: { duration: 31 },
       ...overrides,
     };
   }
 
-  it("maps single-post apidojo metrics onto VideoData with saves from bookmarks", () => {
-    const v = remapApidojoVideo(singlePostItem());
+  it("maps single-post clockworks metrics onto the 5 flywheel fields (saves from collectCount)", () => {
+    const v = remapClockworksVideo(singlePostItem());
     expect(v).not.toBeNull();
     expect(v!.views).toBe(563_600);
     expect(v!.likes).toBe(98_700);
     expect(v!.comments).toBe(1_334);
     expect(v!.shares).toBe(127);
-    // bookmarks → saves is the flywheel collector signal (public on TikTok).
+    // collectCount → saves is the flywheel collector signal (public on TikTok).
     expect(v!.saves).toBe(58_618);
     expect(v!.saves).not.toBe(0);
   });
 
-  it("coerces a numeric single-post id to a string platformVideoId", () => {
-    const v = remapApidojoVideo(singlePostItem());
-    expect(v!.platformVideoId).toBe("7500123");
-    expect(typeof v!.platformVideoId).toBe("string");
-  });
-
-  it("GUARD: a clockworks-shaped single item zeros through the apidojo schema (Pitfall 1)", () => {
-    // If scrapeSinglePostMetrics ever regressed to the clockworks shape but kept the
-    // apidojo remap, every metric would silently zero — this pins that failure mode.
-    const clockworksShape = {
+  it("GUARD: an apidojo-shaped single item zeros through the clockworks schema (Pitfall 1, inverted)", () => {
+    // The single-post path now uses the clockworks remap; if it ever regressed to an
+    // apidojo-shaped item (views/bookmarks) the clockworks schema would silently zero
+    // every metric (each metric field has `.default(0)`) — this pins that failure mode.
+    const apidojoShape = {
       id: "888",
-      playCount: 563_600,
-      diggCount: 98_700,
-      collectCount: 58_618,
+      views: 563_600,
+      likes: 98_700,
+      bookmarks: 58_618,
     };
-    const v = remapApidojoVideo(clockworksShape);
+    const v = remapClockworksVideo(apidojoShape);
     expect(v!.views).toBe(0);
     expect(v!.saves).toBe(0);
   });

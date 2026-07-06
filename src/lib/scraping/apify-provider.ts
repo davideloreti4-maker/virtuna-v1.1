@@ -25,20 +25,15 @@ import { IngestError } from "./types";
 const DISCOVER_PROFILE_ACTOR = "clockworks/tiktok-profile-scraper";
 const DISCOVER_VIDEO_ACTOR = "clockworks/tiktok-scraper";
 
-// ── Single-post METRICS actor (Phase 10) — apidojo single-post tier ──────────
-// apidojo/tiktok-scraper-api is a DISTINCT actor from apidojo/tiktok-scraper (the
-// all-in-one Discover actor, which forbids single posts / requires ≥10 posts/query).
-// tiktok-scraper-api exposes a "Single Post Query" tier: startUrls:[<post url>] returns
-// exactly ONE video with the full public metric block (views/likes/comments/shares/
-// bookmarks). Output shape matches the apidojo Discover actor → remap via apidojoVideoSchema
-// (NOT clockworks apifyVideoSchema). We standardize single-URL metric capture on apidojo.
-const SINGLE_POST_METRICS_ACTOR = "apidojo/tiktok-scraper-api";
-
-// ── Remix rehost actor — LEFT on the single-URL-capable clockworks actor ──────
-// resolveVideoUrl passes one `postURLs:[url]` + `shouldDownloadVideos:true` for the
-// Remix rehost — it needs the downloadable KV mp4 that clockworks resolves, which the
-// metrics-only apidojo actor does NOT return. The Remix media-resolution path stays on
-// clockworks; only the Phase-10 METRICS capture moved to apidojo (above).
+// ── Single-URL actor — clockworks/tiktok-scraper (VIDEO_ACTOR) ────────────────
+// One actor serves BOTH single-URL needs via clockworks' `postURLs:[url]` tier:
+//   1. Remix rehost   (resolveVideoUrl) — needs the downloadable KV mp4 → shouldDownloadVideos:true
+//   2. Outcome METRICS (scrapeSinglePostMetrics, Phase-10 flywheel) — metrics only
+// The former metrics actor `apidojo/tiktok-scraper-api` was RETIRED from Apify (2026-07-06);
+// capture migrated here. clockworks' block (playCount/diggCount/commentCount/shareCount/
+// collectCount) remaps 1:1 onto the SAME VideoData the flywheel consumes (views/likes/
+// comments/shares/saves) via remapClockworksVideo — deleted/private posts return an
+// error/errorCode item (honest null), identical to the resolveVideoUrl precedent below.
 const VIDEO_ACTOR = "clockworks/tiktok-scraper";
 
 /**
@@ -432,11 +427,12 @@ export class ApifyScrapingProvider implements ScrapingProvider {
   /**
    * Scrape PUBLIC METRICS for ONE posted TikTok URL (outcome capture, FLYWHEEL-01).
    *
-   * Single source = apidojo's `tiktok-scraper-api` "Single Post Query" tier: one
-   * `startUrls:[url]` returns exactly ONE video with the full public metric block
-   * (views/likes/comments/shares/bookmarks) and NO ≥10-post minimum. Remaps via the
-   * apidojo `apidojoVideoSchema` (bookmarks→saves) through `remapApidojoVideo` — the
-   * SAME schema the Discover apidojo actors use (Pitfall 1: never the clockworks schema).
+   * Source = clockworks/tiktok-scraper single-URL `postURLs:[url]` tier (the same actor
+   * resolveVideoUrl uses; the former apidojo `tiktok-scraper-api` was retired from Apify
+   * 2026-07-06). One URL → exactly ONE video with the full public metric block; remaps via
+   * `remapClockworksVideo` (playCount→views, diggCount→likes, commentCount→comments,
+   * shareCount→shares, collectCount→saves) onto the SAME VideoData the flywheel consumes.
+   * Metrics-only → NO `shouldDownloadVideos` (no mp4 needed; cheaper/faster than the rehost).
    *
    * SSRF (T-10-05): the pasted URL is untrusted input — guarded by isAllowedPostUrl
    * (HTTPS + TikTok host) before reaching the actor.
@@ -444,11 +440,6 @@ export class ApifyScrapingProvider implements ScrapingProvider {
    * Returns null for a deleted/private/404 post or an unparseable item (caller
    * degrades honestly — never zero-fills). Throws IngestError on actor failure /
    * empty dataset / a rejected input URL.
-   *
-   * NOTE (Plan 07 UAT): the apidojo single-post INPUT field is `startUrls` per the
-   * actor's Single Post Query tier; verify the live field name + the saves field
-   * (`bookmarks`) at the Plan-07 push/UAT gate against a real token, and adjust the
-   * remap if apidojo names saves differently in this actor's dataset version.
    */
   async scrapeSinglePostMetrics(url: string): Promise<VideoData | null> {
     // SSRF guard on the untrusted paste-URL input (T-10-05) BEFORE the actor call.
@@ -458,9 +449,10 @@ export class ApifyScrapingProvider implements ScrapingProvider {
 
     let run: { defaultDatasetId: string };
     try {
-      run = await this.client.actor(SINGLE_POST_METRICS_ACTOR).call(
-        // Single Post Query tier: one startUrls entry → exactly one video, no min.
-        { startUrls: [url], resultsPerPage: 1 },
+      run = await this.client.actor(VIDEO_ACTOR).call(
+        // clockworks single-URL tier: one postURLs entry → exactly one video. Omit
+        // shouldDownloadVideos — metrics capture needs no mp4 (unlike resolveVideoUrl).
+        { postURLs: [url], resultsPerPage: 1 },
         { waitSecs: 180 },
       );
     } catch (cause) {
@@ -476,12 +468,13 @@ export class ApifyScrapingProvider implements ScrapingProvider {
 
     const item = items[0] as Record<string, unknown>;
 
-    // Deleted/private posts return count=1 with error/errorCode keys → null (honest absence).
+    // Deleted/private posts return count=1 with error/errorCode keys → null (honest
+    // absence). Same signal resolveVideoUrl relies on for this actor (spike-confirmed).
     if (item.error !== undefined || item.errorCode !== undefined) {
       return null;
     }
 
-    // apidojo output shape → VideoData (bookmarks→saves). Returns null if unparseable.
-    return remapApidojoVideo(item);
+    // clockworks output shape → VideoData (collectCount→saves). Returns null if unparseable.
+    return remapClockworksVideo(item);
   }
 }
