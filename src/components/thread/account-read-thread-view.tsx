@@ -87,7 +87,7 @@ export function AccountReadThreadView({
               A Read on your own account
             </h2>
             <p className="text-sm leading-normal text-foreground-secondary">
-              Numen scrapes your latest posts and maps what&apos;s working, what&apos;s
+              Maven scrapes your latest posts and maps what&apos;s working, what&apos;s
               falling flat, and where to double down — grounded in your real account, not a
               handle over a wall of text.
             </p>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Coming Soon | Numen",
+  title: "Coming Soon | Maven",
   description: "This page is under construction. Check back later.",
 };
 

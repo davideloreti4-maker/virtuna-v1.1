@@ -194,7 +194,7 @@ export function PersonaEditForm({
           placeholder="How this persona reacts to your content."
         />
         <p className="text-xs text-foreground-muted">
-          How this persona reacts in a Read — shapes who judges your ideas, not what Numen writes.
+          How this persona reacts in a Read — shapes who judges your ideas, not what Maven writes.
         </p>
       </div>
 

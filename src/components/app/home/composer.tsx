@@ -111,7 +111,7 @@ const LAUNCH_VERB_TOOL: Record<Verb, ToolId> = {
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
 const ERROR_NON_TIKTOK =
-  "Numen reads TikTok videos for now. Paste a TikTok link or upload the file.";
+  "Maven reads TikTok videos for now. Paste a TikTok link or upload the file.";
 // WR-04 — Test upload pre-flight failures. These branches return BEFORE stream.start,
 // so stream.phase never owns the error; without these the button just went dead-quiet.
 const ERROR_SESSION_EXPIRED =

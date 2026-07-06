@@ -13,7 +13,7 @@ export default function HomeLoading() {
   return (
     <div className="flex h-full w-full flex-col items-center px-4">
       <div className="flex w-full max-w-[760px] flex-1 flex-col min-h-0">
-        {/* Greeting hero anchor — NumenMark (40px) + the serif welcome line. */}
+        {/* Greeting hero anchor — MavenMark (40px) + the serif welcome line. */}
         <div className="shrink-0 flex flex-col items-center pt-[clamp(3rem,18vh,7rem)] pb-8">
           <Skeleton className="mb-5 h-10 w-10 rounded-xl" />
           <Skeleton className="h-9 w-[min(80%,420px)] rounded-lg" />

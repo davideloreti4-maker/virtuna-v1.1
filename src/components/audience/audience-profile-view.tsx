@@ -188,7 +188,7 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
             <ConstellationMark width={72} litNodeIndex={-1} className="mb-4 opacity-80" />
             <p className="text-sm text-foreground-secondary">
               {audience.is_general
-                ? "General — Numen's universal baseline with 10 personas."
+                ? "General — Maven's universal baseline with 10 personas."
                 : audience.is_preset
                   ? "Template audience — ready-made weight mix."
                   : "No calibrated audience data yet."}
@@ -245,9 +245,9 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
       {personas.length > 0 ? (
         <ReadingSection label="Who reacts">
           <div className="px-4 py-4">
-            {/* A1-COUPLED-COPY: revise "not how Numen writes" when weights→generation wires */}
+            {/* A1-COUPLED-COPY: revise "not how Maven writes" when weights→generation wires */}
             <p className="mb-3 text-[11px] text-foreground-muted">
-              Shapes who reacts in a Read — not how Numen writes.
+              Shapes who reacts in a Read — not how Maven writes.
             </p>
             <DataTable<CalibratedPersona>
               columns={columns}
@@ -260,7 +260,7 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
         <ReadingSection label="Who reacts">
           <div className="px-5 py-4">
             <p className="mb-3 text-[11px] text-foreground-muted">
-              Shapes who reacts in a Read — not how Numen writes.
+              Shapes who reacts in a Read — not how Maven writes.
             </p>
             <ul className="flex flex-col gap-2">
               {roster.map((p) => (
@@ -309,7 +309,7 @@ export function AudienceProfileView({ audience: audienceProp, className }: Audie
 
       {!isEditable && (
         <p className="text-xs text-foreground-muted text-center pb-2">
-          General is Numen&apos;s protected baseline — read-only. Calibrate a personal or target audience to edit its personas.
+          General is Maven&apos;s protected baseline — read-only. Calibrate a personal or target audience to edit its personas.
         </p>
       )}
     </div>

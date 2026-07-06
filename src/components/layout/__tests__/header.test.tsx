@@ -9,7 +9,7 @@ import { Header } from "@/components/layout/header";
  * NAV-01 + NAV-03 unit coverage for the flat-matte marketing <Header>.
  *
  * Behaviors under test (PLAN 01-04, UI-SPEC §Component Inventory item 2):
- *  - NAV-01: renders the NumenLogo ("Numen" wordmark) brand
+ *  - NAV-01: renders the MavenLogo ("Maven" wordmark) brand
  *  - NAV-01: "Try it free" CTA href is exactly /signup (SIGNUP_URL)
  *  - NAV-01: "Sign in" link href is exactly /login (LOGIN_URL)
  *  - NAV-03: a mobile menu toggle (aria-label="Open menu") opens a flat panel
@@ -21,10 +21,10 @@ import { Header } from "@/components/layout/header";
  */
 describe("<Header>", () => {
   describe("brand (NAV-01)", () => {
-    it("renders the NumenLogo via the 'Numen' wordmark", () => {
+    it("renders the MavenLogo via the 'Maven' wordmark", () => {
       render(<Header />);
-      // The NumenLogo wordmark renders the brand text "Numen".
-      expect(screen.getAllByText("Numen").length).toBeGreaterThanOrEqual(1);
+      // The MavenLogo wordmark renders the brand text "Maven".
+      expect(screen.getAllByText("Maven").length).toBeGreaterThanOrEqual(1);
     });
   });
 

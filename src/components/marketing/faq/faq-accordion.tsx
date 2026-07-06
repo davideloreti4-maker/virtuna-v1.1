@@ -44,22 +44,22 @@ const FAQ_ITEMS: readonly FaqItem[] = [
   {
     id: "faq-how-it-works",
     q: "How does it actually know if my video will perform?",
-    a: "Numen runs a synthetic audience — thousands of simulated viewer profiles built from real engagement patterns. Each profile watches your video frame-by-frame and reacts the way real TikTok audiences do. The result is your predicted score, watch-through %, and the exact second viewers are most likely to drop. It's not a guess — it's a simulation.",
+    a: "Maven runs a synthetic audience — thousands of simulated viewer profiles built from real engagement patterns. Each profile watches your video frame-by-frame and reacts the way real TikTok audiences do. The result is your predicted score, watch-through %, and the exact second viewers are most likely to drop. It's not a guess — it's a simulation.",
   },
   {
     id: "faq-platforms",
     q: "Does it work for platforms other than TikTok?",
-    a: "Right now Numen is TikTok-first. The simulation model is trained on TikTok-specific engagement patterns — scroll behavior, hook windows, watch-through benchmarks. Instagram Reels and YouTube Shorts are on the roadmap. For TikTok creators, you get the most accurate predictions available.",
+    a: "Right now Maven is TikTok-first. The simulation model is trained on TikTok-specific engagement patterns — scroll behavior, hook windows, watch-through benchmarks. Instagram Reels and YouTube Shorts are on the roadmap. For TikTok creators, you get the most accurate predictions available.",
   },
   {
     id: "faq-niche",
     q: "What if my niche is small or unusual?",
-    a: "Numen performs well across niches because it models viewer behavior rather than content categories. Whether you make finance content, dark comedy, or niche hobby videos, the audience simulation adapts to what viewers in your category actually respond to — short hooks, longer storytelling, rapid cuts, or slow builds.",
+    a: "Maven performs well across niches because it models viewer behavior rather than content categories. Whether you make finance content, dark comedy, or niche hobby videos, the audience simulation adapts to what viewers in your category actually respond to — short hooks, longer storytelling, rapid cuts, or slow builds.",
   },
   {
     id: "faq-privacy",
-    q: "Does Numen store or share my videos?",
-    a: "No. Numen analyzes your TikTok link — the video lives on TikTok's servers, not ours. We never upload or retain your content. Your analysis results are private to your account and are never shared or sold.",
+    q: "Does Maven store or share my videos?",
+    a: "No. Maven analyzes your TikTok link — the video lives on TikTok's servers, not ours. We never upload or retain your content. Your analysis results are private to your account and are never shared or sold.",
   },
   {
     id: "faq-free-trial",

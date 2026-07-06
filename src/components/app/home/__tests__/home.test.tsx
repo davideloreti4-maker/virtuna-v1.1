@@ -3,7 +3,7 @@
  * Home composition (SHELL-01, THEME-04, UX-05 / D-04).
  *
  * Asserts the clean authed home surface — the serif greeting (font-serif) +
- * the NumenMark stele glyph + the composer — and the P7 empty-state UNLOCK:
+ * the MavenMark gull glyph + the composer — and the P7 empty-state UNLOCK:
  *  - the 3 LOCKED-verbatim starter chips (Test / Profile / Predict)
  *  - the one-tap, show-once first-run demo (See it in action + Dismiss)
  *  - show-once: with the localStorage flag set, the demo is hidden but the chips
@@ -100,9 +100,9 @@ describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () =
     expect(heading.className).toContain('font-serif');
   });
 
-  it('renders the NumenMark stele glyph (D-20, not an asterisk)', () => {
+  it('renders the MavenMark gull glyph (D-20, not an asterisk)', () => {
     const { container } = render(<Home />);
-    // NumenMark is an aria-hidden <svg> with the stele path.
+    // MavenMark is an aria-hidden <svg> with the gull path.
     expect(container.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 

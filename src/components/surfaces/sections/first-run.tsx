@@ -6,7 +6,7 @@
  * stays live below (owned by the shell); this is just the empty-state body + the 3-step loop.
  */
 
-import { NumenMark } from "@/components/brand/numen-logo";
+import { MavenMark } from "@/components/brand/maven-logo";
 
 export function FirstRun({ onConnect }: { onConnect: () => void }) {
   const steps = [
@@ -17,7 +17,7 @@ export function FirstRun({ onConnect }: { onConnect: () => void }) {
   return (
     <div className="flex flex-col px-1.5 py-4">
       <span className="mb-4 text-accent" aria-hidden>
-        <NumenMark size={34} />
+        <MavenMark size={34} />
       </span>
       <h2 className="m-0 mb-2.5 font-serif text-[24px] font-normal leading-[1.24] text-foreground">
         Let’s build your room.

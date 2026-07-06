@@ -27,21 +27,21 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://virtuna.ai"),
-  title: "Numen | AI Content Intelligence for TikTok Creators",
+  title: "Maven | AI Content Intelligence for TikTok Creators",
   description:
     "Know what will go viral before you post. AI-powered predictions, trend intelligence, and audience insights for TikTok creators.",
   openGraph: {
-    title: "Numen | AI Content Intelligence for TikTok Creators",
+    title: "Maven | AI Content Intelligence for TikTok Creators",
     description:
       "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
     url: "https://virtuna.ai",
-    siteName: "Numen",
+    siteName: "Maven",
     locale: "en_US",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Numen | AI Content Intelligence for TikTok Creators",
+    title: "Maven | AI Content Intelligence for TikTok Creators",
     description:
       "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
   },

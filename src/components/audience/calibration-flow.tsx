@@ -159,8 +159,8 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
           <h2 className="text-xl font-semibold text-foreground">Calibrate audience</h2>
           <p className="mt-1 text-sm text-foreground-secondary">
             {isPersonal
-              ? "Numen reads your public follower data to shape who reacts in your Reads."
-              : "Describe your target audience so Numen can build who reacts in your Reads."}
+              ? "Maven reads your public follower data to shape who reacts in your Reads."
+              : "Describe your target audience so Maven can build who reacts in your Reads."}
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
             </p>
             <p className="text-sm text-foreground-secondary mt-1">
               {fallbackMsg ||
-                `We couldn't read enough from ${handleForMsg} to calibrate a personal audience, so Numen is using General for now. Try again when your account has more public activity.`}
+                `We couldn't read enough from ${handleForMsg} to calibrate a personal audience, so Maven is using General for now. Try again when your account has more public activity.`}
             </p>
           </div>
         </div>

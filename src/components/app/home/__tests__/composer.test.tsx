@@ -90,7 +90,7 @@ vi.mock('@/hooks/queries/use-hooks-stream', () => ({
 
 import { Composer } from '../composer';
 
-const D21 = 'Numen reads TikTok videos for now';
+const D21 = 'Maven reads TikTok videos for now';
 
 // ── General-verb (07-04) test scaffolding ────────────────────────────────────
 // A General-mode audience (non-UUID id so handleSelectAudience skips the thread PATCH).

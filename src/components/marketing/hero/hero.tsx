@@ -24,7 +24,7 @@ interface HeroProps {
  *  3. CTA cluster — dominant coral "Try it free" → SIGNUP_URL (HERO-02) +
  *     a quieter "See how it works ↓" scroll-cue → #how-it-works (D-12).
  *  4. the product-shot SHOWCASE (HERO-03/04): a flat-warm desktop browser
- *     window (the Numen Simulation = the OUTPUT) with a phone in front (the
+ *     window (the Maven Simulation = the OUTPUT) with a phone in front (the
  *     TikTok you paste = the INPUT), reading left→right as paste → prediction.
  *     Both screens are swappable <Placeholder> slots (FOUND-03) — real
  *     desktop/mobile screenshots or video drop in via the one `src` prop later;
@@ -89,7 +89,7 @@ export function Hero({ className }: HeroProps) {
         </a>
       </div>
 
-      {/* 4 — Hero showcase: the product, shown. desktop window = the Numen
+      {/* 4 — Hero showcase: the product, shown. desktop window = the Maven
           SIMULATION (output) · phone in front = the TikTok you paste (input).
           Reads left→right as paste → prediction. Both screens are swappable
           <Placeholder> slots (FOUND-03) — real desktop/mobile screenshots or
@@ -120,7 +120,7 @@ export function Hero({ className }: HeroProps) {
                 <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
               </span>
               <span className="mx-auto rounded-md bg-background px-4 py-1 font-mono text-[11px] tracking-wide text-foreground-muted">
-                numen.app
+                maven.app
               </span>
               {/* spacer keeps the address pill optically centered vs the dots */}
               <span className="w-[42px]" aria-hidden="true" />
@@ -129,7 +129,7 @@ export function Hero({ className }: HeroProps) {
             <Placeholder
               variant="image"
               aspect="16/10"
-              label="Numen Simulation"
+              label="Maven Simulation"
               className="rounded-none border-0 bg-surface"
             />
           </div>

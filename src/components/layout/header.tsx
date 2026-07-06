@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 
 import { cn, FOCUS_RING } from "@/lib/utils";
-import { NumenLogo } from "@/components/brand/numen-logo";
+import { MavenLogo } from "@/components/brand/maven-logo";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL, LOGIN_URL } from "@/lib/routes";
 import { NAV_LINKS } from "@/lib/nav";
@@ -15,12 +15,12 @@ interface HeaderProps {
 }
 
 /**
- * Header — flat-matte sticky chrome for the Numen marketing landing
+ * Header — flat-matte sticky chrome for the Maven marketing landing
  * (NAV-01, NAV-03 · CONTEXT D-19/D-20/D-21 · UI-SPEC Component Inventory item 2).
  *
  * A flat OPAQUE sticky bar (no glass, no blur, no inset shine, no drop
  * shadow) resting on a tone-step surface + a hairline bottom border. Contents:
- * the Stele NumenLogo + "Numen" wordmark, 3–4 in-page anchor links, a terracotta
+ * the MavenLogo gull + "Maven" wordmark, 3–4 in-page anchor links, a terracotta
  * "Try it free" primary CTA → /signup, and a subtle "Sign in" ghost link → /login.
  *
  * Mobile (NAV-03): a lightweight useState disclosure (NOT a heavyweight Radix
@@ -122,13 +122,13 @@ export function Header({ className }: HeaderProps) {
         aria-label="Primary"
         className="mx-auto flex h-16 w-full max-w-[1204px] items-center justify-between px-4 md:px-6"
       >
-        {/* Brand — NumenLogo (cream via currentColor) linking to the hero anchor. */}
+        {/* Brand — MavenLogo (cream via currentColor) linking to the hero anchor. */}
         <Link
           href="#hero"
-          aria-label="Numen home"
+          aria-label="Maven home"
           className={cn("flex items-center text-foreground", FOCUS_RING)}
         >
-          <NumenLogo size={26} />
+          <MavenLogo size={26} />
         </Link>
 
         {/* Desktop in-page anchor links (NAV-01). */}

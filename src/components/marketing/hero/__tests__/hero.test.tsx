@@ -44,7 +44,7 @@ describe("<Hero />", () => {
       // (D-23 carried). Planner-flexible wording → assert the verb form
       // "simulates" that the subcopy uses. Scoped to the verb (not the bare
       // /simulat/i stem) so it does NOT collide with the desktop showcase
-      // slot label "Numen Simulation" (WR-01) — the subcopy stays the unique
+      // slot label "Maven Simulation" (WR-01) — the subcopy stays the unique
       // /simulates/i node.
       const noun = screen.getByText(/simulates/i);
       expect(noun).toBeTruthy();
@@ -77,7 +77,7 @@ describe("<Hero />", () => {
       // Swappable Placeholder slot — real desktop screenshot/video swaps in
       // via `src` later; the labelled stand-in proves the slot is wired now.
       // WR-01: pins the locked product noun "Simulation", never "reading".
-      expect(screen.getByText(/numen simulation/i)).toBeTruthy();
+      expect(screen.getByText(/maven simulation/i)).toBeTruthy();
     });
 
     it("renders the phone TikTok slot (the INPUT)", () => {
@@ -91,7 +91,7 @@ describe("<Hero />", () => {
       render(<Hero />);
 
       // Browser chrome address pill — signals "the product" at a glance.
-      expect(screen.getByText(/numen\.app/i)).toBeTruthy();
+      expect(screen.getByText(/maven\.app/i)).toBeTruthy();
     });
   });
 });

@@ -4,7 +4,7 @@
  * HomeGreeting — the one serif voice moment on the home (SHELL-01, THEME-04,
  * D-19/D-20).
  *
- * Renders the NumenMark stele glyph above a serif greeting. The name comes from
+ * Renders the MavenMark gull glyph above a serif greeting. The name comes from
  * useProfile(); the name itself is italic (`<em>`) per the UI-SPEC display row.
  *
  * Shown only on the empty-state start screen; removed entirely once conversation
@@ -12,7 +12,7 @@
  */
 
 import { cn } from "@/lib/utils";
-import { NumenMark } from "@/components/brand/numen-logo";
+import { MavenMark } from "@/components/brand/maven-logo";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
@@ -41,7 +41,7 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
         )}
         aria-hidden="true"
       >
-        <NumenMark size={40} />
+        <MavenMark size={40} />
       </span>
 
       <h1
