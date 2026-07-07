@@ -34,3 +34,20 @@ Steps: `git rebase origin/main` (or merge), resolve `composer.tsx`, re-run `tsc`
 
 ## Ship
 Open PR `lane/explore-b → main`, **review the accent/red-logo on the Vercel preview** (broad brand change — includes marketing), then merge. Functional fixes are safe; the brand change is the only judgment call.
+
+---
+
+## Session 2 (2026-07-07) — rebased, owner-reviewed, MERGED
+
+**Rebase onto `origin/main` (`d9b3c70f`).** One conflict, in `composer.tsx` — exactly the predicted overlap. #210 rewrote the thread region to a **full-width, page-wide scroll** (content re-centered at 760px inside); this branch had turned the bottom dock into a **floating overlay** chat scrolls behind. Resolved by **keeping both**: shell stays full-width + gained `relative` (roots the absolute dock); the floating dock (`pointer-events-none` wrapper / `pointer-events-auto` cards) is re-centered at 760px to align with the thread column. `Sidebar.tsx` (renders `MavenMark`) and `reskin-matte.test.ts` needed no reconcile — untouched by either branch.
+
+**Verification (post-rebase).**
+- `tsc --noEmit`: clean.
+- Tests: only pre-existing failures — the 2 documented `audience-presence` ones, plus 34 in `app/home`. The 34 are #210's `useQueryClient`-without-a-test-provider gap — **confirmed identical (34 failed / 43 passed) on `origin/main`** via the explore-a worktree; the `npm test` fake-pass shim hides them. Rebase added zero new failures. `reskin-matte` green (`#FF6363` ≠ banned `#FF7F50`).
+- Browser pass on `:3002` (logged in): red mark on landing + sidebar + greeting; opened a persisted hooks thread → full conversation restored (#210) **and** chat scrolls behind the floating dock (verified Hook cards passing behind the audience bar on scroll); dock centered at 760px; 0 console errors.
+
+**Owner decisions.**
+- **Red Maven mark → keep everywhere** (incl. marketing header/footer/onboarding). The app-scoping alternative was declined.
+- **Wordmark weight → `font-bold` (700)**, the original Numen weight. Tried `font-extrabold` (800) then `font-[760]`; 800 read "weird" (cramped), 700 is what Numen/Maven always used. The extrabold commit was dropped (no PR churn); wordmark unchanged from the pre-session baseline.
+
+**Shipped:** PR **#211** `lane/explore-b → main` — **merged**. Rebased tip before merge = `20dcdb03`.
