@@ -58,7 +58,7 @@
   --color-charcoal-chip: #2c2c2b;      /* lifted matte surfaces (composer, cards, modals, sidebar) */
   --color-charcoal-thread: #252524;    /* in-thread skill result cards (SkillResultCard) */
   --color-charcoal-sidebar: var(--color-charcoal-chip); /* sidebar — same lifted tone */
-  --color-charcoal-composer: #1e1d1b;  /* [UAT] Frame A — composer card surface */
+  --color-charcoal-composer: #1a1a19;  /* composer / surface card — dark modal tone */
 
   /* --- Cream Text Scale (flat-warm, D-02) — never pure white --- */
   --color-cream-primary: #ece7de;      /* [UAT] Frame A — brightest text (never #fff) */
@@ -100,10 +100,10 @@
   --color-surface: var(--color-charcoal-composer);        /* [UAT] Frame A — was #18191a */
   --color-surface-elevated: var(--color-charcoal-chip);   /* [UAT] Frame A — was #222326 */
   --color-surface-thread: var(--color-charcoal-thread);     /* in-thread skill output frames */
-  /* Sunken — the dark, recessed "modal/well" panel tone (darker than the page bg). The one
-     surface for full-width section panels + info banners (start's outcome banner, calendar
-     month grid, grow/analytics/referrals sections). Reads premium + distinct from raised cards. */
-  --color-surface-sunken: #1a1918;
+  /* Sunken — the dark "modal/well" panel tone. The one surface for full-width section panels +
+     info banners (start's outcome banner, calendar month grid, grow/analytics/referrals sections).
+     Sits between the near-black base and the dark card so nested cards stay legible. */
+  --color-surface-sunken: #1a1a19;
 
   /* --- Text (cream, never pure white — D-02) --- */
   --color-foreground: var(--color-cream-primary);         /* [UAT] Frame A — was var(--color-gray-50) #f9f9f9 */
