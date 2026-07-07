@@ -18,20 +18,47 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { ConstellationMark } from "@/components/brand/constellation-mark";
-import type { ConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
+import type { ConnectedAccount, Platform } from "@/lib/connected-accounts/connected-accounts-repo";
 import { CheckCircle, ArrowRight } from "@phosphor-icons/react";
+import { cn } from "@/lib/utils";
 
 interface ConnectReveal {
+  platform?: Platform;
   handle: string;
   displayName: string;
   followerCount: number;
   heartCount: number;
   videoCount: number;
+  viewCount?: number | null;
 }
 
 type Phase = "idle" | "loading" | "done" | "error";
 
 const nf = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
+
+const PLATFORMS: { value: Platform; label: string }[] = [
+  { value: "tiktok", label: "TikTok" },
+  { value: "instagram", label: "Instagram" },
+  { value: "youtube", label: "YouTube" },
+];
+
+/** Per-platform input copy + the reveal's secondary stat (honest per platform). */
+const PLATFORM_COPY: Record<Platform, { handleLabel: string; placeholder: string }> = {
+  tiktok: { handleLabel: "TikTok @handle", placeholder: "@yourhandle" },
+  instagram: { handleLabel: "Instagram @handle", placeholder: "@yourhandle" },
+  youtube: { handleLabel: "YouTube @handle", placeholder: "@yourchannel" },
+};
+
+/** The reveal's "N followers · M …" line, platform-honest (never a fake "0 likes" for IG/YT). */
+function revealStats(r: ConnectReveal, platform: Platform): string {
+  if (platform === "youtube") {
+    return `${nf.format(r.followerCount)} subscribers · ${nf.format(r.videoCount)} videos`;
+  }
+  if (platform === "instagram") {
+    return `${nf.format(r.followerCount)} followers · ${nf.format(r.videoCount)} posts`;
+  }
+  return `${nf.format(r.followerCount)} followers · ${nf.format(r.heartCount)} likes`;
+}
 
 export function ConnectAccountDialog({
   open,
@@ -44,6 +71,7 @@ export function ConnectAccountDialog({
   onConnected?: (account: ConnectedAccount) => void;
 }) {
   const router = useRouter();
+  const [platform, setPlatform] = useState<Platform>("tiktok");
   const [handle, setHandle] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [errorMsg, setErrorMsg] = useState("");
@@ -51,6 +79,7 @@ export function ConnectAccountDialog({
   const [reveal, setReveal] = useState<ConnectReveal | null>(null);
 
   function reset() {
+    setPlatform("tiktok");
     setHandle("");
     setPhase("idle");
     setErrorMsg("");
@@ -72,7 +101,7 @@ export function ConnectAccountDialog({
       const res = await fetch("/api/connected-accounts/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: "tiktok", handle: clean }),
+        body: JSON.stringify({ platform, handle: clean }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         account?: ConnectedAccount;
@@ -116,14 +145,47 @@ export function ConnectAccountDialog({
             <DialogHeader>
               <DialogTitle>Connect an account</DialogTitle>
               <DialogDescription>
-                Read a public TikTok @handle → your real numbers land in analytics, and it becomes
-                a room you can test content against. We only read public data.
+                Read a public @handle → your real numbers land in analytics.
+                {platform === "tiktok"
+                  ? " A TikTok account also becomes a room you can test content against."
+                  : ""}{" "}
+                We only read public data.
               </DialogDescription>
             </DialogHeader>
 
+            {/* Platform selector — which network this account lives on. Drives the scrape + the
+                honest per-platform labels downstream. */}
+            <div
+              className="mt-4 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5"
+              role="tablist"
+              aria-label="Platform"
+            >
+              {PLATFORMS.map((p) => {
+                const active = p.value === platform;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setPlatform(p.value)}
+                    disabled={phase === "loading"}
+                    className={cn(
+                      "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors disabled:opacity-50",
+                      active
+                        ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                        : "text-foreground-secondary hover:text-foreground",
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+
             <div className="mt-4 flex flex-col gap-2">
               <label className="text-sm text-foreground-secondary" htmlFor="connect-handle">
-                TikTok @handle
+                {PLATFORM_COPY[platform].handleLabel}
               </label>
               <Input
                 id="connect-handle"
@@ -132,7 +194,7 @@ export function ConnectAccountDialog({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && phase !== "loading") void connect();
                 }}
-                placeholder="@yourhandle"
+                placeholder={PLATFORM_COPY[platform].placeholder}
                 disabled={phase === "loading"}
                 autoFocus
               />
@@ -177,20 +239,30 @@ export function ConnectAccountDialog({
                 </p>
                 {reveal && (
                   <p className="font-mono text-[11px] text-foreground-muted">
-                    {nf.format(reveal.followerCount)} followers · {nf.format(reveal.heartCount)} likes
+                    {revealStats(reveal, account?.platform ?? reveal.platform ?? "tiktok")}
                   </p>
                 )}
               </div>
             </div>
 
             <div className="mt-5 flex flex-col gap-2">
-              <Button variant="primary" onClick={goCalibrate} className="w-full">
-                Calibrate an audience from this account
-                <ArrowRight weight="bold" className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button variant="secondary" onClick={finish} className="w-full">
-                Done
-              </Button>
+              {/* Calibration builds a testable audience from a TikTok video bundle — TikTok-only
+                  for now, so IG/YT connects end at analytics ("Done"). */}
+              {account?.platform === "tiktok" ? (
+                <>
+                  <Button variant="primary" onClick={goCalibrate} className="w-full">
+                    Calibrate an audience from this account
+                    <ArrowRight weight="bold" className="ml-1.5 h-4 w-4" />
+                  </Button>
+                  <Button variant="secondary" onClick={finish} className="w-full">
+                    Done
+                  </Button>
+                </>
+              ) : (
+                <Button variant="primary" onClick={finish} className="w-full">
+                  Done
+                </Button>
+              )}
             </div>
           </>
         )}

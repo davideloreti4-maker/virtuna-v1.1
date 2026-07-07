@@ -58,4 +58,22 @@ describe("buildRangeMetrics", () => {
     expect(views.delta).toBe("+500K");
     expect(views.up).toBe(true);
   });
+
+  // ── Honest per-platform tiles (never a fabricated "Likes: 0" for IG/YT) ──────────
+  it("Instagram drops Likes, keeps Followers/Posts (no fake engagement number)", () => {
+    const metrics = buildRangeMetrics(SERIES, 90, "instagram")!;
+    expect(metrics.map((m) => m.key)).toEqual(["followers", "posts"]);
+    expect(metrics.map((m) => m.label)).toEqual(["Followers", "Posts"]);
+  });
+
+  it("YouTube relabels to Subscribers/Videos/Views and drops Likes", () => {
+    const withViews: AccountSnapshot[] = [
+      { ...SERIES[2]!, recent_views: 5_000_000_000 },
+      { ...SERIES[3]!, recent_views: 5_469_016_050 },
+    ];
+    const metrics = buildRangeMetrics(withViews, 7, "youtube")!;
+    expect(metrics.map((m) => m.key)).toEqual(["followers", "posts", "views"]);
+    expect(metrics.map((m) => m.label)).toEqual(["Subscribers", "Videos", "Views"]);
+    expect(metrics.find((m) => m.key === "views")!.value).toBe("5.5B");
+  });
 });

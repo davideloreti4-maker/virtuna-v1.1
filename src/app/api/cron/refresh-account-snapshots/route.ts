@@ -64,9 +64,38 @@ export async function GET(request: Request) {
   let failed = 0;
 
   for (const account of accounts) {
-    // TikTok-only scraper today — skip other platforms until their provider lands.
-    if (account.platform !== "tiktok") continue;
     try {
+      // ── Instagram / YouTube — profile-only refresh ─────────────────────────
+      // No video clustering or content pillars (those stay TikTok-only, consistent with
+      // audience calibration). Just snapshot the profile counters + the platform's view
+      // total (YT lifetime channelTotalViews via viewCount; IG has none → null → no tile).
+      if (account.platform === "instagram" || account.platform === "youtube") {
+        if (!scraper.scrapeInstagramProfile || !scraper.scrapeYouTubeChannel) continue;
+        const profile =
+          account.platform === "instagram"
+            ? await scraper.scrapeInstagramProfile(account.handle)
+            : await scraper.scrapeYouTubeChannel(account.handle);
+        await upsertAccountSnapshot(supabase, {
+          accountId: account.id,
+          userId: account.user_id,
+          platform: account.platform,
+          handle: account.handle,
+          followerCount: profile.followerCount,
+          followingCount: profile.followingCount,
+          heartCount: profile.heartCount, // 0 for IG/YT — honest, dropped by the tiles
+          videoCount: profile.videoCount,
+          recentViews: profile.viewCount ?? null,
+        });
+        refreshed++;
+        try {
+          await touchAccountSynced(supabase, account.id);
+        } catch {
+          /* non-fatal — the snapshot already landed */
+        }
+        continue;
+      }
+
+      // ── TikTok — full bundle path (profile + recent-views video scrape + pillars) ──
       const profile = await scraper.scrapeProfile(account.handle);
 
       // Views tile source: sum public views across the creator's recent posts. A

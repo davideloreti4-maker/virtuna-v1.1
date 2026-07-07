@@ -6,8 +6,21 @@ export interface ProfileData {
   verified: boolean;
   followerCount: number;
   followingCount: number;
+  /**
+   * Total likes across the account. TikTok-specific (authorMeta.heart). Instagram and
+   * YouTube expose NO profile-level total-likes, so their remaps set this to 0 — an honest
+   * absence the analytics layer drops (never rendered as a fake "Likes: 0" tile), NOT a
+   * fabricated engagement number.
+   */
   heartCount: number;
   videoCount: number;
+  /**
+   * Profile-level total views. Populated by YouTube (channelTotalViews — lifetime channel
+   * views → the "Views" tile). TikTok and Instagram profiles expose no such total (TikTok's
+   * Views tile is a windowed per-post SUM computed by the cron, not this field), so their
+   * remaps leave it undefined → the Views tile is omitted honestly. Optional/additive.
+   */
+  viewCount?: number | null;
 }
 
 export interface VideoData {
@@ -108,6 +121,22 @@ export class IngestError extends Error {
 export interface ScrapingProvider {
   /** Scrape a single TikTok profile by handle. Throws if profile not found. */
   scrapeProfile(handle: string): Promise<ProfileData>;
+
+  /**
+   * Scrape a single Instagram profile by handle (light, profile-only — no media download).
+   * Powers the multi-platform connect → analytics path. heartCount is 0 (IG has no
+   * profile-level total-likes) and viewCount is undefined (no profile view total). Optional
+   * so existing mock/TikTok-only providers stay valid. Throws if the profile isn't found.
+   */
+  scrapeInstagramProfile?(handle: string): Promise<ProfileData>;
+
+  /**
+   * Scrape a single YouTube channel by handle (light, channel-only). heartCount is 0 (no
+   * channel-level total-likes), followingCount is 0 (no "following" concept), and viewCount
+   * carries the lifetime channelTotalViews (→ the Views tile). Optional so existing
+   * mock/TikTok-only providers stay valid. Throws if the channel isn't found.
+   */
+  scrapeYouTubeChannel?(handle: string): Promise<ProfileData>;
 
   /**
    * §P 1-scrape collapse: ONE `tiktok-profile-scraper` run returns the profile +

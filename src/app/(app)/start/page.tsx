@@ -85,7 +85,7 @@ export default async function StartRoute({
     try {
       const primary = await getPrimaryAccount(supabase, user.id);
       accountStats = primary
-        ? buildAccountStats(await getAccountSnapshots(supabase, primary.id))
+        ? buildAccountStats(await getAccountSnapshots(supabase, primary.id), primary.platform)
         : null;
     } catch {
       accountStats = null;

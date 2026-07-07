@@ -4,6 +4,9 @@ import {
   apifyProfileSchema,
   apidojoProfileSchema,
   apidojoVideoSchema,
+  instagramProfileSchema,
+  youtubeChannelSchema,
+  normalizeHandle,
 } from "@/lib/schemas/competitor";
 import type {
   ProfileData,
@@ -35,6 +38,16 @@ const DISCOVER_VIDEO_ACTOR = "clockworks/tiktok-scraper";
 // comments/shares/saves) via remapClockworksVideo — deleted/private posts return an
 // error/errorCode item (honest null), identical to the resolveVideoUrl precedent below.
 const VIDEO_ACTOR = "clockworks/tiktok-scraper";
+
+// ── Multi-platform connect actors (Instagram + YouTube) ───────────────────────
+// Profile-only scrapes for the connect → analytics path (calibration stays TikTok-only).
+// Both probe-verified plan-compatible 2026-07-07 (ran SUCCEEDED under LIMITED_PERMISSIONS,
+// no Free-plan rental refusal). Field shapes remapped onto the shared ProfileData below.
+//   - IG: apify/instagram-profile-scraper — one item = the profile.
+//   - YT: streamers/youtube-scraper — video items with the channel block denormalized on
+//     each; maxResults:1 bounds cost (one video is enough to surface the channel).
+const IG_PROFILE_ACTOR = "apify/instagram-profile-scraper";
+const YT_CHANNEL_ACTOR = "streamers/youtube-scraper";
 
 /**
  * SSRF allowlist for resolved mp4 URLs.
@@ -222,6 +235,50 @@ export function remapClockworksProfile(item: unknown): ProfileData {
   };
 }
 
+/**
+ * Remap one apify/instagram-profile-scraper item onto ProfileData. IG exposes no
+ * profile-level total-likes (heartCount:0 — honest, dropped by the analytics tiles, never
+ * shown as "Likes: 0") and no profile view total (viewCount left undefined → no Views tile).
+ */
+export function remapInstagramProfile(item: unknown): ProfileData {
+  const p = instagramProfileSchema.parse(item);
+  return {
+    handle: p.username,
+    displayName: p.fullName || p.username,
+    bio: p.biography,
+    avatarUrl: p.profilePicUrlHD ?? p.profilePicUrl ?? "",
+    verified: p.verified,
+    followerCount: p.followersCount,
+    followingCount: p.followsCount,
+    heartCount: 0,
+    videoCount: p.postsCount,
+  };
+}
+
+/**
+ * Remap one streamers/youtube-scraper item onto ProfileData. The item is a video with the
+ * channel block denormalized on it. followingCount:0 (YT has no "following") and heartCount:0
+ * (no channel-level total-likes) are honest absences; viewCount carries channelTotalViews
+ * (lifetime channel views → the Views tile). `channelUsername` is optional per the actor, so
+ * we fall back to the (already-cleaned) input handle.
+ */
+export function remapYouTubeChannel(item: unknown, fallbackHandle: string): ProfileData {
+  const c = youtubeChannelSchema.parse(item);
+  const handle = c.channelUsername ? normalizeHandle(c.channelUsername) : normalizeHandle(fallbackHandle);
+  return {
+    handle,
+    displayName: c.channelName || handle,
+    bio: c.channelDescription,
+    avatarUrl: c.channelAvatarUrl ?? "",
+    verified: c.isChannelVerified,
+    followerCount: c.numberOfSubscribers,
+    followingCount: 0,
+    heartCount: 0,
+    videoCount: c.channelTotalVideos,
+    viewCount: c.channelTotalViews,
+  };
+}
+
 export class ApifyScrapingProvider implements ScrapingProvider {
   private client: ApifyClient;
 
@@ -269,6 +326,53 @@ export class ApifyScrapingProvider implements ScrapingProvider {
     }
 
     return remapClockworksProfile(items[0]);
+  }
+
+  /**
+   * Scrape a single Instagram profile (light, profile-only — no media download). One
+   * apify/instagram-profile-scraper run on `usernames:[handle]` returns exactly one item =
+   * the profile. Mirrors scrapeProfile's contract (throws when the handle returns nothing).
+   */
+  async scrapeInstagramProfile(handle: string): Promise<ProfileData> {
+    const clean = handle.replace(/^@/, "").trim();
+    const run = await this.client
+      .actor(IG_PROFILE_ACTOR)
+      .call({ usernames: [clean] }, { waitSecs: 120 });
+
+    const { items } = await this.listRunItems(run, "scrape-instagram");
+
+    if (!items.length) {
+      throw new Error(`No profile data returned for handle: ${handle}`);
+    }
+
+    return remapInstagramProfile(items[0]);
+  }
+
+  /**
+   * Scrape a single YouTube channel (light, channel-only). streamers/youtube-scraper needs a
+   * channel URL; we build one from the @handle and cap `maxResults:1` (one video is enough to
+   * surface the denormalized channel block — bounds cost). Throws when the handle returns
+   * nothing. waitSecs 180: this actor scrolls the channel page (~1min observed).
+   */
+  async scrapeYouTubeChannel(handle: string): Promise<ProfileData> {
+    const clean = handle.replace(/^@/, "").trim();
+    const run = await this.client.actor(YT_CHANNEL_ACTOR).call(
+      {
+        startUrls: [{ url: `https://www.youtube.com/@${clean}` }],
+        maxResults: 1,
+        maxResultsShorts: 0,
+        maxResultStreams: 0,
+      },
+      { waitSecs: 180 },
+    );
+
+    const { items } = await this.listRunItems(run, "scrape-youtube");
+
+    if (!items.length) {
+      throw new Error(`No channel data returned for handle: ${handle}`);
+    }
+
+    return remapYouTubeChannel(items[0], clean);
   }
 
   /**

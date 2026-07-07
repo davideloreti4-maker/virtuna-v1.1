@@ -189,3 +189,58 @@ export const apidojoProfileSchema = z.object({
 
 export type ApidojoVideo = z.infer<typeof apidojoVideoSchema>;
 export type ApidojoProfile = z.infer<typeof apidojoProfileSchema>;
+
+// ───────────────────────────────────────────────────────────────────────────
+// Multi-platform connect (Instagram + YouTube) — profile-only scrapes via Apify.
+//
+// Same normalize-at-the-scrape-boundary pattern as the apidojo schemas above: each
+// actor has its OWN field names, remapped onto the SHARED ProfileData so the connect
+// route / cron / analytics stay actor-agnostic. Both actors probe-verified plan-
+// compatible 2026-07-07 (apify/instagram-profile-scraper, streamers/youtube-scraper).
+//
+// Honesty spine: neither IG nor YT exposes a profile-level total-likes → the remaps set
+// heartCount:0 (dropped by the platform-aware analytics tiles, never shown as "Likes: 0").
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * apify/instagram-profile-scraper item (one item = the profile).
+ * Field map (IG → ProfileData): username→handle, fullName→displayName, biography→bio,
+ * profilePicUrlHD/profilePicUrl→avatarUrl, verified→verified, followersCount→followerCount,
+ * followsCount→followingCount, postsCount→videoCount. No total-likes, no view total.
+ */
+export const instagramProfileSchema = z.object({
+  username: z.string().transform(normalizeHandle),
+  fullName: z.string().optional().default(""),
+  biography: z.string().optional().default(""),
+  verified: z.boolean().optional().default(false),
+  followersCount: z.coerce.number().int().nonnegative().default(0),
+  followsCount: z.coerce.number().int().nonnegative().default(0),
+  postsCount: z.coerce.number().int().nonnegative().default(0),
+  profilePicUrl: z.string().url().optional(),
+  profilePicUrlHD: z.string().url().optional(),
+});
+
+/**
+ * streamers/youtube-scraper item. The actor returns VIDEO items with the channel block
+ * denormalized onto every item (top-level channel* fields, duplicated under
+ * aboutChannelInfo). We read the top-level fields.
+ * Field map (YT → ProfileData): channelUsername→handle, channelName→displayName,
+ * channelDescription→bio, channelAvatarUrl→avatarUrl, isChannelVerified→verified,
+ * numberOfSubscribers→followerCount, channelTotalVideos→videoCount,
+ * channelTotalViews→viewCount (lifetime). No "following", no channel-level total-likes.
+ * channelUsername is optional (a channel may expose only channelId) → remap falls back
+ * to the input handle.
+ */
+export const youtubeChannelSchema = z.object({
+  channelUsername: z.string().optional(),
+  channelName: z.string().optional().default(""),
+  channelDescription: z.string().optional().default(""),
+  isChannelVerified: z.boolean().optional().default(false),
+  numberOfSubscribers: z.coerce.number().int().nonnegative().default(0),
+  channelTotalVideos: z.coerce.number().int().nonnegative().default(0),
+  channelTotalViews: z.coerce.number().int().nonnegative().default(0),
+  channelAvatarUrl: z.string().url().optional(),
+});
+
+export type InstagramProfile = z.infer<typeof instagramProfileSchema>;
+export type YoutubeChannel = z.infer<typeof youtubeChannelSchema>;
