@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * AnalyticsView — the GROW hub's "Numbers" tab body (shell-less). Account metrics over
- * 7 / 30 / 90 days + a "what to do next" recommendations block. The hub (grow-hub.tsx)
- * owns the radial shell, page header, and section tabs; this renders the tab content only.
+ * AnalyticsView — the "Your account" analytics band, shell-less. Account metrics over
+ * 7 / 30 / 90 days + a "what to do next" recommendations block + content mix. Mounted at
+ * the foot of the /audience surface (folded in from the retired /grow "Numbers" tab); the
+ * host surface owns the radial shell + header, this renders the band content only.
  *
  * Honesty spine: the metrics are REAL, derived from the connected account's
  * account_snapshots time-series (`buildRangeMetrics`) — deltas are honestly "—" until

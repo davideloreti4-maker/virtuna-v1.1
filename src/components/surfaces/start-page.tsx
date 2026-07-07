@@ -332,8 +332,8 @@ export function StartPage({
 
             {/* Right rail — Stanley's exact 3: Calendar · Your plan · Quick actions. The Loop
                 moved to the main column's closing band; Content pillars moved off /start entirely
-                (it lives on /grow, the Analyze hub, where planning-strategy belongs — a glance
-                page shouldn't carry it). Scrolls WITH the page (a plain column, not a sticky
+                (they live on /audience, in the "Your account" band, where your numbers + content
+                mix belong — a glance page shouldn't carry them). Scrolls WITH the page (a plain column, not a sticky
                 inner-scroll pane); stacks under the main column on mobile. */}
             <aside className="mt-8 flex flex-col gap-4 lg:mt-0">
               {/* Recalibration nudge (FLYWHEEL-04/06) — the loop's "recalibrate" step. Surfaces

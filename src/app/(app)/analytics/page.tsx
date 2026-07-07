@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 
 /**
- * /analytics — deep-link preservation redirect (Surfaces IA rationalization, 2026-07-04).
+ * /analytics — deep-link preservation redirect.
  *
- * The standalone analytics surface was folded into the GROW hub as its "Numbers" tab
- * (real account metrics live there now). This route is retained ONLY as a redirect so
- * existing bookmarks / deep links to /analytics keep resolving — mirroring /discover→/feed
- * and /saved→/library. The redirect IS the route.
+ * Account analytics (followers/likes/posts/views over time + content mix) now lives as the
+ * "Your account" tab on /audience — your numbers sit with your people. This route is retained
+ * ONLY as a redirect so existing bookmarks / deep links keep resolving (→ the account tab).
  */
 export default function AnalyticsPage() {
-  redirect("/grow");
+  redirect("/audience?tab=account");
 }

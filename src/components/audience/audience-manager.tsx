@@ -32,9 +32,21 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Scales, Sparkle, ArrowRight } from "@phosphor-icons/react";
+import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
+import type { Pillar } from "@/lib/room-contract/mock-room";
+import { AnalyticsView } from "@/components/analytics/analytics-view";
+
+type AudienceTab = "audiences" | "account";
 
 interface AudienceManagerProps {
   className?: string;
+  /** Real account metrics for the "Your account" analytics tab. */
+  snapshots?: AccountSnapshot[];
+  /** Real content pillars for the analytics tab's content-mix zone. */
+  pillars?: Pillar[];
+  /** Which tab to open on mount — `account` deep-links the analytics tab (the
+   *  /analytics + /grow redirects land here via ?tab=account). */
+  initialTab?: AudienceTab;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -105,9 +117,15 @@ function AudienceListSkeleton() {
   );
 }
 
-export function AudienceManager({ className }: AudienceManagerProps) {
+export function AudienceManager({
+  className,
+  snapshots = [],
+  pillars = [],
+  initialTab = "audiences",
+}: AudienceManagerProps) {
   const router = useRouter();
   const supabase = createClient();
+  const [tab, setTab] = useState<AudienceTab>(initialTab);
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,6 +146,17 @@ export function AudienceManager({ className }: AudienceManagerProps) {
     setCompareConcept("");
     setCompareBlock(null);
     setCompareNote(null);
+  }
+
+  // Switch tabs; keep the URL shareable/deep-linkable without a navigation (no server
+  // refetch — the snapshots/pillars are already hydrated). Leaving the roster drops
+  // compare mode so returning to it is a clean state.
+  function selectTab(next: AudienceTab) {
+    setTab(next);
+    if (next === "account") exitSelectionMode();
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", next === "account" ? "/audience?tab=account" : "/audience");
+    }
   }
 
   function toggleSelection(id: string) {
@@ -286,13 +315,44 @@ export function AudienceManager({ className }: AudienceManagerProps) {
             </h1>
             {/* A1-COUPLED-COPY: revise if weights→generation wires */}
             <p className="mt-1 text-sm text-foreground-secondary">
-              {selectionMode
-                ? "Pick two audiences to compare."
-                : "Who's in the room when you run a Read."}
+              {tab === "account"
+                ? "Your real numbers, over time — the ground truth behind your people."
+                : selectionMode
+                  ? "Pick two audiences to compare."
+                  : "Who's in the room when you run a Read."}
             </p>
+
+            {/* Section tabs — the roster (the moat) vs your account analytics (folded in
+                from the retired /grow "Numbers" tab). */}
+            <div
+              className="mt-3 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5"
+              role="tablist"
+              aria-label="Audience sections"
+            >
+              {([
+                { id: "audiences", label: "Audiences" },
+                { id: "account", label: "Your account" },
+              ] as const).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  onClick={() => selectTab(t.id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                    tab === t.id
+                      ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                      : "text-foreground-secondary hover:text-foreground",
+                  )}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
           {/* Mobile/tablet quick actions — desktop uses the rail cards instead. */}
-          {!selectionMode && !loading && !error && audiences.length > 0 && (
+          {tab === "audiences" && !selectionMode && !loading && !error && audiences.length > 0 && (
             <div className="flex shrink-0 items-center gap-2 lg:hidden">
               <Button
                 variant="secondary"
@@ -315,11 +375,13 @@ export function AudienceManager({ className }: AudienceManagerProps) {
           )}
         </header>
 
-        {loading && <AudienceListSkeleton />}
+        {tab === "audiences" && (
+          <>
+            {loading && <AudienceListSkeleton />}
 
-        {!loading && error && (
-          <p className="py-8 text-center text-sm text-error">{error}</p>
-        )}
+            {!loading && error && (
+              <p className="py-8 text-center text-sm text-error">{error}</p>
+            )}
 
         {!loading && !error && audiences.length === 0 && (
           <SurfaceEmptyState
@@ -435,6 +497,17 @@ export function AudienceManager({ className }: AudienceManagerProps) {
             )}
 
             <div className="flex flex-col gap-6">{renderSections()}</div>
+          </div>
+        )}
+          </>
+        )}
+
+        {/* Your account — the real analytics tab (folded in from the retired /grow "Numbers"
+            tab): account_snapshots metrics + recommendations + content mix. Deep-linked via
+            /audience?tab=account (the /analytics + /grow redirects land here). */}
+        {tab === "account" && (
+          <div key="account" className="rv-in">
+            <AnalyticsView snapshots={snapshots} pillars={pillars} />
           </div>
         )}
 

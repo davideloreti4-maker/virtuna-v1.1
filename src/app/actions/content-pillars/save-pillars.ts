@@ -63,6 +63,6 @@ export async function savePillars(edits: PillarEdits): Promise<Result> {
 
   revalidatePath("/start");
   revalidatePath("/calendar");
-  revalidatePath("/grow");
+  revalidatePath("/audience");
   return { ok: true };
 }

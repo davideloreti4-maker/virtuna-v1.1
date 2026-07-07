@@ -30,7 +30,6 @@ import {
   CaretUpDown,
   House,
   CalendarDots,
-  Storefront,
   UsersThree,
   Books,
   Binoculars,
@@ -368,12 +367,11 @@ export function Sidebar() {
 
   const isOnStart = pathname.startsWith("/start");
   const isOnCalendar = pathname.startsWith("/calendar");
-  // Grow is a hub: /analytics + /referrals redirect into it, so all three light the item.
-  const isOnGrow =
-    pathname.startsWith("/grow") ||
+  // Analytics folded into /audience (/analytics + /grow redirect there), so those light Audience.
+  const isOnAudience =
+    pathname.startsWith("/audience") ||
     pathname.startsWith("/analytics") ||
-    pathname.startsWith("/referrals");
-  const isOnAudience = pathname.startsWith("/audience");
+    pathname.startsWith("/grow");
   const isOnLibrary = pathname.startsWith("/library");
   // Discover is a hub: /competitors redirects into it, so both light the item.
   const isOnDiscover =
@@ -499,19 +497,9 @@ export function Sidebar() {
               />
             </div>
 
-            {/* ANALYZE — your numbers + the outside world */}
+            {/* ANALYZE — the outside world (your own numbers moved to /audience) */}
             <div className="flex flex-col gap-0.5">
               {!effectiveCollapsed && <SectionLabel>Analyze</SectionLabel>}
-              {/* Grow — the business hub (Surfaces IA): Numbers (real account metrics) ·
-                  Monetize (offers + funnel) · Referrals, as tabs. /analytics + /referrals
-                  redirect here. */}
-              <NavItem
-                icon={Storefront}
-                label="Grow"
-                isActive={isOnGrow}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/grow")}
-              />
               {/* Discover — the outward-looking hub (Surfaces IA): Watching (watched
                   channels' outliers) · Trending · Competitors, as tabs at /feed.
                   /competitors redirects here. */}
