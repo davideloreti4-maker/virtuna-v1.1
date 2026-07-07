@@ -93,6 +93,10 @@ export interface AmbientRoomProps {
    *  card — the CTA reveals the honest delta (prior → new stop-count) only after this advances past
    *  tap-time, so the "current" read it compares against is guaranteed to be the post-rewrite one. */
   rewriteNonce?: number;
+  /** Seed the ranked-overview state at mount. Defaults true (the bloom lands on "how the room
+   *  ranked your N" first). A targeted entry — a card's "See the room →" that pre-focuses ONE
+   *  card — passes false so the Room drills straight into that card's people (prototype parity). */
+  initialCompareOpen?: boolean;
 }
 
 type Scale = 'people' | 'population';
@@ -146,6 +150,7 @@ export function AmbientRoom({
   canRewrite = false,
   onRewrite,
   rewriteNonce = 0,
+  initialCompareOpen = true,
 }: AmbientRoomProps) {
   const [scale, setScale] = useState<Scale>('people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
@@ -154,7 +159,7 @@ export function AmbientRoom({
   // personas. A focus CHANGE (step, re-target, tapping a row, a new thought) drills into that card.
   // We reset only when focusId ACTUALLY changes from the mount value (ref seeded to the initial
   // focusId) — a plain mount-skip flag would be defeated by StrictMode's double-invoked effects.
-  const [compareOpen, setCompareOpen] = useState(true);
+  const [compareOpen, setCompareOpen] = useState(initialCompareOpen);
   const compareFocusRef = useRef(focusId);
   useEffect(() => {
     if (focusId !== compareFocusRef.current) {

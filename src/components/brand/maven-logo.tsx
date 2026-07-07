@@ -52,7 +52,7 @@ export function MavenMark({
       height={size}
       viewBox={MARK_VIEWBOX}
       fill="currentColor"
-      className={className}
+      className={cn("text-[var(--color-accent)]", className)}
       aria-hidden="true"
     >
       <path d={MARK_PATH} />

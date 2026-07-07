@@ -40,3 +40,25 @@ export const HookWriteScriptContext = createContext<OnWriteScriptFn | null>(null
 export function useOnWriteScriptHook(): OnWriteScriptFn | null {
   return useContext(HookWriteScriptContext);
 }
+
+/**
+ * OpenRoomContext — opens the docked ambient-audience Room focused on a specific card.
+ *
+ * A generated skill card's "See the room →" (ProofUnit) reads this to open the CURRENT
+ * audience's Room anchored on that card, instead of the standalone per-card AudienceLens —
+ * which only shows fraction-expansion placeholder viewers ("viewer 1…10 / New viewers"),
+ * NOT the live audience the run actually used. The handler resolves the card by its concept
+ * text to the matching ambient descriptor, makes it the sticky focus, and opens the docked
+ * presence (reusing the card's real per-persona reactions).
+ *
+ * Returns true when it handled the open (a matching descriptor was found + focused). Default
+ * null ⇒ not inside the home composer (calendar / saved / library) ⇒ ProofUnit keeps the
+ * standalone Lens so those surfaces are unaffected.
+ */
+export type OpenRoomForCardFn = (conceptText: string) => boolean;
+
+export const OpenRoomContext = createContext<OpenRoomForCardFn | null>(null);
+
+export function useOpenRoomForCard(): OpenRoomForCardFn | null {
+  return useContext(OpenRoomContext);
+}

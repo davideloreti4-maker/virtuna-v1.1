@@ -117,12 +117,12 @@
   /* the lit constellation node, the brand mark, tiny active-state ticks. NOT on  */
   /* primary buttons (use --color-action), not on every icon, not on links en    */
   /* masse. See docs/DESIGN-SYSTEM.md "Accent dosage (LOCKED)".                   */
-  --color-accent: var(--color-coral-500);           /* solid fill (live dot / lit node) ≈ #d97757 */
-  --color-accent-hover: var(--color-coral-400);
-  --color-accent-active: var(--color-coral-600);
-  --color-accent-text: var(--color-coral-400);      /* accent as TEXT/icon on dark (legible) */
-  --color-accent-foreground: #f6e9e6;               /* cream glyph on a solid accent fill */
-  --color-accent-soft: oklch(0.68 0.13 33 / 0.16);  /* soft tint bg for the 2 liveness spots */
+  --color-accent: #FF6363;                          /* solid fill (live dot / lit node / brand mark) — coral-red 2026-07-07 */
+  --color-accent-hover: #ff7d7d;
+  --color-accent-active: #e84f4f;
+  --color-accent-text: #ff8080;                     /* accent as TEXT/icon on dark (legible) */
+  --color-accent-foreground: #2a1212;               /* dark glyph on a solid accent fill */
+  --color-accent-soft: rgba(255, 99, 99, 0.16);     /* soft tint bg for the 2 liveness spots */
 
   /* --- Primary action (NEUTRAL) — the de-Claude move --- */
   /* Primary buttons (e.g. composer send) are CREAM, not accent. Premium + the   */
@@ -290,7 +290,7 @@
   --rounding-normal: 8px;
   --color-fg: var(--color-foreground);
   --color-fg-300: var(--color-foreground-muted);
-  --color-accent-transparent: oklch(0.68 0.13 33 / 0.15);  /* [UAT] Frame A — tracks matured terracotta coral */
+  --color-accent-transparent: rgba(255, 99, 99, 0.15);  /* tracks accent — coral-red 2026-07-07 */
   --color-red: var(--color-error);
   --color-red-transparent: oklch(0.60 0.20 25 / 0.15);
   --ease-out: var(--ease-out-cubic);

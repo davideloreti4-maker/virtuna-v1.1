@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { OpenRoomContext } from "@/lib/hook-test-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
@@ -299,6 +300,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // submit/keydown/placeholder render code below can branch on it). The asks feed + in-flight
   // flag + the askAudience handler live further down (askAudience needs focusByThought).
   const [audienceOpen, setAudienceOpen] = useState(false);
+  // True while the presence was opened by a card's "See the room →" (a targeted single-card
+  // entry) → the Room drills straight into that card instead of the ranked overview. Reset on
+  // close so the next plain tab-tap opens the overview (the default bloom).
+  const [roomDrill, setRoomDrill] = useState(false);
+  // Wrap the open/close setter so closing always clears the drill intent.
+  const handleAudienceOpenChange = useCallback((next: boolean) => {
+    setAudienceOpen(next);
+    if (!next) setRoomDrill(false);
+  }, []);
   const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
   const [asking, setAsking] = useState(false);
 
@@ -1661,6 +1671,23 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     registerThreadRegion,
   } = useAmbientFocus(ambientDescriptors);
 
+  // A card's "See the room →" opens the docked CURRENT-audience Room anchored on that card
+  // (via OpenRoomContext → ProofUnit), NOT the standalone per-card Lens (placeholder viewers).
+  // Resolve the card by its concept text to the matching descriptor, make it the sticky focus,
+  // and bloom the presence open. Returns false when no descriptor matches → ProofUnit keeps its
+  // standalone Lens fallback.
+  const openRoomForCard = useCallback(
+    (conceptText: string): boolean => {
+      const d = ambientDescriptors.find((x) => x.conceptText === conceptText);
+      if (!d) return false;
+      setRoomDrill(true);
+      focusByTap(d.id);
+      setAudienceOpen(true);
+      return true;
+    },
+    [ambientDescriptors, focusByTap],
+  );
+
   // ── The Room Rewrite loop (PR-3, LIVE-07) ──────────────────────────────────
   // The Population weak-spot's "Rewrite to win back the N% who bounced →" CTA re-runs the
   // ORIGINATING skill steered by the bouncers' real words (the `lever`), via the composer's OWN
@@ -1808,6 +1835,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const audienceReacting =
     ideas.isStreaming || hooks.isStreaming || script.isStreaming || remix.isStreaming;
 
+  // Arrival edge (reactions-arrive dopamine, Phase 2): the composer owns the reactions
+  // true→false edge and bumps `arrivalNonce` when a generation finishes. The presence reads the
+  // nonce to fire its "N new" count-up. This lives HERE (a stable instance) — not inside
+  // AudiencePresence — because the presence remounts across the empty→thread layout switch that
+  // lands mid-generation, which reset its mount-seeded ref and swallowed the edge (the badge
+  // never fired). The composer never remounts through the flow, so the edge is caught reliably.
+  const [arrivalNonce, setArrivalNonce] = useState(0);
+  const prevAudienceReactingRef = useRef(audienceReacting);
+  useEffect(() => {
+    const was = prevAudienceReactingRef.current;
+    prevAudienceReactingRef.current = audienceReacting;
+    if (was && !audienceReacting) setArrivalNonce((n) => n + 1); // reactions just landed
+  }, [audienceReacting]);
+
   const presenceCommonProps: Omit<AudiencePresenceProps, "docked" | "layout"> = {
     audience: selectedAudience,
     audiences,
@@ -1816,7 +1857,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     focus: ambientFocus,
     reducedMotion,
     open: audienceOpen,
-    onOpenChange: setAudienceOpen,
+    onOpenChange: handleAudienceOpenChange,
+    drillIntoFocus: roomDrill,
     asks: audienceAsks,
     asking,
     onReask: (a: AudienceAsk) =>
@@ -1834,6 +1876,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     onRewrite: onRoomRewrite,
     rewriteNonce,
     reacting: audienceReacting,
+    arrivalNonce,
   };
   const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
 
@@ -1914,7 +1957,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   ) : null;
 
   const threadContent = (
-    <>
+    <OpenRoomContext.Provider value={openRoomForCard}>
       {testSubmitTurn}
       {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
           blocks render here via the shared MessageBlocks renderer (registered in 05-01).
@@ -2071,7 +2114,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           userTurn={lastUserTurn}
         />
       )}
-    </>
+    </OpenRoomContext.Provider>
   );
 
   // Shared form element (identical markup; referenced by both layout branches).
@@ -2327,7 +2370,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // floating on top (a gap below it); open it blooms into a panel whose bottom is flush with the
   // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
-    <div data-testid="composer-dock" className="relative flex w-full flex-col">
+    <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
       {audiencePresence}
       <div
         className={cn(
@@ -2381,18 +2424,22 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           // conversation scrolls page-wide, not inside a narrow 760px column) —
           // content is re-centered at 760px INSIDE the scroll + dock so it reads
           // like a real chat surface. Scrollbar itself is hidden app-wide (globals.css).
-          "flex h-full w-full flex-col",
+          // `relative` roots the floating dock's absolute positioning (below).
+          "relative flex h-full w-full flex-col",
           className,
         )}
       >
-        {/* Scrollable thread region — full width, fills all space above the dock.
+        {/* Scrollable thread region — full width, fills the FULL shell height and scrolls
+            UNDER the floating dock (the dock is absolutely positioned below, not in flow).
+            The bottom padding clears the collapsed dock so the last message can rest just
+            above the composer instead of hiding behind it.
             registerThreadRegion roots the scroll-spy IntersectionObserver on this element
             (Pattern 5); the sr-only focus markers ride at the top so the spotlight tracks
             the ledger as it scrolls (D-01). */}
         <div
           ref={registerThreadRegion}
           data-testid="composer-thread-region"
-          className="flex-1 min-h-0 overflow-y-auto"
+          className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
         >
           <div className="w-full max-w-[760px] mx-auto px-4">
             {ambientFocusMarkers}
@@ -2409,9 +2456,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           </div>
         </div>
 
-        {/* Pinned bottom dock — audience + composer fused as one surface. Content
+        {/* Floating bottom dock — audience + composer fused as one surface, overlaid on the
+            scroll so chat passes BEHIND it. The wrapper itself is transparent + click-through
+            (pointer-events-none); only the opaque cards inside (pointer-events-auto) mask the
+            chat directly behind them, leaving scrolled content visible in the gaps. Content is
             re-centered at 760px to align with the thread column above. */}
-        <div className="shrink-0 pb-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
           <div className="w-full max-w-[760px] mx-auto px-4">
             {composerDock}
           </div>
