@@ -367,12 +367,13 @@ export function AudiencePresence({
       const r = switcherRef.current?.getBoundingClientRect();
       if (!r) return;
       const width = 280;
-      if (layout === 'rail') {
-        // Rail identity sits at the top-right → open DOWNWARD; clamp so the menu stays on-screen.
+      if (layout === 'rail' || (docked && open)) {
+        // Rail identity — or the docked switcher at the TOP of the open panel — opens DOWNWARD;
+        // clamp so the menu stays on-screen.
         const left = Math.min(r.left, window.innerWidth - width - 12);
         setMenuPos({ left, top: r.bottom + 8, width });
       } else {
-        // Dock peek is bottom-pinned → open UPWARD (anchored above the trigger).
+        // Collapsed dock chip is bottom-pinned → open UPWARD (anchored above the trigger).
         setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width });
       }
     };
@@ -383,7 +384,7 @@ export function AudiencePresence({
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };
-  }, [switcherOpen, layout]);
+  }, [switcherOpen, layout, docked, open]);
 
   const handleSelect = (a: Audience) => {
     onSelectAudience(a);
@@ -611,50 +612,95 @@ export function AudiencePresence({
     );
   }
 
+  // The audience identity switcher (constellation + name + caret) — shared by the collapsed chip
+  // and the open panel's top bar. Owns the portaled switcher popover (rendered once, since only
+  // one of chip/panel mounts at a time).
+  const identity = (
+    <div className="relative flex min-w-0 items-center" ref={switcherRef}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={switcherOpen}
+        aria-label={`Audience: ${audienceName}. Switch audience`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setSwitcherOpen((v) => !v);
+        }}
+        className={
+          "flex min-w-0 items-center gap-2 rounded-[10px] border py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)] " +
+          (switcherOpen
+            ? "border-[var(--color-border-hover)] bg-[var(--color-hover)]"
+            : "border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-hover)]")
+        }
+      >
+        <ConstellationMark width={40} reacting={reacting} />
+        <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
+          <span className="max-w-[120px] truncate">{audienceName}</span>
+          {!reducedMotion && (
+            <span
+              aria-hidden
+              className="inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)]"
+            />
+          )}
+        </span>
+        <ChevronDown
+          className={
+            "h-3.5 w-3.5 shrink-0 transition-transform text-[var(--color-foreground-muted)] " +
+            (switcherOpen ? "rotate-180" : "")
+          }
+          aria-hidden
+        />
+      </button>
+      {switcherMenu}
+    </div>
+  );
+
   return (
     <div className="relative w-full" data-testid="audience-presence" data-variant={variant}>
-      {/* ── The content PANEL — expands UPWARD over the composer (anchored above the peek band,
-            flush so peek + panel read as one surface). No scrim, no drawer; the composer below
-            stays the input. ────────────────────────────────────────────────────────────── */}
-      {open && (
+      {open ? (
+        /* ── OPEN: the panel expands UPWARD and connects into the composer as ONE surface. Its
+              bottom is flush with the composer (border-b-0 + shared surface tone); the composer box
+              flattens its top when open. The audience SWITCHER sits at the TOP of this card. ── */
         <div
           data-testid="audience-panel"
           role="dialog"
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex h-[72vh] max-h-[calc(100dvh-128px)] flex-col overflow-hidden rounded-t-[20px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+            'absolute bottom-full left-0 right-0 z-[55] flex h-[70vh] max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
             (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
             (reducedMotion
               ? ''
               : 'transition-[transform,opacity] duration-300 ease-out ' +
-                (risen ? 'translate-y-0 opacity-100' : 'translate-y-3 opacity-0'))
+                (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
           }
           style={reducedMotion ? undefined : { willChange: 'transform' }}
         >
-          {/* Grab handle — tap to close (mirrors the v6 room grab). */}
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            aria-label="Collapse your audience"
-            className="flex shrink-0 justify-center pb-1 pt-2.5"
-          >
-            <span className="h-1 w-9 rounded-full bg-white/[0.18]" />
-          </button>
-          {/* Close ✕ (top-right). */}
-          <button
-            type="button"
-            aria-label="Collapse your audience"
-            onClick={() => onOpenChange(false)}
-            className="absolute right-3 top-2.5 z-10 grid h-7 w-7 place-items-center rounded-[8px] border border-[var(--color-border)] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground)]"
-          >
-            <span className="text-[12px] leading-none">✕</span>
-          </button>
+          {/* Switcher bar — TOP of the card (identity + readiness + collapse). */}
+          <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
+            {identity}
+            <span
+              data-testid="audience-pulse"
+              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
+              title={focus?.conceptText}
+            >
+              {dockPulse}
+            </span>
+            {arrivalBadge}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label="Collapse your audience"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+            >
+              <ChevronDown className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
 
           {asking && (
             <p
               role="status"
               aria-live="polite"
-              className="shrink-0 px-5 pb-1 pt-1 text-[12px] font-medium text-[var(--color-foreground-muted)]"
+              className="shrink-0 px-5 pb-1 pt-2 text-[12px] font-medium text-[var(--color-foreground-muted)]"
             >
               {LOADING_COPY}
             </p>
@@ -698,90 +744,39 @@ export function AudiencePresence({
             </div>
           )}
         </div>
-      )}
-
-      {/* ── The PEEK band (always the bottom anchor; tap toggles the panel). ── */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label={open ? 'Collapse your audience' : 'Open your audience'}
-        aria-expanded={open}
-        onClick={() => onOpenChange(!open)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onOpenChange(!open);
-          }
-        }}
-        className={
-          docked
-            ? 'flex items-center gap-2 px-3 py-2.5 transition-colors ' +
-              (open
-                ? 'border-t border-[var(--color-border)]'
-                : 'border-b border-[var(--color-border)] hover:bg-[var(--color-hover)]')
-            : 'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
-              (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
-        }
-        style={{ cursor: 'pointer' }}
-      >
-        {/* Identity (name + live constellation) — owns the audience switcher. */}
-        <div className="relative flex min-w-0 items-center" ref={switcherRef}>
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={switcherOpen}
-            aria-label={`Audience: ${audienceName}. Switch audience`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setSwitcherOpen((v) => !v);
-            }}
-            className={
-              "flex min-w-0 items-center gap-2 rounded-[10px] border py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)] " +
-              (switcherOpen
-                ? "border-[var(--color-border-hover)] bg-[var(--color-hover)]"
-                : "border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-hover)]")
-            }
-          >
-            <ConstellationMark width={44} reacting={reacting} />
-            <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
-              <span className="max-w-[120px] truncate">{audienceName}</span>
-              {!reducedMotion && (
-                <span
-                  aria-hidden
-                  className="inline-block h-[6px] w-[6px] shrink-0 rounded-full bg-accent shadow-[0_0_0_3px_var(--color-accent-soft)]"
-                />
-              )}
-            </span>
-            {/* Caret — the visible "you can switch audience here" affordance (matches the rail). */}
-            <ChevronDown
-              className={
-                "h-3.5 w-3.5 shrink-0 transition-transform text-[var(--color-foreground-muted)] " +
-                (switcherOpen ? "rotate-180" : "")
+      ) : (
+        /* ── COLLAPSED: a tab CONNECTED to the composer top — narrower than the composer (inset on
+              both sides), no gap, rounded TOP corners only, square bottom flush into the composer.
+              Darker #1a1a19 surface; tap to bloom open. ── */
+        <div className="px-4">
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Open your audience"
+            aria-expanded={false}
+            onClick={() => onOpenChange(true)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpenChange(true);
               }
-              aria-hidden
-            />
-          </button>
-
-          {/* Switcher popover — opens UPWARD (the dock peek is bottom-pinned); shared with the
-              rail (which opens it downward). PORTALED to <body> so it is not clipped by the
-              composer surface's overflow-hidden. */}
-          {switcherMenu}
+            }}
+            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 transition-colors hover:bg-[#232322]"
+            style={{ cursor: 'pointer' }}
+          >
+            {identity}
+            <span
+              data-testid="audience-pulse"
+              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
+              title={focus?.conceptText}
+            >
+              {dockPulse}
+            </span>
+            {arrivalBadge}
+            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+          </div>
         </div>
-
-        <span
-          data-testid="audience-pulse"
-          className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
-          title={focus?.conceptText}
-        >
-          {dockPulse}
-        </span>
-        {arrivalBadge}
-        {open ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
-        ) : (
-          <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
-        )}
-      </div>
+      )}
 
       {/* sr-only roster mirror — always present (a11y), regardless of motion state. */}
       <div className="sr-only" role="status" aria-live="polite">

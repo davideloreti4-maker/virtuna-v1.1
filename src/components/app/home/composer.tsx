@@ -35,7 +35,6 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowUp, Plus } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
@@ -47,7 +46,6 @@ import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
@@ -216,12 +214,10 @@ export interface ComposerProps {
 export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
-  // The Room, PR-4: at ≥ xl the audience becomes a PERSISTENT right rail (the desktop moat) —
-  // the mobile bottom-docked peek + Bloom is hidden and the same presence renders as a fixed rail
-  // beside the making surface. SSR-safe (false until measured), and the ONLY presence mounted at a
-  // time, so there is never a hidden second AmbientRoom running its timers. 1280px so the app
-  // sidebar + a readable work column + the 392px rail all fit; ≤1279 keeps the shipped Bloom.
-  const isDesktopRail = useMediaQuery("(min-width: 1280px)");
+  // The audience presence is a SINGLE docked card on top of the composer at every breakpoint
+  // (unified 2026-07-07): the old ≥xl right rail is retired so desktop and mobile read the same —
+  // a small cap fused to the composer that blooms open into one surface. One presence mounts, so
+  // there is never a hidden second AmbientRoom running its timers.
 
   // Layout signal: does a Simulation exist? Mirrors ContentForm L158.
   const params = useParams();
@@ -1748,22 +1744,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   };
   const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
 
-  // Desktop persistent rail (PR-4) — a fixed right column, portaled to <body> so it escapes the
-  // scrolling main + any transform ancestor (always viewport-fixed). Gated on isDesktopRail so it
-  // mounts only at ≥ xl; /home reserves its width via `xl:pr` (HomePageLayout) so nothing hides
-  // under it. The dock peek is `xl:hidden`, so the two never show at once.
-  const railPortal = isDesktopRail
-    ? createPortal(
-        <aside
-          data-testid="audience-rail-portal"
-          className="fixed right-0 top-0 z-30 h-screen w-[392px]"
-        >
-          <AudiencePresence {...presenceCommonProps} layout="rail" />
-        </aside>,
-        document.body,
-      )
-    : null;
-
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
   // the existing evidence-drop file picker (the Profile/From-evidence door, do not
@@ -2250,22 +2230,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       </form>
   );
 
-  // Fused bottom dock — audience peek cap + composer field share one matte surface.
+  // Bottom dock — the audience presence sits ABOVE the composer box: collapsed it's a small card
+  // floating on top (a gap below it); open it blooms into a panel whose bottom is flush with the
+  // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
-    <div
-      data-testid="composer-dock"
-      className={cn(
-        "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
-        !audienceOpen && "overflow-hidden",
-        layout === "centered" && "shadow-float",
-        !reducedMotion && "transition-shadow duration-200",
-      )}
-    >
-      {/* The bottom-docked peek + Bloom — hidden at ≥ xl, where the persistent rail takes over
-          (the composer field below stays the making input on all sizes). */}
-      <div className="xl:hidden">{audiencePresence}</div>
-      {composerForm}
-      {buildChooser}
+    <div data-testid="composer-dock" className="relative flex w-full flex-col">
+      {audiencePresence}
+      <div
+        className={cn(
+          "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
+          !audienceOpen && "overflow-hidden",
+          audienceOpen && "rounded-t-none border-t-0",
+          layout === "centered" && "shadow-float",
+          !reducedMotion && "transition-shadow duration-200",
+        )}
+      >
+        {composerForm}
+        {buildChooser}
+      </div>
     </div>
   );
 
@@ -2332,7 +2314,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <div className="shrink-0 pb-4">
           {composerDock}
         </div>
-        {railPortal}
       </div>
     );
   }
@@ -2348,7 +2329,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           empty home reads greeting (centered) → chips → composer at the bottom edge. */}
       {homeStarter}
       {composerDock}
-      {railPortal}
     </div>
   );
 }
