@@ -23,6 +23,9 @@
  * completion. NOT a registered block (D-02: transient UI, not persisted).
  */
 
+import { useEffect, useState } from 'react';
+import { cn } from '@/lib/utils';
+
 export interface StageState {
   name: string;
   status: 'pending' | 'active' | 'done';
@@ -36,6 +39,52 @@ export interface StageState {
 
 export interface ProgressChecklistProps {
   stages: StageState[];
+  /**
+   * Canonical full ordered stage plan for the running skill (SEED). When provided, the spine
+   * renders the WHOLE pipeline up front — every step visible as `pending`, the current one
+   * `active` — instead of revealing steps one-at-a-time as the backend emits them. This is what
+   * makes the wait legible (Perplexity/Claude "here's the plan, watch it progress") even though
+   * the routes emit coarse stage transitions in a burst. Live `stages` overlay their real status
+   * onto the plan; a plan step with no live event yet stays `pending`. Absent → legacy behavior
+   * (render only the live stages, in emit order). See STAGE_PLANS below.
+   */
+  plan?: string[];
+}
+
+/**
+ * Canonical ordered stage plans per skill — the SEED passed to ProgressChecklist so the full
+ * pipeline is visible from the first frame. Names MUST match exactly what each route emits via
+ * `send("stage", { name })` (src/app/api/tools/<skill>/route.ts) so live events overlay cleanly.
+ */
+export const STAGE_PLANS = {
+  // Plans MUST match the REAL phase boundaries each runner emits via onStage (src/lib/tools/
+  // runners/*). No fictional steps — the old "Self-judge" was dropped (S3′ removed the gate, so
+  // it had no real duration and made the spine wait-then-flash).
+  hooks: ['Generating', 'Simulating your audience', 'Ranking'],
+  ideas: ['Generating', 'Simulating your audience', 'Ranking'],
+  script: ['Generating', 'Simulating your audience'],
+  remix: ['Resolving', 'Decoding', 'Adapting', 'Simulating your audience'],
+  explore: ['Pulling outliers', 'Scoring for your audience'],
+} satisfies Record<string, string[]>;
+
+/**
+ * Merge a canonical plan with the live stage events into the render list. Plan order is
+ * authoritative; each step takes its live status if one has arrived, else `pending`. Before ANY
+ * live active/done event lands, the first plan step shows `active` so the spine never opens as a
+ * column of hollow dots. Live stages not in the plan (defensive) append at the end.
+ */
+function mergePlan(plan: string[], live: StageState[]): StageState[] {
+  const byName = new Map(live.map((s) => [s.name, s]));
+  const anyLive = live.some((s) => s.status === 'active' || s.status === 'done');
+  const rows: StageState[] = plan.map((name, i) => {
+    const l = byName.get(name);
+    if (l) return l;
+    return { name, status: !anyLive && i === 0 ? 'active' : 'pending' };
+  });
+  for (const s of live) {
+    if (!plan.includes(s.name)) rows.push(s);
+  }
+  return rows;
 }
 
 /**
@@ -55,17 +104,68 @@ const STAGE_COPY: Record<string, string> = {
   'Scoring for your audience': 'Reacting with your 10 reactors',
 };
 
-export function ProgressChecklist({ stages }: ProgressChecklistProps) {
-  if (stages.length === 0) return null;
+/**
+ * Rotating sub-detail per stage — a long wait (hooks generation is ~50s) should feel alive and
+ * informative, so the active step's sub-line cycles through honest sub-phases of the SAME job.
+ * Every phrase describes real work the stage is doing (copy-floor §2: describe the JOB, never a
+ * fabricated live count/metric). Falls back to the single STAGE_COPY line when a stage has no
+ * rotation. A live `stage.detail` from the backend still overrides the rotation entirely.
+ */
+const STAGE_COPY_ROTATION: Record<string, string[]> = {
+  Generating: [
+    'Drafting angles against your audience',
+    'Pushing past the obvious openers',
+    'Shaping each into a scroll-stopping line',
+  ],
+  'Self-judge': [
+    'Filtering for the strongest angles',
+    'Cutting the weak openers',
+  ],
+  'Simulating your audience': [
+    'Reacting with each of your 10 reactors',
+    'Weighing stop-scroll against skip',
+    'Collecting their verbatim reactions',
+  ],
+  Ranking: [
+    'Sorting strongest-first vs your baseline',
+    'Settling the final order',
+  ],
+  Resolving: [
+    'Pulling the video + transcript',
+    'Reading the original',
+  ],
+  Decoding: [
+    'Mapping what made the original work',
+    'Isolating the mechanism',
+  ],
+  Adapting: [
+    'Rewriting it for your audience',
+    'Retuning the angle for your niche',
+  ],
+  'Pulling outliers': [
+    'Finding what overperformed in your niche',
+    'Measuring each against the baseline',
+  ],
+  'Scoring for your audience': [
+    'Reacting with your 10 reactors',
+    'Fitting each to your audience',
+  ],
+};
+
+export function ProgressChecklist({ stages, plan }: ProgressChecklistProps) {
+  // With a plan → render the whole pipeline up front (seed pending, overlay live status).
+  // Without → legacy: render only the live stages in emit order.
+  const rows = plan && plan.length > 0 ? mergePlan(plan, stages) : stages;
+  if (rows.length === 0) return null;
 
   return (
     <div aria-live="polite" aria-label="Skill run progress" className="flex flex-col">
-      {stages.map((stage, index) => (
+      {rows.map((stage, index) => (
         <StageRow
           key={stage.name}
           stage={stage}
           index={index}
-          isLast={index === stages.length - 1}
+          isLast={index === rows.length - 1}
         />
       ))}
     </div>
@@ -82,10 +182,26 @@ interface StageRowProps {
 
 function StageRow({ stage, index, isLast }: StageRowProps) {
   const { name, status } = stage;
-  // Sub-detail shows on the ACTIVE step only (calm — one moving line, not a wall).
-  const sub = status === 'active' ? stage.detail ?? STAGE_COPY[name] ?? null : null;
+  const isActive = status === 'active';
+
+  // Rotating sub-copy: while ACTIVE, cycle through this stage's honest sub-phases so a long wait
+  // feels alive. A live backend `detail` overrides the rotation. Non-active steps show nothing.
+  const rotation = STAGE_COPY_ROTATION[name] ?? (STAGE_COPY[name] ? [STAGE_COPY[name]] : []);
+  const [subIdx, setSubIdx] = useState(0);
+
+  useEffect(() => {
+    // Rotate only while active with >1 phase. Each row mounts once (keyed by name) and starts at
+    // subIdx 0 while pending, so no reset is needed on state change.
+    if (!isActive || rotation.length <= 1) return;
+    const id = setInterval(() => {
+      setSubIdx((i) => (i + 1) % rotation.length);
+    }, 2600);
+    return () => clearInterval(id);
+  }, [isActive, rotation.length]);
+
+  const sub = isActive ? stage.detail ?? rotation[subIdx % rotation.length] ?? null : null;
   // The connecting line below this node fills with progress: done → full, active → half.
-  const fill = status === 'done' ? '100%' : status === 'active' ? '50%' : '0%';
+  const fill = status === 'done' ? '100%' : isActive ? '50%' : '0%';
 
   return (
     <div
@@ -106,16 +222,20 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
         )}
       </div>
 
-      {/* Body — label + (active-only) static sub-detail. */}
+      {/* Body — label + (active-only) static sub-detail. The ACTIVE label shimmers (the
+          "working now" cue); done/pending are solid cream tones. */}
       <div className="min-w-0 flex-1 pb-3">
         <p
-          className="text-sm font-medium leading-snug transition-colors duration-300"
+          className={cn(
+            'text-sm font-medium leading-snug transition-colors duration-300',
+            status === 'active' && 'text-shimmer',
+          )}
           style={{
             color:
               status === 'done'
                 ? 'var(--color-cream-secondary)'
                 : status === 'active'
-                ? 'var(--color-foreground)'
+                ? undefined // text-shimmer owns the fill
                 : 'var(--color-cream-muted)',
             opacity: status === 'pending' ? 0.6 : 1,
           }}
@@ -123,7 +243,13 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
           {name}
         </p>
         {sub && (
-          <p className="mt-1 text-[12.5px] leading-snug text-foreground-muted">{sub}</p>
+          // key={subIdx} remounts the line each rotation → a soft fade between phrases.
+          <p
+            key={subIdx}
+            className="proof-resolve mt-1 text-[12.5px] leading-snug text-foreground-muted"
+          >
+            {sub}
+          </p>
         )}
       </div>
     </div>
@@ -132,44 +258,142 @@ function StageRow({ stage, index, isLast }: StageRowProps) {
 
 // ── StageNode ───────────────────────────────────────────────────────────────────
 
+/**
+ * A SINGLE persistent node that MORPHS between pending → active → done, so state changes
+ * transition smoothly (color/fill/opacity) instead of hard-swapping three different elements.
+ * The ring, the ✓, and the breathing center dot all coexist; only their opacity/color animate.
+ *  - pending: faint hollow ring.
+ *  - active:  terracotta ring + breathing terracotta dot (the ONE accent moment; matte breathe).
+ *  - done:    filled cream disc + dark ✓ (cream, NEVER coral — UI-SPEC §Color).
+ */
 function StageNode({ status }: { status: StageState['status'] }) {
-  if (status === 'done') {
-    // Filled cream node + dark ✓ (cream, NEVER coral — UI-SPEC §Color).
-    return (
+  const isDone = status === 'done';
+  const isActive = status === 'active';
+
+  const ringColor = isDone
+    ? 'var(--color-cream-primary)'
+    : isActive
+    ? 'var(--color-accent)'
+    : 'var(--color-cream-muted)';
+
+  return (
+    <span className="relative grid h-4 w-4 shrink-0 place-items-center" aria-hidden="true">
+      {/* Ring / fill — one element, color+fill+opacity transition across all states. */}
       <span
-        className="grid h-4 w-4 shrink-0 place-items-center rounded-full"
-        style={{ backgroundColor: 'var(--color-cream)' }}
-        aria-hidden="true"
+        className="absolute inset-0 rounded-full border-2 transition-all duration-[450ms] ease-[var(--ease-out-cubic)]"
+        style={{
+          borderColor: ringColor,
+          backgroundColor: isDone ? 'var(--color-cream-primary)' : 'transparent',
+          opacity: status === 'pending' ? 0.4 : 1,
+        }}
+      />
+      {/* Done check — fades in. */}
+      <span
+        className="relative text-[9px] font-bold leading-none transition-opacity duration-300"
+        style={{ color: 'var(--color-background)', opacity: isDone ? 1 : 0 }}
       >
+        ✓
+      </span>
+      {/* Active center dot — breathes ONLY while active (the animation drives opacity); on the
+          other states the class drops and inline opacity:0 hides it. */}
+      <span
+        className={cn(
+          'absolute h-1.5 w-1.5 rounded-full transition-opacity duration-300',
+          isActive && 'animate-stage-breathe',
+        )}
+        style={{ backgroundColor: 'var(--color-accent)', opacity: isActive ? 1 : 0 }}
+      />
+    </span>
+  );
+}
+
+// ── SkillProgress ────────────────────────────────────────────────────────────────
+
+export interface SkillProgressProps {
+  stages: StageState[];
+  plan: string[];
+  isStreaming: boolean;
+  /** Summary receipt label shown after completion, e.g. "Ran your audience". */
+  summaryLabel: string;
+}
+
+/**
+ * The progress affordance the thread views mount: owns BOTH phases so the loading state has a
+ * clean life-cycle (Claude/Perplexity pattern).
+ *  - While streaming → the full live spine (ProgressChecklist, seeded plan).
+ *  - After completion → the spine COLLAPSES into a single quiet receipt line
+ *    ("✓ Ran your audience · N steps ⌄"), expandable to re-inspect the completed steps.
+ *
+ * The collapsed receipt only exists for a live run (stages are ephemeral — a pure rehydrate has
+ * no stage history, so it renders nothing and the result cards stand alone).
+ */
+export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: SkillProgressProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (isStreaming) {
+    return <ProgressChecklist stages={stages} plan={plan} />;
+  }
+
+  // Completed run: show the collapsed receipt. No stage history (rehydrate) → render nothing.
+  if (stages.length === 0) return null;
+
+  return (
+    <div className="flex flex-col">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="reading-reveal group flex items-center gap-2 self-start rounded-[6px] py-0.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+        aria-expanded={expanded}
+        aria-label={`${summaryLabel} — ${plan.length} steps. ${expanded ? 'Collapse' : 'Expand'} the steps.`}
+      >
+        <CheckMini />
         <span
-          className="text-[10px] font-bold leading-none"
-          style={{ color: 'var(--color-background)' }}
+          className="font-medium transition-colors group-hover:text-foreground"
+          style={{ color: 'var(--color-cream-secondary)' }}
         >
-          ✓
+          {summaryLabel}
         </span>
-      </span>
-    );
-  }
+        <span className="text-foreground-muted/60">·</span>
+        <span className="text-foreground-muted/60">{plan.length} steps</span>
+        <span
+          className="ml-0.5 text-[10px] text-foreground-muted/50 transition-transform duration-300"
+          style={{ transform: expanded ? 'rotate(180deg)' : 'none' }}
+          aria-hidden="true"
+        >
+          ▾
+        </span>
+      </button>
 
-  if (status === 'active') {
-    // Terracotta ring + pulsing center dot — the ONE live/accent moment (matte: opacity
-    // breathe, no glow halo).
-    return (
-      <span
-        className="grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 border-accent"
-        aria-hidden="true"
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse motion-reduce:animate-none" />
-      </span>
-    );
-  }
+      {/* Expanded = a clean compact checklist (NOT the heavy loading spine): a small cream check
+          + the step name per row, indented under the summary. No connecting rail. */}
+      {expanded && (
+        <div className="reading-reveal flex flex-col gap-2 pb-1 pl-[26px] pt-2">
+          {plan.map((name) => (
+            <div key={name} className="flex items-center gap-2.5">
+              <CheckMini />
+              <span className="text-[13px] leading-none text-foreground-muted">{name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
-  // pending — hollow muted node.
+/** Small filled-cream check disc — the completed-step marker (matte, never coral). */
+function CheckMini() {
   return (
     <span
-      className="h-4 w-4 shrink-0 rounded-full border"
-      style={{ borderColor: 'var(--color-cream-muted)', opacity: 0.4 }}
+      className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-full"
+      style={{ backgroundColor: 'var(--color-cream-primary)' }}
       aria-hidden="true"
-    />
+    >
+      <span
+        className="text-[8px] font-bold leading-none"
+        style={{ color: 'var(--color-background)' }}
+      >
+        ✓
+      </span>
+    </span>
   );
 }

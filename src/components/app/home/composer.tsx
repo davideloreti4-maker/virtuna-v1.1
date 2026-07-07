@@ -2252,19 +2252,16 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   );
 
   // ── Home empty-state starter (UX-05 / D-04) ─────────────────────────────────
-  // The 3 LOCKED chips + the show-once first-run demo, rendered ONLY in the empty
-  // home region (Branch B, no conversation). Chip handlers reach composer-internal
-  // flows directly: Test → arm the idea/test flow on the active audience; Profile →
-  // open the evidence-drop (the file picker rides this user gesture, like the
-  // skill-menu Profile pick); Predict → select Predict (07-04 gates it on a selected
-  // General audience and routes to Build when none). onDemoComplete reloads the open
-  // thread so the demo's profile-read card surfaces in-thread.
+  // The creator quick-actions grid + the show-once first-run demo, rendered ONLY in
+  // the empty home region (Branch B, no conversation). Each card reaches a composer
+  // skill flow directly via handleUserSelectTool: a Make skill (idea/hooks/script/
+  // remix) arms its stream on the active audience; Test → reveals the video drop
+  // zone; Account → a Read on the creator's own posts. onDemoComplete reloads the
+  // open thread so the demo's profile-read card surfaces in-thread.
   const homeStarter = !hasConversationContent ? (
     <div className="mb-4 w-full">
       <HomeStarter
-        onChipTest={() => handleUserSelectTool("test")}
-        onChipProfile={() => handleUserSelectTool("profile")}
-        onChipPredict={() => handleUserSelectTool("predict")}
+        onQuickAction={handleUserSelectTool}
         onDemoComplete={() => void reloadProfileThread()}
       />
     </div>

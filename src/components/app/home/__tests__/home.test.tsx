@@ -120,17 +120,18 @@ describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () =
   });
 });
 
-describe('Home — empty-state starter chips + first-run demo (UX-05 / D-04)', () => {
-  it('renders the 3 LOCKED-verbatim starter chips on the empty home', () => {
+describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', () => {
+  it('renders the creator quick-action cards on the empty home', () => {
     render(<Home />);
+    // A representative sample of the QUICK_ACTIONS model (idea / hooks / test).
     expect(
-      screen.getByRole('button', { name: 'Test an idea on your audience' }),
+      screen.getByRole('button', { name: 'Get content ideas' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Profile a chat' }),
+      screen.getByRole('button', { name: 'Write scroll-stopping hooks' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Predict an outcome' }),
+      screen.getByRole('button', { name: 'Test a video' }),
     ).toBeInTheDocument();
   });
 
@@ -144,12 +145,12 @@ describe('Home — empty-state starter chips + first-run demo (UX-05 / D-04)', (
     ).toBeInTheDocument();
   });
 
-  it('show-once: with the flag set the demo is hidden but the chips still render', async () => {
+  it('show-once: with the flag set the demo is hidden but the quick actions still render', async () => {
     window.localStorage.setItem(DEMO_SEEN_KEY, '1');
     render(<Home />);
-    // Chips always render…
+    // Quick actions always render…
     expect(
-      screen.getByRole('button', { name: 'Profile a chat' }),
+      screen.getByRole('button', { name: 'Get content ideas' }),
     ).toBeInTheDocument();
     // …but the demo CTA never appears (flag already consumed). Wait a tick so the
     // mounted-effect would have surfaced it if the gate were wrong.

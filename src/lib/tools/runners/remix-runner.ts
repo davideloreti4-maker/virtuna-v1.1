@@ -80,6 +80,13 @@ export interface RemixPipelineInput {
    * adapted hook's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
    */
   pin?: RunnerPinContext;
+  /**
+   * Progress callback fired at the REAL pipeline phase boundaries (Resolving → Decoding →
+   * Adapting → Simulating your audience). Wired to the route's SSE `send("stage", …)` so the
+   * spine reflects genuine phase timing. Optional/no-op — absent = unchanged. Honesty spine:
+   * true boundaries, never a fake timer.
+   */
+  onStage?: (name: string, status: "active" | "done") => void;
 }
 
 export interface RemixPipelineResult {
@@ -164,6 +171,8 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   // step, NOT a media reference. Undefined when the rehost item carried no cover.
   let sourceCoverUrl: string | undefined;
 
+  // ── STAGE: Resolving (real boundary — pull + rehost the source video) ──
+  input.onStage?.("Resolving", "active");
   try {
     const resolved = await resolveAndRehost(url, requestId);
     signedUrl = resolved.signedUrl;
@@ -174,10 +183,13 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     allWarnings.push(`Resolve failed: ${msg}`);
     return { blocks: [], warnings: allWarnings, error: "resolve_failed" };
   }
+  input.onStage?.("Resolving", "done");
 
   // cleanup is now available — wrap all subsequent work in try/finally
   try {
     // ── STEP 2: PERCEIVE — analyzeVideoWithOmni (perception only, NOT Max scoring — D-05a) ──
+    // ── STAGE: Decoding (real boundary — perceive + decode what made it work) ──
+    input.onStage?.("Decoding", "active");
     const omni = await analyzeVideoWithOmni(signedUrl);
 
     // ── STEP 3: DECODE ───────────────────────────────────────────────────────────
@@ -190,6 +202,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       allWarnings.push("Decode returned null — decode_failed graceful (Pitfall 6).");
       return { blocks: [], warnings: allWarnings, error: "decode_failed" };
     }
+    input.onStage?.("Decoding", "done");
 
     // ── STEP 4: ADAPT ────────────────────────────────────────────────────────────
     // decodeResultToAdaptInput: bridges DecodeResult → AdaptInput (luck NEVER mapped — D-01)
@@ -203,6 +216,8 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
         : profileNiche;
     const adaptInput = decodeResultToAdaptInput(decode, audienceNiche);
 
+    // ── STAGE: Adapting (real boundary — rewrite the concepts for your audience) ──
+    input.onStage?.("Adapting", "active");
     let concepts: Awaited<ReturnType<typeof generateAdaptConcepts>>;
     try {
       concepts = await generateAdaptConcepts(adaptInput);
@@ -216,6 +231,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       allWarnings.push("generateAdaptConcepts returned null/empty — adapt_failed graceful.");
       return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
     }
+    input.onStage?.("Adapting", "done");
 
     // ── STEP 5: RATE (D-05 opener-scoped) — ONE batched Flash call on ALL adapted hooks ──
     // S3′ generate-rate-rank: KEEP all adapted concepts (was concepts[0] only). Each concept
@@ -223,6 +239,8 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // cards. This rates the ADAPTED hook text only — never a full-video score (Pitfall 5).
     const candidates = concepts.map((c, i) => ({ id: String(i), text: c.hook }));
 
+    // ── STAGE: Simulating your audience (real boundary — batched Flash on the adapted hooks) ──
+    input.onStage?.("Simulating your audience", "active");
     const batch = await runFlashTextModeBatch(
       candidates,
       "hook",
@@ -238,6 +256,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       return { blocks: [], warnings: allWarnings, error: "adapt_failed" };
     }
     allWarnings.push(...batch.warnings);
+    input.onStage?.("Simulating your audience", "done");
 
     // Rank helpers (S3′): band tier → stop-count.
     const bandOrdinal = (b: "Strong" | "Mixed" | "Weak") =>

@@ -165,20 +165,10 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // ── STAGE: Resolving (active) — real pipeline boundary (D-02, no fake timers) ──
-        send("stage", { name: "Resolving", status: "active" });
-
-        // ── STAGE: Decoding (active) — emitted before runRemixPipeline starts decode internally ──
-        // runRemixPipeline is ONE awaited call that internally runs:
-        //   RESOLVE → PERCEIVE → DECODE → ADAPT → FLASH GATE
-        // Because the runner doesn't expose per-phase callbacks at this point, we emit
-        // the coarse stage transitions around the whole call (the real phases DID run —
-        // D-02 "real not timed" is satisfied). Finer-grained transitions require runner
-        // refactor — tracked as deferred (same discretion as hooks route, Plan 05-04).
-        send("stage", { name: "Decoding", status: "active" });
-        send("stage", { name: "Adapting", status: "active" });
-        send("stage", { name: "Simulating your audience", status: "active" });
-
+        // Stage events now stream from the REAL pipeline boundaries (Resolving → Decoding →
+        // Adapting → Simulating your audience) via onStage — the spine reflects genuine phase
+        // timing instead of all four flashing active at once + a burst of dones at the end
+        // (D-02: real boundaries, no fake timers).
         const result = await runRemixPipeline({
           url: tiktokUrl,
           platform,
@@ -186,14 +176,10 @@ export async function POST(request: Request): Promise<Response> {
           requestId,
           audience: activeAudience,
           intent: effectiveIntent,
+          onStage: (name, status) => send("stage", { name, status }),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });
-
-        send("stage", { name: "Resolving", status: "done" });
-        send("stage", { name: "Decoding", status: "done" });
-        send("stage", { name: "Adapting", status: "done" });
-        send("stage", { name: "Simulating your audience", status: "done" });
 
         // ── Error branch (SkillRunError surface — Pitfall 6 graceful) ─────────────
         if (result.error) {

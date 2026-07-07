@@ -396,9 +396,64 @@
   animation: presence-blink 1s ease infinite;
 }
 
+/* Progress spine (premium loading) — the ACTIVE step label gets a calm cream shimmer sweeping
+ * across it (Claude/Perplexity "working now" cue). Honest: a liveness cue, never a fake %.
+ * Matte + cream-toned (no coral, no glow) — the highlight is just a brighter cream passing through
+ * the muted base. Reduced-motion falls back to a solid cream-secondary label (guard below). */
+@keyframes text-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-cream-muted) 0%,
+    var(--color-cream-muted) 38%,
+    var(--color-foreground) 50%,
+    var(--color-cream-muted) 62%,
+    var(--color-cream-muted) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shimmer 2.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .text-shimmer {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--color-cream-secondary);
+    color: var(--color-cream-secondary);
+  }
+}
+
+/* Progress spine (premium loading) — the active node's center dot breathes calmly (opacity +
+ * a hair of scale), gentler than Tailwind's animate-pulse. Matte: opacity breathe, no glow. */
+@keyframes stage-breathe {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+}
+.animate-stage-breathe {
+  animation: stage-breathe 1.6s var(--ease-out-cubic) infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-badge-pop,
-  .animate-presence-blink {
+  .animate-presence-blink,
+  .animate-stage-breathe {
     animation: none;
   }
 }
