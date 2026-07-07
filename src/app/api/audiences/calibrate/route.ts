@@ -24,6 +24,10 @@ import { createClient } from "@/lib/supabase/server";
 import { calibrateFromScrape } from "@/lib/audience/calibration";
 import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
+import {
+  getOrCreateConnectedAccount,
+  type ConnectedAccount,
+} from "@/lib/connected-accounts/connected-accounts-repo";
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -142,16 +146,39 @@ export async function POST(request: Request): Promise<Response> {
         // ── Success path: persist + emit done ────────────────────────────
         const { audience: audienceInput, reveal } = calibrationResult;
 
+        // Decouple connect from calibrate: a personal calibration from a real scrape
+        // resolves (or creates) the CONNECTED ACCOUNT it read from — the first-class
+        // (platform, handle) that owns the analytics series and grounds this audience.
+        // Best-effort: a failure here never blocks calibration (platform narrows to a
+        // scrapeable one inside the guard).
+        let connectedAccount: ConnectedAccount | null = null;
+        if (type === "personal" && platform !== "custom" && reveal?.profile) {
+          try {
+            connectedAccount = await getOrCreateConnectedAccount(supabase, {
+              userId: user.id,
+              platform,
+              handle: reveal.profile.handle || handle || name,
+              displayName: reveal.profile.handle || handle || name,
+            });
+          } catch {
+            /* connect is best-effort — calibration proceeds without a linked account */
+          }
+        }
+
         // user_id is injected from session inside the repo (CR-01).
         // A7: if the form already created a draft (audienceId), UPDATE it in place
         // so calibration enriches the existing row instead of leaving an orphan dupe.
         // Falls back to insert when no draft id is supplied (back-compat / API callers).
+        // source_account_id links the audience to the account it calibrated from.
         let persistedAudience;
         try {
+          const withSource = connectedAccount
+            ? { ...audienceInput, source_account_id: connectedAccount.id }
+            : audienceInput;
           persistedAudience = audienceId
-            ? await updateAudience(supabase, audienceId, audienceInput)
+            ? await updateAudience(supabase, audienceId, withSource)
             : await createAudience(supabase, {
-                ...audienceInput,
+                ...withSource,
                 user_id: user.id, // pre-fill for the repo validation step
               });
         } catch {
@@ -164,16 +191,17 @@ export async function POST(request: Request): Promise<Response> {
         // reveal = the "it's real" showcase (§P.5): real scraped account + top posts.
         send("done", { audience: persistedAudience, reveal });
 
-        // Best-effort: seed the first account_snapshots point from this scrape so
-        // the /start stat-row shows real point-in-time numbers immediately (weekly
-        // deltas + sparklines then accumulate via the refresh-account-snapshots
-        // cron). Personal, scrapeable platforms only; never blocks calibration.
-        if (type === "personal" && platform !== "custom" && reveal?.profile) {
+        // Best-effort: seed the first account_snapshots point (keyed to the connected
+        // account) so the /start stat-row shows real point-in-time numbers immediately
+        // (weekly deltas + sparklines then accumulate via the refresh-account-snapshots
+        // cron). Only when the connect step above resolved an account; never blocks.
+        if (connectedAccount && reveal?.profile) {
           try {
             await upsertAccountSnapshot(supabase, {
+              accountId: connectedAccount.id,
               userId: user.id,
-              platform,
-              handle: reveal.profile.handle || handle || name,
+              platform: connectedAccount.platform,
+              handle: connectedAccount.handle,
               followerCount: reveal.profile.followerCount,
               followingCount: null, // reveal omits it — the daily cron fills it
               heartCount: reveal.profile.heartCount,

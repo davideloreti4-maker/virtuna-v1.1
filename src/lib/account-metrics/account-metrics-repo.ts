@@ -14,6 +14,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AccountSnapshot } from "./account-metrics";
 
 export interface AccountSnapshotInput {
+  accountId: string; // connected_accounts.id — the series discriminator (upsert key)
   userId: string;
   platform: "tiktok" | "instagram" | "youtube";
   handle: string; // no leading '@', lowercased
@@ -29,17 +30,14 @@ export interface AccountSnapshotInput {
   recentViews?: number | null;
 }
 
-/** The (user, handle) pair the cron re-scrapes daily. */
-export interface TrackedAccount {
-  user_id: string;
-  platform: "tiktok" | "instagram" | "youtube";
-  handle: string;
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type UntypedClient = { from: (t: string) => any };
 
-/** Upsert today's snapshot (one row per user per day). Best-effort — callers isolate. */
+/**
+ * Upsert today's snapshot for a connected account (one row per account per day).
+ * Keyed to account_id so a creator's TikTok + Instagram series never collide.
+ * Best-effort — callers isolate.
+ */
 export async function upsertAccountSnapshot(
   supabase: SupabaseClient,
   input: AccountSnapshotInput,
@@ -47,6 +45,7 @@ export async function upsertAccountSnapshot(
   const today = new Date().toISOString().slice(0, 10);
   await (supabase as unknown as UntypedClient).from("account_snapshots").upsert(
     {
+      account_id: input.accountId,
       user_id: input.userId,
       platform: input.platform,
       handle: input.handle.replace(/^@/, "").toLowerCase(),
@@ -57,20 +56,23 @@ export async function upsertAccountSnapshot(
       recent_views: input.recentViews ?? null,
       snapshot_date: today,
     },
-    { onConflict: "user_id,snapshot_date" },
+    { onConflict: "account_id,snapshot_date" },
   );
 }
 
-/** Read a user's snapshot series (newest first, capped). RLS scopes to the caller. */
+/**
+ * Read one connected account's snapshot series (newest first, capped). RLS scopes
+ * to the caller; filtering by account_id keeps each platform/handle its own series.
+ */
 export async function getAccountSnapshots(
   supabase: SupabaseClient,
-  userId: string,
+  accountId: string,
   limit = 8,
 ): Promise<AccountSnapshot[]> {
   const { data, error } = await (supabase as unknown as UntypedClient)
     .from("account_snapshots")
     .select("snapshot_date, follower_count, heart_count, video_count, recent_views")
-    .eq("user_id", userId)
+    .eq("account_id", accountId)
     .order("snapshot_date", { ascending: false })
     .limit(limit);
 
@@ -82,33 +84,4 @@ export async function getAccountSnapshots(
     video_count: Number(r.video_count),
     recent_views: r.recent_views == null ? null : Number(r.recent_views),
   }));
-}
-
-/**
- * The distinct accounts to re-scrape daily = the latest handle per user across
- * all snapshots. Self-driving from the table: an account enters the loop once
- * calibration captures its first snapshot. Service-client only (cron).
- */
-export async function listTrackedAccounts(
-  serviceClient: SupabaseClient,
-): Promise<TrackedAccount[]> {
-  const { data, error } = await (serviceClient as unknown as UntypedClient)
-    .from("account_snapshots")
-    .select("user_id, platform, handle, snapshot_date")
-    .order("snapshot_date", { ascending: false });
-
-  if (error || !data) return [];
-
-  // Reduce to the most-recent (user_id → handle/platform) pair.
-  const latest = new Map<string, TrackedAccount>();
-  for (const row of data as Array<TrackedAccount & { snapshot_date: string }>) {
-    if (!latest.has(row.user_id)) {
-      latest.set(row.user_id, {
-        user_id: row.user_id,
-        platform: row.platform,
-        handle: row.handle,
-      });
-    }
-  }
-  return [...latest.values()];
 }

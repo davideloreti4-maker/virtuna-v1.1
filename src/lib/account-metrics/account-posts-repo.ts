@@ -31,13 +31,14 @@ export interface AccountPost {
 
 /**
  * Upsert the creator's recent posts (one row per platform video). Idempotent on
- * (user, platform, post_id): a re-scrape refreshes metrics/caption but PRESERVES an
+ * (account_id, post_id): a re-scrape refreshes metrics/caption but PRESERVES an
  * existing pillar_id + created_at (clustering owns pillar_id; created_at is first-seen)
  * because neither is in the row payload → they stay out of the ON CONFLICT UPDATE SET.
  * Best-effort — the caller isolates this from the snapshot write.
  */
 export async function upsertAccountPosts(
   supabase: SupabaseClient,
+  accountId: string,
   userId: string,
   platform: string,
   handle: string,
@@ -47,6 +48,7 @@ export async function upsertAccountPosts(
   const now = new Date().toISOString();
   const normalizedHandle = handle.replace(/^@/, "").toLowerCase();
   const rows = videos.map((v) => ({
+    account_id: accountId,
     user_id: userId,
     platform,
     handle: normalizedHandle,
@@ -64,7 +66,7 @@ export async function upsertAccountPosts(
   }));
   await (supabase as unknown as UntypedClient)
     .from("account_posts")
-    .upsert(rows, { onConflict: "user_id,platform,post_id" });
+    .upsert(rows, { onConflict: "account_id,post_id" });
 }
 
 const POST_SELECT =
@@ -87,21 +89,22 @@ function normalizePost(r: Record<string, unknown>): AccountPost {
 }
 
 /**
- * Read a user's persisted posts, newest first (nulls last), capped. This is the
- * shared input for BOTH clustering (captions → pillars) and the pillar builder
+ * Read one connected account's persisted posts, newest first (nulls last), capped.
+ * The shared input for BOTH clustering (captions → pillars) and the pillar builder
  * (share / cadence / tone). We only persist the recent scrape window (~30/scrape),
  * so "all persisted" is effectively "recent" — no separate time window needed.
+ * Scoped by account_id so pillars are per-account, never merged across handles.
  * RLS-scoped when called with a user client; the cron passes the service client.
  */
 export async function listAllPosts(
   supabase: SupabaseClient,
-  userId: string,
+  accountId: string,
   cap = 80,
 ): Promise<AccountPost[]> {
   const { data, error } = await (supabase as unknown as UntypedClient)
     .from("account_posts")
     .select(POST_SELECT)
-    .eq("user_id", userId)
+    .eq("account_id", accountId)
     .order("posted_at", { ascending: false, nullsFirst: false })
     .limit(cap);
   if (error || !data) return [];
@@ -109,12 +112,12 @@ export async function listAllPosts(
 }
 
 /**
- * Assign a batch of posts to one pillar (clustering output). Scoped by user_id so
- * the service client can't cross users. Best-effort — the caller isolates.
+ * Assign a batch of posts to one pillar (clustering output). Scoped by account_id so
+ * the service client can't cross accounts. Best-effort — the caller isolates.
  */
 export async function assignPostsToPillar(
   supabase: SupabaseClient,
-  userId: string,
+  accountId: string,
   pillarId: string,
   postIds: string[],
 ): Promise<void> {
@@ -122,6 +125,6 @@ export async function assignPostsToPillar(
   await (supabase as unknown as UntypedClient)
     .from("account_posts")
     .update({ pillar_id: pillarId, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
+    .eq("account_id", accountId)
     .in("post_id", postIds);
 }

@@ -15,6 +15,7 @@ import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
+import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
 import { AudienceManager } from "@/components/audience/audience-manager";
 
@@ -41,7 +42,8 @@ export default async function AudiencePage({
   let pillars: Pillar[] = [];
   if (user) {
     try {
-      snapshots = await getAccountSnapshots(supabase, user.id, 100);
+      const primary = await getPrimaryAccount(supabase, user.id);
+      snapshots = primary ? await getAccountSnapshots(supabase, primary.id, 100) : [];
     } catch {
       snapshots = [];
     }

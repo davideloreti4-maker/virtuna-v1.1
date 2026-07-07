@@ -280,6 +280,8 @@ export const WritableAudienceSchema = z.object({
     .optional(),
   is_general: z.boolean().optional().default(false),
   is_preset: z.boolean().optional().default(false),
+  // Nullable FK → connected_accounts (the account this audience calibrated from).
+  source_account_id: z.string().uuid().nullable().optional(),
   persona_weights: WeightsSchema.optional(),
   personas: z.array(z.unknown()).optional(),
   profile: z.unknown().nullable().optional(),
@@ -305,6 +307,7 @@ interface AudienceRow {
   custom_context: unknown[];
   is_general: boolean;
   is_preset: boolean;
+  source_account_id: string | null;
   fyp: number;
   niche: number;
   loyalist: number;
@@ -333,6 +336,7 @@ export function rowToAudience(row: AudienceRow): Audience {
     custom_context: (row.custom_context as Audience["custom_context"]) ?? [],
     is_general: row.is_general,
     is_preset: row.is_preset,
+    source_account_id: row.source_account_id ?? null,
     persona_weights: {
       fyp: Number(row.fyp),
       niche: Number(row.niche),
@@ -368,6 +372,7 @@ export function audienceToRow(
   if ("custom_context" in a) row.custom_context = a.custom_context ?? [];
   if (a.is_general !== undefined) row.is_general = a.is_general;
   if (a.is_preset !== undefined) row.is_preset = a.is_preset;
+  if ("source_account_id" in a) row.source_account_id = a.source_account_id ?? null;
   if (a.persona_weights !== undefined) {
     row.fyp = a.persona_weights.fyp;
     row.niche = a.persona_weights.niche;

@@ -227,6 +227,13 @@ export interface Audience {
   /** True for the 2 ready-made growth/conversion presets (D-04). */
   is_preset: boolean;
   /**
+   * The connected account this audience was calibrated from (nullable FK →
+   * connected_accounts). NULL for custom/preset/General audiences. Deleting the
+   * source account nulls this (ON DELETE SET NULL) — the audience orphans gracefully,
+   * keeping its frozen personas. Absent on virtual constants.
+   */
+  source_account_id?: string | null;
+  /**
    * Pre-baked PersonaWeights: goal-intent bias already applied at calibration time (D-05).
    * Stored directly as the four weight fields on the row; surfaced here as a typed object.
    * General audience: default mix { fyp:0.65, niche:0.20, loyalist:0.10, cross_niche:0.05 }.

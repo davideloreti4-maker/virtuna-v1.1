@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       account_posts: {
         Row: {
+          account_id: string
           caption: string
           comments: number
           created_at: string
@@ -35,6 +36,7 @@ export type Database = {
           views: number
         }
         Insert: {
+          account_id: string
           caption?: string
           comments?: number
           created_at?: string
@@ -54,6 +56,7 @@ export type Database = {
           views?: number
         }
         Update: {
+          account_id?: string
           caption?: string
           comments?: number
           created_at?: string
@@ -74,6 +77,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "account_posts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "account_posts_pillar_fk"
             columns: ["pillar_id"]
             isOneToOne: false
@@ -84,6 +94,7 @@ export type Database = {
       }
       account_snapshots: {
         Row: {
+          account_id: string
           created_at: string
           follower_count: number
           following_count: number | null
@@ -97,6 +108,7 @@ export type Database = {
           video_count: number
         }
         Insert: {
+          account_id: string
           created_at?: string
           follower_count: number
           following_count?: number | null
@@ -110,6 +122,7 @@ export type Database = {
           video_count: number
         }
         Update: {
+          account_id?: string
           created_at?: string
           follower_count?: number
           following_count?: number | null
@@ -122,7 +135,15 @@ export type Database = {
           user_id?: string
           video_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "account_snapshots_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       affiliate_clicks: {
         Row: {
@@ -529,6 +550,7 @@ export type Database = {
           platform: string
           profile: Json | null
           signature: Json | null
+          source_account_id: string | null
           success_criterion: string | null
           type: string
           updated_at: string
@@ -554,6 +576,7 @@ export type Database = {
           platform: string
           profile?: Json | null
           signature?: Json | null
+          source_account_id?: string | null
           success_criterion?: string | null
           type: string
           updated_at?: string
@@ -579,12 +602,21 @@ export type Database = {
           platform?: string
           profile?: Json | null
           signature?: Json | null
+          source_account_id?: string | null
           success_criterion?: string | null
           type?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "audiences_source_account_id_fkey"
+            columns: ["source_account_id"]
+            isOneToOne: false
+            referencedRelation: "connected_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       benchmark_results: {
         Row: {
@@ -870,6 +902,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      connected_accounts: {
+        Row: {
+          connection_method: string
+          created_at: string
+          display_name: string | null
+          handle: string
+          id: string
+          is_primary: boolean
+          last_synced_at: string | null
+          platform: string
+          user_id: string
+        }
+        Insert: {
+          connection_method?: string
+          created_at?: string
+          display_name?: string | null
+          handle: string
+          id?: string
+          is_primary?: boolean
+          last_synced_at?: string | null
+          platform?: string
+          user_id: string
+        }
+        Update: {
+          connection_method?: string
+          created_at?: string
+          display_name?: string | null
+          handle?: string
+          id?: string
+          is_primary?: boolean
+          last_synced_at?: string | null
+          platform?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       content_pillars: {
         Row: {
@@ -1430,6 +1498,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      planned_posts: {
+        Row: {
+          content_id: string
+          created_at: string
+          format: string
+          id: string
+          personas: Json
+          scheduled_date: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          format?: string
+          id?: string
+          personas?: Json
+          scheduled_date: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          format?: string
+          id?: string
+          personas?: Json
+          scheduled_date?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       projects: {
         Row: {
