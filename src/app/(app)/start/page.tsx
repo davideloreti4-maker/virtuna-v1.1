@@ -4,6 +4,7 @@ import { listAudiences } from "@/lib/audience/audience-repo";
 import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
 import type { Audience } from "@/lib/audience/audience-types";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
+import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
@@ -77,10 +78,15 @@ export default async function StartRoute({
   // time-series. Null when there are no snapshots yet → StartPage renders an honest
   // "gathering your numbers" state instead of fabricated analytics. Skipped for
   // first-run (no connected account to read).
+  // Reads the PRIMARY connected account's series (the switcher's default). Null
+  // when nothing is connected → the honest "gathering your numbers" state.
   let accountStats: StatCard[] | null = null;
   if (!initialFirstRun) {
     try {
-      accountStats = buildAccountStats(await getAccountSnapshots(supabase, user.id));
+      const primary = await getPrimaryAccount(supabase, user.id);
+      accountStats = primary
+        ? buildAccountStats(await getAccountSnapshots(supabase, primary.id))
+        : null;
     } catch {
       accountStats = null;
     }

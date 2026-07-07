@@ -19,6 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import type { Tone } from "@/lib/room-contract/types";
 import { listAllPosts, type AccountPost } from "@/lib/account-metrics/account-posts-repo";
+import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { listPillars, type ContentPillarRow } from "./pillars-repo";
 
 const DAY_MS = 86_400_000;
@@ -137,14 +138,20 @@ export function buildPillars(
   return built.map(({ _days, ...p }) => (p.id === gapId ? { ...p, gap: true } : p));
 }
 
-/** Async wrapper — read the frozen pillars + posts, then build. Empty ⇒ honest empty state. */
+/**
+ * Async wrapper — read the frozen pillars + the primary account's posts, then build.
+ * Pillars are user-scoped today but posts are read per-account (the primary), so the
+ * mix/cadence/tone reflect one account, never merged handles. Empty ⇒ honest empty state.
+ */
 export async function buildContentPillars(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<Pillar[]> {
+  const account = await getPrimaryAccount(supabase, userId);
+  if (!account) return [];
   const [pillarRows, posts] = await Promise.all([
     listPillars(supabase, userId),
-    listAllPosts(supabase, userId, POST_CAP),
+    listAllPosts(supabase, account.id, POST_CAP),
   ]);
   if (pillarRows.length === 0) return [];
   return buildPillars(pillarRows, posts, Date.now());

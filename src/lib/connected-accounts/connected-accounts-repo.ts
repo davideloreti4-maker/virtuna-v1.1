@@ -1,0 +1,174 @@
+/**
+ * connected-accounts-repo — persistence for connected_accounts (a first-class
+ * social account the user owns: platform + handle).
+ *
+ * A connected account decouples CONNECT from CALIBRATE: one connect gives the
+ * user their per-account analytics (account_snapshots.account_id) AND the raw
+ * material for a calibrated audience (audiences.source_account_id). Flat list +
+ * per-account switcher; exactly one is_primary per user (the default analytics
+ * view + what /start reads).
+ *
+ * Cast convention mirrors account-metrics-repo: connected_accounts isn't in
+ * database.types.ts yet, so the query builder is cast until types regenerate.
+ */
+
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type Platform = "tiktok" | "instagram" | "youtube";
+
+export interface ConnectedAccount {
+  id: string;
+  user_id: string;
+  platform: Platform;
+  handle: string; // no leading '@', lowercased
+  display_name: string | null;
+  is_primary: boolean;
+  connection_method: "scrape" | "oauth";
+  last_synced_at: string | null;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type UntypedClient = { from: (t: string) => any };
+
+const SELECT =
+  "id, user_id, platform, handle, display_name, is_primary, connection_method, last_synced_at";
+
+function normalize(r: Record<string, unknown>): ConnectedAccount {
+  return {
+    id: String(r.id),
+    user_id: String(r.user_id),
+    platform: r.platform as Platform,
+    handle: String(r.handle),
+    display_name: (r.display_name as string) ?? null,
+    is_primary: Boolean(r.is_primary),
+    connection_method: (r.connection_method as "scrape" | "oauth") ?? "scrape",
+    last_synced_at: (r.last_synced_at as string) ?? null,
+  };
+}
+
+const normalizeHandle = (h: string) => h.replace(/^@/, "").toLowerCase();
+
+/**
+ * A user's connected accounts, primary first then oldest. RLS scopes to the caller
+ * when passed a user client. Powers the account switcher + source picker.
+ */
+export async function listConnectedAccounts(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ConnectedAccount[]> {
+  const { data, error } = await (supabase as unknown as UntypedClient)
+    .from("connected_accounts")
+    .select(SELECT)
+    .eq("user_id", userId)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(normalize);
+}
+
+/**
+ * The user's primary connected account — the default analytics view and the
+ * account /start + the "Your account" tab read. Null when nothing is connected yet.
+ */
+export async function getPrimaryAccount(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ConnectedAccount | null> {
+  const { data, error } = await (supabase as unknown as UntypedClient)
+    .from("connected_accounts")
+    .select(SELECT)
+    .eq("user_id", userId)
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (error || !data) return null;
+  return normalize(data as Record<string, unknown>);
+}
+
+/**
+ * Every connected account across all users — the cron's per-account refresh loop.
+ * Service-client only (RLS-free). Replaces the old "latest handle per user"
+ * derivation: an account enters the loop the moment it's connected, and each
+ * (platform, handle) is its own row so cross-platform series never collide.
+ */
+export async function listAllConnectedAccounts(
+  serviceClient: SupabaseClient,
+): Promise<ConnectedAccount[]> {
+  const { data, error } = await (serviceClient as unknown as UntypedClient)
+    .from("connected_accounts")
+    .select(SELECT)
+    .order("created_at", { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(normalize);
+}
+
+/**
+ * Resolve the (user, platform, handle) connected account, creating it if absent.
+ * The first account a user connects becomes their primary. Idempotent + race-safe
+ * (a concurrent insert hits UNIQUE(user_id, platform, handle) → we re-select).
+ * This is the seam the decoupled "connect" action + the calibrate route share.
+ */
+export async function getOrCreateConnectedAccount(
+  supabase: SupabaseClient,
+  input: {
+    userId: string;
+    platform: Platform;
+    handle: string;
+    displayName?: string | null;
+  },
+): Promise<ConnectedAccount | null> {
+  const handle = normalizeHandle(input.handle);
+  const db = supabase as unknown as UntypedClient;
+
+  const { data: existing } = await db
+    .from("connected_accounts")
+    .select(SELECT)
+    .eq("user_id", input.userId)
+    .eq("platform", input.platform)
+    .eq("handle", handle)
+    .maybeSingle();
+  if (existing) return normalize(existing as Record<string, unknown>);
+
+  // First connected account for this user → auto-primary.
+  const { count } = await db
+    .from("connected_accounts")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId);
+  const isPrimary = (count ?? 0) === 0;
+
+  const { data: inserted, error } = await db
+    .from("connected_accounts")
+    .insert({
+      user_id: input.userId,
+      platform: input.platform,
+      handle,
+      display_name: input.displayName ?? handle,
+      is_primary: isPrimary,
+      connection_method: "scrape",
+    })
+    .select(SELECT)
+    .single();
+
+  if (error || !inserted) {
+    // Likely a concurrent insert (unique violation) — re-select the winner.
+    const { data: raced } = await db
+      .from("connected_accounts")
+      .select(SELECT)
+      .eq("user_id", input.userId)
+      .eq("platform", input.platform)
+      .eq("handle", handle)
+      .maybeSingle();
+    return raced ? normalize(raced as Record<string, unknown>) : null;
+  }
+  return normalize(inserted as Record<string, unknown>);
+}
+
+/** Stamp last_synced_at after a successful refresh (cron, service client). Best-effort. */
+export async function touchAccountSynced(
+  serviceClient: SupabaseClient,
+  accountId: string,
+): Promise<void> {
+  await (serviceClient as unknown as UntypedClient)
+    .from("connected_accounts")
+    .update({ last_synced_at: new Date().toISOString() })
+    .eq("id", accountId);
+}

@@ -26,6 +26,7 @@ import {
   assignPostsToPillar,
   type AccountPost,
 } from "@/lib/account-metrics/account-posts-repo";
+import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { listPillars, createPillars } from "./pillars-repo";
 
 const log = createLogger({ module: "content-pillars/cluster" });
@@ -166,12 +167,21 @@ Return JSON: {"assignments":[{"post":0,"pillar":"Money & cost"}, ...]}
  * Cluster (first run) or classify (incremental) a user's pillars from their posts.
  * Best-effort caller (the cron) — throws only on a hard model/DB failure, which the
  * caller isolates. Returns a status + how many posts were assigned this run.
+ *
+ * Pillars are derived from the user's PRIMARY connected account (content_pillars are
+ * user-scoped today). Posts + assignments are account-scoped so a secondary account's
+ * posts can't leak into the primary's themes. (Per-account pillar sets — a content_
+ * pillars.account_id — is the documented follow-up for a full multi-account switcher.)
  */
 export async function clusterPillarsForUser(
   supabase: SupabaseClient,
   userId: string,
 ): Promise<ClusterResult> {
-  const posts = await listAllPosts(supabase, userId, POST_CAP);
+  const account = await getPrimaryAccount(supabase, userId);
+  if (!account) return { status: "insufficient", pillarCount: 0, assigned: 0 };
+  const accountId = account.id;
+
+  const posts = await listAllPosts(supabase, accountId, POST_CAP);
   const existing = await listPillars(supabase, userId);
 
   if (existing.length === 0) {
@@ -198,7 +208,7 @@ export async function clusterPillarsForUser(
         .map((i) => candidates[i]?.post_id)
         .filter((pid): pid is string => typeof pid === "string");
       if (postIds.length === 0) continue;
-      await assignPostsToPillar(supabase, userId, id, postIds);
+      await assignPostsToPillar(supabase, accountId, id, postIds);
       assigned += postIds.length;
     }
     return { status: "clustered", pillarCount: pillars.length, assigned };
@@ -229,7 +239,7 @@ export async function clusterPillarsForUser(
   }
   let assigned = 0;
   for (const [id, postIds] of byPillar) {
-    await assignPostsToPillar(supabase, userId, id, postIds);
+    await assignPostsToPillar(supabase, accountId, id, postIds);
     assigned += postIds.length;
   }
   return { status: "classified", pillarCount: existing.length, assigned };

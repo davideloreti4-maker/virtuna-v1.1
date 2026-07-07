@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
+import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import {
-  listTrackedAccounts,
-  upsertAccountSnapshot,
-} from "@/lib/account-metrics/account-metrics-repo";
+  listAllConnectedAccounts,
+  touchAccountSynced,
+} from "@/lib/connected-accounts/connected-accounts-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { clusterPillarsForUser } from "@/lib/content-pillars/cluster";
 import { sumRecentViews } from "@/lib/account-metrics/account-metrics";
@@ -34,9 +35,10 @@ const RECENT_VIDEOS_LIMIT = 30;
  *
  * Daily append to the own-account time-series (account_snapshots) that powers the
  * /start stat-row's weekly deltas + sparklines. Mirrors refresh-competitors:
- * - self-driving from the table (the latest handle per user; an account enters
- *   the loop once calibration captures its first snapshot)
- * - upserts one snapshot per user per day (full profile counters incl. following,
+ * - self-driving from connected_accounts (one row per (platform, handle); an
+ *   account enters the loop the moment it's connected — cross-platform series
+ *   never collide because each write is keyed to account_id)
+ * - upserts one snapshot per account per day (full profile counters incl. following,
  *   plus recent_views = the summed views of recent posts, via a second video scrape)
  * - isolates per-account failures (one bad handle doesn't block the batch), and
  *   isolates the video scrape within each account (a video failure still writes the
@@ -52,7 +54,7 @@ export async function GET(request: Request) {
   const supabase = createServiceClient();
   const scraper = createScrapingProvider();
 
-  const accounts = await listTrackedAccounts(supabase);
+  const accounts = await listAllConnectedAccounts(supabase);
 
   if (accounts.length === 0) {
     return NextResponse.json({ refreshed: 0, failed: 0, total: 0 });
@@ -89,6 +91,7 @@ export async function GET(request: Request) {
           try {
             await upsertAccountPosts(
               supabase,
+              account.id,
               account.user_id,
               account.platform,
               account.handle,
@@ -109,6 +112,7 @@ export async function GET(request: Request) {
       }
 
       await upsertAccountSnapshot(supabase, {
+        accountId: account.id,
         userId: account.user_id,
         platform: account.platform,
         handle: account.handle,
@@ -119,25 +123,36 @@ export async function GET(request: Request) {
         recentViews,
       });
       refreshed++;
+      // Best-effort: record the sync time (drives the switcher's "updated" hint).
+      try {
+        await touchAccountSynced(supabase, account.id);
+      } catch {
+        /* non-fatal — the snapshot already landed */
+      }
 
       // Cluster/refresh this creator's content pillars from the posts we just
       // persisted — cost-gated (the model only runs on first cluster or when there
       // are unassigned posts) and isolated so a pillar failure never fails the snapshot.
-      try {
-        const cluster = await clusterPillarsForUser(supabase, account.user_id);
-        if (cluster.status !== "noop") {
-          log.info("content pillars refreshed", {
+      // Only the PRIMARY account drives pillars (content_pillars are user-scoped today);
+      // clusterPillarsForUser resolves the primary itself, so skip non-primary accounts
+      // to avoid a redundant run per secondary handle.
+      if (account.is_primary) {
+        try {
+          const cluster = await clusterPillarsForUser(supabase, account.user_id);
+          if (cluster.status !== "noop") {
+            log.info("content pillars refreshed", {
+              handle: account.handle,
+              status: cluster.status,
+              pillars: cluster.pillarCount,
+              assigned: cluster.assigned,
+            });
+          }
+        } catch (error) {
+          log.error("Failed to cluster content pillars (snapshot still written)", {
             handle: account.handle,
-            status: cluster.status,
-            pillars: cluster.pillarCount,
-            assigned: cluster.assigned,
+            error: error instanceof Error ? error.message : String(error),
           });
         }
-      } catch (error) {
-        log.error("Failed to cluster content pillars (snapshot still written)", {
-          handle: account.handle,
-          error: error instanceof Error ? error.message : String(error),
-        });
       }
     } catch (error) {
       log.error("Failed to refresh account snapshot", {
