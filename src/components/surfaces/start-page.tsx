@@ -16,7 +16,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
+import { Button } from "@/components/ui/button";
+import { useCreateThread } from "@/hooks/queries";
+import { useBoardStore } from "@/stores/board-store";
 import type { QuickAction as QuickActionData, StatCard } from "@/lib/room-contract/mock-room";
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
@@ -81,6 +85,21 @@ export function StartPage({
   const router = useRouter();
   const { toast } = useToast();
   const data = useMemo(() => getMockStartPage(), []);
+
+  // "New thread" — a blank slate on /home where the HomeStarter quick-actions live
+  // ("Test an idea on your audience" · "Profile a chat" · "Predict an outcome"). Mirrors the
+  // sidebar's handleNewThread exactly: create a fresh thread, reset the composer, land on /home.
+  const switchThread = useBoardStore((s) => s.switchThread);
+  const createThread = useCreateThread();
+  const handleNewThread = async () => {
+    try {
+      await createThread.mutateAsync();
+    } catch {
+      // Non-fatal: still reset the composer so the user gets a blank slate.
+    }
+    switchThread();
+    router.push("/home");
+  };
 
   const [firstRun, setFirstRun] = useState(initialFirstRun);
 
@@ -223,7 +242,22 @@ export function StartPage({
                 style={{ animationDelay: "0.02s" }}
               >
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
-                <GreetingRings rings={data.rings} />
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <GreetingRings rings={data.rings} />
+                  {/* New thread — a clean slate on /home with the HomeStarter quick actions
+                      (Test an idea / Profile a chat / Predict an outcome). */}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleNewThread()}
+                    loading={createThread.isPending}
+                    aria-label="Start a new thread"
+                    className="shrink-0 gap-1.5 rounded-lg"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2} />
+                    <span>New thread</span>
+                  </Button>
+                </div>
               </div>
               <div className="rv-in" style={{ animationDelay: "0.08s" }}>
                 {accountStats ? <StatRow stats={accountStats} /> : <StatRowEmpty />}
