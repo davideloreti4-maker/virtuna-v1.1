@@ -83,7 +83,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent"
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Idea: ${title}`}
     >
       {/* FACE — always visible */}

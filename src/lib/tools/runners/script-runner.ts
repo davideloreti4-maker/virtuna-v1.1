@@ -98,6 +98,12 @@ export interface ScriptPipelineInput {
    * opener's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
    */
   pin?: RunnerPinContext;
+  /**
+   * Progress callback fired at the REAL pipeline phase boundaries (Generating → Simulating your
+   * audience). Wired to the route's SSE `send("stage", …)` so the spine reflects genuine phase
+   * timing. Optional/no-op — absent = unchanged. Honesty spine: true boundaries, no fake timer.
+   */
+  onStage?: (name: string, status: "active" | "done") => void;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -274,6 +280,8 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   );
 
   let script: StructuredScript | null;
+  // ── STAGE: Generating (real boundary — the big LLM call) ──
+  input.onStage?.("Generating", "active");
   try {
     script = await generateScriptStructured(userMessage);
   } catch (err) {
@@ -281,6 +289,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(`Script generation failed: ${msg}`);
     return { blocks: [], warnings: allWarnings };
   }
+  input.onStage?.("Generating", "done");
 
   // ── SELF-JUDGE: bounded gate — drop sub-floor generation (no regen — cost) ───
   if (!script || script.beats.length === 0) {
@@ -300,6 +309,8 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
   let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
+  // ── STAGE: Simulating your audience (real boundary — the opener SIM call) ──
+  input.onStage?.("Simulating your audience", "active");
   try {
     simResult = await runFlashTextMode(script.openingBeatSeed, "hook", panel, audienceRepaint, simIntent);
   } catch (err) {
@@ -307,6 +318,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);
     return { blocks: [], warnings: allWarnings };
   }
+  input.onStage?.("Simulating your audience", "done");
 
   const personas = simResult.result.personas;
   const { band, fraction } = aggregateFlash(personas, flashWeighting);

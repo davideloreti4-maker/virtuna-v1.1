@@ -62,7 +62,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent"
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label="Script card"
     >
       {/* FACE — opener signal (Pitfall 5: opener-only honesty spine). */}

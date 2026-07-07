@@ -160,32 +160,22 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // ── STAGE: Generating (active) — real pipeline boundary (D-02, no fake timers) ──
-        send("stage", { name: "Generating", status: "active" });
         // Status event: "Generating ideas…" (legacy status for older clients)
         send("status", { message: "Generating ideas…" });
 
+        // Stage events now stream from the REAL pipeline boundaries (Generating → Simulating
+        // your audience → Ranking) via onStage — the spine reflects genuine phase timing instead
+        // of a single opaque await + an end-of-run burst (D-02: real boundaries, no fake timers).
         const { blocks, warnings } = await runIdeasPipeline({
           ask: rawAsk,
           platform,
           profileRow: profileRow ?? null,
           audience: activeAudience,
           intent: effectiveIntent,
+          onStage: (name, status) => send("stage", { name, status }),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
         });
-
-        // ── STAGE: Generating (done) ──────────────────────────────────────────
-        send("stage", { name: "Generating", status: "done" });
-
-        // runIdeasPipeline is one awaited call that internally runs:
-        //   GENERATE → SIM (Simulating your audience) → GATE (Self-judge)
-        // Coarse transitions around the whole call (real phases ran — D-02 satisfied).
-        // Finer-grained transitions require runner refactor (deferred, D-02 discretion).
-        send("stage", { name: "Self-judge", status: "active" });
-        send("stage", { name: "Self-judge", status: "done" });
-        send("stage", { name: "Simulating your audience", status: "active" });
-        send("stage", { name: "Simulating your audience", status: "done" });
 
         if (warnings.length > 0) {
           send("warning", { warnings });

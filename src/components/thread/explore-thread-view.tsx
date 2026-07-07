@@ -48,8 +48,7 @@ import { Compass, UsersThree, Sparkle } from '@phosphor-icons/react';
 import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
-import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
-import { ProgressChecklist } from '@/components/thread/progress-checklist';
+import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
@@ -276,17 +275,14 @@ export function ExploreThreadView({
         ) : undefined
       }
     >
-      {isStreaming && (
-        <div className="flex flex-col gap-3">
-          {stages.length > 0 && <ProgressChecklist stages={stages} />}
-          {stages.length === 0 && (
-            <ThreadLoadingSkeleton
-              variant="skill"
-              caption="Pulling outliers and scoring them for your audience… this can take a few minutes."
-            />
-          )}
-        </div>
-      )}
+      {/* Premium spine (parity with the generative skills): full pipeline seeded up front while
+          streaming, collapsing to a receipt line on completion. */}
+      <SkillProgress
+        stages={stages}
+        plan={STAGE_PLANS.explore}
+        isStreaming={isStreaming}
+        summaryLabel="Scored for your audience"
+      />
 
       {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 

@@ -133,6 +133,13 @@ export interface IdeasPipelineInput {
    * (lead idea's personas) + audience_id. Non-fatal — never blocks the cards.
    */
   pin?: RunnerPinContext;
+  /**
+   * Progress callback fired at the REAL pipeline phase boundaries (Generating → Simulating your
+   * audience → Ranking). The route wires this to its SSE `send("stage", …)` so the spine reflects
+   * genuine phase timing instead of a single opaque await + a burst at the end. Optional/no-op —
+   * absent = unchanged behavior. Honesty spine: fired at true boundaries, never on a fake timer.
+   */
+  onStage?: (name: string, status: "active" | "done") => void;
 }
 
 // ─── Output type ─────────────────────────────────────────────────────────────
@@ -392,14 +399,23 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   }
 
   // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown).
+  // ── STAGE: Generating (real boundary — the big LLM call) ──
+  input.onStage?.("Generating", "active");
   const firstBatch = await generateIdeasStructured(userMessage);
+  input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
   }
 
   // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
   // keep-all + user-pressed rewrite (PR-3) replaces the auto-regenerate-on-zero loop.
+  // ── STAGE: Simulating your audience (real boundary — the batched Flash SIM call) ──
+  input.onStage?.("Simulating your audience", "active");
   const rated = await ratePass(firstBatch);
+  input.onStage?.("Simulating your audience", "done");
+
+  // ── STAGE: Ranking (real boundary — sort + build; fast) ──
+  input.onStage?.("Ranking", "active");
 
   // ── RANK (keep-all): band tier → fraction → generation order. No Weak cut, no trim
   //    below what was generated; slice(IDEA_COUNT) is a safety bound only. ──
@@ -448,6 +464,9 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
 
     blocks.push(validated.data as IdeaCardBlock);
   }
+
+  // ── STAGE: Ranking (done) — cards are built + ready to stream ──
+  input.onStage?.("Ranking", "done");
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
   // The predicted vector is computed ONCE from the rank-1 idea's personas (falling back
