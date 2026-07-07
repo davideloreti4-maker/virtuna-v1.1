@@ -242,7 +242,7 @@ export function StartPage({
                 style={{ animationDelay: "0.02s" }}
               >
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
-                <div className="flex items-start gap-3 sm:gap-4">
+                <div className="flex shrink-0 items-start gap-3 sm:gap-4">
                   {/* New thread — a clean slate on /home with the HomeStarter quick actions
                       (Test an idea / Profile a chat / Predict an outcome). Sits left of the rings,
                       top-aligned with the ring glyphs (items-start; the rings carry labels below). */}
