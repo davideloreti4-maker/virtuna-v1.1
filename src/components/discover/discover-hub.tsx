@@ -20,15 +20,9 @@ import type { FeedTab } from "@/lib/feed/feed-query";
 import type { CompetitorsData } from "@/lib/competitors/competitors-data";
 import { FeedClient } from "@/app/(app)/feed/feed-client";
 import { CompetitorsClient } from "@/app/(app)/competitors/competitors-client";
-import { cn } from "@/lib/utils";
+import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
 
 export type DiscoverTab = "watching" | "trending" | "competitors";
-
-const TABS: { id: DiscoverTab; label: string }[] = [
-  { id: "watching", label: "Watching" },
-  { id: "trending", label: "Trending" },
-  { id: "competitors", label: "Competitors" },
-];
 
 export function DiscoverHub({
   initialTab,
@@ -60,28 +54,8 @@ export function DiscoverHub({
             outliers, trends, and rivals — remix any winner into a Read
           </p>
 
-          <div
-            className="mt-3 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5"
-            role="tablist"
-            aria-label="Discover sections"
-          >
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => select(t.id)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
-                  tab === t.id
-                    ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
-                    : "text-foreground-secondary hover:text-foreground",
-                )}
-              >
-                {t.label}
-              </button>
-            ))}
+          <div className="mt-3">
+            <DiscoverTabBar active={tab} onSelectContent={select} />
           </div>
         </header>
 

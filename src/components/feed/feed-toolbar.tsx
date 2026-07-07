@@ -3,21 +3,18 @@
 /**
  * FeedToolbar — the feed control bar for the DISCOVER hub's Watching/Trending body.
  *
- * The Watched | Trending switch now lives in the hub's tab bar (discover-hub.tsx), so this
- * is pure controls: a total-count readout (left), then Sort menu (tab-aware options), "Add
- * video URL" (a popover that launches the Remix → Read chain on a one-off URL — the same
- * moat action as a tile's Remix), links to the Channels + Hooks sub-surfaces, and Export.
+ * The Watched | Trending switch and the Channels + Hooks destinations now live in the unified
+ * DiscoverTabBar (discover-tab-bar.tsx), so this is pure controls: a total-count readout
+ * (left), then Sort menu (tab-aware options), "Add video URL" (a popover that launches the
+ * Remix → Read chain on a one-off URL — the same moat action as a tile's Remix), and Export.
  *
  * Flat-warm matte: every button is secondary chrome. No coral here — the feed's single
  * accent lives on each tile's Remix CTA.
  */
 import { useState } from "react";
-import Link from "next/link";
 import {
   CaretDown,
   Plus,
-  Faders,
-  Quotes,
   FunnelSimple,
   DownloadSimple,
   LinkSimple,
@@ -180,21 +177,8 @@ export function FeedToolbar({
           </PopoverContent>
         </Popover>
 
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/feed/channels">
-            <Faders size={14} aria-hidden="true" />
-            Customize channels
-          </Link>
-        </Button>
-
-        {/* Hooks vault — kept reachable from the hub now that the feed view-tabs are gone. */}
-        <Button asChild variant="secondary" size="sm">
-          <Link href="/feed/hooks">
-            <Quotes size={14} aria-hidden="true" />
-            Hooks
-          </Link>
-        </Button>
-
+        {/* Channels + Hooks are first-class tabs in the unified DiscoverTabBar now, so the
+            redundant toolbar shortcuts were retired. Add video URL + Export stay (actions). */}
         <Button
           variant="secondary"
           size="sm"
