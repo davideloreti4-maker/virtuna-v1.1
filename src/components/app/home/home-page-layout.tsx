@@ -39,25 +39,38 @@ export function HomePageLayout() {
     setRehydrating(next);
   }, []);
 
+  // Thread mode owns a full-width scroll surface (composer re-centers content at
+  // 760px internally) so the conversation scrolls page-wide like a real chat.
+  // Empty home stays a centered 760px column (greeting above, composer pinned below).
+  const threadMode = hasThread || rehydrating;
+
   return (
     // The audience presence is a single docked card on top of the composer at every breakpoint
     // (the ≥xl right rail was retired 2026-07-07), so the work column centers full-width.
-    <div className="flex h-full w-full flex-col items-center px-4">
-      <div className="flex w-full max-w-[760px] flex-col flex-1 min-h-0">
-        {!hasConversation && !rehydrating && (
-          // Empty home: the serif greeting sits centered in the space ABOVE the composer,
-          // which the child pins to the bottom of the column (flex-1 hero + shrink-0 dock).
-          <div
-            className={cn(
-              "flex flex-1 min-h-0 flex-col items-center justify-center pb-6",
-              !reducedMotion && "transition-[padding] duration-300 ease-out",
-            )}
-          >
-            <HomeGreeting />
-          </div>
+    <div className="flex h-full w-full flex-col items-center">
+      {!hasConversation && !rehydrating && (
+        // Empty home: the serif greeting sits centered in the space ABOVE the composer,
+        // which the child pins to the bottom of the column (flex-1 hero + shrink-0 dock).
+        <div
+          className={cn(
+            "flex w-full max-w-[760px] flex-1 min-h-0 flex-col items-center justify-center px-4 pb-6",
+            !reducedMotion && "transition-[padding] duration-300 ease-out",
+          )}
+        >
+          <HomeGreeting />
+        </div>
+      )}
+      {/* Single, always-mounted composer (never remounted across empty↔thread —
+          that would reset its stream/rehydration state). Its wrapper is full-width
+          in thread mode and a centered 760px column when empty. */}
+      <div
+        className={cn(
+          "flex w-full flex-col",
+          threadMode ? "flex-1 min-h-0" : "max-w-[760px] px-4",
         )}
+      >
         <Composer
-          className={cn((hasThread || rehydrating) && "flex-1 min-h-0")}
+          className={cn(threadMode && "flex-1 min-h-0")}
           onThreadChange={handleThreadChange}
           onConversationChange={handleConversationChange}
           onRehydratingChange={handleRehydratingChange}

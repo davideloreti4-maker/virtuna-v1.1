@@ -26,7 +26,9 @@
  * reading_id is `string | null` — analysis_results.id is `text` on the live DB.
  */
 
+import { cookies } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
+import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-thread-cookie";
 import type { Database } from "@/types/database.types";
 
 // ─── Row type derived from the regenerated database types ─────────────────────
@@ -86,6 +88,30 @@ export async function createOpenThreadLazy(userId: string): Promise<ThreadRow> {
 export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
   const supabase = createServiceClient();
 
+  // ── Explicit active-thread pointer (active-thread-cookie.ts) ────────────────
+  // The pointer decouples "which thread is open" from "which was messaged last".
+  const pointer = await readActiveThreadPointer();
+
+  // Blank "new thread" pointer → nothing persisted yet (row is created on first
+  // send). Return null so the composer renders the empty/new-chat state.
+  if (pointer === NEW_THREAD_SENTINEL) return null;
+
+  // A concrete pointer → resolve that thread, but ONLY if it is still an owned
+  // open chat thread (ownership re-verified here — the cookie is untrusted input).
+  if (pointer) {
+    const { data: pointed } = await supabase
+      .from("threads")
+      .select("*")
+      .eq("id", pointer)
+      .eq("user_id", userId)
+      .eq("type", "open")
+      .is("reading_id", null)
+      .maybeSingle();
+    if (pointed) return pointed;
+    // Stale/foreign/archived pointer → fall through to the newest-open default.
+  }
+
+  // Default (no pointer, or a stale one): the newest open thread.
   const { data, error } = await supabase
     .from("threads")
     .select("*")
@@ -102,6 +128,23 @@ export async function getOpenThread(userId: string): Promise<ThreadRow | null> {
   }
 
   return data ?? null;
+}
+
+// ─── readActiveThreadPointer ──────────────────────────────────────────────────
+/**
+ * Read the active-thread pointer cookie (the id of the currently-open thread, or
+ * the NEW_THREAD_SENTINEL for a fresh blank thread). Returns null outside a request
+ * scope — unit tests call the thread helpers directly, where next/headers cookies()
+ * throws; swallowing it makes those callers fall back to the newest-open default,
+ * preserving pre-pointer behaviour.
+ */
+async function readActiveThreadPointer(): Promise<string | null> {
+  try {
+    const store = await cookies();
+    return store.get(ACTIVE_THREAD_COOKIE)?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 // ─── createNewThread ────────────────────────────────────────────────────────────

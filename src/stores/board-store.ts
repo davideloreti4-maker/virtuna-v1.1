@@ -100,6 +100,15 @@ export interface BoardState {
    * the in-memory equivalent of a remount when navigating /home → /home.
    */
   activeThreadSignal: number;
+
+  /**
+   * The id of the currently-open chat thread (null on a fresh/blank new thread).
+   * Drives the sidebar's active-row highlight — decoupled from list position, so
+   * re-opening an OLD thread highlights it without jumping it to the top (the
+   * highlight no longer assumes "active == row 0"). Set by the sidebar on open /
+   * new, and synced by the composer from the rehydrated thread id on refresh.
+   */
+  activeThreadId: string | null;
 }
 
 export interface BoardActions {
@@ -137,6 +146,9 @@ export interface BoardActions {
    * Called after the server-side new/activate request resolves.
    */
   switchThread: () => void;
+
+  /** Set the currently-open thread id (drives the sidebar active-row highlight). */
+  setActiveThreadId: (id: string | null) => void;
 
   // ── Camera ──────────────────────────────────────────────────────────────
 
@@ -192,6 +204,7 @@ const DEFAULT_STATE: BoardState = {
   pendingVideo: null,
   newAnalysisSignal: 0,
   activeThreadSignal: 0,
+  activeThreadId: null,
 };
 
 // ── Store ────────────────────────────────────────────────────────────────────
@@ -259,7 +272,13 @@ export const useBoardStore = create<BoardState & BoardActions>((set) => ({
       ...DEFAULT_STATE,
       newAnalysisSignal: s.newAnalysisSignal + 1,
       activeThreadSignal: s.activeThreadSignal + 1,
+      // Preserve the active-thread id across the reset — the caller sets it
+      // explicitly right after (open → id, new → null); keeping it here avoids a
+      // one-frame highlight flicker between the switch and the caller's set.
+      activeThreadId: s.activeThreadId,
     })),
+
+  setActiveThreadId: (id) => set({ activeThreadId: id }),
 
   // ── Camera ──────────────────────────────────────────────────────────────
 

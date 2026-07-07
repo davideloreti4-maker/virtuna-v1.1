@@ -36,10 +36,17 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
 import { cn } from "@/lib/utils";
+import { queryKeys } from "@/lib/queries/query-keys";
+import {
+  setActiveThreadCookie,
+  getActiveThreadCookie,
+  NEW_THREAD_SENTINEL,
+} from "@/lib/threads/active-thread-cookie";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { MessageBlocks } from "@/components/thread/message-blocks";
@@ -316,6 +323,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // rendered content (live + persisted) and reload the now-active open thread —
   // the in-memory equivalent of a remount when navigating /home → /home.
   const activeThreadSignal = useBoardStore((s) => s.activeThreadSignal);
+  const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
+  const queryClient = useQueryClient();
   const isFirstThreadLoadRef = useRef(true);
 
   // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
@@ -604,14 +613,35 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         if (!res.ok) return; // 401 or other error — silent (user not logged in yet)
         const data = await res.json() as {
           threadId?: string;
-          messages?: Array<{ blocks?: Array<{ type?: string; props?: unknown }> }>;
+          messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
         };
         if (cancelled) return;
-        // Capture thread id for AudienceChip per-thread pin (07-05 / D-04)
-        if (data.threadId) setOpenThreadId(data.threadId);
+        // Capture thread id for AudienceChip per-thread pin (07-05 / D-04) and sync
+        // the sidebar active-row highlight (survives refresh: the pointer cookie
+        // drives the server, this drives the client highlight). null → blank/new.
+        if (data.threadId) {
+          setOpenThreadId(data.threadId);
+          setActiveThreadId(data.threadId);
+        } else {
+          setActiveThreadId(null);
+        }
         const messages = data.messages ?? [];
-        // Flatten all blocks across all messages, split by type
-        const allBlocks = messages.flatMap((m) => m.blocks ?? []);
+        // ── Restore the user's turn (issue 3 — "the user's message is missing") ──
+        // User turns persist as role:"user" markdown. Restore the LAST one as
+        // lastUserTurn so the top "you asked" bubble reappears (matches the live
+        // single-turn presentation). Role-aware: user markdown must NOT fall into
+        // the assistant markdown bucket (that rendered the question as a chat reply).
+        const userTurns = messages
+          .filter((m) => m.role === 'user')
+          .map((m) => (m.blocks ?? []).find((b) => b.type === 'markdown'))
+          .map((b) => (b?.props as { text?: string } | undefined)?.text)
+          .filter((t): t is string => typeof t === 'string' && t.length > 0);
+        if (userTurns.length > 0) setLastUserTurn(userTurns[userTurns.length - 1] ?? null);
+        // Flatten ASSISTANT/tool blocks across messages, split by type (user turns
+        // are surfaced via lastUserTurn above, never as assistant cards/bubbles).
+        const allBlocks = messages
+          .filter((m) => m.role !== 'user')
+          .flatMap((m) => m.blocks ?? []);
         const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
         const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
         const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
@@ -1075,10 +1105,69 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
   // CRITICAL: Idea path NEVER sets pendingNavRef or calls stream.start (T-03-13).
   const handleSubmit = useCallback(async () => {
+    // Skills that persist into the open chat thread AND whose user turn must be
+    // persisted client-side (chat persists its own turn server-side; Test navigates
+    // to /analyze and owns no chat thread). Kept in sync with the ensureThreadForSend
+    // set below — every tool here creates its thread lazily on first send.
+    const USER_TURN_TOOLS: ToolId[] = [
+      "idea", "hooks", "script", "remix", "explore", "simulate", "predict",
+    ];
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
       setLastUserTurn(t || null);
+      // Persist the question so re-opening the thread restores the top "you asked"
+      // bubble (issue 3). Fire-and-forget: the turn renders at the top via
+      // lastUserTurn independent of persisted order, so it never needs awaiting.
+      // Must run AFTER the thread exists (ensureThreadForSend) so it targets the
+      // right thread — guaranteed by call ordering in every branch below.
+      if (t && USER_TURN_TOOLS.includes(activeTool)) {
+        void fetch("/api/threads/user-turn", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: t }),
+        }).catch(() => {
+          /* best-effort — a missed persist only loses the restored question bubble */
+        });
+      }
     };
+
+    // ── Lazy thread creation (issue 2 — no blank threads in history) ──────────
+    // "New Thread" creates NO row; the pointer is the NEW_THREAD_SENTINEL and the
+    // composer renders empty. The row is materialised HERE, on the first real send,
+    // so a thread only enters history once it holds a message. Flips the pointer to
+    // the fresh id BEFORE the skill runs, so every tool route appends to this thread.
+    const ensureThreadForSend = async (): Promise<void> => {
+      if (getActiveThreadCookie() !== NEW_THREAD_SENTINEL) return; // resuming an existing thread
+      try {
+        const res = await fetch("/api/threads/new", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        });
+        if (!res.ok) return;
+        const { threadId } = (await res.json()) as { threadId: string };
+        setActiveThreadCookie(threadId);
+        setOpenThreadId(threadId);
+        setActiveThreadId(threadId);
+        // Surface the new thread (and, once titled, its label) in the sidebar.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
+      } catch {
+        // Network error — the tool route's createOpenThreadLazy still resolves a
+        // target thread server-side, so the send is not lost.
+      }
+    };
+    // Skills that persist into the open chat thread create it lazily on first send.
+    // (Test/video navigates to /analyze and owns no chat thread — excluded.)
+    if (
+      activeTool === "idea" ||
+      activeTool === "hooks" ||
+      activeTool === "chat" ||
+      activeTool === "script" ||
+      activeTool === "remix" ||
+      activeTool === "explore"
+    ) {
+      await ensureThreadForSend();
+    }
 
     // ── Idea tool path (D-12) ───────────────────────────────────────────────
     // CRITICAL: this block must never set pendingNavRef.current or call stream.start.
@@ -1249,6 +1338,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       }
       const draft = trimmedUrl;
       if (draft.length === 0) return; // nothing to run (canSubmit already gates this)
+      // Materialise the thread FIRST (after the audience gate) so a General verb never
+      // orphans a blank thread when it bails to /audience/new above — and so the user
+      // turn captureUserTurn persists targets this thread, not a stray one.
+      await ensureThreadForSend();
       captureUserTurn(draft);
       setUrl(""); // clear input after send
       const endpoint =
@@ -1353,7 +1446,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread]);
+  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId]);
 
   // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
   // A surface (the start page's embedded composer) hands a composed intent off as a
@@ -2284,11 +2377,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         data-testid="composer-shell"
         data-layout="thread"
         className={cn(
-          "flex h-full w-full max-w-[760px] mx-auto flex-col",
+          // Full-width shell so the scroll region spans the whole surface (the
+          // conversation scrolls page-wide, not inside a narrow 760px column) —
+          // content is re-centered at 760px INSIDE the scroll + dock so it reads
+          // like a real chat surface. Scrollbar itself is hidden app-wide (globals.css).
+          "flex h-full w-full flex-col",
           className,
         )}
       >
-        {/* Scrollable thread region — fills all available space above the dock.
+        {/* Scrollable thread region — full width, fills all space above the dock.
             registerThreadRegion roots the scroll-spy IntersectionObserver on this element
             (Pattern 5); the sr-only focus markers ride at the top so the spotlight tracks
             the ledger as it scrolls (D-01). */}
@@ -2297,22 +2394,27 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto"
         >
-          {ambientFocusMarkers}
-          {/* A1: while a switch is rehydrating and no content has landed yet, fill the
-              scroll with the branded skeleton — never the prior thread's emptied views
-              or the centered serif hero. When the persisted blocks arrive (or it's a
-              brand-new empty thread) hasConversationContent / rehydrating settle and
-              threadContent takes over. */}
-          {rehydrating && !hasConversationContent ? (
-            <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
-          ) : (
-            threadContent
-          )}
+          <div className="w-full max-w-[760px] mx-auto px-4">
+            {ambientFocusMarkers}
+            {/* A1: while a switch is rehydrating and no content has landed yet, fill the
+                scroll with the branded skeleton — never the prior thread's emptied views
+                or the centered serif hero. When the persisted blocks arrive (or it's a
+                brand-new empty thread) hasConversationContent / rehydrating settle and
+                threadContent takes over. */}
+            {rehydrating && !hasConversationContent ? (
+              <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
+            ) : (
+              threadContent
+            )}
+          </div>
         </div>
 
-        {/* Pinned bottom dock — audience + composer fused as one surface. */}
+        {/* Pinned bottom dock — audience + composer fused as one surface. Content
+            re-centered at 760px to align with the thread column above. */}
         <div className="shrink-0 pb-4">
-          {composerDock}
+          <div className="w-full max-w-[760px] mx-auto px-4">
+            {composerDock}
+          </div>
         </div>
       </div>
     );

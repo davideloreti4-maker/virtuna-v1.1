@@ -112,6 +112,15 @@ export async function insertMessage(
     );
   }
 
+  // Bump the parent thread's updated_at so the sidebar sorts by LAST MESSAGE.
+  // Opening a thread no longer touches updated_at (active-thread-cookie.ts), so a
+  // sent message is now the only thing that promotes a thread up the history list.
+  // Best-effort: a failed bump only affects ordering, never the message write.
+  await supabase
+    .from("threads")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", threadId);
+
   return data;
 }
 
