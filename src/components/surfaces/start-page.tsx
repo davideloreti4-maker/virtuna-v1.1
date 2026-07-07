@@ -243,20 +243,20 @@ export function StartPage({
               >
                 <Greeting headline={data.greeting.headline} line={data.greeting.line} />
                 <div className="flex items-center gap-3 sm:gap-4">
-                  <GreetingRings rings={data.rings} />
                   {/* New thread — a clean slate on /home with the HomeStarter quick actions
-                      (Test an idea / Profile a chat / Predict an outcome). */}
+                      (Test an idea / Profile a chat / Predict an outcome). Sits left of the rings. */}
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => void handleNewThread()}
                     loading={createThread.isPending}
                     aria-label="Start a new thread"
-                    className="shrink-0 gap-1.5 rounded-lg"
+                    className="shrink-0 gap-1.5 rounded-lg bg-[#1a1a19]"
                   >
                     <Plus className="h-4 w-4" strokeWidth={2} />
                     <span>New thread</span>
                   </Button>
+                  <GreetingRings rings={data.rings} />
                 </div>
               </div>
               <div className="rv-in" style={{ animationDelay: "0.08s" }}>
