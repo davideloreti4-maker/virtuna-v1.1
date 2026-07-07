@@ -197,7 +197,7 @@ export function CommandBar({ onContentSubmit, completedAnalysisId, analysisRow }
                   }}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-accent"><MavenMark size={16} /></span>
+                    <span className="text-foreground"><MavenMark size={16} /></span>
                     <span className="text-xs font-medium text-foreground-muted">
                       Ask the expert
                     </span>

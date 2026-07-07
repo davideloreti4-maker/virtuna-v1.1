@@ -441,7 +441,7 @@ export function Sidebar() {
           )}
         >
           {!effectiveCollapsed && (
-            <Link href="/" className="group text-accent pl-2" aria-label="Maven home">
+            <Link href="/" className="group text-foreground pl-2" aria-label="Maven home">
               <MavenMark size={26} />
             </Link>
           )}

@@ -16,7 +16,7 @@ export function FirstRun({ onConnect }: { onConnect: () => void }) {
   ];
   return (
     <div className="flex flex-col px-1.5 py-4">
-      <span className="mb-4 text-accent" aria-hidden>
+      <span className="mb-4 text-foreground" aria-hidden>
         <MavenMark size={34} />
       </span>
       <h2 className="m-0 mb-2.5 font-serif text-[24px] font-normal leading-[1.24] text-foreground">

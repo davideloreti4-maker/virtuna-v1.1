@@ -33,10 +33,10 @@ export function HomeGreeting({ className }: HomeGreetingProps) {
         className,
       )}
     >
-      {/* Brand mark — logo is a sanctioned accent home (dosage LOCKED). */}
+      {/* Brand mark — rendered in cream (foreground), matching the light chrome. */}
       <span
         className={cn(
-          "mb-5 text-accent",
+          "mb-5 text-foreground",
           !reducedMotion && "transition-all duration-300",
         )}
         aria-hidden="true"
