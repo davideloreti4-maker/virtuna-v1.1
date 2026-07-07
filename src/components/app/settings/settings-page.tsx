@@ -8,6 +8,7 @@ import {
   CreditCard,
   Users,
   Sparkles,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileSection } from "./profile-section";
@@ -16,6 +17,15 @@ import { NotificationsSection } from "./notifications-section";
 import { BillingSection } from "./billing-section";
 import { TeamSection } from "./team-section";
 import { CreatorProfileSection } from "./creator-profile-section";
+import { ReferralsSection } from "@/components/referral/referrals-section";
+
+interface ReferralData {
+  eligible: boolean;
+  referralLink: string;
+  clicks: number;
+  conversions: number;
+  earningsCents: number;
+}
 
 interface SettingsPageProps {
   defaultTab?:
@@ -24,7 +34,9 @@ interface SettingsPageProps {
     | "notifications"
     | "billing"
     | "team"
-    | "creator-profile";
+    | "creator-profile"
+    | "referrals";
+  referral?: ReferralData;
 }
 
 const TABS = [
@@ -32,11 +44,12 @@ const TABS = [
   { value: "account", label: "Account", icon: Settings },
   { value: "notifications", label: "Notifications", icon: Bell },
   { value: "billing", label: "Billing", icon: CreditCard },
+  { value: "referrals", label: "Referrals", icon: Gift },
   { value: "team", label: "Team", icon: Users },
   { value: "creator-profile", label: "Creator Profile", icon: Sparkles },
 ] as const;
 
-export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
+export function SettingsPage({ defaultTab = "profile", referral }: SettingsPageProps) {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="mb-8 text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Settings</h1>
@@ -76,6 +89,15 @@ export function SettingsPage({ defaultTab = "profile" }: SettingsPageProps) {
           </Tabs.Content>
           <Tabs.Content value="billing" className="outline-none">
             <BillingSection />
+          </Tabs.Content>
+          <Tabs.Content value="referrals" className="outline-none">
+            <ReferralsSection
+              eligible={referral?.eligible ?? false}
+              referralLink={referral?.referralLink ?? ""}
+              clicks={referral?.clicks ?? 0}
+              conversions={referral?.conversions ?? 0}
+              earningsCents={referral?.earningsCents ?? 0}
+            />
           </Tabs.Content>
           <Tabs.Content value="team" className="outline-none">
             <TeamSection />

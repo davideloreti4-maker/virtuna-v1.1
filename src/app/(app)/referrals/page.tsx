@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation";
 
 /**
- * /referrals — deep-link preservation redirect (Surfaces IA rationalization, 2026-07-04).
+ * /referrals — deep-link preservation redirect.
  *
- * The standalone referrals surface was folded into the GROW hub as its "Referrals" tab
- * (still Pro-gated; the link + performance tiles live there now, restyled onto the matte
- * system). This route is retained ONLY as a redirect so existing bookmarks / deep links to
- * /referrals keep resolving — mirroring /discover→/feed and /saved→/library.
+ * The referral dashboard was demoted into /settings (Referrals tab) — it's Maven's own
+ * growth mechanic, so it lives with account/billing rather than a top-nav surface. This
+ * route is retained ONLY as a redirect so existing bookmarks / deep links keep resolving.
  */
 export default function ReferralsPage() {
-  redirect("/grow?tab=referrals");
+  redirect("/settings?tab=referrals");
 }

@@ -32,9 +32,16 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { Scales, Sparkle, ArrowRight } from "@phosphor-icons/react";
+import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
+import type { Pillar } from "@/lib/room-contract/mock-room";
+import { AnalyticsView } from "@/components/analytics/analytics-view";
 
 interface AudienceManagerProps {
   className?: string;
+  /** Real account metrics for the folded-in "Your account" analytics band. */
+  snapshots?: AccountSnapshot[];
+  /** Real content pillars for the analytics band's content-mix zone. */
+  pillars?: Pillar[];
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -105,7 +112,7 @@ function AudienceListSkeleton() {
   );
 }
 
-export function AudienceManager({ className }: AudienceManagerProps) {
+export function AudienceManager({ className, snapshots = [], pillars = [] }: AudienceManagerProps) {
   const router = useRouter();
   const supabase = createClient();
   const [audiences, setAudiences] = useState<Audience[]>([]);
@@ -436,6 +443,23 @@ export function AudienceManager({ className }: AudienceManagerProps) {
 
             <div className="flex flex-col gap-6">{renderSections()}</div>
           </div>
+        )}
+
+        {/* Your account — the real analytics band (folded in from the retired /grow "Numbers"
+            tab). Sits below the roster so the audiences stay the hero; your numbers + content
+            mix are the supporting context for who your people are. Hidden in compare mode. */}
+        {!selectionMode && (
+          <section className="mt-10 border-t border-white/[0.06] pt-8">
+            <div className="mb-4">
+              <h2 className="text-[17px] font-semibold tracking-[-0.01em] text-foreground">
+                Your account
+              </h2>
+              <p className="mt-1 text-sm text-foreground-secondary">
+                Your real numbers, over time — the ground truth behind your people.
+              </p>
+            </div>
+            <AnalyticsView snapshots={snapshots} pillars={pillars} />
+          </section>
         )}
 
         <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>

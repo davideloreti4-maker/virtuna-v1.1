@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * ReferralsTab — the GROW hub's "Referrals" tab body (shell-less). Matte redesign of the
- * old standalone /referrals surface, elevated to the Hybrid bar: matte tone-zones +
- * .elev-rest depth on the link row + performance tiles (the old cards used inset-shine
- * shadows + font-bold — both off-system).
+ * ReferralsSection — the referral dashboard, shell-less. Lives as a tab in /settings
+ * (demoted from the retired /grow hub: it's Maven's own growth mechanic, not creator-facing
+ * content value, so it belongs with account/billing). Matte tone-zones + .elev-rest depth
+ * on the link row + performance tiles.
  *
  * Pro-gated: instead of a hollow empty prompt, non-Pro users see the real referral
  * dashboard rendered as a DIMMED, locked preview behind a compact upgrade card — the
@@ -29,7 +29,7 @@ function PerfTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function ReferralsTab({
+export function ReferralsSection({
   eligible,
   referralLink,
   clicks,
