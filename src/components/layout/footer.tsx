@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { cn, FOCUS_RING } from "@/lib/utils";
-import { NumenLogo } from "@/components/brand/numen-logo";
+import { MavenLogo } from "@/components/brand/maven-logo";
 import { NAV_LINKS } from "@/lib/nav";
 
 interface FooterProps {
@@ -34,7 +34,7 @@ const SOCIAL_LINKS = [
  * A STATIC server component (no interactivity — static chrome only). Flat-warm:
  * a tone-step surface with a hairline TOP border, no glass, no gradient, no
  * shine. Three compact columns:
- *  1. Brand — the Stele NumenLogo (cream via currentColor) + a one-line tagline.
+ *  1. Brand — the MavenLogo gull (cream via currentColor) + a one-line tagline.
  *  2. Product — in-page anchor links mirroring the header nav set.
  *  3. Legal/social — Privacy · Terms and X · TikTok placeholder stub links.
  *
@@ -58,7 +58,7 @@ export function Footer({ className }: FooterProps) {
           {/* 1 — Brand + tagline */}
           <div className="flex flex-col gap-3">
             <span className="flex items-center text-foreground">
-              <NumenLogo size={24} />
+              <MavenLogo size={24} />
             </span>
             <p className="max-w-[22ch] text-sm text-foreground-secondary">
               Know if it&apos;ll pop before you post.

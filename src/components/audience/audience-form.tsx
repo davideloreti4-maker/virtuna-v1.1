@@ -260,7 +260,7 @@ export function AudienceForm({ existing, initialMode, className }: AudienceFormP
           options={GOAL_INTENT_OPTIONS}
           value={goalIntent}
           onChange={(v) => setGoalIntent(v as GoalIntent)}
-          placeholder="Goal intent (how Numen weights the audience)"
+          placeholder="Goal intent (how Maven weights the audience)"
         />
       </div>
 

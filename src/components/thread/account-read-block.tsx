@@ -247,7 +247,7 @@ function Accuracy({ trackRecord }: { trackRecord: AccountReadBlock['props']['tra
     >
       {trackRecord ? (
         <>
-          Numen has been{' '}
+          Maven has been{' '}
           <span className="font-semibold text-foreground">within {trackRecord.withinPct}%</span> on your last{' '}
           <span className="font-semibold text-foreground">{trackRecord.lastN}</span> posts.
         </>

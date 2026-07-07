@@ -9,7 +9,7 @@ import { Footer } from "@/components/layout/footer";
  *
  * Behaviors under test (PLAN 01-05, UI-SPEC §Component Inventory item 3 +
  * Copywriting Contract):
- *  - NAV-02: renders the Numen brand (NumenLogo "Numen" wordmark) AND no longer
+ *  - NAV-02: renders the Maven brand (MavenLogo "Maven" wordmark) AND no longer
  *    carries any old "Artificial Societies" content.
  *  - NAV-02: provides in-page anchor links mirroring the header nav set
  *    (#how-it-works, #the-simulation, #pricing, #faq).
@@ -22,10 +22,10 @@ import { Footer } from "@/components/layout/footer";
  */
 describe("<Footer>", () => {
   describe("brand (NAV-02)", () => {
-    it("renders the NumenLogo via the 'Numen' wordmark", () => {
+    it("renders the MavenLogo via the 'Maven' wordmark", () => {
       render(<Footer />);
-      // The NumenLogo wordmark renders the brand text "Numen".
-      expect(screen.getAllByText("Numen").length).toBeGreaterThanOrEqual(1);
+      // The MavenLogo wordmark renders the brand text "Maven".
+      expect(screen.getAllByText("Maven").length).toBeGreaterThanOrEqual(1);
     });
 
     it("contains no old 'Artificial Societies' content", () => {

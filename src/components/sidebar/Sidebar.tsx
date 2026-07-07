@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Sidebar — lean flat-warm shell (Numen Rework P1, D-10..D-16)
+ * Sidebar — lean flat-warm shell (Maven Rework P1, D-10..D-16)
  *
  * Sections (top → bottom):
  *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
@@ -47,7 +47,7 @@ import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { NumenMark } from "@/components/brand/numen-logo";
+import { MavenMark } from "@/components/brand/maven-logo";
 import {
   useThreadList,
   useCreateThread,
@@ -441,8 +441,8 @@ export function Sidebar() {
           )}
         >
           {!effectiveCollapsed && (
-            <Link href="/" className="group text-accent pl-2" aria-label="Numen home">
-              <NumenMark size={26} />
+            <Link href="/" className="group text-accent pl-2" aria-label="Maven home">
+              <MavenMark size={26} />
             </Link>
           )}
           <Button

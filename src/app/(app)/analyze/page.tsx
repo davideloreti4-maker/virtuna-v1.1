@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Analyze | Maven',
-  description: "Analyze your TikTok content with Numen's prediction engine.",
+  description: "Analyze your TikTok content with Maven's prediction engine.",
 };
 
 /**

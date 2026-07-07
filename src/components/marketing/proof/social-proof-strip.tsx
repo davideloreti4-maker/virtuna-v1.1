@@ -56,7 +56,7 @@ export function SocialProofStrip({ className }: { className?: string }) {
     <div className={cn("w-full", className)}>
       {/* Peer-count trust stat — the strip's one accessible text node. */}
       <p className="text-center text-sm font-medium text-foreground-secondary tracking-wide">
-        Join 2,000+ creators already running Numen Simulations
+        Join 2,000+ creators already running Maven Simulations
       </p>
 
       {/* Wordmark roster — decorative, hidden from a11y tree (Pitfall 4). */}

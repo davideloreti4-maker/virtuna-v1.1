@@ -31,21 +31,21 @@ interface Testimonial {
 const TESTIMONIALS: readonly Testimonial[] = [
   {
     quote:
-      "I ran my last three TikToks through Numen before posting. The one with the highest Simulation score pulled 2.3M views in 48 hours. I don't post without it now.",
+      "I ran my last three TikToks through Maven before posting. The one with the highest Simulation score pulled 2.3M views in 48 hours. I don't post without it now.",
     name: "Maya Chen",
     handle: "mayachen.creates",
     metric: "+2.3M views on the first verified post",
   },
   {
     quote:
-      "My hook rate was quietly killing me — Numen showed me exactly where viewers were tapping away at second four. Fixed that, tripled my follow-throughs overnight.",
+      "My hook rate was quietly killing me — Maven showed me exactly where viewers were tapping away at second four. Fixed that, tripled my follow-throughs overnight.",
     name: "Jordan Ellis",
     handle: "jordanellis",
     metric: "3× hook completion rate after one fix",
   },
   {
     quote:
-      "OpusClip told me what performed. Numen tells me WHY — and what to change before I even film. That's a different product entirely.",
+      "OpusClip told me what performed. Maven tells me WHY — and what to change before I even film. That's a different product entirely.",
     name: "Priya Sharma",
     handle: "priyacreates",
     metric: "First 100k-view post within two weeks",

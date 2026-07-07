@@ -240,6 +240,27 @@ export function AudiencePresence({
   // to the honest score/readiness and the arrival badge (below) pops.
   const displayPulse = reacting ? LOADING_COPY : pulseText;
 
+  // Peek-band caption (dock + peek-only). The audience NAME already sits in the switcher
+  // button on the SAME row, so the name-prefixed readiness ("Fitness Creators · 6 personas
+  // ready") duplicated it and truncated to "Fitness Cr…" on mobile. Drop the name here; a
+  // live read / stop-fraction still shows verbatim.
+  const peekPulse = reacting
+    ? LOADING_COPY
+    : stopRead
+      ? `${stopRead.stop} of ${stopRead.total} would stop`
+      : isPersonSim
+        ? "1 reactor ready"
+        : `${rosterCount} personas ready`;
+
+  // Compact IDLE readiness for the mobile DOCK cap, where the switcher chip + expand chevron
+  // leave little room — "6 ready" never truncates, unlike the fuller "6 personas ready". The
+  // live stop-read keeps its full phrasing (it's the meaningful moment; matches peekPulse).
+  const dockPulse = reacting
+    ? LOADING_COPY
+    : stopRead
+      ? `${stopRead.stop} of ${stopRead.total} would stop`
+      : `${rosterCount} ready`;
+
   // The "N new" arrival badge: on the reacting true→false edge (the room just finished
   // reacting), a terracotta pill pops onto the presence and counts up to the roster size —
   // "N people just weighed in." Deterministic (a known integer count); reduced-motion snaps
@@ -550,7 +571,7 @@ export function AudiencePresence({
             />
           ) : (
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6 pt-4">
-              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
+              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{peekPulse}</p>
               <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
                 {isSurface
                   ? SURFACE_IDLE_SUB
@@ -714,9 +735,14 @@ export function AudiencePresence({
               e.stopPropagation();
               setSwitcherOpen((v) => !v);
             }}
-            className="flex min-w-0 items-center gap-2.5 rounded-[10px] px-1.5 py-1 transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+            className={
+              "flex min-w-0 items-center gap-2 rounded-[10px] border py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)] " +
+              (switcherOpen
+                ? "border-[var(--color-border-hover)] bg-[var(--color-hover)]"
+                : "border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-hover)]")
+            }
           >
-            <ConstellationMark width={56} reacting={reacting} />
+            <ConstellationMark width={44} reacting={reacting} />
             <span className="flex items-center gap-1.5 text-[14px] font-semibold text-[var(--color-foreground)]">
               <span className="max-w-[120px] truncate">{audienceName}</span>
               {!reducedMotion && (
@@ -726,6 +752,14 @@ export function AudiencePresence({
                 />
               )}
             </span>
+            {/* Caret — the visible "you can switch audience here" affordance (matches the rail). */}
+            <ChevronDown
+              className={
+                "h-3.5 w-3.5 shrink-0 transition-transform text-[var(--color-foreground-muted)] " +
+                (switcherOpen ? "rotate-180" : "")
+              }
+              aria-hidden
+            />
           </button>
 
           {/* Switcher popover — opens UPWARD (the dock peek is bottom-pinned); shared with the
@@ -734,13 +768,12 @@ export function AudiencePresence({
           {switcherMenu}
         </div>
 
-        <div className="mx-1 h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
         <span
           data-testid="audience-pulse"
           className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
           title={focus?.conceptText}
         >
-          {displayPulse}
+          {dockPulse}
         </span>
         {arrivalBadge}
         {open ? (

@@ -129,7 +129,7 @@ export function ChatThreadView({
               Ask anything about your content.
             </h2>
             <p className="text-sm text-foreground-secondary leading-normal">
-              Numen grounds every answer on your niche and your audience — not a generic chatbot.
+              Maven grounds every answer on your niche and your audience — not a generic chatbot.
               Try &ldquo;what should I post this week?&rdquo; or send an idea to test it.
             </p>
           </div>

@@ -551,8 +551,9 @@ export function ComposerControls({
           aria-expanded={pop === "skill"}
           onClick={() => toggle("skill")}
           className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-surface-elevated px-2.5 py-2",
+            "inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-white/[0.06] bg-surface px-2.5",
             "text-[13.5px] font-semibold text-foreground transition-colors hover:border-white/[0.1]",
+            "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}
         >
           <Ico name="spark" size={15} className="text-accent-text" />

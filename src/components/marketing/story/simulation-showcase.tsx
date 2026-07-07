@@ -22,8 +22,8 @@ import { cn } from "@/lib/utils";
  *      `#the-simulation` anchor; the Newsreader serif stays precious to the
  *      hero, D-C) + a one-line cream-secondary subhead.
  *   2. ONE prominent flat-warm device-framed product visual depicting the SHAPE
- *      of a Numen Simulation — the browser-window chrome reused from the hero
- *      (overflow-hidden window + slim bar with 3 dots + a numen.app pill + the
+ *      of a Maven Simulation — the browser-window chrome reused from the hero
+ *      (overflow-hidden window + slim bar with 3 dots + a maven.app pill + the
  *      layered DARK drop shadow + the faint warm "seat"). The window body is
  *      filled with the 03-04 product-skeleton primitives, top-to-bottom:
  *      ScoreGaugeSkeleton (the hero number) → AudienceCloudSkeleton (with its
@@ -83,7 +83,7 @@ export function SimulationShowcase({ className }: { className?: string }) {
           tokens the 03-00 test queries (audience/simulat/retention) so each
           required token resolves to exactly one text node below. */}
       <p className="mt-4 max-w-[60ch] text-base text-foreground-secondary md:text-lg">
-        Paste a TikTok and Numen returns the full picture — the shape of your
+        Paste a TikTok and Maven returns the full picture — the shape of your
         prediction, before you post.
       </p>
 
@@ -113,13 +113,13 @@ export function SimulationShowcase({ className }: { className?: string }) {
               <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
             </span>
             <span className="mx-auto rounded-md bg-background px-4 py-1 font-mono text-[11px] tracking-wide text-foreground-muted">
-              numen.app
+              maven.app
             </span>
             {/* spacer keeps the address pill optically centered vs the dots */}
             <span className="w-[42px]" aria-hidden="true" />
           </div>
           {/* window body — filled with the 03-04 product-skeleton primitives so
-              it reads as the SHAPE of a Numen Simulation (gauge → cloud+watch% →
+              it reads as the SHAPE of a Maven Simulation (gauge → cloud+watch% →
               driver rows), not an empty void. HEIGHT-CAPPED (max-h, GAP-2) so the
               frame is a compact product window, not a ~640px empty rectangle. The
               skeletons carry no "Simulat*" text — the LOCKED <h2>"The Simulation"

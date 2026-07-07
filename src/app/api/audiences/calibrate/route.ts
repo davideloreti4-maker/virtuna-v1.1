@@ -134,7 +134,7 @@ export async function POST(request: Request): Promise<Response> {
           send("fallback", {
             reason: "thin",
             message:
-              `We couldn't read enough from @${handle ?? name} to calibrate a personal audience, so Numen is using General for now. Try again when your account has more public activity.`,
+              `We couldn't read enough from @${handle ?? name} to calibrate a personal audience, so Maven is using General for now. Try again when your account has more public activity.`,
           });
           return;
         }
