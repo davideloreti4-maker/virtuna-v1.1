@@ -39,7 +39,6 @@ import { TodaysPlan } from "./sections/todays-plan";
 import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
 import { FirstRun } from "./sections/first-run";
-import { SurfaceDock } from "./surface-dock";
 // Seam 4 GRAFT — the Room-owned embeddable composer atom (was the surfaces `./embedded-composer`
 // stub, now retired). One composer atom, Room-owned, so /start and /home never drift.
 import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
@@ -48,10 +47,6 @@ import { RoomDrawer, type RoomFocus } from "./room-drawer";
 // server confidence gate). Mounted read-only here; it owns its own fetch (react-query).
 import { RecalibrationNudge } from "@/components/flywheel/recalibration-nudge";
 
-/** Real audience-row UUID (or null=General) — the only shapes the last-audience persist accepts
- *  (virtual preset ids aren't UUIDs → stay session-local, never PUT). Mirrors composer.tsx. */
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function StartPage({
   initialFirstRun = false,
@@ -94,7 +89,7 @@ export function StartPage({
   // handleSelectAudience) — the refresh routes server-resolve the audience from that setting, so
   // the re-warm POST must follow the PUT. When it changes, both sections re-sim against the new
   // audience (a cache HIT server-side if that audience was already warmed today).
-  const [warmAudienceKey, setWarmAudienceKey] = useState<string>(
+  const [warmAudienceKey] = useState<string>(
     initialSelectedAudienceId ?? "general",
   );
 
@@ -135,42 +130,16 @@ export function StartPage({
   );
   const planList = useMemo(() => planToList(plan), [plan]);
 
-  const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(
+  const [selectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
   );
   const [verb, setVerb] = useState<Verb>("Make");
   const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
   const [focus, setFocus] = useState<RoomFocus | null>(null);
-  const [reacting, setReacting] = useState(false);
+  const [, setReacting] = useState(false);
 
   // The active audience the dock renders (null = General — the presence shows the General state).
   const activeAudience = audiences.find((a) => a.id === selectedAudienceId) ?? null;
-
-  // Switch the dock's audience + persist it as the USER-level last-used (resolveUserAudience), so
-  // the pick survives a reload and seeds /home's next thread — mirrors composer.handleSelectAudience.
-  // Only a real UUID (or null=General) is a valid last-used pin; presets stay session-local.
-  // The in-memory pick reflects instantly (dock); the pre-tested sections re-sim once the persist
-  // lands — we advance `warmAudienceKey` in the PUT's success handler (NOT before), because the
-  // refresh routes resolve the audience from this persisted setting (the POST must follow the PUT).
-  const handleSelectAudience = (audience: Audience) => {
-    const newId = audience.is_general ? null : audience.id;
-    setSelectedAudienceId(newId);
-    if (newId === null || UUID_PATTERN.test(newId)) {
-      void fetch("/api/settings/last-audience", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ audienceId: newId }),
-      })
-        .then((r) => {
-          // Only re-warm once the switch is actually saved — a failed persist keeps the current
-          // cards (honest: never attribute a section to an audience the server didn't record).
-          if (r.ok) setWarmAudienceKey(newId ?? "general");
-        })
-        .catch(() => {});
-    }
-    // Presets (non-UUID) stay session-local — not persistable, so not server-resolvable → no
-    // re-warm; the dock reflects the pick, the sections keep the last real-audience cards.
-  };
 
   // Index every card so a tapped card can open the Room anchored on it (Seam 1 → 2). Both ideas
   // and outliers carry REAL Flash personas now → the actual Room (AmbientRoom).
@@ -346,18 +315,15 @@ export function StartPage({
         )}
       </div>
 
-      {/* Docked ambient presence + embedded composer — pinned bottom, one object */}
-      <div className="sticky bottom-0 z-30">
-        <div className="pointer-events-none h-6 bg-gradient-to-t from-[color:var(--color-background)] to-transparent" />
-        <div className="bg-[color:var(--color-background)] px-4 pb-4">
-          <div className="mx-auto flex w-full max-w-[720px] flex-col gap-2 lg:max-w-[680px]">
-            <SurfaceDock
-              audience={activeAudience}
-              audiences={audiences}
-              selectedAudienceId={selectedAudienceId}
-              onSelectAudience={handleSelectAudience}
-              reacting={reacting}
-            />
+      {/* Docked embedded composer — pinned bottom, floats over the page. The backdrop is
+          transparent (only a short gradient fade above) so the page content stays visible
+          behind/under the composer instead of being masked by a solid block. The empty area
+          is click-through (pointer-events-none) so taps land on the content beneath; the
+          composer box itself re-enables pointer events. */}
+      <div className="pointer-events-none sticky bottom-0 z-30">
+        <div className="h-6 bg-gradient-to-t from-[color:var(--color-background)] to-transparent" />
+        <div className="px-4 pb-4">
+          <div className="pointer-events-auto mx-auto w-full max-w-[720px] lg:max-w-[680px]">
             <EmbeddedComposer
               verb={verb}
               onVerbChange={setVerb}
