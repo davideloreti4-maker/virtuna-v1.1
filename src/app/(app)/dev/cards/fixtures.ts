@@ -1,0 +1,463 @@
+/**
+ * Dev-gallery fixtures — the exact block payloads the thread renders, per skill.
+ *
+ * SSOT: blocks are the SAME shapes validated by src/lib/tools/blocks.ts + profile-blocks.ts
+ * (block-registry.ts). Typed to the Zod-inferred block types below, so a schema change breaks
+ * the build here first. Group A blocks feed the real *-thread-view wrappers (1:1 with a
+ * just-completed run); Group B blocks render through MessageBlocks exactly as the thread mounts
+ * them (profile / simulate / predict / text-Read / primitives).
+ *
+ * Cover / avatar URLs use picsum.photos seeds so image-bearing cards render *populated*; the
+ * real cards take ephemeral TikTok-CDN URLs and degrade to placeholders on error (that degrade
+ * path is exercised by the 4th analyzed-video below, which omits a coverUrl).
+ */
+
+import type {
+  IdeaCardBlock,
+  HookCardBlock,
+  ScriptCardBlock,
+  RemixCardBlock,
+  OutlierGridBlock,
+  MultiAudienceReadBlock,
+  AccountReadBlock,
+  MarkdownBlock,
+  ReactionPersona,
+} from "@/lib/tools/blocks";
+import type {
+  ProfileReadBlock,
+  ReactionDistributionBlock,
+  PredictionGaugeBlock,
+} from "@/lib/tools/profile-blocks";
+import type { StageState } from "@/components/thread/progress-checklist";
+
+const IMG = (seed: string, w: number, h: number) =>
+  `https://picsum.photos/seed/${seed}/${w}/${h}`;
+
+/** A reusable 10-persona reaction spread (the exact {archetype, verdict, quote} SIMs emit). */
+export const PERSONAS: ReactionPersona[] = [
+  { archetype: "The Skeptic", verdict: "scroll", quote: "Heard this a hundred times — what's actually new?" },
+  { archetype: "The Aspirant", verdict: "stop", quote: "Okay that opening line got me, I need to know the rest." },
+  { archetype: "The Busy Pro", verdict: "stop", quote: "Fast and to the point — I'll give it 10 seconds." },
+  { archetype: "The Lurker", verdict: "scroll", quote: "Feels like an ad, keep scrolling." },
+  { archetype: "The Superfan", verdict: "stop", quote: "She always delivers, watching all of it." },
+  { archetype: "The Newcomer", verdict: "stop", quote: "Wait, is that actually true? Tell me more." },
+  { archetype: "The Critic", verdict: "scroll", quote: "The hook overpromises, I can smell the letdown." },
+  { archetype: "The Sharer", verdict: "stop", quote: "My group chat needs to see this immediately." },
+  { archetype: "The Time-poor", verdict: "scroll", quote: "Too slow to get going, out." },
+  { archetype: "The Believer", verdict: "stop", quote: "This is exactly the nudge I needed today." },
+];
+
+/** A completed 3-step stage plan → drives the collapsed "✓ Ran your audience · N steps" receipt. */
+export const doneStages = (names: string[]): StageState[] =>
+  names.map((name) => ({ name, status: "done" }));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group A — skill blocks (feed the real *-thread-view wrappers)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const IDEA_BLOCKS: IdeaCardBlock[] = [
+  {
+    type: "idea-card",
+    props: {
+      title: "The 30-day silence experiment",
+      angle: "Absence as a growth lever — what happens when you deliberately go quiet.",
+      whyItFits: "Your top 3 posts all lead with a counter-intuitive claim about consistency.",
+      mechanism: "Curiosity gap + identity threat (creators fear disappearing).",
+      seedHook: "I stopped posting for 30 days. Here's what actually happened to my account.",
+      needsTake: true,
+      topic: "Creator growth",
+      take: "Consistency is overrated; strategic absence compounds attention.",
+      format: "Talking-head + on-screen data",
+      band: "Strong",
+      fraction: "8/10 stop",
+      scrollQuote: "Okay that opening line got me, I need to know the rest.",
+      model: "sim1-flash",
+      scored: true,
+      personas: PERSONAS,
+    },
+  },
+  {
+    type: "idea-card",
+    props: {
+      title: "Why your best video underperformed",
+      angle: "Post-mortem a 'good' video that flopped — teach the diagnosis, not the win.",
+      whyItFits: "Your audience over-indexes on 'why did this happen' explainer hooks.",
+      mechanism: "Loss-framing + open loop (they fear making the same mistake).",
+      seedHook: "This is the best video I've ever made. It flopped. Here's why.",
+      needsTake: false,
+      topic: "Content strategy",
+      take: "Quality ≠ reach; distribution timing beat the edit.",
+      format: null,
+      band: "Mixed",
+      fraction: "6/10 stop",
+      scrollQuote: "Wait, is that actually true? Tell me more.",
+      model: "sim1-flash",
+      scored: true,
+      personas: PERSONAS.slice(2, 8),
+    },
+  },
+];
+
+export const HOOK_BLOCKS: HookCardBlock[] = [
+  {
+    type: "hook-card",
+    props: {
+      hookLine: "Stop editing your videos. Do this instead.",
+      audienceArchetype: "The Busy Pro",
+      mechanism: "Pattern-interrupt via a permission to quit a painful task.",
+      seedHook: "Stop editing your videos.",
+      rank: 1,
+      band: "Strong",
+      fraction: "7/10 stop",
+      scrollQuote: "Fast and to the point — I'll give it 10 seconds.",
+      model: "sim1-flash",
+      scored: true,
+      channel: "spoken",
+      personas: PERSONAS,
+    },
+  },
+  {
+    type: "hook-card",
+    props: {
+      hookLine: "I analyzed 500 viral videos. They all break one rule.",
+      audienceArchetype: "The Aspirant",
+      mechanism: "Authority + curiosity gap (a hidden rule they don't know).",
+      seedHook: "I analyzed 500 viral videos.",
+      rank: 2,
+      band: "Strong",
+      fraction: "7/10 stop",
+      scrollQuote: "She always delivers, watching all of it.",
+      model: "sim1-flash",
+      scored: true,
+      channel: "visual",
+      personas: PERSONAS.slice(1, 7),
+    },
+  },
+];
+
+export const SCRIPT_BLOCKS: ScriptCardBlock[] = [
+  {
+    type: "script-card",
+    props: {
+      openingBeatSeed: "I stopped editing my videos and my views tripled.",
+      beats: [
+        { label: "Hook", content: "I stopped editing my videos and my views tripled.", timing: "0–3s", retentionMarker: "Outcome-first claim creates an immediate 'how?' gap." },
+        { label: "Setup", content: "For two years I spent 6 hours per video in CapCut. Cuts, captions, zooms — the works.", timing: "3–10s", retentionMarker: "Relatable pain establishes the stakes before the turn." },
+        { label: "Turn", content: "Then I noticed my raw, one-take clips were outperforming the polished ones 3 to 1.", timing: "10–20s", retentionMarker: "The counter-intuitive reversal is the payoff hinge." },
+        { label: "Payoff", content: "Turns out the algorithm rewards watch-time, and over-editing was killing my pacing.", timing: "20–35s", retentionMarker: "Names the mechanism — gives the viewer a transferable rule." },
+        { label: "CTA", content: "Try one unedited take this week and tell me your retention. I bet it climbs.", timing: "35–40s", retentionMarker: "Low-friction challenge invites a comment (engagement)." },
+      ],
+      band: "Strong",
+      fraction: "7/10 stop",
+      scrollQuote: "Fast and to the point — I'll give it 10 seconds.",
+      model: "sim1-flash",
+      personas: PERSONAS,
+    },
+  },
+];
+
+export const REMIX_BLOCKS: RemixCardBlock[] = [
+  {
+    type: "remix-card",
+    props: {
+      adaptedHook: "I fired my whole marketing team and replaced them with 3 prompts.",
+      angle: "Shock-firing frame borrowed from a business-teardown viral.",
+      whoItsFor: "Solo founders drowning in growth busywork.",
+      formatBorrowed: "Talking-head confession + receipts overlay",
+      coverUrl: IMG("remixsrc", 300, 400),
+      sourceDecode: {
+        hookPattern: "Opens on an irreversible, taboo decision ('I fired…') to trigger loss-aversion attention.",
+        structure: "Confession → escalating proof → reframe → generalizable takeaway. Tight 4-beat spine.",
+        theTurn: "The reveal that the 'team' was AI — recontextualizes the whole cold open.",
+        emotionalBeat: "Vindication: the viewer roots for the underdog who beat the expensive system.",
+      },
+      band: "Mixed",
+      fraction: "5/10 stop",
+      scrollQuote: "Feels like an ad, keep scrolling.",
+      model: "sim1-flash",
+      audienceName: "Bootstrapped Founders",
+      personas: PERSONAS,
+    },
+  },
+];
+
+export const CHAT_BLOCKS: MarkdownBlock[] = [
+  {
+    type: "markdown",
+    props: {
+      text:
+        "For this week, lean into your **explainer** format — it's your strongest with this audience.\n\nThree angles worth posting:\n\n1. **The mistake post** — \"Why your best video underperformed.\" Diagnosis content over-indexes for your people.\n2. **The contrarian take** — challenge a piece of common advice in your niche.\n3. **The receipts post** — show a real before/after with numbers.\n\nWant me to turn any of these into hooks and test them against your audience?",
+    },
+  },
+];
+
+export const EXPLORE_BLOCKS: OutlierGridBlock[] = [
+  {
+    type: "outlier-grid",
+    props: {
+      mode: "profile",
+      tiles: [
+        {
+          platformVideoId: "7291822011",
+          videoUrl: "https://www.tiktok.com/@demo/video/7291822011",
+          caption: "The one habit that 10x'd my mornings (it's not what you think)",
+          coverUrl: IMG("out1", 300, 400),
+          views: 2_400_000, likes: 312_000, comments: 8_400, shares: 41_200, saves: 96_500,
+          durationSeconds: 34, postedAt: "2026-05-18T09:12:00.000Z",
+          multiplier: 12.4, baselineLabel: "vs own", source: "Your channel",
+          fit: { level: "Strong" }, trackable: false,
+        },
+        {
+          platformVideoId: "7288100422",
+          videoUrl: "https://www.tiktok.com/@rival/video/7288100422",
+          caption: "Why your content isn't landing (harsh but true)",
+          coverUrl: IMG("out2", 300, 400),
+          views: 890_000, likes: 61_000, comments: 3_100, shares: 12_800, saves: 22_400,
+          durationSeconds: 51, postedAt: "2026-06-02T14:40:00.000Z",
+          multiplier: 4.1, baselineLabel: "vs niche", source: "Competitor",
+          fit: { level: "Fair" }, trackable: true, trackHandle: "rival",
+        },
+        {
+          platformVideoId: "7290044111",
+          videoUrl: "https://www.tiktok.com/@demo/video/7290044111",
+          caption: "I read 40 books this year. These 3 changed everything.",
+          views: 156_000, likes: 9_200, comments: 640, shares: 1_900, saves: 7_800,
+          durationSeconds: 42, postedAt: "2026-06-21T18:05:00.000Z",
+          multiplier: 1.8, baselineLabel: "vs own", source: "Your channel",
+          fit: { level: "Weak" }, trackable: false,
+        },
+      ],
+    },
+  },
+];
+
+export const ACCOUNT_BLOCK: AccountReadBlock = {
+  type: "account-read",
+  props: {
+    handle: "maven.creator",
+    profile: {
+      handle: "maven.creator",
+      displayName: "Maven Creator",
+      avatarUrl: IMG("avatar", 120, 120),
+      verified: true,
+      followerCount: 148_200,
+      videoCount: 213,
+    },
+    analyzedVideos: [
+      { coverUrl: IMG("post1", 120, 210), views: 2_400_000, caption: "The one habit that 10x'd my mornings", videoUrl: "https://www.tiktok.com/@demo/video/1" },
+      { coverUrl: IMG("post2", 120, 210), views: 640_000, caption: "Why your content isn't landing", videoUrl: "https://www.tiktok.com/@demo/video/2" },
+      { coverUrl: IMG("post3", 120, 210), views: 320_000, caption: "I read 40 books this year", videoUrl: "https://www.tiktok.com/@demo/video/3" },
+      { views: 91_000, caption: "Cover expired — degrades to placeholder tile", videoUrl: "https://www.tiktok.com/@demo/video/4" },
+      { coverUrl: IMG("post5", 120, 210), views: 58_000, caption: "My honest editing setup", videoUrl: "https://www.tiktok.com/@demo/video/5" },
+    ],
+    patterns: {
+      working: [
+        "Counter-intuitive claims in the first 2 seconds",
+        "On-screen data receipts backing the hook",
+        "One clear takeaway per video",
+      ],
+      fix: [
+        "Middles sag — 40% drop between 8s and 15s",
+        "CTAs are vague ('follow for more')",
+      ],
+      recurringHooks: ['"Stop doing X"', '"I tried X for 30 days"', '"Nobody talks about X"'],
+      formatMix: [
+        { label: "Talking-head", count: 96, pct: 45 },
+        { label: "Voiceover + b-roll", count: 64, pct: 30 },
+        { label: "Text-on-screen", count: 53, pct: 25 },
+      ],
+      dropPoints: [
+        "Second 8 — the setup runs too long before the turn",
+        "Second 22 — the CTA arrives before the payoff fully lands",
+      ],
+    },
+    trackRecord: { withinPct: 9, lastN: 12 },
+  },
+};
+
+// A representative user prompt echoed at the top of each thread view (ThreadShell userTurn).
+export const USER_TURNS = {
+  ideas: "Give me content ideas about creator growth",
+  hooks: "Write me hooks for a video on why over-editing hurts your reach",
+  script: "Turn that #1 hook into a full script",
+  remix: "Remix this video for bootstrapped founders",
+  chat: "What should I post this week?",
+  explore: "Show me what's working in my niche",
+  account: "Read my account",
+} as const;
+
+// The engine follow-up (outro) that trails a completed generative run.
+export const FOLLOWUPS = {
+  ideas: "**The silence experiment** tested strongest with your audience. Want me to turn it into hooks?",
+  hooks: "**#1** is your strongest opener. Want me to write it into a full script?",
+  script: "The open holds 7/10. Want me to test the full script against your audience?",
+  remix: "The adapted hook lands Mixed — the founder frame helps but the middle needs a sharper turn.",
+} as const;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group B — in-thread blocks (rendered through MessageBlocks, exactly as the thread mounts them)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PROFILE_READ_BLOCK: ProfileReadBlock = {
+  type: "profile-read",
+  props: {
+    subjectName: "Alex Rivera",
+    subjectKind: "person",
+    identity: {
+      traits: ["Analytical", "Risk-averse", "Status-conscious"],
+      commStyle: "Hedged and precise — qualifies claims, avoids absolutes.",
+      drivers: ["Being seen as competent", "Avoiding public mistakes"],
+    },
+    tells: [
+      { tell: "Defers commitment when uncertain", evidence: '"I\'d need to double-check before I could sign off on that."' },
+      { tell: "Signals expertise pre-emptively", evidence: '"Having done this for twelve years, I can tell you…"' },
+    ],
+    howTheyReact: "Warms to proposals framed as low-risk, reversible pilots with a clear owner.",
+    goalScope: "Get buy-in on a new content workflow",
+    forensic: {
+      deceptionLikelihood: "Low",
+      cues: [
+        { timestamp: "0:42", observation: "Steady eye contact while stating the budget number", inference: "Genuinely confident in the figure — not fabricated." },
+        { timestamp: "1:15", observation: "Brief pause + qualifier before the timeline", inference: "Timeline is softer than presented; expect slippage." },
+      ],
+    },
+    caveat: "A read on limited signal — treat as a hypothesis to test in the next conversation, not a verdict.",
+    savedAudienceId: "aud_demo_alex",
+    model: "sim1-max",
+    tier: "Directional",
+  },
+};
+
+const REACTION_DISTRIBUTION_BLOCK: ReactionDistributionBlock = {
+  type: "reaction-distribution",
+  props: {
+    audienceName: "Bootstrapped Founders",
+    audienceId: "aud_demo_founders",
+    subjectKind: "panel",
+    band: "Strong",
+    fraction: "7/10 react",
+    themes: [
+      { label: "Relief", quote: "Finally someone says the quiet part — I don't need a big team." },
+      { label: "Doubt", quote: "Sounds great until it breaks at scale, then what?" },
+    ],
+    reactions: PERSONAS,
+    model: "sim1-flash",
+    tier: "Directional",
+  },
+};
+
+const PREDICTION_GAUGE_BLOCK: PredictionGaugeBlock = {
+  type: "prediction-gauge",
+  props: {
+    audienceName: "Bootstrapped Founders",
+    scenario: "This 'fire your team, use AI' video crosses 500K views in a week",
+    band: "Lean yes",
+    range: { min: 42, max: 68 },
+    confidence: "Medium",
+    factors: [
+      { analystArchetype: "The Sharer", driver: "Highly shareable taboo framing", direction: "for" },
+      { analystArchetype: "The Skeptic", driver: "Bait-and-switch fatigue in the niche", direction: "against" },
+      { analystArchetype: "The Aspirant", driver: "Aspirational cost-saving outcome", direction: "for" },
+    ],
+    panel: [
+      { archetype: "The Sharer", lean: "strongly_yes", reasoning: "My audience would repost this on sight." },
+      { archetype: "The Skeptic", lean: "lean_no", reasoning: "The hook overpromises; comments may turn hostile." },
+      { archetype: "The Busy Pro", lean: "toss_up", reasoning: "Depends entirely on the first 2 seconds landing." },
+    ],
+    assumptions: ["Posted at a peak slot (weekday evening)", "The creator's baseline is ~120K views/post"],
+    successCriterion: "500K views within 7 days",
+    caveat: "A directional forecast from a General panel — not a validated prediction. Treat the range, not the midpoint, as the signal.",
+    model: "sim1-flash",
+    tier: "Directional",
+  },
+};
+
+const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+  type: "multi-audience-read",
+  props: {
+    model: "sim1-flash",
+    tier: "Directional",
+    audiences: [
+      {
+        name: "Bootstrapped Founders",
+        band: "Strong",
+        fraction: "8/10 stop",
+        interpretation: "This lands hard — the 'fire the team' frame reads as permission to stop overspending.",
+        lever: "Lead with the dollar amount you saved in the first 2 seconds.",
+        whoNotFor: "Enterprise marketers hear it as reckless and scroll.",
+        personas: PERSONAS.slice(0, 6),
+      },
+      {
+        name: "General",
+        band: "Mixed",
+        fraction: "5/10 stop",
+        interpretation: "Half stop for the shock; the other half suspect a bait-and-switch pitch.",
+        lever: "Add a concrete receipt early to convert the skeptics.",
+        whoNotFor: "Casual scrollers with no founder pain scroll past.",
+        personas: PERSONAS.slice(2, 8),
+      },
+    ],
+  },
+};
+
+export interface BlockSection {
+  type: string;
+  label: string;
+  note: string;
+  body: unknown[];
+}
+
+/** Group B — rendered through MessageBlocks, exactly as the thread mounts them. */
+export const BLOCK_SECTIONS: BlockSection[] = [
+  {
+    type: "profile-read",
+    label: "Profile Read (forensic)",
+    note: "Profile skill → behavioral read: identity + tells (verbatim evidence) + forensic cues (Max tier).",
+    body: [PROFILE_READ_BLOCK],
+  },
+  {
+    type: "reaction-distribution",
+    label: "Simulate (reaction distribution)",
+    note: "Simulate skill → 1 panel + stimulus: band + fraction + clustered themes + per-persona reactions.",
+    body: [REACTION_DISTRIBUTION_BLOCK],
+  },
+  {
+    type: "prediction-gauge",
+    label: "Predict (prediction gauge)",
+    note: "Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
+    body: [PREDICTION_GAUGE_BLOCK],
+  },
+  {
+    type: "multi-audience-read",
+    label: "Text Read (multi-audience)",
+    note: "The moat payoff — per-audience band + interpretation + Lever + who-not-for + persona drill.",
+    body: [MULTI_AUDIENCE_READ_BLOCK],
+  },
+  {
+    type: "band",
+    label: "Band (primitive)",
+    note: "The bare honesty signal — band word + audience fraction + SIM provenance. No 0-100.",
+    body: [{ type: "band", props: { band: "Strong", fraction: "7/10 stop", model: "sim1-flash" } }],
+  },
+  {
+    type: "markdown",
+    label: "Markdown (primitive)",
+    note: "Plain narration between cards — the conversational connective tissue.",
+    body: [
+      { type: "markdown", props: { text: "Here's what your audience did with this. **6 of 10 stopped** — the opener carries, but the middle sags. Worth testing a tighter turn." } },
+    ],
+  },
+];
+
+/** Every raw block across BOTH groups — the drift-guard test validates these against the registry. */
+export const ALL_FIXTURE_BLOCKS: unknown[] = [
+  ...IDEA_BLOCKS,
+  ...HOOK_BLOCKS,
+  ...SCRIPT_BLOCKS,
+  ...REMIX_BLOCKS,
+  ...CHAT_BLOCKS,
+  ...EXPLORE_BLOCKS,
+  ACCOUNT_BLOCK,
+  { type: "account-read", props: { handle: "brand.new.creator", fallback: "thin" } },
+  ...BLOCK_SECTIONS.flatMap((s) => s.body),
+];

@@ -112,9 +112,15 @@ function nicheTopPercent(score: number, niche: ComparisonsResponse['niche']): st
   return `Top ${top}%`;
 }
 
-export function Reading() {
-  const { id, data, isLoading } = usePermalinkAnalysis();
-  const { data: comparisons } = useComparisons(id);
+export function Reading({ overrideData }: { overrideData?: PredictionResult } = {}) {
+  const perma = usePermalinkAnalysis();
+  // Additive preview seam (dev gallery / tests): when `overrideData` is supplied the Reading
+  // renders that result directly instead of the permalink fetch. Default undefined → the live
+  // /analyze/[id] path is byte-identical (the hook still runs; its result is used as before).
+  const id = overrideData ? "preview" : perma.id;
+  const data = overrideData ?? perma.data;
+  const isLoading = overrideData ? false : perma.isLoading;
+  const { data: comparisons } = useComparisons(overrideData ? null : perma.id);
   // Phase-4 (REVEAL-01/02): true once we've shown the in-flight skeleton, so the
   // settled thread cascades in (the live build) — but a cold permalink reload of
   // an already-complete Reading just appears at rest (no gratuitous animation).
