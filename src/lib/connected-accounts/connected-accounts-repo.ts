@@ -172,3 +172,78 @@ export async function touchAccountSynced(
     .update({ last_synced_at: new Date().toISOString() })
     .eq("id", accountId);
 }
+
+/**
+ * Make one account the user's primary (the default analytics view + what /start reads).
+ * The partial-unique index (one is_primary per user) forbids two primaries at once, so we
+ * clear every row's is_primary first, THEN set it on the target — two sequential updates,
+ * never transiently violating the index. Both statements are RLS-scoped to the caller and
+ * re-pinned to user_id so a user can only reprimary their own accounts.
+ */
+export async function setPrimaryAccount(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<boolean> {
+  const db = supabase as unknown as UntypedClient;
+  await db
+    .from("connected_accounts")
+    .update({ is_primary: false })
+    .eq("user_id", userId)
+    .eq("is_primary", true);
+  const { error } = await db
+    .from("connected_accounts")
+    .update({ is_primary: true })
+    .eq("user_id", userId)
+    .eq("id", accountId);
+  return !error;
+}
+
+/**
+ * Disconnect an account. The FKs cascade its snapshots/posts (ON DELETE CASCADE) and null
+ * out any audiences.source_account_id (ON DELETE SET NULL) — calibrated audiences survive,
+ * just unlinked. If the removed row was the primary and other accounts remain, the oldest
+ * is promoted so the user always has a primary. RLS-scoped + re-pinned to user_id.
+ */
+export async function deleteConnectedAccount(
+  supabase: SupabaseClient,
+  userId: string,
+  accountId: string,
+): Promise<boolean> {
+  const db = supabase as unknown as UntypedClient;
+
+  // Was this the primary? (decide promotion before the row is gone)
+  const { data: target } = await db
+    .from("connected_accounts")
+    .select("is_primary")
+    .eq("user_id", userId)
+    .eq("id", accountId)
+    .maybeSingle();
+  if (!target) return false;
+
+  const { error } = await db
+    .from("connected_accounts")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", accountId);
+  if (error) return false;
+
+  // Promote the oldest remaining account when we just removed the primary.
+  if ((target as { is_primary?: boolean }).is_primary) {
+    const { data: next } = await db
+      .from("connected_accounts")
+      .select("id")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (next) {
+      await db
+        .from("connected_accounts")
+        .update({ is_primary: true })
+        .eq("user_id", userId)
+        .eq("id", (next as { id: string }).id);
+    }
+  }
+  return true;
+}

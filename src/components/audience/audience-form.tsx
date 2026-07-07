@@ -22,7 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { CalibrationFlow } from "./calibration-flow";
+import type { AccountOption } from "./audience-manager";
 import { cn } from "@/lib/utils";
+
+const ACCOUNT_PLATFORM_LABEL: Record<AccountOption["platform"], string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+};
 
 const PLATFORM_OPTIONS = [
   { value: "tiktok", label: "TikTok" },
@@ -48,16 +55,33 @@ interface AudienceFormProps {
    * (no visible control is added for this).
    */
   initialMode?: Audience["mode"];
+  /** The user's connected accounts — the "Calibrate from" source picker (personal type). */
+  accounts?: AccountOption[];
+  /** Deep-link preselection from the connect flow — jumps straight to a personal calibration. */
+  preselect?: { accountId: string; handle?: string; platform?: string };
   className?: string;
 }
 
-export function AudienceForm({ existing, initialMode, className }: AudienceFormProps) {
+export function AudienceForm({ existing, initialMode, accounts = [], preselect, className }: AudienceFormProps) {
   const router = useRouter();
   const isEdit = !!existing;
 
-  const [name, setName] = useState(existing?.name ?? "");
+  const preselectedAccount = preselect
+    ? accounts.find((a) => a.id === preselect.accountId)
+    : undefined;
+
+  const [name, setName] = useState(
+    existing?.name ?? (preselectedAccount ? `@${preselectedAccount.handle}` : ""),
+  );
   const [type, setType] = useState<AudienceType>(existing?.type ?? "personal");
-  const [platform, setPlatform] = useState<AudiencePlatform>(existing?.platform ?? "tiktok");
+  const [platform, setPlatform] = useState<AudiencePlatform>(
+    existing?.platform ?? (preselectedAccount?.platform as AudiencePlatform) ?? "tiktok",
+  );
+  // "Calibrate from" source: a connected account's handle prefills the calibration step.
+  // null = "A new @handle" (manual entry). Seeded from a connect-flow deep-link.
+  const [sourceHandle, setSourceHandle] = useState<string | null>(
+    preselectedAccount?.handle ?? preselect?.handle ?? null,
+  );
   const [goalLabel, setGoalLabel] = useState(existing?.goal_label ?? "");
   const [goalIntent, setGoalIntent] = useState<GoalIntent | "">(existing?.goal_intent ?? "");
   // Audience axis (D-04). No visible control — preset by the page from ?mode (D-08).
@@ -176,6 +200,8 @@ export function AudienceForm({ existing, initialMode, className }: AudienceFormP
         audience={savedAudience}
         onDone={handleCalibrationDone}
         onSkip={handleCalibrationSkip}
+        prefillHandle={sourceHandle ?? undefined}
+        prefillPlatform={platform}
         className={className}
       />
     );
@@ -230,6 +256,59 @@ export function AudienceForm({ existing, initialMode, className }: AudienceFormP
             : "Describe a target audience by demographics or behavior."}
         </p>
       </div>
+
+      {/* Calibrate from — pick a connected account (prefills its handle + platform) or a new
+          @handle. Only for personal audiences with at least one connected account. */}
+      {type === "personal" && accounts.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <span className="text-sm text-foreground-secondary">Calibrate from</span>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Calibration source">
+            {accounts.map((a) => {
+              const active = sourceHandle === a.handle;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => {
+                    setSourceHandle(a.handle);
+                    setPlatform(a.platform as AudiencePlatform);
+                  }}
+                  className={cn(
+                    "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                    active
+                      ? "border-border-hover bg-hover text-foreground"
+                      : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:bg-white/[0.03] hover:text-foreground",
+                  )}
+                >
+                  @{a.handle}
+                  <span className="ml-1.5 font-mono text-[9px] uppercase tracking-[0.06em] opacity-70">
+                    {ACCOUNT_PLATFORM_LABEL[a.platform]}
+                  </span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              aria-pressed={sourceHandle === null}
+              onClick={() => setSourceHandle(null)}
+              className={cn(
+                "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+                sourceHandle === null
+                  ? "border-border-hover bg-hover text-foreground"
+                  : "border-white/[0.06] text-foreground-secondary hover:border-white/[0.1] hover:bg-white/[0.03] hover:text-foreground",
+              )}
+            >
+              A new @handle
+            </button>
+          </div>
+          <p className="text-xs text-foreground-muted">
+            {sourceHandle
+              ? `We'll read @${sourceHandle} to calibrate the room.`
+              : "You'll enter a @handle in the next step."}
+          </p>
+        </div>
+      )}
 
       {/* Platform */}
       <div className="flex flex-col gap-1.5">

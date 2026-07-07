@@ -4,6 +4,10 @@ import { createClient } from "@/lib/supabase/server";
 import { generateReferralCode } from "@/lib/referral/code-generator";
 import { getUserTier } from "@/lib/whop/subscription";
 import { hasAccessToTier } from "@/lib/whop/config";
+import {
+  listConnectedAccounts,
+  type ConnectedAccount,
+} from "@/lib/connected-accounts/connected-accounts-repo";
 
 export const metadata: Metadata = {
   title: "Settings | Maven",
@@ -17,6 +21,7 @@ interface PageProps {
 const VALID_TABS = [
   "profile",
   "account",
+  "connected",
   "notifications",
   "billing",
   "team",
@@ -41,6 +46,17 @@ export default async function Settings({ searchParams }: PageProps) {
   } = await supabase.auth.getUser();
   const tier = await getUserTier();
   const eligible = hasAccessToTier(tier, "pro");
+
+  // Connected accounts — the "Connected accounts" tab lists them with connect / make-primary /
+  // disconnect. Read server-side (RLS-scoped); empty on error → the section shows its empty state.
+  let connectedAccounts: ConnectedAccount[] = [];
+  if (user) {
+    try {
+      connectedAccounts = await listConnectedAccounts(supabase, user.id);
+    } catch {
+      connectedAccounts = [];
+    }
+  }
 
   const referral = {
     eligible,
@@ -93,5 +109,11 @@ export default async function Settings({ searchParams }: PageProps) {
     referral.earningsCents = conversions?.reduce((sum, c) => sum + c.bonus_cents, 0) ?? 0;
   }
 
-  return <SettingsPage defaultTab={defaultTab} referral={referral} />;
+  return (
+    <SettingsPage
+      defaultTab={defaultTab}
+      referral={referral}
+      connectedAccounts={connectedAccounts}
+    />
+  );
 }
