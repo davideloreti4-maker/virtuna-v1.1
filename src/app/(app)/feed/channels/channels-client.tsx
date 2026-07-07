@@ -10,7 +10,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
+import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
 import {
   AddChannelPanel,
   type AddChannelResultLite,
@@ -130,7 +130,7 @@ export function ChannelsClient() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <FeedViewTabs />
+      <DiscoverTabBar active="channels" />
       <header className="mb-6 mt-5">
         <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Channels</h1>
         <p className="mt-1 text-sm text-foreground-secondary">

@@ -25,7 +25,7 @@ import {
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { FeedViewTabs } from "@/components/feed/feed-view-tabs";
+import { DiscoverTabBar } from "@/components/discover/discover-tab-bar";
 import { HookRow } from "@/components/feed/hook-row";
 import { DEFAULT_HOOKS, type DefaultHook } from "@/lib/hooks/default-hooks";
 import { cn } from "@/lib/utils";
@@ -119,7 +119,7 @@ export function HooksClient() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <FeedViewTabs />
+      <DiscoverTabBar active="hooks" />
       <header className="mb-6 mt-5">
         <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Hooks</h1>
         <p className="mt-1 text-sm text-foreground-secondary">
