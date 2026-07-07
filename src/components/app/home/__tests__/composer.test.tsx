@@ -141,8 +141,8 @@ function submitBtn(container: HTMLElement): HTMLButtonElement {
  * Select a skill via the `/` slash menu (Enter resolves firstSlashSkill).
  * NOTE: firstSlashSkill shares isSkillVisible with the menu — Socials skills resolve
  * only in socials mode, but the General verbs (Profile/Simulate/Predict) are ALWAYS
- * resolvable (refine lane), matching the always-visible General group. They are also
- * reachable via the HomeStarter chips, which call handleUserSelectTool directly.
+ * resolvable (refine lane), matching the always-visible General group. The home
+ * quick-actions grid reaches the creator skills the same way (handleUserSelectTool).
  */
 function selectSkillBySlash(command: string) {
   const field = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -238,11 +238,11 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
 
   it('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
     const { container } = render(<Composer />);
-    // No audience selected (General/null). A General verb is activated via its
-    // starter chip: "Predict an outcome" → handleUserSelectTool("predict"). The
-    // T-07-04-01 gate (shared by simulate + predict) then routes to Build without
-    // firing — same behavior whether the verb was picked via chip, menu, or slash.
-    fireEvent.click(screen.getByRole('button', { name: /predict an outcome/i }));
+    // No audience selected (General/null). A General verb (Predict) is activated via
+    // the `/` slash menu — always resolvable for the General verbs. The T-07-04-01
+    // gate (shared by simulate + predict) then routes to Build without firing — same
+    // behavior whether the verb was picked via a quick action, menu, or slash.
+    selectSkillBySlash('predict');
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(field, { target: { value: 'will this resonate?' } });
     fireEvent.click(submitBtn(container));
@@ -289,10 +289,9 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
       'input[type="file"][accept*=".txt"]',
     ) as HTMLInputElement;
     const clickSpy = vi.spyOn(evidenceInput, 'click');
-    // The slash menu is mode-gated to socials with no General audience (WR-01),
-    // so Profile is activated via its starter chip: "Profile a chat" →
-    // handleUserSelectTool("profile"), which opens the evidence-drop picker.
-    fireEvent.click(screen.getByRole('button', { name: /profile a chat/i }));
+    // Profile is a General verb — always resolvable via the `/` slash menu, which
+    // calls handleUserSelectTool("profile") and opens the evidence-drop picker.
+    selectSkillBySlash('profile');
     expect(clickSpy).toHaveBeenCalled();
     // Profile never routes through the topic submit path.
     expect(calledWith('/api/tools/profile')).toBe(false);

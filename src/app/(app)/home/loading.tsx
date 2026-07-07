@@ -22,11 +22,11 @@ export default function HomeLoading() {
         {/* Composer input block — matches the rounded-2xl composer surface. */}
         <Skeleton className="h-[128px] w-full rounded-2xl" />
 
-        {/* HomeStarter — the 3 starter chips (Test / Profile / Predict). */}
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Skeleton className="h-8 w-40 rounded-full" />
-          <Skeleton className="h-8 w-36 rounded-full" />
-          <Skeleton className="h-8 w-44 rounded-full" />
+        {/* HomeStarter — the creator quick-actions grid (6 cards, 2 columns). */}
+        <div className="mx-auto mt-4 grid w-full max-w-[600px] grid-cols-1 gap-2.5 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-[64px] w-full rounded-[12px]" />
+          ))}
         </div>
       </div>
     </div>

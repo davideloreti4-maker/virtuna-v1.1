@@ -1,31 +1,58 @@
 "use client";
 
 /**
- * HomeStarter — the home empty-state starter block (UX-05 / D-04).
+ * HomeStarter — the new-thread empty-state quick actions (UX-05 / D-04).
  *
- * Renders BELOW the greeting + composer in the previously-LOCKED-empty region
- * (P5 D-18/D-25 deferred the chips + demo to Phase 5; P7 unlocks them):
+ * Renders in the previously-empty region between the greeting and the composer:
  *
- *   - 3 LOCKED-verbatim chips (always render): the Test / Profile / Predict trio
- *     (exact strings live in the JSX below — single source), each wired to a
- *     composer-internal flow via the on* props (no cross-sibling plumbing — the
- *     composer hosts this so the handlers reach the real flows).
+ *   - A QUICK-ACTIONS grid: the highest-value creator jobs-to-be-done, each wired
+ *     to a composer skill via `onQuickAction(tool)` → handleUserSelectTool. The
+ *     model (QUICK_ACTIONS) is the single source: one entry = one card = one skill.
+ *     Cards read as an ACTION the creator wants ("Write scroll-stopping hooks"),
+ *     not the internal skill name — the skill id stays the stable wiring key.
  *
- *   - A one-tap, show-once first-run demo BENEATH the chips: "See it in action"
+ *   - A one-tap, show-once first-run demo BENEATH the grid: "See it in action"
  *     POSTs a small CANNED chat fixture to /api/tools/profile (the cold-start wow,
  *     no chat-export friction — VISION §15.5), then reloads the open thread so the
  *     profile-read card surfaces. "Dismiss" is a muted text link. A localStorage
  *     flag (`numen.home.demo.seen`) hides the demo on the NEXT mount — set on first
- *     run OR on Dismiss. The chips are NOT gated by the flag (only the demo is).
+ *     run OR on Dismiss. The grid is NOT gated by the flag (only the demo is).
  *
  * Matte, NO accent (dosage rule) — the single liveness dot in the presence is the
- * only sanctioned accent on the surface.
+ * only sanctioned accent on the surface. Line-icons reuse the composer's SSOT set.
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { Ico, type ToolId } from "./composer-controls";
 
 /** Show-once localStorage flag for the first-run demo (D-04 — single-device is acceptable). */
 const DEMO_SEEN_KEY = "numen.home.demo.seen";
+
+/**
+ * The quick-actions model — the valuable creator jobs surfaced on a fresh thread.
+ * Ordered by how a creator's week actually flows: idea → hook → script → remix,
+ * then the two "judge something real" reads (a video · your own posts). Each `tool`
+ * maps to a real composer skill (see SKILLS in composer-controls); selecting a card
+ * arms that skill's flow on the active audience. `icon` reuses the composer's
+ * line-icon SSOT so the home matches the skill menu.
+ */
+interface QuickAction {
+  tool: ToolId;
+  icon: string;
+  /** Action-phrased label — what the creator gets, not the internal skill name. */
+  title: string;
+  /** One-line proof of the payoff. */
+  desc: string;
+}
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { tool: "idea",    icon: "bulb",      title: "Get content ideas",           desc: "Fresh angles for your niche" },
+  { tool: "hooks",   icon: "anchor",    title: "Write scroll-stopping hooks", desc: "Ranked strongest-first" },
+  { tool: "script",  icon: "doc",       title: "Script a video",              desc: "Beats + retention markers" },
+  { tool: "remix",   icon: "shuffle",   title: "Remix a viral video",         desc: "Decode a winner → your version" },
+  { tool: "test",    icon: "crosshair", title: "Test a video",                desc: "Watch-through + full audience Read" },
+  { tool: "account", icon: "search",    title: "Read my recent posts",        desc: "See what's landing, and why" },
+];
 
 /**
  * A short, believable chat fixture run through Profile→Read on first tap. Static
@@ -60,24 +87,18 @@ function markDemoSeen(): void {
 }
 
 export interface HomeStarterProps {
-  onChipTest: () => void;
-  onChipProfile: () => void;
-  onChipPredict: () => void;
+  /** Launch a quick action's skill flow (wired to handleUserSelectTool). */
+  onQuickAction: (tool: ToolId) => void;
   /** Fired after the first-run demo POST lands so the host can reload the open thread. */
   onDemoComplete?: () => void;
 }
 
-const CHIP_CLASS =
-  "rounded-[8px] border border-white/[0.06] bg-[#2f2e2b] px-3 py-2 text-[14px] font-normal text-foreground " +
-  "transition-colors hover:border-white/[0.10] hover:bg-[#34322f] focus-visible:outline-none " +
+const CARD_CLASS =
+  "group flex items-start gap-3 rounded-[12px] border border-white/[0.06] bg-surface-sunken px-4 py-3.5 " +
+  "text-left transition-colors hover:border-white/[0.10] hover:bg-surface-elevated focus-visible:outline-none " +
   "focus-visible:ring-1 focus-visible:ring-white/20";
 
-export function HomeStarter({
-  onChipTest,
-  onChipProfile,
-  onChipPredict,
-  onDemoComplete,
-}: HomeStarterProps) {
+export function HomeStarter({ onQuickAction, onDemoComplete }: HomeStarterProps) {
   // Gate the demo behind a mounted flag so server + first client render agree
   // (localStorage is client-only — avoids a hydration mismatch on the demo block).
   const [mounted, setMounted] = useState(false);
@@ -119,20 +140,32 @@ export function HomeStarter({
 
   return (
     <div className="flex w-full flex-col items-center gap-4 pt-8">
-      {/* 3 LOCKED chips — always render (only the demo is show-once). */}
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        <button type="button" onClick={onChipTest} className={CHIP_CLASS}>
-          Test an idea on your audience
-        </button>
-        <button type="button" onClick={onChipProfile} className={CHIP_CLASS}>
-          Profile a chat
-        </button>
-        <button type="button" onClick={onChipPredict} className={CHIP_CLASS}>
-          Predict an outcome
-        </button>
+      {/* Quick-actions grid — always renders (only the demo is show-once). */}
+      <div className="grid w-full max-w-[600px] grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {QUICK_ACTIONS.map((action) => (
+          <button
+            key={action.tool}
+            type="button"
+            onClick={() => onQuickAction(action.tool)}
+            aria-label={action.title}
+            className={CARD_CLASS}
+          >
+            <span className="mt-px shrink-0 text-foreground-secondary transition-colors group-hover:text-foreground">
+              <Ico name={action.icon} size={18} />
+            </span>
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-[14px] font-medium leading-snug text-foreground">
+                {action.title}
+              </span>
+              <span className="truncate text-[12.5px] leading-snug text-foreground-muted">
+                {action.desc}
+              </span>
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* First-run, show-once demo beneath the chips. */}
+      {/* First-run, show-once demo beneath the grid. */}
       {showDemo && (
         <div className="flex items-center gap-3">
           <button
