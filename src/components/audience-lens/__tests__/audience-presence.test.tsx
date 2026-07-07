@@ -189,20 +189,23 @@ describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
     expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
   });
 
-  it('pops a "N new" badge on the reacting true→false edge; reduced-motion snaps to the roster', () => {
-    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
-    // No badge while the room is still reacting.
+  it('pops a "N new" badge on an arrival (arrivalNonce bump); reduced-motion snaps to the roster', () => {
+    // The count-up is driven by `arrivalNonce` (bumped by the composer on the reactions true→false
+    // edge), NOT this component's own reacting edge — the presence remounts across the empty→thread
+    // switch, which used to swallow a mount-seeded edge. See composer.tsx `arrivalNonce`.
+    const { props, rerender } = setup({ focus: null, reacting: false, reducedMotion: true, arrivalNonce: 0 });
+    // No badge before an arrival.
     expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
-    // The room finishes → the badge lands at the full roster (10 personas), immediately.
-    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+    // Reactions land (nonce ticks) → the badge lands at the full roster (10 personas), immediately.
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} />));
     expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
   });
 
   it('counts the badge up one-per-persona when motion is allowed', () => {
     vi.useFakeTimers();
     try {
-      const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: false });
-      act(() => rerender(<AudiencePresence {...props} reacting={false} reducedMotion={false} />));
+      const { props, rerender } = setup({ focus: null, reacting: false, reducedMotion: false, arrivalNonce: 0 });
+      act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} reducedMotion={false} />));
       act(() => vi.advanceTimersByTime(80 * 3));
       expect(screen.getByRole('status', { name: /3 new reactions/i })).toBeInTheDocument();
       act(() => vi.advanceTimersByTime(80 * 10));
@@ -213,19 +216,19 @@ describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
   });
 
   it('clears the arrival badge once the Room opens (acknowledged)', () => {
-    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
-    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+    const { props, rerender } = setup({ focus: null, reacting: false, reducedMotion: true, arrivalNonce: 0 });
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} />));
     expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
-    act(() => rerender(<AudiencePresence {...props} reacting={false} open />));
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} open />));
     expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
   });
 
-  it('clears a stale badge when a NEW read begins (rising edge → "Reading the room…")', () => {
-    const { props, rerender } = setup({ focus: null, reacting: true, reducedMotion: true });
-    act(() => rerender(<AudiencePresence {...props} reacting={false} />));
+  it('clears a stale badge when a NEW read begins (reacting rises → "Reading the room…")', () => {
+    const { props, rerender } = setup({ focus: null, reacting: false, reducedMotion: true, arrivalNonce: 0 });
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} />));
     expect(screen.getByRole('status', { name: /10 new reactions/i })).toBeInTheDocument();
-    // A fresh generation starts → the stale "N new" clears; the pulse reads "Reading the room…".
-    act(() => rerender(<AudiencePresence {...props} reacting={true} />));
+    // A fresh generation starts (reacting rises) → the stale "N new" clears; pulse reads "Reading…".
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} reacting={true} />));
     expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
     expect(screen.getByTestId('audience-pulse').textContent).toMatch(/reading the room/i);
   });
@@ -233,11 +236,12 @@ describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
   it('suppresses the arrival badge on the desktop rail (the Room is always visible there)', () => {
     const { props, rerender } = setup({
       focus: null,
-      reacting: true,
+      reacting: false,
       reducedMotion: true,
       layout: 'rail',
+      arrivalNonce: 0,
     });
-    act(() => rerender(<AudiencePresence {...props} reacting={false} layout="rail" />));
+    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} layout="rail" />));
     expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
   });
 

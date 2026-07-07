@@ -25,6 +25,7 @@
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
+import { useOpenRoomForCard } from '@/lib/hook-test-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BAND_COLOR } from './band-block';
 
@@ -96,15 +97,18 @@ export function ProofUnit({
   const parsed = parseFraction(fraction);
   const bandColor = BAND_COLOR[band];
 
-  return (
-    <LensTrigger
-      flatPersonas={flatPersonas}
-      conceptText={conceptText}
-      rewrite={rewrite}
-      platform={platform}
-      label={label}
-      className="flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]"
-    >
+  // Inside the home composer, "See the room →" opens the docked CURRENT-audience Room anchored
+  // on this card (via OpenRoomContext) — the live audience + this card's real per-persona
+  // reactions — instead of the standalone per-card Lens (placeholder viewers). Off-composer
+  // (calendar / saved / library) the context is null ⇒ fall back to the standalone Lens.
+  const openRoomForCard = useOpenRoomForCard();
+
+  // Same matte proof-box chrome for both entries so the card looks identical either way.
+  const proofBoxClass =
+    'flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
+
+  const proofBody = (
+    <>
       {/* Top — A4: pending shimmer until the score lands, then band · count · ribbon
           (the fraction stated ONCE) resolve in. The quote + Lens cue below ship with the
           card, so the unit is never empty while scoring. */}
@@ -162,6 +166,43 @@ export function ProofUnit({
           </span>
         </div>
       )}
+    </>
+  );
+
+  // Home-composer path: open the docked current-audience Room on this card. Gated on real
+  // reactions (parity with LensTrigger's empty-degrade) so a reaction-less card shows no cue.
+  if (openRoomForCard && flatPersonas.length > 0) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-label={label}
+        onClick={() => openRoomForCard(conceptText)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openRoomForCard(conceptText);
+          }
+        }}
+        style={{ minHeight: 44, cursor: 'pointer' }}
+        className={proofBoxClass}
+      >
+        {proofBody}
+      </div>
+    );
+  }
+
+  // Off-composer fallback: the standalone reusable Lens (calendar / saved / library).
+  return (
+    <LensTrigger
+      flatPersonas={flatPersonas}
+      conceptText={conceptText}
+      rewrite={rewrite}
+      platform={platform}
+      label={label}
+      className={proofBoxClass}
+    >
+      {proofBody}
     </LensTrigger>
   );
 }

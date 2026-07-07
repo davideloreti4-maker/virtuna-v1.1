@@ -129,6 +129,13 @@ export interface AudiencePresenceProps {
    *  While true the presence reads "Reading the room…" + the lit constellation blinks (anticipation);
    *  on the true→false edge a "N new" badge pops + counts up (the arrival). Motion-gated. */
   reacting?: boolean;
+  /** Bumped by the composer on the reactions true→false edge (a generation just finished). Drives
+   *  the "N new" arrival count-up from a STABLE parent so the empty→thread remount can't swallow
+   *  the edge (the pre-2026-07-07 ref-on-this-component approach missed it entirely). */
+  arrivalNonce?: number;
+  /** True when the presence was opened by a card's "See the room →" that pre-focused ONE card —
+   *  the Room then drills straight into that card's people instead of the ranked overview. */
+  drillIntoFocus?: boolean;
   // ── Desktop persistent rail + surface seam (PR-4) ──────────────────────────
   /** 'dock' (default) = the mobile bottom-docked peek + Bloom panel. 'rail' = the desktop
    *  persistent right-rail presentation: an identity header + an ALWAYS-open Room (an idle
@@ -169,6 +176,8 @@ export function AudiencePresence({
   onRewrite,
   rewriteNonce,
   reacting = false,
+  arrivalNonce = 0,
+  drillIntoFocus = false,
   layout = 'dock',
   variant = 'thread',
 }: AudiencePresenceProps) {
@@ -266,18 +275,17 @@ export function AudiencePresence({
   // "N people just weighed in." Deterministic (a known integer count); reduced-motion snaps
   // straight to the final N (no pop, no count). Cleared once the Room opens (acknowledged).
   const [badgeCount, setBadgeCount] = useState<number | null>(null);
-  const prevReactingRef = useRef(reacting);
+  // The arrival count-up is DRIVEN BY `arrivalNonce` (bumped by the composer on the reactions
+  // true→false edge), NOT by this component's own `reacting` edge. Why: the presence remounts
+  // across the empty→thread layout switch that lands mid-generation, which reset the old
+  // mount-seeded ref every time and swallowed the true→false edge (the badge never fired). The
+  // composer is a stable instance, so it owns the edge; here we just react to the nonce ticking.
+  const prevArrivalNonceRef = useRef(arrivalNonce);
   useEffect(() => {
-    const was = prevReactingRef.current;
-    prevReactingRef.current = reacting;
-    if (rosterCount <= 0) return;
-    if (!was && reacting) {
-      // A new read begins (rising edge) → clear any stale "N new" from the prior arrival, so the
-      // pulse can read "Reading the room…" cleanly until the fresh badge pops.
-      setBadgeCount(null);
-      return;
-    }
-    if (!(was && !reacting)) return; // otherwise act only on the true→false edge (the arrival)
+    const prev = prevArrivalNonceRef.current;
+    prevArrivalNonceRef.current = arrivalNonce;
+    if (arrivalNonce === prev || arrivalNonce <= 0) return; // only a genuine new arrival
+    if (rosterCount <= 0 || open) return; // nothing to count / already acknowledged (Room open)
     if (reducedMotion) {
       setBadgeCount(rosterCount); // reduced-motion: snap straight to the final N (no pop, no count)
       return;
@@ -290,7 +298,12 @@ export function AudiencePresence({
       if (n >= rosterCount) clearInterval(t);
     }, ARRIVAL_STEP_MS);
     return () => clearInterval(t);
-  }, [reacting, rosterCount, reducedMotion]);
+  }, [arrivalNonce, rosterCount, reducedMotion, open]);
+  // A fresh read starting (reacting rises) clears any stale "N new" so the pulse reads
+  // "Reading the room…" cleanly until the next arrival pops.
+  useEffect(() => {
+    if (reacting) setBadgeCount(null);
+  }, [reacting]);
   // Clear the badge once the creator opens the Room (the arrival has been seen).
   useEffect(() => {
     if (open) setBadgeCount(null);
@@ -627,10 +640,8 @@ export function AudiencePresence({
           setSwitcherOpen((v) => !v);
         }}
         className={
-          "flex min-w-0 items-center gap-2 rounded-[10px] border py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)] " +
-          (switcherOpen
-            ? "border-[var(--color-border-hover)] bg-[var(--color-hover)]"
-            : "border-[var(--color-border)] hover:border-[var(--color-border-hover)] hover:bg-[var(--color-hover)]")
+          "flex min-w-0 items-center gap-2 rounded-[10px] border border-white/[0.06] bg-surface py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 " +
+          (switcherOpen ? "border-white/[0.1]" : "hover:border-white/[0.1]")
         }
       >
         <ConstellationMark width={40} reacting={reacting} />
@@ -721,6 +732,7 @@ export function AudiencePresence({
                 canRewrite={effectiveCanRewrite}
                 onRewrite={onRewrite}
                 rewriteNonce={rewriteNonce}
+                initialCompareOpen={!drillIntoFocus}
               />
             </div>
           ) : (
@@ -747,7 +759,8 @@ export function AudiencePresence({
       ) : (
         /* ── COLLAPSED: a tab CONNECTED to the composer top — narrower than the composer (inset on
               both sides), no gap, rounded TOP corners only, square bottom flush into the composer.
-              Darker #1a1a19 surface; tap to bloom open. ── */
+              Same surface tone as the composer (surface-elevated) so it reads as one continuous
+              surface — no darker backing plate behind it; tap to bloom open. ── */
         <div className="px-4">
           <div
             role="button"
@@ -761,7 +774,7 @@ export function AudiencePresence({
                 onOpenChange(true);
               }
             }}
-            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 transition-colors hover:bg-[#232322]"
+            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 transition-colors hover:bg-[var(--color-hover)]"
             style={{ cursor: 'pointer' }}
           >
             {identity}
