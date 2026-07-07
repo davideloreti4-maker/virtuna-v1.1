@@ -11,6 +11,8 @@ import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { listRecentReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { buildLoopReceipts, buildLoopAccuracy, nowMs, type LoopReceipt, type LoopAccuracy } from "@/lib/flywheel/loop-summary";
 import { currentMonth } from "@/lib/calendar/current-month";
+import { listPlannedPosts, type PlannedPostRow } from "@/lib/planned-posts/planned-posts-repo";
+import { toISODate } from "@/lib/calendar/planned-plan";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -97,6 +99,19 @@ export default async function StartRoute({
     ]);
   }
 
+  // The REAL plan (planned_posts): the SAME persisted content calendar the /calendar workspace
+  // writes — the month widget + today's-plan read it so /start and /calendar agree (they diverged
+  // while /start ran on the old ideas-projection). Current month onward; skipped for first-run.
+  const cm = currentMonth();
+  let initialPlanned: PlannedPostRow[] = [];
+  if (!initialFirstRun) {
+    try {
+      initialPlanned = await listPlannedPosts(supabase, user.id, toISODate(cm.year, cm.monthIndex, 1));
+    } catch {
+      initialPlanned = [];
+    }
+  }
+
   // Real "the loop" (FLYWHEEL): the user's recent reconciliations → honest predicted-vs-actual
   // receipts + aggregate match %. Skipped for first-run (no history). `now` is stamped here (SSR)
   // so the relative "when" labels never re-compute client-side (hydration). Total (never throws).
@@ -118,9 +133,10 @@ export default async function StartRoute({
       initialSelectedAudienceId={initialSelectedAudienceId}
       initialOutliers={initialOutliers}
       initialIdeas={initialIdeas}
-      // Server-resolved "today" month (SSR-safe) — the month widget + today's-plan project the
-      // real ideas onto these days. Never read the clock client-side (hydration mismatch).
-      calendarMonth={currentMonth()}
+      initialPlanned={initialPlanned}
+      // Server-resolved "today" month (SSR-safe) — the month widget + today's-plan read the real
+      // planned_posts for these days. Never read the clock client-side (hydration mismatch).
+      calendarMonth={cm}
     />
   );
 }

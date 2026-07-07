@@ -25,7 +25,9 @@ import type { QuickAction as QuickActionData, StatCard } from "@/lib/room-contra
 import { getMockStartPage } from "@/lib/room-contract/mock-room";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
-import { buildLivePlan, planToWidgetDays, planToList } from "@/lib/surfaces/month-plan";
+import type { LivePlannedPost } from "@/lib/surfaces/month-plan";
+import type { PlannedPostRow } from "@/lib/planned-posts/planned-posts-repo";
+import { buildPlannedPlan, plannedToWidgetDays, plannedToList } from "@/lib/calendar/planned-plan";
 import type { CurrentMonth } from "@/lib/calendar/current-month";
 import { monthLayout } from "@/lib/calendar/month-layout";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -59,6 +61,7 @@ export function StartPage({
   initialSelectedAudienceId = null,
   initialOutliers = null,
   initialIdeas = null,
+  initialPlanned = [],
   calendarMonth,
   loopReceipts = [],
   loopAccuracy = null,
@@ -74,8 +77,11 @@ export function StartPage({
   initialOutliers?: LiveOutlierCard[] | null;
   /** Real pre-tested daily ideas from a fresh cache (Seams 1/2); null = warm lazily on first visit. */
   initialIdeas?: LiveIdeaCard[] | null;
-  /** Server-resolved current month (SSR-safe) — the month widget + today's-plan project the real
-   *  ideas onto these days (buildLivePlan). Never read `new Date()` client-side (hydration). */
+  /** The user's REAL persisted plan (planned_posts, current month onward) — the SAME source the
+   *  /calendar workspace writes, so the widget + today's-plan agree with it. [] = nothing planned. */
+  initialPlanned?: PlannedPostRow[];
+  /** Server-resolved current month (SSR-safe) — the month widget + today's-plan read the real
+   *  planned_posts for these days. Never read `new Date()` client-side (hydration). */
   calendarMonth: CurrentMonth;
   /** Real "the loop" receipts from the user's recent reconciliations (SSR); [] = honest empty. */
   loopReceipts?: LoopReceipt[];
@@ -131,23 +137,35 @@ export function StartPage({
     warmAudienceKey,
   );
 
-  // Real "plan" (Seams 1/2): the SAME warmed daily-ideas, projected onto upcoming days as a
-  // suggested, pre-tested content plan — ONE source of truth feeding the month widget + today's
-  // plan (the /calendar workspace reads the same ideas cache, so all three agree). Reactions are
-  // real (personasToCardFace); the DAY is a labeled suggestion, never a fabricated reaction.
+  // Real "plan" — the user's PERSISTED planned_posts (the SAME source the /calendar workspace
+  // writes), so the glance widget + today's-plan agree with the full calendar. Each planned day's
+  // tone/score is derived from the post's frozen personas (personasToCardFace); the DAY is the
+  // creator's own choice, never a fabricated reaction.
   const plan = useMemo(
-    () => buildLivePlan(ideas, { today: calendarMonth.today, daysInMonth: calendarMonth.daysInMonth }),
-    [ideas, calendarMonth.today, calendarMonth.daysInMonth],
+    () => buildPlannedPlan(initialPlanned, calendarMonth.year, calendarMonth.monthIndex),
+    [initialPlanned, calendarMonth.year, calendarMonth.monthIndex],
   );
   const monthLabel = useMemo(
     () => monthLayout(calendarMonth.year, calendarMonth.monthIndex).label,
     [calendarMonth.year, calendarMonth.monthIndex],
   );
   const widgetDays = useMemo(
-    () => planToWidgetDays(plan, calendarMonth.daysInMonth),
+    () => plannedToWidgetDays(plan, calendarMonth.daysInMonth),
     [plan, calendarMonth.daysInMonth],
   );
-  const planList = useMemo(() => planToList(plan), [plan]);
+  // Adapt PlannedPost → the LivePlannedPost shape TodaysPlan renders (format → type pill).
+  const planList = useMemo<LivePlannedPost[]>(
+    () =>
+      plannedToList(plan).map((p) => ({
+        day: p.day,
+        contentId: p.contentId,
+        title: p.title,
+        type: p.format,
+        personas: p.personas,
+        face: p.face,
+      })),
+    [plan],
+  );
 
   const [selectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
@@ -182,6 +200,18 @@ export function StartPage({
         metric: "for your people",
         personas: outlier.personas,
         conceptText: outlier.caption,
+      };
+    // A planned post whose source idea has churned out of the daily cache still opens the Room —
+    // planned_posts froze its personas, so today's-plan rows always have a real cast to show.
+    const planned = planList.find((p) => p.contentId === cardId);
+    if (planned)
+      return {
+        cardId: planned.contentId,
+        title: planned.title,
+        kind: "Idea",
+        metric: "would watch",
+        personas: planned.personas,
+        conceptText: planned.title,
       };
     return null;
   };
