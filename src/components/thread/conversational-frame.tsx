@@ -119,10 +119,14 @@ export function ThreadIntro({
   platform: string;
   hookLine?: string | null;
 }) {
+  // The intent line TYPES OUT (per-word cascade) — a smoother, more alive entrance than a hard
+  // appear. This is the header voice moment; the result + outro still land only after the spine
+  // completes (never answer text streaming early — that path stays gated on !isStreaming).
   return (
     <WordFade
       text={introLine(skill, audienceLabel, platform, hookLine)}
       className="block text-[15px] leading-relaxed text-foreground"
+      perWordMs={30}
     />
   );
 }

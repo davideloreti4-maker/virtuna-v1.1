@@ -60,7 +60,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent"
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Remix: ${adaptedHook.slice(0, 60)}`}
     >
       {/* FACE — adapted hook anatomy (always visible). */}

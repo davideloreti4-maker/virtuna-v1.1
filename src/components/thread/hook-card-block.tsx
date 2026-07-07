@@ -61,7 +61,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
 
   return (
     <div
-      className="overflow-hidden rounded-xl border border-white/[0.06] bg-transparent"
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`Hook #${rank}: ${hookLine.slice(0, 60)}`}
     >
       {/* FACE — always visible (D-11) */}

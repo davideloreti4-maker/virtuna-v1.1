@@ -34,10 +34,8 @@ import { PlatformContext } from '@/lib/platform-context';
 import { HookTestContext, HookWriteScriptContext } from '@/lib/hook-test-context';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
-import { SkillResultCard } from '@/components/thread/skill-result-card';
 import { ThreadIntro, ThreadOutro, outroFallback, type ForwardChip } from '@/components/thread/conversational-frame';
-import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
-import { ProgressChecklist } from '@/components/thread/progress-checklist';
+import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 
@@ -75,7 +73,6 @@ export interface HooksThreadViewProps {
 export function HooksThreadView({
   persistedBlocks,
   streamingBlocks,
-  statusMessage,
   stages,
   followupText,
   isStreaming,
@@ -85,7 +82,6 @@ export function HooksThreadView({
   onWriteScriptHook,
   onRetry,
   userTurn,
-  skillLabel = 'Hooks',
   audienceLabel = 'General',
 }: HooksThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
@@ -136,12 +132,6 @@ export function HooksThreadView({
       <HookTestContext.Provider value={onTestHook ?? null}>
         <HookWriteScriptContext.Provider value={onWriteScriptHook ?? null}>
         <ThreadShell userTurn={userTurn}>
-          {isStreaming && stages.length > 0 && <ProgressChecklist stages={stages} />}
-
-          {isStreaming && stages.length === 0 && (
-            <ThreadLoadingSkeleton variant="skill" caption={statusMessage ?? undefined} />
-          )}
-
           {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
 
           {hasAssistantContent && (
@@ -149,37 +139,42 @@ export function HooksThreadView({
               {isFreshRun && (
                 <ThreadIntro skill="hooks" audienceLabel={audienceLabel} platform={platform} />
               )}
-              <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
-                {hasStreamingContent && (
-                  <div className="flex flex-col gap-4">
-                    <p className="text-xs text-foreground-muted/50 uppercase tracking-wide">
-                      New hooks
+
+              {/* Progress: live spine while generating; collapses to a receipt line on completion. */}
+              <SkillProgress
+                stages={stages}
+                plan={STAGE_PLANS.hooks}
+                isStreaming={isStreaming}
+                summaryLabel="Ran your audience"
+              />
+
+              {/* Result: bare hook cards (no wrapper frame), revealed once the run completes so
+                  every card lands fully scored in one clean beat — not half-drawn mid-stream.
+                  reading-reveal = the content fades/slides in AFTER the spine, never during. */}
+              {hasStreamingContent && !isStreaming && (
+                <div className="reading-reveal flex flex-col gap-3">
+                  <MessageBlocks body={streamingBody} />
+                </div>
+              )}
+
+              {/* Outro — the engine's real follow-up (restyled) + the forward chip. */}
+              {!isStreaming && (
+                <ThreadOutro
+                  text={followupText ?? outroFallback('hooks', topHook?.rank)}
+                  chips={chips}
+                />
+              )}
+
+              {hasPersistedContent && !isStreaming && (
+                <div className="flex flex-col gap-3">
+                  {hasStreamingContent && (
+                    <p className="pt-1 text-[11px] uppercase tracking-wide text-foreground-muted/50">
+                      Earlier
                     </p>
-                    <MessageBlocks body={streamingBody} />
-                  </div>
-                )}
-
-                {/* Outro — the engine's real follow-up (restyled) + the forward chip. */}
-                {!isStreaming && (
-                  <ThreadOutro
-                    text={followupText ?? outroFallback('hooks', topHook?.rank)}
-                    chips={chips}
-                  />
-                )}
-
-                {hasPersistedContent && (
-                  <div className="flex flex-col gap-4">
-                    {hasStreamingContent && (
-                      <div className="border-t border-white/[0.06] pt-4">
-                        <p className="text-xs text-foreground-muted/50 uppercase tracking-wide mb-4">
-                          Previous hooks
-                        </p>
-                      </div>
-                    )}
-                    <MessageBlocks body={persistedBody} />
-                  </div>
-                )}
-              </SkillResultCard>
+                  )}
+                  <MessageBlocks body={persistedBody} />
+                </div>
+              )}
             </ThreadAssistantTurn>
           )}
         </ThreadShell>
