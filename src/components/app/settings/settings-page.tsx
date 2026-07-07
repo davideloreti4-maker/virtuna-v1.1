@@ -9,15 +9,18 @@ import {
   Users,
   Sparkles,
   Gift,
+  AtSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProfileSection } from "./profile-section";
 import { AccountSection } from "./account-section";
+import { ConnectedAccountsSection } from "./connected-accounts-section";
 import { NotificationsSection } from "./notifications-section";
 import { BillingSection } from "./billing-section";
 import { TeamSection } from "./team-section";
 import { CreatorProfileSection } from "./creator-profile-section";
 import { ReferralsSection } from "@/components/referral/referrals-section";
+import type { ConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 
 interface ReferralData {
   eligible: boolean;
@@ -31,17 +34,20 @@ interface SettingsPageProps {
   defaultTab?:
     | "profile"
     | "account"
+    | "connected"
     | "notifications"
     | "billing"
     | "team"
     | "creator-profile"
     | "referrals";
   referral?: ReferralData;
+  connectedAccounts?: ConnectedAccount[];
 }
 
 const TABS = [
   { value: "profile", label: "Profile", icon: User },
   { value: "account", label: "Account", icon: Settings },
+  { value: "connected", label: "Connected accounts", icon: AtSign },
   { value: "notifications", label: "Notifications", icon: Bell },
   { value: "billing", label: "Billing", icon: CreditCard },
   { value: "referrals", label: "Referrals", icon: Gift },
@@ -49,7 +55,7 @@ const TABS = [
   { value: "creator-profile", label: "Creator Profile", icon: Sparkles },
 ] as const;
 
-export function SettingsPage({ defaultTab = "profile", referral }: SettingsPageProps) {
+export function SettingsPage({ defaultTab = "profile", referral, connectedAccounts = [] }: SettingsPageProps) {
   return (
     <div className="mx-auto max-w-4xl p-6">
       <h1 className="mb-8 text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Settings</h1>
@@ -83,6 +89,9 @@ export function SettingsPage({ defaultTab = "profile", referral }: SettingsPageP
           </Tabs.Content>
           <Tabs.Content value="account" className="outline-none">
             <AccountSection />
+          </Tabs.Content>
+          <Tabs.Content value="connected" className="outline-none">
+            <ConnectedAccountsSection accounts={connectedAccounts} />
           </Tabs.Content>
           <Tabs.Content value="notifications" className="outline-none">
             <NotificationsSection />

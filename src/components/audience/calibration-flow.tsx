@@ -26,6 +26,10 @@ interface CalibrationFlowProps {
   onDone: (calibrated: Audience) => void;
   /** Called when the creator chooses to skip calibration and use General. */
   onSkip: () => void;
+  /** Prefill the @handle (from the "Calibrate from" source picker / connect deep-link). */
+  prefillHandle?: string;
+  /** Platform to calibrate against, overriding the audience's (source-picker selection). */
+  prefillPlatform?: Audience["platform"];
   className?: string;
 }
 
@@ -36,10 +40,10 @@ type Phase =
   | "error"
   | "done";
 
-export function CalibrationFlow({ audience, onDone, onSkip, className }: CalibrationFlowProps) {
+export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefillPlatform, className }: CalibrationFlowProps) {
   const isPersonal = audience.type === "personal";
 
-  const [handle, setHandle] = useState("");
+  const [handle, setHandle] = useState(prefillHandle ?? "");
   const [description, setDescription] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMsg, setStatusMsg] = useState("");
@@ -59,14 +63,14 @@ export function CalibrationFlow({ audience, onDone, onSkip, className }: Calibra
       ? {
           handle: handle.replace(/^@/, ""),
           type: "personal",
-          platform: audience.platform,
+          platform: prefillPlatform ?? audience.platform,
           goalIntent: audience.goal_intent ?? "grow",
           name: audience.name,
         }
       : {
           description: description.trim(),
           type: "target",
-          platform: audience.platform,
+          platform: prefillPlatform ?? audience.platform,
           goalIntent: audience.goal_intent ?? "grow",
           name: audience.name,
         };

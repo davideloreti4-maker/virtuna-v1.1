@@ -38,12 +38,24 @@ import { AnalyticsView } from "@/components/analytics/analytics-view";
 
 type AudienceTab = "audiences" | "account";
 
+/** Slim, client-serializable view of a connected account for the "Your account" switcher. */
+export interface AccountOption {
+  id: string;
+  handle: string;
+  platform: "tiktok" | "instagram" | "youtube";
+  is_primary: boolean;
+}
+
 interface AudienceManagerProps {
   className?: string;
   /** Real account metrics for the "Your account" analytics tab. */
   snapshots?: AccountSnapshot[];
   /** Real content pillars for the analytics tab's content-mix zone. */
   pillars?: Pillar[];
+  /** The user's connected accounts — powers the switcher on the "Your account" tab. */
+  accounts?: AccountOption[];
+  /** Which connected account's series the snapshots/pillars belong to (switcher selection). */
+  selectedAccountId?: string;
   /** Which tab to open on mount — `account` deep-links the analytics tab (the
    *  /analytics + /grow redirects land here via ?tab=account). */
   initialTab?: AudienceTab;
@@ -121,6 +133,8 @@ export function AudienceManager({
   className,
   snapshots = [],
   pillars = [],
+  accounts = [],
+  selectedAccountId,
   initialTab = "audiences",
 }: AudienceManagerProps) {
   const router = useRouter();
@@ -507,7 +521,12 @@ export function AudienceManager({
             /audience?tab=account (the /analytics + /grow redirects land here). */}
         {tab === "account" && (
           <div key="account" className="rv-in">
-            <AnalyticsView snapshots={snapshots} pillars={pillars} />
+            <AnalyticsView
+              snapshots={snapshots}
+              pillars={pillars}
+              accounts={accounts}
+              selectedAccountId={selectedAccountId}
+            />
           </div>
         )}
 

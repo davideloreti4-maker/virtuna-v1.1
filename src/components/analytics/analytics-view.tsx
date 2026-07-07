@@ -23,7 +23,16 @@ import type { Pillar } from "@/lib/room-contract/mock-room";
 import { buildRecommendations } from "@/lib/analytics/recommendations";
 import { SurfaceIcon } from "@/components/surfaces/icons";
 import { ContentPillars } from "@/components/surfaces/sections/content-pillars";
+import { ConnectAccountDialog } from "@/components/connected-accounts/connect-account-dialog";
+import type { AccountOption } from "@/components/audience/audience-manager";
+import { Plus } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+
+const PLATFORM_LABEL: Record<AccountOption["platform"], string> = {
+  tiktok: "TikTok",
+  instagram: "Instagram",
+  youtube: "YouTube",
+};
 
 const RANGES = [
   { days: 7, label: "7 days" },
@@ -48,13 +57,21 @@ function Sparkline({ points, up }: { points: string; up: boolean }) {
 export function AnalyticsView({
   snapshots,
   pillars,
+  accounts = [],
+  selectedAccountId,
 }: {
   snapshots: AccountSnapshot[];
   pillars: Pillar[];
+  accounts?: AccountOption[];
+  selectedAccountId?: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
   const [range, setRange] = useState<number>(7);
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  const selectAccount = (id: string) =>
+    router.push(`/audience?tab=account&account=${id}`);
 
   const metrics = useMemo(() => buildRangeMetrics(snapshots, range), [snapshots, range]);
   const recommendations = useMemo(() => buildRecommendations(pillars, metrics), [pillars, metrics]);
@@ -84,6 +101,47 @@ export function AnalyticsView({
 
   return (
     <div>
+      {/* Account switcher — one chip per connected account (the switch that makes the
+          multi-account collision fix visible) + a "Connect" affordance. Only shown once
+          there's at least one connected account; below the roster the switch is the point. */}
+      {accounts.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div className="inline-flex flex-wrap gap-0.5 rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Connected account">
+            {accounts.map((a) => {
+              const active = a.id === selectedAccountId;
+              return (
+                <button
+                  key={a.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => !active && selectAccount(a.id)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
+                    active
+                      ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
+                      : "text-foreground-secondary hover:text-foreground",
+                  )}
+                >
+                  @{a.handle}
+                  <span className="ml-1 font-mono text-[9px] uppercase tracking-[0.06em] opacity-70">
+                    {PLATFORM_LABEL[a.platform]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={() => setConnectOpen(true)}
+            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[12px] font-medium text-foreground-secondary transition-colors hover:border-border-hover hover:text-foreground"
+          >
+            <Plus weight="bold" className="h-3.5 w-3.5" />
+            Connect
+          </button>
+        </div>
+      )}
+
       {/* Zone · the numbers — real account metrics over the selected range */}
       <section className="rounded-2xl bg-surface-sunken px-4 py-4">
         <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
@@ -163,7 +221,7 @@ export function AnalyticsView({
             action={
               <button
                 type="button"
-                onClick={() => router.push("/audience/new")}
+                onClick={() => setConnectOpen(true)}
                 className="rounded-[10px] bg-[color:var(--color-action)] px-4 py-2.5 text-[12.5px] font-semibold text-[color:var(--color-action-foreground)] transition-opacity hover:opacity-90"
               >
                 Connect your account →
@@ -213,6 +271,8 @@ export function AnalyticsView({
       <div className="mt-4">
         <ContentPillars pillars={pillars} onPillar={onPillar} />
       </div>
+
+      <ConnectAccountDialog open={connectOpen} onOpenChange={setConnectOpen} />
     </div>
   );
 }

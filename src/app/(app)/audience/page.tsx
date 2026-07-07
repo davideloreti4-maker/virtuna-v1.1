@@ -15,20 +15,28 @@ import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { createClient } from "@/lib/supabase/server";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
-import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
+import {
+  listConnectedAccounts,
+  type ConnectedAccount,
+} from "@/lib/connected-accounts/connected-accounts-repo";
 import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
-import { AudienceManager } from "@/components/audience/audience-manager";
+import { AudienceManager, type AccountOption } from "@/components/audience/audience-manager";
 
 export const metadata = {
   title: "Your audiences | Maven",
 };
 
+/** Slim the repo row to what the switcher needs (client-serializable). */
+function toOption(a: ConnectedAccount): AccountOption {
+  return { id: a.id, handle: a.handle, platform: a.platform, is_primary: a.is_primary };
+}
+
 export default async function AudiencePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; account?: string }>;
 }) {
-  const { tab } = await searchParams;
+  const { tab, account: accountParam } = await searchParams;
   const initialTab = tab === "account" ? "account" : "audiences";
 
   const supabase = await createClient();
@@ -36,23 +44,37 @@ export default async function AudiencePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Account analytics band — real account metrics + pillars. Empty on any read error
-  // or a low-post account → the band shows its honest "connect / learning" empty state.
+  // Account analytics band — real account metrics + pillars for the SELECTED connected
+  // account (the switcher). ?account=<id> picks it; default = primary, then oldest. Empty on
+  // any read error or a low-post account → the band shows its honest empty state.
+  let accounts: AccountOption[] = [];
+  let selectedAccountId: string | undefined;
   let snapshots: AccountSnapshot[] = [];
   let pillars: Pillar[] = [];
   if (user) {
     try {
-      const primary = await getPrimaryAccount(supabase, user.id);
-      snapshots = primary ? await getAccountSnapshots(supabase, primary.id, 100) : [];
+      const connected = await listConnectedAccounts(supabase, user.id);
+      accounts = connected.map(toOption);
+      const selected =
+        connected.find((a) => a.id === accountParam) ??
+        connected.find((a) => a.is_primary) ??
+        connected[0];
+      selectedAccountId = selected?.id;
+      snapshots = selected ? await getAccountSnapshots(supabase, selected.id, 100) : [];
+      pillars = await buildContentPillars(supabase, user.id, selected?.id);
     } catch {
       snapshots = [];
-    }
-    try {
-      pillars = await buildContentPillars(supabase, user.id);
-    } catch {
       pillars = [];
     }
   }
 
-  return <AudienceManager snapshots={snapshots} pillars={pillars} initialTab={initialTab} />;
+  return (
+    <AudienceManager
+      snapshots={snapshots}
+      pillars={pillars}
+      accounts={accounts}
+      selectedAccountId={selectedAccountId}
+      initialTab={initialTab}
+    />
+  );
 }
