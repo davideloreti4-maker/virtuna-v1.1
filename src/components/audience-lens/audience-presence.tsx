@@ -715,10 +715,12 @@ export function AudiencePresence({
         }}
         className={
           docked
-            ? 'flex items-center gap-2 px-3 py-2.5 transition-colors ' +
+            ? 'flex items-center gap-2 px-3 py-2 transition-colors ' +
               (open
                 ? 'border-t border-[var(--color-border)]'
-                : 'border-b border-[var(--color-border)] hover:bg-[var(--color-hover)]')
+                : // Collapsed cap — a smaller, DARKER card (#1a1a19 surface) fused on top of the
+                  // lighter composer (#2c2c2b), so it reads as its own connected header strip.
+                  'border-b border-[var(--color-border)] bg-[var(--color-surface)] hover:brightness-125')
             : 'flex items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] ' +
               (open ? 'rounded-b-[16px] border-t-0' : 'rounded-[16px]')
         }
