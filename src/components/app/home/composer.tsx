@@ -2230,22 +2230,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       </form>
   );
 
-  // Fused bottom dock — audience peek cap + composer field share one matte surface.
+  // Bottom dock — the audience presence sits ABOVE the composer box: collapsed it's a small card
+  // floating on top (a gap below it); open it blooms into a panel whose bottom is flush with the
+  // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
-    <div
-      data-testid="composer-dock"
-      className={cn(
-        "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
-        !audienceOpen && "overflow-hidden",
-        layout === "centered" && "shadow-float",
-        !reducedMotion && "transition-shadow duration-200",
-      )}
-    >
-      {/* The docked peek + Bloom — the audience cap on top of the composer, at every breakpoint
-          (the composer field below stays the making input on all sizes). */}
+    <div data-testid="composer-dock" className="relative flex w-full flex-col">
       {audiencePresence}
-      {composerForm}
-      {buildChooser}
+      <div
+        className={cn(
+          "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
+          !audienceOpen && "overflow-hidden",
+          audienceOpen && "rounded-t-none border-t-0",
+          layout === "centered" && "shadow-float",
+          !reducedMotion && "transition-shadow duration-200",
+        )}
+      >
+        {composerForm}
+        {buildChooser}
+      </div>
     </div>
   );
 

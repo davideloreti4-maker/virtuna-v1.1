@@ -149,11 +149,18 @@ export function AmbientRoom({
 }: AmbientRoomProps) {
   const [scale, setScale] = useState<Scale>('people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
-  // The `⤺ all N` ranked view-all (prototype code name: compare). Reset whenever the focus card
-  // changes (step, re-target, a new thought) so it never lingers over a stale batch.
-  const [compareOpen, setCompareOpen] = useState(false);
+  // The `⤺ all N` ranked view-all (prototype code name: compare). Opens on the OVERVIEW (the ranked
+  // list) so the bloom always lands on "how the room ranked your N" first, not a single card's
+  // personas. A focus CHANGE (step, re-target, tapping a row, a new thought) drills into that card.
+  // We reset only when focusId ACTUALLY changes from the mount value (ref seeded to the initial
+  // focusId) — a plain mount-skip flag would be defeated by StrictMode's double-invoked effects.
+  const [compareOpen, setCompareOpen] = useState(true);
+  const compareFocusRef = useRef(focusId);
   useEffect(() => {
-    setCompareOpen(false);
+    if (focusId !== compareFocusRef.current) {
+      compareFocusRef.current = focusId;
+      setCompareOpen(false);
+    }
   }, [focusId]);
 
   // Rank the batch siblings by the REAL stop-count (best first, stable on ties) — the one order
