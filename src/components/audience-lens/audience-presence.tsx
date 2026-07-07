@@ -745,9 +745,10 @@ export function AudiencePresence({
           )}
         </div>
       ) : (
-        /* ── COLLAPSED: a small, narrower card floating on TOP of the composer (a gap below it),
-              not fused full-width. Darker #1a1a19 surface; tap to bloom open. ── */
-        <div className="mb-2 flex justify-start">
+        /* ── COLLAPSED: a tab CONNECTED to the composer top — narrower than the composer (inset on
+              both sides), no gap, rounded TOP corners only, square bottom flush into the composer.
+              Darker #1a1a19 surface; tap to bloom open. ── */
+        <div className="px-4">
           <div
             role="button"
             tabIndex={0}
@@ -760,13 +761,13 @@ export function AudiencePresence({
                 onOpenChange(true);
               }
             }}
-            className="flex max-w-full items-center gap-2 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1.5 shadow-[var(--shadow-float)] transition-colors hover:border-[var(--color-border-hover)] hover:bg-[#232322]"
+            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-1.5 transition-colors hover:bg-[#232322]"
             style={{ cursor: 'pointer' }}
           >
             {identity}
             <span
               data-testid="audience-pulse"
-              className="whitespace-nowrap px-0.5 text-[13px] font-medium text-[var(--color-foreground-secondary)]"
+              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
               title={focus?.conceptText}
             >
               {dockPulse}
