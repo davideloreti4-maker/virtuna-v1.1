@@ -73,7 +73,14 @@ export function AnalyticsView({
   const selectAccount = (id: string) =>
     router.push(`/audience?tab=account&account=${id}`);
 
-  const metrics = useMemo(() => buildRangeMetrics(snapshots, range), [snapshots, range]);
+  // The selected account's platform drives honest per-platform tiles (Subscribers/Videos for
+  // YouTube, no fake Likes for IG/YT). Falls back to tiktok when the roster isn't threaded.
+  const selectedPlatform =
+    accounts.find((a) => a.id === selectedAccountId)?.platform ?? accounts[0]?.platform ?? "tiktok";
+  const metrics = useMemo(
+    () => buildRangeMetrics(snapshots, range, selectedPlatform),
+    [snapshots, range, selectedPlatform],
+  );
   const recommendations = useMemo(() => buildRecommendations(pillars, metrics), [pillars, metrics]);
   const rangeLabel = RANGES.find((r) => r.days === range)!.label;
   const points = metrics?.[0]?.points ?? 0;

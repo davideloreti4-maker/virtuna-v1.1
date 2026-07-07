@@ -34,8 +34,9 @@ function sanitizeText(s: string): string {
 }
 
 const ConnectSchema = z.object({
-  // TikTok-only until IG/YT capture lands (the column still accepts the wider enum).
-  platform: z.enum(["tiktok"]),
+  // All three platforms capture via Apify now (IG/YT are profile-only → analytics; audience
+  // calibration stays TikTok-only, gated in the dialog).
+  platform: z.enum(["tiktok", "instagram", "youtube"]),
   handle: z.string().min(1).max(50).transform(sanitizeText),
 });
 
@@ -65,10 +66,17 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── (3) Scrape the public profile ────────────────────────────────────────────
   // Connect only needs the PROFILE (follower/like/post counts for the analytics seed) —
-  // NOT the video bundle that calibration downloads. scrapeProfile is the light path.
+  // NOT the video bundle that calibration downloads. Each platform has its own light,
+  // profile-only scrape; TikTok is unchanged.
   let profile;
   try {
-    profile = await new ApifyScrapingProvider().scrapeProfile(handle);
+    const provider = new ApifyScrapingProvider();
+    profile =
+      platform === "instagram"
+        ? await provider.scrapeInstagramProfile(handle)
+        : platform === "youtube"
+          ? await provider.scrapeYouTubeChannel(handle)
+          : await provider.scrapeProfile(handle);
   } catch {
     return Response.json(
       { error: "We couldn't read that account. Check the handle and try again." },
@@ -108,6 +116,9 @@ export async function POST(request: Request): Promise<Response> {
       followingCount: profile.followingCount ?? null,
       heartCount: profile.heartCount,
       videoCount: profile.videoCount,
+      // YouTube seeds its lifetime channel views day one (→ the Views tile); TikTok/IG have
+      // no profile-level view total here (TikTok's is the cron's windowed sum) → null.
+      recentViews: profile.viewCount ?? null,
     });
   } catch {
     /* snapshot seed is best-effort — the account is connected regardless */
@@ -117,6 +128,7 @@ export async function POST(request: Request): Promise<Response> {
     account,
     reveal: {
       profile: {
+        platform: account.platform,
         handle: profile.handle,
         displayName: profile.displayName,
         avatarUrl: profile.avatarUrl,
@@ -124,6 +136,7 @@ export async function POST(request: Request): Promise<Response> {
         followerCount: profile.followerCount,
         heartCount: profile.heartCount,
         videoCount: profile.videoCount,
+        viewCount: profile.viewCount ?? null,
       },
     },
   });

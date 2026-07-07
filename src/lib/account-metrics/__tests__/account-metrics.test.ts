@@ -131,6 +131,27 @@ describe("buildAccountStats", () => {
     expect(views.value).toBe("480K"); // last real value, never fabricated forward
     expect(views.delta).toBe("—");
   });
+
+  // ── Honest per-platform tiles for /start (heart_count is 0 for IG/YT — never shown) ──
+  it("Instagram drops the Likes tile (no fabricated 'Likes: 0')", () => {
+    // heart_count 0 = IG's honest absence; the tile must not appear.
+    const stats = buildAccountStats([row("2026-07-03", 12310, 0, 43)], "instagram")!;
+    expect(stats.find((s) => s.label === "Likes")).toBeUndefined();
+    expect(stats.map((s) => s.label)).toEqual(["New followers", "Posts"]);
+  });
+
+  it("YouTube relabels to New subscribers/Videos/Views and drops Likes", () => {
+    const stats = buildAccountStats(
+      [
+        row("2026-06-27", 20_000_000, 0, 1800, 5_000_000_000),
+        row("2026-07-03", 21_100_000, 0, 1834, 5_469_016_050),
+      ],
+      "youtube",
+    )!;
+    expect(stats.find((s) => s.label === "Likes")).toBeUndefined();
+    expect(stats.map((s) => s.label)).toEqual(["Views", "New subscribers", "Videos"]);
+    expect(stats.find((s) => s.label === "New subscribers")!.value).toBe("+1.1M");
+  });
 });
 
 describe("sumRecentViews", () => {

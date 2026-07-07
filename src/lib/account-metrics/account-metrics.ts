@@ -18,6 +18,9 @@
 
 import type { StatCard } from "@/lib/room-contract/mock-room";
 
+/** Which network a snapshot series belongs to — drives honest per-platform tile labels. */
+export type MetricsPlatform = "tiktok" | "instagram" | "youtube";
+
 /** One row of the account_snapshots series (the fields the tiles read). */
 export interface AccountSnapshot {
   snapshot_date: string; // "YYYY-MM-DD"
@@ -114,7 +117,10 @@ function sparkPoints(series: number[]): string {
  * when there are NO snapshots yet — the caller renders an honest empty state
  * rather than fabricating numbers.
  */
-export function buildAccountStats(snapshots: AccountSnapshot[]): StatCard[] | null {
+export function buildAccountStats(
+  snapshots: AccountSnapshot[],
+  platform: MetricsPlatform = "tiktok",
+): StatCard[] | null {
   if (snapshots.length === 0) return null;
 
   // oldest → newest
@@ -143,14 +149,18 @@ export function buildAccountStats(snapshots: AccountSnapshot[]): StatCard[] | nu
     return { label, value: formatCount(value), delta: formatDelta(change), up: change > 0, spark: points };
   };
 
+  // "New followers" reads "New subscribers" on YouTube (honest platform vocabulary).
+  const newFollowersLabel = platform === "youtube" ? "New subscribers" : "New followers";
+  const postsLabel = platform === "youtube" ? "Videos" : "Posts";
+
   const newFollowers: StatCard = (() => {
     const points = sparkPoints(series.map((s) => s.follower_count));
     if (!baseline) {
-      return { label: "New followers", value: "—", delta: "7d", up: false, spark: points };
+      return { label: newFollowersLabel, value: "—", delta: "7d", up: false, spark: points };
     }
     const gain = latest.follower_count - baseline.follower_count;
     return {
-      label: "New followers",
+      label: newFollowersLabel,
       value: gain === 0 ? "0" : formatDelta(gain),
       delta: "7d",
       up: gain > 0,
@@ -171,9 +181,11 @@ export function buildAccountStats(snapshots: AccountSnapshot[]): StatCard[] | nu
   const views = optionalTile("Views", series, (s) => s.recent_views);
   if (views) tiles.push(views);
 
-  tiles.push(tile("Likes", (s) => s.heart_count));
+  // Likes is TikTok's only honest engagement counter (heartCount). IG/YT expose no
+  // profile-level total-likes → drop the tile rather than show a fabricated "Likes: 0".
+  if (platform === "tiktok") tiles.push(tile("Likes", (s) => s.heart_count));
   tiles.push(newFollowers);
-  tiles.push(tile("Posts", (s) => s.video_count));
+  tiles.push(tile(postsLabel, (s) => s.video_count));
 
   return tiles;
 }
@@ -228,13 +240,19 @@ export interface RangeMetric {
 }
 
 /**
- * Build the analytics metrics (Followers / Likes / Posts, + optional Views) over the
- * trailing `windowDays`. Pure over the snapshot series. Returns null when there are no
- * snapshots — the page renders an honest empty/connect state rather than fabricating.
+ * Build the analytics metrics over the trailing `windowDays`, with HONEST per-platform
+ * tiles (never a fabricated "Likes: 0" for a platform that has no such number):
+ *   - TikTok:    Followers · Likes · Posts (+ optional Views = windowed per-post sum)
+ *   - Instagram: Followers · Posts (Likes dropped — no profile-level total; Views omitted)
+ *   - YouTube:   Subscribers · Videos · Views (relabeled; Likes dropped; Views = lifetime
+ *                channelTotalViews carried in recent_views)
+ * Pure over the snapshot series. Returns null when there are no snapshots — the page renders
+ * an honest empty/connect state rather than fabricating.
  */
 export function buildRangeMetrics(
   snapshots: AccountSnapshot[],
   windowDays: number,
+  platform: MetricsPlatform = "tiktok",
 ): RangeMetric[] | null {
   if (snapshots.length === 0) return null;
 
@@ -272,13 +290,18 @@ export function buildRangeMetrics(
     };
   };
 
-  const metrics: RangeMetric[] = [
-    metric("followers", "Followers", (s) => s.follower_count),
-    metric("likes", "Likes", (s) => s.heart_count),
-    metric("posts", "Posts", (s) => s.video_count),
-  ];
+  const followersLabel = platform === "youtube" ? "Subscribers" : "Followers";
+  const postsLabel = platform === "youtube" ? "Videos" : "Posts";
 
-  // Views (optional) — same window, only over snapshots that carry recent_views.
+  const metrics: RangeMetric[] = [metric("followers", followersLabel, (s) => s.follower_count)];
+  // Likes is TikTok's only honest engagement counter (heartCount). IG/YT expose no
+  // profile-level total-likes → drop the tile rather than show a fabricated 0.
+  if (platform === "tiktok") metrics.push(metric("likes", "Likes", (s) => s.heart_count));
+  metrics.push(metric("posts", postsLabel, (s) => s.video_count));
+
+  // Views (optional) — same window, only over snapshots that carry recent_views. TikTok =
+  // windowed per-post sum; YouTube = lifetime channelTotalViews (both live in recent_views).
+  // Instagram carries none → present.length 0 → tile omitted honestly.
   const present = windowed.filter((s) => s.recent_views != null);
   if (present.length > 0) {
     const vLatest = present[present.length - 1]!.recent_views as number;
