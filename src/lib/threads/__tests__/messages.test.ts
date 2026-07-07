@@ -90,7 +90,10 @@ describe("insertMessage", () => {
     const mockSingle = vi.fn().mockResolvedValue({ data: fakeRow, error: null });
     const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
     const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-    const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert });
+    // insertMessage now also bumps threads.updated_at (sidebar sorts by last message).
+    const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
+    const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert, update: mockUpdate });
 
     (createServiceClient as Mock).mockReturnValue({ from: mockFrom });
 
@@ -240,7 +243,10 @@ describe("Phase 5 blocks round-trip insertMessage→loadMessages (SIMU-03)", () 
     const mockSingle = vi.fn().mockResolvedValue({ data: fakeRow, error: null });
     const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
     const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
-    const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert });
+    // insertMessage now also bumps threads.updated_at (sidebar sorts by last message).
+    const mockUpdateEq = vi.fn().mockResolvedValue({ error: null });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockUpdateEq });
+    const mockFrom = vi.fn().mockReturnValue({ insert: mockInsert, update: mockUpdate });
 
     (createServiceClient as Mock).mockReturnValue({ from: mockFrom });
 

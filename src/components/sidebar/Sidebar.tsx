@@ -50,11 +50,14 @@ import { cn } from "@/lib/utils";
 import { MavenMark } from "@/components/brand/maven-logo";
 import {
   useThreadList,
-  useCreateThread,
-  useActivateThread,
   useArchiveThread,
   type ThreadSummary,
 } from "@/hooks/queries";
+import {
+  setActiveThreadCookie,
+  clearActiveThreadCookie,
+  NEW_THREAD_SENTINEL,
+} from "@/lib/threads/active-thread-cookie";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useBoardStore } from "@/stores/board-store";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -189,8 +192,9 @@ function ThreadRow({
 }: {
   thread: ThreadSummary;
   isActive: boolean;
-  /** A2: this row was clicked and is mid-activation (the activateThread round-trip).
-   *  Shows a terracotta left-border + dim-pulse so the click has instant feedback. */
+  /** Reserved for a mid-load pulse. Opening is now instant (pointer re-point, no
+   *  round-trip) and the active-row highlight lands synchronously, so callers pass
+   *  false; kept so a future async open can re-enable the terracotta dim-pulse. */
   isPending?: boolean;
   onOpen: () => void;
   onDelete: () => void;
@@ -286,48 +290,33 @@ export function Sidebar() {
   const isMobile = useIsMobile();
   const reducedMotion = usePrefersReducedMotion();
   const switchThread = useBoardStore((s) => s.switchThread);
-  const createThread = useCreateThread();
-  const activateThread = useActivateThread();
+  const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
+  const activeThreadId = useBoardStore((s) => s.activeThreadId);
   const archiveThread = useArchiveThread();
 
-  // A2: the row currently mid-activation. Set the instant a thread row is clicked
-  // (before the activateThread round-trip) and cleared when it settles — so the click
-  // has immediate feedback during the otherwise-dead 100–400ms gap before the composer
-  // begins rehydrating (A1). null = no activation in flight.
-  const [activatingId, setActivatingId] = useState<string | null>(null);
-
-  // Open a fresh blank chat thread, then reset the composer + navigate home.
-  const handleNewThread = async () => {
-    try {
-      await createThread.mutateAsync();
-    } catch {
-      // Non-fatal: still reset the composer so the user gets a blank slate.
-    }
+  // Open a fresh BLANK thread. No DB row is created here — a blank thread must not
+  // pollute history. The pointer is set to the new-thread sentinel so the composer
+  // renders empty; the row is created lazily on the first message send
+  // (ensureThreadForSend in composer.tsx).
+  const handleNewThread = () => {
+    setActiveThreadCookie(NEW_THREAD_SENTINEL);
+    setActiveThreadId(null);
     switchThread();
     router.push("/home");
   };
 
-  // Re-open a past thread: touch it (→ becomes active), reset the composer so it
-  // reloads that thread's persisted content, then navigate home.
-  const handleOpenThread = async (id: string) => {
-    // A2: signal the clicked row immediately, before the (load-bearing) activate
-    // round-trip. /api/threads/open returns the most-recently-touched thread, so
-    // activateThread MUST commit before the composer reads it — we cover that real
-    // gap with row feedback (A2) + the composer skeleton (A1), never by dropping it.
-    setActivatingId(id);
-    try {
-      await activateThread.mutateAsync(id);
-    } catch {
-      // Non-fatal: still attempt to surface the thread on /home.
-    } finally {
-      setActivatingId(null);
-    }
+  // Re-open a past thread. Re-points the active-thread cookie (NO updated_at touch),
+  // so the thread resumes exactly where it was WITHOUT jumping to the top of history
+  // — only a sent message re-orders. The composer reloads on switchThread().
+  const handleOpenThread = (id: string) => {
+    setActiveThreadCookie(id);
+    setActiveThreadId(id);
     switchThread();
     router.push("/home");
   };
 
-  // Delete (archive) a thread. If it was the active one while the user is on
-  // /home, reload the composer onto the now-newest remaining open thread.
+  // Delete (archive) a thread. If it was the active one while the user is on /home,
+  // clear the pointer so the composer reloads onto the newest remaining open thread.
   const handleDeleteThread = async (id: string, wasActive: boolean) => {
     try {
       await archiveThread.mutateAsync(id);
@@ -335,6 +324,8 @@ export function Sidebar() {
       // Non-fatal: the thread-list refetch reconciles the sidebar either way.
     }
     if (wasActive && pathname === "/home") {
+      clearActiveThreadCookie();
+      setActiveThreadId(null);
       switchThread();
     }
   };
@@ -573,16 +564,17 @@ export function Sidebar() {
             )}
             {!threadsLoading && !effectiveCollapsed && (
               <div className="flex flex-col gap-px">
-                {recentThreads.map((thread, i) => {
-                  // The newest thread (index 0) is the active one while on /home.
-                  const isActive = pathname === "/home" && i === 0;
+                {recentThreads.map((thread) => {
+                  // Active = the OPEN thread (pointer), not "row 0" — re-opening an
+                  // old thread highlights it in place without reordering history.
+                  const isActive = pathname === "/home" && thread.id === activeThreadId;
                   return (
                     <ThreadRow
                       key={thread.id}
                       thread={thread}
                       isActive={isActive}
-                      isPending={activatingId === thread.id}
-                      onOpen={() => { void handleOpenThread(thread.id); }}
+                      isPending={false}
+                      onOpen={() => { handleOpenThread(thread.id); }}
                       onDelete={() => { void handleDeleteThread(thread.id, isActive); }}
                     />
                   );
