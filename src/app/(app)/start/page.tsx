@@ -5,9 +5,7 @@ import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
 import type { Audience } from "@/lib/audience/audience-types";
 import { getAccountSnapshots } from "@/lib/account-metrics/account-metrics-repo";
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
-import type { StatCard, Pillar } from "@/lib/room-contract/mock-room";
-import { buildContentPillars } from "@/lib/content-pillars/build-pillars";
-import { anyUnconfirmedPillars } from "@/lib/content-pillars/pillars-repo";
+import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { listRecentReconciliations } from "@/lib/flywheel/reconciliation-repo";
@@ -86,24 +84,6 @@ export default async function StartRoute({
     }
   }
 
-  // Real content pillars (the creator's recurring themes, clustered from their own posts).
-  // Skipped for first-run (no connected account). Empty on any read error or a low-post account
-  // → StartPage renders the honest "learning your themes" empty state (never fabricated).
-  let pillars: Pillar[] = [];
-  let pillarsNeedConfirm = false;
-  if (!initialFirstRun) {
-    try {
-      pillars = await buildContentPillars(supabase, user.id);
-      // Show the one-time propose→confirm card only when there are pillars to review AND the
-      // creator hasn't reviewed them yet (both cheap; total, never fabricates).
-      pillarsNeedConfirm =
-        pillars.length > 0 && (await anyUnconfirmedPillars(supabase, user.id));
-    } catch {
-      pillars = [];
-      pillarsNeedConfirm = false;
-    }
-  }
-
   // Pre-tested cards (Seams 1/2): serve a FRESH cached batch for the active audience so the page
   // renders instantly. A miss (or a stale/first-of-the-day cache) leaves these null → StartPage
   // warms each lazily via POST /api/surfaces/{outliers,ideas}. Skipped for first-run (no audience).
@@ -134,8 +114,6 @@ export default async function StartRoute({
       loopReceipts={loopReceipts}
       loopAccuracy={loopAccuracy}
       accountStats={accountStats}
-      pillars={pillars}
-      pillarsNeedConfirm={pillarsNeedConfirm}
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
       initialOutliers={initialOutliers}

@@ -363,8 +363,14 @@ export function Sidebar() {
   }, [toggleCollapsed]);
 
   // Chat threads — each conversation is its own listable thread (active = first).
+  // Declutter (2026-07-06): the sidebar IS the chat-history surface, but empty untitled
+  // "New chat" placeholders carry no signal and dominated the list. Keep every TITLED
+  // thread (the real history) plus the newest one regardless (so /home's active-row
+  // highlight, keyed to index 0, still lands even on a fresh untitled thread), cap 12.
   const { data: threads, isLoading: threadsLoading } = useThreadList();
-  const recentThreads = (threads ?? []).slice(0, 15);
+  const recentThreads = (threads ?? [])
+    .filter((t, i) => i === 0 || Boolean(t.title && t.title.trim()))
+    .slice(0, 12);
 
   // User profile for Account section
   const { data: profile } = useProfile();

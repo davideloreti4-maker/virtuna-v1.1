@@ -47,14 +47,14 @@ export function ReferralsTab({
     return (
       <div className="relative">
         <div aria-hidden className="pointer-events-none select-none opacity-[0.35]">
-          <section className="rounded-2xl bg-[#252320] px-4 py-4">
+          <section className="rounded-2xl bg-surface-sunken px-4 py-4">
             <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Your referral link</h2>
             <div className="elev-rest mt-3 flex items-center gap-2 rounded-[10px] border border-border bg-[color:var(--color-surface-thread)] p-2 pl-3">
               <code className="min-w-0 flex-1 truncate font-mono text-[12px] text-foreground">numen.co/?ref=•••••••</code>
               <span className="rounded-[8px] border border-border px-2.5 py-1.5 font-mono text-[11px] text-foreground-muted">Copy</span>
             </div>
           </section>
-          <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
+          <section className="mt-4 rounded-2xl bg-surface-sunken px-4 py-4">
             <h2 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Performance</h2>
             <div className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
               {PERF_LABELS.map((label) => (
@@ -100,7 +100,7 @@ export function ReferralsTab({
   return (
     <div>
       {/* Referral link */}
-      <section className="rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="rounded-2xl bg-surface-sunken px-4 py-4">
         <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Your referral link</h2>
         <p className="mt-1 text-[12.5px] leading-[1.5] text-foreground-secondary">
           Share it. When a creator signs up and subscribes, you earn{" "}
@@ -116,7 +116,7 @@ export function ReferralsTab({
       </section>
 
       {/* Performance */}
-      <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="mt-4 rounded-2xl bg-surface-sunken px-4 py-4">
         <h2 className="mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Performance</h2>
         <div className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
           {stats.map((s) => (

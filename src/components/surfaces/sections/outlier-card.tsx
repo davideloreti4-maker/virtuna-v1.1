@@ -44,15 +44,15 @@ export function OutlierCard({
       }}
       className="elev-lift group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-[#1c1b19] hover:border-border-hover"
     >
-      <div className="relative flex h-[238px] flex-col bg-[linear-gradient(165deg,#312f2b,#181715)]">
-        <div className="flex items-center gap-2 p-[11px]">
-          <span className="size-[26px] shrink-0 rounded-full border border-white/20 bg-[linear-gradient(135deg,#6a8f7a,#3a4a58)]" />
-          <span className="min-w-0 flex-1 truncate text-[12px] font-semibold text-white">
+      <div className="relative flex aspect-[9/16] flex-col bg-[linear-gradient(165deg,#312f2b,#181715)]">
+        <div className="flex items-center gap-2 p-3">
+          <span className="size-[28px] shrink-0 rounded-full border border-white/20 bg-[linear-gradient(135deg,#6a8f7a,#3a4a58)]" />
+          <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-white">
             {outlier.handle}
           </span>
-          <SurfaceIcon name="play" size={13} className="text-white/85" />
+          <SurfaceIcon name="play" size={14} className="text-white/85" />
         </div>
-        <div className="mx-3 my-auto rounded-md bg-[#f4f1ea] px-[9px] py-[7px] text-center font-serif text-[10px] font-bold leading-[1.28] text-[#17150f]">
+        <div className="mx-3 my-auto rounded-md bg-[#f4f1ea] px-[11px] py-[9px] text-center font-serif text-[12px] font-bold leading-[1.3] text-[#17150f]">
           {outlier.caption}
         </div>
         <div className="absolute inset-x-0 bottom-0 h-[70px] bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.55))]" />

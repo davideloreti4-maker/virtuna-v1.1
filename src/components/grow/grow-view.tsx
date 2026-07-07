@@ -36,7 +36,7 @@ export function GrowView() {
   return (
     <div>
       {/* Monetization readiness */}
-      <section className="rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="rounded-2xl bg-surface-sunken px-4 py-4">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">
             Monetization readiness
@@ -78,7 +78,7 @@ export function GrowView() {
       </section>
 
       {/* Offer ideas */}
-      <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="mt-4 rounded-2xl bg-surface-sunken px-4 py-4">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="m-0 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Offer ideas</h2>
           <span className="shrink-0 font-mono text-[9px] text-foreground-muted">
@@ -115,7 +115,7 @@ export function GrowView() {
       </section>
 
       {/* Pricing & funnel */}
-      <section className="mt-4 rounded-2xl bg-[#252320] px-4 py-4">
+      <section className="mt-4 rounded-2xl bg-surface-sunken px-4 py-4">
         <h2 className="m-0 mb-3 text-[15px] font-semibold tracking-[-0.01em] text-foreground">Pricing &amp; funnel</h2>
         <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-stretch">
           {data.funnel.map((step, i) => (

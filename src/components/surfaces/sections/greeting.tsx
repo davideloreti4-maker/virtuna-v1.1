@@ -7,11 +7,13 @@
 
 export function Greeting({ headline, line }: { headline: string; line: string }) {
   return (
-    <div className="px-1 pb-1 pt-2">
-      <h2 className="m-0 text-balance font-serif text-[27px] font-normal leading-[1.15] tracking-[-0.015em] text-foreground sm:text-[30px]">
+    <div className="px-1 pt-1">
+      <h2 className="m-0 text-balance font-serif text-[34px] font-normal leading-[1.08] tracking-[-0.02em] text-foreground sm:text-[42px]">
         {headline}
       </h2>
-      <p className="mt-[9px] text-[12.5px] leading-[1.55] text-foreground-muted">{line}</p>
+      {line && (
+        <p className="mt-3 max-w-[48ch] text-[13.5px] leading-[1.5] text-foreground-muted">{line}</p>
+      )}
     </div>
   );
 }

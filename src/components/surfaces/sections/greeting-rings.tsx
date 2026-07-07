@@ -19,13 +19,13 @@ const C = 2 * Math.PI * R;
 function Ring({ ring, mounted }: { ring: RingStat; mounted: boolean }) {
   const offset = mounted ? C * (1 - ring.pct) : C;
   return (
-    <div className="flex flex-col items-center gap-[5px]" title={ring.label}>
-      <div className="relative size-9">
-        <svg width={36} height={36} className="-rotate-90">
-          <circle cx={18} cy={18} r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={2.6} />
+    <div className="flex flex-col items-center gap-[7px]" title={`${ring.label}: ${ring.value}`}>
+      <div className="relative size-10">
+        <svg width={40} height={40} className="-rotate-90">
+          <circle cx={20} cy={20} r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={2.6} />
           <circle
-            cx={18}
-            cy={18}
+            cx={20}
+            cy={20}
             r={R}
             fill="none"
             stroke={ring.accent ? "var(--color-accent)" : "var(--color-foreground-secondary)"}
@@ -37,11 +37,16 @@ function Ring({ ring, mounted }: { ring: RingStat; mounted: boolean }) {
           />
         </svg>
         <span className="absolute inset-0 grid place-items-center text-foreground">
-          <SurfaceIcon name={ring.icon} size={15} />
+          <SurfaceIcon name={ring.icon} size={16} />
         </span>
       </div>
-      <span className="whitespace-nowrap font-mono text-[8.5px] tracking-[0.02em] text-foreground-muted">
-        {ring.value}
+      <span className="flex flex-col items-center leading-tight">
+        <span className="font-mono text-[10.5px] font-medium tabular-nums text-foreground">
+          {ring.value}
+        </span>
+        <span className="mt-px whitespace-nowrap text-[8.5px] font-medium uppercase tracking-[0.07em] text-foreground-muted">
+          {ring.label}
+        </span>
       </span>
     </div>
   );
@@ -55,9 +60,9 @@ export function GreetingRings({ rings }: { rings: RingStat[] }) {
   }, []);
 
   return (
-    <div className="flex shrink-0 items-start gap-4">
+    <div className="flex shrink-0 items-start gap-5">
       {rings.map((r) => (
-        <Ring key={r.icon} ring={r} mounted={mounted} />
+        <Ring key={r.label} ring={r} mounted={mounted} />
       ))}
     </div>
   );

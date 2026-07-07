@@ -36,36 +36,40 @@ function Sparkline({ points, up }: { points: string; up: boolean }) {
   );
 }
 
+// Desktop columns track the exact tile count so the row stays gapless whether the
+// optional Views tile is present (4) or not (3). Mobile stays 2-col.
+const LG_COLS: Record<number, string> = {
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+};
+
 export function StatRow({ stats }: { stats: StatCard[] }) {
-  // Desktop columns track the tile count so the row stays gapless when the optional
-  // 5th (Views) tile is present. Mobile stays 2-col (a 5th tile flows to a 3rd row).
-  const lgCols = stats.length >= 5 ? "lg:grid-cols-5" : "lg:grid-cols-4";
+  const lgCols = LG_COLS[stats.length] ?? "lg:grid-cols-4";
   return (
-    <div className={`grid grid-cols-2 gap-[9px] px-1 ${lgCols}`}>
+    <div className={`grid grid-cols-2 gap-3 ${lgCols}`}>
       {stats.map((s) => {
         // No weekly delta yet (single snapshot / not enough history), or no value at
-        // all (e.g. "New followers" before the first daily diff) → show a clean
-        // point-in-time number instead of an empty sparkline + a bare "—"/"7d" delta.
+        // all (e.g. "New followers" before the first daily diff) → a clean point-in-time
+        // number over a quiet dashed baseline (Stanley's "building" affordance), never
+        // the repeated "trend builds daily" prose that read as filler.
         const hasTrend = s.value !== "—" && s.delta !== "—";
         return (
           <div
             key={s.label}
-            className="elev-rest flex flex-col rounded-xl border border-border bg-surface-elevated px-[13px] py-3"
+            className="elev-rest flex flex-col rounded-2xl border border-border bg-surface-elevated px-[18px] py-[17px]"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11.5px] font-medium text-foreground-secondary">{s.label}</span>
-              {hasTrend && (
-                <span className="font-mono text-[8px] tracking-[0.08em] text-foreground-muted">L7D</span>
-              )}
+              <span className="text-[12px] font-medium text-foreground-secondary">{s.label}</span>
+              <span className="font-mono text-[8.5px] tracking-[0.1em] text-foreground-muted">L7D</span>
             </div>
-            <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
+            <div className="mt-3 text-[28px] font-semibold leading-none tracking-[-0.025em] text-foreground [font-variant-numeric:tabular-nums]">
               {s.value}
             </div>
             {hasTrend ? (
               <>
                 <Sparkline points={s.spark} up={s.up} />
                 <div
-                  className="mt-[7px] flex items-center gap-1 font-mono text-[9px]"
+                  className="mt-2 flex items-center gap-1 font-mono text-[9px]"
                   style={{ color: s.up ? "var(--color-positive)" : "var(--color-foreground-muted)" }}
                 >
                   {s.up && <SurfaceIcon name="up" size={9} strokeWidth={2} />}
@@ -73,9 +77,7 @@ export function StatRow({ stats }: { stats: StatCard[] }) {
                 </div>
               </>
             ) : (
-              <div className="mt-[9px] font-mono text-[9px] leading-none text-foreground-muted">
-                trend builds daily
-              </div>
+              <div className="mt-[18px] border-t border-dashed border-white/[0.12]" aria-hidden />
             )}
           </div>
         );

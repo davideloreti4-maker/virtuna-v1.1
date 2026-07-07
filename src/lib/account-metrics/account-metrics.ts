@@ -158,17 +158,22 @@ export function buildAccountStats(snapshots: AccountSnapshot[]): StatCard[] | nu
     };
   })();
 
-  const tiles: StatCard[] = [
-    tile("Followers", (s) => s.follower_count),
-    newFollowers,
-    tile("Likes", (s) => s.heart_count),
-    tile("Posts", (s) => s.video_count),
-  ];
+  // The 4 headline metrics (Stanley parity): Views · Likes · New followers · Posts —
+  // reach, engagement, growth, output. We drop the cumulative "Followers" total (a
+  // vanity number that never moves at a glance) in favour of the tighter 4-tile row.
+  // "Likes" is our only honest engagement counter (heartCount) — we do NOT relabel it
+  // "Interactions", which would overclaim comments/shares the scrape doesn't give us.
+  const tiles: StatCard[] = [];
 
-  // Views (5th) — optional: only when the cron has captured recent_views on at least
-  // one snapshot. Real windowed sum, or omit the tile entirely (honesty spine).
+  // Views leads when present — optional: only when the daily cron has captured
+  // recent_views on ≥1 snapshot (honest windowed sum, never a fabricated total). When
+  // absent the row is the honest 3 (Likes · New followers · Posts).
   const views = optionalTile("Views", series, (s) => s.recent_views);
   if (views) tiles.push(views);
+
+  tiles.push(tile("Likes", (s) => s.heart_count));
+  tiles.push(newFollowers);
+  tiles.push(tile("Posts", (s) => s.video_count));
 
   return tiles;
 }
