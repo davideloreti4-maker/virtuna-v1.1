@@ -22,7 +22,14 @@ export const metadata = {
   title: "Your audiences | Maven",
 };
 
-export default async function AudiencePage() {
+export default async function AudiencePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
+  const initialTab = tab === "account" ? "account" : "audiences";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -45,5 +52,5 @@ export default async function AudiencePage() {
     }
   }
 
-  return <AudienceManager snapshots={snapshots} pillars={pillars} />;
+  return <AudienceManager snapshots={snapshots} pillars={pillars} initialTab={initialTab} />;
 }
