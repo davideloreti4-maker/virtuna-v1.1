@@ -98,6 +98,70 @@ export function buildDots(
   return out;
 }
 
+/**
+ * Field layout — a balanced, intentional constellation for the ambient empty-state
+ * hero. Dots are laid on a jittered, row-centred grid (even coverage, no clumping,
+ * still organic) rather than pure-random scatter (which reads as noise). Per-dot
+ * depth drives radius + opacity for air + parallax. Threads (see threadEdges) connect
+ * the field into a SINGLE figure. Cream only — no accent (dosage LOCKED). Deterministic.
+ */
+export function buildFieldDots(count: number, vbW: number, vbH: number): ConDot[] {
+  const n = count > 0 ? count : DEFAULT_ROSTER_DOTS;
+  const rnd = mulberry32(2166136261 ^ (n * 16777619));
+
+  const padX = vbW * 0.08;
+  const padY = vbH * 0.1;
+  const fieldW = vbW - padX * 2;
+  const fieldH = vbH - padY * 2;
+
+  // Rows scale with the field's aspect so 10 dots read as a wide band, not a stack.
+  const aspect = vbW / vbH;
+  const cols = Math.max(1, Math.round(Math.sqrt(n * aspect)));
+  const rows = Math.max(1, Math.ceil(n / cols));
+
+  // Even split across rows so the last row is never a lonely left-aligned stub.
+  const perRow: number[] = [];
+  let left = n;
+  for (let r = 0; r < rows; r++) {
+    const c = Math.ceil(left / (rows - r));
+    perRow.push(c);
+    left -= c;
+  }
+
+  const rowH = fieldH / rows;
+  const out: ConDot[] = [];
+  let i = 0;
+  for (let r = 0; r < rows; r++) {
+    const c = perRow[r]!;
+    const step = fieldW / c;
+    const cy0 = padY + (r + 0.5) * rowH;
+    // Stagger alternate rows by a half-step (hex-ish packing) + heavy jitter so the field
+    // breaks out of a square-grid look and reads as an organic constellation, not a matrix.
+    const rowShift = (r % 2 === 0 ? 1 : -1) * step * 0.24;
+    for (let k = 0; k < c; k++) {
+      const depth = rnd(); // 0 = far/dim/small … 1 = near/bright/large
+      const r0 = vbH * (0.045 + depth * 0.06);
+      const rawX = padX + (k + 0.5) * step + rowShift + (rnd() - 0.5) * step * 0.6;
+      const rawY = cy0 + (rnd() - 0.5) * rowH * 0.72;
+      const cx = Math.max(r0, Math.min(vbW - r0, rawX));
+      const cy = Math.max(r0, Math.min(vbH - r0, rawY));
+      const alpha = 0.34 + depth * 0.36;
+      out.push({
+        id: `field_${i}`,
+        cx,
+        cy,
+        r: r0,
+        fill: `rgba(${CREAM}, ${alpha.toFixed(2)})`,
+        accent: false,
+        phase: rnd(),
+        srLabel: `Persona ${i + 1}`,
+      });
+      i++;
+    }
+  }
+  return out;
+}
+
 /** Calm uniform cream dots for thread loading — no accent, no verdict toning. */
 export function buildLoadingDots(vbW: number, vbH: number, count = 8): ConDot[] {
   const rnd = mulberry32(0xdec0de);
@@ -136,6 +200,51 @@ export interface ConstellationProps {
   /** The room is reacting (a generation is in flight) → dots pulse FAST (breathe→blink,
    *  ~1s) instead of the calm 3–6s breathe. Motion-only (reducedMotion still wins). */
   reacting?: boolean;
+  /** Draw faint nearest-neighbour threads between dots — turns a scatter into an
+   *  actual constellation. Cream only, very low opacity. Used by the hero field. */
+  connect?: boolean;
+}
+
+/**
+ * Minimum spanning tree over the dots (Prim's) — connects the whole field into ONE
+ * figure with no crossings or orphans, so it reads as a single constellation rather
+ * than scattered pairs. n is tiny (~10) so the O(n²) build is free.
+ */
+function threadEdges(dots: ConDot[]) {
+  const n = dots.length;
+  if (n < 2) return [] as { key: string; x1: number; y1: number; x2: number; y2: number }[];
+  const inTree = new Array(n).fill(false);
+  inTree[0] = true;
+  const edges: { key: string; x1: number; y1: number; x2: number; y2: number }[] = [];
+  for (let e = 0; e < n - 1; e++) {
+    let bi = -1;
+    let bj = -1;
+    let bd = Infinity;
+    for (let a = 0; a < n; a++) {
+      if (!inTree[a]) continue;
+      for (let b = 0; b < n; b++) {
+        if (inTree[b]) continue;
+        const dx = dots[a]!.cx - dots[b]!.cx;
+        const dy = dots[a]!.cy - dots[b]!.cy;
+        const d = dx * dx + dy * dy;
+        if (d < bd) {
+          bd = d;
+          bi = a;
+          bj = b;
+        }
+      }
+    }
+    if (bj < 0) break;
+    inTree[bj] = true;
+    edges.push({
+      key: `${bi}-${bj}`,
+      x1: dots[bi]!.cx,
+      y1: dots[bi]!.cy,
+      x2: dots[bj]!.cx,
+      y2: dots[bj]!.cy,
+    });
+  }
+  return edges;
 }
 
 /** The breathing persona constellation (SVG). Liveness via motion + cream opacity only. */
@@ -148,7 +257,9 @@ export function Constellation({
   vbH,
   ariaLabel,
   reacting = false,
+  connect = false,
 }: ConstellationProps) {
+  const edges = connect ? threadEdges(dots) : [];
   return (
     <svg
       viewBox={`0 0 ${vbW} ${vbH}`}
@@ -157,6 +268,26 @@ export function Constellation({
       role="img"
       aria-label={ariaLabel ?? `Your audience — ${dots.length} people`}
     >
+      {edges.map((e) => (
+        <line
+          key={e.key}
+          x1={e.x1.toFixed(2)}
+          y1={e.y1.toFixed(2)}
+          x2={e.x2.toFixed(2)}
+          y2={e.y2.toFixed(2)}
+          stroke={`rgba(${CREAM}, 0.14)`}
+          strokeWidth={0.7}
+        >
+          {!reducedMotion && (
+            <animate
+              attributeName="opacity"
+              values="0.5;1;0.5"
+              dur="6s"
+              repeatCount="indefinite"
+            />
+          )}
+        </line>
+      ))}
       {dots.map((d, i) => (
         <g key={d.id} transform={`translate(${d.cx.toFixed(2)} ${d.cy.toFixed(2)})`}>
           {!reducedMotion && (

@@ -363,9 +363,12 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
     expect(within(panel).getByText(/6 of 10/i)).toBeInTheDocument();
   });
 
-  it('shows the idle hero prompt (no fabricated reaction) when open + idle', () => {
+  it('shows the idle hero prompt + the real cast (no fabricated reaction) when open + idle', () => {
     setup({ open: true, focus: null });
-    expect(screen.getByText(/type below to test a thought/i)).toBeInTheDocument();
+    expect(screen.getByText(/type a thought below/i)).toBeInTheDocument();
+    // "Meet your room" — the General cast renders as real named people (the moat), not an abstract count.
+    expect(screen.getByText('Maya')).toBeInTheDocument();
+    expect(screen.getByText('Dev')).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
   });
 
