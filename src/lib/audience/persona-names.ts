@@ -79,3 +79,40 @@ export function personaNameMap(
   }
   return map;
 }
+
+/**
+ * Short, human trait per archetype — a one-line "who they are" for presentation (the empty-state
+ * "meet your room" cast, persona chips). Distilled from ARCHETYPE_DEFINITIONS but kept punchy +
+ * second-person-free so it reads as a label under a name. Client-safe (presentation only).
+ */
+export const ARCHETYPE_TRAIT: Record<Archetype, string> = {
+  high_engager: 'Likes, comments, tags friends',
+  saver: 'Bookmarks useful stuff',
+  lurker: 'Watches silently, never reacts',
+  sharer: 'DMs relatable stuff to friends',
+  tough_crowd: 'Scrolls past unless it lands',
+  purposeful_viewer: 'Here to learn, skips noise',
+  niche_deep_buyer: 'Shopping your niche, picky',
+  niche_deep_scout: 'Knows the niche, spots clichés',
+  loyalist: 'Loyal follower, roots for you',
+  cross_niche_curiosity: 'From an adjacent niche',
+};
+
+/**
+ * The canonical General cast — the 10 recurring archetypes in a stable presentation order
+ * (FYP filters first, then niche, then loyalist/cross-niche). The idle General audience carries
+ * no persona rows (audience-repo GENERAL_AUDIENCE.personas = []), so surfaces that want to show
+ * "who's in the room" for General read this ordered roster + ARCHETYPE_PERSONA_NAME/ARCHETYPE_TRAIT.
+ */
+export const GENERAL_ROSTER: Archetype[] = [
+  'high_engager',
+  'tough_crowd',
+  'saver',
+  'lurker',
+  'sharer',
+  'purposeful_viewer',
+  'loyalist',
+  'niche_deep_buyer',
+  'niche_deep_scout',
+  'cross_niche_curiosity',
+];

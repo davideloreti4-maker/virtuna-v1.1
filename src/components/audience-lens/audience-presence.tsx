@@ -35,7 +35,14 @@ import { groupAudiences } from '@/components/audience/audience-display';
 // this `"use client"` surface). resolveTier reads only `audience.mode`.
 import { resolveTier } from '@/lib/audience/resolve-tier';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
-import { personaNameMap } from '@/lib/audience/persona-names';
+import {
+  personaNameMap,
+  resolvePersonaName,
+  ARCHETYPE_PERSONA_NAME,
+  ARCHETYPE_TRAIT,
+  GENERAL_ROSTER,
+} from '@/lib/audience/persona-names';
+import type { Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AmbientRoom } from './AmbientRoom';
 import type { AmbientFocus, AmbientFocusSibling, AmbientPersonaReaction } from './ambient-presence-types';
@@ -43,6 +50,7 @@ import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
   Constellation,
   buildDots,
+  buildFieldDots,
   DEFAULT_ROSTER_DOTS,
 } from '@/components/brand/constellation';
 
@@ -334,7 +342,10 @@ export function AudiencePresence({
     ) : null;
 
   const peekDots = useMemo(() => buildDots(personas, flatPersonas, 132, 30), [personas, flatPersonas]);
-  const heroDots = useMemo(() => buildDots(personas, [], 320, 110), [personas]);
+  const heroDots = useMemo(
+    () => buildFieldDots(personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS, 260, 96),
+    [personas.length],
+  );
   // The desktop rail's idle roster — one row per persona (or the General default roster). Derived
   // from the SAME deterministic dot roster as the peek band so the names stay consistent across
   // the presence. Built off an always-idle dot list (flat=[]) so the srLabel is a plain name, not
@@ -346,6 +357,23 @@ export function AudiencePresence({
       name: d.srLabel,
       initial: (d.srLabel.trim()[0] ?? '·').toUpperCase(),
     }));
+  }, [personas]);
+
+  // "Meet your room" cast — the actual named people who react. Calibrated audiences use their own
+  // personas (creator labels win); General has no persona rows, so it reads the canonical roster.
+  // Each member carries a one-line trait so the room is tangible, not an abstract "10 personas".
+  const castMembers = useMemo(() => {
+    if (personas.length > 0) {
+      return personas.map((p, i) => {
+        const name = resolvePersonaName(p.archetype, p.label) ?? `Person ${i + 1}`;
+        const trait = ARCHETYPE_TRAIT[p.archetype as Archetype] ?? '';
+        return { key: `${p.archetype}-${i}`, name, trait, initial: (name.trim()[0] ?? '·').toUpperCase() };
+      });
+    }
+    return GENERAL_ROSTER.map((a) => {
+      const name = ARCHETYPE_PERSONA_NAME[a];
+      return { key: a, name, trait: ARCHETYPE_TRAIT[a], initial: name[0]!.toUpperCase() };
+    });
   }, [personas]);
 
   // Esc closes the switcher first, then the panel.
@@ -736,23 +764,61 @@ export function AudiencePresence({
               />
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-5 pb-8 text-center">
-              <Constellation
-                dots={heroDots}
-                reducedMotion={reducedMotion}
-                width="100%"
-                height={110}
-                vbW={320}
-                vbH={110}
-                reacting={reacting}
-              />
-              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{displayPulse}</p>
-              {arrivalBadge}
-              <p className="max-w-[280px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
-                {isSurface
-                  ? SURFACE_IDLE_SUB
-                  : `Type below to test a thought — your ${audienceName} reacts in real time.`}
-              </p>
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-10">
+              {/* A small, living constellation crown — the room breathing; the named cast below
+                   grounds those same dots as real people. */}
+              <div className="flex flex-col items-center gap-3 text-center">
+                <Constellation
+                  dots={heroDots}
+                  reducedMotion={reducedMotion}
+                  width={172}
+                  height={52}
+                  vbW={260}
+                  vbH={96}
+                  reacting={reacting}
+                  connect
+                />
+                <div className="flex flex-col items-center gap-1.5">
+                  <p className="text-[15px] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
+                    {reacting ? LOADING_COPY : `${audienceName} · ${rosterCount} people ready`}
+                  </p>
+                  {arrivalBadge}
+                  <p className="max-w-[400px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
+                    {isSurface
+                      ? SURFACE_IDLE_SUB
+                      : `Type a thought below and watch the whole room react.`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Meet your room — the actual cast, so the simulation reads as a set of real people,
+                   not an abstract count. Presentational (no dead affordance): the value is seeing them.
+                   TODO(meet-your-room): make each person tappable → open a "meet them" persona chat
+                   ("Why'd you scroll past, Dev?"). Wire to the persona-chat flow, then add a hover/
+                   focus affordance back. Left out here to avoid a dead affordance. */}
+              {!isSurface && castMembers.length > 0 && (
+                <ul className="grid w-full max-w-[540px] grid-cols-1 gap-1 sm:grid-cols-2">
+                  {castMembers.map((m) => (
+                    <li key={m.key} className="flex items-center gap-3 px-2.5 py-2">
+
+                      <span
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] text-[12px] font-semibold text-[var(--color-foreground-secondary)]"
+                        aria-hidden
+                      >
+                        {m.initial}
+                      </span>
+                      <span className="flex min-w-0 flex-col text-left">
+                        <span className="truncate text-[13px] font-medium leading-tight text-[var(--color-foreground)]">
+                          {m.name}
+                        </span>
+                        <span className="truncate text-[12px] leading-tight text-[var(--color-foreground-muted)]">
+                          {m.trait}
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
         </div>
