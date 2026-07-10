@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
+import { rehostAvatar } from "@/lib/scraping/rehost-cover";
 
 /**
  * Re-scrape a single competitor profile and update data.
@@ -40,13 +41,19 @@ export async function retryScrape(
     // Service client for writes (bypasses RLS)
     const serviceClient = createServiceClient();
 
+    // Durable avatar: re-host the freshly-scraped avatar into the public `avatars` bucket (falls
+    // back to the ephemeral URL on failure). Same rationale as the refresh-competitors cron.
+    const avatarUrl =
+      (await rehostAvatar(serviceClient, profileData.avatarUrl, handle)) ??
+      profileData.avatarUrl;
+
     // Update competitor profile with fresh data (same pattern as refresh-competitors cron)
     await serviceClient
       .from("competitor_profiles")
       .update({
         display_name: profileData.displayName,
         bio: profileData.bio,
-        avatar_url: profileData.avatarUrl,
+        avatar_url: avatarUrl,
         verified: profileData.verified,
         follower_count: profileData.followerCount,
         following_count: profileData.followingCount,
