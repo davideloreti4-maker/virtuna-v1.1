@@ -21,7 +21,8 @@
 -- mirroring match_corpus_videos / match_scraped_videos — unioned + weighted in TS.
 --
 -- Design decisions baked in (§13):
---   [A] ONE topical embedding vector(768) (reuse shipped gemini/HNSW-cosine) +
+--   [A] ONE topical embedding vector(768) (reuse the shipped 768/HNSW-cosine infra;
+--       producer = DashScope text-embedding when vectors land — Qwen-only, NOT gemini) +
 --       TYPED FACET COLUMNS. Structural embedding DEFERRED — Rung-2 structural
 --       retrieval is a facet WHERE (archetype=X ∩ niche≠user), not a vector op.
 --   Soft controlled vocab: facets/niche are free TEXT validated app-side against

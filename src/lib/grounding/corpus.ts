@@ -13,11 +13,12 @@
  * for personal. `findCachedTeardownIds` lets the retrieval pipeline skip re-extracting
  * a video we already tore down.
  *
- * Embedding note: the shipped gemini embedder is DEFERRED to M2 (embedQuery throws),
- * so `embedding` is written NULL today and the RPC wrappers (which require a query
- * vector) stay dark until an embedder lands. Facet/recency retrieval that needs no
- * vector is a separate, embedding-free path (see retrieveByFacet). Both are here so
- * the module is complete the moment embeddings switch on.
+ * Embedding note: the platform is Qwen/DashScope-only. The legacy gemini-named
+ * embedder (engine/{retrieval,corpus}/embedder.ts) is DEFERRED/dead — its own note
+ * targets a DashScope re-embed. So `embedding` is written NULL today; when vectors
+ * are wanted the producer is DashScope `text-embedding-v3` (dims 768, via the
+ * existing qwen client) — NOT gemini. The RPC wrappers (which need a query vector)
+ * stay dark until that lands; facet/niche/recency retrieval needs no vector.
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
