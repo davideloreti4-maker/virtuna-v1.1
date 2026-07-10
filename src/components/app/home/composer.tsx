@@ -57,6 +57,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
+  ModelTag,
   SkillRows,
   SKILLS,
   getSkill,
@@ -2125,7 +2126,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       onSubmit={onSubmitForm}
       onDragOver={(e) => {
         // Evidence-drop overlay (D-07). Additive: VideoUpload stops propagation on its
-        // own drop zone, so the creator upload path is unaffected.
+        // own drop zone, so the creator upload path is unaffected. Inert while the audience
+        // room owns the field — submit goes to askAudience, so a staged file would be dropped.
+        if (audienceOpen) return;
         e.preventDefault();
         if (!dragOver) setDragOver(true);
       }}
@@ -2134,6 +2137,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setDragOver(false);
       }}
       onDrop={(e) => {
+        if (audienceOpen) return;
         e.preventDefault();
         setDragOver(false);
         const f = e.dataTransfer.files?.[0];
@@ -2151,7 +2155,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             <p className="text-sm text-foreground-secondary">{EVIDENCE_DROP_HINT}</p>
           </div>
         )}
-        <div className="relative p-3.5">
+        <div className="relative p-4">
           {/* `/` slash command menu (UX-01) — opens UPWARD above the composer when
               the field value starts with `/`. Filterable; selecting sets the skill
               and clears the `/`. Reuses SkillRows (the same list as the skill pill). */}
@@ -2254,7 +2258,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               row — [✦ Verb ▾] on the left, evidence attach + cream send on the right. This
               replaces the old single cramped bar. Banners + the Test upload zone stack ABOVE.
               Tool selection is NEVER a submit (Pitfall #5 / WR-05). */}
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-3.5">
             {/* Row 1 — the field. textarea (auto-multiline); Enter submits, Shift+Enter
                 newlines (onFieldKeyDown). Test/Remix carry a URL; `/` opens the skill menu. */}
             <textarea
@@ -2282,26 +2286,29 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               className={cn(
                 "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-[15px] text-foreground",
                 "placeholder:text-foreground-muted focus:outline-none",
-                "min-h-[46px] max-h-[200px] leading-[1.55]",
+                // The empty box breathes: the placeholder sits at the top and the controls
+                // rest at the bottom edge with real void between them. This air — not the
+                // radius or the border — is what separates a premium composer from a cramped one.
+                "min-h-[72px] max-h-[200px] leading-[1.55]",
               )}
             />
 
-            {/* Row 2 — controls. Verb/skill chip (ComposerControls) left; evidence attach +
-                the cream send right. The skill menu is mode-scoped (07-01/UX-02/D-07):
-                activeMode is DERIVED from the selected audience (null/Socials → "socials",
-                keeping the live creator render byte-identical — Pitfall 2). */}
+            {/* Row 2 — controls, split the way Claude/Perplexity split theirs: the LEFT
+                cluster is what you're about to do (attach · verb), the RIGHT cluster is what
+                you're talking to (the SIM-1 tier) plus the send. Every control is a bare or
+                quietly-filled glyph — the cream send disc is the surface's ONE bright element.
+                The skill menu is mode-scoped (07-01/UX-02/D-07): activeMode is DERIVED from the
+                selected audience (null/Socials → "socials" — Pitfall 2). */}
             <div className="flex items-center justify-between gap-2">
-              <ComposerControls
-                activeTool={activeTool}
-                onSelectTool={handleUserSelectTool}
-                activeMode={selectedAudience?.mode ?? "socials"}
-                onRunExplore={(params) => void explore.start(params)}
-                className="shrink-0"
-              />
-
-              <div className="flex items-center gap-1.5">
-                {/* In-input evidence paperclip (05-06 / D-07) — attach a chat / screenshot
-                    (the Profile evidence door). Opens a file picker; drag-drop is the form overlay. */}
+              {/* LEFT cluster — attach + verb. Both are HIDDEN while the audience room owns the
+                  field: submit routes to askAudience there (onSubmitForm's first branch), so a
+                  staged evidence file would be silently discarded and a picked skill silently
+                  ignored. Rather than show controls whose promise the submit won't keep, the open
+                  room strips the row to field + send. The file <input> stays mounted regardless —
+                  handleUserSelectTool("profile") clicks it by ref. */}
+              <div className="flex min-w-0 items-center gap-1.5">
+                {/* In-input evidence attach (05-06 / D-07) — a chat / screenshot (the Profile
+                    evidence door). Opens a file picker; drag-drop is the form overlay. */}
                 <input
                   ref={evidenceInputRef}
                   type="file"
@@ -2313,18 +2320,36 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                     e.target.value = ""; // allow re-selecting the same file
                   }}
                 />
-                <button
-                  type="button"
-                  aria-label={EVIDENCE_ATTACH_LABEL}
-                  title={EVIDENCE_ATTACH_LABEL}
-                  onClick={() => evidenceInputRef.current?.click()}
-                  className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-xl text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
-                >
-                  <Plus className="h-5 w-5" strokeWidth={2} />
-                </button>
+                {!audienceOpen && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label={EVIDENCE_ATTACH_LABEL}
+                      title={EVIDENCE_ATTACH_LABEL}
+                      onClick={() => evidenceInputRef.current?.click()}
+                      className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+                    >
+                      <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                    </button>
 
-                {/* Submit — clean cream disc (Claude-style). boxShadow is forced off inline so the
-                    primary variant's dark 2px ring (--shadow-button) can never re-add a border. */}
+                    <ComposerControls
+                      activeTool={activeTool}
+                      onSelectTool={handleUserSelectTool}
+                      activeMode={selectedAudience?.mode ?? "socials"}
+                      onRunExplore={(params) => void explore.start(params)}
+                      className="shrink-0"
+                    />
+                  </>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                {/* Read-only SIM-1 tier — the skill picks it, so it's metadata, not a control.
+                    Hidden while the audience panel owns the field (the tier wouldn't apply). */}
+                {!audienceOpen && <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />}
+
+                {/* Submit — the cream disc. boxShadow is forced off inline so the primary
+                    variant's dark 2px ring (--shadow-button) can never re-add a border. */}
                 <Button
                   type="submit"
                   variant="primary"
@@ -2333,7 +2358,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                   disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
                   loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
                   style={{ boxShadow: "none" }}
-                  className="shrink-0 h-[40px] w-[40px] min-w-0 p-0 rounded-xl"
+                  className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
                 >
                   <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
                 </Button>
@@ -2372,17 +2397,33 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
       {audiencePresence}
-      <div
-        className={cn(
-          "relative w-full rounded-[22px] border border-white/[0.08] bg-surface-elevated",
-          !audienceOpen && "overflow-hidden",
-          audienceOpen && "rounded-t-none border-t-0",
-          layout === "centered" && "shadow-float",
-          !reducedMotion && "transition-shadow duration-200",
+      <div className="relative w-full">
+        {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
+            The card is opaque, but its rounded corners and the 16px strip below it are not, so
+            scrolled messages used to stay visible in a band under the composer. This paints the
+            page colour behind exactly the card's own footprint (+16px down), so the thread
+            vanishes UNDER the card while the audience tab above keeps its see-through rounded
+            corners. Column-width, so it never over-paints. Omitted on the centered home: nothing
+            scrolls behind there, and being positioned it would paint over the starter chips. */}
+        {homeThreadMode && (
+          <div
+            aria-hidden
+            data-testid="composer-backdrop"
+            className="pointer-events-none absolute inset-x-0 -bottom-4 top-0 bg-background"
+          />
         )}
-      >
-        {composerForm}
-        {buildChooser}
+        <div
+          className={cn(
+            "relative w-full rounded-[24px] border border-white/[0.06] bg-surface-elevated",
+            !audienceOpen && "overflow-hidden",
+            audienceOpen && "rounded-t-none border-t-0",
+            layout === "centered" && "shadow-float",
+            !reducedMotion && "transition-shadow duration-200",
+          )}
+        >
+          {composerForm}
+          {buildChooser}
+        </div>
       </div>
     </div>
   );
@@ -2395,7 +2436,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // zone; Account → a Read on the creator's own posts. onDemoComplete reloads the
   // open thread so the demo's profile-read card surfaces in-thread.
   const homeStarter = !hasConversationContent ? (
-    <div className="mb-4 w-full">
+    <div className="mt-4 w-full">
       <HomeStarter
         onQuickAction={handleUserSelectTool}
         onDemoComplete={() => void reloadProfileThread()}
@@ -2457,10 +2498,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         </div>
 
         {/* Floating bottom dock — audience + composer fused as one surface, overlaid on the
-            scroll so chat passes BEHIND it. The wrapper itself is transparent + click-through
-            (pointer-events-none); only the opaque cards inside (pointer-events-auto) mask the
-            chat directly behind them, leaving scrolled content visible in the gaps. Content is
-            re-centered at 760px to align with the thread column above. */}
+            scroll so chat passes BEHIND it. The wrapper itself stays transparent + click-through
+            (pointer-events-none) so the thread still shows around the audience tab's rounded top
+            corners; the opaque page-bg backdrop that hides scrolled content lives on the composer
+            BOX (see composerDock), which is where the card actually starts. Content is re-centered
+            at 760px to align with the thread column above. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
           <div className="w-full max-w-[760px] mx-auto px-4">
             {composerDock}
@@ -2477,10 +2519,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col pb-4", className)}>
       {threadContent}
-      {/* Starter chips ride ABOVE the bottom-pinned composer (suggestion row), so the
-          empty home reads greeting (centered) → chips → composer at the bottom edge. */}
-      {homeStarter}
+      {/* Starter chips ride BELOW the composer, so the empty home reads greeting → composer
+          → chips. The composer is the anchor; the chips read as optional suggestions hanging
+          off it rather than a gate you pass through to reach the field. */}
       {composerDock}
+      {homeStarter}
     </div>
   );
 }
