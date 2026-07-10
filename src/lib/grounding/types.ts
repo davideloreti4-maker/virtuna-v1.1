@@ -181,6 +181,9 @@ export interface TeardownTemplate {
  */
 export interface Teardown {
   spokenHook: string | null;
+  /** The spokenHook generalized into a reusable fill-in-the-blank with [bracketed variables]
+   *  (Sandcastles-style) — the reusable structure shown on the card's proof block (§11b). */
+  hookTemplate: string | null;
   hookSource: HookSource | null;
   hookArchetype: string | null;
   format: string | null;
@@ -274,6 +277,8 @@ export interface RetrievedExample {
   hookArchetype: string | null;
   format: string | null;
   spokenHook: string | null;
+  /** The source hook as a reusable [bracketed] template — the proof block's fill-in-the-blank line. */
+  hookTemplate: string | null;
   template: TeardownTemplate | null;
   idea: IdeaFacet | null;
   whyItWorks: string | null;

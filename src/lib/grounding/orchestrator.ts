@@ -101,6 +101,7 @@ export function toRetrievedExample(args: {
     hookArchetype: teardown.hookArchetype,
     format: teardown.format,
     spokenHook: teardown.spokenHook,
+    hookTemplate: teardown.hookTemplate,
     template: teardown.template,
     idea: teardown.idea,
     whyItWorks: teardown.whyItWorks,

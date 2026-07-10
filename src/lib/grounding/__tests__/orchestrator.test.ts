@@ -35,6 +35,7 @@ const ranked = (): RankedOutlier => ({
 
 const teardown = (): Teardown => ({
   spokenHook: "Stop buying protein bars.",
+  hookTemplate: "Stop buying [product category].",
   hookSource: "caption_fallback",
   hookArchetype: "contrarian",
   format: "problem-solution",
@@ -62,6 +63,7 @@ describe("toRetrievedExample", () => {
     });
     expect(ex.handle).toBe("srenestrawberry");
     expect(ex.coverUrl).toBe("https://cdn.tiktok/cover-123.jpg");
+    expect(ex.hookTemplate).toBe("Stop buying [product category].");
     expect(ex.multiplier).toBe(9.2);
     expect(ex.baselineLabel).toBe("vs followers");
     expect(ex.views).toBe(14_700_000);

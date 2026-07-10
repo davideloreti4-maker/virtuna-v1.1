@@ -20,6 +20,7 @@
  */
 
 import { useState } from 'react';
+import { Eye, Play, TrendUp } from '@phosphor-icons/react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -54,65 +55,128 @@ function fmtMultiplier(m: number | null): string {
   return m >= 100 ? `${Math.round(m)}×` : `${m.toFixed(1)}×`;
 }
 
+/** "secret-reveal-breakdown" → "Secret Reveal Breakdown" (source archetype pill). */
+function formatArchetype(slug: string | null): string | null {
+  if (!slug) return null;
+  return slug
+    .split('-')
+    .map((w) => (w ? w[0]!.toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
+
+/**
+ * Render the source hook as a reusable fill-in-the-blank: connective words stay muted while each
+ * [bracketed variable] becomes a distinct chip (brightness + chip, NOT hue — matte/near-zero-accent).
+ * This is the "shown with variables, not written out" Sandcastles pattern. Falls back to plain text
+ * if the model emitted no brackets.
+ */
+function TemplatedHook({ text }: { text: string }) {
+  const parts = text.split(/(\[[^\]]+\])/g).filter((p) => p.length > 0);
+  return (
+    <p className="text-[13.5px] font-medium leading-snug text-foreground-secondary">
+      {parts.map((p, i) =>
+        /^\[[^\]]+\]$/.test(p) ? (
+          <span
+            key={i}
+            className="mx-px rounded-[4px] bg-white/[0.06] px-1 py-px text-foreground"
+          >
+            {p}
+          </span>
+        ) : (
+          <span key={i}>{p}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 /**
  * The on-card proof receipt (§11f receipts-on-cards) — the visible payoff of grounded generation,
- * modeled on the Sandcastles/Stanley teardown card: a real video THUMBNAIL + "@handle · N× basis ·
- * views" + the whole card links to the source video. Numbers we don't have are omitted (a caption-
- * tier row may lack a multiplier) — never a fabricated stat. The cover is an ephemeral TikTok-CDN
- * image (expires): a broken/expired URL hides the <img> (thumbnail collapses) rather than showing a
- * broken-image icon, mirroring remix-card-block. Rendered ONLY when a real source was attributed.
+ * modeled on the Sandcastles/Stanley teardown card. A prominent real video THUMBNAIL (clickable →
+ * source), the source hook as a [bracketed] reusable template, the source archetype, and colored
+ * stat pills (↗ multiplier · 👁 views). The written-out, ready-to-post hook stays the card's hero
+ * ABOVE this — this block is the reusable STRUCTURE + the receipt, not the deliverable.
+ *
+ * Honesty spine: rendered only when a real source was attributed; numbers we don't have are omitted
+ * (never fabricated). The cover is an ephemeral TikTok-CDN image (expires) — on error it collapses to
+ * a play-tile placeholder (mirrors remix-card-block) so the video anchor is never an empty/broken box.
  */
 function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']['proof']> }) {
   const fit = FIT_META[proof.fitLabel];
   const mult = fmtMultiplier(proof.multiplier);
   const views = fmtViews(proof.views);
-  const stats = [
-    mult ? `${mult}${proof.baselineLabel ? ` ${proof.baselineLabel}` : ''}` : null,
-    views ? `${views} views` : null,
-  ]
+  const archetype = formatArchetype(proof.archetype);
+  const statsAria = [mult ? `${mult}${proof.baselineLabel ? ` ${proof.baselineLabel}` : ''}` : null, views ? `${views} views` : null]
     .filter(Boolean)
-    .join(' · ');
+    .join(', ');
 
   const body = (
     <>
-      {/* Real cover of the proven video (display-only). Additive: only when present, and a
-          broken/expired CDN URL hides the <img> so we never show a broken-image icon. */}
-      {proof.coverUrl ? (
-        <span className="relative block aspect-[9/16] w-11 shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]">
-          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+      {/* Thumbnail — real cover on top of a play-tile placeholder. A missing/expired cover hides the
+          <img> and the play tile shows through, so a grounded card always anchors on a video tile. */}
+      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-[7px] border border-white/[0.06] bg-white/[0.05]">
+        <span className="absolute inset-0 flex items-center justify-center text-foreground-muted" aria-hidden="true">
+          <Play size={18} weight="fill" />
+        </span>
+        {proof.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
           <img
             src={proof.coverUrl}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
-        </span>
-      ) : null}
-
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="flex items-center gap-1.5 text-[12.5px] leading-snug">
-          <span className="shrink-0 text-foreground-muted" aria-hidden="true">{fit.glyph}</span>
-          <span className="truncate font-medium text-foreground-secondary">
-            Proven by <span className="text-foreground">@{proof.handle}</span>
-          </span>
-        </span>
-        {stats && (
-          <span className="text-[12px] leading-snug tabular-nums text-foreground-muted">{stats}</span>
-        )}
+        ) : null}
       </span>
 
-      {proof.videoUrl && (
-        <span className="ml-auto shrink-0 self-start text-foreground-muted" aria-hidden="true">↗</span>
-      )}
+      {/* Content column */}
+      <span className="flex min-w-0 flex-1 flex-col gap-1">
+        <span className="flex items-center justify-between gap-2">
+          <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-foreground-muted">
+            Proven structure
+          </span>
+          {archetype && (
+            <span className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary">
+              {archetype}
+            </span>
+          )}
+        </span>
+
+        {proof.hookTemplate && <TemplatedHook text={proof.hookTemplate} />}
+
+        <span className="flex items-center gap-1.5 text-[12px] leading-snug text-foreground-muted">
+          <span className="shrink-0" aria-hidden="true" title={fit.label}>{fit.glyph}</span>
+          <span className="truncate text-foreground-secondary">@{proof.handle}</span>
+        </span>
+
+        {/* Stat pills — colored multiplier (a real outlier is a positive signal) + views. */}
+        <span className="flex flex-wrap items-center gap-1.5">
+          {mult && (
+            <span className="inline-flex items-center gap-1 rounded-[6px] bg-[var(--color-positive)]/[0.14] px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-[var(--color-positive)]">
+              <TrendUp size={12} weight="bold" aria-hidden="true" />
+              {mult}
+            </span>
+          )}
+          {proof.baselineLabel && (
+            <span className="text-[11px] text-foreground-muted">{proof.baselineLabel}</span>
+          )}
+          {views && (
+            <span className="inline-flex items-center gap-1 rounded-[6px] bg-white/[0.05] px-1.5 py-0.5 text-[12px] tabular-nums text-foreground-secondary">
+              <Eye size={12} weight="regular" aria-hidden="true" />
+              {views}
+            </span>
+          )}
+        </span>
+      </span>
     </>
   );
 
   const base =
-    'flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-2';
-  const aria = `Proof video by @${proof.handle}${stats ? `, ${stats}` : ''} — match: ${fit.label}`;
+    'flex items-stretch gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-2.5';
+  const aria = `Proven structure from @${proof.handle}${statsAria ? `, ${statsAria}` : ''} — match: ${fit.label}`;
 
   return proof.videoUrl ? (
     <a

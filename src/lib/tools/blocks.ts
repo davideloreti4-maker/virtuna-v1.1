@@ -144,6 +144,8 @@ export const HookProofSchema = z.object({
   handle: z.string(),                                          // @creator of the proof video
   videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
   coverUrl: z.string().nullable(),                            // ephemeral TikTok-CDN thumbnail (display-only; may expire → renderer hides on error)
+  hookTemplate: z.string().nullable(),                       // the source hook as a [bracketed] fill-in-the-blank (Sandcastles-style proof line)
+  archetype: z.string().nullable(),                          // source hook archetype slug (e.g. "secret-reveal-breakdown") → pill
   multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
   views: z.number().nullable(),
   baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"

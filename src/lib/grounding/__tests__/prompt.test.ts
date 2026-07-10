@@ -15,6 +15,7 @@ const ex = (over: Partial<RetrievedExample> = {}): RetrievedExample => ({
   hookArchetype: "contrarian",
   format: "problem-solution",
   spokenHook: "Stop buying protein bars.",
+  hookTemplate: "Stop buying [product category].",
   template: { name: "Myth-swap", slots: [], skeleton: ["call the myth", "reveal the swap"], guidance: "" },
   idea: null,
   whyItWorks: "pattern interrupt on a common purchase",

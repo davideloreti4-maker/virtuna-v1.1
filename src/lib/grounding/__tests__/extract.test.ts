@@ -44,6 +44,7 @@ describe("mapExtractionResponse", () => {
         editingStyle: null,
         signatureSeries: null,
         spokenHook: "Stop buying protein bars.",
+        hookTemplate: "Stop buying [product category].",
         idea: {
           seed: "cheap protein",
           angle: "grocery-store protein beats supplements",
@@ -66,6 +67,7 @@ describe("mapExtractionResponse", () => {
     const out = mapExtractionResponse(parsed, [input()]);
     expect(out).toHaveLength(1);
     expect(out[0]!.hookArchetype).toBe("contrarian");
+    expect(out[0]!.hookTemplate).toBe("Stop buying [product category].");
     expect(out[0]!.format).toBe("problem-solution");
     expect(out[0]!.visualHook).toBe("crash-zoom");
     expect(out[0]!.editingStyle).toBeNull();

@@ -50,7 +50,8 @@ function contract(n: number): string {
     `  "visualHook": string|null, // ONLY if the caption/transcript makes the first-frame device evident, else null\n` +
     `  "editingStyle": string|null,// ONLY if evident from text, else null\n` +
     `  "signatureSeries": string|null,\n` +
-    `  "spokenHook": string,      // best reconstruction of the opening line\n` +
+    `  "spokenHook": string,      // best reconstruction of the opening line, written out verbatim\n` +
+    `  "hookTemplate": string,    // that SAME opening line generalized into a reusable fill-in-the-blank with [bracketed variables] any niche could fill — e.g. "This [technique] got me [result], but [reason it's rare]". Keep the connective words; bracket only the swappable specifics.\n` +
     `  "idea": { "seed": string, "angle": string, "belief": string, "reality": string, "evidence": string },\n` +
     `  "template": { "name": string, "slots": [ { "key": string, "label": string, "example": string } ], "skeleton": [string], "guidance": string },\n` +
     `  "whyItWorks": string       // one sentence: the retention mechanism\n` +
@@ -86,6 +87,7 @@ interface RawTeardown {
   editingStyle?: unknown;
   signatureSeries?: unknown;
   spokenHook?: unknown;
+  hookTemplate?: unknown;
   idea?: unknown;
   template?: unknown;
   whyItWorks?: unknown;
@@ -148,6 +150,7 @@ export function mapExtractionResponse(parsed: unknown, inputs: ExtractionInput[]
     const hookSource: HookSource | null = input.opening ? "native_transcript" : "caption_fallback";
     return {
       spokenHook: str(t.spokenHook),
+      hookTemplate: str(t.hookTemplate),
       hookSource,
       hookArchetype: classifyFacet("hook_archetype", str(t.hookArchetype)).slug,
       format: classifyFacet("format", str(t.format)).slug,

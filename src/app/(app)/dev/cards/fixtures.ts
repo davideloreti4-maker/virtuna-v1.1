@@ -122,6 +122,8 @@ export const HOOK_BLOCKS: HookCardBlock[] = [
         // Self-contained placeholder cover (live rows carry the real ephemeral TikTok-CDN URL).
         coverUrl:
           "data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0nZycgeDE9JzAnIHkxPScwJyB4Mj0nMScgeTI9JzEnPjxzdG9wIG9mZnNldD0nMCcgc3RvcC1jb2xvcj0nIzNhM2EzNycvPjxzdG9wIG9mZnNldD0nMScgc3RvcC1jb2xvcj0nIzI2MjYyNCcvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxyZWN0IHdpZHRoPSc5MCcgaGVpZ2h0PScxNjAnIGZpbGw9J3VybCgjZyknLz48cG9seWdvbiBwb2ludHM9JzM4LDY2IDM4LDk0IDY0LDgwJyBmaWxsPScjZWNlN2RlJyBvcGFjaXR5PScwLjUnLz48L3N2Zz4=",
+        hookTemplate: "Stop [doing the hard thing]. Do [the easier thing] instead.",
+        archetype: "trap-mistake",
         multiplier: 90.7,
         views: 621000,
         baselineLabel: "vs followers",
@@ -144,6 +146,19 @@ export const HOOK_BLOCKS: HookCardBlock[] = [
       scored: true,
       channel: "visual",
       personas: PERSONAS.slice(1, 7),
+      // Grounded but the source cover is missing/expired → the proof block falls back to the
+      // play-tile placeholder (still linked to the video), demoing the never-empty thumbnail.
+      proof: {
+        handle: "rico.incarnati",
+        videoUrl: "https://www.tiktok.com/@rico.incarnati/video/7300000000000000001",
+        coverUrl: null,
+        hookTemplate: "I analyzed [number] [things]. They all break [one rule].",
+        archetype: "case-study",
+        multiplier: 18.8,
+        views: 405000,
+        baselineLabel: "vs followers",
+        fitLabel: "in-audience",
+      },
     },
   },
 ];

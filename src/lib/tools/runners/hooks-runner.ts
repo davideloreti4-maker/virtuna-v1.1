@@ -143,6 +143,8 @@ export function buildHookProof(
     handle: ex.handle,
     videoUrl: ex.videoUrl,
     coverUrl: ex.coverUrl,
+    hookTemplate: ex.hookTemplate,
+    archetype: ex.hookArchetype,
     multiplier: ex.multiplier,
     views: ex.views,
     baselineLabel: ex.baselineLabel,
