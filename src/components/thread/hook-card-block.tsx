@@ -20,7 +20,7 @@
  */
 
 import { useState } from 'react';
-import { Eye, Play, TrendUp } from '@phosphor-icons/react';
+import { Eye, TrendUp } from '@phosphor-icons/react';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
@@ -28,6 +28,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CoverFill } from '@/components/primitives/CoverFill';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -114,22 +115,8 @@ function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']
     <>
       {/* Thumbnail — real cover on top of a play-tile placeholder. A missing/expired cover hides the
           <img> and the play tile shows through, so a grounded card always anchors on a video tile. */}
-      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-[7px] border border-white/[0.06] bg-white/[0.05]">
-        <span className="absolute inset-0 flex items-center justify-center text-foreground-muted" aria-hidden="true">
-          <Play size={18} weight="fill" />
-        </span>
-        {proof.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
-          <img
-            src={proof.coverUrl}
-            alt=""
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        ) : null}
+      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-[7px] border border-white/[0.06]">
+        <CoverFill coverUrl={proof.coverUrl} playSize={18} />
       </span>
 
       {/* Content column */}

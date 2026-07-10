@@ -29,6 +29,7 @@
 import { Check } from "@phosphor-icons/react";
 import { VideoCard } from "@/components/competitors/detail/video-card";
 import { SaveAffordance } from "@/components/thread/save-affordance";
+import { CoverFill } from "@/components/primitives/CoverFill";
 import type { FitLevel } from "@/lib/discover/explore-rank";
 
 /** One Discover outlier tile — mirrors OutlierGridBlock.props.tiles[*] (blocks.ts). */
@@ -123,39 +124,30 @@ export function OutlierTile({
   tracked = false,
 }: OutlierTileProps) {
   const duration = formatDuration(tile.durationSeconds);
+  const CoverTag = tile.videoUrl ? "a" : "div";
   return (
     <div className="space-y-2">
-      {/* Cover banner — the real scrape thumbnail (clockworks videoMeta.coverUrl). Additive:
-          renders ONLY when coverUrl is present, so a niche pull / pre-cover block degrades to
-          today's badge-first layout. Capped height (the grid is narrow — a full 9:16 would
-          tower); object-cover crops to a clean banner. Duration badge (bottom-right) is the
-          one overlay — NON-redundant with the views in the metrics grid below. A broken/expired
-          CDN URL hides the <img> (the placeholder bg shows), never a broken-image icon. */}
-      {tile.coverUrl ? (
-        <a
-          href={tile.videoUrl || undefined}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group relative block h-[176px] w-full overflow-hidden rounded-[8px] border border-white/[0.06] bg-white/[0.04]"
-          title={tile.caption || undefined}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
-          <img
-            src={tile.coverUrl}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-          {duration ? (
-            <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
-              {duration}
-            </span>
-          ) : null}
-        </a>
-      ) : null}
+      {/* Cover banner — ALWAYS rendered so every tile is the same height and a mixed grid (some
+          tiles with a cover, some without) never goes ragged. Real scrape thumbnail (clockworks
+          videoMeta.coverUrl) when we have one; an absent/expired/broken cover shows a neutral
+          play-tile via <CoverFill> — never an empty box, never a shorter tile. Capped height (the
+          grid is narrow — a full 9:16 would tower); object-cover crops to a clean banner. Links to
+          the video when a URL is known, otherwise a plain box. Duration badge (bottom-right) is
+          the one overlay — NON-redundant with the views in the metrics grid below. */}
+      <CoverTag
+        {...(tile.videoUrl
+          ? { href: tile.videoUrl, target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+        className="group relative block h-[176px] w-full overflow-hidden rounded-[8px] border border-white/[0.06]"
+        title={tile.caption || undefined}
+      >
+        <CoverFill coverUrl={tile.coverUrl} playSize={24} className="transition-opacity group-hover:opacity-90" />
+        {duration ? (
+          <span className="absolute bottom-1 right-1 rounded bg-black/70 px-1 py-0.5 text-[10px] font-medium tabular-nums text-white/90">
+            {duration}
+          </span>
+        ) : null}
+      </CoverTag>
 
       {/* Multiplier badge (neutral — data, NOT the action) + source sub-tag */}
       <div className="flex items-start justify-between gap-2">
