@@ -262,6 +262,8 @@ export interface RetrievedExample {
   teardownId: string;
   handle: string | null;
   videoUrl: string | null;
+  /** Ephemeral TikTok-CDN cover (display-only thumbnail on the card receipt; may expire). */
+  coverUrl: string | null;
   platform: string;
   /** Proof receipt — the numbers shown under the "YOUR VERSION" card (§11b grammar). */
   multiplier: number | null;

@@ -6,6 +6,7 @@ const ex = (over: Partial<RetrievedExample> = {}): RetrievedExample => ({
   teardownId: "td-1",
   handle: "srenestrawberry",
   videoUrl: "https://tiktok.com/@srenestrawberry/video/1",
+  coverUrl: null,
   platform: "tiktok",
   multiplier: 9.2,
   views: 14_700_000,

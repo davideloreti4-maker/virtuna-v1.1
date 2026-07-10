@@ -14,6 +14,7 @@ function makeExample(over: Partial<RetrievedExample> = {}): RetrievedExample {
     teardownId: "t-1",
     handle: "braedan.health",
     videoUrl: "https://www.tiktok.com/@braedan.health/video/7300000000000000000",
+    coverUrl: "https://cdn.example/cover.jpg",
     platform: "tiktok",
     multiplier: 90.7,
     views: 621000,
@@ -48,6 +49,7 @@ describe("buildHookProof", () => {
     expect(proof).toEqual({
       handle: "braedan.health",
       videoUrl: "https://www.tiktok.com/@braedan.health/video/7300000000000000000",
+      coverUrl: "https://cdn.example/cover.jpg",
       multiplier: 90.7,
       views: 621000,
       baselineLabel: "vs followers",

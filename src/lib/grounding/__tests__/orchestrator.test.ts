@@ -18,6 +18,7 @@ describe("handleFromUrl", () => {
 const ranked = (): RankedOutlier => ({
   platformVideoId: "123",
   videoUrl: "https://tiktok.com/@srenestrawberry/video/123",
+  coverUrl: "https://cdn.tiktok/cover-123.jpg",
   caption: "cottage cheese eggs",
   views: 14_700_000,
   likes: 100,
@@ -60,6 +61,7 @@ describe("toRetrievedExample", () => {
       trustWeight: 0.6,
     });
     expect(ex.handle).toBe("srenestrawberry");
+    expect(ex.coverUrl).toBe("https://cdn.tiktok/cover-123.jpg");
     expect(ex.multiplier).toBe(9.2);
     expect(ex.baselineLabel).toBe("vs followers");
     expect(ex.views).toBe(14_700_000);

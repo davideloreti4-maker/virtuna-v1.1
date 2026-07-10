@@ -92,6 +92,7 @@ export function toRetrievedExample(args: {
     teardownId,
     handle: handleFromUrl(ranked.videoUrl),
     videoUrl: ranked.videoUrl,
+    coverUrl: ranked.coverUrl ?? null,
     platform,
     multiplier,
     views: ranked.views,

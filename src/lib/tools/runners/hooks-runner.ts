@@ -142,6 +142,7 @@ export function buildHookProof(
   return {
     handle: ex.handle,
     videoUrl: ex.videoUrl,
+    coverUrl: ex.coverUrl,
     multiplier: ex.multiplier,
     views: ex.views,
     baselineLabel: ex.baselineLabel,

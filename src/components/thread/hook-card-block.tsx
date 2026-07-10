@@ -55,10 +55,12 @@ function fmtMultiplier(m: number | null): string {
 }
 
 /**
- * The on-card proof receipt (§11f receipts-on-cards) — the visible payoff of grounded generation.
- * Renders "◐ Proven by @handle · 90× vs followers · 621K views ↗", links to the real video when we
- * have the URL. Numbers we don't have are simply omitted (a caption-tier row may lack a multiplier);
- * we never fabricate a stat. Rendered ONLY when a real source was attributed (honesty spine).
+ * The on-card proof receipt (§11f receipts-on-cards) — the visible payoff of grounded generation,
+ * modeled on the Sandcastles/Stanley teardown card: a real video THUMBNAIL + "@handle · N× basis ·
+ * views" + the whole card links to the source video. Numbers we don't have are omitted (a caption-
+ * tier row may lack a multiplier) — never a fabricated stat. The cover is an ephemeral TikTok-CDN
+ * image (expires): a broken/expired URL hides the <img> (thumbnail collapses) rather than showing a
+ * broken-image icon, mirroring remix-card-block. Rendered ONLY when a real source was attributed.
  */
 function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']['proof']> }) {
   const fit = FIT_META[proof.fitLabel];
@@ -71,19 +73,45 @@ function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']
     .filter(Boolean)
     .join(' · ');
 
-  const inner = (
+  const body = (
     <>
-      <span className="shrink-0 text-foreground-muted" aria-hidden="true">{fit.glyph}</span>
-      <span className="font-medium text-foreground-secondary">
-        Proven by <span className="text-foreground">@{proof.handle}</span>
+      {/* Real cover of the proven video (display-only). Additive: only when present, and a
+          broken/expired CDN URL hides the <img> so we never show a broken-image icon. */}
+      {proof.coverUrl ? (
+        <span className="relative block aspect-[9/16] w-11 shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset */}
+          <img
+            src={proof.coverUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </span>
+      ) : null}
+
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex items-center gap-1.5 text-[12.5px] leading-snug">
+          <span className="shrink-0 text-foreground-muted" aria-hidden="true">{fit.glyph}</span>
+          <span className="truncate font-medium text-foreground-secondary">
+            Proven by <span className="text-foreground">@{proof.handle}</span>
+          </span>
+        </span>
+        {stats && (
+          <span className="text-[12px] leading-snug tabular-nums text-foreground-muted">{stats}</span>
+        )}
       </span>
-      {stats && <span className="text-foreground-muted">· {stats}</span>}
-      {proof.videoUrl && <span className="ml-auto shrink-0 text-foreground-muted" aria-hidden="true">↗</span>}
+
+      {proof.videoUrl && (
+        <span className="ml-auto shrink-0 self-start text-foreground-muted" aria-hidden="true">↗</span>
+      )}
     </>
   );
 
   const base =
-    'flex items-center gap-1.5 rounded-[8px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[12px] leading-none';
+    'flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-2';
   const aria = `Proof video by @${proof.handle}${stats ? `, ${stats}` : ''} — match: ${fit.label}`;
 
   return proof.videoUrl ? (
@@ -95,11 +123,11 @@ function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']
       title={`${fit.label} — open the proof video`}
       aria-label={`${aria}. Opens in a new tab.`}
     >
-      {inner}
+      {body}
     </a>
   ) : (
     <div className={base} title={fit.label} aria-label={aria}>
-      {inner}
+      {body}
     </div>
   );
 }

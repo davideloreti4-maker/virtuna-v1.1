@@ -143,6 +143,7 @@ export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 export const HookProofSchema = z.object({
   handle: z.string(),                                          // @creator of the proof video
   videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
+  coverUrl: z.string().nullable(),                            // ephemeral TikTok-CDN thumbnail (display-only; may expire → renderer hides on error)
   multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
   views: z.number().nullable(),
   baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
