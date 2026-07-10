@@ -55,10 +55,13 @@ import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
-import type { HookCardBlock } from "@/lib/tools/blocks";
+import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+import { gatherAndExtract } from "@/lib/grounding/orchestrator";
+import { formatCorpusForPrompt } from "@/lib/grounding/prompt";
+import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -72,6 +75,16 @@ const HOOK_COUNT = 5;
 
 /** Generation call timeout (mirrors ideas-runner). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Grounding gate (§11f step 2). OFF by default — grounding prepends a live scrape +
+ * survivor profile-scrapes + a teardown LLM call (~25s + Apify cost) BEFORE generation,
+ * so it ships behind an env flag until live-proven on the 2-frame reveal. TikTok-only in
+ * MVP: the gather path is clockworks/TikTok; IG native is the documented fast-follow.
+ */
+function isGroundingEnabled(): boolean {
+  return process.env.GROUNDING_HOOKS_ENABLED === "true";
+}
 
 /**
  * Output-serialization contract — owned by the runner because the runner owns
@@ -93,6 +106,51 @@ const HOOKS_OUTPUT_CONTRACT = `
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean } ] }
 Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.`;
+
+/**
+ * Grounded output contract (§11f receipts-on-cards). Used ONLY when a corpus grounding block
+ * was injected (grounding ON + real examples found). Adds ONE field — `sourceIndex` — so each
+ * hook reports WHICH grounding example (1-based, or 0 for none) its structure adapts. That
+ * integer is the attribution link the on-card receipt is built from (sourceIndex →
+ * RetrievedExample → proof). The ungrounded contract above is kept byte-identical so flag-OFF
+ * runs preserve their warm-cache prefix + regression gate.
+ */
+const HOOKS_OUTPUT_CONTRACT_GROUNDED = `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number } ] }
+Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).`;
+
+/**
+ * Map a model-emitted sourceIndex (1-based; 0 = "no specific source") back to the grounding
+ * example it attributed, and freeze it into the card's receipt (§11f receipts-on-cards).
+ * Returns null when the hook cited no source, cited out of range, or the matched example lacks
+ * a handle — no receipt without a real, nameable, above-baseline source (honesty spine). This
+ * is the visible payoff link: grounding shaped the words, this shows WHICH proven video it drew from.
+ */
+export function buildHookProof(
+  sourceIndex: number,
+  examples: RetrievedExample[],
+): HookProof | null {
+  if (!Number.isInteger(sourceIndex) || sourceIndex < 1 || sourceIndex > examples.length) {
+    return null;
+  }
+  const ex = examples[sourceIndex - 1];
+  if (!ex || !ex.handle) return null; // no handle → nothing honest to attribute
+  return {
+    handle: ex.handle,
+    videoUrl: ex.videoUrl,
+    coverUrl: ex.coverUrl,
+    hookTemplate: ex.hookTemplate,
+    archetype: ex.hookArchetype,
+    multiplier: ex.multiplier,
+    views: ex.views,
+    baselineLabel: ex.baselineLabel,
+    fitLabel: ex.fitLabel,
+  };
+}
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -151,6 +209,12 @@ interface StructuredHook {
   seedHook: string;
   channel: string | null;
   needsTake: boolean;
+  /**
+   * 1-based grounding-example index this hook adapted (0 = none). Only ever non-zero on a
+   * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
+   * the on-card receipt via buildHookProof (§11f).
+   */
+  sourceIndex: number;
 }
 
 // ─── Qwen generation call ─────────────────────────────────────────────────────
@@ -160,11 +224,18 @@ interface StructuredHook {
  * System = KC_HOOKS_SYSTEM_PROMPT (byte-stable warm cache prefix).
  * User = assembleBundle output (volatile per-request).
  */
-async function generateHooksStructured(userMessage: string): Promise<StructuredHook[]> {
+async function generateHooksStructured(
+  userMessage: string,
+  grounded: boolean,
+): Promise<StructuredHook[]> {
   const ai = getQwenClient();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+  // Grounded runs use the sourceIndex-carrying contract so hooks can be attributed to the real
+  // outlier they adapted; ungrounded runs keep the byte-identical original (warm-cache prefix).
+  const outputContract = grounded ? HOOKS_OUTPUT_CONTRACT_GROUNDED : HOOKS_OUTPUT_CONTRACT;
 
   let raw: string;
   try {
@@ -172,7 +243,7 @@ async function generateHooksStructured(userMessage: string): Promise<StructuredH
       {
         model: QWEN_REASONING_MODEL,
         messages: [
-          { role: "system", content: KC_HOOKS_SYSTEM_PROMPT + HOOKS_OUTPUT_CONTRACT },
+          { role: "system", content: KC_HOOKS_SYSTEM_PROMPT + outputContract },
           { role: "user", content: userMessage },
         ],
         response_format: { type: "json_object" },
@@ -230,6 +301,12 @@ async function generateHooksStructured(userMessage: string): Promise<StructuredH
       channel:
         typeof r.channel === "string" && r.channel.trim().length > 0 ? r.channel : null,
       needsTake: typeof r.needsTake === "boolean" ? r.needsTake : false,
+      // Attribution index (grounded runs only) — coerced to a clean non-negative int; anything
+      // missing/malformed → 0 (no source) so an ungrounded or sloppy response never fabricates one.
+      sourceIndex:
+        typeof r.sourceIndex === "number" && Number.isFinite(r.sourceIndex) && r.sourceIndex > 0
+          ? Math.trunc(r.sourceIndex)
+          : 0,
     });
     if (hooks.length >= HOOK_COUNT) break;
   }
@@ -319,6 +396,36 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
   const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
 
+  // ── GROUND (§11f step 2, gated): pull LIVE outlier teardowns for the topic → the one
+  //    additive corpus field. OFF by default; TikTok-only (gather path is clockworks).
+  //    ANY failure degrades to ungrounded — corpus stays undefined → byte-identical no-op,
+  //    never fabricate a source (honesty spine). Receipts-on-cards is the next step
+  //    (HookCardBlock proof fields); this wiring grounds GENERATION.
+  let corpus: string | undefined;
+  // Retained so the BUILD step can map each hook's sourceIndex back to the outlier it adapted
+  // (the on-card receipt, §11f). Stays empty on ungrounded/degraded runs → no proof attached.
+  let groundingExamples: RetrievedExample[] = [];
+  if (isGroundingEnabled() && platform === "tiktok") {
+    const groundQuery = (ask && ask.trim()) || anchor || genProfileRow?.niche_primary || "";
+    if (groundQuery) {
+      input.onStage?.("Finding proven outliers", "active");
+      try {
+        const { examples } = await gatherAndExtract({
+          query: groundQuery,
+          platform,
+          niche: genProfileRow?.niche_primary ?? null,
+        });
+        groundingExamples = examples;
+        corpus = formatCorpusForPrompt(examples);
+      } catch (err) {
+        allWarnings.push(
+          `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      input.onStage?.("Finding proven outliers", "done");
+    }
+  }
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -327,6 +434,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       mode: "hooks",
       ...(anchor ? { anchor } : {}),
       ...(overrides ? { overrides } : {}),
+      ...(corpus ? { corpus } : {}),
     },
     genProfileRow,
   );
@@ -439,7 +547,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // Generate exactly HOOK_COUNT hooks (no over-gen buffer — all are shown).
   // ── STAGE: Generating (real boundary — the big LLM call) ──
   input.onStage?.("Generating", "active");
-  const firstBatch = await generateHooksStructured(userMessage);
+  const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus));
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
@@ -478,6 +586,11 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     const candidate = ranked[rank - 1];
     if (!candidate) continue;
 
+    // §11f receipts-on-cards: attach the frozen receipt for the outlier this hook adapted.
+    // null (no source / ungrounded run) → the field is omitted so the block shape stays
+    // byte-identical to the pre-grounding card (regression gate + honesty spine).
+    const proof = buildHookProof(candidate.hook.sourceIndex, groundingExamples);
+
     const blockData = {
       type: "hook-card" as const,
       props: {
@@ -493,6 +606,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         channel: candidate.hook.channel,
         predictedFailureMode: candidate.predictedFailureMode, // KCQ-04 (null on clean pass)
         personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
+        ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
       },
     };
 
