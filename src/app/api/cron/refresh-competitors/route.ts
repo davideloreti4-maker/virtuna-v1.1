@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { verifyCronAuth } from "@/lib/cron-auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
+import { rehostAvatar } from "@/lib/scraping/rehost-cover";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "cron/refresh-competitors" });
@@ -51,13 +52,20 @@ export async function GET(request: Request) {
     try {
       const profileData = await scraper.scrapeProfile(profile.tiktok_handle);
 
+      // Durable avatar: re-host the freshly-scraped (still-signed) avatar into the public `avatars`
+      // bucket. WITHOUT this the daily cron re-stamps an ephemeral TikTok URL that 403s within days,
+      // dropping the card to initials. Degrades to the ephemeral URL on failure (never a dead null).
+      const avatarUrl =
+        (await rehostAvatar(supabase, profileData.avatarUrl, profile.tiktok_handle)) ??
+        profileData.avatarUrl;
+
       // Update competitor profile with fresh data
       await supabase
         .from("competitor_profiles")
         .update({
           display_name: profileData.displayName,
           bio: profileData.bio,
-          avatar_url: profileData.avatarUrl,
+          avatar_url: avatarUrl,
           verified: profileData.verified,
           follower_count: profileData.followerCount,
           following_count: profileData.followingCount,

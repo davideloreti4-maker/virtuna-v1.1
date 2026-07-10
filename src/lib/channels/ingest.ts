@@ -19,7 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import type { ProfileData, VideoData } from "@/lib/scraping";
-import { rehostCovers } from "@/lib/scraping/rehost-cover";
+import { rehostAvatar, rehostCovers } from "@/lib/scraping/rehost-cover";
 import {
   computeChannelMetrics,
   CHANNEL_BASELINE_LABEL,
@@ -144,13 +144,18 @@ async function upsertChannelProfile(
   profile: ProfileData,
   nowIso: string,
 ): Promise<void> {
+  // Durable avatar: re-host the freshly-scraped avatar into the public `avatars` bucket so the
+  // channel/competitor card keeps a real image after the signed TikTok URL expires (falls back to
+  // the ephemeral URL on failure). Mirrors the durable-cover rehost in upsertChannelVideos.
+  const avatarUrl = (await rehostAvatar(service, profile.avatarUrl, handle)) ?? profile.avatarUrl;
+
   const { error } = await service.from("competitor_profiles").upsert(
     {
       // store the NORMALIZED handle so re-ingest hits the same row + the feed join aligns
       tiktok_handle: handle,
       display_name: profile.displayName,
       bio: profile.bio,
-      avatar_url: profile.avatarUrl,
+      avatar_url: avatarUrl,
       verified: profile.verified,
       follower_count: profile.followerCount,
       following_count: profile.followingCount,

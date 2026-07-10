@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import type { ProfileData } from "@/lib/scraping";
-import { rehostCovers } from "@/lib/scraping/rehost-cover";
+import { rehostAvatar, rehostCovers } from "@/lib/scraping/rehost-cover";
 import { normalizeHandle } from "@/lib/schemas/competitor";
 
 type ActionResult = {
@@ -63,6 +63,12 @@ export async function addCompetitor(
       };
     }
 
+    // Durable avatar: re-host the freshly-scraped avatar into the public `avatars` bucket so the
+    // card keeps a real image after the signed TikTok URL expires (falls back to the ephemeral URL).
+    const avatarUrl =
+      (await rehostAvatar(serviceClient, profileData.avatarUrl, normalized)) ??
+      profileData.avatarUrl;
+
     // Upsert profile with service client
     const { data: profile, error: upsertError } = await serviceClient
       .from("competitor_profiles")
@@ -71,7 +77,7 @@ export async function addCompetitor(
           tiktok_handle: normalized,
           display_name: profileData.displayName,
           bio: profileData.bio,
-          avatar_url: profileData.avatarUrl,
+          avatar_url: avatarUrl,
           verified: profileData.verified,
           follower_count: profileData.followerCount,
           following_count: profileData.followingCount,
