@@ -59,8 +59,11 @@ instantly visible to all; deleting a worktree folder keeps its branch + commits.
 ## Known Technical Issues
 
 - **Tailwind v4 oklch inaccuracy:** Very dark colors (L < 0.15) compile incorrectly in `@theme`. Use exact hex values for dark tokens.
+- **Tailwind v4 `--font-*` is the font-FAMILY namespace — never put weights there.** Declaring `--font-medium: 500` in `@theme` generates `.font-medium { font-family: 500 }`, which *shadows* Tailwind's built-in `.font-medium { font-weight: 500 }`. This silently flattened every weight in the app to 400 (616 usages / 223 files) until fixed 2026-07-10 (`c22cdf82`). `--font-serif` → Newsreader works precisely *because* it is a family. Weights belong to `--font-weight-*`, but the built-in `font-{medium,semibold,bold}` utilities already cover them — **just don't declare weight tokens.** Verify with: probe a `<div class="font-medium">` and assert `getComputedStyle(el).fontWeight === '500'`.
 - **Lightning CSS strips backdrop-filter:** Apply via React inline styles (`style={{ backdropFilter: 'blur(Xpx)' }}`), not CSS classes.
+- **`--color-hover` is an overlay tint, not a fill.** It is `rgba(255,255,255,0.05)`. Using it as `hover:bg-*` on an element that floats over scrolling content *replaces* the opaque fill with a translucent one and the content shows through. Use a solid tone for anything in the floating composer dock.
 - **Dev server CSS caching:** Kill dev server + clear `.next/` + `node_modules/.cache/` + browser cache when CSS changes don't appear.
+- **Playwright screenshots hang on this app:** the ambient-room animations never settle, so `browser_take_screenshot` times out on its font/stability wait. Use raw Playwright with `animations: 'disabled'` + `caret: 'hide'` (and a tight `clip`), or verify via `getComputedStyle`/`getBoundingClientRect` instead.
 
 ## Setup
 

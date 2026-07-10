@@ -172,11 +172,13 @@
   --text-hero: 52px;
   --text-display: 64px;
 
-  /* --- Font Weights --- */
-  --font-regular: 400;
-  --font-medium: 500;
-  --font-semibold: 600;
-  --font-bold: 700;
+  /* --- Font Weights ---
+     Intentionally NOT declared here. In Tailwind v4's @theme, `--font-*` is the
+     font-FAMILY namespace (which is why `--font-serif` below yields Newsreader).
+     Declaring `--font-medium: 500` generated a `.font-medium { font-family: 500 }`
+     utility that shadowed the built-in `.font-medium { font-weight: 500 }`, silently
+     flattening every weight in the app to 400. Tailwind's built-in font-{medium,
+     semibold,bold} utilities already cover this — leave the namespace alone. */
 
   /* --- Line Heights --- */
   --leading-none: 1;

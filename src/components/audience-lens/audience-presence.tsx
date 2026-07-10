@@ -840,7 +840,11 @@ export function AudiencePresence({
                 onOpenChange(true);
               }
             }}
-            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 transition-colors hover:bg-[var(--color-hover)]"
+            /* Hover must TINT, not replace: --color-hover is a 5%-alpha white overlay, so
+               using it as the hover background swaps the opaque surface for a translucent
+               one and the thread scrolling behind the dock shows straight through. The tab
+               floats over that scroll, so its fill stays opaque — lift it with a solid tone. */
+            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 transition-colors hover:bg-[#32312e]"
             style={{ cursor: 'pointer' }}
           >
             {identity}

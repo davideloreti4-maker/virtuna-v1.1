@@ -10,13 +10,13 @@
  * every popover, and exports the skill SSOT (ToolId / SKILLS / MODEL_LABEL) + the shared
  * SkillRows list (reused by the composer's `/` slash menu) + the read-only ModelTag.
  *
- * Design (flat-warm THEME-06): warm charcoal surfaces, cream text, matured terracotta
- * (var(--color-foreground-secondary)) accent ONLY on the skill pill icon / active row / MAX badge. Premium line-icon
- * SVGs — NO emoji. Popover everywhere (desktop AND mobile — no bottom sheet); popovers
- * open UPWARD with max-height + scroll so 9 skills never clip.
+ * Design (flat-warm THEME-06): warm charcoal surfaces, cream text, matte. Premium
+ * line-icon SVGs — NO emoji. Popover everywhere (desktop AND mobile — no bottom sheet);
+ * popovers open UPWARD with max-height + scroll so 9 skills never clip.
  *
- * The skill pill is the ONE accented/bordered control. Audience + intent are icon-only,
- * borderless, quiet. The model is a read-only indicator — the SKILL decides it
+ * The composer surface carries NO accent: the cream send disc is its only bright element,
+ * so the verb pill is a quiet filled capsule (no border, no terracotta) and every other
+ * control is a bare glyph. The model is a read-only indicator — the SKILL decides it
  * (Test + Ad Creative → SIM-1 Max; everything else → SIM-1 Flash), so it is never a control.
  *
  * Replaces tool-chips.tsx (the old chip row + active-model field).
@@ -424,13 +424,16 @@ export function ModelTag({ activeTool, className }: { activeTool: ToolId; classN
       data-testid="active-model-label"
       title="The skill decides the model — Max for video, Flash for text"
       className={cn(
-        "inline-flex select-none items-center gap-1.5 px-2 text-[12.5px]",
-        "text-foreground-muted",
+        "inline-flex select-none items-center px-1 text-[12.5px]",
         className,
       )}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-foreground-muted" />
-      <span className="font-medium">{MODEL_LABEL[activeTool]}</span>
+      {/* "SIM-1" is the constant; the tier is what changes — so the tier reads cream
+          and the family name recedes (mirrors "Haiku 4.5 Extended": bright model, muted mode).
+          The space rides INSIDE the first span (a flex gap is invisible to textContent), and
+          whitespace-pre keeps flex layout from collapsing that trailing space away. */}
+      <span className="whitespace-pre text-foreground-muted">{"SIM-1 "}</span>
+      <span className="font-medium text-foreground-secondary">{getSkill(activeTool).model}</span>
     </span>
   );
 }
@@ -551,12 +554,12 @@ export function ComposerControls({
           aria-expanded={pop === "skill"}
           onClick={() => toggle("skill")}
           className={cn(
-            "inline-flex h-[38px] items-center gap-1.5 rounded-lg border border-white/[0.06] bg-surface px-2.5",
-            "text-[13.5px] font-semibold text-foreground transition-colors hover:border-white/[0.1]",
+            "inline-flex h-[34px] items-center gap-1.5 rounded-full bg-white/[0.05] px-3",
+            "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}
         >
-          <Ico name="spark" size={15} className="text-accent-text" />
+          <Ico name="spark" size={15} className="text-foreground-muted" />
           <span>{VERB_BY_TOOL[activeTool]}</span>
           <Ico name="chev" size={13} className="text-foreground-muted" />
         </button>
