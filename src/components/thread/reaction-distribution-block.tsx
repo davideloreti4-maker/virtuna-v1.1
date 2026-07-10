@@ -22,6 +22,7 @@ import type { ReactionDistributionBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CaretToggle } from './caret-toggle';
 
 // Sanctioned band tones (data colors, NOT the terracotta accent) — reuse the band-block map.
 const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
@@ -152,7 +153,10 @@ export function ReactionDistributionBlockRenderer({
                   <span className="text-xs text-foreground-muted">
                     Audience reactions — {stopCount}/{total} react
                   </span>
-                  <span className="text-xs text-foreground-muted">{drillOpen ? '↑ Hide' : '↓ Show'}</span>
+                  <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
+                    <CaretToggle open={drillOpen} size={12} />
+                    {drillOpen ? 'Hide' : 'Show'}
+                  </span>
                 </button>
                 {drillOpen && (
                   <ul className="flex flex-col gap-2">

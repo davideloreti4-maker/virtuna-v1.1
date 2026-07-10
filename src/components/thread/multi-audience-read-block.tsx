@@ -25,6 +25,7 @@ import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
 import { BAND_COLOR } from './band-block';
 import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
+import { CaretToggle } from './caret-toggle';
 import { TrustBadge } from '@/components/audience/trust-badge';
 
 export interface MultiAudienceReadBlockProps {
@@ -100,8 +101,9 @@ function AudienceRead({
               {stopCount}/{total} stop
             </span>
           </span>
-          <span className="text-[12px] text-foreground-muted" aria-hidden="true">
-            {expanded ? '↑ Hide' : '↓ Show'}
+          <span className="inline-flex items-center gap-1 text-[12px] text-foreground-muted" aria-hidden="true">
+            <CaretToggle open={expanded} size={12} />
+            {expanded ? 'Hide' : 'Show'}
           </span>
         </button>
 

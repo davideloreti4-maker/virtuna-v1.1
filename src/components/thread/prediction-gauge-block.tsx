@@ -26,6 +26,7 @@ import { useState } from 'react';
 import type { PredictionGaugeBlock } from '@/lib/tools/blocks';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CaretToggle } from './caret-toggle';
 
 export { PredictionGaugeBlockSchema } from '@/lib/tools/blocks';
 
@@ -200,7 +201,10 @@ export function PredictionGaugeBlockRenderer({ block }: PredictionGaugeBlockRend
             aria-expanded={drillOpen}
           >
             <span className="text-xs text-foreground-muted">The panel — {panel.length} analysts</span>
-            <span className="text-xs text-foreground-muted">{drillOpen ? '↑ Hide' : '↓ Show'}</span>
+            <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
+              <CaretToggle open={drillOpen} size={12} />
+              {drillOpen ? 'Hide' : 'Show'}
+            </span>
           </button>
           {drillOpen && (
             <ul className="flex flex-col gap-2">

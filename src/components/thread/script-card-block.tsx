@@ -24,6 +24,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CaretToggle } from './caret-toggle';
 
 export interface ScriptCardRendererProps {
   block: ScriptCardBlock;
@@ -123,7 +124,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
                   aria-expanded={isExpanded}
                   aria-label={isExpanded ? `Collapse ${beat.label} reasoning` : `Expand ${beat.label} reasoning`}
                 >
-                  {isExpanded ? '↑' : '↓'}
+                  <CaretToggle open={isExpanded} />
                 </button>
               </div>
 

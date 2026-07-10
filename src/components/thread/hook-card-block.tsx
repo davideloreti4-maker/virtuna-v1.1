@@ -29,6 +29,7 @@ import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CoverFill } from '@/components/primitives/CoverFill';
+import { CaretToggle } from './caret-toggle';
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -267,7 +268,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse hook details' : 'Expand hook details'}
         >
-          <span aria-hidden="true">{expanded ? '↑' : '↓'}</span>
+          <CaretToggle open={expanded} />
           {expanded ? 'Hide details' : 'Why & details'}
           <span className="text-foreground-muted/70">· SIM-1 Flash</span>
         </button>
