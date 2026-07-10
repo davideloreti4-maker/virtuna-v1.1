@@ -52,7 +52,7 @@ export async function getCompetitorsData(
   // Video metrics (engagement-rate calc).
   const { data: videos } = await supabase
     .from("competitor_videos")
-    .select("competitor_id, views, likes, comments, shares, posted_at")
+    .select("competitor_id, views, likes, comments, shares, posted_at, cover_url")
     .in("competitor_id", competitorIds);
 
   const snapshotMap: CompetitorsData["snapshotMap"] = {};
@@ -71,6 +71,7 @@ export async function getCompetitorsData(
       comments: v.comments,
       shares: v.shares,
       posted_at: v.posted_at,
+      cover_url: v.cover_url ?? null,
     });
   }
 

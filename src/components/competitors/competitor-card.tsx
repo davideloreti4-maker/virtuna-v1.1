@@ -30,6 +30,8 @@ export interface CompetitorCardData {
     shares: number | null;
     posted_at: string | null;
   }[];
+  /** Top rehosted video covers (durable) for the card's thumbnail strip; empty until scraped. */
+  covers: string[];
 }
 
 interface CompetitorCardProps {
@@ -86,6 +88,19 @@ export function CompetitorCard({ data }: CompetitorCardProps) {
           )}
         </div>
       </div>
+
+      {/* Top-videos cover strip — real thumbnails so the tab shows videos, not just stats.
+          Durable rehosted covers; hidden entirely until the competitor is scraped with covers. */}
+      {data.covers.length > 0 && (
+        <div className="mb-4 grid grid-cols-3 gap-2">
+          {data.covers.map((cover, i) => (
+            <div key={i} className="relative aspect-[9/16] overflow-hidden rounded-lg bg-[linear-gradient(165deg,#312f2b,#181715)]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- rehosted cover, external bucket */}
+              <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Stats grid: 3 columns */}
       <div className="grid grid-cols-3 gap-3 mb-4">

@@ -167,6 +167,7 @@ export default async function CompetitorDetailPage({
       duration_seconds: v.duration_seconds,
       posted_at: v.posted_at,
       video_url: v.video_url,
+      cover_url: v.cover_url ?? null,
       engagementRate: computeVideoEngagementRate(v),
     }));
 
@@ -183,6 +184,7 @@ export default async function CompetitorDetailPage({
       duration_seconds: v.duration_seconds,
       posted_at: v.posted_at,
       video_url: v.video_url,
+      cover_url: v.cover_url ?? null,
       engagementRate: computeVideoEngagementRate(v),
     }));
 

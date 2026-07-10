@@ -5,6 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 import { buildSubjectText, embedBatch } from "@/lib/engine/corpus/embedder";
 import { serializeVector } from "@/lib/supabase/pgvector";
+import { rehostCovers } from "@/lib/scraping/rehost-cover";
 
 /**
  * Constant-time string comparison for the webhook secret. JavaScript `!==`
@@ -41,7 +42,7 @@ interface ApifyVideoItem {
   commentCount?: number;
   musicMeta?: { musicName?: string; musicAuthor?: string; playUrl?: string };
   hashtags?: Array<{ name: string }>;
-  videoMeta?: { duration?: number };
+  videoMeta?: { duration?: number; coverUrl?: string };
   // Phase 8 D-08 + RESEARCH Finding 3 — schema-gap fields populated at insert time
   categoryType?: string;
   category?: string;
@@ -139,6 +140,9 @@ export async function POST(request: Request) {
               apify_run_id: resource.id,
               scraped_at: new Date().toISOString(),
               scrape_hashtags: payload.scrape_hashtags ?? null,
+              // Ephemeral cover — rehosted to the durable `covers` bucket just below (before
+              // upsert) so the feed tile keeps a real thumbnail instead of 403-ing days later.
+              cover_url: item.videoMeta?.coverUrl ?? null,
             },
             // Phase 8 D-08 + RESEARCH Finding 3 schema-gap columns
             creator_handle: author,
@@ -160,6 +164,21 @@ export async function POST(request: Request) {
         });
 
       if (records.length === 0) continue;
+
+      // Durable covers: re-host each ephemeral TikTok cover into the public `covers` bucket WHILE
+      // the scrape signature is still valid, then overwrite metadata.cover_url with the permanent
+      // URL. Each rehost degrades to null independently → the row keeps its raw URL (which will
+      // 403 later) rather than losing the reference entirely. Mirrors channels/ingest.ts.
+      const rehosted = await rehostCovers(
+        supabase,
+        records.map((r) => ({
+          sourceUrl: r.metadata.cover_url,
+          key: `tiktok/${r.platform_video_id}`,
+        })),
+      );
+      records.forEach((r, j) => {
+        r.metadata.cover_url = rehosted[j] ?? r.metadata.cover_url ?? null;
+      });
 
       // D-08 Path 2: auto-embed scraped_videos before upsert.
       // BENCH-05 additive-only: embedder failure logs a warning and falls back to

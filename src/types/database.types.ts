@@ -846,6 +846,7 @@ export type Database = {
           caption: string | null
           comments: number | null
           competitor_id: string
+          cover_url: string | null
           created_at: string | null
           duration_seconds: number | null
           hashtags: string[] | null
@@ -863,6 +864,7 @@ export type Database = {
           caption?: string | null
           comments?: number | null
           competitor_id: string
+          cover_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           hashtags?: string[] | null
@@ -880,6 +882,7 @@ export type Database = {
           caption?: string | null
           comments?: number | null
           competitor_id?: string
+          cover_url?: string | null
           created_at?: string | null
           duration_seconds?: number | null
           hashtags?: string[] | null
