@@ -108,6 +108,18 @@ to its content (beside the greeting), not floating as a top-center band.
 ### Radius scale
 `4 / 6 / 8 / 12 / 16 / 20 / 24` px. Cards 12, inputs/buttons 8, header 16, modals 12.
 
+### Layout traps
+- **A grid item needs `min-w-0`.** Grid (and flex) items default to `min-width: auto`, so a card
+  cannot shrink below its own min-content no matter what `w-full` claims. On a narrow viewport the
+  item keeps its intrinsic width and the page grows a horizontal scroll. It also starves any inner
+  `truncate` of shrink pressure, so the text never ellipsizes — it just pushes the card wider.
+  Every `w-full` grid item is a candidate. (Fixed on `IdeaCard` 2026-07-10, `47d6502a`: 513px card
+  in a 358px column, 139px of page scroll.)
+  Detect it: at 390px, find elements where `scrollWidth > clientWidth` while `overflow-x` computes
+  to `visible` — a box whose content is wider than it is, that cannot scroll. Assert the page's real
+  scroll container has `scrollWidth === innerWidth`; `document.documentElement.scrollWidth` lies here,
+  because the app scrolls in a `relative h-full overflow-auto` div, not on the document.
+
 ## Accent dosage (LOCKED 2026-06-24)
 **Monochrome by default. Accent is the rare exception — used REALLY sparingly, if at all.**
 The UI is cream-on-charcoal; color is not a styling tool. This is the rule that separates us from
