@@ -133,6 +133,23 @@ export const IdeaCardBlockSchema = z.object({
 
 export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 
+// ─── Hook proof receipt (grounding — §11f receipts-on-cards) ────────────────────
+// The durable, honest receipt for the real outlier video whose proven STRUCTURE a
+// grounded hook adapted. Mirrors grounding's RetrievedExample (lib/grounding/types.ts);
+// the card renders "@handle · N× <basis> · views ↗". Numbers are nullable — we show only
+// what we truly have (a caption-tier extraction may lack a durable multiplier), never a
+// fabricated stat. fitLabel is the honest §11c per-request match (● in-audience /
+// ◐ adjacent / ○ structural). handle is required — no receipt without a real, nameable source.
+export const HookProofSchema = z.object({
+  handle: z.string(),                                          // @creator of the proof video
+  videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
+  multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
+  views: z.number().nullable(),
+  baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
+  fitLabel: z.enum(["in-audience", "adjacent", "structural"]),
+});
+export type HookProof = z.infer<typeof HookProofSchema>;
+
 // ─── Hook-card block ──────────────────────────────────────────────────────────
 // D-11: schema-validated hook card carrying the hook anatomy + embedded Flash
 // band signal. No model-generated UI — the model emits these props only; the
@@ -180,6 +197,13 @@ export const HookCardBlockSchema = z.object({
     // pre-S3′ persisted blocks + rehydration stay valid. The ambient modal reads this (PR-2)
     // instead of re-calling /api/tools/react for a generated card.
     personas: z.array(ReactionPersonaSchema).optional(),
+    // GROUNDING (§11f receipts-on-cards): the frozen receipt for the real outlier whose
+    // proven STRUCTURE this hook adapted. Present ONLY when grounded generation was ON AND
+    // the model attributed this hook to a real source (sourceIndex ≥ 1) carrying a handle.
+    // OPTIONAL + nullable → ungrounded/unattributed hooks omit it entirely (byte-identical
+    // to the pre-grounding shape → regression gate) and the honesty spine holds: no receipt
+    // without a real, above-baseline source.
+    proof: HookProofSchema.nullable().optional(),
   }),
 });
 

@@ -114,6 +114,16 @@ export const HOOK_BLOCKS: HookCardBlock[] = [
       scored: true,
       channel: "spoken",
       personas: PERSONAS,
+      // §11f receipts-on-cards — the grounded variant carries a proof receipt (real outlier
+      // the structure was drawn from). The other fixture below omits it (ungrounded card).
+      proof: {
+        handle: "braedan.health",
+        videoUrl: "https://www.tiktok.com/@braedan.health/video/7300000000000000000",
+        multiplier: 90.7,
+        views: 621000,
+        baselineLabel: "vs followers",
+        fitLabel: "adjacent",
+      },
     },
   },
   {

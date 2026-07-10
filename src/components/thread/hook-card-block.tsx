@@ -35,6 +35,75 @@ export interface HookCardRendererProps {
   onWriteScript?: () => void;
 }
 
+/** §11f fit glyph + plain-language label for the proof receipt (§11c degradation ladder). */
+const FIT_META: Record<'in-audience' | 'adjacent' | 'structural', { glyph: string; label: string }> = {
+  'in-audience': { glyph: '●', label: 'in your audience' },
+  adjacent: { glyph: '◐', label: 'adjacent audience' },
+  structural: { glyph: '○', label: 'cross-niche structure' },
+};
+
+function fmtViews(n: number | null): string {
+  if (n === null || !Number.isFinite(n)) return '';
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${Math.round(n / 1_000)}K`;
+  return String(n);
+}
+
+function fmtMultiplier(m: number | null): string {
+  if (m === null || !Number.isFinite(m)) return '';
+  return m >= 100 ? `${Math.round(m)}×` : `${m.toFixed(1)}×`;
+}
+
+/**
+ * The on-card proof receipt (§11f receipts-on-cards) — the visible payoff of grounded generation.
+ * Renders "◐ Proven by @handle · 90× vs followers · 621K views ↗", links to the real video when we
+ * have the URL. Numbers we don't have are simply omitted (a caption-tier row may lack a multiplier);
+ * we never fabricate a stat. Rendered ONLY when a real source was attributed (honesty spine).
+ */
+function HookProofReceipt({ proof }: { proof: NonNullable<HookCardBlock['props']['proof']> }) {
+  const fit = FIT_META[proof.fitLabel];
+  const mult = fmtMultiplier(proof.multiplier);
+  const views = fmtViews(proof.views);
+  const stats = [
+    mult ? `${mult}${proof.baselineLabel ? ` ${proof.baselineLabel}` : ''}` : null,
+    views ? `${views} views` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  const inner = (
+    <>
+      <span className="shrink-0 text-foreground-muted" aria-hidden="true">{fit.glyph}</span>
+      <span className="font-medium text-foreground-secondary">
+        Proven by <span className="text-foreground">@{proof.handle}</span>
+      </span>
+      {stats && <span className="text-foreground-muted">· {stats}</span>}
+      {proof.videoUrl && <span className="ml-auto shrink-0 text-foreground-muted" aria-hidden="true">↗</span>}
+    </>
+  );
+
+  const base =
+    'flex items-center gap-1.5 rounded-[8px] border border-white/[0.06] bg-white/[0.02] px-2.5 py-1.5 text-[12px] leading-none';
+  const aria = `Proof video by @${proof.handle}${stats ? `, ${stats}` : ''} — match: ${fit.label}`;
+
+  return proof.videoUrl ? (
+    <a
+      href={proof.videoUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${base} transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]`}
+      title={`${fit.label} — open the proof video`}
+      aria-label={`${aria}. Opens in a new tab.`}
+    >
+      {inner}
+    </a>
+  ) : (
+    <div className={base} title={fit.label} aria-label={aria}>
+      {inner}
+    </div>
+  );
+}
+
 export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: HookCardRendererProps) {
   const {
     hookLine,
@@ -47,6 +116,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     scored,
     scrollQuote,
     channel,
+    proof,
   } = block.props;
 
   // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →", the forward chain).
@@ -81,6 +151,10 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
           {hookLine}
         </p>
+
+        {/* Proof receipt (§11f) — the real outlier this hook's structure was drawn from. Only
+            present on grounded runs where a real source was attributed (honesty spine). */}
+        {proof && <HookProofReceipt proof={proof} />}
 
         {/* Why-teaser — the mechanism surfaced on the face (full reasoning, clamped). */}
         <p className="line-clamp-2 text-[13px] leading-relaxed text-foreground-secondary">
