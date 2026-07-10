@@ -95,6 +95,15 @@ to its content (beside the greeting), not floating as a top-center band.
   Currently wired to **Newsreader**. Candidate swap → **Fraunces** (more optical character,
   further from Claude's serif feel). Swapping requires `next/font` wiring in the root layout
   — until then `--font-serif` stays Newsreader. Tracked as a follow-up, not blocking.
+- Mono: `--font-mono` — **deliberate** micro-copy, not a bug. Carries surface subtitles and small
+  uppercase labels (`/feed`'s subtitle; `/calendar`'s day names, `TAP TO PLACE`, legend, `REEL`).
+  It reads as a rendering fault at first glance; it is not. Check `font-mono` in the source before
+  "fixing" it.
+- Weights: never declare `--font-medium` / `--font-semibold` / `--font-bold` in `@theme`. In
+  Tailwind v4 `--font-*` is the font-**family** namespace, so those generate
+  `.font-medium { font-family: 500 }` and shadow the built-in weight utilities — silently flattening
+  the whole app to 400. The built-in `font-{medium,semibold,bold}` utilities already work. (Fixed
+  2026-07-10, `c22cdf82`; this is why `--font-serif` correctly yields Newsreader.)
 
 ### Radius scale
 `4 / 6 / 8 / 12 / 16 / 20 / 24` px. Cards 12, inputs/buttons 8, header 16, modals 12.

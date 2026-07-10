@@ -162,6 +162,12 @@ export function AmbientRoom({
   const [compareOpen, setCompareOpen] = useState(initialCompareOpen);
   const compareFocusRef = useRef(focusId);
   useEffect(() => {
+    // A typed thought carries no card id, so it lands here as `undefined`. It must not count as a
+    // focus CHANGE: the ranked list already hides itself while a thought is in focus (the stepper
+    // needs a card id), and treating the thought as a change would clear `compareOpen` on the way
+    // out AND again on the way back, so the list could never return without a manual re-tap.
+    // Holding the ref lets a return to the SAME card restore the list; a different card still resets.
+    if (focusId == null) return;
     if (focusId !== compareFocusRef.current) {
       compareFocusRef.current = focusId;
       setCompareOpen(false);
