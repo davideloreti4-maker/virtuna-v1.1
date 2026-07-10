@@ -159,13 +159,18 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
           <p className="text-sm text-foreground-secondary leading-relaxed">{identity.commStyle}</p>
         )}
         {identity.drivers.length > 0 && (
-          <ul className="flex flex-col gap-1">
-            {identity.drivers.map((driver, i) => (
-              <li key={i} className="text-sm text-foreground-secondary leading-relaxed">
-                {driver}
-              </li>
-            ))}
-          </ul>
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+              What drives them
+            </p>
+            <ul className="flex flex-col gap-1">
+              {identity.drivers.map((driver, i) => (
+                <li key={i} className="text-sm text-foreground-secondary leading-relaxed">
+                  {driver}
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
       </div>
 

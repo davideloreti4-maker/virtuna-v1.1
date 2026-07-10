@@ -346,7 +346,7 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
         {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
 
         {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-1">
           <ListBlock
             label="What's working"
             items={patterns.working}
