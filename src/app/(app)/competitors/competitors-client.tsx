@@ -49,6 +49,7 @@ interface CompetitorsClientProps {
       comments: number | null;
       shares: number | null;
       posted_at: string | null;
+      cover_url: string | null;
     }[]
   >;
 }
@@ -86,6 +87,12 @@ export function CompetitorsClient({
         scrape_status: profile.scrape_status,
         snapshots: snapshotMap[profile.id] ?? [],
         videos: videosMap[profile.id] ?? [],
+        // Top covers (by views) for the card's thumbnail strip — durable rehosted covers only.
+        covers: [...(videosMap[profile.id] ?? [])]
+          .filter((v) => v.cover_url)
+          .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
+          .slice(0, 3)
+          .map((v) => v.cover_url as string),
       };
     });
 

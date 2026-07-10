@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import type { ProfileData } from "@/lib/scraping";
+import { rehostCovers } from "@/lib/scraping/rehost-cover";
 import { normalizeHandle } from "@/lib/schemas/competitor";
 
 type ActionResult = {
@@ -107,12 +108,19 @@ export async function addCompetitor(
     try {
       const videos = await scraper.scrapeVideos(normalized);
       if (videos.length > 0) {
+        // Durable covers: rehost each ephemeral scrape cover into the public `covers` bucket so the
+        // competitor video tiles keep a real thumbnail (the raw TikTok URL 403s within days).
+        const covers = await rehostCovers(
+          serviceClient,
+          videos.map((v) => ({ sourceUrl: v.coverUrl, key: `tiktok/${v.platformVideoId}` })),
+        );
         await serviceClient.from("competitor_videos").upsert(
-          videos.map((v) => ({
+          videos.map((v, i) => ({
             competitor_id: profileId,
             platform_video_id: v.platformVideoId,
             video_url: v.videoUrl,
             caption: v.caption,
+            cover_url: covers[i] ?? v.coverUrl ?? null,
             views: v.views,
             likes: v.likes,
             comments: v.comments,

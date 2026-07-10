@@ -14,6 +14,12 @@ export interface VideoCardData {
   duration_seconds: number | null;
   posted_at: string | null;
   video_url: string | null;
+  /**
+   * Durable rehosted cover (covers bucket). OPT-IN: when the key is present the card renders a
+   * cover thumbnail on top (a null value → gradient+caption poster). When OMITTED entirely (e.g.
+   * the outlier-tile reuse, which brings its own cover banner) no cover block renders at all.
+   */
+  cover_url?: string | null;
   engagementRate: number | null;
 }
 
@@ -61,8 +67,28 @@ function formatRelativeTime(dateStr: string | null): string {
  * and relative posting time.
  */
 export function VideoCard({ video }: { video: VideoCardData }) {
+  const showCoverBlock = "cover_url" in video;
   const card = (
-    <div className="border border-white/[0.06] rounded-xl p-4 space-y-3 transition-colors hover:bg-white/[0.02]">
+    <div className="border border-white/[0.06] rounded-xl overflow-hidden transition-colors hover:bg-white/[0.02]">
+      {/* Cover thumbnail (durable rehosted cover) — opt-in via the cover_url key. A null cover
+          falls through to the gradient + caption poster (same graceful degrade as the feed tile).
+          Server component: the cover is a permanent bucket URL so it won't 403 (no onError needed). */}
+      {showCoverBlock && (
+        <div className="relative aspect-[9/16] bg-[linear-gradient(165deg,#312f2b,#181715)]">
+          {video.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element -- rehosted cover, external bucket
+            <img src={video.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center p-3">
+              <p className="rounded-md bg-[#f4f1ea] px-[11px] py-[9px] text-center font-serif text-[12px] font-bold leading-[1.3] text-[#17150f] line-clamp-4">
+                {video.caption || "No caption"}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="p-4 space-y-3">
       {/* Caption */}
       <p className={`text-sm leading-snug ${video.caption ? "text-foreground line-clamp-2" : "text-foreground-muted italic"}`}>
         {video.caption || "No caption"}
@@ -106,6 +132,7 @@ export function VideoCard({ video }: { video: VideoCardData }) {
         <span className="text-foreground-muted">
           {formatRelativeTime(video.posted_at)}
         </span>
+      </div>
       </div>
     </div>
   );

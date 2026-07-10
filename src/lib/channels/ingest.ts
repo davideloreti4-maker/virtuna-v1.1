@@ -19,6 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import type { ProfileData, VideoData } from "@/lib/scraping";
+import { rehostCovers } from "@/lib/scraping/rehost-cover";
 import {
   computeChannelMetrics,
   CHANNEL_BASELINE_LABEL,
@@ -186,6 +187,15 @@ async function upsertChannelVideos(
 
   const { baseline, metrics } = computeChannelMetrics(videos);
 
+  // Durable covers: re-host each ephemeral TikTok cover into the public `covers` bucket WHILE its
+  // signature is still valid (scrape-fresh). The permanent URL replaces the ephemeral one so the
+  // Phase-2 feed/start tiles keep a real thumbnail instead of 403-ing to a poster days later. Each
+  // rehost degrades to null independently → the row keeps null (poster fallback), never a dead URL.
+  const rehostedCovers = await rehostCovers(
+    service,
+    videos.map((v) => ({ sourceUrl: v.coverUrl, key: `tiktok/${v.platformVideoId}` })),
+  );
+
   const rows = videos.map((v, i) => ({
     platform: "tiktok" as const,
     platform_video_id: v.platformVideoId,
@@ -210,8 +220,9 @@ async function upsertChannelVideos(
       source: "channel_ingest",
       ingested_at: nowIso,
       baseline_views: baseline,
-      // ephemeral TikTok-CDN cover (display-only; may expire) — kept for the Phase 2 tile.
-      cover_url: v.coverUrl ?? null,
+      // Durable cover: rehosted to the public `covers` bucket (permanent). Falls back to the raw
+      // ephemeral TikTok URL if the rehost failed (still better than nothing until it expires).
+      cover_url: rehostedCovers[i] ?? v.coverUrl ?? null,
       subtitle_url: v.subtitleUrl ?? null,
     },
   }));
