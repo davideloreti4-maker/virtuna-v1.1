@@ -59,6 +59,8 @@ import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+import { gatherAndExtract } from "@/lib/grounding/orchestrator";
+import { formatCorpusForPrompt } from "@/lib/grounding/prompt";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -72,6 +74,16 @@ const HOOK_COUNT = 5;
 
 /** Generation call timeout (mirrors ideas-runner). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Grounding gate (§11f step 2). OFF by default — grounding prepends a live scrape +
+ * survivor profile-scrapes + a teardown LLM call (~25s + Apify cost) BEFORE generation,
+ * so it ships behind an env flag until live-proven on the 2-frame reveal. TikTok-only in
+ * MVP: the gather path is clockworks/TikTok; IG native is the documented fast-follow.
+ */
+function isGroundingEnabled(): boolean {
+  return process.env.GROUNDING_HOOKS_ENABLED === "true";
+}
 
 /**
  * Output-serialization contract — owned by the runner because the runner owns
@@ -319,6 +331,32 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
   const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
 
+  // ── GROUND (§11f step 2, gated): pull LIVE outlier teardowns for the topic → the one
+  //    additive corpus field. OFF by default; TikTok-only (gather path is clockworks).
+  //    ANY failure degrades to ungrounded — corpus stays undefined → byte-identical no-op,
+  //    never fabricate a source (honesty spine). Receipts-on-cards is the next step
+  //    (HookCardBlock proof fields); this wiring grounds GENERATION.
+  let corpus: string | undefined;
+  if (isGroundingEnabled() && platform === "tiktok") {
+    const groundQuery = (ask && ask.trim()) || anchor || genProfileRow?.niche_primary || "";
+    if (groundQuery) {
+      input.onStage?.("Finding proven outliers", "active");
+      try {
+        const { examples } = await gatherAndExtract({
+          query: groundQuery,
+          platform,
+          niche: genProfileRow?.niche_primary ?? null,
+        });
+        corpus = formatCorpusForPrompt(examples);
+      } catch (err) {
+        allWarnings.push(
+          `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      input.onStage?.("Finding proven outliers", "done");
+    }
+  }
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -327,6 +365,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       mode: "hooks",
       ...(anchor ? { anchor } : {}),
       ...(overrides ? { overrides } : {}),
+      ...(corpus ? { corpus } : {}),
     },
     genProfileRow,
   );
