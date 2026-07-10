@@ -38,7 +38,11 @@ export function IdeaCard({
       type="button"
       onClick={() => onOpen(idea.contentId)}
       className={cn(
-        "elev-lift group w-full rounded-xl border border-border bg-surface-elevated p-3.5 text-left",
+        // `min-w-0`: a grid item defaults to `min-width: auto`, so the card could not shrink below
+        // its own min-content. That floored it at 513px inside a 358px mobile column and gave the
+        // page a horizontal scroll — and it starved CardReaction's `truncate` of any shrink
+        // pressure, so the quote never ellipsized. Without this the `w-full` above is a lie.
+        "elev-lift group w-full min-w-0 rounded-xl border border-border bg-surface-elevated p-3.5 text-left",
         "hover:border-border-hover hover:bg-white/[0.02]",
         focused && "border-accent",
       )}
