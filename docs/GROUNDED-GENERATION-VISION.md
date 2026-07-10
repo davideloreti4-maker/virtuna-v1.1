@@ -151,10 +151,13 @@ account doing 200k views is a *flop for them*.)
 
 ## 8. Scraper reality (Clockworks / Apify — researched)
 
-- **Clockworks is TikTok-only.** `clockworks/tiktok-scraper` (search/hashtag/profile/URL),
-  `-profile-scraper`, `-transcript-extractor`, trends/explore/discover, etc. IG = different vendor
-  (`apify/instagram-scraper`), **flakier discovery, no native transcript** (whisper-on-mp4 only).
-  → **TikTok is where live-gather magic works first; IG leans on warm pool + curated early.**
+- **Clockworks is TikTok-only** (`clockworks/tiktok-scraper` search/hashtag/profile/URL,
+  `-profile-scraper`, `-transcript-extractor`, trends/explore/discover). ⚠️ **IG is a full Apify
+  toolchain, NOT transcript-less — §14 corrects this stale claim:** `apify/instagram-hashtag-scraper`
+  (keyword-as-hashtag discovery + related hashtags), `apify/instagram-reel-scraper` (transcript add-on
+  + mp4 + engagement), `apify/instagram-profile-scraper` (followers). **IG delta = orchestration
+  (2–3 actors) + follower-count-not-inline, NOT capability.** → **TikTok-first vertical, IG native
+  fast-follow (see §14).**
 - **[LOCKED] search query, not hashtags** (hashtags noisy). Hashtag only as a *secondary widener*
   when a search pull is thin.
 - **Free + fast:** views, likes, saves, **author followers**, caption, hashtags, posted date, sound.
@@ -476,21 +479,171 @@ live/request-driven gather removes; their Suggested/Describe tabs are their cold
 **[LOCKED] so far:** live-first + curated floor · request-driven gather (competitors = prior) ·
 outlier gate `views÷followers ≥ 3×` · scrape 30 · search-query over hashtags · Option B (caption
 fallback for missing transcripts) · omni off critical path · template + customized as two stages ·
-inline-streaming three-beat reveal, option (b) pending→resolved · honesty spine kept.
+inline-streaming three-beat reveal, option (b) pending→resolved · honesty spine kept ·
+**corpus data model (§13, resolved 2026-07-09)** · **IG day-one posture (§14, resolved 2026-07-09).**
 
 **Still open / to refine:**
 - Exact archetype taxonomy (adopt Sandcastles' categories, or our own?).
 - Relevance-prune mechanism (LLM vs embedding) and how strict.
 - When/whether the **accurate** outlier metric (views÷median) supplements the cheap one.
-- Extraction schema fields (align to the 5 teardown lenses) + the corpus table shape + embeddings.
+  **↳ Spike (2026-07-09, §15) gave live evidence: `views÷result-set-median` is sample-jittery — the
+  SAME video read 178×→208× across two pulls → a durable RECEIPT needs the per-account basis. Stabilize
+  before the multiplier is shown as proof.**
+- ~~Extraction schema fields + the corpus table shape + embeddings~~ → **RESOLVED §13.**
+  (Residual: curated-canon dataset existence = an *ingestion* question not schema; exact `template`
+  JSONB sub-shape refined when Hooks maps 1:1.)
 - `/feed` as the browse-home for proof vs a pure supply depot.
 - The learning-flywheel loop (folding the user's own outliers back in) — mechanism + timing.
-- IG strategy day one (how second-class is it, and does curated cover the gap acceptably?).
+- ~~IG strategy day one (how second-class is it, and does curated cover the gap?)~~ → **RESOLVED §14**
+  (IG native gather IS viable — transcript + keyword discovery exist; TikTok-first vertical + IG native
+  fast-follow; borrowed cross-platform proof = interim gap-filler only).
 - Cold-start feed seeding (curated exemplar accounts per broad niche). *Sandcastles pattern: a
   "Suggested" tab grouping creators by topic cluster ("Social Media Growth", "Viral Tactics", "AI
   Tools"); "Describe" tab = NL channel discovery + Platform/Account-size filters → our "expand the
   network." Account-size filter = the peer-vs-aspirational lever.*
 - Cost ceiling per request (scrape + extract + generate + sim) and how the adaptive widen interacts.
+  **NB IG is heavier — 2–3 actors + transcript/video add-ons vs TikTok's clockworks bundle (§14);**
+  and the accurate `views÷median-of-account` metric becomes IG's default finisher (open-thread #2).
+
+---
+
+## 13. Corpus data model — resolved 2026-07-09 [LOCKED]
+
+Resolves the one unspecified data-model piece. **Fits shipped infra:** pgvector `extensions.vector(768)`
++ gemini-embedding-001 + HNSW-cosine (m=16, ef_construction=64) already live on `training_corpus` +
+`scraped_videos`, with a proven **two-pool union RPC** (`match_corpus_videos` + `match_scraped_videos`)
+= the idiom to extend, not invent. The teardown is **net-new**: `training_corpus` /
+`engine_training_videos` serve the SCORING engine (text-proxy, explicitly distrusted for generation);
+raw video rows exist scattered across `scraped_videos` / `competitor_videos` / `account_posts` but
+**none store a teardown**.
+
+**Shape: two tables, unified by `source_pool`.**
+
+**`outlier_teardowns` — SHARED** (cross-user, service-role, no `user_id` — like `training_corpus`). The
+map. One row per video, global dedup `UNIQUE(platform, platform_video_id)` → **extract once / cache
+forever / every user benefits.** Unifies fresh-scraped + competitor + curated canon via
+`source_pool ∈ {curated, competitor, scraped, expanded}` → the degradation-ladder rungs are literally
+`WHERE source_pool` filters (Rung 3 curated = pre-seeded, trust-boosted subset, *not* a separate
+mechanism). Columns:
+- **identity/dedup:** `platform, platform_video_id UNIQUE, video_url, cover_url, creator_handle`
+- **source:** `source_pool, source_id` (soft ref — plain UUID, **not** FK, since source spans 3 tables),
+  `trust_weight` (curated > competitor > scraped)
+- **frozen proof snapshot** (stable receipt): `views, follower_count, outlier_multiplier, baseline_label,
+  engagement_rate, posted_at, proof_captured_at, refreshed_at`
+- **typed facets** (power Rung-2 structural retrieval): `niche, subniche, hook_archetype, format,
+  visual_hook, editing_style, signature_series`
+- **extracted teardown** (hoist hot fields, JSON the rest): `spoken_hook, hook_source ∈
+  {native_transcript, caption_fallback, omni}, idea JSONB {seed,angle,belief,reality,evidence},
+  template JSONB, why_it_works, teardown JSONB (full, forward-compat)`
+- **retrieval/meta:** `embedding vector(768) [topical], extraction_tier, extraction_version, model,
+  status ∈ {metadata, extracted, watched, failed}, created_at, updated_at`
+
+**`personal_teardowns` — PRIVATE** (`user_id NOT NULL`, RLS owner-only `auth.uid()`, mirrors
+`account_posts`/`analysis_results`). The private library = **Rung −1**. Same content/facet columns; NO
+`source_pool` (always own). Adds: `user_id, source_account_id, planned_post_id/outcome_id` (explicit
+owner-gated attribution > implicit match, §11e), `predicted_band, actual_outcome` (or FK to existing
+`outcomes`/`reconciliations`). Recency-weighted at query (posted_at).
+
+**Retrieval:** two RPCs mirroring the shipped two-pool pattern — `match_shared_teardowns(...)` +
+`match_personal_teardowns(user_id, ...)` — unioned + weighted in TS (own = highest, Rung −1 prior).
+Facet filters (`hook_archetype`, `format`, `niche`, `exclude_niche` for Rung 2) as indexed WHEREs
+alongside the vector order-by. **Fit-label (● in-audience / ◐ adjacent / ○ structural) is computed
+per-request** from niche-match × audience — **NOT stored** (§11c: audience-fit is per-request).
+
+**Resolved detail decisions (recommendations ratified):**
+- **[A] One topical embedding** (reuse 768/gemini) + **typed facet columns**; structural embedding
+  **deferred** — Rung 2 is a facet filter (`archetype=X ∩ niche≠user`) ranked outlier×adjacency, an
+  indexed WHERE not a vector op. Topical embedding input = `caption + hashtags + on-screen-text +
+  spoken_hook + idea.angle` (topic signal; structural facets stay OUT — they're columns).
+- **[B] Two tables** over one-table+`user_id NULL` — hard privacy *by construction*, different lifecycle,
+  calibration columns only on personal. Column-shape duplication accepted (documented convention, not
+  enforced).
+- **Soft controlled vocab** — facets/niche = TEXT validated app-side against a **versioned TS enum**
+  (single SSOT), **NOT DB CHECK**. The brief wants vocab to grow; `training_corpus`'s rigid CHECK is what
+  caused the `edu`↔`education` alias hack. Adopt `scraped_videos`' **10-slug niche whitelist** (don't
+  mint a 4th vocabulary — it's already fragmented 3 ways).
+- **Gather-once/walk-many set** (§5) = **lightweight per-thread pointer** (id array on the thread/message),
+  **not** a persistent table — the teardown cache is the durable global asset; "which set did THIS chat
+  gather" is ephemeral thread state.
+- **Landmine fix (bleeds into open-thread #2):** add raw **`follower_count` at the scrape boundary** so
+  the LOCKED `views÷followers ≥ 3×` cheap metric is actually computable — today `scraped_videos` keeps
+  only bucketed `follower_tier`, so `outlier-compute.ts` uses `views÷median-of-window` and the "cheap
+  live" metric silently degrades. The accurate `views÷median-of-account` metric stays reserved for
+  winners/tracked — open-thread #2 = *when* it supplements.
+
+**Still open within the data model:** whether the curated-canon (~120 Sandcastles videos) exists as an
+ingestible dataset yet (ingestion, not schema); exact `template` JSONB sub-shape (proposed:
+`{name, slots:[{key,label,example}], skeleton:[beats], guidance}`) — refine when Hooks maps 1:1.
+
+---
+
+## 14. IG day-one posture — resolved 2026-07-09 [LOCKED]
+
+Supersedes the earlier "borrowed proof (B)" framing and §8's stale IG claim. **Corrected premise (owner
+steer + Apify landscape re-verified live):** IG native gather **is viable** — transcript + keyword
+discovery + engagement all exist on Apify. IG is **not second-class in capability**; the real delta vs
+TikTok is **orchestration** (2–3 actors vs clockworks' ~1 bundle) + one metric-cost quirk.
+
+**IG toolchain (Apify), mapped to §8/§9:**
+- **Discovery** — `apify/instagram-hashtag-scraper`: **keyword-as-hashtag** + **related hashtags**
+  (= §6 "expand the network" for free), views/plays/likes/comments/shares/duration/timestamp/caption/
+  author. ~$2.60/1k results.
+- **Teardown + transcript** — `apify/instagram-reel-scraper`: transcript (add-on), downloadable mp4
+  (feeds the `plus` silent watch), full engagement, music/song. Input = usernames/URLs only (no search)
+  → discover URLs first, then tear down. ~$1/1k + add-ons.
+- **Followers** — `apify/instagram-profile-scraper` / `-search-scraper`: follower_count, bio, verified.
+
+**The one friction + its fix:** follower_count is **NOT inline** on IG discovery → `views÷followers`
+costs an extra profile call per author (TikTok gives it free in search, §7). Fix using shipped code: on
+IG, use `views÷median-of-result-set` (`outlier-compute.ts`, already implemented) as the **cheap
+pre-gate** (zero profile calls), then profile-scrape **only the survivors** for the accurate
+`views÷followers` receipt. This **flips the §7 cheap/accurate split** to IG's cost shape — the accurate
+metric (open-thread #2) becomes IG's **default finisher**, not a reserved luxury.
+
+**Reframes forced:**
+- §8's "**search-query > hashtags**" LOCK is **TikTok-specific**; IG's equivalent = "keyword-as-hashtag
+  + related-hashtag widen" (already §8's allowed widener — primary on IG).
+- **Option B (caption fallback) is NOT IG's default** — transcript exists via the reel-scraper add-on,
+  so Option B is the same no-transcript-minority path as TikTok.
+- **Interface debt:** `ScrapingProvider` (`src/lib/scraping/types.ts`) is TikTok-shaped (`subtitleUrl`=
+  `tiktokLink`, clockworks `coverUrl`) → IG native needs a **platform-generic provider** implementing the
+  same `VideoData` contract (add `followerCount`), hiding the 2–3-actor orchestration behind it.
+
+**Sequencing [LOCKED]:**
+1. **TikTok-first vertical** — build the pipeline once E2E on the already-wired clockworks path (prove
+   §13 + the ladder + card grammar on the easy platform).
+2. **IG native = explicit fast-follow** behind the platform-generic provider. The §13 corpus is already
+   `platform`-columned → it stores IG teardowns natively the moment the IG provider lands.
+3. **Borrowed cross-platform structural proof** (labeled) = **interim gap-filler only** during the
+   TikTok-shipped / IG-provider-pending window — a temporary ladder rung, not the IG strategy.
+
+**Cost:** IG per-request is genuinely heavier (2–3 actors + transcript/video add-ons) → a real line for
+open-thread #4, not a blocker. **Honesty spine holds:** IG proof is real IG proof once the provider lands;
+the interim borrowed rung is always labeled cross-platform.
+
+---
+
+## 15. Spike validation — 2026-07-09 [GO]
+
+Thesis validated end-to-end on live APIs. Full write-up: `docs/SPIKE-2026-07-09-grounded-generation.md`.
+Throwaway harnesses (kept for rerun): `scripts/spike-grounding.ts` (v1 mechanism) +
+`scripts/spike-grounding-v2.ts` (v2 real-voice + receipt + watch).
+
+- **v1 — mechanism works, cheap:** scrape 30 (8.9s, free clockworks) → real outlier (`@srenestrawberry
+  178× / 14.7M`) → reusable teardowns → grounded gen inherits structure. ~25s / 3 LLM + 1 scrape. Limits:
+  cold ≈ grounded on pure craft with a null profile; over-copy risk; visual outliers shallow without a watch.
+- **v2 — value proven with a real voice:** 3 arms (cold+null / cold+voice / grounded+voice). Voice = a big
+  craft lift; grounding's UNIQUE value = **proof + structure-transfer + honest-labeling** (3/5 hooks carry a
+  receipt, 2/5 flagged pure-craft). **Over-copy FIXED** ("translate the mechanism, don't reuse the words" +
+  a real voice to translate into). Receipts attach. *Positioning: sell the receipt, not craftier prose.*
+- **Two findings:** (1) **Tier-2a watch = token-appended-mp4 plumbing, not a capability wall** (`plus`
+  accepted `video_url`; couldn't fetch the raw KV mp4). (2) **outlier metric sample-jittery** → per-account
+  basis for durable receipts (folds open-thread #2).
+- **Build refinements earned:** stabilize the outlier metric (per-account) before the multiplier is shown
+  as proof; treat Tier-2a as mp4-delivery plumbing.
+
+**Verdict: GO.** §11f build order holds. Doctrine held throughout — *real work + real proof + made for me*;
+honesty spine intact (pure-craft hooks honestly flagged). Real build = its own milestone/worktree.
 
 ---
 
