@@ -77,6 +77,10 @@ const modeSchema = z.enum(["idea", "hooks", "chat", "script", "remix"]);
  *   mode      — Which tool is calling the assembler (determines role set).
  *   overrides — Optional Tier-B per-request overrides. FENCED when present.
  *   anchor    — Optional chain anchor (upstream idea for hooks; recent turns for chat). FENCED.
+ *   corpus    — Optional grounded examples (retrieved outlier teardowns → proof + reusable
+ *               structure, grounding/orchestrator.ts). FENCED. Optional-additive: undefined
+ *               is a byte-identical no-op (preserves the warm-cache prefix + regression gates).
+ *               ONE field grounds idea/hooks/script (§11f).
  */
 export const assemblerInputSchema = z.object({
   ask: z.string().min(1, "ask must not be empty"),
@@ -84,6 +88,7 @@ export const assemblerInputSchema = z.object({
   mode: modeSchema,
   overrides: z.string().optional(),
   anchor: z.string().optional(),
+  corpus: z.string().optional(),
 });
 
 export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
@@ -220,7 +225,7 @@ export function assembleBundle(
   if (!parsed.success) {
     throw new Error(`assembleBundle: invalid input — ${parsed.error.message}`);
   }
-  const { ask, platform, mode, overrides, anchor } = parsed.data;
+  const { ask, platform, mode, overrides, anchor, corpus } = parsed.data;
 
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
@@ -261,6 +266,7 @@ export function assembleBundle(
   fencedSections.push(fenceUserContent("Creator ask", ask));
   if (overrides) fencedSections.push(fenceUserContent("Per-request overrides", overrides));
   if (anchor) fencedSections.push(fenceUserContent("Chain anchor", anchor));
+  if (corpus) fencedSections.push(fenceUserContent("Grounded examples", corpus));
 
   // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
   //    Precedence: the fenced user request is primary; profile grounding yields first.
@@ -304,6 +310,7 @@ export function assembleBundle(
     ];
     if (overrides) rawSections.push({ label: "Per-request overrides", content: overrides });
     if (anchor) rawSections.push({ label: "Chain anchor", content: anchor });
+    if (corpus) rawSections.push({ label: "Grounded examples", content: corpus });
     result = buildResult(profileSection, fenceSectionsWithinBudget(rawSections, fencedBudget));
   }
 

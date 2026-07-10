@@ -135,3 +135,28 @@ describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
     expect(bundle).toContain("Niche: fitness");
   });
 });
+
+// ─── corpus grounding field (§11f — optional-additive, undefined = no-op) ───────
+
+describe("assembleBundle corpus field", () => {
+  const base = { ask: "write me hooks", platform: "tiktok", mode: "hooks" } as const;
+
+  it("undefined corpus is a BYTE-IDENTICAL no-op (preserves warm-cache prefix + gates)", () => {
+    const without = assembleBundle(base, FULL_PROFILE);
+    const withUndef = assembleBundle({ ...base, corpus: undefined }, FULL_PROFILE);
+    expect(withUndef).toBe(without);
+  });
+
+  it("a provided corpus is injected as a fenced 'Grounded examples' section", () => {
+    const marker = "GROUNDED_MARKER_9x_@srenestrawberry";
+    const grounded = assembleBundle({ ...base, corpus: marker }, FULL_PROFILE);
+    const plain = assembleBundle(base, FULL_PROFILE);
+    expect(grounded).toContain("Grounded examples");
+    expect(grounded).toContain(marker);
+    expect(grounded).toContain(VOICE_FENCE_OPEN);
+    expect(grounded).toContain(VOICE_FENCE_CLOSE);
+    // additive: the ungrounded bundle carries neither the label nor the marker
+    expect(plain).not.toContain(marker);
+    expect(plain).not.toContain("Grounded examples");
+  });
+});
