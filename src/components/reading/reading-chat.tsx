@@ -81,8 +81,14 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
     const ta = taRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
-  }, [value]);
+    // Only pin an explicit height when there IS content. Pinning while empty
+    // captures a pre-hydration scrollHeight: the fixed dock mounts at the
+    // DESKTOP leftOffset (useIsMobileHydrated starts false), so on a phone the
+    // placeholder wraps inside a ~90px-wide box and locks 140px onto an empty
+    // field — and [value] alone never re-measures it. leftOffset in the deps
+    // re-measures typed content when the sidebar toggles the dock's width.
+    if (value) ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
+  }, [value, leftOffset]);
 
   const submit = useCallback(() => {
     const t = value.trim();
@@ -117,13 +123,12 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
 
   return (
     <section data-testid="reading-chat" className="flex flex-col gap-5">
-      {/* divider into the conversation */}
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-medium uppercase tracking-[0.08em] text-foreground-muted">
-          Ask anything
-        </span>
-        <span className="h-px flex-1 bg-[var(--color-border)]" />
-      </div>
+      {/* section eyebrow — same quiet-uppercase spec as ReadingSection's label
+          (10px/0.14em); the hairline is dropped so every section label on the
+          surface carries one grammar. */}
+      <p className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+        Ask anything
+      </p>
 
       {/* ── thread (inline, flows in the column) ── */}
       {hasThread && (
@@ -196,7 +201,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     type="button"
                     onClick={stop}
                     aria-label="Stop"
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-white/[0.04] text-foreground-muted transition-colors hover:bg-white/[0.1] hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10"
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </button>
@@ -207,13 +212,15 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
                     disabled={value.trim().length === 0}
                     aria-label="Send"
                     className={cn(
-                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10',
+                      // Round send disc — the #219 composer grammar (the cream disc
+                      // is the one bright thing; /home renders the same 36px circle).
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10',
                       value.trim().length > 0
                         ? 'bg-action text-action-foreground hover:bg-action/90'
                         : 'cursor-not-allowed border border-white/[0.06] bg-white/[0.03] text-foreground-muted/50',
                     )}
                   >
-                    <ArrowUp className="h-4 w-4" />
+                    <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
                   </button>
                 )}
               </div>
