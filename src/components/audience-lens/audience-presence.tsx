@@ -45,6 +45,7 @@ import {
 import type { Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AmbientRoom } from './AmbientRoom';
+import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import type { AmbientFocus, AmbientFocusSibling, AmbientPersonaReaction } from './ambient-presence-types';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
@@ -197,6 +198,28 @@ export function AudiencePresence({
   const isSurface = variant === 'surface';
   const effectiveCanRewrite = isSurface ? false : canRewrite;
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  // "Meet your room" persona chat — the idle-cast introduction (meet-mode: no reaction yet).
+  const [meetTarget, setMeetTarget] = useState<PersonaChatTarget | null>(null);
+  // Panel height clamp. The panel expands UPWARD from the dock anchor (`bottom-full`); its CSS
+  // max-h assumes the bottom-pinned THREAD composer (~140px from the viewport bottom). On the
+  // CENTERED home composer the anchor sits mid-viewport, so an unclamped 70vh panel overflows
+  // the viewport top (measured -271px at 717px height) and the top of the room — including the
+  // "Meet your room" cast — becomes unreachable. Clamp to the space actually above the anchor;
+  // the panel body already scrolls (overflow-y auto), so clamped content stays reachable.
+  const dockRootRef = useRef<HTMLDivElement | null>(null);
+  const [panelMaxH, setPanelMaxH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const top = dockRootRef.current?.getBoundingClientRect().top;
+      if (top == null) return;
+      // Floor 200px: header + a scrollable strip stays usable even on an unusually high anchor.
+      setPanelMaxH(Math.max(200, Math.round(top - 16)));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [open]);
   // The Bloom rise: the panel mounts translated-down + faded, then transitions to rest on the
   // next tick so it grows UP out of the presence band (the signature moment). Reset on close.
   const [risen, setRisen] = useState(false);
@@ -367,25 +390,43 @@ export function AudiencePresence({
       return personas.map((p, i) => {
         const name = resolvePersonaName(p.archetype, p.label) ?? `Person ${i + 1}`;
         const trait = ARCHETYPE_TRAIT[p.archetype as Archetype] ?? '';
-        return { key: `${p.archetype}-${i}`, name, trait, initial: (name.trim()[0] ?? '·').toUpperCase() };
+        // Only registry archetypes can be MET — the chat route validates against the enum, and a
+        // non-registry row would silently degrade to open chat (wrong voice). No dead affordance.
+        const canMeet = p.archetype in ARCHETYPE_TRAIT;
+        return {
+          key: `${p.archetype}-${i}`,
+          archetype: p.archetype,
+          name,
+          trait,
+          canMeet,
+          initial: (name.trim()[0] ?? '·').toUpperCase(),
+        };
       });
     }
     return GENERAL_ROSTER.map((a) => {
       const name = ARCHETYPE_PERSONA_NAME[a];
-      return { key: a, name, trait: ARCHETYPE_TRAIT[a], initial: name[0]!.toUpperCase() };
+      return {
+        key: a,
+        archetype: a as string,
+        name,
+        trait: ARCHETYPE_TRAIT[a],
+        canMeet: true,
+        initial: name[0]!.toUpperCase(),
+      };
     });
   }, [personas]);
 
-  // Esc closes the switcher first, then the panel.
+  // Esc closes the meet drawer first, then the switcher, then the panel — innermost out.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (switcherOpen) setSwitcherOpen(false);
+      if (meetTarget) setMeetTarget(null);
+      else if (switcherOpen) setSwitcherOpen(false);
       else if (open) onOpenChange(false);
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, switcherOpen, onOpenChange]);
+  }, [open, switcherOpen, meetTarget, onOpenChange]);
 
   // Outside-click closes the switcher popover (not the panel — the composer must stay typable).
   // The menu is portaled outside switcherRef, so it must be excluded too — otherwise the
@@ -695,7 +736,7 @@ export function AudiencePresence({
   );
 
   return (
-    <div className="relative w-full" data-testid="audience-presence" data-variant={variant}>
+    <div ref={dockRootRef} className="relative w-full" data-testid="audience-presence" data-variant={variant}>
       {open ? (
         /* ── OPEN: the panel expands UPWARD and connects into the composer as ONE surface. Its
               bottom is flush with the composer (border-b-0 + shared surface tone); the composer box
@@ -712,7 +753,11 @@ export function AudiencePresence({
               : 'transition-[transform,opacity] duration-300 ease-out ' +
                 (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
           }
-          style={reducedMotion ? undefined : { willChange: 'transform' }}
+          style={{
+            ...(reducedMotion ? {} : { willChange: 'transform' }),
+            // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
+            ...(panelMaxH != null ? { maxHeight: panelMaxH } : {}),
+          }}
         >
           {/* Switcher bar — TOP of the card (identity + readiness + collapse). */}
           <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
@@ -792,31 +837,50 @@ export function AudiencePresence({
               </div>
 
               {/* Meet your room — the actual cast, so the simulation reads as a set of real people,
-                   not an abstract count. Presentational (no dead affordance): the value is seeing them.
-                   TODO(meet-your-room): make each person tappable → open a "meet them" persona chat
-                   ("Why'd you scroll past, Dev?"). Wire to the persona-chat flow, then add a hover/
-                   focus affordance back. Left out here to avoid a dead affordance. */}
+                   not an abstract count. Each registry-backed person is tappable → the meet-them
+                   persona chat (meet-mode PersonaChatDrawer: no concept yet, they speak from their
+                   own tastes — "say hi →"). Non-registry rows stay plain: no dead affordance. */}
               {!isSurface && castMembers.length > 0 && (
                 <ul className="grid w-full max-w-[540px] grid-cols-1 gap-1 sm:grid-cols-2">
-                  {castMembers.map((m) => (
-                    <li key={m.key} className="flex items-center gap-3 px-2.5 py-2">
-
-                      <span
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] text-[12px] font-semibold text-[var(--color-foreground-secondary)]"
-                        aria-hidden
-                      >
-                        {m.initial}
-                      </span>
-                      <span className="flex min-w-0 flex-col text-left">
-                        <span className="truncate text-[13px] font-medium leading-tight text-[var(--color-foreground)]">
-                          {m.name}
+                  {castMembers.map((m) => {
+                    const body = (
+                      <>
+                        <span
+                          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] text-[12px] font-semibold text-[var(--color-foreground-secondary)]"
+                          aria-hidden
+                        >
+                          {m.initial}
                         </span>
-                        <span className="truncate text-[12px] leading-tight text-[var(--color-foreground-muted)]">
-                          {m.trait}
+                        <span className="flex min-w-0 flex-col text-left">
+                          <span className="truncate text-[13px] font-medium leading-tight text-[var(--color-foreground)]">
+                            {m.name}
+                          </span>
+                          <span className="truncate text-[12px] leading-tight text-[var(--color-foreground-muted)]">
+                            {m.trait}
+                          </span>
                         </span>
-                      </span>
-                    </li>
-                  ))}
+                      </>
+                    );
+                    return (
+                      <li key={m.key}>
+                        {m.canMeet ? (
+                          <button
+                            type="button"
+                            aria-label={`Meet ${m.name}`}
+                            onClick={() => setMeetTarget({ archetype: m.archetype, name: m.name })}
+                            className="flex w-full items-center gap-3 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+                          >
+                            {body}
+                            <span className="ml-auto shrink-0 pl-2 text-[12px] leading-tight text-[var(--color-foreground-muted)]">
+                              say hi →
+                            </span>
+                          </button>
+                        ) : (
+                          <div className="flex items-center gap-3 px-2.5 py-2">{body}</div>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -872,6 +936,11 @@ export function AudiencePresence({
           ))}
         </ul>
       </div>
+
+      {/* Meet-them persona chat (meet-mode: no concept yet). Mounted at the dock ROOT — outside
+           the open/collapsed ternary — so a panel close/reopen can never resurrect a stale sheet;
+           `meetTarget` alone drives it. The Sheet portals to <body>. */}
+      <PersonaChatDrawer target={meetTarget} onClose={() => setMeetTarget(null)} />
     </div>
   );
 }

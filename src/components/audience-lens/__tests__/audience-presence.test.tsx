@@ -360,7 +360,10 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
     expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /population · 1,000/i })).toBeInTheDocument();
     // The honest serif score for the ONE in-focus concept lives in the room header.
-    expect(within(panel).getByText(/6 of 10/i)).toBeInTheDocument();
+    // Two honest renders of the same read can coexist (the dock pulse echoes the score);
+    // the binding assertion is the ROOM's serif score for the one in-focus concept.
+    const scores = within(panel).getAllByText(/6 of 10/i);
+    expect(scores.some((el) => el.className.includes('font-serif'))).toBe(true);
   });
 
   it('shows the idle hero prompt + the real cast (no fabricated reaction) when open + idle', () => {
@@ -370,6 +373,32 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
     expect(screen.getByText('Maya')).toBeInTheDocument();
     expect(screen.getByText('Dev')).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
+  });
+
+  it('meet your room — tapping a cast person opens the MEET-MODE persona chat (no reaction yet)', async () => {
+    // The drawer rehydrates prior turns on open (GET /api/tools/chat?archetype=…) — stub it.
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ turns: [] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    setup({ open: true, focus: null });
+
+    // The cast rows carry the meet affordance back (the #217 TODO): real buttons + "say hi →".
+    const meetMaya = screen.getByRole('button', { name: 'Meet Maya' });
+    fireEvent.click(meetMaya);
+
+    // Drawer opens in MEET mode — "Meet Maya" (not "Ask Maya"): no reaction exists yet.
+    expect(await screen.findByText('Meet Maya')).toBeInTheDocument();
+    expect(screen.getByText(/you're meeting maya/i)).toBeInTheDocument();
+    // Rehydration fired for the tapped archetype.
+    expect(fetchSpy).toHaveBeenCalledWith(
+      expect.stringContaining('/api/tools/chat?archetype='),
+      expect.anything(),
+    );
   });
 
   it('swaps to the v6 Population view (stay / bounce hero + weak spot) on the scale toggle', () => {
@@ -558,7 +587,10 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
     setup({ variant: 'surface', open: true, focus: FOCUS });
     const panel = screen.getByTestId('audience-panel');
     expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
-    expect(within(panel).getByText(/6 of 10/i)).toBeInTheDocument();
+    // Two honest renders of the same read can coexist (the dock pulse echoes the score);
+    // the binding assertion is the ROOM's serif score for the one in-focus concept.
+    const scores = within(panel).getAllByText(/6 of 10/i);
+    expect(scores.some((el) => el.className.includes('font-serif'))).toBe(true);
   });
 });
 

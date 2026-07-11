@@ -28,7 +28,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { createOpenThreadLazy, getOpenThread } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -41,8 +41,10 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 /** Server-side persona-grounding shape — mirrors ChatPipelineInput.personaGrounding. */
 type PersonaGrounding = {
   archetype: Archetype;
-  reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
-  conceptText: string;
+  /** Present = post-reaction "Ask them why →"; ABSENT = meet-mode introduction (idle room, no concept yet). */
+  reactionToConcept?: { verdict: "stop" | "scroll"; quote: string };
+  /** Required alongside reactionToConcept; never present in meet-mode. */
+  conceptText?: string;
   /** The persona's real display name (The Room, Task A) — server-capped, optional. */
   personaName?: string;
 };
@@ -63,22 +65,29 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
   const g = raw as Record<string, unknown>;
   const archetype = g.archetype;
   if (typeof archetype !== "string" || !ARCHETYPES.includes(archetype as Archetype)) return null;
+  // Optional persona name (The Room, Task A) — trim + cap. Absent/blank → omitted, and the runner
+  // degrades to the byte-identical archetype-only prompt.
+  const rawName = typeof g.personaName === "string" ? g.personaName.trim().slice(0, PERSONA_NAME_CAP) : "";
+  const named = rawName.length > 0 ? { personaName: rawName } : {};
   const reaction = g.reactionToConcept;
-  if (!reaction || typeof reaction !== "object") return null;
+  if (reaction == null) {
+    // MEET-MODE (idle "Meet your room" chat): no reaction, no concept — the persona introduces
+    // itself in-voice. conceptText is deliberately DROPPED so an unanchored concept can never
+    // reach the runner outside a reaction.
+    return { archetype: archetype as Archetype, ...named };
+  }
+  if (typeof reaction !== "object") return null;
   const r = reaction as Record<string, unknown>;
   const verdict = r.verdict;
   if (verdict !== "stop" && verdict !== "scroll") return null;
   const quote = typeof r.quote === "string" ? r.quote.slice(0, PERSONA_TEXT_CAP) : "";
   const conceptText = typeof g.conceptText === "string" ? g.conceptText.slice(0, PERSONA_TEXT_CAP) : "";
   if (conceptText.length === 0) return null;
-  // Optional persona name (The Room, Task A) — trim + cap. Absent/blank → omitted, and the runner
-  // degrades to the byte-identical archetype-only prompt.
-  const rawName = typeof g.personaName === "string" ? g.personaName.trim().slice(0, PERSONA_NAME_CAP) : "";
   return {
     archetype: archetype as Archetype,
     reactionToConcept: { verdict, quote },
     conceptText,
-    ...(rawName.length > 0 ? { personaName: rawName } : {}),
+    ...named,
   };
 }
 
@@ -86,6 +95,29 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
 
 /** Server-side ask cap — independent of client validation (mirrors analyze/[id]/chat). */
 const MAX_MESSAGE_LENGTH = 2000;
+
+/** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
+const MAX_CLIENT_PRIOR_TURNS = 20;
+
+/**
+ * Validate + cap the CLIENT-carried prior turns. Honored ONLY in meet-mode when no thread
+ * exists (the ephemeral path): it is the same data the DB path would supply, just carried by
+ * the drawer because there is no row to read. Rides assembleBundle's fenced anchor exactly
+ * like DB turns — never raw into the system prompt.
+ */
+function parseClientPriorTurns(raw: unknown): Array<{ role: "user" | "assistant"; text: string }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ role: "user" | "assistant"; text: string }> = [];
+  for (const t of raw.slice(-MAX_CLIENT_PRIOR_TURNS)) {
+    if (!t || typeof t !== "object") continue;
+    const role = (t as Record<string, unknown>).role;
+    const text = (t as Record<string, unknown>).text;
+    if ((role === "user" || role === "assistant") && typeof text === "string" && text.length > 0) {
+      out.push({ role, text: text.slice(0, MAX_MESSAGE_LENGTH) });
+    }
+  }
+  return out;
+}
 
 /**
  * Max prior turns to carry as context anchor.
@@ -125,7 +157,12 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json({ error: "valid archetype is required" }, { status: 400 });
   }
 
-  const openThread = await createOpenThreadLazy(user.id);
+  // READ-ONLY: never create a thread from a GET. Under the NEW_THREAD_SENTINEL pointer
+  // getOpenThread returns null (no row exists yet) — rehydration is simply empty. The old
+  // createOpenThreadLazy here minted a fresh open thread on EVERY drawer open (verified live:
+  // four spam rows in four minutes), scattering sub-threads across them.
+  const openThread = await getOpenThread(user.id);
+  if (!openThread) return Response.json({ turns: [] });
   const hydratedMessages = await loadMessages(openThread.id);
   const turns = hydratedMessages.flatMap((msg) =>
     msg.blocks
@@ -165,7 +202,7 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown } = {};
+  let body: { ask?: unknown; platform?: unknown; personaGrounding?: unknown; priorTurns?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -209,35 +246,45 @@ export async function POST(request: Request): Promise<Response> {
   // Computing it here (before the stream starts) allows the meta frame to LEAD the stream.
   const coldStart = isColdStart(profileRow);
 
-  // ── (5) Get/create open thread ────────────────────────────────────────────
-  const openThread = await createOpenThreadLazy(user.id);
+  // ── (5) Resolve the open thread ───────────────────────────────────────────
+  // MEET-MODE (persona grounding without a reaction) never CREATES a thread: under the
+  // NEW_THREAD_SENTINEL pointer createOpenThreadLazy minted a fresh row per call (verified
+  // live), and a "say hi" introduction is not a reason to spawn a thread. If a real thread
+  // is already open the meet turns join its per-archetype sub-thread (continuity with the
+  // later "Ask them why" chat); with no thread the chat runs EPHEMERAL (no persistence).
+  const isMeet = personaGrounding != null && personaGrounding.reactionToConcept == null;
+  const openThread = isMeet ? await getOpenThread(user.id) : await createOpenThreadLazy(user.id);
 
   // ── (5a) Load active audience (08-04 / D-04 per-thread pin — shared helper) ──
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
-  // the request body — session/thread only (CR-01).
-  const activeAudience = await resolveThreadAudience(supabase, openThread);
+  // the request body — session/thread only (CR-01). No thread (meet-ephemeral) → General.
+  const activeAudience = openThread ? await resolveThreadAudience(supabase, openThread) : null;
 
   // ── (6) Load prior turns for context anchor (D-01 full running context, D-01a soft cap) ──
   // Open chat → prior `markdown` turns. Persona-grounded chat (P9 / D-03) → prior
   // `persona-chat-turn` turns SCOPED to this archetype (the sub-thread). Either way the
   // running context rides assembleBundle's fenced anchor.
-  const hydratedMessages = await loadMessages(openThread.id);
+  const hydratedMessages = openThread ? await loadMessages(openThread.id) : [];
   const priorTurns = personaGrounding
-    ? hydratedMessages
-        .flatMap((msg) =>
-          msg.blocks
-            .filter(
-              (b): b is { type: "persona-chat-turn"; props: { archetype: string; role: "user" | "assistant"; text: string } } =>
-                b.type === "persona-chat-turn" &&
-                (b as { props: { archetype?: unknown } }).props.archetype === personaGrounding.archetype,
-            )
-            .map((b) => ({
-              role: (b as { props: { role: "user" | "assistant" } }).props.role,
-              text: (b as { props: { text: string } }).props.text,
-            })),
-        )
-        .slice(-MAX_PRIOR_TURNS)
+    ? openThread
+      ? hydratedMessages
+          .flatMap((msg) =>
+            msg.blocks
+              .filter(
+                (b): b is { type: "persona-chat-turn"; props: { archetype: string; role: "user" | "assistant"; text: string } } =>
+                  b.type === "persona-chat-turn" &&
+                  (b as { props: { archetype?: unknown } }).props.archetype === personaGrounding.archetype,
+              )
+              .map((b) => ({
+                role: (b as { props: { role: "user" | "assistant" } }).props.role,
+                text: (b as { props: { text: string } }).props.text,
+              })),
+          )
+          .slice(-MAX_PRIOR_TURNS)
+      : // Meet-ephemeral (no thread): the drawer carries its own in-session transcript so the
+        // persona keeps context across turns — validated + capped, same fenced anchor as DB turns.
+        parseClientPriorTurns(body.priorTurns)
     : // WR-05 INVARIANT: the open-chat anchor assumes EXACTLY ONE `markdown` block per message
       // row. Role is attributed from `msg.role` (per-message), so a conversational "turn" === a
       // message; the `.slice(-MAX_PRIOR_TURNS)` cap below counts blocks, which equals turns ONLY
@@ -263,10 +310,13 @@ export async function POST(request: Request): Promise<Response> {
   // ── (7) Persist the USER turn first (mirrors grounded-chat route ordering) ──
   // Persona-grounded → persist as a `persona-chat-turn` block (the sub-thread, D-03);
   // open chat → the existing `markdown` block. Both round-trip loadMessages validation.
-  const userBlock = personaGrounding
-    ? { type: "persona-chat-turn", props: { archetype: personaGrounding.archetype, role: "user", text: rawAsk } }
-    : { type: "markdown", props: { text: rawAsk } };
-  await insertMessage(openThread.id, "user", [userBlock], kcStamp().kcGenVersion);
+  // Meet-ephemeral (no thread) → nothing to persist.
+  if (openThread) {
+    const userBlock = personaGrounding
+      ? { type: "persona-chat-turn", props: { archetype: personaGrounding.archetype, role: "user", text: rawAsk } }
+      : { type: "markdown", props: { text: rawAsk } };
+    await insertMessage(openThread.id, "user", [userBlock], kcStamp().kcGenVersion);
+  }
 
   // ── (8) SSE stream: emit meta → run pipeline → emit tokens → persist assistant turn ──
   const encoder = new TextEncoder();
@@ -302,13 +352,16 @@ export async function POST(request: Request): Promise<Response> {
         );
 
         // Persist assistant turn — persona-chat-turn (sub-thread, D-03) or markdown (open chat).
-        const assistantBlock = personaGrounding
-          ? {
-              type: "persona-chat-turn",
-              props: { archetype: personaGrounding.archetype, role: "assistant", text: fullContent },
-            }
-          : { type: "markdown", props: { text: fullContent } };
-        await insertMessage(openThread.id, "assistant", [assistantBlock], kcStamp().kcGenVersion);
+        // Meet-ephemeral (no thread) → the streamed answer lives only in the drawer.
+        if (openThread) {
+          const assistantBlock = personaGrounding
+            ? {
+                type: "persona-chat-turn",
+                props: { archetype: personaGrounding.archetype, role: "assistant", text: fullContent },
+              }
+            : { type: "markdown", props: { text: fullContent } };
+          await insertMessage(openThread.id, "assistant", [assistantBlock], kcStamp().kcGenVersion);
+        }
 
         send("done", {});
       } catch (err) {
