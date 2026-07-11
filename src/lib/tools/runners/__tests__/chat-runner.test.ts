@@ -140,6 +140,32 @@ describe("runChatPipeline personaGrounding [runner]", () => {
     expect(assemblerInput.overrides).toContain(quote);
   });
 
+  it("Test 4 — MEET-MODE (no reaction): meet framing in the prefix, no reaction anchor fenced", async () => {
+    await runChatPipeline(
+      {
+        ...BASE_INPUT,
+        // Meet-mode grounding: archetype + name only — the idle "Meet your room" introduction.
+        personaGrounding: { archetype: "tough_crowd", personaName: "Maya" },
+      },
+      () => {},
+    );
+
+    const createArgs = createMock.mock.calls[0]![0] as {
+      messages: Array<{ role: string; content: string }>;
+    };
+    const systemMsg = createArgs.messages.find((m) => m.role === "system")!;
+
+    // In-voice as the named person, with the meet framing instead of a reaction line.
+    expect(systemMsg.content).toContain(ARCHETYPE_DEFINITIONS.tough_crowd);
+    expect(systemMsg.content).toContain("You are Maya");
+    expect(systemMsg.content).toContain("they're meeting you");
+    expect(systemMsg.content).not.toContain("On the concept below");
+
+    // No reaction → nothing to fence: assembleBundle receives NO overrides (General audience).
+    const assemblerInput = assembleBundleMock.mock.calls[0]![0] as { overrides?: string };
+    expect(assemblerInput.overrides).toBeUndefined();
+  });
+
   it("Test 3 — registry immutability: ARCHETYPE_DEFINITIONS byte-identical after a grounded run", async () => {
     const snapshot = JSON.parse(JSON.stringify(ARCHETYPE_DEFINITIONS));
     const triggersSnapshot = JSON.parse(JSON.stringify(ARCHETYPE_TRIGGERS));

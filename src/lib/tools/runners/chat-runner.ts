@@ -80,8 +80,14 @@ export interface ChatPipelineInput {
    */
   personaGrounding?: {
     archetype: Archetype;
-    reactionToConcept: { verdict: "stop" | "scroll"; quote: string };
-    conceptText: string;
+    /**
+     * Present = post-reaction chat ("Ask them why →"). ABSENT = MEET-MODE (the idle
+     * "Meet your room" introduction): no concept exists yet, so the persona speaks to its
+     * own tastes (registry triggers) instead of a reaction — no reaction anchor is fenced.
+     */
+    reactionToConcept?: { verdict: "stop" | "scroll"; quote: string };
+    /** Required alongside reactionToConcept; absent in meet-mode. */
+    conceptText?: string;
     /**
      * The persona's real DISPLAY NAME (The Room, Task A) — e.g. "Dev". Presentation-derived
      * (creator label or the stable archetype default), routed into the persona system prefix so
@@ -155,7 +161,7 @@ const PERSONA_ANCHOR_CAP = 2000;
  */
 function buildPersonaSystemPrefix(
   archetype: Archetype,
-  verdict: "stop" | "scroll",
+  verdict: "stop" | "scroll" | null,
   personaName?: string,
 ): string {
   const definition = ARCHETYPE_DEFINITIONS[archetype];
@@ -177,8 +183,12 @@ function buildPersonaSystemPrefix(
     definition,
     `What makes you stop: ${stop}.`,
     `What makes you scroll past: ${scrollPast}.`,
-    `On the concept below you ${verdict === "stop" ? "STOPPED" : "SCROLLED past"}.`,
-    `Answer the creator's question as THIS viewer about THIS concept — honest, specific,`,
+    verdict
+      ? `On the concept below you ${verdict === "stop" ? "STOPPED" : "SCROLLED past"}.`
+      : `The creator hasn't shown you a concept yet — they're meeting you. Speak from your own taste: what makes you stop, what makes you scroll past, what you're tired of seeing.`,
+    verdict
+      ? `Answer the creator's question as THIS viewer about THIS concept — honest, specific,`
+      : `Answer the creator's question as THIS viewer — honest, specific,`,
     `first-person. Do not break character or describe yourself as an AI.`,
   ]
     .filter(Boolean)
@@ -251,12 +261,16 @@ export async function runChatPipeline(
   const personaSystemPrefix = personaGrounding
     ? buildPersonaSystemPrefix(
         personaGrounding.archetype,
-        personaGrounding.reactionToConcept.verdict,
+        personaGrounding.reactionToConcept?.verdict ?? null,
         personaGrounding.personaName,
       )
     : undefined;
-  const personaReactionAnchor = personaGrounding
-    ? serializePersonaReaction(personaGrounding)
+  // Meet-mode has no reaction → no fenced reaction anchor (the prefix alone carries the voice).
+  const personaReactionAnchor = personaGrounding?.reactionToConcept
+    ? serializePersonaReaction({
+        reactionToConcept: personaGrounding.reactionToConcept,
+        conceptText: personaGrounding.conceptText ?? "",
+      })
     : undefined;
 
   // Compose the fenced override: audience steer and/or persona reaction (both ride the fence).

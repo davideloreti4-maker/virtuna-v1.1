@@ -30,15 +30,19 @@ export interface PersonaChatTarget {
   name: string;
   /** Optional slot descriptor for the header subtitle (e.g. "New viewers"). */
   segment?: string;
-  /** The persona's verdict + verbatim reaction to THIS concept (from the node). */
-  reactionToConcept: { verdict: 'stop' | 'scroll'; quote: string };
+  /**
+   * The persona's verdict + verbatim reaction to THIS concept (from the node).
+   * ABSENT = MEET-MODE: the idle "Meet your room" introduction — no concept yet; the persona
+   * speaks to its own tastes. The route/runner accept the reaction-less grounding explicitly.
+   */
+  reactionToConcept?: { verdict: 'stop' | 'scroll'; quote: string };
 }
 
 export interface PersonaChatDrawerProps {
   /** The persona being asked — null = drawer closed. */
   target: PersonaChatTarget | null;
-  /** The concept text this Read reacted to (grounds the in-voice answer). */
-  conceptText: string;
+  /** The concept text this Read reacted to (grounds the in-voice answer). Omit in meet-mode. */
+  conceptText?: string;
   /** Platform for the chat grounding (defaults tiktok). */
   platform?: 'tiktok' | 'instagram' | 'youtube';
   onClose: () => void;
@@ -51,7 +55,7 @@ interface Turn {
 
 export function PersonaChatDrawer({
   target,
-  conceptText,
+  conceptText = '',
   platform = 'tiktok',
   onClose,
 }: PersonaChatDrawerProps) {
@@ -132,12 +136,27 @@ export function PersonaChatDrawer({
           body: JSON.stringify({
             ask: question,
             platform,
+            // Meet-mode (no reaction) sends NEITHER reaction nor concept — the route's
+            // parse would otherwise degrade a partial grounding to open chat (wrong voice).
             personaGrounding: {
               archetype: target.archetype,
               personaName: target.name,
-              reactionToConcept: target.reactionToConcept,
-              conceptText,
+              ...(target.reactionToConcept
+                ? { reactionToConcept: target.reactionToConcept, conceptText }
+                : {}),
             },
+            // Meet-mode with NO open thread runs ephemeral server-side — carry this drawer's
+            // in-session transcript so the persona keeps context across turns. `turns` here is
+            // the pre-send closure (excludes the current ask); on a retry the failed ask is
+            // already in `turns`, so drop that trailing duplicate.
+            ...(target.reactionToConcept
+              ? {}
+              : {
+                  priorTurns: (isRetry && turns.length > 0 && turns[turns.length - 1]!.role === 'user'
+                    ? turns.slice(0, -1)
+                    : turns
+                  ).slice(-20),
+                }),
           }),
         });
         if (!res.ok || !res.body) throw new Error('request failed');
@@ -191,10 +210,28 @@ export function PersonaChatDrawer({
         setIsStreaming(false);
       }
     },
-    [ask, target, conceptText, platform, isStreaming],
+    [ask, target, conceptText, platform, isStreaming, turns],
   );
 
   const open = target !== null;
+  // Meet-mode = a target with no reaction (the idle "Meet your room" introduction).
+  const meeting = target !== null && !target.reactionToConcept;
+
+  // Esc must close ONLY this drawer. The host surfaces underneath (audience panel, composer
+  // room) listen for document-level Esc too — without capture-phase containment one press
+  // collapses the entire stack (drawer + panel + room). Capture runs before their bubble
+  // listeners: close the drawer here and stop the event cold.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      e.preventDefault();
+      onClose();
+    };
+    document.addEventListener('keydown', onKey, true);
+    return () => document.removeEventListener('keydown', onKey, true);
+  }, [open, onClose]);
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
@@ -203,14 +240,18 @@ export function PersonaChatDrawer({
         className="flex max-h-[80vh] flex-col gap-0 rounded-t-[20px] border-t border-[var(--color-border)] bg-background p-0"
       >
         <SheetTitle className="px-5 pt-5 text-[15px]">
-          {speaker ? `Ask ${speaker}` : 'Ask the audience'}
+          {speaker ? (meeting ? `Meet ${speaker}` : `Ask ${speaker}`) : 'Ask the audience'}
         </SheetTitle>
 
         {/* Sub-thread transcript */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
           {turns.length === 0 && !isStreaming && !error && (
             <p className="py-6 text-center text-[14px] text-foreground-muted">
-              {speaker ? `Ask ${speaker} why they reacted this way.` : ''}
+              {speaker
+                ? meeting
+                  ? `You're meeting ${speaker} — ask what makes them stop, scroll, or share.`
+                  : `Ask ${speaker} why they reacted this way.`
+                : ''}
             </p>
           )}
 

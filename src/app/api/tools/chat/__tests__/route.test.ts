@@ -253,4 +253,191 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(rawB).toContain("event: meta");
     expect(rawB).toContain('"coldStart":false');
   });
+
+  it("Test 5: MEET-MODE with NO open thread runs EPHEMERAL — no thread created, nothing persisted, client priorTurns reach the runner", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { createOpenThreadLazy, getOpenThread } = await import("@/lib/threads/threads");
+    const { insertMessage, loadMessages } = await import("@/lib/threads/messages");
+    const { runChatPipeline, isColdStart } = await import("@/lib/tools/runners/chat-runner");
+    const { ARCHETYPES } = await import("@/lib/engine/wave3/persona-registry");
+    const archetype = ARCHETYPES[0]!;
+
+    (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_input: unknown, onToken: (d: string) => void) => {
+        onToken("Hi, I'm Maya");
+        return { fullContent: "Hi, I'm Maya", coldStart: false };
+      },
+    );
+    (isColdStart as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (loadMessages as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-meet-1" });
+    // Fresh "New Thread" state: no open thread row exists yet (sentinel pointer).
+    (getOpenThread as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    const mockChain = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-meet" } } }) },
+      ...mockChain,
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockChain);
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const res = await POST(
+      makeChatRequest({
+        ask: "And why is that?",
+        platform: "tiktok",
+        // Meet-mode: archetype + name, NO reactionToConcept, NO conceptText.
+        personaGrounding: { archetype, personaName: "Maya" },
+        // The drawer's in-session transcript (ephemeral context).
+        priorTurns: [
+          { role: "user", text: "What makes you stop scrolling?" },
+          { role: "assistant", text: "Mid-chaos entries." },
+        ],
+      }),
+    );
+    expect(res.status).toBe(200);
+    await readSSE(res);
+
+    // The runner received the meet grounding (NOT degraded to open chat).
+    const runnerInput = (runChatPipeline as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0] as {
+      personaGrounding?: { archetype: string; personaName?: string; reactionToConcept?: unknown };
+      priorTurns?: Array<{ role: string; text: string }>;
+    };
+    expect(runnerInput.personaGrounding).toBeDefined();
+    expect(runnerInput.personaGrounding!.archetype).toBe(archetype);
+    expect(runnerInput.personaGrounding!.personaName).toBe("Maya");
+    expect(runnerInput.personaGrounding!.reactionToConcept).toBeUndefined();
+    // Client-carried context reached the runner (the fenced anchor path).
+    expect(runnerInput.priorTurns).toEqual([
+      { role: "user", text: "What makes you stop scrolling?" },
+      { role: "assistant", text: "Mid-chaos entries." },
+    ]);
+
+    // EPHEMERAL: no thread was created and nothing was persisted.
+    expect(createOpenThreadLazy as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+    expect(insertMessage as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+  });
+
+  it("Test 5b: MEET-MODE with an open thread persists both turns as persona-chat-turn (continuity with ask-why)", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { createOpenThreadLazy, getOpenThread } = await import("@/lib/threads/threads");
+    const { insertMessage, loadMessages } = await import("@/lib/threads/messages");
+    const { runChatPipeline, isColdStart } = await import("@/lib/tools/runners/chat-runner");
+    const { ARCHETYPES } = await import("@/lib/engine/wave3/persona-registry");
+    const archetype = ARCHETYPES[0]!;
+
+    (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_input: unknown, onToken: (d: string) => void) => {
+        onToken("Hi again");
+        return { fullContent: "Hi again", coldStart: false };
+      },
+    );
+    (isColdStart as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (loadMessages as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-meet-2" });
+    // A real thread is open (cookie points at it) — meet turns join its sub-thread.
+    (getOpenThread as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-meet-2",
+      user_id: "user-meet",
+    });
+
+    const mockChain = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-meet" } } }) },
+      ...mockChain,
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockChain);
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const res = await POST(
+      makeChatRequest({
+        ask: "What makes you stop scrolling?",
+        platform: "tiktok",
+        personaGrounding: { archetype, personaName: "Maya" },
+      }),
+    );
+    expect(res.status).toBe(200);
+    await readSSE(res);
+
+    // Still never CREATES a thread in meet-mode; it reuses the pointed one.
+    expect(createOpenThreadLazy as ReturnType<typeof vi.fn>).not.toHaveBeenCalled();
+
+    // Both turns persist as persona-chat-turn blocks on that thread (the per-person sub-thread).
+    const insertCalls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls as Array<
+      [string, string, Array<{ type: string; props: { archetype: string } }>]
+    >;
+    expect(insertCalls.length).toBe(2);
+    for (const [threadId, , blocks] of insertCalls) {
+      expect(threadId).toBe("thread-meet-2");
+      expect(blocks[0]!.type).toBe("persona-chat-turn");
+      expect(blocks[0]!.props.archetype).toBe(archetype);
+    }
+  });
+
+  it("Test 6: PARTIAL grounding (reaction present, conceptText empty) still degrades to open chat — no half-applied voice", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage, loadMessages } = await import("@/lib/threads/messages");
+    const { runChatPipeline, isColdStart } = await import("@/lib/tools/runners/chat-runner");
+    const { ARCHETYPES } = await import("@/lib/engine/wave3/persona-registry");
+
+    (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(
+      async (_input: unknown, onToken: (d: string) => void) => {
+        onToken("open answer");
+        return { fullContent: "open answer", coldStart: false };
+      },
+    );
+    (isColdStart as ReturnType<typeof vi.fn>).mockReturnValue(false);
+    (loadMessages as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-partial-1" });
+
+    const mockChain = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-partial" } } }) },
+      ...mockChain,
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockChain);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-partial-1",
+      user_id: "user-partial",
+    });
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const res = await POST(
+      makeChatRequest({
+        ask: "Why?",
+        platform: "tiktok",
+        personaGrounding: {
+          archetype: ARCHETYPES[0]!,
+          reactionToConcept: { verdict: "stop", quote: "loved it" },
+          conceptText: "", // reaction WITHOUT a concept = malformed → open chat
+        },
+      }),
+    );
+    expect(res.status).toBe(200);
+    await readSSE(res);
+
+    const runnerInput = (runChatPipeline as ReturnType<typeof vi.fn>).mock
+      .calls[0]![0] as { personaGrounding?: unknown };
+    expect(runnerInput.personaGrounding).toBeUndefined();
+  });
 });
