@@ -64,7 +64,8 @@ function WarmingRail() {
       <p className="mb-2 px-1 font-mono text-[10.5px] text-foreground-muted">
         Testing today’s outliers on your people…
       </p>
-      <div className="flex gap-3 px-1 pb-1.5 lg:grid lg:grid-cols-3">
+      {/* Same scroll geometry as the ready rail — a skeleton must not be wider than the page. */}
+      <div className="flex gap-3 overflow-x-auto px-1 pb-1.5 [scrollbar-width:none] lg:grid lg:grid-cols-3 lg:overflow-visible [&::-webkit-scrollbar]:hidden">
         {[0, 1, 2].map((i) => (
           <div
             key={i}
