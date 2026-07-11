@@ -192,7 +192,10 @@ export function Reading({ overrideData }: { overrideData?: PredictionResult } = 
     revealClass ? { className: revealClass, style: { animationDelay: `${ms}ms` } } : {};
 
   return (
-    <div data-testid="reading" className="mx-auto flex w-full max-w-[600px] flex-col gap-6 px-4 pt-8 pb-36">
+    // pt-16 below sm: the AppShell's floating hamburger (fixed 16–50px) sits over
+    // the column on phones — pt-8 put the first section label exactly underneath
+    // it. Desktop keeps the original pt-8.
+    <div data-testid="reading" className="mx-auto flex w-full max-w-[600px] flex-col gap-6 px-4 pt-16 pb-36 sm:pt-8">
       {/* The read — scorecard (poster + gauge + 3 stats) with the audience overview
           ("How far it gets pushed") folded in under the gauge. (The detailed
           10-segment deep-dive returns in the step-2 panel redesign.) */}

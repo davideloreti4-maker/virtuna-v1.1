@@ -80,7 +80,7 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
 
     return (
       <section data-testid="fix-first" className="flex flex-col gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-[0.08em] text-foreground-muted">
+        <h3 className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
           Fix first
         </h3>
         {solid ? (
@@ -147,13 +147,30 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
 }
 
 function RewriteSection({ rewrites }: { rewrites: ApolloRewrite[] }) {
+  // Every rewrite of the SAME hook carries the same `original` — printing the
+  // struck line once per card repeated it 3× back-to-back. When all originals
+  // match, hoist it once above the list; mixed originals (rewrites targeting
+  // different lines) keep the per-card strike.
+  const first = rewrites[0];
+  const shared =
+    first != null && rewrites.length > 1 && rewrites.every((rw) => rw.original === first.original)
+      ? first.original
+      : null;
   return (
     <div className="flex flex-col gap-2" data-testid="fix-first-rewrites">
-      <p className="text-xs font-medium uppercase tracking-[0.08em] text-foreground-muted">
+      <p className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
         Hook rewrites
       </p>
+      {shared && (
+        <del
+          data-testid="fix-first-rewrites-original"
+          className="text-[12px] leading-[1.4] text-foreground-muted"
+        >
+          {shared}
+        </del>
+      )}
       {rewrites.map((rw, i) => (
-        <RewriteItem key={`${rw.lever_fixed}-${i}`} rewrite={rw} />
+        <RewriteItem key={`${rw.lever_fixed}-${i}`} rewrite={rw} showOriginal={shared == null} />
       ))}
     </div>
   );

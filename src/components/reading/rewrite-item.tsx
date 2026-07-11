@@ -19,9 +19,13 @@ import type { ApolloRewrite } from '@/lib/engine/types';
 
 export interface RewriteItemProps {
   rewrite: ApolloRewrite;
+  /** Render the struck-through original inside the card (default). The list
+   *  passes false when every rewrite shares one original and hoists it once
+   *  above the cards instead of repeating it per item. */
+  showOriginal?: boolean;
 }
 
-export function RewriteItem({ rewrite }: RewriteItemProps) {
+export function RewriteItem({ rewrite, showOriginal = true }: RewriteItemProps) {
   const [copied, setCopied] = useState(false);
   // WR-01: track the "Copied" revert timer so it's cleared on unmount and before
   // re-scheduling — RewriteItem can unmount within the 1.5s window (drill toggles /
@@ -47,10 +51,13 @@ export function RewriteItem({ rewrite }: RewriteItemProps) {
       data-testid="reading-rewrite"
       className="flex flex-col gap-1 rounded-[8px] border border-[var(--color-border)] p-3"
     >
-      {/* Struck-through original — the verbatim hook line being replaced. */}
-      <del className="text-[12px] leading-[1.4] text-foreground-muted">
-        {rewrite.original}
-      </del>
+      {/* Struck-through original — the verbatim hook line being replaced.
+          Omitted when the list hoists a shared original above the cards. */}
+      {showOriginal && (
+        <del className="text-[12px] leading-[1.4] text-foreground-muted">
+          {rewrite.original}
+        </del>
+      )}
 
       {/* Variant + Copy (the product payload). */}
       <div className="flex items-start justify-between gap-2">
