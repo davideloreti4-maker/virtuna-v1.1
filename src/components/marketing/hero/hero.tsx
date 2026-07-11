@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
 
 import { Placeholder } from "@/components/marketing/placeholder";
+import {
+  ScoreGaugeSkeleton,
+  AudienceCloudSkeleton,
+  DriverRowsSkeleton,
+  RetentionCurveSkeleton,
+} from "@/components/marketing/story/skeletons";
 
 interface HeroProps {
   className?: string;
@@ -91,10 +97,10 @@ export function Hero({ className }: HeroProps) {
 
       {/* 4 — Hero showcase: the product, shown. desktop window = the Maven
           SIMULATION (output) · phone in front = the TikTok you paste (input).
-          Reads left→right as paste → prediction. Both screens are swappable
-          <Placeholder> slots (FOUND-03) — real desktop/mobile screenshots or
-          video drop in via `src` later; the device chrome, depth, and seating
-          here are permanent set-dressing. */}
+          Reads left→right as paste → prediction. The window body renders the
+          03-04 skeleton dashboard until a real screenshot exists; the phone
+          stays a swappable <Placeholder> slot (FOUND-03). Device chrome,
+          depth, and seating are permanent set-dressing. */}
       <div className="relative mt-6 w-full max-w-5xl pb-6 sm:pb-10">
         {/* Soft warm seat — a faint matte pool that floats the composition off
             the flat page (cream at very low alpha; NOT a glow). */}
@@ -125,13 +131,30 @@ export function Hero({ className }: HeroProps) {
               {/* spacer keeps the address pill optically centered vs the dots */}
               <span className="w-[42px]" aria-hidden="true" />
             </div>
-            {/* window body — desktop Simulation screenshot slot (inset darker) */}
-            <Placeholder
-              variant="image"
-              aspect="16/10"
-              label="Maven Simulation"
-              className="rounded-none border-0 bg-surface"
-            />
+            {/* window body — filled with the 03-04 product-skeleton primitives
+                so the FOLD shows the product's shape, not an empty 16/10 void
+                (same GAP-2 rationale as simulation-showcase.tsx, different
+                composition: a dashboard with a main chart column + a score/
+                audience side rail, so the hero and the showcase don't read as
+                the same frame twice). Height-capped + overflow-hidden so the
+                mobile stack crops instead of towering. Still swappable for a
+                real desktop screenshot later (FOUND-03) — this block is the
+                `src` slot. */}
+            <div className="flex max-h-[520px] flex-col gap-6 overflow-hidden bg-surface p-6 md:flex-row md:gap-8 md:p-8">
+              {/* side rail — the hero number + the crowd. First in DOM so the
+                  mobile crop keeps gauge + drivers visible; md pushes it right. */}
+              <div className="flex shrink-0 flex-col items-center gap-6 md:order-2 md:w-[220px]">
+                <ScoreGaugeSkeleton />
+                {/* cloud is md+ only: at full mobile width it grows ~270px tall
+                    and eats the whole capped window. */}
+                <AudienceCloudSkeleton className="hidden w-full md:flex" />
+              </div>
+              {/* main column — the three levers + where viewers drop. */}
+              <div className="flex min-w-0 flex-1 flex-col gap-6 md:order-1">
+                <DriverRowsSkeleton />
+                <RetentionCurveSkeleton />
+              </div>
+            </div>
           </div>
         </div>
 

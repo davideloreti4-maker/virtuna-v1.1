@@ -20,25 +20,20 @@
 
 ## 🔴 Launch gates — block public launch
 
-### 1. Vercel production deploy — THE launch blocker
-Prod has served the **Jan-27 init commit (`f510cf0f`) only** — ~5 months + everything shipped
-this arc (A5, A6, spinner consolidation, optimistic delete) is **undeployed**.
-- **Status:** GitHub→Vercel Git integration was severed; **owner reconnected it 2026-07-02** (step 1
-  done). Reconnect does NOT backfill — no deploy fires until a push to `main` or a manual trigger.
-  Project ids: `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url` / team `team_4eBJIDHXvR0VGq2Nrgr9xt21`.
-- **Remaining steps:**
-  1. **Owner:** set Production env vars in Vercel (copy values from local `.env.local`):
-     - 🔴 build/app breaks: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-       `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_APP_URL`.
-     - 🟠 core product 500s: `DASHSCOPE_API_KEY`, `GEMINI_API_KEY`, `DEEPSEEK_API_KEY`, `APIFY_TOKEN`.
-     - 🟡 if live: `WHOP_*`, `CRON_SECRET`, `APIFY_WEBHOOK_SECRET`, `FILMSTRIP_EXTRACT_SECRET`, `NEXT_PUBLIC_SENTRY_DSN`.
-     - ⚪ skip (code defaults): model/tuning knobs (`FLASH_MODEL`, `QWEN_*`, `FOLD_*`, …). No `ANTHROPIC_API_KEY` anywhere.
-  2. **Verify prod Supabase migrations** (read-only Supabase MCP) — deployed code expects ~5mo of
-     migrations; `database.types.ts` is missing `mode`/`success_criterion`/`custom_context` cols. If
-     prod DB is stuck at Jan-27 schema the app errors even with keys set. **Likeliest hidden landmine.**
-  3. **Trigger** the first deploy (a merge fires the webhook, or trigger via MCP) → verify it lands + smoke the live URL.
-- **Note:** this is a **launch event** (5mo of never-in-prod work), not a code fix. Deferred by owner
-  2026-07-02 to stay on local. Detail: audit §Blocking-1.
+### 1. ~~Vercel production deploy — THE launch blocker~~ ✅ RESOLVED — prod auto-deploys `main` (verified 2026-07-11)
+The GitHub→Vercel integration is live: **every merge to `main` auto-deploys to production**
+(verified via Vercel MCP: the production deployment at main tip `523415a7` is READY, and the
+last ~20 deploys — production + previews — are all READY, zero failures). Prod no longer serves
+the Jan-27 init commit. Project ids: `prj_WUmPu9fRmFNlbj5rtGIaRmBC8Url` / team `team_4eBJIDHXvR0VGq2Nrgr9xt21`.
+- **Also superseded:** the "prod DB stuck at Jan-27 schema" fear — migrations have been
+  MCP-applied to the live Supabase project throughout this arc (variants RPC #191, planned_posts,
+  grounding §13, connected_accounts + backfill, …).
+- **What actually remains — a smoke, not a launch event:**
+  1. **Runtime env vars:** builds pass (so `NEXT_PUBLIC_*` exist), but engine/API routes 500 in
+     prod if `DASHSCOPE_API_KEY` / `GEMINI_API_KEY` / `DEEPSEEK_API_KEY` / `APIFY_TOKEN` (+ `WHOP_*`,
+     `CRON_SECRET`, `UPSTASH_*`, webhook secrets) are unset — check the Vercel dashboard.
+  2. **One live prod smoke** of the core flow (sign in → run a skill → Reading renders) before
+     calling it launched.
 
 ### 2. ~~Rate-limiting (HARDEN-01)~~ ✅ DONE (PR #172, 2026-07-06)
 All 11 `/api/tools/*` routes rate-limited via Upstash sliding window (`src/lib/http/rate-limit.ts`,

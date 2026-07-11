@@ -19,7 +19,7 @@ interface ChromeProps {
 }
 
 /**
- * BrowserChrome — slim browser bar (3 dots + a "numen.app" mono pill, optically
+ * BrowserChrome — slim browser bar (3 dots + a "maven.app" mono pill, optically
  * centered) over an `overflow-hidden rounded-xl border bg-surface-elevated`
  * window that wraps `children`. The window body is the swap slot for 03-05.
  */
@@ -42,7 +42,7 @@ export function BrowserChrome({ children, className }: ChromeProps) {
           <span className="h-2.5 w-2.5 rounded-full bg-foreground-muted/30" />
         </span>
         <span className="mx-auto rounded-md bg-background px-4 py-1 font-mono text-[11px] tracking-wide text-foreground-muted">
-          numen.app
+          maven.app
         </span>
         {/* spacer keeps the address pill optically centered vs the dots */}
         <span className="w-[42px]" aria-hidden="true" />
