@@ -53,11 +53,14 @@ export function DiscoverTabBar({
   onSelectContent?: (id: DiscoverContentTab) => void;
 }) {
   return (
-    <div
-      className="inline-flex items-center rounded-lg border border-border bg-surface-elevated p-0.5"
-      role="tablist"
-      aria-label="Discover sections"
-    >
+    // Five tabs are ~409px intrinsic — wider than a 390px viewport allows. The wrapper scrolls
+    // the pill instead of letting it overflow the page (scrollbars are hidden app-wide).
+    <div className="overflow-x-auto">
+      <div
+        className="inline-flex w-max items-center rounded-lg border border-border bg-surface-elevated p-0.5"
+        role="tablist"
+        aria-label="Discover sections"
+      >
       {CONTENT_TABS.map((t) =>
         onSelectContent ? (
           <button
@@ -96,6 +99,7 @@ export function DiscoverTabBar({
           {t.label}
         </Link>
       ))}
+      </div>
     </div>
   );
 }
