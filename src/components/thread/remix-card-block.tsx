@@ -23,6 +23,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { ProofUnit } from './proof-unit';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CaretToggle } from './caret-toggle';
 
 export interface RemixCardRendererProps {
   block: RemixCardBlock;
@@ -154,7 +155,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse decode anatomy' : 'Expand decode anatomy'}
         >
-          <span aria-hidden="true">{expanded ? '↑' : '↓'}</span>
+          <CaretToggle open={expanded} />
           Why the original worked
           <span className="text-foreground-muted/70">· SIM-1 Flash</span>
         </button>

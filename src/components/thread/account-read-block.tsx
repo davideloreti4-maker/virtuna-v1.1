@@ -40,6 +40,7 @@ import { useRouter } from 'next/navigation';
 import type { AccountReadBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { SaveAffordance } from './save-affordance';
+import { CoverFill } from '@/components/primitives/CoverFill';
 
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
 type FormatMix = AccountReadPatterns['formatMix'];
@@ -144,18 +145,7 @@ function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
               className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]"
               title={v.caption || undefined}
             >
-              {v.coverUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- ephemeral CDN cover, not a static asset
-                <img
-                  src={v.coverUrl}
-                  alt=""
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              ) : null}
+              <CoverFill coverUrl={v.coverUrl} playSize={14} className="transition-opacity group-hover:opacity-90" />
               {/* Views overlay — over imagery (white on a dark gradient), legible even if cover fails. */}
               <span className="absolute inset-x-0 bottom-0 flex items-center gap-0.5 bg-gradient-to-t from-black/75 to-transparent px-1 pb-0.5 pt-3 text-[9px] font-medium tabular-nums text-white/90">
                 <svg viewBox="0 0 8 8" className="h-[6px] w-[6px]" fill="currentColor" aria-hidden="true">
@@ -356,7 +346,7 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
         {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
 
         {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+        <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-1">
           <ListBlock
             label="What's working"
             items={patterns.working}

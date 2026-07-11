@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import type { PersonasBlock } from '@/lib/tools/blocks';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
+import { CaretToggle } from './caret-toggle';
 
 export interface PersonasBlockProps {
   block: PersonasBlock;
@@ -92,7 +93,10 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
           aria-expanded={expanded}
           aria-label={expanded ? 'Hide reactions' : 'Show reactions'}
         >
-          {expanded ? '↑ Hide' : '↓ Show'}
+          <span className="inline-flex items-center gap-1" aria-hidden="true">
+            <CaretToggle open={expanded} size={12} />
+            {expanded ? 'Hide' : 'Show'}
+          </span>
         </button>
       </div>
 

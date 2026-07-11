@@ -25,6 +25,7 @@ import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CaretToggle } from './caret-toggle';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -140,7 +141,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           aria-expanded={expanded}
           aria-label={expanded ? 'Collapse idea details' : 'Expand idea details'}
         >
-          <span aria-hidden="true">{expanded ? '↑' : '↓'}</span>
+          <CaretToggle open={expanded} />
           {expanded ? 'Hide details' : 'Angle & format'}
           <span className="text-foreground-muted/70">· SIM-1 Flash</span>
         </button>
