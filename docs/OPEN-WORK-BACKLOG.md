@@ -60,7 +60,7 @@ fail-open). INERT until `UPSTASH_REDIS_REST_URL`/`_TOKEN` set in prod. See `rate
 |------|---------------------|------|
 | **`SurfaceEmptyState` extract** | ~27 screens hand-roll their own empty state (icon none/tiled/inline, border none/solid/dashed, title present-or-not, CTA some/none). 🎨 **Mocks started 2026-07-06** (canonical-look options artifact) — pick a variant, then it's a mechanical extract + migrate. | M |
 | **Account-Read persistence** | `/api/account-read` doesn't `insertMessage` → the result block is **session-only, lost on reload**. Finishes the skill shipped in PR #102. Small, self-contained. | S |
-| **`analyze` Reading-internal loading state** | Theme-B residual: `analyze/layout.tsx:26 fallback={null}` is inert; the real fix is a Reading-internal loading state (not a route skeleton). | M |
+| ~~**`analyze` Reading-internal loading state**~~ ✅ **STALE — already exists** (verified 2026-07-11) | `ReadingSkeleton` IS the Reading-internal loading state: `reading.tsx` renders it for `isLoading` AND in-flight processing rows (`overall_score:null` + `engine_version:'pending'`), with real liveness via `use-reading-reveal` (SSE persona/keyframe counts). The `fallback={null}` at `analyze/layout.tsx:26` is inert **by design** — all UI lives in `<Reading>`. Shipped with the Phase-4 reveal work; predates this backlog's reconcile. | — |
 | **Stale coral JSDoc** | Comment-level cleanup in `design-tokens.ts` (same file as the coral scaffolding above) — fold into that sweep. | XS |
 
 ### ⛔ Deferred = "won't do as filed" (documented so nobody re-opens them)
