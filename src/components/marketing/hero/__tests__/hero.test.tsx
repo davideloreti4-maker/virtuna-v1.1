@@ -9,10 +9,10 @@ import { SIGNUP_URL } from "@/lib/routes";
  * Phase 2 Nyquist gate — HERO-01..04 on the RSC <Hero>.
  *
  * HERO-01/02 = the headline/subcopy/CTA cluster. HERO-03/04 = the product-shot
- * showcase (desktop Simulation window + phone TikTok, both swappable Placeholder
- * slots) that REPLACED the retired canvas "crowd → score" moment after live
- * craft review. The old composed-still / signature-moment-client / hero-constants
- * suites were removed with their components.
+ * showcase (desktop Simulation window filled with the 03-04 skeleton dashboard +
+ * phone TikTok Placeholder slot) that REPLACED the retired canvas "crowd → score"
+ * moment after live craft review. The old composed-still / signature-moment-client
+ * / hero-constants suites were removed with their components.
  *
  * Resilience rule (02-00-PLAN <action>): the H1 is matched VERBATIM (D-09
  * LOCKED), but subcopy / scroll-cue / slot labels are matched by stable tokens
@@ -71,13 +71,23 @@ describe("<Hero />", () => {
   });
 
   describe("HERO-03/04 — product-shot showcase (output + input)", () => {
-    it("renders the desktop Simulation slot (the OUTPUT)", () => {
+    it("renders the desktop Simulation window filled with the product skeletons (the OUTPUT)", () => {
       render(<Hero />);
 
-      // Swappable Placeholder slot — real desktop screenshot/video swaps in
-      // via `src` later; the labelled stand-in proves the slot is wired now.
-      // WR-01: pins the locked product noun "Simulation", never "reading".
-      expect(screen.getByText(/maven simulation/i)).toBeTruthy();
+      // The window body renders the 03-04 skeleton dashboard (gauge + driver
+      // rows + retention curve + audience cloud) until a real screenshot swaps
+      // in via the slot later (FOUND-03) — the fold shows the product's shape,
+      // never an empty 16/10 void.
+      expect(screen.getByRole("img", { name: /virality score/i })).toBeTruthy();
+      expect(
+        screen.getByRole("img", { name: /hook, retention and shareability/i })
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("img", { name: /retention curve/i })
+      ).toBeTruthy();
+      expect(
+        screen.getByRole("img", { name: /audience reaction/i })
+      ).toBeTruthy();
     });
 
     it("renders the phone TikTok slot (the INPUT)", () => {

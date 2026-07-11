@@ -131,14 +131,14 @@ describe("product-skeleton primitives", () => {
   });
 
   describe("<BrowserChrome /> + <PhoneChrome /> — device chrome", () => {
-    it("BrowserChrome renders the numen.app pill and its children", () => {
+    it("BrowserChrome renders the maven.app pill and its children", () => {
       const { container } = render(
         <BrowserChrome>
           <div data-testid="window-body">body</div>
         </BrowserChrome>
       );
 
-      expect(screen.getAllByText(/numen\.app/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/maven\.app/i).length).toBeGreaterThanOrEqual(1);
       expect(container.querySelector('[data-testid="window-body"]')).not.toBeNull();
     });
 
