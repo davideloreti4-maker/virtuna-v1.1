@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { FilmSlate, FunnelSimple, DownloadSimple, CaretDown, MagnifyingGlass, ArrowRight } from "@phosphor-icons/react";
+import { FilmSlate, DownloadSimple, CaretDown, MagnifyingGlass, ArrowRight } from "@phosphor-icons/react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -223,19 +223,10 @@ export function HooksClient() {
         </div>
       </div>
 
-      {/* From your analyzed videos — empty until the analyze pipeline lands. */}
-      <section className="mt-8">
-        <h2 className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-foreground-muted">
-          Hooks from your analyzed videos · 0
-        </h2>
-        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/[0.08] px-4 py-10 text-center">
-          <FunnelSimple size={22} className="text-foreground-muted" />
-          <p className="max-w-sm text-sm text-foreground-muted">
-            Remix a video into a Read and we&apos;ll pull its hook here — automatic hook
-            extraction is coming soon.
-          </p>
-        </div>
-      </section>
+      {/* "From your analyzed videos" placeholder removed until the analyze pipeline
+          lands — a permanently-empty dashed box above the vault pushed the real
+          content below the fold; the Create-from-video popover carries the
+          coming-soon note. */}
 
       {/* Default hooks. */}
       <section className="mt-8">
