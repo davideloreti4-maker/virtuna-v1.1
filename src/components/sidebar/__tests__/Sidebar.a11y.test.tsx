@@ -45,19 +45,22 @@ describe('Sidebar a11y', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('exposes top-level nav items: New Thread, Audience, Library, Discover + the hubs (IA-01)', () => {
+  it('exposes top-level nav items: New Thread, Audience, Library, Discover (IA-01)', () => {
     render(<Sidebar />);
-    // Top-level nav nouns: New Thread (CTA) + Grow (hub) · Audience · Library · Discover
-    // (hub). Analytics + Referrals fold into the Grow hub; Feed + Competitors fold into the
-    // Discover hub (Surfaces IA) — none are standalone nav items anymore.
+    // Top-level nav nouns: New Thread (CTA) + Start · Calendar · Discover · Audience ·
+    // Library. The Grow hub is dissolved (2026-07-07): Analytics folded into /audience,
+    // Referrals into /settings; Feed + Competitors fold into the Discover hub — none are
+    // standalone nav items anymore.
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Grow' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Calendar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Discover' })).toBeInTheDocument();
-    // Collapsed into their hubs → no longer standalone nav items.
+    // Dissolved / collapsed into hubs → no longer standalone nav items.
+    expect(screen.queryByRole('button', { name: 'Grow' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Analytics' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Referrals' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Feed' })).not.toBeInTheDocument();

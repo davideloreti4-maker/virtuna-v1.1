@@ -311,7 +311,9 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
   const onForward = () => void handleForward();
   const forwardLabel = launching ? "Launching…" : forward?.label ?? "Use in thread →";
 
-  const timestamp = new Date(item.created_at).toLocaleDateString(undefined, {
+  // en-US pinned: `undefined` takes the ambient OS/browser locale, so SSR and
+  // non-English machines rendered "29. Juni" while the product voice is English.
+  const timestamp = new Date(item.created_at).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });

@@ -114,8 +114,10 @@ export function AudienceCard({
       />
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-[15px] font-medium text-foreground truncate">
+        {/* <sm the badge pair moves under the name — side-by-side it wins the
+            width contest and crushes the name to "Fit…" at 390px. */}
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <p className="min-w-0 text-[15px] font-medium text-foreground truncate">
             {audience.name}
           </p>
           <div className="flex shrink-0 items-center gap-1.5">
@@ -138,7 +140,9 @@ export function AudienceCard({
           <div className="mt-2 flex items-center gap-2">
             <AudienceTempBar mix={tempMix} />
             {dominant && (
-              <span className="text-[10px] text-foreground-muted">{dominant}</span>
+              <span className="shrink-0 whitespace-nowrap text-[10px] text-foreground-muted">
+                {dominant}
+              </span>
             )}
           </div>
         )}
@@ -159,14 +163,16 @@ export function AudienceCard({
           <p className="mt-2 text-[11px] text-foreground-muted truncate">
             {templateProvenance}
           </p>
-        ) : (
+        ) : isUserOwned ? (
           // Evidence state — NOT a tier. The top badge already carries the model tier
           // (Validated/Directional); this line describes THIS audience's persona receipts,
           // so it must not re-use the tier word (that read as "Validated … Directional").
+          // User-owned only: on presets/General "receipts pending" reads as broken —
+          // their provenance is already the subtitle.
           <p className="mt-2 text-[11px] text-foreground-muted/80 truncate">
             personas modeled · receipts pending
           </p>
-        )}
+        ) : null}
       </div>
 
       {showMenu && !selectionMode && (

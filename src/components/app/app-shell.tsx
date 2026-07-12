@@ -43,6 +43,9 @@ export function AppShell({ children }: AppShellProps) {
           className="relative h-full overflow-auto"
           style={{
             marginLeft: `${offset}px`,
+            // Mobile: clear the fixed hamburger (top-4 + 34px) so page H1s
+            // don't render underneath it.
+            paddingTop: treatAsMobile ? "56px" : undefined,
             transition: reducedMotion ? undefined : "margin-left 150ms var(--ease-out-cubic)",
           }}
         >
