@@ -145,21 +145,12 @@ export interface AudiencePresenceProps {
   /** True when the presence was opened by a card's "See the room →" that pre-focused ONE card —
    *  the Room then drills straight into that card's people instead of the ranked overview. */
   drillIntoFocus?: boolean;
-  // ── Desktop persistent rail + surface seam (PR-4) ──────────────────────────
-  /** 'dock' (default) = the mobile bottom-docked peek + Bloom panel. 'rail' = the desktop
-   *  persistent right-rail presentation: an identity header + an ALWAYS-open Room (an idle
-   *  roster when nothing is in focus), no peek toggle, no Bloom sheet. The host picks per
-   *  viewport (useMediaQuery ≥ xl) so exactly ONE presentation mounts — never a hidden second
-   *  AmbientRoom running its timers. */
-  layout?: 'dock' | 'rail';
   /** 'thread' (default) = the /home making surface (the composer field drives asks). 'surface'
-   *  = a READ-ONLY presence for non-thread pages (the app-wide peek, no composer field). Both
-   *  layouts render the SAME presentation EXCEPT the composer-bound affordances are gated off: the
-   *  Rewrite CTA is forced off (`canRewrite=false`) and the idle copy drops the "type below" prompt
-   *  (§3 sign-off delta — no ask input / Rewrite unless the surface hosts a composer). Peek band
-   *  always; the on-focus read-only AmbientRoom shows only where the host anchors a focus (peek-only
-   *  at rest). The sister surfaces session mounts this (`surface-dock.tsx`), fed `resolveUserAudience`
-   *  → `audienceToActiveAudience`. See `docs/SURFACE-SEAM-SPEC.md` §2. */
+   *  = a READ-ONLY presence for non-thread pages (the app-wide peek, no composer field). Same
+   *  presentation EXCEPT the composer-bound affordances are gated off: the Rewrite CTA is forced
+   *  off (`canRewrite=false`) and the idle copy drops the "type below" prompt (§3 sign-off delta —
+   *  no ask input / Rewrite unless the surface hosts a composer). Currently unmounted (the /start
+   *  dock was retired in #208) but kept forward-ready per `docs/SURFACE-SEAM-SPEC.md` §2. */
   variant?: 'thread' | 'surface';
 }
 
@@ -187,10 +178,9 @@ export function AudiencePresence({
   reacting = false,
   arrivalNonce = 0,
   drillIntoFocus = false,
-  layout = 'dock',
   variant = 'thread',
 }: AudiencePresenceProps) {
-  // variant='surface' (non-thread pages) is READ-ONLY: it reuses the exact dock/rail presentation
+  // variant='surface' (non-thread pages) is READ-ONLY: it reuses the exact dock presentation
   // but gates every composer-bound affordance — the Rewrite CTA (there is no composer to re-run the
   // skill) and the "type below" idle prompt. Everything else (the peek band, the switcher, the
   // constellation, the roster, the on-focus AmbientRoom) is already read-only. Guarded so
@@ -236,11 +226,10 @@ export function AudiencePresence({
   // `overflow-hidden` rounded-corner clip (the dropdown opens UPWARD, well above
   // that surface). Anchored as a fixed box just above the trigger.
   const menuRef = useRef<HTMLDivElement | null>(null);
-  // Anchored above (dock — the peek is bottom-pinned) or below (rail — the identity is at the
-  // TOP of the right rail). One of top/bottom is set per `layout`. `maxH` clamps the menu to
-  // the space actually available on the chosen side — the chip is NOT always bottom-pinned
-  // (the centered empty-home layout puts it mid-viewport), and an unclamped upward menu
-  // rendered its top rows off-screen there.
+  // Anchored above (collapsed chip — bottom-pinned) or below (the open panel's top bar). `maxH`
+  // clamps the menu to the space actually available on the chosen side — the chip is NOT always
+  // bottom-pinned (the centered empty-home layout puts it mid-viewport), and an unclamped upward
+  // menu rendered its top rows off-screen there.
   const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number; width: number; maxH?: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
@@ -277,27 +266,11 @@ export function AudiencePresence({
     ? `${stopRead.stop} of ${stopRead.total} would stop`
     : readinessText;
 
-  // ── Reactions-arrive dopamine (Phase 2) ──────────────────────────────────────
-  // While a generation is in flight the pulse reads "Reading the room…" (the anticipation
-  // beat — the lit constellation blinks alongside). When it finishes, the pulse settles back
-  // to the honest score/readiness and the arrival badge (below) pops.
-  const displayPulse = reacting ? LOADING_COPY : pulseText;
-
-  // Peek-band caption (dock + peek-only). The audience NAME already sits in the switcher
-  // button on the SAME row, so the name-prefixed readiness ("Fitness Creators · 6 personas
-  // ready") duplicated it and truncated to "Fitness Cr…" on mobile. Drop the name here; a
-  // live read / stop-fraction still shows verbatim.
-  const peekPulse = reacting
-    ? LOADING_COPY
-    : stopRead
-      ? `${stopRead.stop} of ${stopRead.total} would stop`
-      : isPersonSim
-        ? "1 reactor ready"
-        : `${rosterCount} personas ready`;
-
   // Compact IDLE readiness for the mobile DOCK cap, where the switcher chip + expand chevron
   // leave little room — "6 ready" never truncates, unlike the fuller "6 personas ready". The
-  // live stop-read keeps its full phrasing (it's the meaningful moment; matches peekPulse).
+  // live stop-read keeps its full phrasing (it's the meaningful moment). While a generation is
+  // in flight the pulse reads "Reading the room…" (the anticipation beat — the lit constellation
+  // blinks alongside); when it finishes it settles back and the arrival badge pops.
   const dockPulse = reacting
     ? LOADING_COPY
     : stopRead
@@ -353,14 +326,12 @@ export function AudiencePresence({
     if (open) setBadgeCount(null);
   }, [open]);
 
-  // The arrival badge element — a DOCK affordance ("N new — come look"): it marks reactions that
-  // landed while the Room is closed, and clears when the creator opens it. The desktop RAIL keeps
-  // the Room always on screen, so the arrival is self-evident there (the eyebrow blink + the live
-  // update carry it) — the badge would only linger with nothing to acknowledge it, so it's dock-only.
-  // Dosage: the one sanctioned accent-FILL, for a genuine liveness event (dark glyph on terracotta =
-  // the prototype `.pnew`). Ephemeral: it pops, then clears on open.
+  // The arrival badge element — "N new — come look": it marks reactions that landed while the
+  // Room is closed, and clears when the creator opens it. Dosage: the one sanctioned accent-FILL,
+  // for a genuine liveness event (dark glyph on terracotta = the prototype `.pnew`). Ephemeral:
+  // it pops, then clears on open.
   const arrivalBadge =
-    layout !== 'rail' && badgeCount !== null && badgeCount > 0 ? (
+    badgeCount !== null && badgeCount > 0 ? (
       <span
         role="status"
         aria-live="polite"
@@ -382,19 +353,6 @@ export function AudiencePresence({
     () => buildFieldDots(personas.length > 0 ? personas.length : DEFAULT_ROSTER_DOTS, 260, 96),
     [personas.length],
   );
-  // The desktop rail's idle roster — one row per persona (or the General default roster). Derived
-  // from the SAME deterministic dot roster as the peek band so the names stay consistent across
-  // the presence. Built off an always-idle dot list (flat=[]) so the srLabel is a plain name, not
-  // a "name: verdict" (the idle rail shows who is READY, not a stale reaction).
-  const rosterRows = useMemo(() => {
-    const idleDots = buildDots(personas, [], 132, 30);
-    return idleDots.map((d) => ({
-      key: d.id,
-      name: d.srLabel,
-      initial: (d.srLabel.trim()[0] ?? '·').toUpperCase(),
-    }));
-  }, [personas]);
-
   // "Meet your room" cast — the actual named people who react. Calibrated audiences use their own
   // personas (creator labels win); General has no persona rows, so it reads the canonical roster.
   // Each member carries a one-line trait so the room is tangible, not an abstract "10 personas".
@@ -464,9 +422,9 @@ export function AudiencePresence({
       const width = 280;
       const spaceAbove = r.top - 20;
       const spaceBelow = window.innerHeight - r.bottom - 20;
-      if (layout === 'rail' || (docked && open)) {
-        // Rail identity — or the docked switcher at the TOP of the open panel — opens DOWNWARD;
-        // clamp so the menu stays on-screen.
+      if (docked && open) {
+        // The docked switcher at the TOP of the open panel opens DOWNWARD; clamp so the
+        // menu stays on-screen.
         const left = Math.min(r.left, window.innerWidth - width - 12);
         setMenuPos({ left, top: r.bottom + 8, width, maxH: Math.max(160, spaceBelow) });
       } else if (spaceAbove < 220 && spaceBelow > spaceAbove) {
@@ -492,7 +450,7 @@ export function AudiencePresence({
       window.removeEventListener('scroll', place, true);
       window.removeEventListener('resize', place);
     };
-  }, [switcherOpen, layout, docked, open]);
+  }, [switcherOpen, docked, open]);
 
   const handleSelect = (a: Audience) => {
     onSelectAudience(a);
@@ -550,8 +508,8 @@ export function AudiencePresence({
   };
 
   // The switcher popover — PORTALED to <body> (fixed) so it escapes any overflow-clip. Opens
-  // UPWARD for the dock (bottom-pinned) or DOWNWARD for the rail (top-anchored) via `menuPos`.
-  // Extracted so BOTH the dock peek band and the desktop rail header render the same menu.
+  // UPWARD from the collapsed chip (bottom-pinned) or DOWNWARD from the open panel's top bar,
+  // side-clamped via `menuPos`. Shared by the collapsed chip and the open panel's identity.
   const switcherMenu = switcherOpen
     ? createPortal(
         <div
@@ -620,108 +578,6 @@ export function AudiencePresence({
         document.body,
       )
     : null;
-
-  // ── Desktop persistent rail (PR-4) ─────────────────────────────────────────
-  // The always-present right rail: an identity header (with the same switcher) + an ALWAYS-open
-  // Room (the AmbientRoom when a card is in focus, an idle roster otherwise). No peek toggle, no
-  // Bloom sheet — the audience is simply on screen beside the making surface. The host mounts
-  // this only at ≥ xl (useMediaQuery), so there is never a hidden second AmbientRoom.
-  if (layout === 'rail') {
-    return (
-      <aside
-        data-testid="audience-rail"
-        data-variant={variant}
-        aria-label="Your audience"
-        className="flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-[var(--color-border)] bg-[var(--color-background)]"
-      >
-        {/* Identity header — constellation + switchable audience name + one-line pulse. */}
-        <div className="relative flex shrink-0 items-center gap-2.5 border-b border-[var(--color-border)] px-4 py-4">
-          <div className="relative flex min-w-0 flex-1 items-center" ref={switcherRef}>
-            <button
-              type="button"
-              aria-haspopup="menu"
-              aria-expanded={switcherOpen}
-              aria-label={`Audience: ${audienceName}. Switch audience`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setSwitcherOpen((v) => !v);
-              }}
-              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-1.5 py-1 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
-            >
-              <ConstellationMark width={52} reacting={reacting} />
-              <span className="min-w-0 flex-1">
-                <span className="block font-mono text-[9.5px] uppercase tracking-[0.14em] text-[var(--color-foreground-muted)]">
-                  {reacting ? LOADING_COPY : 'Your audience'}
-                </span>
-                <span className="flex items-center gap-1.5 text-[15px] font-semibold text-[var(--color-foreground)]">
-                  <span className="max-w-[190px] truncate">{audienceName}</span>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
-                </span>
-              </span>
-            </button>
-            {switcherMenu}
-          </div>
-          {arrivalBadge}
-        </div>
-
-        {/* Body — the always-open Room (focus) or the idle roster (readiness). */}
-        <div className="flex min-h-0 flex-1 flex-col">
-          {focus ? (
-            <AmbientRoom
-              flatPersonas={flatPersonas}
-              conceptText={focus.conceptText}
-              fraction={focus.fraction}
-              reducedMotion={reducedMotion}
-              personaNameOverrides={personaNameOverrides}
-              focusId={focus.id}
-              siblings={focusList}
-              onStep={onStep}
-              kindLabel={kindLabel}
-              canRewrite={effectiveCanRewrite}
-              onRewrite={onRewrite}
-              rewriteNonce={rewriteNonce}
-            />
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-6 pt-4">
-              <p className="text-[15px] font-semibold text-[var(--color-foreground)]">{peekPulse}</p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-[var(--color-foreground-muted)]">
-                {isSurface
-                  ? SURFACE_IDLE_SUB
-                  : 'They react the moment you make something — then it opens the room on it.'}
-              </p>
-              {rosterRows.length > 0 && (
-                <ul className="mt-4 flex flex-col">
-                  {rosterRows.map((r) => (
-                    <li
-                      key={`roster_${r.key}`}
-                      className="flex items-center gap-3 border-t border-[var(--color-border)] px-1 py-2.5 first:border-t-0"
-                    >
-                      <span
-                        aria-hidden
-                        className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full bg-[var(--color-hover)] text-[12px] font-bold text-[var(--color-foreground-secondary)]"
-                      >
-                        {r.initial}
-                      </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground)]">
-                        {r.name}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* sr-only roster mirror — a11y parity with the dock band. */}
-        <div className="sr-only" role="status" aria-live="polite">
-          <p>
-            {TITLE} — {displayPulse}.{focus ? ` Reacting to: ${focus.conceptText}.` : ''}
-          </p>
-        </div>
-      </aside>
-    );
-  }
 
   // The audience identity switcher (constellation + name + caret) — shared by the collapsed chip
   // and the open panel's top bar. Owns the portaled switcher popover (rendered once, since only

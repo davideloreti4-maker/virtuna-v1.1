@@ -1832,9 +1832,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     [asking, focusByThought, intent],
   );
 
-  // The presence props are shared by the mobile bottom-docked peek+Bloom (`docked`) and the
-  // desktop persistent rail (`layout="rail"`). Exactly ONE mounts per viewport (isDesktopRail),
-  // so there is never a hidden second AmbientRoom running its timers.
+  // The presence props for the ONE docked peek+Bloom presence (all breakpoints — the desktop
+  // rail presentation was retired in #208 and its code deleted).
   // ── Reactions-arrive signal (Phase 2) ────────────────────────────────────────
   // True while a ROOM-REACTION generation is streaming. Only the skills that produce audience
   // reactions count (ideas/hooks/script/remix) — chat/explore/account are conversation/ideation,
@@ -1857,7 +1856,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     if (was && !audienceReacting) setArrivalNonce((n) => n + 1); // reactions just landed
   }, [audienceReacting]);
 
-  const presenceCommonProps: Omit<AudiencePresenceProps, "docked" | "layout"> = {
+  const presenceCommonProps: Omit<AudiencePresenceProps, "docked"> = {
     audience: selectedAudience,
     audiences,
     selectedAudienceId,
