@@ -233,18 +233,6 @@ describe('AudiencePresence — reactions-arrive (Phase 2)', () => {
     expect(screen.getByTestId('audience-pulse').textContent).toMatch(/reading the room/i);
   });
 
-  it('suppresses the arrival badge on the desktop rail (the Room is always visible there)', () => {
-    const { props, rerender } = setup({
-      focus: null,
-      reacting: false,
-      reducedMotion: true,
-      layout: 'rail',
-      arrivalNonce: 0,
-    });
-    act(() => rerender(<AudiencePresence {...props} arrivalNonce={1} layout="rail" />));
-    expect(screen.queryByRole('status', { name: /new reaction/i })).toBeNull();
-  });
-
   it('guards the arrival keyframes with a reduced-motion media query (motion-only)', () => {
     const css = readFileSync(
       join(process.cwd(), 'src/app/globals.css'),
@@ -416,39 +404,6 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
   });
 });
 
-// ── PR-4 Desktop persistent rail ──
-describe('AudiencePresence — desktop rail (PR-4)', () => {
-  it('renders the persistent rail with an idle roster — NOT the dock peek/Bloom', () => {
-    setup({ layout: 'rail', focus: null });
-    const rail = screen.getByTestId('audience-rail');
-    expect(rail).toBeInTheDocument();
-    // The dock surfaces (peek band toggle + Bloom panel + the dock root) are absent in the rail.
-    expect(screen.queryByRole('button', { name: /open your audience/i })).toBeNull();
-    expect(screen.queryByTestId('audience-panel')).toBeNull();
-    expect(screen.queryByTestId('audience-presence')).toBeNull();
-    // Idle roster: one row per persona (calibrated10 → 10), and the readiness copy.
-    expect(rail.querySelectorAll('ul li').length).toBe(10);
-    expect(within(rail).getByText(/they react the moment you make/i)).toBeInTheDocument();
-    // The switcher lives in the rail header.
-    expect(screen.getByRole('button', { name: /audience: growth audience/i })).toBeInTheDocument();
-  });
-
-  it('surfaces the stubbed variant seam as data-variant (defaults to thread)', () => {
-    setup({ layout: 'rail', focus: null });
-    expect(screen.getByTestId('audience-rail').getAttribute('data-variant')).toBe('thread');
-  });
-
-  it('fills the rail with the Room (honest score + scale toggle) when a card is in focus', () => {
-    setup({ layout: 'rail', focus: FOCUS });
-    const rail = screen.getByTestId('audience-rail');
-    // AmbientRoom's honest serif score for the ONE in-focus concept (also mirrored sr-only).
-    expect(within(rail).getAllByText(/6 of 10/i).length).toBeGreaterThan(0);
-    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
-    // The idle roster/readiness is replaced by the Room.
-    expect(within(rail).queryByText(/they react the moment you make/i)).toBeNull();
-  });
-});
-
 // ── PR-3 Rewrite loop (Population weak-spot) ──
 describe('AudiencePresence — PR-3 Rewrite loop', () => {
   const openPopulation = () =>
@@ -547,12 +502,9 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
   const openPopulation = () =>
     fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
 
-  it('surfaces the seam on the dock + rail roots as data-variant', () => {
+  it('surfaces the seam on the dock root as data-variant', () => {
     setup({ variant: 'surface', focus: null });
     expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('surface');
-    cleanup();
-    setup({ variant: 'surface', layout: 'rail', focus: null });
-    expect(screen.getByTestId('audience-rail').getAttribute('data-variant')).toBe('surface');
   });
 
   it('keeps the peek band + the honest readiness pulse (no fabricated reaction)', () => {
@@ -565,13 +517,6 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
     setup({ variant: 'surface', open: true, focus: null });
     expect(screen.getByText(/here on every surface/i)).toBeInTheDocument();
     expect(screen.queryByText(/type below to test a thought/i)).toBeNull();
-  });
-
-  it('drops the composer "make something" copy for a read-only description (rail)', () => {
-    setup({ variant: 'surface', layout: 'rail', focus: null });
-    const rail = screen.getByTestId('audience-rail');
-    expect(within(rail).getByText(/here on every surface/i)).toBeInTheDocument();
-    expect(within(rail).queryByText(/they react the moment you make/i)).toBeNull();
   });
 
   it('GATES the Rewrite CTA off even when canRewrite=true + bouncers spoke (no composer to re-run)', () => {
