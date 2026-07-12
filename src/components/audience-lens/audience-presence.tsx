@@ -304,6 +304,16 @@ export function AudiencePresence({
       ? `${stopRead.stop} of ${stopRead.total} would stop`
       : `${rosterCount} ready`;
 
+  // OPEN-panel top bar shows READINESS, never the focus score — the Room right below owns
+  // the score (the serif hero in the drill view; per-row meters in the ranked view), and
+  // echoing it in the bar read as two competing reads (and as a phantom aggregate over the
+  // ranked list). "Reading the room…" still takes over while a generation is in flight.
+  const openPulse = reacting
+    ? LOADING_COPY
+    : isPersonSim
+      ? '1 reactor ready'
+      : `${rosterCount} ready`;
+
   // The "N new" arrival badge: on the reacting true→false edge (the room just finished
   // reacting), a terracotta pill pops onto the presence and counts up to the roster size —
   // "N people just weighed in." Deterministic (a known integer count); reduced-motion snaps
@@ -784,9 +794,8 @@ export function AudiencePresence({
             <span
               data-testid="audience-pulse"
               className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
-              title={focus?.conceptText}
             >
-              {dockPulse}
+              {openPulse}
             </span>
             {arrivalBadge}
             <button
@@ -937,6 +946,14 @@ export function AudiencePresence({
               title={focus?.conceptText}
             >
               {dockPulse}
+              {/* The score's SUBJECT — a live read on the closed tab used to name a number
+                  with no concept ("2 of 10 would stop" … of what?), which reads wrong the
+                  moment a different card is on screen. Muted, truncates with the band. */}
+              {!reacting && stopRead && focus?.conceptText ? (
+                <span className="text-[var(--color-foreground-muted)]">
+                  {' · '}&ldquo;{focus.conceptText}&rdquo;
+                </span>
+              ) : null}
             </span>
             {arrivalBadge}
             <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />

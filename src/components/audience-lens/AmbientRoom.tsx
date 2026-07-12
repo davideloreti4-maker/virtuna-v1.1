@@ -162,12 +162,14 @@ export function AmbientRoom({
   const [compareOpen, setCompareOpen] = useState(initialCompareOpen);
   const compareFocusRef = useRef(focusId);
   useEffect(() => {
-    // A typed thought carries no card id, so it lands here as `undefined`. It must not count as a
-    // focus CHANGE: the ranked list already hides itself while a thought is in focus (the stepper
-    // needs a card id), and treating the thought as a change would clear `compareOpen` on the way
-    // out AND again on the way back, so the list could never return without a manual re-tap.
-    // Holding the ref lets a return to the SAME card restore the list; a different card still resets.
-    if (focusId == null) return;
+    // A typed thought carries no card id (`undefined`). It must land on ITS OWN read — never
+    // under a lingering ranked list — so it closes the compare view. The list stays exactly one
+    // `⤺ all N` tap away (that button no longer needs a card focus), which is also the creator's
+    // way BACK to the batch after an ad-hoc ask.
+    if (focusId == null) {
+      setCompareOpen(false);
+      return;
+    }
     if (focusId !== compareFocusRef.current) {
       compareFocusRef.current = focusId;
       setCompareOpen(false);
@@ -188,7 +190,11 @@ export function AmbientRoom({
   const focusIdx = focusId ? rankedSiblings.findIndex((s) => s.id === focusId) : -1;
   // The stepper shows only for a real card focus with >1 sibling in the batch (prototype `n>1`).
   const showStepper = focusId != null && rankedSiblings.length > 1 && focusIdx >= 0;
-  const inCompare = compareOpen && showStepper;
+  // The `⤺ all N` ranked view needs only the batch — NOT a current card focus. A typed thought
+  // (no focusId) keeps it reachable, so the creator can always step back from an ad-hoc ask to
+  // "how the room ranked your N" (before this, the ask was a one-way door out of the batch).
+  const showViewAll = rankedSiblings.length > 1;
+  const inCompare = compareOpen && showViewAll;
   const stepTo = (idx: number) => {
     const target = rankedSiblings[idx];
     if (target && onStep) onStep(target.id);
@@ -342,40 +348,45 @@ export function AmbientRoom({
                 "The audience" section label, so a second serif score would double up. ── */}
           {!embedded && (
           <div className="shrink-0 px-5 pb-1 pt-1">
-            {showStepper && (
+            {(showStepper || showViewAll) && (
               <div className="mb-2 flex min-h-[24px] items-center gap-2">
-                <div className="flex min-w-0 items-center gap-[7px]">
+                {showStepper && (
+                  <div className="flex min-w-0 items-center gap-[7px]">
+                    <button
+                      type="button"
+                      disabled={focusIdx <= 0}
+                      onClick={() => stepTo(focusIdx - 1)}
+                      aria-label={`Previous ${kindLabel.toLowerCase()}`}
+                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                    >
+                      ‹
+                    </button>
+                    <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-foreground">
+                      <span className="text-[var(--color-foreground-muted)]">{kindLabel}</span> {focusIdx + 1}{' '}
+                      <span className="text-[var(--color-foreground-muted)]">of {rankedSiblings.length}</span>
+                    </span>
+                    <button
+                      type="button"
+                      disabled={focusIdx >= rankedSiblings.length - 1}
+                      onClick={() => stepTo(focusIdx + 1)}
+                      aria-label={`Next ${kindLabel.toLowerCase()}`}
+                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
+                {/* Reachable from a typed-thought read too (no stepper then) — the back path. */}
+                {showViewAll && (
                   <button
                     type="button"
-                    disabled={focusIdx <= 0}
-                    onClick={() => stepTo(focusIdx - 1)}
-                    aria-label={`Previous ${kindLabel.toLowerCase()}`}
-                    className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                    onClick={() => setCompareOpen(true)}
+                    aria-label={`View all ${rankedSiblings.length} ${kindLabel.toLowerCase()}s ranked`}
+                    className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] border border-[var(--color-border)] px-[9px] py-1 font-mono text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground-secondary)]"
                   >
-                    ‹
+                    ⤺ all {rankedSiblings.length}
                   </button>
-                  <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-foreground">
-                    <span className="text-[var(--color-foreground-muted)]">{kindLabel}</span> {focusIdx + 1}{' '}
-                    <span className="text-[var(--color-foreground-muted)]">of {rankedSiblings.length}</span>
-                  </span>
-                  <button
-                    type="button"
-                    disabled={focusIdx >= rankedSiblings.length - 1}
-                    onClick={() => stepTo(focusIdx + 1)}
-                    aria-label={`Next ${kindLabel.toLowerCase()}`}
-                    className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
-                  >
-                    ›
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCompareOpen(true)}
-                  aria-label={`View all ${rankedSiblings.length} ${kindLabel.toLowerCase()}s ranked`}
-                  className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] border border-[var(--color-border)] px-[9px] py-1 font-mono text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground-secondary)]"
-                >
-                  ⤺ all {rankedSiblings.length}
-                </button>
+                )}
               </div>
             )}
             <p className="font-serif text-[22px] leading-tight tracking-[-0.01em] text-foreground">

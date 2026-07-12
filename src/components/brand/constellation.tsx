@@ -9,6 +9,14 @@
 
 import type { Audience } from '@/lib/audience/audience-types';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+// Leaf-safe (type-only engine import inside): the named-cast source of truth, so the
+// sr-only roster announces the SAME people the visible cast shows (Maya, Dev, …) —
+// not "Persona 1…10" — for General and for card reactions carrying real archetypes.
+import {
+  resolvePersonaName,
+  ARCHETYPE_PERSONA_NAME,
+  GENERAL_ROSTER,
+} from '@/lib/audience/persona-names';
 
 export const DEFAULT_ROSTER_DOTS = 10;
 const CREAM = '236, 231, 222';
@@ -83,7 +91,16 @@ export function buildDots(
       r = vbH * 0.15;
     }
 
-    const name = persona ? personaName(persona.label, persona.archetype, i) : `Persona ${i + 1}`;
+    // Name resolution mirrors the visible cast: calibrated persona → its (relabeled) name;
+    // a real reaction archetype → its stable registry name (a placeholder viewer_N reaction
+    // stays "Persona N" — never a borrowed cast name); idle General → the roster member this
+    // slot represents (the same Maya/Dev/… the "meet your room" cast shows).
+    const name = persona
+      ? personaName(persona.label, persona.archetype, i)
+      : reaction
+        ? resolvePersonaName(reaction.archetype) ?? `Persona ${i + 1}`
+        : (i < GENERAL_ROSTER.length ? ARCHETYPE_PERSONA_NAME[GENERAL_ROSTER[i]!] : null) ??
+          `Persona ${i + 1}`;
     out.push({
       id: persona?.archetype ? `${persona.archetype}-${i}` : `roster_${i}`,
       cx,

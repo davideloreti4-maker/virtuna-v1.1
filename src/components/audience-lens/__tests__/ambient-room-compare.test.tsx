@@ -1,15 +1,15 @@
 /** @vitest-environment happy-dom */
 /**
- * AmbientRoom — the `⤺ all N` ranked view-all ("How the room ranked your N") survives a typed ask.
+ * AmbientRoom — the `⤺ all N` ranked view-all ("How the room ranked your N") vs a typed ask.
  *
- * A typed thought carries no card id, so it reaches the Room as `focusId === undefined`. That is a
- * transient subject, not a re-target: the ranked list correctly hides while the thought is in focus
- * (the stepper needs a card id), but it must come BACK when focus returns to the same card. Treating
- * the thought as a focus CHANGE cleared `compareOpen` on the way out and again on the way back, so
- * the list could only be recovered by a manual re-tap of the compare toggle.
+ * A typed thought carries no card id, so it reaches the Room as `focusId === undefined`. The
+ * thought must land on ITS OWN read — never under a lingering ranked list — so it closes the
+ * compare view. The `⤺ all N` toggle needs only the batch (NOT a current card focus), so it
+ * stays reachable from the thought read: that is the creator's back path to the batch after an
+ * ad-hoc ask (before, an ask was a one-way door out of the ranked view).
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { AmbientRoom } from '../AmbientRoom';
 
 afterEach(cleanup);
@@ -24,10 +24,12 @@ const flatPersonas = [
   { archetype: 'the_loyalist', verdict: 'scroll' as const, quote: 'meh' },
 ];
 
+// NOT `embedded`: the embedded (video-Read) variant hides the focus header — and with it the
+// stepper + `⤺ all N` toggle — by design. These tests exercise the dock/panel presentation,
+// where the header row is the surface under test.
 function renderRoom(focusId: string | undefined) {
   return (
     <AmbientRoom
-      embedded
       reducedMotion
       conceptText="Hook one"
       fraction="8/10 stop"
@@ -41,6 +43,7 @@ function renderRoom(focusId: string | undefined) {
 }
 
 const rankedList = () => screen.queryByText(/How the room ranked your 2 hooks/i);
+const viewAllButton = () => screen.queryByRole('button', { name: /View all 2 hooks ranked/i });
 
 describe('AmbientRoom — ranked list vs a typed ask', () => {
   it('shows the ranked list for a card focus with >1 sibling', () => {
@@ -55,11 +58,21 @@ describe('AmbientRoom — ranked list vs a typed ask', () => {
     expect(rankedList()).toBeNull();
   });
 
-  it('restores the ranked list when focus returns to the SAME card after an ask', () => {
+  it('keeps `⤺ all N` reachable from the thought read — the back path to the batch', () => {
     const { rerender } = render(renderRoom('h1'));
-    rerender(renderRoom(undefined)); // typed ask
-    rerender(renderRoom('h1')); // tap back onto the same card
-    expect(rankedList()).not.toBeNull();
+    rerender(renderRoom(undefined)); // typed ask — drill view of the thought
+    const back = viewAllButton();
+    expect(back).not.toBeNull();
+    fireEvent.click(back!);
+    expect(rankedList()).not.toBeNull(); // one tap back to "how the room ranked your N"
+  });
+
+  it('lands on the CARD read (not the ranked list) when focus returns to the same card', () => {
+    const { rerender } = render(renderRoom('h1'));
+    rerender(renderRoom(undefined)); // typed ask closes the compare view
+    rerender(renderRoom('h1')); // tap back onto the same card → that card's people
+    expect(rankedList()).toBeNull();
+    expect(viewAllButton()).not.toBeNull(); // the list stays one tap away
   });
 
   it('still drills into a DIFFERENT card (a real re-target closes the ranked list)', () => {
