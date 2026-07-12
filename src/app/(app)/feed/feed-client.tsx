@@ -93,7 +93,10 @@ export function FeedClient({ tab }: { tab: FeedTab }) {
   const [sort, setSort] = useState<FeedSort>(tab === "trending" ? "views" : "outlier");
   const [filters, setFilters] = useState<FeedFilterState>({});
   const [filtersResetKey, setFiltersResetKey] = useState(0);
-  const [showFilters, setShowFilters] = useState(true);
+  // Closed by default on every viewport: the grid is the page, and the toolbar's
+  // Filters toggle is the single affordance (an always-open rail doubled it and
+  // stole a grid column on desktop).
+  const [showFilters, setShowFilters] = useState(false);
   const [savedFilterExists, setSavedFilterExists] = useState(false);
   const [remixPendingId, setRemixPendingId] = useState<string | null>(null);
   const [trackPendingId, setTrackPendingId] = useState<string | null>(null);
@@ -153,6 +156,7 @@ export function FeedClient({ tab }: { tab: FeedTab }) {
   // updaters no-op when there's nothing to clear so this never loops.
   useEffect(() => {
     if (tab !== "trending") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSort((s) => (s === "outlier" ? "views" : s));
     setFilters((f) =>
       f.minOutlier === undefined && f.maxOutlier === undefined && f.channels === undefined
@@ -171,20 +175,6 @@ export function FeedClient({ tab }: { tab: FeedTab }) {
       setSavedFilterExists(Boolean(localStorage.getItem(SAVED_FILTER_KEY)));
     } catch {
       /* ignore unavailable storage */
-    }
-  }, []);
-
-  // Collapse the filter rail by default on mobile so the grid leads (the full rail otherwise
-  // buries the tiles below it). The toggle still opens it. Effect-only — not a lazy
-  // initializer — to avoid an SSR/client hydration mismatch, same as the saved-filter read
-  // above. Desktop (lg+) keeps the rail open.
-  useEffect(() => {
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 1023px)").matches
-    ) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowFilters(false);
     }
   }, []);
 
