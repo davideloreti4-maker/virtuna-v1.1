@@ -7,7 +7,8 @@
  * (not receded to a top banner).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { screen, cleanup } from '@testing-library/react';
+import { renderWithClient } from '@/test/render-with-client';
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -82,7 +83,7 @@ beforeEach(() => {
 
 describe('HomePageLayout — welcome hero visibility', () => {
   it('shows the serif greeting on an empty home', () => {
-    render(<HomePageLayout />);
+    renderWithClient(<HomePageLayout />);
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
       /simulate your audience/i,
@@ -91,7 +92,7 @@ describe('HomePageLayout — welcome hero visibility', () => {
 
   it('removes the greeting entirely when conversation content exists', () => {
     ideasMockBlocks = [{ type: 'idea-card', props: { headline: 'Test idea' } }];
-    render(<HomePageLayout />);
+    renderWithClient(<HomePageLayout />);
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
   });
 });

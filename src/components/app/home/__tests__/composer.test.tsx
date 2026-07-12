@@ -13,7 +13,8 @@
  * Written first (Task 1) — RED until the slim composer (Task 2) lands.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { screen, fireEvent, cleanup, waitFor, within } from '@testing-library/react';
+import { renderWithClient } from '@/test/render-with-client';
 
 // ── controllable stream mock ────────────────────────────────────────────
 const start = vi.fn();
@@ -169,7 +170,7 @@ beforeEach(() => {
 
 describe('Composer — TikTok URL validation (D-21)', () => {
   it('enables submit when a tiktok.com URL is pasted', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     fireEvent.change(urlInput(), {
       target: { value: 'https://www.tiktok.com/@creator/video/123' },
     });
@@ -177,13 +178,13 @@ describe('Composer — TikTok URL validation (D-21)', () => {
   });
 
   it('enables submit for a vm.tiktok.com short link', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     fireEvent.change(urlInput(), { target: { value: 'https://vm.tiktok.com/AbCdEf/' } });
     expect(submitButton()).not.toBeDisabled();
   });
 
   it('rejects a non-TikTok URL with the exact D-21 copy and keeps submit disabled', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     fireEvent.change(urlInput(), {
       target: { value: 'https://www.youtube.com/watch?v=abc' },
     });
@@ -192,7 +193,7 @@ describe('Composer — TikTok URL validation (D-21)', () => {
   });
 
   it('rejects an Instagram URL (TikTok-only — ContentForm allowed IG, the slim composer must not)', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     fireEvent.change(urlInput(), {
       target: { value: 'https://www.instagram.com/reel/abc/' },
     });
@@ -201,7 +202,7 @@ describe('Composer — TikTok URL validation (D-21)', () => {
   });
 
   it('does not fire stream.start while the URL is invalid', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     fireEvent.change(urlInput(), { target: { value: 'not-a-url' } });
     const btn = submitButton();
     fireEvent.click(btn);
@@ -211,7 +212,7 @@ describe('Composer — TikTok URL validation (D-21)', () => {
 
 describe('Composer — upload control (SHELL-03)', () => {
   it('mounts VideoUpload (its hidden file input) for the + control', () => {
-    render(<Composer />);
+    renderWithClient(<Composer />);
     // VideoUpload renders an <input type=file aria-label="Upload video file">.
     expect(screen.getByLabelText(/upload video file/i)).toBeInTheDocument();
   });
@@ -237,7 +238,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
   }
 
   it('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
-    const { container } = render(<Composer />);
+    const { container } = renderWithClient(<Composer />);
     // No audience selected (General/null). A General verb (Predict) is activated via
     // the `/` slash menu — always resolvable for the General verbs. The T-07-04-01
     // gate (shared by simulate + predict) then routes to Build without firing — same
@@ -253,7 +254,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
   });
 
   it('Simulate with a selected General audience POSTs /api/tools/simulate with the audienceId', async () => {
-    const { container } = render(<Composer />);
+    const { container } = renderWithClient(<Composer />);
     await selectGeneralAudience();
     selectSkillBySlash('simulate');
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -269,7 +270,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
   });
 
   it('Predict with a selected General audience POSTs /api/tools/predict with the audienceId + scenario', async () => {
-    const { container } = render(<Composer />);
+    const { container } = renderWithClient(<Composer />);
     await selectGeneralAudience();
     selectSkillBySlash('predict');
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
@@ -284,7 +285,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
   });
 
   it('selecting Profile opens the evidence-drop file input (not a topic submit)', () => {
-    const { container } = render(<Composer />);
+    const { container } = renderWithClient(<Composer />);
     const evidenceInput = container.querySelector(
       'input[type="file"][accept*=".txt"]',
     ) as HTMLInputElement;
@@ -298,7 +299,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
   });
 
   it('a Socials submit (hooks) still fires its stream path, never a General route', async () => {
-    const { container } = render(<Composer />);
+    const { container } = renderWithClient(<Composer />);
     selectSkillBySlash('hooks');
     const field = screen.getByRole('textbox') as HTMLTextAreaElement;
     fireEvent.change(field, { target: { value: 'morning routine' } });

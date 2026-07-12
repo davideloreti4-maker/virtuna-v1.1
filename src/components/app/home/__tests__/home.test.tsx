@@ -17,12 +17,12 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  render,
   screen,
   cleanup,
   fireEvent,
   waitFor,
 } from '@testing-library/react';
+import { renderWithClient } from '@/test/render-with-client';
 
 vi.mock('@/hooks/queries/use-analysis-stream', () => ({
   useAnalysisStream: () => ({
@@ -95,24 +95,24 @@ beforeEach(() => {
 
 describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () => {
   it('renders a serif greeting (font-serif voice moment)', () => {
-    render(<Home />);
+    renderWithClient(<Home />);
     const heading = screen.getByRole('heading', { level: 1 });
     expect(heading.className).toContain('font-serif');
   });
 
   it('renders the MavenMark gull glyph (D-20, not an asterisk)', () => {
-    const { container } = render(<Home />);
+    const { container } = renderWithClient(<Home />);
     // MavenMark is an aria-hidden <svg> with the gull path.
     expect(container.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
   });
 
   it('renders the composer', () => {
-    render(<Home />);
+    renderWithClient(<Home />);
     expect(screen.getByTestId('composer')).toBeInTheDocument();
   });
 
   it('greets with the simulate-your-audience voice (D-09/D-19, never "Reading")', () => {
-    render(<Home />);
+    renderWithClient(<Home />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
       /simulate your audience/i,
     );
@@ -122,7 +122,7 @@ describe('Home — serif greeting + glyph + composer (SHELL-01, THEME-04)', () =
 
 describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', () => {
   it('renders the creator quick-action cards on the empty home', () => {
-    render(<Home />);
+    renderWithClient(<Home />);
     // A representative sample of the QUICK_ACTIONS model (idea / hooks / test).
     expect(
       screen.getByRole('button', { name: 'Get content ideas' }),
@@ -136,7 +136,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
   });
 
   it('renders the one-tap first-run demo (See it in action + Dismiss) when the show-once flag is absent', async () => {
-    render(<Home />);
+    renderWithClient(<Home />);
     expect(
       await screen.findByRole('button', { name: /see it in action/i }),
     ).toBeInTheDocument();
@@ -147,7 +147,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
 
   it('show-once: with the flag set the demo is hidden but the quick actions still render', async () => {
     window.localStorage.setItem(DEMO_SEEN_KEY, '1');
-    render(<Home />);
+    renderWithClient(<Home />);
     // Quick actions always render…
     expect(
       screen.getByRole('button', { name: 'Get content ideas' }),
@@ -163,7 +163,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
 
   it('tapping "See it in action" POSTs the canned fixture to /api/tools/profile and sets the show-once flag', async () => {
     const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
-    render(<Home />);
+    renderWithClient(<Home />);
     const cta = await screen.findByRole('button', {
       name: /see it in action/i,
     });
@@ -178,7 +178,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
   });
 
   it('shows NO Simulation list under the composer (the sidebar owns history)', () => {
-    const { container } = render(<Home />);
+    const { container } = renderWithClient(<Home />);
     // No Simulation HISTORY list region on the home body. The only `list` on the
     // page is the AmbientPresence's always-present sr-only roster mirror (the
     // calibrated-people accessibility list — UI-SPEC §Cross-Cutting; the presence
