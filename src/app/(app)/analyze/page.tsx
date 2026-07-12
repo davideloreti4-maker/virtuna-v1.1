@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Analyze | Maven',
@@ -6,10 +7,11 @@ export const metadata: Metadata = {
 };
 
 /**
- * /analyze — empty landing. <Reading> is mounted by analyze/layout.tsx so it
- * survives the transition to /analyze/[id]. This page intentionally returns
- * null; all UI is rendered by <Reading> (the retired Board is no longer mounted).
+ * /analyze — bare route has no reading id, so <Reading> (mounted by
+ * analyze/layout.tsx for the /analyze/[id] transition) renders nothing and the
+ * screen was fully blank. Nothing in-app links here without an id; send the
+ * stray visitor to /start where every Read begins.
  */
 export default function AnalyzePage() {
-  return null;
+  redirect('/start');
 }
