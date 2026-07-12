@@ -1,9 +1,19 @@
 /**
  * GET /api/threads/list — list the user's open chat threads (sidebar history).
  *
- * Returns open threads newest-first (active = first), each with a derived title
- * computed from its earliest text-bearing block. No message bodies leak beyond
+ * Returns open threads newest-first (active = first). Titles are the PERSISTED
+ * threads.title written at send time (write-once: typed ask > skill subject —
+ * see setThreadTitleIfEmpty callers). Legacy/untitled threads fall back to a
+ * role/block-aware derivation over their earliest messages: the first USER
+ * text wins, else the first block-type headline (hook-card → hookLine,
+ * idea-card → title, …). Derived titles are READ-REPAIRED back onto the row so
+ * the message scan shrinks to nothing over time. No message bodies leak beyond
  * the short title snippet.
+ *
+ * (The old derivation — "first text-ish prop in the earliest message" — titled
+ * every hooks Auto thread from the model follow-up, which opens near-identically:
+ * "Hook #1 wins by…" × N. Hooks Auto runs persist no user turn, so the follow-up
+ * was always the first match.)
  *
  * Security:
  *   - Auth enforced before any DB read (CR-01); user_id from session only.
@@ -16,9 +26,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
-import { listOpenThreads } from "@/lib/threads/threads";
-
-const TITLE_MAX = 48;
+import { listOpenThreads, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { deriveTitleFromBlocks } from "@/lib/threads/title";
 
 /** Normalise a persisted message body to its blocks array (bare or { blocks } wrapper). */
 function unwrapBody(body: unknown): unknown[] {
@@ -27,20 +36,6 @@ function unwrapBody(body: unknown): unknown[] {
     return (body as { blocks: unknown[] }).blocks;
   }
   return [];
-}
-
-/** Pull the first human-readable string out of a blocks array, for a thread title. */
-function extractTitle(blocks: unknown[]): string | null {
-  for (const block of blocks) {
-    const props = (block as { props?: Record<string, unknown> } | null)?.props;
-    if (!props) continue;
-    const candidate =
-      props.text ?? props.ask ?? props.seed ?? props.prompt ?? props.title ?? props.query;
-    if (typeof candidate === "string" && candidate.trim()) {
-      return candidate.trim().slice(0, TITLE_MAX);
-    }
-  }
-  return null;
 }
 
 export async function GET(_request: Request): Promise<Response> {
@@ -58,29 +53,47 @@ export async function GET(_request: Request): Promise<Response> {
     return Response.json({ threads: [] });
   }
 
-  // Derive titles in one query: earliest message per thread (ordered ASC, first
-  // occurrence wins). Scoped to the user's listed thread ids only.
-  const ids = threads.map((t) => t.id);
-  const service = createServiceClient();
-  const { data: msgRows } = await service
-    .from("messages")
-    .select("thread_id, body, created_at")
-    .in("thread_id", ids)
-    .order("created_at", { ascending: true })
-    .limit(500);
+  // ── Fallback derivation — UNTITLED threads only (legacy / Auto runs) ────────
+  // One scan of their earliest messages (ASC, first occurrence wins per bucket):
+  // a user turn's text beats any assistant-derived headline, regardless of order.
+  const untitled = threads.filter((t) => !t.title);
+  const derivedByThread = new Map<string, string>();
 
-  const titleByThread = new Map<string, string>();
-  for (const row of msgRows ?? []) {
-    const tid = (row as { thread_id: string }).thread_id;
-    if (titleByThread.has(tid)) continue; // first (earliest) message wins
-    const title = extractTitle(unwrapBody((row as { body: unknown }).body));
-    if (title) titleByThread.set(tid, title);
+  if (untitled.length > 0) {
+    const service = createServiceClient();
+    const { data: msgRows } = await service
+      .from("messages")
+      .select("thread_id, role, body")
+      .in("thread_id", untitled.map((t) => t.id))
+      .order("created_at", { ascending: true })
+      .limit(500);
+
+    const userTitle = new Map<string, string>();
+    const blockTitle = new Map<string, string>();
+    for (const row of msgRows ?? []) {
+      const { thread_id: tid, role } = row as { thread_id: string; role: string };
+      const bucket = role === "user" ? userTitle : blockTitle;
+      if (bucket.has(tid)) continue; // first (earliest) message per bucket wins
+      const title = deriveTitleFromBlocks(unwrapBody((row as { body: unknown }).body));
+      if (title) bucket.set(tid, title);
+    }
+
+    for (const t of untitled) {
+      const derived = userTitle.get(t.id) ?? blockTitle.get(t.id);
+      if (derived) derivedByThread.set(t.id, derived);
+    }
+
+    // Read-repair: persist what we derived (write-once guard keeps this safe
+    // against a concurrent send). Future loads skip the scan for these threads.
+    await Promise.all(
+      [...derivedByThread].map(([tid, title]) => setThreadTitleIfEmpty(user.id, tid, title)),
+    );
   }
 
   return Response.json({
     threads: threads.map((t) => ({
       id: t.id,
-      title: titleByThread.get(t.id) ?? null,
+      title: t.title ?? derivedByThread.get(t.id) ?? null,
       updated_at: t.updated_at,
       created_at: t.created_at,
     })),

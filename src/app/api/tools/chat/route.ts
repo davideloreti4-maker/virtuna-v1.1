@@ -28,7 +28,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy, getOpenThread } from "@/lib/threads/threads";
+import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -316,6 +316,8 @@ export async function POST(request: Request): Promise<Response> {
       ? { type: "persona-chat-turn", props: { archetype: personaGrounding.archetype, role: "user", text: rawAsk } }
       : { type: "markdown", props: { text: rawAsk } };
     await insertMessage(openThread.id, "user", [userBlock], kcStamp().kcGenVersion);
+    // First typed question titles the thread (write-once; best-effort).
+    await setThreadTitleIfEmpty(user.id, openThread.id, rawAsk);
   }
 
   // ── (8) SSE stream: emit meta → run pipeline → emit tokens → persist assistant turn ──

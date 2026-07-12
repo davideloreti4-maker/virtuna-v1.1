@@ -2032,6 +2032,7 @@ export type Database = {
           created_at: string
           id: string
           reading_id: string | null
+          title: string | null
           type: string
           updated_at: string
           user_id: string
@@ -2041,6 +2042,7 @@ export type Database = {
           created_at?: string
           id?: string
           reading_id?: string | null
+          title?: string | null
           type: string
           updated_at?: string
           user_id: string
@@ -2050,6 +2052,7 @@ export type Database = {
           created_at?: string
           id?: string
           reading_id?: string | null
+          title?: string | null
           type?: string
           updated_at?: string
           user_id?: string

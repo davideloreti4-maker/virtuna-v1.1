@@ -23,6 +23,7 @@ import {
   touchThread,
   listOpenThreads,
   archiveThread,
+  setThreadTitleIfEmpty,
 } from "../threads";
 import type { ThreadRow } from "../threads";
 
@@ -36,6 +37,7 @@ function makeOpenRow(overrides: Partial<ThreadRow> = {}): ThreadRow {
     type: "open",
     reading_id: null,
     active_audience_id: null,
+    title: null,
     created_at: "2026-06-17T00:00:00Z",
     updated_at: "2026-06-17T00:00:00Z",
     ...overrides,
@@ -213,8 +215,8 @@ describe("listOpenThreads", () => {
 
   it("returns newest-first summaries scoped by user", async () => {
     const rows = [
-      { id: "t2", created_at: "2026-06-19T00:00:00Z", updated_at: "2026-06-21T00:00:00Z" },
-      { id: "t1", created_at: "2026-06-17T00:00:00Z", updated_at: "2026-06-18T00:00:00Z" },
+      { id: "t2", title: "hooks for my launch", created_at: "2026-06-19T00:00:00Z", updated_at: "2026-06-21T00:00:00Z" },
+      { id: "t1", title: null, created_at: "2026-06-17T00:00:00Z", updated_at: "2026-06-18T00:00:00Z" },
     ];
     const chain = buildChain();
     chain.limit.mockResolvedValueOnce({ data: rows, error: null });
@@ -225,6 +227,53 @@ describe("listOpenThreads", () => {
     expect(result).toEqual(rows);
     expect(chain.eq).toHaveBeenCalledWith("user_id", USER_A);
     expect(chain.order).toHaveBeenCalledWith("updated_at", { ascending: false });
+  });
+});
+
+describe("setThreadTitleIfEmpty", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("sets a cleaned title, guarded by title IS NULL + ownership scoping", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({ data: { id: "t1" }, error: null });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    const ok = await setThreadTitleIfEmpty(USER_A, "t1", "  hooks   for\nmy launch  ");
+
+    expect(ok).toBe(true);
+    expect(chain.update).toHaveBeenCalledWith({ title: "hooks for my launch" });
+    expect(chain.eq).toHaveBeenCalledWith("id", "t1");
+    expect(chain.eq).toHaveBeenCalledWith("user_id", USER_A);
+    // Write-once: only fills an empty title (first meaningful signal wins).
+    expect(chain.is).toHaveBeenCalledWith("title", null);
+  });
+
+  it("no-ops on an empty/unusable candidate without touching the DB", async () => {
+    const chain = buildChain();
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    expect(await setThreadTitleIfEmpty(USER_A, "t1", "   \n ")).toBe(false);
+    expect(await setThreadTitleIfEmpty(USER_A, "t1", undefined)).toBe(false);
+    expect(chain.update).not.toHaveBeenCalled();
+  });
+
+  it("returns false when the thread is already titled (no matching row)", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({ data: null, error: null });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    expect(await setThreadTitleIfEmpty(USER_A, "t1", "second signal")).toBe(false);
+  });
+
+  it("never throws — a query error resolves false (titles are cosmetic)", async () => {
+    const chain = buildChain();
+    chain.maybeSingle.mockResolvedValueOnce({
+      data: null,
+      error: { code: "42P01", message: "relation does not exist" },
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(chain);
+
+    await expect(setThreadTitleIfEmpty(USER_A, "t1", "hooks")).resolves.toBe(false);
   });
 });
 

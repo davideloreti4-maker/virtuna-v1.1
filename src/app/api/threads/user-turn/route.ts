@@ -21,7 +21,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 
@@ -59,6 +59,10 @@ export async function POST(request: Request): Promise<Response> {
 
   const openThread = await createOpenThreadLazy(user.id);
   await insertMessage(openThread.id, "user", [{ type: "markdown", props: { text } }]);
+
+  // The creator's own words are the best sidebar label — set it write-once
+  // (no-op when the thread is already titled; best-effort by design).
+  await setThreadTitleIfEmpty(user.id, openThread.id, text);
 
   return Response.json({ ok: true, persisted: true, threadId: openThread.id });
 }
