@@ -613,6 +613,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setPersistedExploreBlocks([]);
       setScriptAnchorHook(null);
       setOpenThreadId(null);
+      // The ambient room's typed-thought focus, ask ledger, and drill flag are PER-THREAD
+      // state — without this wipe the previous thread's read (thought + score) stays in
+      // focus over the fresh/re-opened thread, and the idle "meet your room" cast never
+      // shows on a new thread. Card focuses need no wipe (descriptors empty themselves).
+      focusByThought(null);
+      setAudienceAsks([]);
+      setRoomDrill(false);
       // Let the rehydration below restore the right tool for the loaded thread.
       hasUserSelectedToolRef.current = false;
     }
@@ -1854,7 +1861,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     audience: selectedAudience,
     audiences,
     selectedAudienceId,
-    onSelectAudience: (a: Audience) => void handleSelectAudience(a),
+    onSelectAudience: (a: Audience) => {
+      // A typed-thought read + the ask ledger were produced against the PREVIOUS audience —
+      // leaving them in focus would show the old room's reaction under the new audience's
+      // name. Clear them; the focus falls back to the thread's own cards (each card carries
+      // its own read, anchored to the thread history, so those stay).
+      focusByThought(null);
+      setAudienceAsks([]);
+      void handleSelectAudience(a);
+    },
     focus: ambientFocus,
     reducedMotion,
     open: audienceOpen,
@@ -1890,7 +1905,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     <BuildChooser
       open={buildOpen}
       onOpenChange={setBuildOpen}
-      onBuilt={handleBuiltAudience}
+      onBuilt={(saved) => {
+        // A built SIM becoming active is an audience switch — same re-ground as
+        // onSelectAudience above (a stale thought read must not carry the new name).
+        focusByThought(null);
+        setAudienceAsks([]);
+        handleBuiltAudience(saved);
+      }}
       onEvidence={() => evidenceInputRef.current?.click()}
     />
   );
