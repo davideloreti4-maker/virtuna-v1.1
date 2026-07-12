@@ -20,7 +20,9 @@ const STATUS_VARIANTS: Record<
   template: "secondary",
   thin: "warning",
   calibrated: "default",
-  needs_calibration: "info",
+  // warm amber, not blue — "needs calibration" is a nudge to act, and the
+  // flat-warm palette has no cool informational tint on this surface
+  needs_calibration: "warning",
 };
 
 export interface AudienceStatusChipProps {
