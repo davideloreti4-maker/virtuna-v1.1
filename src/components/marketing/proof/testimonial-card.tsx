@@ -1,4 +1,3 @@
-import { Placeholder } from "@/components/marketing/placeholder";
 import { cn } from "@/lib/utils";
 
 /**
@@ -10,7 +9,8 @@ import { cn } from "@/lib/utils";
  *  - <blockquote> quote in text-foreground-secondary.
  *  - Result metric in text-foreground font-medium with data-testid="testimonial-metric"
  *    (the conversion lever — D-07/D-21).
- *  - Identity row: <Placeholder variant="avatar"> + name (text-foreground) + @handle
+ *  - Identity row: an initials monogram (data-variant="avatar" hook kept for
+ *    the PROOF-02 gate) + name (text-foreground) + @handle
  *    (text-foreground-muted) with data-testid="testimonial-handle".
  *
  * Cold-brand LANDMINE (Pitfall 2): DO NOT import or copy from ui/testimonial-card.
@@ -59,9 +59,24 @@ export function TestimonialCard({
         {metric}
       </p>
 
-      {/* Identity row — avatar + name + @handle. */}
+      {/* Identity row — initials monogram + name + @handle. The monogram
+          replaces the generic person-icon Placeholder: initials read as a
+          finished identity mark (no fake photo, no stock bust icon) and stay
+          honest pre-assets. Keeps data-variant="avatar" — the PROOF-02 gate
+          counts avatars via that hook; a real photo swaps in later (FOUND-03). */}
       <div className="mt-6 flex items-center gap-3">
-        <Placeholder variant="avatar" className="h-10 w-10 shrink-0" />
+        <span
+          data-variant="avatar"
+          aria-hidden="true"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-foreground-muted/15 text-xs font-semibold tracking-wide text-foreground-secondary"
+        >
+          {name
+            .split(/\s+/)
+            .map((w) => w[0])
+            .slice(0, 2)
+            .join("")
+            .toUpperCase()}
+        </span>
         <div className="min-w-0">
           <p className="text-sm font-medium text-foreground leading-none">
             {name}

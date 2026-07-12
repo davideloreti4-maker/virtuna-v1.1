@@ -119,21 +119,27 @@ export function SimulationShowcase({ className }: { className?: string }) {
             <span className="w-[42px]" aria-hidden="true" />
           </div>
           {/* window body — filled with the 03-04 product-skeleton primitives so
-              it reads as the SHAPE of a Maven Simulation (gauge → cloud+watch% →
-              driver rows), not an empty void. HEIGHT-CAPPED (max-h, GAP-2) so the
-              frame is a compact product window, not a ~640px empty rectangle. The
-              skeletons carry no "Simulat*" text — the LOCKED <h2>"The Simulation"
-              stays the single /simulat/i text node the 03-00 test resolves. */}
-          <div className="grid max-h-[460px] gap-6 overflow-hidden bg-surface p-6 md:p-8">
-            {/* hero number — full-width on top */}
-            <div className="flex justify-center">
+              it reads as the SHAPE of a Maven Simulation, not an empty void.
+              HEIGHT-CAPPED (max-h, GAP-2) so the frame is a compact product
+              window, not a ~640px empty rectangle. Composition: a flanked
+              instrument row on md+ (cloud | gauge | drivers) so the frame's
+              corners aren't dead space around a lone centered gauge — and a
+              deliberately different arrangement from the hero's main-column +
+              side-rail dashboard. On mobile the cloud steps out (same GAP-2
+              rationale as the hero: at full width the 100×90 viewBox towers and
+              the capped window would crop the drivers instead). The skeletons
+              carry no "Simulat*" text — the LOCKED <h2>"The Simulation" stays
+              the single /simulat/i text node the 03-00 test resolves. */}
+          <div className="flex max-h-[460px] flex-col gap-6 overflow-hidden bg-surface p-6 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.15fr)] md:items-center md:gap-10 md:p-8">
+            {/* the hero number — first on mobile, center column on md */}
+            <div className="flex justify-center md:order-2">
               <ScoreGaugeSkeleton />
             </div>
-            {/* cloud + driver rows two-up on md, stacked on mobile */}
-            <div className="grid gap-6 md:grid-cols-2 md:items-start">
-              <AudienceCloudSkeleton />
-              <DriverRowsSkeleton />
-            </div>
+            {/* the crowd — left flank on md; hidden on mobile (crop keeps
+                gauge + drivers legible inside the capped window) */}
+            <AudienceCloudSkeleton className="hidden md:order-1 md:flex" />
+            {/* the levers — below the gauge on mobile, right flank on md */}
+            <DriverRowsSkeleton className="md:order-3" />
           </div>
         </div>
       </FadeInUp>

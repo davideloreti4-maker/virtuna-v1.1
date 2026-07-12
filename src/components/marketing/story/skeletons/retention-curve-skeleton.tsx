@@ -29,7 +29,19 @@ const DROP_X = 60;
 const DROP_Y = 32;
 const REACH_END = 44; // sample % reaching the end, set-dressing only
 
-export function RetentionCurveSkeleton({ className }: { className?: string }) {
+export function RetentionCurveSkeleton({
+  className,
+  showDropCaption = true,
+}: {
+  className?: string;
+  /**
+   * The "drops at 0:07" mono caption. Default on (the standalone curve needs
+   * it). The hero dashboard passes `false` — there DriverRowsSkeleton already
+   * states the same fact one row up, and the coral marker + dashed guide keep
+   * the drop legible without the duplicate line.
+   */
+  showDropCaption?: boolean;
+}) {
   return (
     <div
       role="img"
@@ -79,9 +91,11 @@ export function RetentionCurveSkeleton({ className }: { className?: string }) {
           </span>{" "}
           reach the end
         </span>
-        <span className="font-mono text-xs text-foreground-muted">
-          drops at 0:07
-        </span>
+        {showDropCaption && (
+          <span className="font-mono text-xs text-foreground-muted">
+            drops at 0:07
+          </span>
+        )}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import * as React from "react";
+import { Link2 } from "lucide-react";
 
 import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
-import { PhoneChrome } from "@/components/marketing/story/skeletons";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
  * with LIGHT process-flavoured mocks (deliberately distinct from the full
  * product views in the Simulation/Feature sections so the opener never echoes
  * them):
- *   1. Paste a TikTok link   → a PhoneChrome with a faux URL-input row
+ *   1. Paste a TikTok link   → PasteLinkRow (a focused URL-input paste moment)
  *   2. The audience reacts   → ReactionRows (a compact viewers-reacting feed)
  *   3. Get your Simulation   → ResultCard (a compact score-report card)
  *
@@ -50,6 +50,44 @@ interface Step {
   body: string;
   /** The section-appropriate static product skeleton for this step. */
   visual: React.ReactNode;
+}
+
+/**
+ * Step-1 visual — a paste-the-link moment: a focused URL input row holding a
+ * mono tiktok.com address + a static text caret, over a dimmed ghost of the
+ * previous row. Reads as "drop the URL here" at a glance — the old phone-bezel
+ * mock read as a murky charcoal silhouette and said nothing about pasting.
+ */
+function PasteLinkRow() {
+  return (
+    <div className="flex w-full max-w-[260px] flex-col gap-2">
+      {/* the focused input row — link glyph + mono URL + a static caret bar */}
+      <div className="flex items-center gap-2 rounded-md border border-border-hover/40 bg-background px-3 py-2.5">
+        <Link2
+          className="h-3.5 w-3.5 shrink-0 text-foreground-muted"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <span className="truncate font-mono text-[11px] text-foreground-secondary">
+          tiktok.com/@you/video/72…
+        </span>
+        {/* static caret — a thin cream bar, no animation */}
+        <span
+          className="h-3.5 w-px shrink-0 bg-foreground-secondary/80"
+          aria-hidden="true"
+        />
+      </div>
+      {/* dimmed ghost row — yesterday's link, seats the input in a real UI */}
+      <div className="flex items-center gap-2 rounded-md border border-border bg-surface px-3 py-2.5 opacity-45">
+        <Link2
+          className="h-3.5 w-3.5 shrink-0 text-foreground-muted"
+          strokeWidth={1.5}
+          aria-hidden="true"
+        />
+        <span className="h-1.5 w-2/3 rounded-full bg-foreground-muted/25" />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -120,16 +158,8 @@ const STEPS: readonly Step[] = [
     ordinal: "01",
     title: "Paste a TikTok link",
     body: "Drop any TikTok URL — no upload, no waiting.",
-    // a small phone bezel with a faux URL-input row hinting the pasted link
-    visual: (
-      <PhoneChrome className="mx-auto h-full w-1/2 max-w-[120px]">
-        <div className="flex h-full flex-col gap-2 p-3">
-          <div className="h-6 rounded-md border border-border bg-surface" />
-          <div className="h-2 w-3/4 rounded-full bg-foreground-muted/20" />
-          <div className="h-2 w-1/2 rounded-full bg-foreground-muted/15" />
-        </div>
-      </PhoneChrome>
-    ),
+    // the paste moment: a focused URL-input row + a dimmed ghost row
+    visual: <PasteLinkRow />,
   },
   {
     n: "2",

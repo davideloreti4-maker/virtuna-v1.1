@@ -10,8 +10,10 @@ import { FinalCtaBand } from "../final-cta-band";
  * Behaviors under test (D-13/D-14):
  *  - One CTA link → /signup present in the band.
  *  - Serif close-line present (data-testid="cta-close-line" — copy-resilient).
- *  - ScoreGaugeSkeleton echo present via accessible name "Virality score (sample)"
- *    (role="img" aria-label verified in score-gauge-skeleton.tsx line 39).
+ *  - AudienceCloudSkeleton echo present via accessible name "Audience reaction
+ *    (sample)" (role="img" aria-label in audience-cloud-skeleton.tsx) — the
+ *    close-line names the audience, so the closing echo shows the audience
+ *    (was the score gauge, which already appears 4× earlier on the page).
  *
  * Wave-1 component MUST emit data-testid="cta-close-line" on the serif close-line node.
  *
@@ -32,10 +34,10 @@ describe("<FinalCtaBand /> — CONVERT-02", () => {
     expect(closeLine).not.toBeNull();
   });
 
-  it("renders the ScoreGaugeSkeleton echo via accessible name", () => {
+  it("renders the AudienceCloudSkeleton echo via accessible name", () => {
     render(<FinalCtaBand />);
     expect(
-      screen.getByRole("img", { name: /virality score/i })
+      screen.getByRole("img", { name: /audience reaction/i })
     ).toBeInTheDocument();
   });
 });

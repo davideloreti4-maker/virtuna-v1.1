@@ -51,10 +51,13 @@ export function PricingCard({
   return (
     <article
       className={cn(
-        "flex flex-col rounded-[--radius-lg] border bg-transparent p-8",
+        "flex flex-col rounded-[--radius-lg] border p-8",
+        // The highlighted tier earns a tone-step (bg-surface vs transparent) on
+        // top of its ring so "Most popular" reads at a glance, not only via the
+        // badge.
         highlighted
-          ? "border-border-hover/25 ring-1 ring-accent/20"
-          : "border-border"
+          ? "border-border-hover/25 bg-surface ring-1 ring-accent/20"
+          : "border-border bg-transparent"
       )}
       style={{ boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset" }}
     >
@@ -101,9 +104,12 @@ export function PricingCard({
         ))}
       </ul>
 
-      {/* CTA + risk-reducer microcopy */}
-      <div className="mt-8 flex flex-col gap-3">
-        <Button asChild variant="primary" size="lg">
+      {/* CTA + risk-reducer microcopy — mt-auto pins the cluster to the card
+          foot so the two tiers' CTAs share a baseline in the equal-height grid.
+          Only the highlighted tier carries the filled primary button; the other
+          takes the quiet secondary so ONE CTA dominates the section. */}
+      <div className="mt-auto flex flex-col gap-3 pt-8">
+        <Button asChild variant={highlighted ? "primary" : "secondary"} size="lg">
           <Link href={SIGNUP_URL}>{ctaLabel}</Link>
         </Button>
         {microcopy && (

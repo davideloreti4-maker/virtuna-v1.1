@@ -43,7 +43,18 @@ const DOTS: ReadonlyArray<{ cx: number; cy: number; r: number; worst?: boolean }
 
 const WATCH_THROUGH = 68; // sample watch-through %, set-dressing only
 
-export function AudienceCloudSkeleton({ className }: { className?: string }) {
+export function AudienceCloudSkeleton({
+  className,
+  showCaption = true,
+}: {
+  className?: string;
+  /**
+   * The "{n}% watch-through" caption. Default on (the cloud's standalone uses
+   * need the number). The final CTA band passes `false` — there the cloud is a
+   * quiet closing echo of "your audience", not a metric readout.
+   */
+  showCaption?: boolean;
+}) {
   return (
     <div
       role="img"
@@ -71,12 +82,14 @@ export function AudienceCloudSkeleton({ className }: { className?: string }) {
         ))}
       </svg>
       {/* watch-through caption beside the cloud — contains "%" */}
-      <p className="text-sm text-foreground-muted">
-        <span className="font-semibold text-foreground-secondary">
-          {WATCH_THROUGH}%
-        </span>{" "}
-        watch-through
-      </p>
+      {showCaption && (
+        <p className="text-sm text-foreground-muted">
+          <span className="font-semibold text-foreground-secondary">
+            {WATCH_THROUGH}%
+          </span>{" "}
+          watch-through
+        </p>
+      )}
     </div>
   );
 }

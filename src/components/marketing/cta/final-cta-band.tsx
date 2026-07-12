@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
-import { ScoreGaugeSkeleton } from "@/components/marketing/story/skeletons";
+import { AudienceCloudSkeleton } from "@/components/marketing/story/skeletons";
 
 interface FinalCtaBandProps {
   className?: string;
@@ -22,8 +22,9 @@ interface FinalCtaBandProps {
  *  - Legal flat-warm warm-seat radial (cream tone-step, NOT a coral glow),
  *    copied verbatim from hero.tsx / simulation-showcase.tsx.
  *  - Inner content mx-auto max-w-3xl text-center.
- *  - ScoreGaugeSkeleton echo (D-14) — the Phase-3 primitive, small + muted;
- *    ties the close back to the instrument without competing with the CTA.
+ *  - AudienceCloudSkeleton echo (D-14 revised) — the Phase-3 primitive, small +
+ *    muted, caption off; the close-line names the audience, so the close shows
+ *    the audience (and the gauge stops repeating a fifth time page-wide).
  *  - Newsreader-serif close-line (data-testid="cta-close-line").
  *  - One dominant coral CTA → SIGNUP_URL via Button asChild + Link.
  *  - D-20 risk-reducer microcopy.
@@ -59,10 +60,12 @@ export function FinalCtaBand({ className }: FinalCtaBandProps) {
 
       {/* Inner content — centered, max-w-3xl, text-center. */}
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-8 px-4 text-center">
-        {/* D-14 — ScoreGaugeSkeleton echo: the Phase-3 primitive, small + muted.
-            Ties the close back to the score instrument without competing with
-            the CTA. Placed above the close-line for visual anchoring. */}
-        <ScoreGaugeSkeleton className="opacity-70 scale-75" />
+        {/* D-14 (revised) — AudienceCloudSkeleton echo: small + muted, caption
+            off. The close-line is "Your audience already knows" — so the close
+            shows the AUDIENCE, and the gauge (which already appears in the
+            hero, step 3, the showcase and feature 1) stops repeating a fifth
+            time. Ties the close to the crowd without competing with the CTA. */}
+        <AudienceCloudSkeleton showCaption={false} className="w-36 opacity-70" />
 
         {/* D-13 — Newsreader-serif voice close-line (Phase 4's single serif
             moment). Mirrors the hero headline's font-serif token so the page

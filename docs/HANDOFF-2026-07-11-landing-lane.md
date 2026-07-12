@@ -68,12 +68,18 @@ skeleton labels present). Screenshot archive: `.playwright-mcp/landing-2026-07-1
 
 ## Open items on this lane (next session)
 
+> 2026-07-12 refinement pass: the four non-owner-gated rows below were CLOSED
+> (faux-video phone + deeper overlap, paste-link step-1, gauge de-repetition via
+> feature-1 "score+why" + cloud CTA bookend, drops-at dedupe) plus pricing CTA
+> hierarchy (Starter → secondary, Pro tone-step, baseline-aligned) and
+> testimonial initials monograms. Struck rows kept for history.
+
 | Item | Notes | Gate |
 |------|-------|------|
 | Real product screenshots / demo video into the `src` slots | hero window + phone, showcase, 4 feature frames — the skeletons are deliberately swappable one-prop slots | **owner assets** |
-| Phone slot faux-video treatment | "Your TikTok" placeholder is honest but bare; a vertical-video skeleton (hook bar + action rail) would finish the fold | design call |
-| Skeleton repetition | gauge appears ~5× page-wide (hero, step-3, showcase, feature-1, final CTA) — fine pre-assets, real screenshots will fix | with assets |
-| "drops at 0:07" ×2 in the hero window | drivers caption + curve caption, same fact two views — accepted; a `caption` prop on RetentionCurveSkeleton would dedupe | nit |
+| ~~Phone slot faux-video treatment~~ | ✅ 2026-07-12 — `PhoneVideoSkeleton` (pill, action rail, caption block, seek bar); phone now overlaps the window corner on sm+ | done |
+| ~~Skeleton repetition~~ | ✅ 2026-07-12 — gauge 5×→3×: final CTA now echoes the audience cloud ("Your audience already knows"), feature-1 pairs gauge with mini why-bars; remaining repeats resolve with real assets | done / with assets |
+| ~~"drops at 0:07" ×2 in the hero window~~ | ✅ 2026-07-12 — `showDropCaption` prop on RetentionCurveSkeleton, hero passes `false` (drivers row keeps the fact) | done |
 | **Pricing discrepancy** | landing shows Starter Free / **Pro $19**; pricing-strategy memory says $29/$49/$129 | **owner call pre-launch** |
 | "Join 2,000+ creators" claim | pre-launch social proof copy | owner call |
 | Public domain / deployment protection | see Deployment above | **owner, launch gate** |

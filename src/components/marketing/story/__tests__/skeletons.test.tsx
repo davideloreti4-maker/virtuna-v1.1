@@ -7,6 +7,7 @@ import {
   AudienceCloudSkeleton,
   DriverRowsSkeleton,
   RetentionCurveSkeleton,
+  PhoneVideoSkeleton,
   BrowserChrome,
   PhoneChrome,
 } from "../skeletons";
@@ -123,10 +124,47 @@ describe("product-skeleton primitives", () => {
       expect(container.textContent ?? "").toMatch(/\d:\d{2}/);
     });
 
+    it("hides the drop caption when showDropCaption is false (hero dedupe)", () => {
+      const { container } = render(
+        <RetentionCurveSkeleton showDropCaption={false} />
+      );
+      // The hero dashboard states "drops at 0:07" in the Retention driver row;
+      // the curve drops its duplicate line there but keeps the reach-end stat.
+      expect(container.textContent ?? "").not.toMatch(/\d:\d{2}/);
+      expect(container.textContent ?? "").toContain("%");
+    });
+
     it("is a labelled image (role=img + aria-label)", () => {
       render(<RetentionCurveSkeleton />);
       const img = screen.getByRole("img");
       expect(img.getAttribute("aria-label")).toMatch(/retention|watch/i);
+    });
+  });
+
+  describe("<PhoneVideoSkeleton /> — vertical-video input IA", () => {
+    it("keeps the 'Your TikTok' slot label as a text node", () => {
+      render(<PhoneVideoSkeleton />);
+      // The hero gate resolves getByText(/your tiktok/i) — the label must stay
+      // real text, not only an aria-label.
+      expect(screen.getAllByText(/your tiktok/i).length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("is a labelled image with an aspect-locked 9/16 screen", () => {
+      const { container } = render(<PhoneVideoSkeleton />);
+      const img = screen.getByRole("img");
+      expect(img.getAttribute("aria-label")).toMatch(/tiktok/i);
+      // The screen reserves its vertical box (no-CLS when a real capture
+      // swaps in via the slot later).
+      expect(/\baspect-/.test((container.firstElementChild as HTMLElement).className)).toBe(true);
+    });
+  });
+
+  describe("<AudienceCloudSkeleton showCaption={false} /> — quiet echo mode", () => {
+    it("hides the watch-through caption for the final CTA echo", () => {
+      const { container } = render(<AudienceCloudSkeleton showCaption={false} />);
+      expect(container.textContent ?? "").not.toContain("%");
+      // the dots survive — only the metric line goes quiet
+      expect(container.querySelectorAll("circle").length).toBeGreaterThanOrEqual(6);
     });
   });
 
