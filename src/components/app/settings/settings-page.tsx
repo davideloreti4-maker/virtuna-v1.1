@@ -57,7 +57,10 @@ const TABS = [
 
 export function SettingsPage({ defaultTab = "profile", referral, connectedAccounts = [] }: SettingsPageProps) {
   return (
-    <div className="mx-auto max-w-4xl p-6">
+    // Left-anchored at the shared page rhythm (px-4/lg:px-6 pt-6) like every other
+    // page header — the old mx-auto centering floated the block mid-canvas with a
+    // dead left margin no sibling page has.
+    <div className="max-w-4xl px-4 pb-24 pt-6 lg:px-6">
       <h1 className="mb-8 text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Settings</h1>
 
       <Tabs.Root
@@ -65,7 +68,7 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
         className="flex flex-col gap-6 md:flex-row md:gap-8"
       >
         {/* Tab List - Horizontal scroll on mobile, vertical on desktop */}
-        <Tabs.List className="-mx-6 flex gap-1 overflow-x-auto px-6 pb-2 md:mx-0 md:w-48 md:flex-shrink-0 md:flex-col md:overflow-x-visible md:px-0 md:pb-0">
+        <Tabs.List className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 md:mx-0 md:w-48 md:flex-shrink-0 md:flex-col md:overflow-x-visible md:px-0 md:pb-0">
           {TABS.map((tab) => (
             <Tabs.Trigger
               key={tab.value}
