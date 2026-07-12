@@ -118,13 +118,18 @@ export function HooksClient() {
   }, [visible]);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <DiscoverTabBar active="hooks" />
-      <header className="mb-6 mt-5">
+    // Container + header mirror DiscoverHub exactly (title → mono subtitle → tabs)
+    // so the tab bar doesn't jump position when switching Discover tabs.
+    <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
+      <header className="mb-4">
         <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Hooks</h1>
-        <p className="mt-1 text-sm text-foreground-secondary">
-          Manage your vault of viral hooks — adapt any one into a script for your audience.
+        <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
+          your vault of viral hooks — adapt any one into a script for your audience
         </p>
+
+        <div className="mt-3">
+          <DiscoverTabBar active="hooks" />
+        </div>
       </header>
 
       {/* Toolbar */}
