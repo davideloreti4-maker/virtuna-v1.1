@@ -16,8 +16,9 @@
  *  - Query expansion (§11c stage 1) is UPSTREAM — this takes the search query directly.
  *  - Audience-aware prune (§11c stage 2) is DEFERRED → fitLabel is a pre-prune
  *    placeholder ('adjacent'), not the real niche×audience label.
- *  - Embeddings/vector cache-walk DEFERRED (Qwen text-embedding, not gemini) → we always
- *    gather fresh + WRITE the cache; reading the cache back (extract-once payoff) is next.
+ *  - Embeddings land at cache-write (embedder.ts, DashScope text-embedding-v3 768d —
+ *    not gemini), degrade-to-NULL on failure. Reading the cache back is retrieve.ts;
+ *    gather-for-run tries it BEFORE calling this scrape pipeline.
  *
  * Runs against prod only after the §13 migration is applied (the upsert targets the new
  * tables). tsc-clean today; live-verified the spike way post-apply.
@@ -29,6 +30,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { RankedOutlier } from "@/lib/discover/outlier-compute";
 import { QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { getCorpusClient, upsertOutlierTeardown } from "./corpus";
+import { buildTeardownEmbeddingText, embedTexts } from "./embedder";
 import { selectCandidates, accountMultiplier, passesOutlierGate } from "./outlier-gate";
 import { extractTeardowns, isUsableTeardown, type ExtractionInput } from "./extract";
 import {
@@ -198,6 +200,28 @@ export async function gatherAndExtract(
   }));
   const teardowns = await extractTeardowns(inputs);
 
+  // 5b. embed the usable teardowns (§13 topical formula, ONE batched call).
+  // Degrade-safe: an embed failure writes embedding NULL — never blocks the gather.
+  const usableIdx = teardowns
+    .map((t, i) => (t && isUsableTeardown(t) ? i : -1))
+    .filter((i) => i >= 0);
+  const embeddings = new Map<number, number[]>();
+  try {
+    const texts = usableIdx.map((i) =>
+      buildTeardownEmbeddingText({
+        caption: gated[i]!.v.caption,
+        hashtags: gated[i]!.v.hashtags,
+        spokenHook: teardowns[i]!.spokenHook,
+        ideaAngle: teardowns[i]!.idea?.angle,
+      }),
+    );
+    const embeddable = usableIdx.filter((_, k) => texts[k]!.length > 0);
+    const vectors = await embedTexts(texts.filter((t) => t.length > 0));
+    embeddable.forEach((idx, k) => embeddings.set(idx, vectors[k]!));
+  } catch {
+    // embedding is an enhancement, not a gate — rows stay retrievable by facet/recency
+  }
+
   // 6. cache-write each usable teardown + build the example.
   const capturedAt = new Date().toISOString();
   const examples: RetrievedExample[] = [];
@@ -230,12 +254,15 @@ export async function gatherAndExtract(
       editingStyle: t.editingStyle,
       signatureSeries: t.signatureSeries,
       spokenHook: t.spokenHook,
+      hookTemplate: t.hookTemplate,
       hookSource: t.hookSource,
       idea: t.idea,
       template: t.template,
       whyItWorks: t.whyItWorks,
       teardown: t.raw,
-      embedding: null, // Qwen text-embedding deferred (vector cache-walk is next)
+      caption: v.caption,
+      hashtags: v.hashtags,
+      embedding: embeddings.get(i) ?? null,
       extractionTier: t.hookSource === "native_transcript" ? "transcript" : "caption",
       extractionVersion: `v${FACET_VOCAB_VERSION}`,
       model: QWEN_REASONING_MODEL,

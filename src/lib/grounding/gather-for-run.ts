@@ -13,12 +13,19 @@
  *    (the gather path is clockworks/TikTok; IG native is the documented fast-follow)
  *    AND a non-empty query resolves.
  *  - Emits the "Finding proven outliers" stage at the REAL boundary (honesty spine).
- *  - ANY failure degrades to ungrounded — corpus stays undefined, examples stay [],
- *    a warning is pushed. Never fabricate a source, never block generation.
+ *    The stage is honest on BOTH paths — cache read-back finds proven outliers too,
+ *    just instantly.
+ *  - Read-back FIRST (gather-once/walk-many): the teardown cache is consulted before
+ *    any scrape; enough good cached rows → the scrape is skipped entirely. A cache
+ *    miss OR read-back failure falls through to the live scrape (which write-through
+ *    populates the cache). Only when the scrape path ALSO fails does the run degrade
+ *    to ungrounded — corpus stays undefined, examples stay [], a warning is pushed.
+ *    Never fabricate a source, never block generation.
  */
 
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
 import { formatCorpusForPrompt } from "@/lib/grounding/prompt";
+import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 /** The stage name shown on the thread loading spine while gathering (shared by all skills). */
@@ -46,21 +53,54 @@ export interface GatherCorpusResult {
   examples: RetrievedExample[];
 }
 
+/** Injectable pipeline fns (tests swap these; prod uses the real modules). */
+export interface GatherCorpusDeps {
+  retrieve?: typeof retrieveCachedExamples;
+  gather?: typeof gatherAndExtract;
+}
+
 /**
- * Gather live outlier teardowns for a skill run (gated, degrade-safe).
- * Returns `{ corpus: undefined, examples: [] }` on any skip or failure — the caller's
- * generation path is byte-identical to ungrounded in that case.
+ * Gather outlier teardowns for a skill run (gated, degrade-safe): teardown-cache
+ * read-back first, live scrape on miss. Returns `{ corpus: undefined, examples: [] }`
+ * on any skip or full failure — the caller's generation path is byte-identical to
+ * ungrounded in that case.
  */
-export async function gatherCorpusForRun(input: GatherCorpusInput): Promise<GatherCorpusResult> {
+export async function gatherCorpusForRun(
+  input: GatherCorpusInput,
+  deps: GatherCorpusDeps = {},
+): Promise<GatherCorpusResult> {
   const none: GatherCorpusResult = { corpus: undefined, examples: [] };
   if (!input.enabled || input.platform !== "tiktok") return none;
 
   const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
   if (!query) return none;
 
+  const retrieve = deps.retrieve ?? retrieveCachedExamples;
+  const gather = deps.gather ?? gatherAndExtract;
+
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
   try {
-    const { examples } = await gatherAndExtract({
+    // 1. read-back: enough good cached teardowns → skip the scrape (instant + free).
+    try {
+      const cached = await retrieve({ query, platform: input.platform, niche: input.niche });
+      if (cached.enough) {
+        console.info(
+          `[grounding] cache HIT for "${query}" — ${cached.examples.length} cached teardowns (≥${cached.stats.minRows}), scrape skipped`,
+        );
+        return { corpus: formatCorpusForPrompt(cached.examples), examples: cached.examples };
+      }
+      console.info(
+        `[grounding] cache miss for "${query}" — ${cached.stats.good}/${cached.stats.minRows} good rows (${cached.stats.matched} matched), scraping live`,
+      );
+    } catch (err) {
+      // Read-back is an optimization — its failure is NOT a grounding failure.
+      console.warn(
+        `[grounding] cache read-back failed (falling through to live scrape): ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    // 2. live scrape + extract (write-through populates the cache for next time).
+    const { examples } = await gather({
       query,
       platform: input.platform,
       niche: input.niche,
