@@ -74,6 +74,19 @@ export const IDEA_BLOCKS: IdeaCardBlock[] = [
       model: "sim1-flash",
       scored: true,
       personas: PERSONAS,
+      // §11f fan-out — the grounded idea variant carries the SAME shared ProofReceipt as the
+      // hook card (real outlier the structure was drawn from). Second fixture stays ungrounded.
+      proof: {
+        handle: "nourish.me.now",
+        videoUrl: "https://www.tiktok.com/@nourish.me.now/video/7300000000000000002",
+        coverUrl: null,
+        hookTemplate: "I stopped [common habit] for [timeframe]. Here's what happened to my [thing].",
+        archetype: "resource-drop",
+        multiplier: 277.4,
+        views: 4300000,
+        baselineLabel: "vs followers",
+        fitLabel: "adjacent",
+      },
     },
   },
   {
@@ -180,6 +193,19 @@ export const SCRIPT_BLOCKS: ScriptCardBlock[] = [
       scrollQuote: "Fast and to the point — I'll give it 10 seconds.",
       model: "sim1-flash",
       personas: PERSONAS,
+      // §11f fan-out — a grounded script carries at most ONE receipt (one script → one source);
+      // shares the hook card's ProofReceipt. Placed on the face above the opener proof unit.
+      proof: {
+        handle: "polish1990",
+        videoUrl: "https://www.tiktok.com/@polish1990/video/7300000000000000003",
+        coverUrl: null,
+        hookTemplate: "I stopped [doing the expected thing] and my [metric] [improved].",
+        archetype: "sensory-promise",
+        multiplier: 144.9,
+        views: 2000000,
+        baselineLabel: "vs followers",
+        fitLabel: "structural",
+      },
     },
   },
 ];

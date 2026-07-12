@@ -59,8 +59,8 @@ import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
-import { gatherAndExtract } from "@/lib/grounding/orchestrator";
-import { formatCorpusForPrompt } from "@/lib/grounding/prompt";
+import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -124,33 +124,14 @@ Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": strin
 Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).`;
 
 /**
- * Map a model-emitted sourceIndex (1-based; 0 = "no specific source") back to the grounding
- * example it attributed, and freeze it into the card's receipt (§11f receipts-on-cards).
- * Returns null when the hook cited no source, cited out of range, or the matched example lacks
- * a handle — no receipt without a real, nameable, above-baseline source (honesty spine). This
- * is the visible payoff link: grounding shaped the words, this shows WHICH proven video it drew from.
+ * sourceIndex → RetrievedExample → receipt (§11f receipts-on-cards). Implementation moved to
+ * the shared ./build-proof (fan-out: ideas/script attribute the same way); re-exported here
+ * under its original name for existing imports/tests.
  */
-export function buildHookProof(
+export const buildHookProof: (
   sourceIndex: number,
   examples: RetrievedExample[],
-): HookProof | null {
-  if (!Number.isInteger(sourceIndex) || sourceIndex < 1 || sourceIndex > examples.length) {
-    return null;
-  }
-  const ex = examples[sourceIndex - 1];
-  if (!ex || !ex.handle) return null; // no handle → nothing honest to attribute
-  return {
-    handle: ex.handle,
-    videoUrl: ex.videoUrl,
-    coverUrl: ex.coverUrl,
-    hookTemplate: ex.hookTemplate,
-    archetype: ex.hookArchetype,
-    multiplier: ex.multiplier,
-    views: ex.views,
-    baselineLabel: ex.baselineLabel,
-    fitLabel: ex.fitLabel,
-  };
-}
+) => HookProof | null = buildProofFromSource;
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -303,10 +284,7 @@ async function generateHooksStructured(
       needsTake: typeof r.needsTake === "boolean" ? r.needsTake : false,
       // Attribution index (grounded runs only) — coerced to a clean non-negative int; anything
       // missing/malformed → 0 (no source) so an ungrounded or sloppy response never fabricates one.
-      sourceIndex:
-        typeof r.sourceIndex === "number" && Number.isFinite(r.sourceIndex) && r.sourceIndex > 0
-          ? Math.trunc(r.sourceIndex)
-          : 0,
+      sourceIndex: coerceSourceIndex(r.sourceIndex),
     });
     if (hooks.length >= HOOK_COUNT) break;
   }
@@ -399,32 +377,16 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // ── GROUND (§11f step 2, gated): pull LIVE outlier teardowns for the topic → the one
   //    additive corpus field. OFF by default; TikTok-only (gather path is clockworks).
   //    ANY failure degrades to ungrounded — corpus stays undefined → byte-identical no-op,
-  //    never fabricate a source (honesty spine). Receipts-on-cards is the next step
-  //    (HookCardBlock proof fields); this wiring grounds GENERATION.
-  let corpus: string | undefined;
-  // Retained so the BUILD step can map each hook's sourceIndex back to the outlier it adapted
-  // (the on-card receipt, §11f). Stays empty on ungrounded/degraded runs → no proof attached.
-  let groundingExamples: RetrievedExample[] = [];
-  if (isGroundingEnabled() && platform === "tiktok") {
-    const groundQuery = (ask && ask.trim()) || anchor || genProfileRow?.niche_primary || "";
-    if (groundQuery) {
-      input.onStage?.("Finding proven outliers", "active");
-      try {
-        const { examples } = await gatherAndExtract({
-          query: groundQuery,
-          platform,
-          niche: genProfileRow?.niche_primary ?? null,
-        });
-        groundingExamples = examples;
-        corpus = formatCorpusForPrompt(examples);
-      } catch (err) {
-        allWarnings.push(
-          `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-      input.onStage?.("Finding proven outliers", "done");
-    }
-  }
+  //    never fabricate a source (honesty spine). `groundingExamples` is retained so the BUILD
+  //    step can map each hook's sourceIndex back to the outlier it adapted (the on-card receipt).
+  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+    enabled: isGroundingEnabled(),
+    platform,
+    queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
+    niche: genProfileRow?.niche_primary ?? null,
+    onStage: input.onStage,
+    warnings: allWarnings,
+  });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(

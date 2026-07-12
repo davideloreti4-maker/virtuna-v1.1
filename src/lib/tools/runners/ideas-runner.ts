@@ -65,6 +65,8 @@ import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -78,6 +80,16 @@ const IDEA_COUNT = 4;
 
 /** Generation call timeout (mirrors hooks-runner; ideas generate is heavier). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Grounding gate (§11f fan-out — mirrors GROUNDING_HOOKS_ENABLED). OFF by default —
+ * grounding prepends a live scrape + survivor profile-scrapes + a teardown LLM call
+ * (~25s + Apify cost) BEFORE generation, so it ships behind an env flag until live-proven.
+ * TikTok-only in MVP (the gather path is clockworks); IG native is the documented fast-follow.
+ */
+function isGroundingEnabled(): boolean {
+  return process.env.GROUNDING_IDEAS_ENABLED === "true";
+}
 
 // ─── Rank helpers (S3′ — mirrors hooks-runner) ──────────────────────────────────
 /** Band tier ordinal for ranking: Strong=0 > Mixed=1 > Weak=2 (keep-all, Weak ranked last). */
@@ -108,6 +120,22 @@ const IDEAS_OUTPUT_CONTRACT = `
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null } ] }
 Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty.`;
+
+/**
+ * Grounded output contract (§11f fan-out — mirrors HOOKS_OUTPUT_CONTRACT_GROUNDED). Used ONLY
+ * when a corpus grounding block was injected (grounding ON + real examples found). Adds ONE
+ * field — `sourceIndex` — so each idea reports WHICH grounding example (1-based, or 0 for none)
+ * its structure adapts. That integer is the attribution link the on-card receipt is built from
+ * (sourceIndex → RetrievedExample → proof). The ungrounded contract above is kept byte-identical
+ * so flag-OFF runs preserve their warm-cache prefix + regression gate.
+ */
+const IDEAS_OUTPUT_CONTRACT_GROUNDED = `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "sourceIndex": number } ] }
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this idea adapts, or 0 if the idea adapts no specific example — never cite a source you did not actually use (honesty).`;
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -168,6 +196,12 @@ interface StructuredIdea {
   topic: string;
   take: string;
   format: string | null;
+  /**
+   * 1-based grounding-example index this idea adapted (0 = none). Only ever non-zero on a
+   * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
+   * the on-card receipt via buildProofFromSource (§11f).
+   */
+  sourceIndex: number;
 }
 
 // ─── Qwen generation call ────────────────────────────────────────────────────
@@ -177,11 +211,18 @@ interface StructuredIdea {
  * System = KC_IDEAS_SYSTEM_PROMPT (byte-stable warm cache prefix).
  * User = assembleBundle output (volatile per-request).
  */
-async function generateIdeasStructured(userMessage: string): Promise<StructuredIdea[]> {
+async function generateIdeasStructured(
+  userMessage: string,
+  grounded: boolean,
+): Promise<StructuredIdea[]> {
   const ai = getQwenClient();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+  // Grounded runs use the sourceIndex-carrying contract so ideas can be attributed to the real
+  // outlier they adapted; ungrounded runs keep the byte-identical original (warm-cache prefix).
+  const outputContract = grounded ? IDEAS_OUTPUT_CONTRACT_GROUNDED : IDEAS_OUTPUT_CONTRACT;
 
   let raw: string;
   try {
@@ -189,7 +230,7 @@ async function generateIdeasStructured(userMessage: string): Promise<StructuredI
       {
         model: QWEN_REASONING_MODEL,
         messages: [
-          { role: "system", content: KC_IDEAS_SYSTEM_PROMPT + IDEAS_OUTPUT_CONTRACT },
+          { role: "system", content: KC_IDEAS_SYSTEM_PROMPT + outputContract },
           { role: "user", content: userMessage },
         ],
         response_format: { type: "json_object" },
@@ -249,6 +290,9 @@ async function generateIdeasStructured(userMessage: string): Promise<StructuredI
       take: typeof r.take === "string" ? r.take : "",
       format:
         typeof r.format === "string" && r.format.trim().length > 0 ? r.format : null,
+      // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
+      // ungrounded or sloppy response never fabricates one (§11f honesty spine).
+      sourceIndex: coerceSourceIndex(r.sourceIndex),
     });
     if (ideas.length >= IDEA_COUNT) break;
   }
@@ -307,6 +351,19 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
 
+  // ── GROUND (§11f fan-out, gated): pull LIVE outlier teardowns for the topic → the one
+  //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
+  //    ungrounded — corpus stays undefined → byte-identical no-op (honesty spine).
+  //    `groundingExamples` maps each idea's sourceIndex back to its outlier (the receipt).
+  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+    enabled: isGroundingEnabled(),
+    platform,
+    queryCandidates: [ask, genProfileRow?.niche_primary],
+    niche: genProfileRow?.niche_primary ?? null,
+    onStage: input.onStage,
+    warnings: allWarnings,
+  });
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -314,6 +371,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       platform,
       mode: "idea",
       ...(creatorSteer ? { overrides: creatorSteer } : {}),
+      ...(corpus ? { corpus } : {}),
     },
     genProfileRow,
   );
@@ -401,7 +459,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown).
   // ── STAGE: Generating (real boundary — the big LLM call) ──
   input.onStage?.("Generating", "active");
-  const firstBatch = await generateIdeasStructured(userMessage);
+  const firstBatch = await generateIdeasStructured(userMessage, Boolean(corpus));
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
@@ -432,6 +490,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // ── BUILD: assemble idea-card blocks in ranked order ────────────────────────
   const blocks: IdeaCardBlock[] = [];
   for (const candidate of ranked) {
+    // §11f receipts-on-cards: attach the frozen receipt for the outlier this idea adapted.
+    // null (no source / ungrounded run) → the field is omitted so the block shape stays
+    // byte-identical to the pre-grounding card (regression gate + honesty spine).
+    const proof = buildProofFromSource(candidate.idea.sourceIndex, groundingExamples);
+
     const blockData = {
       type: "idea-card" as const,
       props: {
@@ -450,6 +513,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         model: "sim1-flash" as const,
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
+        ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
       },
     };
 

@@ -71,20 +71,37 @@ export const STAGE_PLANS = {
  * Merge a canonical plan with the live stage events into the render list. Plan order is
  * authoritative; each step takes its live status if one has arrived, else `pending`. Before ANY
  * live active/done event lands, the first plan step shows `active` so the spine never opens as a
- * column of hollow dots. Live stages not in the plan (defensive) append at the end.
+ * column of hollow dots.
+ *
+ * Live stages not in the plan slot by EMIT ORDER: ones that fired before any in-plan stage
+ * PREPEND (in emit order), the rest append. Plans are static per skill, but a runner can emit a
+ * conditional pre-stage the client can't predict — e.g. grounding's "Finding proven outliers"
+ * (env-gated, runs BEFORE Generating). Blind appending drew that stage at the bottom of the
+ * spine while it was the one actually running (caught in the 2026-07-12 flag-ON live verify).
  */
 function mergePlan(plan: string[], live: StageState[]): StageState[] {
   const byName = new Map(live.map((s) => [s.name, s]));
   const anyLive = live.some((s) => s.status === 'active' || s.status === 'done');
-  const rows: StageState[] = plan.map((name, i) => {
+
+  // Split off-plan live stages by whether they fired before the first in-plan live event.
+  const firstPlanLiveIdx = live.findIndex((s) => plan.includes(s.name));
+  const pre: StageState[] = [];
+  const post: StageState[] = [];
+  live.forEach((s, i) => {
+    if (plan.includes(s.name)) return;
+    if (firstPlanLiveIdx === -1 || i < firstPlanLiveIdx) pre.push(s);
+    else post.push(s);
+  });
+
+  const planRows: StageState[] = plan.map((name, i) => {
     const l = byName.get(name);
     if (l) return l;
+    // The "never open on hollow dots" seed only applies while nothing at all is live —
+    // a live pre-stage (e.g. grounding) already gives the spine its active row.
     return { name, status: !anyLive && i === 0 ? 'active' : 'pending' };
   });
-  for (const s of live) {
-    if (!plan.includes(s.name)) rows.push(s);
-  }
-  return rows;
+
+  return [...pre, ...planRows, ...post];
 }
 
 /**
