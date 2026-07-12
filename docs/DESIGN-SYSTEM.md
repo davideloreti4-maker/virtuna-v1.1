@@ -58,6 +58,14 @@ A three-step resting/interactive scale plus the pre-existing float, all soft dar
 
 Pair `.elev-lift` with colour feedback in Tailwind (`hover:border-white/[0.10] hover:bg-white/[0.03]`) — the utility's transition animates those props too, so surfaces get smooth feedback for free. Depth stays monochrome; the hover **border/bg brighten is neutral white-alpha, never accent**.
 
+- **Thread cards stay FLAT (owner-decided 2026-07-12).** In-thread skill cards (`bg-surface-sunken`
+  generate frames + `bg-transparent` read frames) deliberately take **no** `.elev-rest`/`.elev-lift`.
+  Evidence from side-by-side mocks on `/dev/cards`: `--shadow-rest`/`--shadow-lift` are imperceptible
+  on `#1a1a19`-on-`#262624` (dark-on-dark), and a tonal lift fights the thread's carved-in grammar —
+  the cards' depth already comes from **nested tone zones** (page → sunken card → darker proof unit).
+  `.elev-lift` also implies whole-card clickability, which thread cards don't have. Don't re-open
+  without new evidence.
+
 ### Motion
 Motion is **calm and physical** — short, eased, purposeful; it confirms an action or reveals content, never decorates. Reduced-motion is a first-class state: every animation has a `prefers-reduced-motion: reduce` branch that snaps to rest.
 
