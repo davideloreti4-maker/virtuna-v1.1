@@ -18,7 +18,8 @@
  * must still not navigate.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { screen, fireEvent, cleanup, act } from '@testing-library/react';
+import { renderWithClient } from '@/test/render-with-client';
 
 // ── controllable stream mock ────────────────────────────────────────────
 const start = vi.fn().mockResolvedValue(undefined);
@@ -101,7 +102,7 @@ beforeEach(() => {
 describe('Composer navigate guard (WR-05)', () => {
   it('does NOT navigate when analysisId appears via hydration (no submit)', () => {
     // First render: analysisId null (composer mounted on a permalink).
-    const { rerender } = render(<Composer />);
+    const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
 
     // Simulate hydration setting analysisId from the URL — a null->string flip
@@ -116,7 +117,7 @@ describe('Composer navigate guard (WR-05)', () => {
   });
 
   it('DOES navigate after a real submit produces a new id', async () => {
-    const { rerender } = render(<Composer />);
+    const { rerender } = renderWithClient(<Composer />);
 
     // Type a valid TikTok URL and submit — this arms pendingNavRef.
     fireEvent.change(urlInput(), {
@@ -144,7 +145,7 @@ describe('Composer navigate guard (WR-05)', () => {
 describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)', () => {
   it('does NOT navigate after clicking the Test chip (chip is not a submit)', () => {
     // Pinned layout — routeId is set in beforeEach.
-    const { rerender } = render(<Composer />);
+    const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
 
     // Click the Test chip — this is purely a tool-selection action, not a submit.
@@ -162,7 +163,7 @@ describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)
   });
 
   it('hydration id does NOT navigate even after a chip interaction followed by no submit', () => {
-    const { rerender } = render(<Composer />);
+    const { rerender } = renderWithClient(<Composer />);
 
     // Click chip — not a submit
     fireEvent.click(testChip());
