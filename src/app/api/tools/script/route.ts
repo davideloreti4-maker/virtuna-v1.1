@@ -189,6 +189,7 @@ export async function POST(request: Request): Promise<Response> {
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
+              proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
               // band/fraction deferred to score event (content-first)
             },
           })),

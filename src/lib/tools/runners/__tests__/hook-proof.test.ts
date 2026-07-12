@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildHookProof } from "../hooks-runner";
-import { HookProofSchema } from "@/lib/tools/blocks";
+import { buildProofFromSource, coerceSourceIndex } from "../build-proof";
+import { HookProofSchema, parseProofProp } from "@/lib/tools/blocks";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 /**
@@ -83,5 +84,39 @@ describe("buildHookProof", () => {
     expect(proof!.handle).toBe("braedan.health");
     expect(proof!.multiplier).toBeNull();
     expect(HookProofSchema.safeParse(proof).success).toBe(true);
+  });
+
+  it("is the SAME shared mapper every grounded runner uses (fan-out — ideas/script attribute identically)", () => {
+    expect(buildHookProof).toBe(buildProofFromSource);
+  });
+});
+
+describe("coerceSourceIndex — shared structured-output coercion (§11f)", () => {
+  it("passes clean positive integers and truncates floats", () => {
+    expect(coerceSourceIndex(3)).toBe(3);
+    expect(coerceSourceIndex(2.9)).toBe(2);
+  });
+
+  it("maps missing/malformed/non-positive to 0 (never fabricate an attribution)", () => {
+    expect(coerceSourceIndex(undefined)).toBe(0);
+    expect(coerceSourceIndex(null)).toBe(0);
+    expect(coerceSourceIndex("2")).toBe(0);
+    expect(coerceSourceIndex(NaN)).toBe(0);
+    expect(coerceSourceIndex(-1)).toBe(0);
+    expect(coerceSourceIndex(0)).toBe(0);
+  });
+});
+
+describe("parseProofProp — client-side SSE proof coercion (§11f stream fix)", () => {
+  it("accepts a valid receipt object from the wire", () => {
+    const proof = buildProofFromSource(1, [makeExample()]);
+    expect(parseProofProp(proof)).toEqual(proof);
+  });
+
+  it("rejects null/absent/malformed values to undefined (card renders ungrounded, never crashes)", () => {
+    expect(parseProofProp(null)).toBeUndefined();
+    expect(parseProofProp(undefined)).toBeUndefined();
+    expect(parseProofProp("not-an-object")).toBeUndefined();
+    expect(parseProofProp({ handle: 42 })).toBeUndefined();
   });
 });

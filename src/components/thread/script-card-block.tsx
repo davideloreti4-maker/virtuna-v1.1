@@ -23,6 +23,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
+import { ProofReceipt } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 
@@ -34,7 +35,7 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, band, fraction, scrollQuote } = block.props;
+  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof } = block.props;
 
   // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
   // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
@@ -79,6 +80,10 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             <span className="text-foreground-muted/70"> · SIM-1 Flash</span>
           </span>
         </div>
+
+        {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn
+            from. Only present on grounded runs where a real source was attributed. */}
+        {proof && <ProofReceipt proof={proof} />}
 
         {/* Proof unit — opener-only (the fraction is scoped to the opening beat). */}
         <ProofUnit

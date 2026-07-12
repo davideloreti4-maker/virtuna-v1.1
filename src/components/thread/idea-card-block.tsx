@@ -24,6 +24,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
+import { ProofReceipt } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 
@@ -46,6 +47,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     fraction,
     scored,
     scrollQuote,
+    proof,
   } = block.props;
 
   const platform = usePlatform();
@@ -113,6 +115,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         <p className="text-[13px] leading-relaxed text-foreground-secondary">
           {angle} <span className="text-foreground-muted">— {whyItFits}</span>
         </p>
+
+        {/* Proof receipt (§11f fan-out) — the real outlier this idea's structure was drawn from.
+            Only present on grounded runs where a real source was attributed (honesty spine). */}
+        {proof && <ProofReceipt proof={proof} />}
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
         <ProofUnit

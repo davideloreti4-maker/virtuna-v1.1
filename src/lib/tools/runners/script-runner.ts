@@ -52,11 +52,23 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { ScriptCardBlockSchema } from "@/lib/tools/blocks";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
+import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
+import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Generation call timeout (mirrors hooks-runner). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Grounding gate (§11f fan-out — mirrors GROUNDING_HOOKS_ENABLED). OFF by default —
+ * grounding prepends a live scrape + survivor profile-scrapes + a teardown LLM call
+ * (~25s + Apify cost) BEFORE generation, so it ships behind an env flag until live-proven.
+ * TikTok-only in MVP (the gather path is clockworks); IG native is the documented fast-follow.
+ */
+function isGroundingEnabled(): boolean {
+  return process.env.GROUNDING_SCRIPT_ENABLED === "true";
+}
 
 /**
  * Output-serialization contract — owned by the runner because the runner owns
@@ -74,6 +86,22 @@ const SCRIPT_OUTPUT_CONTRACT = `
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
 Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string }
 Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat.`;
+
+/**
+ * Grounded output contract (§11f fan-out — mirrors HOOKS_OUTPUT_CONTRACT_GROUNDED). Used ONLY
+ * when a corpus grounding block was injected (grounding ON + real examples found). Adds ONE
+ * top-level field — `sourceIndex` — so the script reports WHICH grounding example (1-based, or
+ * 0 for none) its structure adapts (one script → at most one attribution). That integer is the
+ * link the on-card receipt is built from (sourceIndex → RetrievedExample → proof). The
+ * ungrounded contract above is kept byte-identical (warm-cache prefix + regression gate).
+ */
+const SCRIPT_OUTPUT_CONTRACT_GROUNDED = `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string, "sourceIndex": number }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).`;
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -127,6 +155,12 @@ interface StructuredBeat {
 interface StructuredScript {
   beats: StructuredBeat[];
   openingBeatSeed: string;
+  /**
+   * 1-based grounding-example index this script adapted (0 = none). Only ever non-zero on a
+   * grounded run (the grounded contract requests it); ungrounded runs default it to 0. Drives
+   * the on-card receipt via buildProofFromSource (§11f).
+   */
+  sourceIndex: number;
 }
 
 // ─── Qwen generation call ─────────────────────────────────────────────────────
@@ -136,11 +170,18 @@ interface StructuredScript {
  * System = KC_SCRIPT_SYSTEM_PROMPT (byte-stable warm cache prefix).
  * User = assembleBundle output (volatile per-request).
  */
-async function generateScriptStructured(userMessage: string): Promise<StructuredScript | null> {
+async function generateScriptStructured(
+  userMessage: string,
+  grounded: boolean,
+): Promise<StructuredScript | null> {
   const ai = getQwenClient();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
+
+  // Grounded runs use the sourceIndex-carrying contract so the script can be attributed to the
+  // real outlier it adapted; ungrounded runs keep the byte-identical original (warm-cache prefix).
+  const outputContract = grounded ? SCRIPT_OUTPUT_CONTRACT_GROUNDED : SCRIPT_OUTPUT_CONTRACT;
 
   let raw: string;
   try {
@@ -148,7 +189,7 @@ async function generateScriptStructured(userMessage: string): Promise<Structured
       {
         model: QWEN_REASONING_MODEL,
         messages: [
-          { role: "system", content: KC_SCRIPT_SYSTEM_PROMPT + SCRIPT_OUTPUT_CONTRACT },
+          { role: "system", content: KC_SCRIPT_SYSTEM_PROMPT + outputContract },
           { role: "user", content: userMessage },
         ],
         response_format: { type: "json_object" },
@@ -215,7 +256,9 @@ async function generateScriptStructured(userMessage: string): Promise<Structured
 
   if (!openingBeatSeed) return null;
 
-  return { beats, openingBeatSeed };
+  // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
+  // ungrounded or sloppy response never fabricates one (§11f honesty spine).
+  return { beats, openingBeatSeed, sourceIndex: coerceSourceIndex(obj.sourceIndex) };
 }
 
 // ─── Lead scroll-quote selector (mirrors hooks-runner) ────────────────────────
@@ -267,6 +310,19 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
   const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
 
+  // ── GROUND (§11f fan-out, gated): pull LIVE outlier teardowns for the topic → the one
+  //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
+  //    ungrounded — corpus stays undefined → byte-identical no-op (honesty spine).
+  //    `groundingExamples` maps the script's sourceIndex back to its outlier (the receipt).
+  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+    enabled: isGroundingEnabled(),
+    platform,
+    queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
+    niche: genProfileRow?.niche_primary ?? null,
+    onStage: input.onStage,
+    warnings: allWarnings,
+  });
+
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
   const userMessage = assembleBundle(
     {
@@ -275,6 +331,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       mode: "script",
       ...(anchor ? { anchor } : {}),
       ...(overrides ? { overrides } : {}),
+      ...(corpus ? { corpus } : {}),
     },
     genProfileRow,
   );
@@ -283,7 +340,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // ── STAGE: Generating (real boundary — the big LLM call) ──
   input.onStage?.("Generating", "active");
   try {
-    script = await generateScriptStructured(userMessage);
+    script = await generateScriptStructured(userMessage, Boolean(corpus));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Script generation failed: ${msg}`);
@@ -339,6 +396,11 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   }
 
   // ── BUILD: assemble script-card block ─────────────────────────────────────────
+  // §11f receipts-on-cards: attach the frozen receipt for the outlier this script adapted.
+  // null (no source / ungrounded run) → the field is omitted so the block shape stays
+  // byte-identical to the pre-grounding card (regression gate + honesty spine).
+  const proof = buildProofFromSource(script.sourceIndex, groundingExamples);
+
   const blockData = {
     type: "script-card" as const,
     props: {
@@ -349,6 +411,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       scrollQuote,
       model: "sim1-flash" as const,
       personas, // S3′: opener reaction for the ambient modal (PR-2)
+      ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
     },
   };
 

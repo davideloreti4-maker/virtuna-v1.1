@@ -29,7 +29,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { IdeaCardBlock, ReactionPersona } from '@/lib/tools/blocks';
+import type { HookProof, IdeaCardBlock, ReactionPersona } from '@/lib/tools/blocks';
+import { parseProofProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -54,6 +55,9 @@ export interface PartialIdeaCard {
   scored: boolean;
   // S3′: real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
   personas?: ReactionPersona[];
+  // §11f: the grounded receipt, streamed WITH the face. undefined on ungrounded/unattributed
+  // cards (mirrors use-hooks-stream — the stream path must never drop proof).
+  proof?: HookProof;
 }
 
 export interface UseIdeasStreamReturn {
@@ -261,6 +265,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
+                  proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -437,6 +442,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
+                  proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -516,6 +522,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
+        ...(c.proof ? { proof: c.proof } : {}), // §11f: receipt renders live, not just after reload
       },
     }));
   }, [streamingCards]);
