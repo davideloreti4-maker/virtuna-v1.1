@@ -47,7 +47,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -232,6 +232,20 @@ export async function POST(request: Request): Promise<Response> {
         // Persist: blocks array (canonical body) + KC_GEN_VERSION provenance stamp (D-10)
         if (blocks.length > 0) {
           await insertMessage(openThread.id, "assistant", blocks, kcStamp().kcGenVersion);
+
+          // Title the thread from the most topical signal this run carries:
+          // typed ask > carried anchor (idea concept) > rank-1 hook line. Auto
+          // runs persist NO user turn, so without this every hooks thread was
+          // titled from the follow-up message ("Hook #1 wins by…" × N identical).
+          // Write-once + best-effort — never fails the run.
+          const rankOne =
+            (blocks as HookCardBlock[]).find((b) => b.props.rank === 1) ??
+            (blocks as HookCardBlock[])[0];
+          await setThreadTitleIfEmpty(
+            user.id,
+            openThread.id,
+            rawAsk || rawAnchor || rankOne?.props.hookLine,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

@@ -29,6 +29,7 @@
 import { cookies } from "next/headers";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-thread-cookie";
+import { cleanThreadTitle } from "@/lib/threads/title";
 import type { Database } from "@/types/database.types";
 
 // ─── Row type derived from the regenerated database types ─────────────────────
@@ -196,6 +197,40 @@ export async function touchThread(userId: string, threadId: string): Promise<boo
   return data != null;
 }
 
+// ─── setThreadTitleIfEmpty ────────────────────────────────────────────────────
+/**
+ * Set a thread's sidebar title ONCE — the update is guarded by `title IS NULL`,
+ * so the first meaningful signal wins (typed ask > skill subject > read-repair)
+ * and concurrent writers can't overwrite each other. Ownership-scoped by user_id
+ * (CR-01). BEST-EFFORT: titles are cosmetic — this never throws, because callers
+ * sit inside send/SSE paths where a title failure must not fail the message.
+ *
+ * Returns true when this call actually set the title.
+ */
+export async function setThreadTitleIfEmpty(
+  userId: string,
+  threadId: string,
+  rawTitle: unknown,
+): Promise<boolean> {
+  const title = cleanThreadTitle(rawTitle);
+  if (!title) return false;
+
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("threads")
+      .update({ title })
+      .eq("id", threadId)
+      .eq("user_id", userId)
+      .is("title", null)
+      .select("id")
+      .maybeSingle();
+    return !error && data != null;
+  } catch {
+    return false;
+  }
+}
+
 // ─── archiveThread ────────────────────────────────────────────────────────────
 /**
  * Archive an open chat thread: flip its type "open" → "archived" so it drops out
@@ -229,14 +264,16 @@ export async function archiveThread(userId: string, threadId: string): Promise<b
 /** A thread summary row for the sidebar list (no message bodies). */
 export interface OpenThreadSummary {
   id: string;
+  title: string | null;
   created_at: string;
   updated_at: string;
 }
 
 /**
  * List the user's open threads, newest-first (active thread = index 0).
- * Bounded; the sidebar only renders the most recent slice. Titles are derived
- * separately (see the /api/threads/list route) to keep this query body-free.
+ * Bounded; the sidebar only renders the most recent slice. title is the
+ * persisted label (null = legacy/untitled — the /api/threads/list route
+ * derives + read-repairs those); the query stays message-body-free.
  */
 export async function listOpenThreads(
   userId: string,
@@ -246,7 +283,7 @@ export async function listOpenThreads(
 
   const { data, error } = await supabase
     .from("threads")
-    .select("id, created_at, updated_at")
+    .select("id, title, created_at, updated_at")
     .eq("user_id", userId)
     .eq("type", "open")
     .is("reading_id", null)

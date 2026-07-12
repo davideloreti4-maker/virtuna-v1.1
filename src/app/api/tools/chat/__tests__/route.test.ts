@@ -32,6 +32,8 @@ vi.mock("@/lib/threads/messages", () => ({
 vi.mock("@/lib/threads/threads", () => ({
   createOpenThreadLazy: vi.fn(),
   getOpenThread: vi.fn(),
+  // Title write is best-effort/write-once — resolve false ("already titled").
+  setThreadTitleIfEmpty: vi.fn().mockResolvedValue(false),
 }));
 
 vi.mock("@/lib/tools/runners/chat-runner", () => ({
