@@ -237,8 +237,11 @@ export function AudiencePresence({
   // that surface). Anchored as a fixed box just above the trigger.
   const menuRef = useRef<HTMLDivElement | null>(null);
   // Anchored above (dock — the peek is bottom-pinned) or below (rail — the identity is at the
-  // TOP of the right rail). One of top/bottom is set per `layout`.
-  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null);
+  // TOP of the right rail). One of top/bottom is set per `layout`. `maxH` clamps the menu to
+  // the space actually available on the chosen side — the chip is NOT always bottom-pinned
+  // (the centered empty-home layout puts it mid-viewport), and an unclamped upward menu
+  // rendered its top rows off-screen there.
+  const [menuPos, setMenuPos] = useState<{ left: number; top?: number; bottom?: number; width: number; maxH?: number } | null>(null);
 
   const personas = useMemo(() => audience?.personas ?? [], [audience]);
   // Named-people reframe (The Room, Task A): archetype→creator-label overrides so a renamed
@@ -449,14 +452,27 @@ export function AudiencePresence({
       const r = switcherRef.current?.getBoundingClientRect();
       if (!r) return;
       const width = 280;
+      const spaceAbove = r.top - 20;
+      const spaceBelow = window.innerHeight - r.bottom - 20;
       if (layout === 'rail' || (docked && open)) {
         // Rail identity — or the docked switcher at the TOP of the open panel — opens DOWNWARD;
         // clamp so the menu stays on-screen.
         const left = Math.min(r.left, window.innerWidth - width - 12);
-        setMenuPos({ left, top: r.bottom + 8, width });
+        setMenuPos({ left, top: r.bottom + 8, width, maxH: Math.max(160, spaceBelow) });
+      } else if (spaceAbove < 220 && spaceBelow > spaceAbove) {
+        // The chip sits high (centered empty-home layout) — an upward menu would push its top
+        // rows off-screen, so flip DOWNWARD where the room actually is.
+        const left = Math.min(r.left, window.innerWidth - width - 12);
+        setMenuPos({ left, top: r.bottom + 8, width, maxH: Math.max(160, spaceBelow) });
       } else {
-        // Collapsed dock chip is bottom-pinned → open UPWARD (anchored above the trigger).
-        setMenuPos({ left: r.left, bottom: window.innerHeight - r.top + 8, width });
+        // Collapsed dock chip is bottom-pinned → open UPWARD (anchored above the trigger),
+        // clamped to the space above so the top rows can never leave the viewport.
+        setMenuPos({
+          left: r.left,
+          bottom: window.innerHeight - r.top + 8,
+          width,
+          maxH: Math.max(160, spaceAbove),
+        });
       }
     };
     place();
@@ -537,8 +553,11 @@ export function AudiencePresence({
             top: menuPos?.top,
             bottom: menuPos?.bottom,
             width: menuPos?.width ?? 280,
+            // Side-aware clamp from place() — 44vh stays the ceiling, but the menu never
+            // exceeds the space on its anchored side (the clip-at-viewport-top fix).
+            maxHeight: menuPos?.maxH != null ? Math.min(menuPos.maxH, window.innerHeight * 0.44) : '44vh',
           }}
-          className="fixed z-[60] max-h-[44vh] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
+          className="fixed z-[60] overflow-y-auto rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-1.5 shadow-[var(--shadow-float)]"
         >
           {audiences.length === 0 && (
             <p className="px-2 py-2 text-[12px] text-[var(--color-foreground-muted)]">No audiences yet.</p>
