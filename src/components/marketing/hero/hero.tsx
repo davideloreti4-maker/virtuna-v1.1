@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
 
-import { Placeholder } from "@/components/marketing/placeholder";
 import {
   ScoreGaugeSkeleton,
   AudienceCloudSkeleton,
   DriverRowsSkeleton,
   RetentionCurveSkeleton,
+  PhoneVideoSkeleton,
 } from "@/components/marketing/story/skeletons";
 
 interface HeroProps {
@@ -32,9 +32,10 @@ interface HeroProps {
  *  4. the product-shot SHOWCASE (HERO-03/04): a flat-warm desktop browser
  *     window (the Maven Simulation = the OUTPUT) with a phone in front (the
  *     TikTok you paste = the INPUT), reading left→right as paste → prediction.
- *     Both screens are swappable <Placeholder> slots (FOUND-03) — real
- *     desktop/mobile screenshots or video drop in via the one `src` prop later;
- *     the device chrome, layered shadows, and warm seat are permanent dressing.
+ *     Both screens stay swappable slots (FOUND-03) — the window body renders
+ *     the skeleton dashboard and the phone renders PhoneVideoSkeleton until
+ *     real captures replace them; the device chrome, layered shadows, and warm
+ *     seat are permanent dressing.
  *
  * NOTE: this replaced the original bespoke canvas "crowd → score" signature
  * moment (the 02-02/02-03 plans). That direction read as a tech-demo, not a
@@ -149,10 +150,12 @@ export function Hero({ className }: HeroProps) {
                     and eats the whole capped window. */}
                 <AudienceCloudSkeleton className="hidden w-full md:flex" />
               </div>
-              {/* main column — the three levers + where viewers drop. */}
+              {/* main column — the three levers + where viewers drop. The curve
+                  hides its "drops at 0:07" caption: the Retention driver row
+                  states the same fact one row up (same-fact-twice nit). */}
               <div className="flex min-w-0 flex-1 flex-col gap-6 md:order-1">
                 <DriverRowsSkeleton />
-                <RetentionCurveSkeleton />
+                <RetentionCurveSkeleton showDropCaption={false} />
               </div>
             </div>
           </div>
@@ -160,15 +163,13 @@ export function Hero({ className }: HeroProps) {
 
         {/* Phone — your TikTok (input), in front of the window's lower-right.
             Sibling of the window (not a child) so it overflows cleanly; its own
-            deeper shadow + a hairline ring read as "in front". */}
-        <div className="absolute bottom-0 right-0 w-[16.5%] min-w-[104px] sm:right-4">
+            deeper shadow + a hairline ring read as "in front". Seated further
+            left on sm+ so it convincingly overlaps the window corner instead of
+            floating beside it in the margin. The screen is the PhoneVideoSkeleton
+            faux vertical-video UI — still the swappable slot (FOUND-03). */}
+        <div className="absolute bottom-0 right-0 w-[17.5%] min-w-[104px] sm:right-10">
           <div className="overflow-hidden rounded-[1.8rem] border-[5px] border-background-elevated bg-background-elevated shadow-[0_28px_52px_-14px_rgba(0,0,0,0.85)] ring-1 ring-border">
-            <Placeholder
-              variant="video"
-              aspect="9/16"
-              label="Your TikTok"
-              className="rounded-[1.55rem] border-0 bg-surface"
-            />
+            <PhoneVideoSkeleton className="rounded-[1.55rem]" />
           </div>
         </div>
       </div>

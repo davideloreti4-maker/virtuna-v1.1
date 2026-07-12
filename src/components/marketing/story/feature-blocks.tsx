@@ -54,11 +54,51 @@ interface Feature {
   visual: React.ReactNode;
 }
 
+/**
+ * Row-1 visual — the score AND the why beside it (the copy promises "a clear
+ * score and the why behind it"; a lone gauge only showed the score). Three
+ * compact unlabelled-value rows — label + thin bar — deliberately LIGHTER than
+ * row-4's full DriverRowsSkeleton (no captions, no coral) so the two rows read
+ * as different depths of the same instrument, not a repeat.
+ */
+function ScoreWithWhy() {
+  const why = [
+    { label: "Hook", w: "w-[82%]" },
+    { label: "Retention", w: "w-[54%]" },
+    { label: "Shareability", w: "w-[71%]" },
+  ];
+  return (
+    <div className="flex w-full items-center justify-center gap-8 md:gap-10">
+      <ScoreGaugeSkeleton className="shrink-0" />
+      <div
+        className="flex w-full max-w-[220px] flex-col gap-3"
+        aria-hidden="true"
+      >
+        {why.map((r) => (
+          <div key={r.label} className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-foreground-muted">
+              {r.label}
+            </span>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground-muted/15">
+              <div
+                className={cn(
+                  "h-full rounded-full bg-foreground-secondary/80",
+                  r.w
+                )}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const FEATURES: readonly Feature[] = [
   {
     title: "Know before you post",
     body: "A clear score and the why behind it — so you never gamble on a guess again.",
-    visual: <ScoreGaugeSkeleton />,
+    visual: <ScoreWithWhy />,
   },
   {
     title: "See exactly where viewers drop",
