@@ -27,7 +27,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookCardBlock, ReactionPersona } from '@/lib/tools/blocks';
+import type { HookCardBlock, HookProof, ReactionPersona } from '@/lib/tools/blocks';
+import { parseProofProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -50,6 +51,10 @@ export interface PartialHookCard {
   // S3′: the card's real per-persona reactions (registry-enum archetypes) — threaded so the
   // ambient Room shows the NAMED People cast live, before the thread reloads (The Room, Task B).
   personas?: ReactionPersona[];
+  // §11f: the grounded receipt, streamed WITH the face. undefined on ungrounded/unattributed
+  // cards. Before this field the streaming path silently DROPPED proof — receipts only
+  // appeared after a reload (caught in the 2026-07-12 flag-ON live verify).
+  proof?: HookProof;
 }
 
 export interface UseHooksStreamReturn {
@@ -256,6 +261,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
+                  proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -429,6 +435,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
+                  proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -509,6 +516,7 @@ export function useHooksStream(): UseHooksStreamReturn {
         model: 'sim1-flash',
         channel: c.channel,
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
+        ...(c.proof ? { proof: c.proof } : {}), // §11f: receipt renders live, not just after reload
       },
     }));
   }, [streamingCards]);

@@ -98,6 +98,39 @@ export type PersonasBlock = z.infer<typeof PersonasBlockSchema>;
 // Badge (D-11): needsTake flag
 // Secondary chip (D-04): band + fraction + model "sim1-flash"
 
+// ─── Proof receipt (grounding — §11f receipts-on-cards, shared by hook/idea/script) ─────
+// The durable, honest receipt for the real outlier video whose proven STRUCTURE a grounded
+// output adapted. Mirrors grounding's RetrievedExample (lib/grounding/types.ts); the card
+// renders "@handle · N× <basis> · views ↗". Numbers are nullable — we show only what we
+// truly have (a caption-tier extraction may lack a durable multiplier), never a fabricated
+// stat. fitLabel is the honest §11c per-request match (● in-audience / ◐ adjacent /
+// ○ structural). handle is required — no receipt without a real, nameable source.
+// (Named HookProofSchema for back-compat: hooks shipped it first; ideas/script reuse it.)
+export const HookProofSchema = z.object({
+  handle: z.string(),                                          // @creator of the proof video
+  videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
+  coverUrl: z.string().nullable(),                            // ephemeral TikTok-CDN thumbnail (display-only; may expire → renderer hides on error)
+  hookTemplate: z.string().nullable(),                       // the source hook as a [bracketed] fill-in-the-blank (Sandcastles-style proof line)
+  archetype: z.string().nullable(),                          // source hook archetype slug (e.g. "secret-reveal-breakdown") → pill
+  multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
+  views: z.number().nullable(),
+  baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
+  fitLabel: z.enum(["in-audience", "adjacent", "structural"]),
+});
+export type HookProof = z.infer<typeof HookProofSchema>;
+
+/**
+ * Client-side coercion for a `proof` prop arriving over the SSE content event (§11f).
+ * safeParse (not trust-the-wire): a malformed/absent receipt → undefined, so the streaming
+ * card renders exactly like an ungrounded one instead of crashing the reveal. Shared by the
+ * hooks/ideas/script stream hooks (use-*-stream.ts).
+ */
+export function parseProofProp(value: unknown): HookProof | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed = HookProofSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export const IdeaCardBlockSchema = z.object({
   type: z.literal("idea-card"),
   props: z.object({
@@ -128,30 +161,15 @@ export const IdeaCardBlockSchema = z.object({
     // pre-S3′ persisted blocks + rehydration stay valid. The ambient modal reads this (PR-2)
     // instead of re-calling /api/tools/react for a generated card.
     personas: z.array(ReactionPersonaSchema).optional(),
+    // GROUNDING (§11f fan-out): the frozen receipt for the real outlier whose proven STRUCTURE
+    // this idea adapted. Present ONLY when grounded generation was ON AND the model attributed
+    // this idea to a real source (sourceIndex ≥ 1) carrying a handle. OPTIONAL + nullable →
+    // ungrounded/unattributed ideas omit it entirely (byte-identical pre-grounding shape).
+    proof: HookProofSchema.nullable().optional(),
   }),
 });
 
 export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
-
-// ─── Hook proof receipt (grounding — §11f receipts-on-cards) ────────────────────
-// The durable, honest receipt for the real outlier video whose proven STRUCTURE a
-// grounded hook adapted. Mirrors grounding's RetrievedExample (lib/grounding/types.ts);
-// the card renders "@handle · N× <basis> · views ↗". Numbers are nullable — we show only
-// what we truly have (a caption-tier extraction may lack a durable multiplier), never a
-// fabricated stat. fitLabel is the honest §11c per-request match (● in-audience /
-// ◐ adjacent / ○ structural). handle is required — no receipt without a real, nameable source.
-export const HookProofSchema = z.object({
-  handle: z.string(),                                          // @creator of the proof video
-  videoUrl: z.string().nullable(),                            // link to the proof (absent on some search-mode rows)
-  coverUrl: z.string().nullable(),                            // ephemeral TikTok-CDN thumbnail (display-only; may expire → renderer hides on error)
-  hookTemplate: z.string().nullable(),                       // the source hook as a [bracketed] fill-in-the-blank (Sandcastles-style proof line)
-  archetype: z.string().nullable(),                          // source hook archetype slug (e.g. "secret-reveal-breakdown") → pill
-  multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
-  views: z.number().nullable(),
-  baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
-  fitLabel: z.enum(["in-audience", "adjacent", "structural"]),
-});
-export type HookProof = z.infer<typeof HookProofSchema>;
 
 // ─── Hook-card block ──────────────────────────────────────────────────────────
 // D-11: schema-validated hook card carrying the hook anatomy + embedded Flash
@@ -246,6 +264,11 @@ export const ScriptCardBlockSchema = z.object({
     model: z.literal("sim1-flash"),    // provenance tag — always Flash for script cards (D-10)
     // S3′: the opener's 10-persona reaction. OPTIONAL (back-compat). Ambient modal reads it (PR-2).
     personas: z.array(ReactionPersonaSchema).optional(),
+    // GROUNDING (§11f fan-out): the frozen receipt for the real outlier whose proven STRUCTURE
+    // this script adapted (one script → at most one receipt). Present ONLY when grounded
+    // generation was ON AND the model attributed the script to a real source (sourceIndex ≥ 1)
+    // carrying a handle. OPTIONAL + nullable → ungrounded scripts omit it (byte-identical shape).
+    proof: HookProofSchema.nullable().optional(),
   }),
 });
 

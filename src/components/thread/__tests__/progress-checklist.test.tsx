@@ -56,4 +56,35 @@ describe('ProgressChecklist — seeded plan (premium loading rhythm)', () => {
     const { container } = render(<ProgressChecklist stages={[]} />);
     expect(container.firstChild).toBeNull();
   });
+
+  it('PREPENDS an off-plan stage that fired before any plan stage (grounding pre-stage)', () => {
+    // Grounding's "Finding proven outliers" is env-gated so it's not in the static plan, but it
+    // runs BEFORE Generating. It must render FIRST (and the plan must not also claim active).
+    render(
+      <ProgressChecklist
+        stages={[{ name: 'Finding proven outliers', status: 'active' }]}
+        plan={STAGE_PLANS.hooks}
+      />,
+    );
+
+    const rows = screen.getAllByLabelText(/: (active|done|pending)$/);
+    expect(rows[0]).toHaveAccessibleName('Finding proven outliers: active');
+    expect(screen.getByLabelText('Generating: pending')).toBeInTheDocument();
+  });
+
+  it('APPENDS an off-plan stage that fired after plan stages began (legacy defensive path)', () => {
+    render(
+      <ProgressChecklist
+        stages={[
+          { name: 'Generating', status: 'done' },
+          { name: 'Surprise stage', status: 'active' },
+        ]}
+        plan={STAGE_PLANS.hooks}
+      />,
+    );
+
+    const rows = screen.getAllByLabelText(/: (active|done|pending)$/);
+    expect(rows[rows.length - 1]).toHaveAccessibleName('Surprise stage: active');
+    expect(rows[0]).toHaveAccessibleName('Generating: done');
+  });
 });
