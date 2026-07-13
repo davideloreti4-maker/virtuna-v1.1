@@ -92,6 +92,10 @@ export function SavedShelf() {
       <header className="rv-in flex items-start justify-between gap-4" style={{ animationDelay: "0.02s" }}>
         <div className="flex flex-col gap-1">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Library</h1>
+          <p className="max-w-xl text-sm text-foreground-muted">
+            Everything you&rsquo;ve made — Reads, ideas, hooks, scripts, outliers — ready to pull
+            back into a thread.
+          </p>
         </div>
         {items.length > 0 && (
           <span className="shrink-0 rounded-full border border-white/[0.06] bg-surface-elevated px-3 py-1 text-xs text-foreground-muted">

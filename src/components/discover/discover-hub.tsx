@@ -50,6 +50,9 @@ export function DiscoverHub({
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
         <header className="mb-4">
           <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">Discover</h1>
+          <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
+            outliers, trends, and rivals — remix any winner into a Read
+          </p>
 
           <div className="mt-3">
             <DiscoverTabBar active={tab} onSelectContent={select} />

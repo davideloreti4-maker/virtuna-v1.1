@@ -325,13 +325,16 @@ export function AudienceManager({
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
-              {tab === "account" ? "Your account" : "Your audiences"}
+              Your audiences
             </h1>
-            {selectionMode && (
-              <p className="mt-1 text-sm text-foreground-secondary">
-                Pick two audiences to compare.
-              </p>
-            )}
+            {/* A1-COUPLED-COPY: revise if weights→generation wires */}
+            <p className="mt-1 text-sm text-foreground-secondary">
+              {tab === "account"
+                ? "Your real numbers, over time — the ground truth behind your people."
+                : selectionMode
+                  ? "Pick two audiences to compare."
+                  : "Who's in the room when you run a Read."}
+            </p>
 
             {/* Section tabs — the roster (the moat) vs your account analytics (folded in
                 from the retired /grow "Numbers" tab). */}
@@ -436,6 +439,13 @@ export function AudienceManager({
                   onClick={() => setSelectionMode(true)}
                 />
               </div>
+              <p
+                className="rv-in px-1 pt-1 text-[11px] leading-relaxed text-foreground-muted"
+                style={{ animationDelay: "0.14s" }}
+              >
+                Your calibrated audience grounds every Read, hook, and remix you run — the
+                moat that makes a prediction yours, not generic.
+              </p>
             </aside>
           </div>
         )}

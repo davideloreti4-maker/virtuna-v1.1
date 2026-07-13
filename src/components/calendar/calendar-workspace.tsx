@@ -256,10 +256,10 @@ export function CalendarWorkspace({
             </h1>
             <p className="mt-0.5 font-mono text-[10px] text-foreground-muted">
               {warming
-                ? "testing today’s ideas…"
+                ? "testing today’s ideas on your people…"
                 : plannedTotal > 0
-                  ? `${plannedTotal} planned · ${pool.length} tested ideas waiting`
-                  : "nothing planned yet"}
+                  ? `${plannedTotal} planned · ${pool.length} tested ideas waiting · pre-tested on your people`
+                  : "nothing planned yet · pre-tested on your people"}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">

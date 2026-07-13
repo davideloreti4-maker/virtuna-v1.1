@@ -66,7 +66,7 @@ export function BacklogRail({
 
       {activeTab === "ideas" && pool.length > 0 && (
         <p className="px-3.5 pb-0.5 pt-2 font-mono text-[9px] leading-[1.4] text-foreground-muted">
-          <span className="text-[color:var(--color-accent-text)]">★</span> = Maven’s pick
+          Tap a card to place it · <span className="text-[color:var(--color-accent-text)]">★</span> = Maven’s pick
         </p>
       )}
 
@@ -103,7 +103,7 @@ export function BacklogRail({
                   onDragEnd={onDragEndIdea}
                   aria-label={`${idea.title} — tap to place on the calendar`}
                   className={cn(
-                    "group cursor-grab rounded-[10px] border bg-surface p-[10px_11px] transition-shadow active:cursor-grabbing",
+                    "cursor-grab rounded-[10px] border bg-surface p-[10px_11px] transition-shadow active:cursor-grabbing",
                     selected
                       ? "border-[color:var(--color-accent)] shadow-[0_0_0_1px_var(--color-accent)]"
                       : "border-border hover:border-border-hover",
@@ -116,19 +116,15 @@ export function BacklogRail({
                     title={idea.title}
                     lead={face.lead}
                   />
-                  {selected ? (
-                    <div className="mt-2 flex items-center">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.04em] text-[color:var(--color-accent-text)]">
-                        ★ pick a day
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="mt-2 flex items-center opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                      <span className="font-mono text-[9px] uppercase tracking-[0.04em] text-foreground-muted">
-                        tap to place
-                      </span>
-                    </div>
-                  )}
+                  <div className="mt-2 flex items-center">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.04em] text-foreground-muted">
+                      {selected ? (
+                        <span className="text-[color:var(--color-accent-text)]">★ pick a day</span>
+                      ) : (
+                        "tap to place"
+                      )}
+                    </span>
+                  </div>
                 </div>
               );
             })
