@@ -34,6 +34,7 @@
 import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runRemixPipeline } from "@/lib/tools/runners/remix-runner";
@@ -90,6 +91,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — replay fixtures, no engine call ──
+  const mock = await maybeMockSkillRun("remix", user.id);
+  if (mock) return mock;
 
   // ── (2-3) CSRF guard — Content-Type 415 + cross-origin 403 (T-06-14, WR-01) ──
   // Shared helper (src/lib/http/csrf-guard.ts) — the SSOT for this guard pair across

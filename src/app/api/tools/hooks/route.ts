@@ -57,6 +57,7 @@ import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import type { HookCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -88,6 +89,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — replay fixtures, no engine call ──
+  const mock = await maybeMockSkillRun("hooks", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
   const guard = csrfGuard(request);
