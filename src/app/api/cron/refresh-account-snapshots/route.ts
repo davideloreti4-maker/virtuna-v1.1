@@ -8,7 +8,7 @@ import {
   touchAccountSynced,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
-import { clusterPillarsForUser } from "@/lib/content-pillars/cluster";
+import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import { sumRecentViews } from "@/lib/account-metrics/account-metrics";
 import { createLogger } from "@/lib/logger";
 
@@ -159,29 +159,30 @@ export async function GET(request: Request) {
         /* non-fatal — the snapshot already landed */
       }
 
-      // Cluster/refresh this creator's content pillars from the posts we just
-      // persisted — cost-gated (the model only runs on first cluster or when there
-      // are unassigned posts) and isolated so a pillar failure never fails the snapshot.
-      // Only the PRIMARY account drives pillars (content_pillars are user-scoped today);
-      // clusterPillarsForUser resolves the primary itself, so skip non-primary accounts
-      // to avoid a redundant run per secondary handle.
-      if (account.is_primary) {
-        try {
-          const cluster = await clusterPillarsForUser(supabase, account.user_id);
-          if (cluster.status !== "noop") {
-            log.info("content pillars refreshed", {
-              handle: account.handle,
-              status: cluster.status,
-              pillars: cluster.pillarCount,
-              assigned: cluster.assigned,
-            });
-          }
-        } catch (error) {
-          log.error("Failed to cluster content pillars (snapshot still written)", {
+      // Cluster/refresh THIS account's content pillars from the posts we just
+      // persisted — every connected account carries its own pillar set
+      // (content_pillars.account_id). Cost-gated (the model only runs on first
+      // cluster or when there are unassigned posts; a first cluster is ~15s per
+      // account) and isolated so a pillar failure never fails the snapshot.
+      try {
+        const cluster = await clusterPillarsForAccount(
+          supabase,
+          account.user_id,
+          account.id,
+        );
+        if (cluster.status !== "noop") {
+          log.info("content pillars refreshed", {
             handle: account.handle,
-            error: error instanceof Error ? error.message : String(error),
+            status: cluster.status,
+            pillars: cluster.pillarCount,
+            assigned: cluster.assigned,
           });
         }
+      } catch (error) {
+        log.error("Failed to cluster content pillars (snapshot still written)", {
+          handle: account.handle,
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     } catch (error) {
       log.error("Failed to refresh account snapshot", {
