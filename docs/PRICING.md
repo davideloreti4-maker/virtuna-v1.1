@@ -86,10 +86,9 @@ or a trial pool, whether or not `BILLING_ENFORCE_QUOTA` is on. A `free` user see
 all (allowance 0 by design) — they see the plans instead of a "0 of 0 Readings left" that would
 read as a bug.
 
-## ⛔ What is NOT live yet — the owner's four steps
-<!-- Step 2 now lists THREE migrations: the ledger (20260713160000) was added by the usage
-     system. It is the only one that is optional-ish — without it the meter still works, it
-     just keeps billing failed runs. -->
+## ⛔ What is NOT live yet — the owner's remaining steps
+<!-- Step 2 (all three migrations) is DONE as of 2026-07-13 and verified against prod. What is
+     left is genuinely owner-only: the Whop plans, the flag, and the grandfather rule. -->
 
 
 The code is complete and shipped, but **nobody can actually buy a plan until these are done.**
@@ -112,17 +111,23 @@ would lock out every existing user (all of whom are tier `free`, allowance 0).
    buyer is charged the plan price, never less than the button promised); a missing **plan** id
    makes checkout return 503 rather than silently granting access.
 
-2. **Run all three migrations** — additive, no rows change. ⚠️ As of 2026-07-13 **none of them
-   are applied to prod** (verified against the live project):
-   - `20260713120000_pricing_studio_tier.sql` — widens the tier CHECK so the webhook can write
-     `studio`. Without it, a Studio purchase's webhook **will fail to persist**.
-   - `20260713140000_trial_window.sql` — adds `trial_started_at` (and adopts the long-dead
-     `is_trial` / `trial_ends_at` columns). Without it, the **5-Reading trial cap cannot be
-     enforced** and a $1 trial grants the plan's full monthly allowance.
-   - `20260713160000_reading_events.sql` — the Reading ledger. Without it the meter falls back
-     to counting `analysis_results` rows, which means **a failed engine run still costs the
-     customer a Reading** and deleting a Reading refunds one. Nothing breaks without it; it is
-     just the difference between billing what was delivered and billing what was attempted.
+2. ~~**Run all three migrations**~~ — ✅ **DONE 2026-07-13. All three are applied to prod**
+   (`pricing_studio_tier`, `trial_window`, `reading_events`) and verified against the live
+   database:
+   - the tier CHECK now accepts `studio`, so a Studio purchase's webhook can persist;
+   - `trial_started_at` exists, so the 5-Reading trial cap can be enforced;
+   - `reading_events` exists with RLS (users read their own; only the service role writes).
+
+   **The ledger was then verified end-to-end against production**, which is the one thing that
+   could not be proven before it existed:
+   - a real, scored Reading wrote **exactly one** billed ledger row (`mode=score`);
+   - a run that **failed mid-pipeline** left its placeholder `analysis_results` row behind — the
+     very row the old meter counted — and wrote **zero** ledger rows. A failed engine run no
+     longer costs a customer a Reading.
+   - the live meter now reports `used: 1` for that account where the legacy row count says `3`.
+
+   Nothing about this is user-visible yet: enforcement is still off (step 3). The ledger simply
+   starts recording honest usage now, so the day the gate closes is not a leap in the dark.
 
 3. **Flip the meter on**: `BILLING_ENFORCE_QUOTA=true`. Until then the quota is computed and
    logged but never blocks — so you can watch real usage against the limits before the gate
