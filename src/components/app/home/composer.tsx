@@ -41,6 +41,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
+import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
@@ -53,7 +54,6 @@ import { VideoUpload } from "@/components/app/video-upload";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { useSubscription } from "@/hooks/use-subscription";
-import { ReadingLimitDialog } from "@/components/app/reading-limit-dialog";
 import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
@@ -118,6 +118,19 @@ const LAUNCH_VERB_TOOL: Record<Verb, ToolId> = {
 };
 
 // Copy — UI-SPEC § Copywriting (all [UAT], lock at THEME-06).
+/**
+ * The quota wall, loaded ONLY when someone actually hits it.
+ *
+ * Statically imported, this pulls `CheckoutModal` → `@whop/checkout/react` (a 328KB package)
+ * into the bundle of /home — the app's hottest route — to render a dialog that appears when a
+ * customer runs out of Readings, i.e. almost never, and today literally never (enforcement is
+ * off). Every visitor was paying to download a checkout embed they will not see.
+ */
+const ReadingLimitDialog = dynamic(
+  () => import("@/components/app/reading-limit-dialog").then((m) => m.ReadingLimitDialog),
+  { ssr: false }
+);
+
 const PLACEHOLDER_EMPTY = "Paste a TikTok link or drop a video…";
 const PLACEHOLDER_ACTIVE = "Ask about this simulation…";
 const ERROR_NON_TIKTOK =
@@ -2446,7 +2459,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             it starts running out (readingsBalanceTone). Absent entirely for `free`, who have no
             balance to show (see BillingSection). */}
         {readingsBalanceLabel && (
-          <p className={`mt-2 px-1 text-xs ${readingsBalanceTone}`}>{readingsBalanceLabel}</p>
+          // Right-aligned, so it sits under the submit button — where the Reading is spent —
+          // and, on mobile, clear of the sidebar's fixed avatar in the bottom-left corner,
+          // which was sitting on top of it.
+          <p className={`mt-2 px-1 text-right text-xs ${readingsBalanceTone}`}>
+            {readingsBalanceLabel}
+          </p>
         )}
       </form>
   );

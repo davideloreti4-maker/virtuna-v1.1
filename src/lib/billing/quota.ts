@@ -18,9 +18,11 @@
  *
  * WHAT COUNTS AS A READING — the ledger, not the row count.
  * A Reading is one row in `reading_events` (billed=true): one Reading actually DELIVERED.
- * It used to be one row in `analysis_results`, which is not the same thing and billed the
- * customer wrongly in three ways — a failed engine run still left its placeholder row behind
- * and charged for it; deleting a Reading refunded the allowance; and nothing was auditable.
+ * It used to be one row in `analysis_results`, which is not the same thing: a failed engine run
+ * left its placeholder row behind and charged the customer for it (the SSE branch writes that
+ * row BEFORE the engine runs). Usage also lived in a table the product is free to rewrite —
+ * today's soft delete happens not to refund the allowance, but a hard delete, a prune, or
+ * adding `deleted_at` to the count's filter would each hand it back silently.
  * See supabase/migrations/20260713160000_reading_events.sql.
  *
  * The ledger table may not exist yet (the owner has not run the migration), so the count

@@ -7,9 +7,12 @@
 --   1. FAILED RUNS BILL. The SSE branch inserts a placeholder row BEFORE the engine runs
 --      (route.ts, "Pitfall #6") so the reconnect stream has something to read. A run that dies
 --      mid-pipeline leaves that row behind — and the count charges for it. A customer pays for
---      an engine failure.
---   2. DELETES REFUND. Delete a Reading from the library and the count drops: the month's
---      allowance silently comes back. Usage must not be rewritable by the user.
+--      an engine failure. This one is real and live today.
+--   2. USAGE IS TIED TO A MUTABLE ARTEFACT. Today's DELETE is a soft delete (`deleted_at`) and
+--      the count does not filter on it, so a delete does NOT currently refund the allowance —
+--      but only by accident. The moment anyone hard-deletes a row, adds `deleted_at` to the
+--      count's WHERE clause, or prunes old analyses, the month's allowance silently comes back.
+--      What a customer has SPENT must not live in a table the product is free to rewrite.
 --   3. Nothing is auditable. "Why does it say 34?" has no answer, and a refund/credit has
 --      nowhere to live.
 --

@@ -10,7 +10,7 @@
 |---|---|---|
 | **#264** | `78c1f636` | Three plans — **Creator $49 · Pro $99 (best value) · Studio $499** — each starting at **$1 for 3 days**. No free plan. New pricing SSOT; `studio` tier added end-to-end; the Reading meter built (inert). |
 | **#265** | `8ab02885` | **The $1 trial buys 5 Readings, on every plan** — the leech guard. Trial window persisted + enforced; copy states the cap everywhere. |
-| **#266** | *(this session)* | **The usage system.** The Reading ledger (`reading_events`), billing-date periods, the balance surfaced in-app, and the 402 turned into a real paywall. |
+| **#267** | `e88f376c` | **The usage system.** The Reading ledger (`reading_events`), billing-date periods, the balance surfaced in-app, and the 402 turned into a real paywall. |
 
 ### The model
 
@@ -31,17 +31,23 @@
    today locks everyone — including you — out of `/api/analyze`. It still computes and logs the
    honest verdict, so real usage can be watched before the gate ever closes.
 
-## ✅ The usage system — BUILT (#266)
+## ✅ The usage system — BUILT (#267)
 
 What the previous version of this doc listed as "the real work" is done:
 
 - **The ledger.** A Reading is now a row in `reading_events` (append-only, billed on success
-  only), not a row in `analysis_results`. This fixed three real billing bugs: the SSE branch
-  writes its `analysis_results` row *before* the engine runs, so **a failed run charged the
-  customer**; **deleting** a Reading refunded the allowance; and usage was unauditable. Written
-  at exactly one place (`lib/billing/record-reading.ts`), best-effort — a ledger write must never
-  fail a Reading the customer already has. Falls back to the old row count while the migration
-  is unapplied, so behaviour is identical either side of it.
+  only), not a row in `analysis_results`. The live bug this fixes: the SSE branch writes its
+  `analysis_results` row *before* the engine runs, so **a failed run charged the customer**.
+  It also gets usage out of a table the product rewrites (today's soft delete happens not to
+  refund the allowance — but a hard delete, a prune, or adding `deleted_at` to the count's
+  filter each would) and makes usage auditable. Written at exactly one place
+  (`lib/billing/record-reading.ts`), best-effort — a ledger write must never fail a Reading the
+  customer already has. Falls back to the old row count while the migration is unapplied, so
+  behaviour is identical either side of it.
+  > ⚠️ **Correction to #267's commit message / PR body**, which both claimed a delete *did*
+  > refund the allowance. It does not — the delete is soft and the count never filtered
+  > `deleted_at`. The failed-run bug is the real one; the delete case is a latent hazard, not a
+  > live defect. Corrected here and in `docs/PRICING.md`.
 - **Billing-date periods.** The allowance resets on the subscription's renewal anchor (the
   day-of-month of `current_period_end`, clamped for short months, walking back to the most recent
   anchor so a stale row can't open a months-wide window) — not on the 1st.
@@ -73,7 +79,7 @@ a real Whop sandbox purchase:
   cycle — the guard is "stamp once per membership", `src/app/api/webhooks/whop/route.ts`);
 - cancellation/expiry drops the tier back to `free`;
 - **a real Reading writes exactly one `reading_events` row, and a failed one writes none.**
-  This is the one thing #266 could not verify end-to-end: the ledger table does not exist in
+  This is the one thing #267 could not verify end-to-end: the ledger table does not exist in
   prod yet, so every run today takes the legacy fallback path. Unit tests cover both branches.
 
 ### 2. The rest of the usage system
@@ -105,7 +111,7 @@ Annual billing (-20% in the old model), the grandfather rule for existing users 
 
 `tsc` 0 · `eslint` 0 · full suite green · browser pass at 1440 and 390.
 
-For #266 that meant **50 billing/pricing/paywall tests** (ledger counting + the pre-migration
+For #267 that meant **50 billing/pricing/paywall tests** (ledger counting + the pre-migration
 fallback + the refusal to substitute a legacy count for a real ledger error; the billing anchor
 incl. short-month clamping, the no-early-rollover rule and stale `current_period_end`; the
 balance copy; and the paywall's three walls) plus a real browser pass, signed in as the e2e
