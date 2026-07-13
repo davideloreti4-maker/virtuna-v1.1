@@ -8,6 +8,7 @@ import {
   readingAllowance,
   readingAllowanceFor,
   readingsLabel,
+  readingsRemainingLabel,
 } from "@/lib/pricing";
 
 /**
@@ -111,5 +112,34 @@ describe("pricing — allowances", () => {
     expect(isPaidPlanId("free")).toBe(false);
     expect(isPaidPlanId("enterprise")).toBe(false);
     expect(isPaidPlanId(undefined)).toBe(false);
+  });
+});
+
+describe("the balance a customer is shown", () => {
+  it("counts DOWN — what's left, not what's spent", () => {
+    expect(readingsRemainingLabel({ used: 12, limit: 50, inTrial: false })).toBe(
+      "38 of 50 Readings left"
+    );
+  });
+
+  it("names the trial pool as a trial pool", () => {
+    // A trialling customer has not hit their PLAN's limit, and must not be told they have.
+    expect(readingsRemainingLabel({ used: 2, limit: 5, inTrial: true })).toBe(
+      "3 of 5 trial Readings left"
+    );
+  });
+
+  it("never shows a negative balance", () => {
+    // The meter is checked BEFORE a Reading, and it fails open, so `used` can legitimately
+    // overshoot the limit. "-3 of 50 left" is not a thing to put in front of a customer.
+    expect(readingsRemainingLabel({ used: 53, limit: 50, inTrial: false })).toBe(
+      "0 of 50 Readings left"
+    );
+  });
+
+  it("says Unlimited rather than doing arithmetic on null", () => {
+    expect(readingsRemainingLabel({ used: 900, limit: null, inTrial: false })).toBe(
+      "Unlimited Readings"
+    );
   });
 });

@@ -127,6 +127,10 @@ describe("ResultCard", () => {
       >,
       phase: "error",
       error: "Analysis failed — test error",
+      // A genuine engine failure, NOT a spent allowance: quotaError stays null, so this stays
+      // the retryable error UI and never the paywall.
+      quotaError: null,
+      clearQuotaError: vi.fn(),
       reconnect: reconnectSpy,
       analysisId: null,
       filmstrips: {},

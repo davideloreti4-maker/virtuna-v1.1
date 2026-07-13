@@ -150,6 +150,29 @@ export function readingsLabel(plan: Plan): string {
     : `${plan.readingsPerMonth} Readings a month`;
 }
 
+/** A customer's Reading balance right now — what the meter (lib/billing/quota.ts) measured. */
+export interface ReadingBalance {
+  used: number;
+  /** null = unlimited. */
+  limit: number | null;
+  /** Inside the $1 trial the pool is TRIAL.readings, whatever plan they picked. */
+  inTrial: boolean;
+}
+
+/**
+ * "38 of 50 Readings left" / "3 of 5 trial Readings left" / "Unlimited Readings" — one
+ * phrasing, used by every surface that shows a balance (settings, the composer, the paywall).
+ *
+ * Counts DOWN, not up: what a customer wants to know is what they have left, not what they
+ * have spent. Clamped at 0 — an over-limit balance reads as "0 left", never a negative.
+ */
+export function readingsRemainingLabel(balance: ReadingBalance): string {
+  if (balance.limit === null) return "Unlimited Readings";
+  const left = Math.max(0, balance.limit - balance.used);
+  const noun = balance.inTrial ? "trial Readings" : "Readings";
+  return `${left} of ${balance.limit} ${noun} left`;
+}
+
 /**
  * The monthly Reading allowance for a persisted tier — the number the quota check
  * enforces. `free` (never subscribed / lapsed / cancelled) gets nothing: the $1 trial

@@ -52,6 +52,9 @@ import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
+import { useSubscription } from "@/hooks/use-subscription";
+import { ReadingLimitDialog } from "@/components/app/reading-limit-dialog";
+import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { createClient } from "@/lib/supabase/client";
@@ -235,6 +238,35 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const layout = hasSimulation ? "pinned" : "centered";
 
   const stream = useAnalysisStream();
+
+  // ── The Reading balance (billing) ───────────────────────────────────────────
+  // A Reading is the unit the plans are sold on, so the count belongs where a Reading is
+  // actually spent. Refetched when a run completes, so the number under the composer is what
+  // they have LEFT, not what they had before pressing the button.
+  const { usage, isTrial, tier: billingTier, refetch: refetchBalance } = useSubscription();
+
+  useEffect(() => {
+    if (stream.phase === "complete") void refetchBalance();
+  }, [stream.phase, refetchBalance]);
+
+  // Shown only when there is a countable balance to show: a paid plan or a trial pool. `free`
+  // has an allowance of 0 by design (no free plan), and "0 of 0 Readings left" under the
+  // composer would read as a bug rather than a price. Studio's unlimited has no number worth
+  // printing on every screen either.
+  const readingsBalanceLabel =
+    usage && usage.limit !== null && (isPaidPlanId(billingTier) || isTrial)
+      ? readingsRemainingLabel(usage)
+      : null;
+
+  // A footnote until it starts to bite — then it earns a semantic tone (the dosage rule: a
+  // balance is not a place for brand colour).
+  const remainingReadings = usage?.remaining ?? 0;
+  const readingsBalanceTone =
+    usage?.limit && remainingReadings === 0
+      ? "text-error"
+      : usage?.limit && remainingReadings <= Math.max(1, usage.limit * 0.2)
+        ? "text-warning"
+        : "text-foreground-muted";
 
   // ── Tool chip state (D-06/D-07) ─────────────────────────────────────────────
   // activeTool drives the placeholder + active-model field (D-09).
@@ -2408,6 +2440,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             {evidenceError}
           </p>
         )}
+
+        {/* The balance. Quiet by construction: a Reading is what the plan is sold on, so the
+            number belongs where a Reading is spent — but it is a footnote, not a warning, until
+            it starts running out (readingsBalanceTone). Absent entirely for `free`, who have no
+            balance to show (see BillingSection). */}
+        {readingsBalanceLabel && (
+          <p className={`mt-2 px-1 text-xs ${readingsBalanceTone}`}>{readingsBalanceLabel}</p>
+        )}
       </form>
   );
 
@@ -2445,6 +2485,19 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           {buildChooser}
         </div>
       </div>
+
+      {/* The quota wall (402). A modal, unlike every other error here, on purpose: the run did
+          not fail — it was refused, and the only way forward is a decision (upgrade, or wait
+          for the reset). An inline muted line would leave the user re-pressing a button that
+          can never work. */}
+      {stream.quotaError && (
+        <ReadingLimitDialog
+          open
+          quota={stream.quotaError}
+          renewsAt={usage?.renewsAt ?? null}
+          onClose={stream.clearQuotaError}
+        />
+      )}
     </div>
   );
 

@@ -25,6 +25,7 @@ import { useBoardStore } from "@/stores/board-store";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { PredictionResult } from "@/lib/engine/types";
 import type { StageEvent } from "@/lib/engine/events";
+import { isReadingQuotaExceeded, type ReadingQuotaExceeded } from "@/lib/billing/quota-error";
 import {
   PANEL_IDS,
   type PanelId,
@@ -102,6 +103,14 @@ export interface AnalysisStreamReturn {
   panelReady: Record<PanelId, PanelReadyState>;
   phase: AnalysisStreamPhase;
   error: string | null;
+  /**
+   * Set when the run was refused for a spent allowance (402), NOT when it failed. A quota wall
+   * is not an error the user can retry their way out of — it's a paywall, and it carries the
+   * numbers needed to say something honest. Null on every other outcome.
+   */
+  quotaError: ReadingQuotaExceeded | null;
+  /** Dismiss the paywall. */
+  clearQuotaError: () => void;
   reconnect: () => void;
   // 9th key — D-02 iter-1 lock; surfaced from `event: started` frame (pitfall #6)
   // for /analyze/[id] nav + polling key + P6 permalink replay
@@ -137,6 +146,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   const [partial, setPartial] = useState<PartialStreamState>({ personas: [] });
   const [result, setResult] = useState<PredictionResult | null>(completedFromInitial);
   const [error, setError] = useState<string | null>(null);
+  const [quotaError, setQuotaError] = useState<ReadingQuotaExceeded | null>(null);
   const [filmstrips, setFilmstrips] = useState<Record<number, string>>({});
   const [analysisId, setAnalysisId] = useState<string | null>(
     (opts?.initialData && (opts.initialData as { id?: string }).id) ?? null,
@@ -316,6 +326,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       setPhase("analyzing");
       setStages([]);
       setError(null);
+      setQuotaError(null);
       setFilmstrips({});
 
       const controller = new AbortController();
@@ -330,7 +341,17 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Analysis failed" }));
-        throw new Error(err.error ?? "Analysis failed");
+
+        // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
+        // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;
+        // throwing the bare slug is how `reading_quota_exceeded` ended up on screen.
+        if (res.status === 402 && isReadingQuotaExceeded(err)) {
+          setQuotaError(err);
+          throw new Error(err.message);
+        }
+
+        // Prefer the server's human `message` over the machine slug in `error`.
+        throw new Error(err.message ?? err.error ?? "Analysis failed");
       }
       if (!res.body) throw new Error("No response body");
 
@@ -632,5 +653,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     setFilmstrips({});
   }, [abort]);
 
-  return { start, result, stages, partial, panelReady, phase, error, reconnect, analysisId, filmstrips, abort, reset };
+  const clearQuotaError = useCallback(() => setQuotaError(null), []);
+
+  return { start, result, stages, partial, panelReady, phase, error, quotaError, clearQuotaError, reconnect, analysisId, filmstrips, abort, reset };
 }
