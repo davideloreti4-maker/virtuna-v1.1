@@ -136,10 +136,17 @@ describe('cortex-sim — determinism + parcel heterogeneity', () => {
   it('makes the map CONTIGUOUS, not salt-and-pepper — neighbours run hot together', () => {
     // The tell of a generated map is per-parcel independence. Two parcels 6px apart must be far
     // more alike than two on opposite sides of the cortex.
+    //
+    // Measured RELATIVE to the bias spread, not as an absolute gap: the spread is a tuning knob (it
+    // sets how much of the cortex clears threshold at once), and an absolute bound here silently
+    // fails the moment that knob moves, while saying nothing about the smoothness it claims to pin.
     const at = (x: number, y: number) => parcelTexture(0, 999, x, y).bias;
+    const grid = Array.from({ length: 300 }, (_, i) => at((i * 37) % 300, (i * 53) % 200));
+    const spread = Math.max(...grid) - Math.min(...grid);
+
     const neighbourGap = Math.abs(at(120, 100) - at(126, 104));
     const acrossGap = Math.abs(at(40, 60) - at(250, 150));
-    expect(neighbourGap).toBeLessThan(0.06);
+    expect(neighbourGap / spread).toBeLessThan(0.15);
     expect(acrossGap).toBeGreaterThan(neighbourGap);
   });
 });

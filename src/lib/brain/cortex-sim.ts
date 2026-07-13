@@ -245,7 +245,11 @@ export function parcelTexture(parcelIndex: number, seed: number, cx = 0, cy = 0)
       0.5 * Math.sin(cx * 0.075 + cy * 0.066 + p3)) /
     2.3; // → about −1..1
   return {
-    bias: 0.78 + (n * 0.5 + 0.5) * 0.5, // 0.78 … 1.28, smooth across neighbours
+    // 0.35 … 1.40, smooth across neighbours. The RANGE matters as much as the smoothness: a narrow
+    // band (the old 0.78–1.28) puts every parcel on the same side of the threshold at the same
+    // moment, so the whole cortex washes one colour instead of forming clusters — a uniform tint
+    // reads as a filter over a picture of a brain, not as a measurement of one.
+    bias: 0.35 + (n * 0.5 + 0.5) * 1.05,
     phase: rng() * Math.PI * 2,
     rate: 0.25 + rng() * 0.5,
     curv: rng(),
@@ -257,7 +261,17 @@ export function parcelTexture(parcelIndex: number, seed: number, cx = 0, cy = 0)
  * baseline gray and only the parcels that clear the threshold are painted. Colouring every parcel
  * is what makes a generated map look like stained glass instead of an fMRI.
  */
-export const ACTIVATION_THRESHOLD = 0.42;
+export const ACTIVATION_THRESHOLD = 0.45;
+
+/**
+ * How far above the threshold a parcel must run to be painted at FULL colour.
+ *
+ * This is not cosmetic. Predicted BOLD lives in a narrow band — after the HRF (a low-pass) the hot
+ * parcels land around 0.55–0.85, never near 1.0. Ramping the colour over threshold→1.0 therefore
+ * leaves every real response stranded at the pale end of the ramp, and the map washes out into a
+ * tint you cannot read. The ramp has to span the values that actually occur.
+ */
+export const ACTIVATION_SPAN = 0.3;
 
 /** One parcel's predicted BOLD at time `t`, from its network's response and its own texture. */
 export function parcelValue(networkValue: number, tex: ParcelTexture, t: number): number {

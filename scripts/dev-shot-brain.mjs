@@ -1,7 +1,16 @@
+/**
+ * dev-shot-brain — DEV TOOL ONLY. Drives a real browser at /dev/cards#room and shoots the brain.
+ *
+ * Playwright MCP hangs on this app (the ambient-room animations never settle), and the cortex is
+ * WebGL, so a jsdom/happy-dom test pass cannot see it at all. This is the only way to check the
+ * thing the owner actually looks at.
+ *
+ *   node scripts/dev-shot-brain.mjs      (dev server must be up on :3400)
+ */
 const { chromium } = await import('/Users/davideloreti/virtuna-brain/node_modules/playwright/index.mjs');
 
 const BASE = 'http://localhost:3400';
-const OUT = '/private/tmp/claude-501/-Users-davideloreti-virtuna-v1-1/80152fa8-db41-47b6-9642-def7e406879d/scratchpad';
+const OUT = process.env.OUT ?? '/tmp';
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2 });
@@ -20,35 +29,51 @@ await page.goto(`${BASE}/dev/cards`, { waitUntil: 'domcontentloaded' });
 const room = page.locator('#room');
 await room.scrollIntoViewIfNeeded();
 await page.waitForSelector('[data-testid="brain-view"]', { timeout: 30000 });
-await page.waitForTimeout(3500); // let the simulated encounter run into the Hold
+
+// The cortex is lazy-loaded (three is a heavy chunk) and builds a 40k-vertex mesh on mount.
+await page.waitForSelector('[data-testid="cortex-canvas"] canvas', { timeout: 45000 });
+await page.waitForTimeout(4000);
 
 const brains = page.locator('[data-testid="brain-view"]');
-console.log('brain views on page:', await brains.count());
-console.log('modes:', await brains.evaluateAll((els) => els.map((e) => e.dataset.mode)));
-console.log('parcels in first brain:', await brains.first().locator('polygon').count());
+console.log('brain views:', await brains.count(), '| modes:', await brains.evaluateAll((els) => els.map((e) => e.dataset.mode)));
 
-await room.screenshot({ path: `${OUT}/brain2-room.png`, animations: 'disabled', caret: 'hide' });
-await brains.first().screenshot({ path: `${OUT}/brain2-sim.png`, animations: 'disabled', caret: 'hide' });
-
-// The GROUNDED one: play the real video and confirm the brain clock follows the playhead.
-const grounded = brains.nth(1);
-const video = grounded.locator('[data-testid="brain-stimulus-video"]');
-await video.waitFor({ timeout: 15000 });
-const meta = await video.evaluate(async (v) => {
-  if (v.readyState < 1) await new Promise((r) => v.addEventListener('loadedmetadata', r, { once: true }));
-  return { duration: v.duration, w: v.videoWidth, h: v.videoHeight };
+// Is WebGL actually PAINTING, or is the canvas blank? An empty canvas passes every DOM assertion.
+const painted = await page.locator('[data-testid="cortex-canvas"] canvas').first().evaluate((c) => {
+  const gl = c.getContext('webgl2') ?? c.getContext('webgl');
+  if (!gl) return { ok: false, why: 'no GL context' };
+  const px = new Uint8Array(c.width * c.height * 4);
+  gl.readPixels(0, 0, c.width, c.height, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  let lit = 0;
+  const tones = new Set();
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] > 8) {
+      lit++;
+      tones.add(`${px[i] >> 5},${px[i + 1] >> 5},${px[i + 2] >> 5}`);
+    }
+  }
+  return {
+    ok: lit > 0,
+    coverage: +(lit / (c.width * c.height)).toFixed(3),
+    distinctTones: tones.size,
+    size: `${c.width}x${c.height}`,
+  };
 });
-console.log('video metadata:', JSON.stringify(meta));
+console.log('cortex pixels:', JSON.stringify(painted));
 
-await grounded.getByRole('button', { name: /play the stimulus/i }).click();
+await room.screenshot({ path: `${OUT}/app-room.png`, animations: 'disabled', caret: 'hide' });
+await brains.first().screenshot({ path: `${OUT}/app-brain-sim.png`, animations: 'disabled', caret: 'hide' });
+await brains
+  .first()
+  .locator('[data-testid="brain-surface"]')
+  .screenshot({ path: `${OUT}/app-cortex.png`, animations: 'disabled', caret: 'hide' });
+
+// The GROUNDED one: the real video drives the scan clock.
+const grounded = brains.nth(1);
+await grounded.getByRole('button', { name: /play the stimulus/i }).click().catch(() => {});
 await page.waitForTimeout(2600);
-const playState = await video.evaluate((v) => ({ paused: v.paused, currentTime: +v.currentTime.toFixed(2) }));
-console.log('after play:', JSON.stringify(playState));
-// The brain's clock must be reading the VIDEO's playhead, not its own loop.
-const clock = await grounded.locator('p.font-mono').first().innerText().catch(() => '');
 const clockLine = await grounded.evaluate((el) => el.innerText.split('\n').find((l) => l.includes('TR')) ?? '');
-console.log('brain clock:', JSON.stringify(clockLine), '| header:', JSON.stringify(clock));
+console.log('grounded clock:', JSON.stringify(clockLine));
+await grounded.screenshot({ path: `${OUT}/app-brain-grounded.png`, animations: 'disabled', caret: 'hide' });
 
-await grounded.screenshot({ path: `${OUT}/brain2-grounded.png`, animations: 'disabled', caret: 'hide' });
-console.log('console errors:', errors.length ? errors.slice(0, 4) : 'none');
+console.log('console errors:', errors.length ? errors.slice(0, 5) : 'none');
 await browser.close();

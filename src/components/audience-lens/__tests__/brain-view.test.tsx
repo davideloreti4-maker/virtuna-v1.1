@@ -12,9 +12,16 @@
  *  - the render is DETERMINISTIC for a given focus (seeded off the focus id): the same props
  *    produce the same first frame, which is what keeps SSR + hydration in agreement.
  */
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, within, fireEvent } from '@testing-library/react';
 import { AmbientRoom } from '../AmbientRoom';
+
+// The cortex is WebGL — there is no GL context in happy-dom, and the surface itself is covered by
+// its own headless tests (`src/lib/brain/__tests__/cortex-mesh.test.ts`). What matters HERE is that
+// the panel mounts it, and that the honesty chrome around it survives.
+vi.mock('../CortexCanvas', () => ({
+  default: ({ seed }: { seed: number }) => <div data-testid="cortex-canvas" data-seed={seed} />,
+}));
 
 afterEach(cleanup);
 
@@ -64,12 +71,15 @@ describe('AmbientRoom — the brain scale', () => {
     expect(within(brain).getByText(/haemodynamic lag/i)).toBeInTheDocument();
   });
 
-  it('renders the real parcellated cortex — both views, hundreds of parcels', () => {
-    const { container } = render(room());
-    // A dense parcel map is the whole point: 14 blobs read as decoration.
-    expect(container.querySelectorAll('[data-testid="brain-view"] polygon').length).toBeGreaterThan(300);
-    expect(screen.getByRole('img', { name: /lateral view/i })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: /medial view/i })).toBeInTheDocument();
+  it('mounts the 3D cortical surface as the hero, seeded off the focus', async () => {
+    render(room());
+    const brain = screen.getByTestId('brain-view');
+    // The surface is the object — a thumbnail-sized diagram is what got rejected twice.
+    expect(within(brain).getByTestId('brain-surface')).toBeInTheDocument();
+    const canvas = await within(brain).findByTestId('cortex-canvas');
+    expect(canvas).toBeInTheDocument();
+    // It is a real hemisphere in a real projection, and the figure says which.
+    expect(within(brain).getByText(/left hemisphere · lateral/i)).toBeInTheDocument();
   });
 
   it('keeps the brain OUT of the embedded Room (video Read / room drawer), landing on the people', () => {
