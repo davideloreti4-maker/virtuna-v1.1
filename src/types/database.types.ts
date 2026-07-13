@@ -2412,6 +2412,7 @@ export type Database = {
           last_synced_at: string | null
           status: string
           trial_ends_at: string | null
+          trial_started_at: string | null
           updated_at: string | null
           user_id: string
           virtuna_tier: string
@@ -2428,6 +2429,7 @@ export type Database = {
           last_synced_at?: string | null
           status?: string
           trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
           user_id: string
           virtuna_tier?: string
@@ -2444,6 +2446,7 @@ export type Database = {
           last_synced_at?: string | null
           status?: string
           trial_ends_at?: string | null
+          trial_started_at?: string | null
           updated_at?: string | null
           user_id?: string
           virtuna_tier?: string

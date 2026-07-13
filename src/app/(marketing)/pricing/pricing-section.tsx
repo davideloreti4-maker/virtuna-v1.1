@@ -135,8 +135,9 @@ export function PricingSection() {
               Simple, transparent pricing
             </h1>
             <p className="mt-4 text-lg text-foreground-secondary max-w-xl mx-auto">
-              Every plan starts at {TRIAL.price} for {TRIAL.days} days. Cancel before it
-              renews and you&apos;ve spent a dollar.
+              Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.readings}{" "}
+              Readings to judge it on your own videos. Cancel before it renews and
+              you&apos;ve spent a dollar.
             </p>
           </div>
         </FadeIn>

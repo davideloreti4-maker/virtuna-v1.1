@@ -6,6 +6,7 @@ import {
   getPlan,
   isPaidPlanId,
   readingAllowance,
+  readingAllowanceFor,
   readingsLabel,
 } from "@/lib/pricing";
 
@@ -60,6 +61,33 @@ describe("pricing — owner-locked plans", () => {
     // conversion is the thing customers file chargebacks over.
     expect(TRIAL.microcopy).toMatch(/then the plan price/i);
     expect(TRIAL.microcopy).toMatch(/cancel anytime/i);
+  });
+
+  it("caps the trial pool at 5 Readings — the leech guard", () => {
+    // Owner-locked 2026-07-13. $1 buys FIVE Readings, whatever plan was picked. Raising this
+    // silently is how a dollar starts buying $22 of engine spend (150 Pro Readings).
+    expect(TRIAL.readings).toBe(5);
+    expect(TRIAL.readings).toBeLessThan(getPlan("starter").readingsPerMonth!);
+  });
+});
+
+describe("pricing — the trial pool beats the plan allowance", () => {
+  it("caps EVERY plan at 5 Readings inside the trial", () => {
+    for (const plan of PLANS) {
+      expect(readingAllowanceFor(plan.id, { inTrial: true })).toBe(5);
+    }
+  });
+
+  it("never lets Studio's `unlimited` (null) leak into a trial", () => {
+    // The dangerous one: null means "don't even count". Inside a trial it must be 5.
+    expect(getPlan("studio").readingsPerMonth).toBeNull();
+    expect(readingAllowanceFor("studio", { inTrial: true })).toBe(5);
+  });
+
+  it("restores the plan's own allowance once the trial converts", () => {
+    expect(readingAllowanceFor("starter", { inTrial: false })).toBe(50);
+    expect(readingAllowanceFor("pro", { inTrial: false })).toBe(150);
+    expect(readingAllowanceFor("studio", { inTrial: false })).toBeNull();
   });
 });
 

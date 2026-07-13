@@ -63,9 +63,25 @@ export function resolveWhopPlanId(
 }
 
 /**
+ * Is this Whop plan one of the $1 / 3-day trial SKUs? The webhook uses this to stamp the
+ * trial window on the subscription, which is what caps the trial at 5 Readings.
+ *
+ * Returns false when no trial plans are configured — a plan we cannot recognise as a trial
+ * is treated as a full-price plan, which is the SAFE direction to be wrong in for tier
+ * GRANTS (the customer gets what they paid for) but note it also means no trial cap. Keep
+ * `WHOP_TRIAL_PLAN_ID_*` in sync with the Whop dashboard.
+ */
+export function isTrialPlanId(productId: string): boolean {
+  if (!productId) return false;
+  return (["starter", "pro", "studio"] as const).some(
+    (tier) => productId === WHOP_TRIAL_PLAN_IDS[tier]
+  );
+}
+
+/**
  * Map a Whop plan id (from a webhook) back to the tier it grants. A plan and its $1 trial
- * SKU grant the SAME tier — someone three days into a $1 Pro trial IS on Pro; the trial
- * ending arrives later as its own cancellation/expiry webhook.
+ * SKU grant the SAME tier — someone three days into a $1 Pro trial IS on Pro; what differs
+ * is their Reading pool (5, not the plan's monthly allowance), enforced via the trial window.
  */
 export function mapWhopProductToTier(productId: string): NumenTier {
   for (const tier of ["starter", "pro", "studio"] as const) {
