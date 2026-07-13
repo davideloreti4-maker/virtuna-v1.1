@@ -48,12 +48,7 @@ function engagementPct(t: FeedTile): string {
   return `${Math.round(rate * 100)}%`;
 }
 
-const PILL =
-  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums";
-/** Secondary chrome — views / engagement sit quieter than the outlier hero metric. */
-const PILL_SECONDARY = cn(PILL, "bg-white/[0.06] text-foreground-muted");
-/** Outlier hero — slightly heavier type so × baseline leads the row. */
-const PILL_OUTLIER = cn(PILL, "text-xs font-semibold");
+const PILL = "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums";
 
 interface FeedCardProps {
   tile: FeedTile;
@@ -68,40 +63,23 @@ interface FeedCardProps {
 function OutlierPill({ m }: { m: number }) {
   if (!Number.isFinite(m) || m <= 0) return null;
   const label = formatMultiplier(m);
-  const aria = `${label} account baseline`;
   if (m > 1.05) {
     return (
-      <span
-        className={cn(PILL_OUTLIER, "bg-success/10 text-success")}
-        title={aria}
-        aria-label={aria}
-      >
-        <TrendUp size={13} weight="bold" aria-hidden="true" />
+      <span className={cn(PILL, "bg-success/10 text-success")}>
+        <TrendUp size={12} weight="bold" />
         {label}
       </span>
     );
   }
   if (m < 0.95) {
     return (
-      <span
-        className={cn(PILL_OUTLIER, "bg-error/10 text-error")}
-        title={aria}
-        aria-label={aria}
-      >
-        <TrendDown size={13} weight="bold" aria-hidden="true" />
+      <span className={cn(PILL, "bg-error/10 text-error")}>
+        <TrendDown size={12} weight="bold" />
         {label}
       </span>
     );
   }
-  return (
-    <span
-      className={cn(PILL_OUTLIER, "bg-white/[0.06] text-foreground-secondary")}
-      title={aria}
-      aria-label={aria}
-    >
-      {label}
-    </span>
-  );
+  return <span className={cn(PILL, "bg-white/[0.06] text-foreground-secondary")}>{label}</span>;
 }
 
 export function FeedCard({
@@ -225,20 +203,12 @@ export function FeedCard({
 
         <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-0.5">
           <OutlierPill m={tile.multiplier} />
-          <span
-            className={PILL_SECONDARY}
-            title={`${formatCount(tile.views)} views`}
-            aria-label={`${formatCount(tile.views)} views`}
-          >
-            <Eye size={12} weight="fill" className="opacity-70" aria-hidden="true" />
+          <span className={cn(PILL, "bg-white/[0.06] text-foreground-secondary")}>
+            <Eye size={12} weight="fill" className="opacity-70" />
             {formatCount(tile.views)}
           </span>
-          <span
-            className={PILL_SECONDARY}
-            title={`${engagementPct(tile)} engagement`}
-            aria-label={`${engagementPct(tile)} engagement`}
-          >
-            <Lightning size={12} weight="fill" className="opacity-70" aria-hidden="true" />
+          <span className={cn(PILL, "bg-white/[0.06] text-foreground-secondary")}>
+            <Lightning size={12} weight="fill" className="opacity-70" />
             {engagementPct(tile)}
           </span>
         </div>
