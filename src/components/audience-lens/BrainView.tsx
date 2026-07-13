@@ -125,8 +125,10 @@ export function BrainView({
     [mode, stopRatio, duration, retentionAt, seedKey],
   );
 
-  // ── The clock. Reduced motion holds at the stimulus midpoint (the characteristic frame);
-  //    otherwise the video drives it, or an internal TR-paced loop does.
+  // The whole encounter, sampled once — the stimulus's neural drive and the BOLD it predicts.
+  const trace = useMemo(() => buildTrace(drive, duration), [drive, duration]);
+
+  // ── The clock. The video drives it, or an internal TR-paced loop does.
   const [t, setT] = useState(reducedMotion ? TEXT_STIMULUS_S / 2 : 0);
   // The text stimulus autoplays (it IS the ambient read). A VIDEO waits for a tap — autoplaying
   // media the moment a panel opens is hostile.
@@ -142,6 +144,38 @@ export function BrainView({
     }, TICK_MS);
     return () => clearInterval(id);
   }, [reducedMotion, videoSrc, playing, duration]);
+
+  /**
+   * OPEN ON THE CHARACTERISTIC FRAME, not on a dead cortex.
+   *
+   * A video waits for a tap, so the grounded panel used to open at t=0 — which is INSIDE the
+   * haemodynamic lag, where by construction nothing has responded yet. The map was therefore blank
+   * on arrival and the instrument looked broken. It was not: probing the model, grounded clears
+   * threshold from ~6s and stays lit for 14 of 17 sampled frames. The bug was that we were showing
+   * the one moment that is honestly empty.
+   *
+   * So the scan opens on its PEAK — the moment the audience's own retention curve says is the
+   * crisis — and the video is seeked to match, so the thumbnail and the cortex agree. Press play and
+   * it runs from there; the lag is then visible as the response climbing out behind the stimulus.
+   * Only before the FIRST play: pausing later must not yank the clock back.
+   */
+  const hasPlayed = useRef(false);
+  useEffect(() => {
+    if (playing) hasPlayed.current = true;
+  }, [playing]);
+
+  useEffect(() => {
+    if (!videoSrc || playing || hasPlayed.current) return;
+    setT(trace.peakT);
+    const v = videoRef.current;
+    if (v && v.readyState >= 1 && Number.isFinite(v.duration)) {
+      try {
+        v.currentTime = Math.min(trace.peakT, v.duration - 0.05);
+      } catch {
+        /* a seek can throw while the media is still settling — the cortex is already correct */
+      }
+    }
+  }, [videoSrc, playing, trace.peakT]);
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
@@ -166,6 +200,13 @@ export function BrainView({
     let best: NetworkId = NETWORK_IDS[0]!;
     for (const id of NETWORK_IDS) if (bold[id] > bold[best]) best = id;
     return best;
+  }, [bold]);
+
+  // Where the room sits on the diverging axis right now: task-positive attention MINUS the
+  // default-mode system. This is the same anticorrelation the map is painted on, read as one number.
+  const axisPct = useMemo(() => {
+    const axis = Math.max(-1, Math.min(1, bold.dorsal_attention - bold.default));
+    return ((axis + 1) / 2) * 100;
   }, [bold]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
@@ -195,7 +236,7 @@ export function BrainView({
              cost no rows and the cortex gets the whole frame. ── */}
       <div
         className="relative mt-2.5 w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
-        style={{ aspectRatio: '4 / 3', background: WELL_BG }}
+        style={{ aspectRatio: '11 / 8', background: WELL_BG }}
         data-testid="brain-surface"
       >
         {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
@@ -247,6 +288,19 @@ export function BrainView({
                 style={{ left: `${pct}%`, transform: pct === 100 ? 'translateX(-1px)' : undefined }}
               />
             ))}
+            {/* THE LIVE MARKER — where the room is sitting on the axis RIGHT NOW. A legend only tells
+                you how to read the map; this also tells you the reading, and it moves with the scan.
+                (TRIBE's colorbar is inert. This is the cheapest place to be better than it.) */}
+            <span
+              aria-hidden
+              className="absolute -top-[3px] h-[10px] w-[2px] rounded-full bg-[var(--cream-primary)]"
+              style={{
+                left: `${axisPct}%`,
+                transform: 'translateX(-1px)',
+                boxShadow: '0 0 0 1.5px rgba(19,18,16,0.9)',
+                ...(reducedMotion ? {} : { transition: 'left 260ms linear' }),
+              }}
+            />
           </div>
           <p className="mt-[6px] text-center text-[9px] leading-none text-[var(--color-foreground-muted)]">
             predicted BOLD
@@ -269,7 +323,7 @@ export function BrainView({
           the flex row and the grounded pane came out ~2× the text one — which put the grounded card
           back over its container (measured: 530px of content in a 516px box) while the simulated one
           fit. The card has to fit in BOTH modes, and the two should not be different shapes. */}
-      <div className="mt-2.5 flex h-[64px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
+      <div className="mt-2.5 flex h-[76px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
             reads as a broken image. It gets a plain transport button, and the words — which ARE
@@ -347,13 +401,13 @@ export function BrainView({
               ))}
             </p>
           )}
-          {/* The scan head — where we are in the encounter. */}
-          <span className="block h-[2px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-            <span
-              className="block h-full rounded-full bg-[rgba(236,231,222,0.35)]"
-              style={{ width: `${Math.round(u * 100)}%`, ...(reducedMotion ? {} : { transition: 'width 200ms linear' }) }}
-            />
-          </span>
+          {/* ── THE TRACE. This is the instrument TRIBE has no equivalent of, and it earns its
+                 place: the card CLAIMS a haemodynamic lag in words, and here you can SEE it. The
+                 pale line is the stimulus's neural drive; the sage line is the BOLD it predicts,
+                 visibly climbing out behind it. It replaces a plain progress bar that carried a
+                 single number (where are we) with the same playhead plus the whole shape of the
+                 encounter. ── */}
+          <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
         </div>
       </div>
 
@@ -402,13 +456,14 @@ export function BrainView({
       </div>
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
-          and the finding everything above is evidence for. It used to be clipped off the bottom. */}
-      <p className="mt-3 font-serif text-[15px] leading-snug tracking-[-0.005em] text-foreground">
+          and the finding everything above is evidence for. It used to be clipped off the bottom.
+          It leads on size and weight because it is the answer; everything above it is the working. */}
+      <p className="mt-3.5 font-serif text-[16px] leading-[1.35] tracking-[-0.01em] text-foreground">
         {verdictFor(stopRatio, bold, mode)}
       </p>
 
       {/* Foot — the honesty line. It must survive every redesign. */}
-      <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
+      <p className="mt-2.5 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
           : 'a modeled response · a sketch, not a measurement'}
@@ -418,6 +473,137 @@ export function BrainView({
         {mode === 'grounded' ? 'Modeled' : 'Simulated'} cortical response to “{conceptText}”:{' '}
         {SPOKEN_NETWORKS.map((n) => `${n.label} ${bandWord(bold[n.id], n.words)}`).join(', ')}.
       </p>
+    </div>
+  );
+}
+
+/** How many points the trace is sampled at. Enough to draw the HRF's shape, cheap enough to build
+ *  synchronously whenever the drive changes (which is rarely — never on the scan clock). */
+const TRACE_N = 56;
+
+interface Trace {
+  /** The DIVERGING AXIS over the encounter: task-positive attention MINUS the default-mode system,
+   *  in −1..+1. Above zero the room is with you; below it, it is somewhere else. */
+  axis: number[];
+  /** The scan time of the strongest predicted response — the encounter's characteristic frame. */
+  peakT: number;
+}
+
+/**
+ * Sample the whole encounter once, and plot THE AXIS — the same task-positive ⇄ default-mode
+ * anticorrelation the cortex is painted on, and the same one the colorbar is scaled to.
+ *
+ * ⚠️ This is the third series I tried, and the first two were wrong for reasons worth keeping:
+ *
+ *  • Plotting the drive against the BOLD, each normalized to its own range, made the lag pop —
+ *    and was a LIE. Measured: over a 15s encounter the drive swings 0.23→0.89 but the BOLD only
+ *    moves 0.590→0.645, because the HRF is a 16-second low-pass that eats nearly all the structure.
+ *    The series' own numerical wobble is ~18% of that 0.055 span, so min-max normalization was
+ *    amplifying rounding noise into a full-height zigzag — a manufactured signal, drawn as data.
+ *  • Re-plotting both on a common absolute scale was honest, and inert: a spiking stimulus and a
+ *    flat line. True, and worth nothing to a creator.
+ *
+ * The axis is the series that carries the STORY, and it is well-conditioned: measured span 0.93 in
+ * grounded mode, roughness ~1.4% of span (no zigzag), and it CROSSES ZERO — negative early, positive
+ * through the middle, negative again at the end. That is "you lose them in the back half", drawn.
+ * It also costs nothing to read, because the sage/coral it is filled with already means exactly this
+ * everywhere else on the card.
+ */
+function buildTrace(input: DriveInput, duration: number): Trace {
+  const axis: number[] = [];
+  let peakT = 0;
+  let peakV = -Infinity;
+
+  for (let i = 0; i < TRACE_N; i++) {
+    const t = (i / (TRACE_N - 1)) * duration;
+    const b = predictedBold(input, t);
+    axis.push(Math.max(-1, Math.min(1, b.dorsal_attention - b.default)));
+    // The characteristic frame is the loudest MOMENT overall, not the loudest attention — a scan
+    // dominated by the default network is still a scan, and its peak is still where the story is.
+    const loudest = Math.max(...NETWORK_IDS.map((n) => b[n]));
+    if (loudest > peakV) {
+      peakV = loudest;
+      peakT = t;
+    }
+  }
+  return { axis, peakT };
+}
+
+/**
+ * Where the zero line sits in the trace's 0..10 user space, and the gain applied to the axis.
+ *
+ * The gain is set so that ±0.75 fills the box, NOT ±1. The axis is a difference of two 0..1
+ * networks, so ±1 is its arithmetic limit but nowhere near its practical range: measured, it lives
+ * inside ±0.55. Scaling to the arithmetic limit wasted two thirds of the box and drew the whole
+ * story as a flat ripple. Anything beyond ±0.75 simply clips at the edge, which has not been
+ * observed and would in any case be honest — a pegged meter reads as pegged.
+ */
+const TRACE_ZERO = 5;
+const TRACE_GAIN = 6.1;
+
+/**
+ * The trace: engagement over the whole encounter, filled sage where the room is with you and coral
+ * where it is drifting — the same two poles as the map and the colorbar, so the card speaks one
+ * language. The playhead says where the scan currently is.
+ *
+ * Drawn in a 0..100 × 0..10 user space and stretched to fit, so it stays crisp at any card width
+ * with no resize observer.
+ */
+function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reducedMotion: boolean }) {
+  const n = trace.axis.length;
+  const pts = trace.axis
+    .map((v, i) => `${((i / (n - 1)) * 100).toFixed(2)},${(TRACE_ZERO - v * TRACE_GAIN).toFixed(2)}`)
+    .join(' L');
+  // Closed to the ZERO LINE (not the floor), so the fill reads as a signed deflection rather than a
+  // quantity — which is what a diverging axis is.
+  const area = `M0,${TRACE_ZERO} L${pts} L100,${TRACE_ZERO} Z`;
+
+  return (
+    <div className="relative w-full" aria-hidden>
+      <svg
+        viewBox="0 0 100 10"
+        preserveAspectRatio="none"
+        className="block h-[18px] w-full"
+        data-testid="brain-hrf-trace"
+      >
+        <defs>
+          {/* The sign of the deflection picks the colour, by clipping the SAME area path to the half
+              of the box it belongs in. One path, two meanings — and no chance of the two halves
+              disagreeing about where zero is. */}
+          <clipPath id="trace-up">
+            <rect x="0" y="0" width="100" height={TRACE_ZERO} />
+          </clipPath>
+          <clipPath id="trace-down">
+            <rect x="0" y={TRACE_ZERO} width="100" height={10 - TRACE_ZERO} />
+          </clipPath>
+        </defs>
+
+        <path d={area} clipPath="url(#trace-up)" fill={SAGE} fillOpacity="0.30" />
+        <path d={area} clipPath="url(#trace-down)" fill="var(--color-accent)" fillOpacity="0.32" />
+
+        {/* Zero — the line the room is either above or below. */}
+        <line
+          x1="0"
+          x2="100"
+          y1={TRACE_ZERO}
+          y2={TRACE_ZERO}
+          stroke="rgba(236,231,222,0.18)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+        <path
+          d={`M${pts}`}
+          fill="none"
+          stroke="rgba(236,231,222,0.55)"
+          strokeWidth="1"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      {/* The playhead. */}
+      <span
+        className="pointer-events-none absolute inset-y-0 w-px bg-[rgba(236,231,222,0.5)]"
+        style={{ left: `${u * 100}%`, ...(reducedMotion ? {} : { transition: 'left 200ms linear' }) }}
+      />
     </div>
   );
 }
@@ -453,11 +639,16 @@ function HeadGhost() {
       aria-hidden
       data-testid="brain-head-ghost"
     >
+      {/* The cranium HUGS the specimen. Drawn too large, the brain rattles around inside a skull two
+          sizes too big and the gap reads as dead space rather than as anatomy; drawn too small, the
+          cortex bursts out through the skull. So this outline is registered to the cortex's MEASURED
+          projection (x 49–357, y 55–256 at the camera in CortexCanvas) with a thin skull-and-dura
+          margin. If you move the camera or the group's position, this path moves with it. */}
       <path
-        d="M250 18 C160 18 82 70 74 140 C72 158 52 164 44 180 C36 194 58 197 60 205
-           L34 240 C27 252 48 255 64 256 C55 267 60 276 72 281 C76 292 82 298 88 300
-           L400 300 C400 220 396 90 340 48 C315 30 285 18 250 18 Z"
-        fill="rgba(236, 231, 222, 0.055)"
+        d="M235 36 C165 30 82 70 46 132 C40 146 30 152 24 166 C16 182 34 186 36 194
+           L14 232 C7 245 28 248 42 249 C34 260 38 268 48 274 C52 285 60 294 72 300
+           L400 300 C400 230 400 110 380 76 C360 42 305 40 235 36 Z"
+        fill="rgba(236, 231, 222, 0.085)"
       />
     </svg>
   );

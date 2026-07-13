@@ -52,6 +52,10 @@ const FRAG = /* glsl */ `
   uniform vec3 uDmnHigh;
   uniform vec3 uLight;
   uniform vec3 uRim;
+  uniform vec3 uKeyCol;
+  uniform vec3 uFillCol;
+  uniform vec3 uFillDir;
+  uniform vec3 uAmbient;
   uniform float uThreshold;
   uniform float uSpan;
   varying float vCurv;
@@ -78,19 +82,28 @@ const FRAG = /* glsl */ `
     // lifts, and the base ramp is smoothstepped so the broad gyral crowns commit to the crown
     // colour instead of sitting halfway to the sulcus. Measured on the real render: sulci ≈ 36,
     // crowns ≈ 241 — the range TRIBE's specimen uses.
+    // A THREE-POINT RIG, not a single lamp. One lamp plus ambient is what makes CG read as CG: every
+    // surface facing away from it collapses to the same flat ambient grey, and the object goes
+    // chalky. A specimen photographed on a bench has a warm key, a cool bounce filling the shadow
+    // side, and a rim separating it from the ground — and the warm/cool split across the form is
+    // most of what the eye reads as "this is real, and it is lit".
     float ao = mix(0.55, 1.0, vCurv);
-    float diff = 0.42 + 0.78 * lam;
+    float key = 0.86 * lam;
+    float fill = 0.30 * max(dot(N, uFillDir), 0.0);
+    vec3 light = (uAmbient * 0.34 + uKeyCol * key + uFillCol * fill) * ao;
+
     vec3 base = mix(uSulcus, uGyrus, smoothstep(0.0, 0.85, vCurv));
-    vec3 col = base * diff * ao;
+    vec3 col = base * light;
 
     // A tight specular sheen. A fixed brain is WET, and that highlight is a real part of why a
     // photographed specimen reads as tissue rather than as clay. Gated on curvature so it fires on
     // the crowns and never lights the inside of a sulcus.
     vec3 H = normalize(L + V);
-    col += vec3(pow(max(dot(N, H), 0.0), 26.0) * 0.16 * vCurv);
+    col += uKeyCol * (pow(max(dot(N, H), 0.0), 26.0) * 0.18 * vCurv);
 
     // The activation, thresholded. Most of the cortex sits at baseline: painting every vertex is
     // what makes a generated map look like stained glass instead of a statistical map.
+    float lit = 0.42 + 0.78 * lam;
     float a = abs(vVal);
     if (a > uThreshold) {
       // Ramp over the range predicted BOLD ACTUALLY occupies (uSpan), not over threshold→1.0 —
@@ -118,7 +131,7 @@ const FRAG = /* glsl */ `
       float alpha = smoothstep(0.0, 0.22, s) * (0.45 + 0.55 * s);
       // Light the heat with the SAME tone curve, so it lies ON the folds — a surface map sits on
       // the anatomy, it does not replace it.
-      col = mix(col, hot * diff * ao, alpha);
+      col = mix(col, hot * lit * ao, alpha);
     }
 
     // A cool rim keeps the silhouette off the near-black well.
@@ -189,6 +202,13 @@ function Cortex({
       uDmnHigh: { value: rgb(0xc44236) },
       uLight: { value: new THREE.Vector3(-0.45, 0.72, 0.85) },
       uRim: { value: rgb(0x8fa7bd) },
+      // The rig. Warm key + cool fill is the oldest trick in specimen photography and the reason a
+      // lit form reads as SOLID: the shadow side is not merely darker, it is a different colour.
+      uKeyCol: { value: new THREE.Vector3(1.0, 0.97, 0.92) },
+      uFillCol: { value: new THREE.Vector3(0.62, 0.70, 0.82) },
+      // The fill comes from the opposite side and BELOW — a bounce off the bench, not a second sun.
+      uFillDir: { value: new THREE.Vector3(0.65, -0.35, 0.35).normalize() },
+      uAmbient: { value: new THREE.Vector3(0.85, 0.83, 0.8) },
       uThreshold: { value: ACTIVATION_THRESHOLD },
       uSpan: { value: ACTIVATION_SPAN },
     }),
@@ -214,7 +234,12 @@ function Cortex({
     // into the conventional LEFT-hemisphere lateral plate (anterior left, the way TRIBE and every
     // anatomical figure plates it), which is also what the projection label has always claimed.
     // Negative scale flips triangle winding, so the material must render both faces — see below.
-    <group ref={group} position={[0.02, 0.05, 0]} scale={[-1, 1, 1]} rotation={[0, -0.18, 0]}>
+    // Seated LOW in the frame, which is where a specimen actually sits under a colorbar: the legend
+    // owns the top-right, and a centred brain climbs straight into it. (TRIBE does exactly this —
+    // their cortex sits low, with clear black above it for the scale.) Projected at z=3.7 this puts
+    // the cortex at roughly x 49–357, y 55–256 of the head's 400×300 viewBox, which is the box the
+    // cranium in BrainView's HeadGhost is drawn around. Move one, move the other.
+    <group ref={group} position={[0.02, -0.10, 0]} scale={[-1, 1, 1]} rotation={[0, -0.18, 0]}>
       <mesh
         geometry={geometry}
         onPointerMove={(e) => {
@@ -267,7 +292,7 @@ export default function CortexCanvas({ seed, bold, t, reducedMotion = false, onH
       // That is the whole reason theirs reads as anatomy and a blown-up brain reads as a 3D asset.
       // So the specimen backs off to ~60% and takes its place in the skull (see HeadGhost) — the
       // frame is full, and nothing is floating.
-      camera={{ position: [0, 0, 4.3], fov: 32 }}
+      camera={{ position: [0, 0, 3.7], fov: 32 }}
       frameloop={reducedMotion ? 'demand' : 'always'}
       style={{ width: '100%', height: '100%' }}
     >

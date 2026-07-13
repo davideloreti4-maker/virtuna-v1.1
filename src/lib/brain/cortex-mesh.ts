@@ -38,15 +38,15 @@ const MEDIAL_FLATTEN = 0.16;
 /** Fold field: spatial frequency (≈ how many gyri span the brain) and displacement amplitude.
  *  7.2 was too fine — it packed the surface with small isotropic bumps and the whole object read as
  *  a WALNUT. A real cortex has a few dozen broad gyri, not a hundred lumps. */
-const FOLD_FREQ = 6.6;
-const FOLD_AMP = 0.058;
+const FOLD_FREQ = 9.4;
+const FOLD_AMP = 0.044;
 /** Sulcal creases sit at the fold field's zero-crossings; this is how wide they cut. Narrow: real
  *  gyri are broad ribbons separated by THIN deep sulci, not a field of round walnut lumps. */
 const SULCUS_WIDTH = 0.30;
 /** The sylvian fissure — the one fold deep enough to be anatomy rather than texture. Keep it SHORT
  *  and THIN: a long dark line across the middle of the render stops reading as a lateral fissure and
  *  starts reading as the interhemispheric midline, which flips the whole image into a top-down view. */
-const SYLVIAN_DEPTH = 0.060;
+const SYLVIAN_DEPTH = 0.150;
 const SYLVIAN_WIDTH = 0.070;
 /** Subdivision level of the base icosahedron. 6 → 40,962 vertices / 81,920 faces — the resolution
  *  the sulci need: at level 5 a crease is only 2-3 vertices wide and reads as a lump. */
@@ -202,22 +202,127 @@ function curvatureAt(x: number, y: number, z: number, seed: number): number {
  * from the rest. It must read as a CREASE, not a canyon: too wide and the brain looks sawn in half.
  */
 function sylvian(x: number, y: number): number {
-  // The fissure line, y = f(x): starts low at the anterior notch and rises gently toward the back.
-  const line = -0.30 + 0.26 * smoothstep(0.50, -0.25, x);
+  // The fissure line, y = f(x). It springs from the anterior notch — where the profile now actually
+  // has one — and sweeps up and back, the way the real lateral fissure runs toward the parietal
+  // operculum. This is the cleft the temporal lobe hangs beneath, so it has to travel far enough to
+  // BE that boundary; the previous line died almost as soon as it started and read as a scratch.
+  const line = -0.34 + 0.40 * smoothstep(0.62, -0.42, x);
   const d = Math.abs(y - line) / SYLVIAN_WIDTH;
-  // It lives in the anterior-inferior half only: it opens at the notch and dies well before the
-  // occipital pole. A fissure that crosses the whole silhouette reads as a midline.
-  const extent = smoothstep(0.56, 0.40, x) * smoothstep(-0.34, -0.14, x);
+  // It still must not cross the WHOLE silhouette: a fissure running pole to pole stops reading as
+  // the lateral fissure and starts reading as the interhemispheric midline, which flips the image
+  // into a top-down view. So it opens at the notch and fades before the occipital pole.
+  const extent = smoothstep(0.72, 0.52, x) * smoothstep(-0.52, -0.26, x);
   return 1 - extent * Math.exp(-d * d);
 }
 
-/** Signed angular difference, wrapped to (−π, π]. */
-const angDiff = (a: number, b: number) => {
-  let d = a - b;
-  while (d > Math.PI) d -= 2 * Math.PI;
-  while (d < -Math.PI) d += 2 * Math.PI;
-  return d;
-};
+// ── THE PROFILE ───────────────────────────────────────────────────────────────
+/**
+ * The lateral silhouette of a hemisphere, authored as landmarks: (x, y) with **+x anterior, +y
+ * superior**, walked counter-clockwise. This is the outline an eye checks FIRST, and for three
+ * rounds it was an egg.
+ *
+ * It is authored rather than fitted from Gaussian lobes because the two features that matter most —
+ * the sylvian notch and the temporal pole — sit only ~0.1 rad apart, so any radial-lobe stack deep
+ * enough to cut a real notch also drags the temporal pole out into a beak. An explicit outline
+ * decouples them, and it puts the anatomy where it can be read and corrected rather than tuned by
+ * feel.
+ *
+ * The landmarks, in order:
+ *  • the frontal pole, and the long rise over the superior frontal gyrus to the vertex;
+ *  • the parietal crown, falling away to a TAPERED occipital pole;
+ *  • the flat inferior surface — a brain rests on the floor of the skull, it is not round below;
+ *  • the TEMPORAL POLE, thrusting forward and down;
+ *  • and the NOTCH between that pole and the frontal lobe's orbital surface. That concavity is the
+ *    single most recognisable thing about a brain in profile.
+ */
+const PROFILE: [number, number][] = [
+  [0.99, 0.08], // frontal pole
+  [0.93, 0.34],
+  [0.78, 0.54],
+  [0.55, 0.66],
+  [0.28, 0.72],
+  [0.0, 0.73], // vertex
+  [-0.28, 0.7],
+  [-0.55, 0.6],
+  [-0.78, 0.42],
+  [-0.94, 0.18],
+  [-1.0, -0.06], // occipital pole
+  [-0.92, -0.3],
+  [-0.74, -0.46],
+  [-0.5, -0.56],
+  [-0.22, -0.61], // the flat inferior surface
+  [0.06, -0.62],
+  [0.34, -0.57],
+  [0.58, -0.50],
+  [0.72, -0.40], // temporal pole — forward and down, and it really does thrust
+  [0.52, -0.20], // THE NOTCH — the outline cuts back in, hard
+  [0.72, -0.14], // the frontal lobe's orbital surface, back out
+  [0.9, -0.05],
+];
+
+/** Samples of the profile's radius, indexed by angle. 720 ≈ half-degree resolution. */
+const PROFILE_N = 720;
+
+/**
+ * R(θ) for the profile: the factor the parametric ellipse point (A cosθ, B sinθ) is scaled by to
+ * land on the authored outline. Built once at module load (~0.1ms), then read by every vertex.
+ *
+ * A landmark (x, y) sits at parametric angle atan2(y/B, x/A) and radius |(x/A, y/B)| — that is the
+ * inverse of how `shape` composes a point, so the outline is reproduced exactly at the landmarks and
+ * interpolated between them. The table is then BLURRED (periodically, twice): the landmarks are a
+ * polygon, and a polygon's corners would otherwise crease the surface into visible facets. The blur
+ * is deliberately narrow — widen it and the notch, which is the whole point, washes out.
+ */
+const PROFILE_R = ((): Float64Array => {
+  const pts = PROFILE.map(([x, y]): [number, number] => [
+    Math.atan2(y / B, x / A),
+    Math.hypot(x / A, y / B),
+  ]).sort((p, q) => p[0] - q[0]);
+
+  const raw = new Float64Array(PROFILE_N);
+  for (let i = 0; i < PROFILE_N; i++) {
+    const th = -Math.PI + (2 * Math.PI * i) / PROFILE_N;
+    // Bracket th between two landmarks, wrapping around the seam.
+    let a = pts[pts.length - 1]!;
+    let b = pts[0]!;
+    for (let k = 0; k < pts.length; k++) {
+      if (pts[k]![0] <= th) {
+        a = pts[k]!;
+        b = pts[(k + 1) % pts.length]!;
+      }
+    }
+    let span = b[0] - a[0];
+    if (span <= 0) span += 2 * Math.PI;
+    let off = th - a[0];
+    if (off < 0) off += 2 * Math.PI;
+    const f = span > 0 ? off / span : 0;
+    raw[i] = a[1] + (b[1] - a[1]) * f;
+  }
+
+  let cur = raw;
+  const RADIUS = 7; // ~3.5° — enough to round a corner, too little to erase the notch
+  for (let pass = 0; pass < 2; pass++) {
+    const next = new Float64Array(PROFILE_N);
+    for (let i = 0; i < PROFILE_N; i++) {
+      let sum = 0;
+      for (let k = -RADIUS; k <= RADIUS; k++) {
+        sum += cur[(i + k + PROFILE_N) % PROFILE_N]!;
+      }
+      next[i] = sum / (2 * RADIUS + 1);
+    }
+    cur = next;
+  }
+  return cur;
+})();
+
+/** The profile's radius at a parametric angle, linearly interpolated off the smoothed table. */
+function profileRadius(th: number): number {
+  const u = ((th + Math.PI) / (2 * Math.PI)) * PROFILE_N;
+  const i0 = ((Math.floor(u) % PROFILE_N) + PROFILE_N) % PROFILE_N;
+  const i1 = (i0 + 1) % PROFILE_N;
+  const f = u - Math.floor(u);
+  return PROFILE_R[i0]! * (1 - f) + PROFILE_R[i1]! * f;
+}
 
 /**
  * The base shape. An ellipsoid is a potato; a brain has a PROFILE, and the profile is what the eye
@@ -230,25 +335,23 @@ const angDiff = (a: number, b: number) => {
  *   • a drawn-in occipital pole and a full parietal crown.
  */
 function shape(ux: number, uy: number, uz: number): [number, number, number] {
-  const th = Math.atan2(uy, ux);
-  const lobe = (centre: number, width: number) =>
-    Math.exp(-(angDiff(th, centre) ** 2) / (2 * width * width));
-
-  const R =
-    1 -
-    0.20 * lobe(-0.36, 0.19) + // the sylvian notch, under the frontal pole
-    0.11 * lobe(-0.92, 0.30) - // the temporal pole
-    0.05 * lobe(Math.PI, 0.40) + // occipital, drawn in
-    0.05 * lobe(2.0, 0.55); // parietal crown, full
+  // The silhouette comes from the AUTHORED PROFILE (see PROFILE / profileRadius), not from a stack
+  // of Gaussian lobes. Radial lobes could never draw a brain: every attempt to deepen the sylvian
+  // notch enough to read also blew the temporal pole out into a beak, because the two features
+  // overlap in angle. An explicit outline decouples them.
+  const R = profileRadius(Math.atan2(uy, ux));
 
   const x = A * ux * R;
   const y = B * uy * R;
   let z = C * uz;
 
-  // The frontal pole is narrower through the temple; the occipital tapers a little too.
-  const frontTaper = 1 - 0.22 * smoothstep(0.35, 1.0, ux);
-  const backTaper = 1 - 0.10 * smoothstep(0.50, 1.0, -ux);
-  z *= frontTaper * backTaper;
+  // Through-thickness. The frontal pole narrows through the temple, the occipital tapers, and the
+  // temporal lobe is THINNER than the mass above it — that last one is what keeps the temporal lobe
+  // legible as a lobe in a 3/4 view instead of merging into the hemisphere's bulk.
+  const frontTaper = 1 - 0.24 * smoothstep(0.35, 1.0, ux);
+  const backTaper = 1 - 0.12 * smoothstep(0.50, 1.0, -ux);
+  const tempTaper = 1 - 0.16 * smoothstep(-0.10, -0.62, uy);
+  z *= frontTaper * backTaper * tempTaper;
 
   // The medial face is a flat wall, not a bulge.
   if (z < 0) z *= MEDIAL_FLATTEN;
