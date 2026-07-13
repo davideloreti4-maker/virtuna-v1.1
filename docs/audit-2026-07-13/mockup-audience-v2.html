@@ -1,0 +1,335 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>/audience v2 — kinds, cast, proof</title>
+<style>
+  :root{
+    --bg:#262624; --card:#2b2b28; --card2:#2f2f2b;
+    --cream:#ece7de; --c2:rgba(236,231,222,.64); --c3:rgba(236,231,222,.42); --c4:rgba(236,231,222,.26);
+    --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.10);
+    --terra:#d97757; --amber:#c9a227;
+    --cold:rgba(236,231,222,.24); --warm:rgba(236,231,222,.50); --hot:rgba(217,119,87,.62);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);padding:0 0 90px;
+    font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1040px;margin:0 auto;padding:30px 32px}
+  .flag{background:#1e1e1c;border-bottom:1px solid var(--line);padding:11px 32px;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--terra);font-weight:600}
+  .flag span{color:var(--c3);letter-spacing:0;text-transform:none;font-weight:400;margin-left:14px}
+
+  h1{font-size:22px;font-weight:600;letter-spacing:-.012em}
+  .eyebrow{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--c4);font-weight:500;margin-bottom:5px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:34px}
+  .btn{font-size:13px;padding:7px 13px;border-radius:8px;border:1px solid var(--line);background:transparent;
+    color:var(--c2);cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--line2);color:var(--cream)}
+  .btn.pri{background:var(--cream);color:#232320;border-color:var(--cream);font-weight:500}
+  .btn.sm{font-size:12px;padding:5px 10px}
+
+  /* kind sections */
+  .kind{margin-bottom:38px}
+  .kind-h{display:flex;align-items:baseline;gap:12px;padding-bottom:9px;border-bottom:1px solid var(--line);margin-bottom:14px}
+  .kind-h b{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--c2)}
+  .kind-h i{font-style:normal;font-size:12px;color:var(--c4)}
+  .kind-h .n{margin-left:auto;font-size:11px;color:var(--c4);font-variant-numeric:tabular-nums}
+
+  /* the protagonist block */
+  .lead{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px 24px}
+  .lead.empty{border-style:dashed;border-color:rgba(255,255,255,.09);background:transparent}
+  .lead-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+  .nm{font-size:18px;font-weight:600;letter-spacing:-.01em}
+  .prov{font-size:13px;color:var(--c3);margin-top:4px}
+  .prov b{color:var(--c2);font-weight:500}
+  .warn{margin-top:12px;font-size:13px;color:var(--amber);display:flex;gap:8px;align-items:baseline}
+  .warn s{text-decoration:none;width:5px;height:5px;border-radius:99px;background:var(--amber);flex-shrink:0;
+    display:block;transform:translateY(-2px)}
+
+  .ladder{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.11em;text-transform:uppercase;flex-shrink:0}
+  .ladder i{color:var(--c4);font-style:normal}
+  .ladder b{color:var(--cream);font-weight:600;border:1px solid var(--line2);border-radius:5px;padding:3px 7px;background:#343430}
+  .ladder .s{color:rgba(236,231,222,.16)}
+
+  .comp{display:flex;gap:2px;height:10px;margin:20px 0 10px}
+  .comp span{border-radius:2px}
+  .facts{display:flex;font-size:12px;color:var(--c3)}
+  .facts div{padding-right:13px;margin-right:13px;border-right:1px solid var(--line)}
+  .facts div:last-child{border:0}
+  .facts b{color:var(--c2);font-weight:500}
+  .cta{margin-top:20px;padding-top:18px;border-top:1px solid var(--line);
+    display:flex;justify-content:space-between;align-items:center;gap:20px}
+  .cta p{font-size:13px;color:var(--c2)}
+  .cta p small{display:block;font-size:12px;color:var(--c4);margin-top:2px}
+
+  /* empty protagonist */
+  .empty-in{text-align:center;padding:34px 20px}
+  .empty-in h3{font-size:16px;font-weight:600;margin-bottom:6px}
+  .empty-in p{font-size:13px;color:var(--c3);max-width:430px;margin:0 auto 20px}
+
+  /* cast */
+  .cast-h{display:flex;justify-content:space-between;align-items:baseline;margin:26px 0 2px;
+    font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--c4);font-weight:500}
+  .p{position:relative;display:grid;grid-template-columns:1fr 140px 50px;gap:16px;align-items:start;
+    padding:14px 0 15px;border-bottom:1px solid var(--line)}
+  .p:last-child{border-bottom:0}
+  .p .pn{font-size:14px;font-weight:500}
+  .p .rp{font-size:13px;color:var(--c3);margin-top:3px}
+  .p .q{font-size:12.5px;color:var(--c2);margin-top:7px;padding-left:13px;border-left:1px solid var(--line2)}
+  .p .q em{font-style:normal;color:var(--c4)}
+  .p .q.none{color:var(--c4);border-left-color:var(--line)}
+  .p .td{font-size:11px;color:var(--c4);text-align:right;padding-top:2px}
+  .p .td em{font-style:normal;padding:2px 6px;border-radius:4px;border:1px solid var(--line);color:var(--c3)}
+  .p .sh{text-align:right;font-size:14px;color:var(--c2);font-variant-numeric:tabular-nums;padding-top:1px}
+  .p .bar{position:absolute;left:0;bottom:-1px;height:2px;border-radius:2px}
+
+  /* divergence */
+  .div{margin-top:26px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .div-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .div-h b{font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:var(--c2);font-weight:600}
+  .div-h i{font-style:normal;font-size:12px;color:var(--c4)}
+  .d{display:grid;grid-template-columns:1fr 120px 120px;gap:14px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+  .d .cn{font-size:13px;color:var(--c2)}
+  .band{font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--line);color:var(--c3);
+    display:inline-block;white-space:nowrap}
+  .band.strong{color:var(--cream);border-color:var(--line2);background:#343430}
+  .band.weak{color:var(--c4)}
+  .d .lb{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--c4);display:block;margin-bottom:3px}
+
+  /* plain rows for other kinds */
+  .row{display:grid;grid-template-columns:1fr 120px 92px 64px;gap:16px;align-items:center;padding:13px 15px;
+    border:1px solid var(--line);border-radius:10px;margin-bottom:8px;background:var(--card)}
+  .row .rn{font-size:14px;font-weight:500}
+  .row .rm{font-size:12px;color:var(--c3);margin-top:2px}
+  .row .st{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--c4)}
+  .row .st.act{color:var(--amber)}
+  .mini{display:flex;gap:2px;height:6px}
+  .mini span{border-radius:1px}
+  .mini.none{opacity:.4;background:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 5px,transparent 5px 10px);border-radius:2px}
+  .dot{display:inline-block;width:5px;height:5px;border-radius:99px;background:var(--terra);margin-right:8px;vertical-align:middle}
+</style></head><body>
+
+<!-- ═══════════ STATE 1 — the honest truth today ═══════════ -->
+<div class="flag">State 1 — your data, told honestly
+  <span>`test` is your only personal audience and it's empty. "Fitness Creators" is a TARGET you described. Maven does not know who watches you.</span></div>
+<div class="page">
+
+  <div class="head">
+    <div><div class="eyebrow">Audience</div><h1>Who your work is tested against</h1></div>
+    <div style="display:flex;gap:8px"><button class="btn">Compare</button><button class="btn">New</button></div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Your people</b><i>the room every Read is judged by</i><span class="n">none yet</span></div>
+    <div class="lead empty"><div class="empty-in">
+      <h3>Maven doesn't know who watches you</h3>
+      <p>Every Read you've run has been scored by a generic crowd. Read your @handle once and Maven
+         builds your room from the people who actually watch you — their real shares, from real engagement.</p>
+      <button class="btn pri">Read from @zachking →</button>
+    </div></div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Targets</b><i>audiences you want, but don't have yet</i><span class="n">3</span></div>
+    <div class="row">
+      <div><div class="rn">Fitness Creators</div><div class="rm">6 personas · warm-leaning · TikTok</div></div>
+      <div class="mini">
+        <span style="flex:25;background:var(--warm)"></span><span style="flex:20;background:var(--cold)"></span>
+        <span style="flex:15;background:var(--hot)"></span><span style="flex:15;background:var(--warm)"></span>
+        <span style="flex:10;background:var(--hot)"></span><span style="flex:15;background:var(--cold)"></span>
+      </div>
+      <div class="st">Described</div>
+      <button class="btn sm">Open</button>
+    </div>
+    <div class="row">
+      <div><div class="rn">Growth · Conversion</div><div class="rm">ready-made weight mixes — no personas behind them</div></div>
+      <div></div><div class="st">Preset</div>
+      <button class="btn sm">Open</button>
+    </div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Critics</b><i>judges, not audiences — they pressure-test, they don't predict</i><span class="n">4</span></div>
+    <div class="row">
+      <div><div class="rn">Analyst Panel</div><div class="rm">4 judges · probes weak spots in the logic</div></div>
+      <div></div><div class="st">Authored</div><button class="btn sm">Open</button>
+    </div>
+    <div class="row">
+      <div><div class="rn">Hiring Panel</div><div class="rm">4 judges · reads for credibility and signal</div></div>
+      <div></div><div class="st">Authored</div><button class="btn sm">Open</button>
+    </div>
+    <div class="row">
+      <div><div class="rn">Marcus Reyes · Maya</div><div class="rm">single people, not rooms — what IS this kind? (owner call)</div></div>
+      <div></div><div class="st">Person</div><button class="btn sm">Open</button>
+    </div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Control</b><i>the generic crowd every Read is scored against</i><span class="n">1</span></div>
+    <div class="row">
+      <div><div class="rn">General</div><div class="rm">10 universal personas · Maven's default — not yours</div></div>
+      <div class="mini">
+        <span style="flex:1;background:var(--cold)"></span><span style="flex:1;background:var(--warm)"></span>
+        <span style="flex:1;background:var(--warm)"></span><span style="flex:1;background:var(--cold)"></span>
+        <span style="flex:1;background:var(--warm)"></span><span style="flex:1;background:var(--hot)"></span>
+        <span style="flex:1;background:var(--cold)"></span><span style="flex:1;background:var(--warm)"></span>
+      </div>
+      <div class="st">Baseline</div><button class="btn sm">Open</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ STATE 2 — after the read ═══════════ -->
+<div class="flag">State 2 — after the read
+  <span>The personal audience exists. Cast carries the sentence the engine scores with + the persona's real reaction from your Reads. The proof panel is the moat, in bands — never a fake score.</span></div>
+<div class="page">
+
+  <div class="head">
+    <div><div class="eyebrow">Audience</div><h1>Who your work is tested against</h1></div>
+    <div style="display:flex;gap:8px"><button class="btn">Compare</button><button class="btn">New</button></div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Your people</b><i>the room every Read is judged by</i></div>
+    <div class="lead">
+      <div class="lead-top">
+        <div>
+          <div class="nm"><span class="dot"></span>@zachking</div>
+          <div class="prov">Read from your account · <b>84 videos</b> · 20 Jun · shares from real engagement ratios</div>
+        </div>
+        <div class="ladder"><i>Described</i><span class="s">→</span><b>Read</b><span class="s">→</span><i>Proven</i></div>
+      </div>
+
+      <div class="comp">
+        <span style="flex:25;background:var(--warm)"></span><span style="flex:20;background:var(--cold)"></span>
+        <span style="flex:15;background:var(--hot)"></span><span style="flex:15;background:var(--warm)"></span>
+        <span style="flex:10;background:var(--hot)"></span><span style="flex:15;background:var(--cold)"></span>
+      </div>
+      <div class="facts">
+        <div><b>6</b> personas</div><div><b>40%</b> warm · 35% cold · 25% hot</div>
+        <div>TikTok</div><div>seeds every new thread</div>
+      </div>
+
+      <div class="cta">
+        <p>Maven has graded 2 of its own predictions against what you actually posted.
+          <small>Three more and the room stops guessing and starts learning — that's the Proven rung.</small></p>
+        <button class="btn">See what's pending →</button>
+      </div>
+    </div>
+
+    <div class="cast-h"><span>The cast — who reacts in a Read</span><span>shares sum to 100%</span></div>
+    <div>
+      <div class="p">
+        <div>
+          <div class="pn">Fitness</div>
+          <div class="rp">Hardcore gym regular who screenshots form tutorials and judges sloppy reps hard.</div>
+          <div class="q">“I've seen this exact hook forty times.” <em>— scrolled · “protein timing myth” · 2d ago</em></div>
+        </div>
+        <div class="td"><em>warm</em> · collector</div><div class="sh">25%</div>
+        <span class="bar" style="width:25%;background:var(--warm)"></span>
+      </div>
+
+      <div class="p">
+        <div>
+          <div class="pn">Learner</div>
+          <div class="rp">Beginner learning routines from scratch.</div>
+          <div class="q">“Finally someone explains why, not just what.” <em>— stopped · “protein timing myth” · 2d ago</em></div>
+        </div>
+        <div class="td"><em>cold</em> · scanner</div><div class="sh">20%</div>
+        <span class="bar" style="width:20%;background:var(--cold)"></span>
+      </div>
+
+      <div class="p">
+        <div>
+          <div class="pn">Loyalist</div>
+          <div class="rp">Follows every upload, comments first.</div>
+          <div class="q none">No reaction recorded yet — run a Read.</div>
+        </div>
+        <div class="td"><em>hot</em> · connector</div><div class="sh">15%</div>
+        <span class="bar" style="width:15%;background:var(--hot)"></span>
+      </div>
+
+      <div class="p">
+        <div>
+          <div class="pn">Saver</div>
+          <div class="rp">Saves meal-prep and workout splits.</div>
+          <div class="q none">No reaction recorded yet — run a Read.</div>
+        </div>
+        <div class="td"><em>warm</em> · collector</div><div class="sh">15%</div>
+        <span class="bar" style="width:15%;background:var(--warm)"></span>
+      </div>
+
+      <div class="p">
+        <div>
+          <div class="pn">Sharer</div>
+          <div class="rp">Shares PRs and wins to friends.</div>
+          <div class="q none">No reaction recorded yet — run a Read.</div>
+        </div>
+        <div class="td"><em>hot</em> · connector</div><div class="sh">10%</div>
+        <span class="bar" style="width:10%;background:var(--hot)"></span>
+      </div>
+
+      <div class="p">
+        <div>
+          <div class="pn">Lurker</div>
+          <div class="rp">Watches silently, rarely engages.</div>
+          <div class="q none">No reaction recorded yet — run a Read.</div>
+        </div>
+        <div class="td"><em>cold</em> · lurker</div><div class="sh">15%</div>
+        <span class="bar" style="width:15%;background:var(--cold)"></span>
+      </div>
+    </div>
+
+    <div class="div">
+      <div class="div-h">
+        <b>Where your people disagree with the crowd</b>
+        <i>12 Reads · 4 disagreements</i>
+      </div>
+      <div class="d">
+        <div class="cn">“protein timing myth”</div>
+        <div><span class="lb">General</span><span class="band weak">Mixed · 5/10 stop</span></div>
+        <div><span class="lb">Your people</span><span class="band strong">Strong · 8/10 stop</span></div>
+      </div>
+      <div class="d">
+        <div class="cn">“day in my life, but it's leg day”</div>
+        <div><span class="lb">General</span><span class="band">Strong · 7/10 stop</span></div>
+        <div><span class="lb">Your people</span><span class="band weak">Weak · 3/10 stop</span></div>
+      </div>
+      <div class="d">
+        <div class="cn">“the 4am routine nobody asked for”</div>
+        <div><span class="lb">General</span><span class="band">Mixed · 6/10 stop</span></div>
+        <div><span class="lb">Your people</span><span class="band weak">Weak · 2/10 stop</span></div>
+      </div>
+      <div style="margin-top:12px;font-size:12px;color:var(--c4)">
+        Four times the generic crowd would have sent you the wrong way. That gap is what calibration buys.
+      </div>
+    </div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Targets</b><i>audiences you want, but don't have yet</i><span class="n">3</span></div>
+    <div class="row">
+      <div><div class="rn">Fitness Creators</div><div class="rm">6 personas · described, not read</div></div>
+      <div class="mini">
+        <span style="flex:25;background:var(--warm)"></span><span style="flex:20;background:var(--cold)"></span>
+        <span style="flex:15;background:var(--hot)"></span><span style="flex:15;background:var(--warm)"></span>
+        <span style="flex:10;background:var(--hot)"></span><span style="flex:15;background:var(--cold)"></span>
+      </div>
+      <div class="st">Described</div><button class="btn sm">Open</button>
+    </div>
+    <div class="row">
+      <div><div class="rn">Growth · Conversion</div><div class="rm">ready-made weight mixes</div></div>
+      <div></div><div class="st">Preset</div><button class="btn sm">Open</button>
+    </div>
+  </div>
+
+  <div class="kind">
+    <div class="kind-h"><b>Critics · Control</b><i>judges and the generic baseline</i><span class="n">5</span></div>
+    <div class="row">
+      <div><div class="rn">Analyst · Hiring · Marcus · Maya</div><div class="rm">pressure-test a concept — they don't predict reach</div></div>
+      <div></div><div class="st">Authored</div><button class="btn sm">Browse</button>
+    </div>
+    <div class="row">
+      <div><div class="rn">General</div><div class="rm">the crowd every Read is scored against</div></div>
+      <div></div><div class="st">Baseline</div><button class="btn sm">Open</button>
+    </div>
+  </div>
+</div>
+</body></html>

@@ -23,7 +23,19 @@ import type {
   CalibratedPersona,
 } from "@/lib/audience/audience-types";
 import { PersonaEditForm } from "../persona-edit-form";
-import { AudienceProfileView } from "../audience-profile-view";
+// AudienceProfileView was retired by SPEC-2026-07-13; AudienceWorkspace is the surface that
+// now carries the per-persona Edit affordance and the protected-baseline refusal.
+import { AudienceWorkspace } from "../audience-workspace";
+
+// The workspace navigates (next rung / delete → /audience); the retired profile view did not.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+}));
+
+/** The workspace's props, minus the audience under test. */
+function workspaceProps() {
+  return { defaultAudienceId: null, onSetDefault: () => {}, onEditDetails: () => {} };
+}
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -154,9 +166,9 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
       persona({ archetype: "high_engager", label: undefined }),
     ]);
 
-    render(<AudienceProfileView audience={audience} />);
+    render(<AudienceWorkspace audience={audience} {...workspaceProps()} />);
 
-    // The archetype-derived name renders (in the persona table + the audience map).
+    // The archetype-derived name renders in the cast.
     expect(screen.getAllByText("High Engager").length).toBeGreaterThan(0);
   });
 
@@ -203,31 +215,34 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
     expect(screen.queryByText("Edit persona")).toBeNull();
   });
 
-  it("General/preset profile shows NO Edit affordance + the protected-baseline caption", () => {
+  it("General/preset workspace shows NO Edit affordance + the protected-baseline caption", () => {
     const general = generalAudience();
-    const { rerender } = render(<AudienceProfileView audience={general} />);
+    const { rerender } = render(<AudienceWorkspace audience={general} {...workspaceProps()} />);
 
     // No per-persona Edit affordance on General.
     expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
-    // The D-06 protected-baseline caption is shown.
-    expect(
-      screen.getByText(
-        "General is Maven's protected baseline — read-only. Calibrate a personal or target audience to edit its personas.",
-      ),
-    ).toBeInTheDocument();
+    // The D-06 protected-baseline refusal is stated.
+    expect(screen.getByText(/protected baseline/)).toBeInTheDocument();
+    // The mix is rendered read-only — General's weights are the locked baseline.
+    expect(screen.getByLabelText("New viewers")).toBeDisabled();
 
     // Same for a preset audience.
-    rerender(<AudienceProfileView audience={presetAudience()} />);
+    rerender(<AudienceWorkspace audience={presetAudience()} {...workspaceProps()} />);
     expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
+    expect(screen.getByLabelText("New viewers")).toBeDisabled();
   });
 
-  it("calibrated profile DOES show an Edit affordance per persona", () => {
+  it("calibrated workspace DOES show an Edit affordance per persona + an editable mix", () => {
     const audience = calibratedAudience([persona({ archetype: "tough_crowd" })]);
-    render(<AudienceProfileView audience={audience} />);
-    // The pencil row-action is present (accessible name "Edit <display name>").
-    expect(screen.getByRole("button", { name: /^Edit / })).toBeInTheDocument();
+    render(<AudienceWorkspace audience={audience} {...workspaceProps()} />);
+    // The row-action is present (accessible name "Edit <display name>"). Named exactly:
+    // the header also carries an "Edit details" button, which is a different affordance.
+    expect(screen.getByRole("button", { name: "Edit Tough Crowd" })).toBeInTheDocument();
     // …and the read-only General caption is NOT shown for a calibrated audience.
     expect(screen.queryByText(/protected baseline/)).toBeNull();
+    // The four engine dials are live (persona_weights → analysis_override).
+    expect(screen.getByLabelText("New viewers")).toBeEnabled();
+    expect(screen.getByLabelText("Loyalists")).toBeEnabled();
   });
 
   it("a failed PATCH surfaces the error copy", async () => {
