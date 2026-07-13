@@ -90,7 +90,7 @@ import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-she
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { BuildChooser } from "./build-chooser";
-import { HomeStarter } from "./home-starter";
+import { HomeQuickActions, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -2231,7 +2231,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               className={cn(
                 "absolute bottom-[calc(100%+10px)] left-3 z-50",
                 "w-[320px] max-w-[calc(100%-1.5rem)] max-h-[60vh] overflow-y-auto",
-                "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
+                "rounded-xl border border-white/[0.06] bg-surface-elevated p-1.5",
                 "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
                 "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
               )}
@@ -2520,19 +2520,22 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   );
 
   // ── Home empty-state starter (UX-05 / D-04) ─────────────────────────────────
-  // The creator quick-actions grid + the show-once first-run demo, rendered ONLY in
-  // the empty home region (Branch B, no conversation). Each card reaches a composer
-  // skill flow directly via handleUserSelectTool: a Make skill (idea/hooks/script/
-  // remix) arms its stream on the active audience; Test → reveals the video drop
-  // zone; Account → a Read on the creator's own posts. onDemoComplete reloads the
-  // open thread so the demo's profile-read card surfaces in-thread.
-  const homeStarter = !hasConversationContent ? (
-    <div className="mt-4 w-full">
-      <HomeStarter
-        onQuickAction={handleUserSelectTool}
-        onDemoComplete={() => void reloadProfileThread()}
-      />
-    </div>
+  // Rendered ONLY in the empty home region (Branch B, no conversation) and split so
+  // the two pieces bracket the composer: the quick-actions grid leads INTO the field
+  // (above), the show-once demo is a quiet footer (below).
+  //
+  // Grid — each card reaches a composer skill flow directly via handleUserSelectTool:
+  // a Make skill (idea/hooks/script/remix) arms its stream on the active audience;
+  // Test → reveals the video drop zone; Account → a Read on the creator's own posts.
+  // Demo — onDemoComplete reloads the open thread so the profile-read card surfaces.
+  const homeQuickActions = !hasConversationContent ? (
+    <HomeQuickActions onQuickAction={handleUserSelectTool} className="mb-5" />
+  ) : null;
+  const homeFirstRunDemo = !hasConversationContent ? (
+    <HomeFirstRunDemo
+      onDemoComplete={() => void reloadProfileThread()}
+      className="mt-5"
+    />
   ) : null;
 
   // ── Layout branches ────────────────────────────────────────────────────────
@@ -2610,11 +2613,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col pb-4", className)}>
       {threadContent}
-      {/* Starter chips ride BELOW the composer, so the empty home reads greeting → composer
-          → chips. The composer is the anchor; the chips read as optional suggestions hanging
-          off it rather than a gate you pass through to reach the field. */}
+      {/* Quick-actions grid rides ABOVE the composer, so the empty home reads
+          greeting → actions → composer: the actions are the on-ramp INTO the field,
+          not a footer you scroll past. The show-once demo stays a quiet footer below. */}
+      {homeQuickActions}
       {composerDock}
-      {homeStarter}
+      {homeFirstRunDemo}
     </div>
   );
 }

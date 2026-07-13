@@ -278,7 +278,7 @@ function Popover({
       className={cn(
         "fixed z-[60]",
         "min-w-[296px] max-w-[calc(100vw-28px)] max-h-[60vh] overflow-y-auto",
-        "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
+        "rounded-xl border border-white/[0.06] bg-surface-elevated p-1.5",
         "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
         "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
         className,
@@ -292,7 +292,7 @@ function Popover({
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-foreground-muted/70">
+    <div className="px-2.5 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
       {children}
     </div>
   );
@@ -333,65 +333,90 @@ export function SkillRows({
   );
   const hasSocials = make.length + test.length + ask.length > 0;
 
-  const Row = (s: SkillMeta) => (
-    <button
-      key={s.id}
-      type="button"
-      role="menuitemradio"
-      aria-checked={s.id === active}
-      aria-disabled={!s.enabled || undefined}
-      disabled={!s.enabled}
-      data-skill={s.id}
-      onClick={() => {
-        if (s.enabled) onSelect(s.id);
-      }}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
-        s.enabled
-          ? "cursor-pointer hover:bg-[#2b2926]"
-          : "cursor-not-allowed opacity-45",
-      )}
-    >
-      <Ico name={SKILL_ICON[s.id]} className="text-foreground-secondary" />
-      <span className="min-w-0 flex-1">
-        <span
+  const Row = (s: SkillMeta) => {
+    const isActive = s.id === active;
+    return (
+      <button
+        key={s.id}
+        type="button"
+        role="menuitemradio"
+        aria-checked={isActive}
+        aria-disabled={!s.enabled || undefined}
+        disabled={!s.enabled}
+        data-skill={s.id}
+        onClick={() => {
+          if (s.enabled) onSelect(s.id);
+        }}
+        className={cn(
+          // Full-row surface — active is a persistent subtle fill (was a broken
+          // partial bar painted behind just the label span); hover is a lighter tint.
+          "group/row flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors duration-100",
+          !s.enabled && "cursor-not-allowed opacity-45",
+          s.enabled && !isActive && "cursor-pointer hover:bg-white/[0.035]",
+          s.enabled && isActive && "cursor-pointer bg-white/[0.06]",
+        )}
+      >
+        <Ico
+          name={SKILL_ICON[s.id]}
           className={cn(
-            "flex items-center gap-1.5 text-[13.5px] font-medium",
-            s.id === active ? "text-foreground bg-white/[0.06]" : "text-foreground",
+            "shrink-0 transition-colors",
+            isActive
+              ? "text-foreground"
+              : "text-foreground-secondary group-hover/row:text-foreground",
           )}
-        >
-          {s.label}
-          {s.model === "Max" && (
-            <span className="rounded bg-surface-elevated border border-border px-1.5 py-px text-[9px] font-semibold tracking-[0.03em] text-foreground-secondary">
-              MAX
-            </span>
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-[13.5px] font-medium leading-tight text-foreground">
+            {s.label}
+            {s.model === "Max" && (
+              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[8.5px] font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
+                MAX
+              </span>
+            )}
+          </span>
+          <span className="mt-[3px] block truncate text-[11.5px] leading-tight text-foreground-muted">
+            {s.desc}
+          </span>
+        </span>
+        {/* Right rail — /command (or "soon"), then a reserved check slot so the
+            commands stay right-aligned whether or not a row carries the check. */}
+        {s.enabled ? (
+          <span
+            className={cn(
+              "shrink-0 font-mono text-[11px] tracking-tight transition-colors",
+              isActive
+                ? "text-foreground-secondary"
+                : "text-foreground-muted/45 group-hover/row:text-foreground-muted/70",
+            )}
+          >
+            {s.command}
+          </span>
+        ) : (
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
+            soon
+          </span>
+        )}
+        <Ico
+          name="check"
+          size={15}
+          className={cn(
+            "shrink-0 text-foreground transition-opacity",
+            isActive ? "opacity-100" : "opacity-0",
           )}
-        </span>
-        <span className="mt-0.5 block text-[11.5px] text-foreground-muted">{s.desc}</span>
-      </span>
-      {s.enabled ? (
-        <span className="shrink-0 font-mono text-[11px] text-foreground-muted/55">
-          {s.command}
-        </span>
-      ) : (
-        <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
-          soon
-        </span>
-      )}
-      <Ico
-        name="check"
-        size={16}
-        className={cn("text-foreground-secondary", s.id === active ? "opacity-100" : "opacity-0")}
-      />
-    </button>
-  );
+        />
+      </button>
+    );
+  };
 
   return (
     <>
-      <div className="flex items-center gap-1.5 px-2.5 pb-1 pt-1.5 text-[11px] text-foreground-muted/45">
-        <Ico name="search" size={14} />
-        type to filter · ↵ to select
+      <div className="flex items-center gap-2 px-2.5 pb-2 pt-1.5 text-[11px] text-foreground-muted/45">
+        <Ico name="search" size={13} className="text-foreground-muted/40" />
+        <span>type to filter</span>
+        <span className="text-foreground-muted/25">·</span>
+        <span>↵ to select</span>
       </div>
+      <div className="mx-1 mb-1 h-px bg-white/[0.05]" />
       {/* Make / Test / Ask — the three intent verbs (Socials mode). Section headers
           alone separate them (no dividers); each row is a skill under that verb. */}
       {make.length > 0 && <GroupLabel>Make</GroupLabel>}
@@ -405,7 +430,7 @@ export function SkillRows({
           (no Socials skills) they are the only group. */}
       {general.length > 0 && (
         <>
-          {hasSocials && <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />}
+          {hasSocials && <div className="mx-1 my-1.5 h-px bg-white/[0.05]" />}
           <GroupLabel>General</GroupLabel>
         </>
       )}
