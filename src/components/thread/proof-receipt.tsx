@@ -155,3 +155,33 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
     </div>
   );
 }
+
+/**
+ * ProofLine — a COMPACT, non-interactive one-liner grounding attribution for dense glance
+ * surfaces (the /start daily-idea cards). Same honesty spine + formatters as ProofReceipt, but
+ * span-only (no <a>/<button>) so it can nest inside a card that is ITSELF a button. The full
+ * clickable receipt (thumbnail + [templated] hook + stat pills) still renders in the opened Room.
+ * Shows: fit glyph · "from @handle" · the outlier multiplier (the compelling "grounded in a real
+ * winner" signal). Views/template/cover are omitted here — this is the cue, not the full receipt.
+ */
+export function ProofLine({ proof, className }: { proof: HookProof; className?: string }) {
+  const fit = FIT_META[proof.fitLabel];
+  const mult = fmtMultiplier(proof.multiplier);
+  return (
+    <span
+      className={`inline-flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-foreground-muted${className ? ` ${className}` : ''}`}
+      title={`${fit.label}${mult ? ` — ${mult} outlier` : ''}`}
+    >
+      <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>
+      <span className="min-w-0 truncate">
+        from <span className="text-foreground-secondary">@{proof.handle}</span>
+      </span>
+      {mult && (
+        <span className="inline-flex shrink-0 items-center gap-0.5 tabular-nums text-foreground-secondary">
+          <TrendUp size={11} weight="bold" aria-hidden="true" />
+          {mult}
+        </span>
+      )}
+    </span>
+  );
+}

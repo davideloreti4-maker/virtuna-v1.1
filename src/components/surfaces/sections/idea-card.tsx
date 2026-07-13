@@ -16,6 +16,7 @@ import { personasToCardFace } from "@/lib/surfaces/live-cards";
 import type { CardReaction as CardReactionData } from "@/lib/room-contract/types";
 import { CardReaction } from "../card-reaction";
 import { SurfaceIcon } from "../icons";
+import { ProofLine } from "@/components/thread/proof-receipt";
 import { cn } from "@/lib/utils";
 
 export function IdeaCard({
@@ -58,6 +59,10 @@ export function IdeaCard({
         </span>
       </div>
       <div className="text-[14px] font-medium leading-[1.42] text-foreground">{idea.title}</div>
+      {/* GROUNDING (§11f): a compact "grounded in a real winner" cue — rendered only when the
+          pipeline attributed this idea to a real source with a nameable handle (honesty spine;
+          absent on ungrounded/flag-off runs → the card looks exactly as before). */}
+      {idea.proof?.handle && <ProofLine proof={idea.proof} className="mt-2" />}
       <div className="mt-3 border-t border-border pt-[11px]">
         <CardReaction reaction={reaction} metric="would watch" />
       </div>
