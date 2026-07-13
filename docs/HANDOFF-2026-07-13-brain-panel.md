@@ -1,9 +1,12 @@
 # Handoff — The Brain panel (Room's 3rd scale) · 2026-07-13
 
 **Worktree:** `~/virtuna-brain` · **Branch:** `feat/audience-brain-panel` (off `origin/main`, unpushed)
-**Commits:** `3c28a1a1` (first cut) → `3eccb5b3` (rebuild vs TRIBE v2) → **`ab24b599` (the folded 3D cortex)**
-**Status:** 🟢 REBUILT AS A REAL SURFACE, AWAITING OWNER UAT (round 3). Rejected twice before for
-looking fake; the object itself has now been replaced. Not pushed, no PR — owner has not approved one.
+**Commits:** `3c28a1a1` (first cut) → `3eccb5b3` (rebuild vs TRIBE v2) → `ab24b599` (the folded 3D cortex)
+**Status:** 🔴 **REJECTED — ROUND 3 (2026-07-13).** Owner: *"the UI design still pretty much looks like
+shit… not only the brain visual, but also the general brain card."* The geometry rewrite was necessary
+but **not sufficient**: the object is now a real folded cortex, and the *card it sits in* is an
+undesigned stack of debug rows. **Next session = a full design makeover of the whole card, not another
+mesh tweak.** See **§8**, which is the brief. Not pushed, no PR.
 
 ---
 
@@ -169,13 +172,108 @@ Pre-existing, not ours: `set-state-in-effect` lint errors in `audience-presence.
 
 ## 7. Open decisions for the owner
 
-- **Round-3 UAT is the gate.** Does the cortex now read as a real brain / a real process?
-- **Deliberately NOT built** (owner scoped this session to the object only): per-network timeseries,
-  a stepping TR tick, an HRF-lag ghost. Worth noting TRIBE's own demo has **none** of these — they
-  are not why theirs reads as real.
-- If it still falls short, the next lever is **fidelity of the fold field** (the gyri are a little
-  more "coral-like" and less ribbon-like than a real cortex) and **brightness** (TRIBE's cortex is
-  near-white; ours is a dimmer cream to sit on the charcoal panel).
 - **Not yet asked:** should the brain ever become *actually* engine-grounded (a real encoder), or stay
   an honest model over retention? Today it is the latter, and labeled as such.
 - **Nothing is pushed. No PR.** Owner has not approved one.
+
+---
+
+## 8. 🎯 THE BRIEF — a full makeover of the Brain CARD (next session's only job)
+
+Round-3 UAT killed it again, and the scope widened: **the card, not just the cortex.** Read this
+section as the job. Do not open `cortex-mesh.ts` until §8.3 is understood — the mesh is the *last*
+thing to touch, not the first.
+
+### 8.1 What the owner is looking at
+
+`/dev/cards#room` renders the panel twice (left simulated, right grounded). Both cards, top to bottom:
+
+```
+6 of 10 would stop                          ← serif, big
+Stop editing your videos. Do this instead.  ← sans
+[ The brain | The people | Population ]     ← default-looking segmented control
+PREDICTED CORTICAL RESPONSE ·               ← MONO CAPS, wraps mid-phrase onto 2 lines
+SIMULATED                    t=4.1s · TR 1.49s
+┌────────────────────────────────────┐
+│ [dark PiP box, dim text]  🧠       │      ← the PiP OVERLAPS the brain
+│                                    │
+│              LEFT HEMISPHERE · LATERAL │  ← MONO CAPS again
+└────────────────────────────────────┘
+DRIFTING ▮▮▮▮▮▮▮▮▮▮▮▮ ENGAGED               ← crude red→green bar, no ticks, no unit
+predicted BOLD · response trails their video by ~5s (haemodynamic
+lag)                                        ← centred, wraps to 3 lines, orphan word
+● Limbic — feeling & value            0.62
+ATTENTION ▮▮▮▮▮▮▮▮░░░░  holding             ← 4 generic progress bars
+SALIENCE  ▮▮▮▮▮░░░░░░░  pricked             ← MONO CAPS labels + right-aligned words
+EMOTION   ▮▮▮▮▮▮▮▮░░░░  moved
+DRIFT     ▮▮▮▮░░░░░░░░  creeping
+The onset lands, then attention thins into the deci…  ← serif, CLIPPED
+```
+
+### 8.2 Honest diagnosis — why it reads as a debug panel, not a product
+
+Ranked. My own read, standing in front of the screenshot:
+
+1. **It is nine stacked rows with no hierarchy.** Header, subtitle, tabs, mono status line, the
+   surface, colorbar, caption, readout, four meters, verdict, honesty line. Everything shouts at the
+   same volume, so nothing leads. There is no answer to *"what is the ONE thing this card tells me?"*
+   A premium instrument states its finding, then lets you drill. This states eleven things at once.
+2. **It is OFF the design system.** `docs/DESIGN-SYSTEM.md` is explicit: **Inter for all chrome,
+   Newsreader serif for voice-moments ONLY**. This card has **10 separate `font-mono` usages** —
+   mono caps for the status line, the projection label, the colorbar poles, and all four meter
+   labels. Mono is being used as "sciencey texture", and it reads as *terminal output*. Three type
+   systems (mono + sans + serif) fight inside one 400px card. **Fixing the typography alone will do
+   more for the "premium" read than anything I did to the mesh.**
+3. **The card is TALLER THAN ITS OWN CONTAINER.** The clipped verdict is the `/dev/cards` harness
+   (`h-[620px] overflow-hidden` — not a render bug), but it is the truth telling on us: the content
+   does not fit the panel it ships in. Content must be cut, not scrolled.
+4. **The stimulus PiP is an accident.** A dark rounded box dumped on top of the brain's frontal lobe,
+   with dim unreadable text, occluding the object it is supposed to accompany. It reads as a bug.
+   TRIBE puts the stimulus in a *separate, deliberate* pane.
+5. **The colorbar is a temperature slider, not a legend.** A raw red→green gradient with two shouty
+   mono words and no ticks, no numbers, no unit. A real figure's colorbar carries a scale.
+6. **The meters are generic progress bars.** Four identical grey tracks with caps labels and
+   right-aligned adjectives. This is the least designed element on the card and it occupies the most
+   vertical space.
+7. **Alignment is inconsistent** — left-aligned rows, then a centred caption, then left again.
+8. **The brain itself still isn't right.** It reads as a *walnut / cauliflower*: the gyri are lumpy
+   isotropic blobs, not the long ribbons of a real cortex. It is muddy beige at low contrast against
+   the dark card, and it floats small in a big empty frame. TRIBE's is a bright, high-contrast
+   specimen that fills its frame.
+
+### 8.3 The order of work (do NOT start with the mesh)
+
+The mesh is #8 on that list, and it is the expensive one. Attack in this order:
+
+1. **Decide what the card SAYS.** One headline finding, in the room's voice. Everything else is
+   support or drill-down. This is a design decision — get the owner to confirm it before building.
+2. **Typography + system compliance.** Kill the mono. Inter for chrome; serif reserved for the one
+   voice-moment. Fix the wrapping/orphans. This is cheap and high-leverage.
+3. **Layout + hierarchy.** Cut rows. Make it fit 620px with air. Give the stimulus a deliberate home
+   instead of dropping it on the cortex.
+4. **The instrument details.** A real colorbar (ticks + unit), meters that look measured rather than
+   generic.
+5. **Only then, the mesh:** fold anisotropy (ribbons, not lumps), contrast/brightness (theirs is
+   near-white), and framing (fill the frame).
+
+### 8.4 Before writing any code
+
+- **Look at it in a browser first.** `OUT=<dir> node scripts/dev-shot-brain.mjs` — and read
+  `docs/DESIGN-SYSTEM.md` + `src/app/globals.css` (`@theme`) as the source of truth. `BRAND-BIBLE.md`,
+  `docs/tokens.md`, `docs/components.md` are **STALE** (they describe the dead Raycast system).
+- **Study a reference for the CARD, not just the brain.** Last session's win came from diffing
+  against the real target instead of theorising. Do the same for the card: find 2–3 premium
+  scientific/analytical instruments and diff.
+- **Offer the owner an ASCII/sketch preview before building** (their standing preference — see the
+  `ui-ship-design-grade` memory). They have rejected this surface three times; do not build a fourth
+  version on a guess.
+
+### 8.5 Constraints that are NOT up for negotiation
+
+- The **four invariants** in §4 (diverging sage/coral axis, thresholded, spatially smooth, real HRF
+  lag) — all pinned by tests.
+- The **honesty labels** ("a modeled response · a sketch, not a measurement" / "modeled from your
+  audience's real retention · not a brain measurement"). These may be *restyled*, never removed.
+- The **locked accent-dosage rule** (`docs/DESIGN-SYSTEM.md`). Coral means "you are losing them",
+  everywhere, always.
+- **TRIBE is CC-BY-NC + FreeSurfer** — study the output, copy nothing (§2).
