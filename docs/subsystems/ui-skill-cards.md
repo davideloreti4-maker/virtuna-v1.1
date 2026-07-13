@@ -49,6 +49,12 @@ flagship **video Read** (`/analyze`). The thread block types they render (SSOT `
 `rounded-[Npx]`.** Every arbitrary radius in the thread (`10px`, `7px`, `5px`, `11px`, `18px`) was
 drift, and the same element — a source thumbnail — ended up with three different corners.
 
+> **ENFORCED (2026-07-13):** `src/components/thread/__tests__/radius-scale.test.ts` fails the build
+> on an off-scale radius anywhere in `thread/**` or `reading/**`. It walks the tree, so a new card is
+> guarded the day it lands. The tokens live in `globals.css` `@theme`, so `rounded-md` really is 8px —
+> NOT Tailwind's 6px default. A redesign is exactly where a stray `rounded-[10px]` gets typed and
+> never seen; this is the gate that catches it.
+
 **A stacked ladder of equal-weight ALL-CAPS labels is the failure mode.** If a card has four or five
 of them, it has no hierarchy and reads as a spec sheet. Promote one thing; collapse the rest into §6.
 
@@ -81,15 +87,15 @@ renderer omits them rather than inventing them:
 | Remix | `remix-card` | ✅ **FIXED 2026-07-13** — was an anonymous thumbnail; now an attributed receipt |
 | Profile Read | `profile-read` | ✅ **FIXED 2026-07-13** — was 5 stacked labels + doubled quotes |
 | The Read | `multi-audience-read` | ✅ **FIXED 2026-07-13** — had NO card container; wall repeated itself |
-| Test / Reading | `reading/**` | ❌ **UNAUDITED.** Off-scale `18px`/`11px` radius; serif quotes where every other surface uses Inter italic. The biggest surface, only ever seen downscaled. |
+| Test / Reading | `reading/**` | ❌ **UNAUDITED.** Radii now on-scale (`18px`→16, `11px`→12, `5px`→4, `10px`→8, guarded). STILL OPEN: serif quotes where every other surface uses Inter italic. The biggest surface, only ever seen downscaled. |
 | Simulate | `reaction-distribution` | ❌ unaudited |
 | Predict | `prediction-gauge` | ❌ unaudited |
 | Account Read | `account-read` | ❌ unaudited |
 | Explore | `outlier-grid` | ❌ unaudited |
 | Ask | (`SkillResultCard`) | ❌ unaudited |
 | Band / Markdown | primitives | ❌ unaudited (low risk) |
-| **Personas** | `personas` | 🚫 **INVISIBLE — absent from `/dev/cards`.** Cannot be audited. |
-| **Persona chat** | `persona-chat-turn` | 🚫 **INVISIBLE — absent from `/dev/cards`.** Cannot be audited. |
+| **Personas** | `personas` | ❌ unaudited — but **VISIBLE as of 2026-07-13**: `/dev/cards` now covers **14/14** blocks. Fixture body is `[markdown, personas]` ON PURPOSE — the renderer only mounts the AudienceLens when a concept is present, so a bare block would demo a dead "See the room →". |
+| **Persona chat** | `persona-chat-turn` | ❌ unaudited — but **VISIBLE as of 2026-07-13**. Fixture is a 4-turn Skeptic sub-thread (one block per turn, archetype repeats), matching how it persists. |
 
 ⚠️ **§2 below is now partly STALE** — it still describes The Read as painting a legacy coral panel
 (stripped) and Remix's real source video as a TODO (shipped). Trust §0.5 + the code.

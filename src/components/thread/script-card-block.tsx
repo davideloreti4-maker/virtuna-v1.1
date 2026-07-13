@@ -111,7 +111,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           return (
             <div
               key={index}
-              className="flex flex-col gap-1.5 rounded-[10px] border border-white/[0.06] px-3.5 py-3"
+              className="flex flex-col gap-1.5 rounded-md border border-white/[0.06] px-3.5 py-3"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">

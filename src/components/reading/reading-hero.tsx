@@ -102,7 +102,7 @@ function HeroPoster({ heatmap }: { heatmap: HeatmapPayload | null }) {
         </span>
       )}
       {duration && (
-        <span className="absolute bottom-1.5 left-1.5 rounded-[5px] bg-black/40 px-1.5 py-px text-[10px] tabular-nums text-foreground-secondary">
+        <span className="absolute bottom-1.5 left-1.5 rounded-xs bg-black/40 px-1.5 py-px text-[10px] tabular-nums text-foreground-secondary">
           {duration}
         </span>
       )}

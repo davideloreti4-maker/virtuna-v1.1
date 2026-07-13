@@ -21,9 +21,9 @@ export interface ReadingSectionProps {
   children: ReactNode;
 }
 
-/** The flat-warm surface card: #1a1a19 surface, 6% hairline, 18px radius. */
+/** The flat-warm surface card: #1a1a19 surface, 6% hairline, 16px radius (--radius-xl). */
 export const READING_CARD =
-  'overflow-hidden rounded-[18px] border border-[var(--color-border)] bg-[var(--color-surface)]';
+  'overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]';
 
 export function ReadingSection({ label, labelSuffix, card = true, className, children }: ReadingSectionProps) {
   return (

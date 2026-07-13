@@ -106,7 +106,7 @@ export function ProofUnit({
 
   // Same matte proof-box chrome for both entries so the card looks identical either way.
   const proofBoxClass =
-    'flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
+    'flex flex-col gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
 
   const proofBody = (
     <>
