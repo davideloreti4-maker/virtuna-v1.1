@@ -60,10 +60,13 @@ export function ReadingLimitDialog({ quota, open, onClose, renewsAt }: ReadingLi
   const upgrade = quota.inTrial ? null : nextPlanUp(quota.tier);
   const noPlan = !plan;
 
+  // The title states the SITUATION; the server's message states the ACTION. Keep them distinct —
+  // the no-plan title used to be the server's sentence verbatim, so the dialog said
+  // "Start a plan to run a Reading" twice, as its own heading and its own body.
   const title = quota.inTrial
     ? "That's your trial's last Reading"
     : noPlan
-      ? "Start a plan to run a Reading"
+      ? "You don't have a plan yet"
       : "You're out of Readings";
 
   return (

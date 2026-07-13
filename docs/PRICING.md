@@ -48,12 +48,18 @@ A **Reading** = one row in `reading_events` (billed) = one full simulation actua
 That is the unit the customer is charged for, so it is the unit we count
 (`src/lib/billing/quota.ts`; billed at exactly one place, `src/lib/billing/record-reading.ts`).
 
-It used to be a row in `analysis_results`, which is not the same thing and billed wrongly three
-ways: the SSE branch writes its row *before* the engine runs, so a **failed run charged the
-customer**; deleting a Reading from the library **refunded** the allowance; and nothing was
-auditable. The ledger is append-only and only ever written on success. (If the ledger migration
-has not been applied, the count silently falls back to the old `analysis_results` behaviour, so
-the app runs identically either side of it.)
+It used to be a row in `analysis_results`, which is not the same thing:
+
+- the SSE branch writes its row *before* the engine runs, so **a failed run charged the
+  customer** — real, and live today;
+- usage lived in a table the product rewrites. Today's delete is a *soft* delete and the count
+  ignores `deleted_at`, so it does not currently refund — **by accident**. A hard delete, a
+  prune, or anyone adding `deleted_at` to that WHERE clause would hand the allowance back;
+- and none of it was auditable.
+
+The ledger is append-only and only ever written on success. (If the ledger migration has not been
+applied, the count silently falls back to the old `analysis_results` behaviour, so the app runs
+identically either side of it.)
 
 Two windows, and **the trial wins**:
 

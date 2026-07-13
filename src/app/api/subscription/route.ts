@@ -17,8 +17,9 @@
 
 import { NextResponse } from "next/server";
 
-import { getReadingQuotaVerdict } from "@/lib/billing/quota";
+import { checkReadingQuota } from "@/lib/billing/quota";
 import { createClient } from "@/lib/supabase/server";
+import type { NumenTier } from "@/lib/whop/config";
 
 export async function GET() {
   try {
@@ -41,7 +42,28 @@ export async function GET() {
       .maybeSingle();
 
     const row = subscription as Record<string, unknown> | null;
-    const quota = await getReadingQuotaVerdict(supabase, user.id);
+
+    // `checkReadingQuota`, not `getReadingQuotaVerdict`: the verdict helper re-SELECTs
+    // `user_subscriptions` itself, and we are holding that row already. The composer calls this
+    // endpoint on every mount, so the duplicate read was on a hot path for nothing.
+    const toDate = (v: unknown): Date | null => {
+      if (typeof v !== "string") return null;
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? null : d;
+    };
+
+    const tier: NumenTier = (row?.virtuna_tier as NumenTier) ?? "free";
+    const quota = await checkReadingQuota(
+      supabase,
+      user.id,
+      tier,
+      {
+        trialStartedAt: toDate(row?.trial_started_at),
+        trialEndsAt: toDate(row?.trial_ends_at),
+      },
+      new Date(),
+      toDate(row?.current_period_end)
+    );
 
     const usage = {
       used: quota.used,

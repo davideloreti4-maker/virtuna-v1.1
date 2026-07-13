@@ -68,6 +68,19 @@ describe("the quota wall", () => {
     expect(screen.getByRole("button", { name: /start for \$1/i })).toBeTruthy();
   });
 
+  it("does not say the same sentence twice — the title states the situation, the body the action", () => {
+    // The no-plan title used to BE the server's message, so the dialog rendered
+    // "Start a plan to run a Reading" as both its heading and its body.
+    render(
+      <ReadingLimitDialog
+        open
+        quota={wall({ tier: "free", limit: 0, used: 0, message: "Start a plan to run a Reading." })}
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getAllByText(/Start a plan to run a Reading/i)).toHaveLength(1);
+  });
+
   it("offers a spent Creator the next plan up, and says when theirs resets", () => {
     render(
       <ReadingLimitDialog open quota={wall()} renewsAt="2026-08-01T00:00:00.000Z" onClose={vi.fn()} />
