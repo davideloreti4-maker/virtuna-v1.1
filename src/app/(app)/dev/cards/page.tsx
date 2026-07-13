@@ -186,6 +186,28 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
 
 const READING_RESULT = makeReadingResult();
 
+// The GROUNDED brain's dev stand-in: a real video + a real-shaped retention curve (holds through
+// the hook, breaks at ~45%, bleeds out). In production both come from the Read — the audience's
+// MEASURED curve and the analyzed video. The mp4 is a local dev asset (public/dev/ is gitignored),
+// so this preview is blank on a fresh clone; that is fine, it is a workbench.
+const DEV_RETENTION: [number, number][] = [
+  [0, 1], [0.1, 0.94], [0.2, 0.9], [0.3, 0.86], [0.42, 0.82],
+  [0.5, 0.55], [0.6, 0.47], [0.75, 0.4], [0.9, 0.34], [1, 0.3],
+];
+const DEV_BRAIN_SOURCE = {
+  videoSrc: "/dev/sample-video.mp4",
+  durationS: 28,
+  retentionAt: (u: number) => {
+    const x = Math.min(1, Math.max(0, u));
+    for (let i = 1; i < DEV_RETENTION.length; i++) {
+      const [x1, y1] = DEV_RETENTION[i]!;
+      const [x0, y0] = DEV_RETENTION[i - 1]!;
+      if (x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0 || 1);
+    }
+    return DEV_RETENTION[DEV_RETENTION.length - 1]![1];
+  },
+};
+
 // ── The Room — the ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
 // The same <AmbientRoom> the dock blooms open, fed a fixture focus so the three scales are
 // previewable without running a skill. Non-embedded (h-full) → it lives in a fixed-height box
@@ -287,14 +309,29 @@ export default function DevCardsPage() {
               code="AmbientRoom.tsx"
               note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ Population · 1,000. Fed a fixture focus; the box stands in for the panel."
             />
-            <div className="h-[560px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
-              <AmbientRoom
-                flatPersonas={ROOM_FOCUS.personas}
-                conceptText={ROOM_FOCUS.conceptText}
-                fraction={ROOM_FOCUS.fraction}
-                kindLabel="Hook"
-                canRewrite={false}
-              />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="h-[620px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                <AmbientRoom
+                  flatPersonas={ROOM_FOCUS.personas}
+                  conceptText={ROOM_FOCUS.conceptText}
+                  fraction={ROOM_FOCUS.fraction}
+                  kindLabel="Hook"
+                  canRewrite={false}
+                />
+              </div>
+              {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the
+                  drive. Here the curve is a fixture (holds, then breaks at 45%); in the Read it is
+                  the audience's measured curve. */}
+              <div className="h-[620px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                <AmbientRoom
+                  flatPersonas={ROOM_FOCUS.personas}
+                  conceptText={ROOM_FOCUS.conceptText}
+                  fraction={ROOM_FOCUS.fraction}
+                  kindLabel="Hook"
+                  canRewrite={false}
+                  brainSource={DEV_BRAIN_SOURCE}
+                />
+              </div>
             </div>
           </section>
         </div>

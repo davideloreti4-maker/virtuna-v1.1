@@ -1,10 +1,14 @@
 'use client';
 
+import { useCallback, useMemo } from 'react';
 import type { PredictionResult } from '@/lib/engine/types';
 import type { PersonaNode } from '@/components/board/_kit/PersonaGraph';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
-import { AmbientRoom } from '@/components/audience-lens/AmbientRoom';
+import { AmbientRoom, type BrainSource } from '@/components/audience-lens/AmbientRoom';
 import { ReplayController } from '@/components/audience-lens/ReplayController';
+import { normalizeCurve, toRetentionCurve, totalDuration } from '@/components/board/audience/audience-derive';
+import { retentionAt } from '@/components/board/audience/retention-geometry';
+import { useUploadedVideoSource } from '@/components/board/audience/use-uploaded-video-source';
 import { readingConceptText } from './reading-panels';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,6 +57,35 @@ export function ReadingRoom({
   // even when no hook verbatim persisted, so fall back to an honest generic (never fabricated).
   const conceptText = readingConceptText(data) ?? 'your video';
 
+  // ── The GROUNDED brain (The Room's brain scale, on a real video) ──────────────────
+  // The video plays as the stimulus while the predicted cortical response is modeled from the
+  // audience's MEASURED retention curve — attention tracks who is still watching, salience fires
+  // at the breaks, the default network rises with the people who checked out. Supplied ONLY when
+  // BOTH a real video and a real curve exist; otherwise the brain scale doesn't render at all
+  // here (D-13: never a fabricated read on a surface that promises a measured one).
+  const { src: videoSrc } = useUploadedVideoSource(data, null);
+  const heatmap = data.heatmap ?? null;
+  const segments = useMemo(() => heatmap?.segments ?? [], [heatmap?.segments]);
+  const totalSec = totalDuration(heatmap?.segments, 30);
+  const normalized = useMemo(() => {
+    const raw = heatmap?.weighted_curve ?? null;
+    if (!raw || raw.length === 0) return [];
+    return normalizeCurve(toRetentionCurve(normalizeCurve(raw)));
+  }, [heatmap?.weighted_curve]);
+
+  const retentionForU = useCallback(
+    (u: number) => retentionAt(normalized, segments, totalSec, u * totalSec),
+    [normalized, segments, totalSec],
+  );
+
+  const brainSource: BrainSource | null = useMemo(
+    () =>
+      videoSrc && normalized.length > 0
+        ? { videoSrc, retentionAt: retentionForU, durationS: totalSec }
+        : null,
+    [videoSrc, normalized.length, retentionForU, totalSec],
+  );
+
   return (
     <div data-testid="reading-room">
       <AmbientRoom
@@ -62,6 +95,7 @@ export function ReadingRoom({
         fraction={fraction}
         platform={platform}
         reducedMotion={reducedMotion}
+        brainSource={brainSource}
       />
 
       {/* The video-only timeline Replay — voices light up as the video plays (D-06). */}

@@ -1,479 +1,492 @@
 'use client';
 
 /**
- * BrainView — "The brain": the Room's THIRD scale (and the dock's landing view), a
- * TRIBE-style simulated neural read of the room's reaction (Meta's trimodal brain
- * encoder — fMRI response predicted from the stimulus — is the visual reference).
- * A stylized lateral cortex with parcel heat, four stimulus-locked network traces
- * (attention / emotion / memory / drift) looping over an 8s encounter (Onset →
- * Hold → Decision), and a serif verdict in the room's voice.
+ * BrainView — "The brain": a predicted cortical response to the thing the room is reacting to,
+ * modeled on TRIBE v2 (Meta FAIR's trimodal brain encoder, Algonauts 2025).
  *
- * Honesty spine (binding): this is an EXPLICITLY-LABELED simulation sketch — the
- * micro-label reads "simulated", the foot reads "a sketch, not a measurement". It
- * is NOT wired to the engine; the only real signal in it is the focus's stop ratio,
- * which shapes the envelopes (a strong read holds attention; a weak one lets the
- * default network take over). It never fabricates a per-persona claim.
+ * We reproduce the SHAPE of that work, never its code: TRIBE is CC-BY-NC-4.0 and its fsaverage
+ * geometry is FreeSurfer-derived, so neither can ship here. Our cortical surface is our own
+ * artwork (`scripts/generate-cortex-geometry.mjs` → 414 Voronoi parcels across a lateral + medial
+ * view, grouped into the seven canonical Yeo networks), and the response model is our own
+ * (`@/lib/brain/cortex-sim`: per-network neural drive → canonical double-gamma HRF → predicted
+ * BOLD per parcel).
  *
- * Dosage (LOCKED): coral is a SIGNAL, never paint — here it marks ONLY the drift
- * (the default-mode bloom = where attention dies + the drift trace). All engaged
- * activity glows CREAM (the liveness ramp: one hue, opacity-scaled — sequential
- * magnitude per the chart rules; identity always carried by a text label).
+ * The stimulus plays BESIDE the brain, because a brain map with no stimulus is decoration:
+ *  • a real video (the Read) → the actual <video> drives the clock, and the response is GROUNDED
+ *    in the audience's real retention curve (attention tracks who is still watching; salience
+ *    fires at the breaks; the default network rises with the people who checked out);
+ *  • a text concept (the dock) → the words "play" one by one on the same clock (TRIBE v2 feeds
+ *    text with word-level timing too), and the response is an explicitly-labeled SIMULATION.
  *
- * Deterministic — seeded mulberry32 off the focus id (SSR-hydration safe: the
- * first frame is a pure function of props; the clock starts client-side only).
- * Reduced motion freezes the clock mid-Hold (no interval, no pulses).
+ * The brain visibly LAGS the stimulus. That is not a bug and not an effect: BOLD is haemodynamic,
+ * the canonical HRF peaks ~5s after the neural event, and the convolution in cortex-sim produces
+ * that lag for free. The header says so.
+ *
+ * Dosage (LOCKED) survives via real neuroscience: the map is DIVERGING on the task-positive /
+ * default-mode axis — the anticorrelation is a genuine phenomenon — so engaged cortex glows
+ * cream→sage and only the default-mode system (mind-wandering: the audience you are losing)
+ * glows coral. Coral still means exactly what it means everywhere else in the app.
+ *
+ * Deterministic: seeded off the focus id; the first frame is a pure function of props (SSR-safe),
+ * the clock only starts client-side. Reduced motion holds the response at the stimulus midpoint.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import GEOMETRY from '@/lib/brain/cortex-geometry.json';
+import {
+  ACTIVATION_THRESHOLD,
+  NETWORK_IDS,
+  SPOKEN_NETWORKS,
+  TR_S,
+  HRF_PEAK_S,
+  bandWord,
+  hashSeed,
+  parcelTexture,
+  parcelValue,
+  predictedBold,
+  type DriveInput,
+  type NetworkId,
+  type SimMode,
+} from '@/lib/brain/cortex-sim';
+
+// ── Geometry (static, generated) ─────────────────────────────────────────────
+/** A parcel belongs to a network, or to the MEDIAL WALL ('wall') — which carries no signal. */
+type ParcelNet = NetworkId | 'wall';
+interface Parcel {
+  i: number;
+  n: ParcelNet;
+  c: [number, number];
+  p: [number, number][];
+}
+interface View {
+  id: string;
+  label: string;
+  outline: [number, number][];
+  sulci: string[];
+  parcels: Parcel[];
+}
+const GEO = GEOMETRY as unknown as {
+  width: number;
+  height: number;
+  networks: { id: NetworkId; label: string; polarity: 'task' | 'default'; note: string }[];
+  views: View[];
+};
+const POLARITY = new Map(GEO.networks.map((n) => [n.id, n.polarity]));
+const NET_LABEL = new Map<ParcelNet, string>([
+  ...GEO.networks.map((n) => [n.id, n.label] as [ParcelNet, string]),
+  ['wall', 'Medial wall'],
+]);
+const NET_NOTE = new Map<ParcelNet, string>([
+  ...GEO.networks.map((n) => [n.id, n.note] as [ParcelNet, string]),
+  ['wall', 'no cortical signal'],
+]);
+
+const toPoints = (pts: [number, number][]) => pts.map(([x, y]) => `${x},${y}`).join(' ');
+const toPath = (pts: [number, number][]) =>
+  pts.length === 0 ? '' : `M ${pts.map(([x, y], i) => `${i === 0 ? '' : 'L '}${x} ${y}`).join(' ')} Z`;
+
+/** The playback clock ticks at TR/4 — BOLD is slow (TR = 1.49s); a 60fps repaint would be a lie. */
+const TICK_MS = Math.round((TR_S / 4) * 1000);
+/** A text concept's simulated encounter, seconds (an unhurried scroll-past + decision). Long
+ *  enough that the HRF (a 16s low-pass) cannot smear the whole loop into one flat number. */
+const TEXT_STIMULUS_S = 15;
 
 export interface BrainViewProps {
-  /** The focus's real stop-count — the ONE genuine signal shaping the sim. */
+  /** The focus's real stop-count — the ONE genuine aggregate. */
   stopCount: number;
   total: number;
-  /** The concept under read (sr-only summary grounding). */
+  /** The concept under read — the text stimulus when no video exists. */
   conceptText: string;
-  /** Seeds the deterministic sim (focus id, else the concept text). */
+  /** Seeds the model (focus id, else the concept text). */
   seedKey: string;
   reducedMotion?: boolean;
+  /** A real video → the response is GROUNDED and the video plays as the stimulus. */
+  videoSrc?: string | null;
+  /** GROUNDED only: the audience's real retention at normalized stimulus time u∈[0,1] → 0..1. */
+  retentionAt?: (u: number) => number;
+  /** The stimulus length. Defaults to the simulated encounter; a video overrides from metadata. */
+  durationS?: number;
 }
 
-// ── Sim clock ────────────────────────────────────────────────────────────────
-/** One simulated encounter with the concept (Onset → Hold → Decision), looped. */
-const PERIOD_S = 8;
-const TICK_MS = 125;
-const TICK_S = TICK_MS / 1000;
-/** Trace window: 88 samples × 125ms = 11s (one full encounter + change). */
-const TRACE_N = 88;
-/** Reduced-motion freeze point — mid-Hold, after the onset spike (the characteristic frame). */
-const REDUCED_T = 5.0;
+export function BrainView({
+  stopCount,
+  total,
+  conceptText,
+  seedKey,
+  reducedMotion = false,
+  videoSrc,
+  retentionAt,
+  durationS,
+}: BrainViewProps) {
+  const mode: SimMode = videoSrc && retentionAt ? 'grounded' : 'simulated';
+  const stopRatio = total > 0 ? Math.min(1, Math.max(0, stopCount / total)) : 0.6;
 
-/** mulberry32 — seeded PRNG (same one the swarm/constellation use; copied per
- *  client-module convention — lens-derive does not export it). */
-function mulberry32(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [videoDur, setVideoDur] = useState<number | null>(null);
+  const duration = videoDur ?? durationS ?? TEXT_STIMULUS_S;
 
-/** djb2 — string → uint32 seed. */
-function hashSeed(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
-  return h >>> 0;
-}
+  const drive: DriveInput = useMemo(
+    () => ({ mode, stopRatio, durationS: duration, retentionAt, seedKey }),
+    [mode, stopRatio, duration, retentionAt, seedKey],
+  );
 
-const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
-const gauss = (x: number, c: number, w: number) => Math.exp(-((x - c) * (x - c)) / w);
-const smooth = (a: number, b: number, x: number) => {
-  const t = clamp01((x - a) / (b - a));
-  return t * t * (3 - 2 * t);
-};
+  // ── The clock. Reduced motion holds at the stimulus midpoint (the characteristic frame);
+  //    otherwise the video drives it, or an internal TR-paced loop does.
+  const [t, setT] = useState(reducedMotion ? TEXT_STIMULUS_S / 2 : 0);
+  // The text stimulus autoplays (it IS the ambient read). A VIDEO waits for a tap — autoplaying
+  // media the moment a panel opens is hostile.
+  const [playing, setPlaying] = useState(() => !videoSrc && !reducedMotion);
 
-// ── Networks ─────────────────────────────────────────────────────────────────
-type NetKey = 'attention' | 'emotion' | 'memory' | 'drift';
-const NETS: { key: NetKey; label: string; words: [string, string, string, string] }[] = [
-  { key: 'attention', label: 'Attention', words: ['quiet', 'gathering', 'holding', 'locked in'] },
-  { key: 'emotion', label: 'Emotion', words: ['flat', 'warming', 'charged', 'surging'] },
-  { key: 'memory', label: 'Memory', words: ['faint', 'tracing', 'encoding', 'sticking'] },
-  { key: 'drift', label: 'Drift', words: ['low', 'creeping', 'rising', 'taking over'] },
-];
-
-const bandWord = (v: number, words: [string, string, string, string]) =>
-  v < 0.25 ? words[0] : v < 0.5 ? words[1] : v < 0.72 ? words[2] : words[3];
-
-// ── Cortical parcels ─────────────────────────────────────────────────────────
-// Stylized lateral left hemisphere (frontal pole at LEFT), viewBox 400×250.
-// `mix` weights blend the four network envelopes into the parcel's own signal.
-// group 'drift' = the ONE coral bloom (default-mode / mind-wandering); the rest
-// glow cream (engagement). Positions are illustrative anatomy, not a claim.
-interface Region {
-  id: string;
-  name: string;
-  note: string;
-  cx: number;
-  cy: number;
-  r: number;
-  group: 'engage' | 'drift';
-  base: number;
-  mix: Partial<Record<NetKey, number>>;
-}
-
-const REGIONS: Region[] = [
-  { id: 'dlpfc', name: 'Prefrontal cortex', note: 'attention control', cx: 100, cy: 86, r: 11, group: 'engage', base: 0.10, mix: { attention: 0.65, memory: 0.10 } },
-  { id: 'acc', name: 'Anterior cingulate', note: 'the curiosity gap', cx: 148, cy: 66, r: 8, group: 'engage', base: 0.10, mix: { attention: 0.45, emotion: 0.25 } },
-  { id: 'motor', name: 'Motor cortex', note: 'the urge to act', cx: 196, cy: 48, r: 7, group: 'engage', base: 0.08, mix: { attention: 0.25, emotion: 0.15 } },
-  { id: 'precuneus', name: 'Default network', note: 'mind-wandering', cx: 254, cy: 60, r: 10, group: 'drift', base: 0.08, mix: { drift: 0.75 } },
-  { id: 'tpj', name: 'Temporoparietal junction', note: 'the social read', cx: 278, cy: 104, r: 9, group: 'engage', base: 0.12, mix: { emotion: 0.30, memory: 0.20, attention: 0.15 } },
-  { id: 'v1', name: 'Visual cortex', note: 'imagery', cx: 326, cy: 132, r: 10, group: 'engage', base: 0.18, mix: { attention: 0.40, emotion: 0.10 } },
-  { id: 'wernicke', name: "Wernicke's area", note: 'language decode', cx: 232, cy: 130, r: 9, group: 'engage', base: 0.12, mix: { attention: 0.35, memory: 0.25 } },
-  { id: 'a1', name: 'Auditory cortex', note: 'voice & cadence', cx: 188, cy: 134, r: 8, group: 'engage', base: 0.14, mix: { attention: 0.45, emotion: 0.15 } },
-  { id: 'broca', name: "Broca's area", note: 'inner speech', cx: 106, cy: 136, r: 8, group: 'engage', base: 0.12, mix: { attention: 0.30, memory: 0.15 } },
-  { id: 'vmpfc', name: 'Ventromedial prefrontal', note: 'value & relevance', cx: 64, cy: 126, r: 9, group: 'engage', base: 0.12, mix: { emotion: 0.35, attention: 0.20 } },
-  { id: 'nacc', name: 'Nucleus accumbens', note: 'reward anticipation', cx: 86, cy: 154, r: 7, group: 'engage', base: 0.10, mix: { emotion: 0.35, memory: 0.20, attention: 0.15 } },
-  { id: 'amygdala', name: 'Amygdala', note: 'salience & arousal', cx: 146, cy: 158, r: 7, group: 'engage', base: 0.10, mix: { emotion: 0.55, attention: 0.15 } },
-  { id: 'hippocampus', name: 'Hippocampus', note: 'memory encoding', cx: 184, cy: 164, r: 8, group: 'engage', base: 0.08, mix: { memory: 0.65 } },
-  { id: 'fusiform', name: 'Fusiform gyrus', note: 'the face read', cx: 250, cy: 166, r: 8, group: 'engage', base: 0.10, mix: { emotion: 0.30, attention: 0.20 } },
-];
-
-const REGION_WORDS: [string, string, string, string] = ['quiet', 'murmur', 'strong', 'lit up'];
-
-/** The verdict in the room's voice — banded on the ONE real signal (stop ratio). */
-function verdictFor(stopRatio: number): string {
-  if (stopRatio >= 0.7)
-    return 'Salience spikes at the onset and the reward loop stays lit — the room keeps watching.';
-  if (stopRatio >= 0.4)
-    return 'The onset lands, then attention wavers into the decision — the middle does the losing.';
-  return 'Early salience, then the default network takes over — minds wander before the turn.';
-}
-
-// ── The sim — every value is a pure function of (seed, stopRatio, t) ──────────
-interface SimFns {
-  nets: (t: number) => Record<NetKey, number>;
-  region: (rg: Region, t: number, nets: Record<NetKey, number>) => number;
-}
-
-function buildSim(seedKey: string, stopRatio: number): SimFns {
-  const rng = mulberry32(hashSeed(seedKey));
-  // Per-network wobble phases/frequencies — the seeded "this concept" texture.
-  const ph = (Object.fromEntries(
-    (['attention', 'emotion', 'memory', 'drift'] as NetKey[]).map((k) => [
-      k,
-      { p1: rng() * Math.PI * 2, p2: rng() * Math.PI * 2, w1: 0.8 + rng() * 0.5, w2: 2.0 + rng() * 0.7 },
-    ]),
-  ) as Record<NetKey, { p1: number; p2: number; w1: number; w2: number }>);
-  const regionPhase = new Map(REGIONS.map((rg) => [rg.id, { p: rng() * Math.PI * 2, w: 0.9 + rng() * 0.9 }]));
-  const sR = stopRatio;
-
-  const wobble = (k: NetKey, t: number) =>
-    0.05 * Math.sin(t * ph[k].w1 + ph[k].p1) + 0.035 * Math.sin(t * ph[k].w2 + ph[k].p2);
-
-  const nets = (t: number): Record<NetKey, number> => {
-    const p = (((t % PERIOD_S) + PERIOD_S) % PERIOD_S) / PERIOD_S; // 0..1 through the encounter
-    // Amplitudes are tuned to keep headroom: the ONSET SPIKE must visibly clear the hold
-    // plateau (a saturated trace reads as a flat line and says nothing).
-    const attention = clamp01(
-      0.10 +
-        0.58 * gauss(p, 0.09, 0.005) + // the onset spike — the hook hits
-        (0.16 + 0.26 * sR) * smooth(0.10, 0.30, p) * (1 - (1 - sR) * 0.8 * smooth(0.55, 0.95, p)) + // the hold, sagging if weak
-        (sR >= 0.55 ? 0.20 * sR * gauss(p, 0.86, 0.008) : -0.06 * smooth(0.78, 0.95, p)) + // the decision kick or drop
-        wobble('attention', t),
-    );
-    const emotion = clamp01(
-      0.08 +
-        (0.18 + 0.34 * sR) * smooth(0.16, 0.60, p) +
-        0.34 * sR * gauss(p, 0.84, 0.008) + // the payoff bump
-        wobble('emotion', t),
-    );
-    const memory = clamp01(
-      0.06 +
-        0.16 * gauss(p, 0.12, 0.008) + // onset novelty
-        0.58 * sR * smooth(0.45, 0.88, p) + // encoding only if it held them
-        wobble('memory', t),
-    );
-    const drift = clamp01(
-      0.05 +
-        0.16 * (1 - sR) * smooth(0.20, 0.50, p) +
-        0.62 * (1 - sR) * smooth(0.50, 0.95, p) + // the default network takes over
-        wobble('drift', t),
-    );
-    return { attention, emotion, memory, drift };
-  };
-
-  const region = (rg: Region, t: number, n: Record<NetKey, number>): number => {
-    const jitter = regionPhase.get(rg.id)!;
-    let v = rg.base + 0.06 * Math.sin(t * jitter.w + jitter.p);
-    for (const [k, w] of Object.entries(rg.mix) as [NetKey, number][]) v += n[k] * w;
-    return clamp01(v);
-  };
-
-  return { nets, region };
-}
-
-// ── Component ────────────────────────────────────────────────────────────────
-export function BrainView({ stopCount, total, conceptText, seedKey, reducedMotion = false }: BrainViewProps) {
-  const stopRatio = total > 0 ? clamp01(stopCount / total) : 0.6;
-  const sim = useMemo(() => buildSim(seedKey, stopRatio), [seedKey, stopRatio]);
-
-  // The sim clock — starts client-side only (the t=0 / frozen first frame is a pure
-  // function of props, so SSR + hydration agree byte-for-byte).
-  const [now, setNow] = useState(reducedMotion ? REDUCED_T : 0);
   useEffect(() => {
-    if (reducedMotion) return;
-    const id = setInterval(() => setNow((n) => n + TICK_S), TICK_MS);
+    if (reducedMotion || videoSrc || !playing) return;
+    const id = setInterval(() => {
+      setT((prev) => {
+        const next = prev + TICK_MS / 1000;
+        return next >= duration ? 0 : next; // the encounter loops
+      });
+    }, TICK_MS);
     return () => clearInterval(id);
-  }, [reducedMotion]);
+  }, [reducedMotion, videoSrc, playing, duration]);
 
-  const netNow = sim.nets(now);
-  const regionValues = REGIONS.map((rg) => ({ rg, v: sim.region(rg, now, netNow) }));
-
-  // Hover readout, falling back to the hottest parcel. "Hottest" is scored over a ~1s window
-  // rather than the instant value: a single-frame score makes two near-tied parcels swap the
-  // readout row every tick. Pure (a function of `now`) — no render-phase ref mutation.
-  const [hovered, setHovered] = useState<string | null>(null);
-  const hottestId = useMemo(() => {
-    const window = [0, 0.25, 0.5, 0.75, 1].map((d) => {
-      const t = now - d;
-      return { t, n: sim.nets(t) };
-    });
-    let bestId = REGIONS[0]!.id;
-    let best = -1;
-    for (const rg of REGIONS) {
-      const score = window.reduce((sum, w) => sum + sim.region(rg, w.t, w.n), 0);
-      if (score > best) {
-        best = score;
-        bestId = rg.id;
-      }
+  const togglePlay = useCallback(() => {
+    const v = videoRef.current;
+    if (v) {
+      if (v.paused) void v.play()?.catch(() => {});
+      else v.pause();
+      return;
     }
-    return bestId;
-  }, [sim, now]);
-  const readout = regionValues.find((x) => x.rg.id === (hovered ?? hottestId))!;
+    setPlaying((p) => !p);
+  }, []);
 
-  // Stimulus-locked traces — each network's last 11s, sampled straight off the pure
-  // sim (no buffers to drift out of sync).
-  const traces = useMemo(() => {
-    const out = {} as Record<NetKey, string>;
-    const samples: Record<NetKey, number>[] = [];
-    for (let i = 0; i < TRACE_N; i++) samples.push(sim.nets(now - (TRACE_N - 1 - i) * TICK_S));
-    // A slight gamma lifts the hold plateau into the middle of the band (a linear map left every
-    // trace hugging the baseline). Monotonic — the ordering between networks is untouched.
-    for (const { key } of NETS) {
-      out[key] = samples
-        .map((s, i) => `${((i / (TRACE_N - 1)) * 100).toFixed(2)},${(26 - Math.pow(s[key], 0.8) * 23).toFixed(2)}`)
-        .join(' ');
-    }
-    return out;
-  }, [sim, now]);
+  // ── Predicted BOLD, per network, at the current scan time. The HRF convolution inside
+  //    `predictedBold` is what makes the map lag the stimulus.
+  const bold = useMemo(() => predictedBold(drive, t), [drive, t]);
 
-  // The encounter playhead (Onset 0–15% · Hold · Decision 78–100%). On the loop wrap the
-  // playhead must JUMP back, not glide right-to-left, so the transition is suppressed for the
-  // first tick of a new encounter (a pure test on the phase — no cross-render ref).
-  const p = (((now % PERIOD_S) + PERIOD_S) % PERIOD_S) / PERIOD_S;
-  const phase = p < 0.15 ? 'onset' : p < 0.78 ? 'hold' : 'decision';
-  const wrapped = p < TICK_S / PERIOD_S;
+  const seed = useMemo(() => hashSeed(seedKey), [seedKey]);
+  // Per-parcel texture — computed once per surface, not per frame.
+  const textures = useMemo(
+    () => GEO.views.map((v) => v.parcels.map((p) => parcelTexture(p.i, seed, p.c[0], p.c[1]))),
+    [seed],
+  );
 
-  const heatColor = (g: Region['group']) => (g === 'drift' ? 'var(--color-accent)' : 'var(--color-foreground)');
-  const fade = reducedMotion ? undefined : { transition: 'opacity 150ms linear' };
+  const [hovered, setHovered] = useState<{ net: ParcelNet; v: number } | null>(null);
+
+  // The hottest network right now — the readout's subject when nothing is hovered.
+  const hottest = useMemo(() => {
+    let best: NetworkId = NETWORK_IDS[0]!;
+    for (const id of NETWORK_IDS) if (bold[id] > bold[best]) best = id;
+    return best;
+  }, [bold]);
+  const readNet: ParcelNet = hovered?.net ?? hottest;
+  const readVal = hovered?.v ?? (readNet === 'wall' ? 0 : bold[readNet]);
+
+  const u = duration > 0 ? Math.min(1, t / duration) : 0;
+  const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
+  // The text stimulus "plays": words land over the first 70% of the encounter, then it sits and
+  // the response resolves (the HRF is still catching up — that is the point).
+  const wordsShown = Math.max(1, Math.round(Math.min(1, u / 0.7) * words.length));
+
+  const stimulusLabel = mode === 'grounded' ? 'their video' : 'your concept';
 
   return (
-    <div className="flex flex-col" data-testid="brain-view">
-      {/* Micro-label — the honesty label + the stimulus clock. */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col" data-testid="brain-view" data-mode={mode}>
+      {/* Header — what this is, and the scan clock. */}
+      <div className="flex items-baseline justify-between gap-2">
         <p className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-[var(--color-foreground-muted)]">
-          Neural read · simulated
+          Predicted cortical response · {mode === 'grounded' ? 'modeled' : 'simulated'}
         </p>
-        <p className="flex items-center gap-1.5 font-mono text-[10px] text-[var(--color-foreground-muted)] tabular-nums">
-          t+{(p * PERIOD_S).toFixed(1)}s
-          <span
-            aria-hidden
-            className={'h-[5px] w-[5px] rounded-full bg-accent ' + (reducedMotion ? '' : 'animate-pulse')}
-          />
+        <p className="shrink-0 font-mono text-[10px] text-[var(--color-foreground-muted)] tabular-nums">
+          t={t.toFixed(1)}s · TR {TR_S}s
         </p>
       </div>
 
-      {/* The cortex — cream parcel heat; the ONE coral bloom is the default network
-          (drift). Structure is matte hairline; heat is layered flat fills (no glow). */}
-      <svg
-        viewBox="34 22 322 200"
-        role="img"
-        aria-label="Simulated cortical activity map — cream marks engagement, coral marks drift"
-        className="mt-1 h-auto w-full max-w-[300px] self-center"
-      >
-        {/* Brainstem + cerebellum + cortex silhouette. */}
-        <path
-          d="M 248 192 C 245 202 243 210 242 218 L 259 218 C 261 208 264 200 268 194 Z"
-          fill="rgba(255,255,255,0.02)"
-          stroke="rgba(255,255,255,0.16)"
-          strokeWidth="1"
-        />
-        <ellipse
-          cx="296"
-          cy="192"
-          rx="32"
-          ry="20"
-          transform="rotate(-10 296 192)"
-          fill="rgba(255,255,255,0.018)"
-          stroke="rgba(255,255,255,0.16)"
-          strokeWidth="1"
-        />
-        <path
-          d="M 48 146
-             C 36 128 38 96 58 72
-             C 76 50 112 34 152 30
-             C 196 26 240 32 276 48
-             C 306 62 330 88 340 118
-             C 346 136 344 152 334 162
-             C 326 170 314 173 302 172
-             C 284 182 262 190 238 192
-             C 206 198 168 198 138 190
-             C 112 184 92 172 84 158
-             C 72 152 56 152 48 146 Z"
-          fill="rgba(255,255,255,0.025)"
-          stroke="rgba(255,255,255,0.22)"
-          strokeWidth="1.4"
-        />
-        {/* Gyri — decorative folds, recessive. The sylvian fissure sits a hair stronger. */}
-        <g fill="none" stroke="rgba(255,255,255,0.075)" strokeWidth="1" strokeLinecap="round">
-          <path d="M 84 96 C 116 78 156 74 194 86" />
-          <path d="M 214 58 C 246 62 274 76 296 98" />
-          <path d="M 300 122 C 312 132 318 144 314 156" />
-          <path d="M 152 176 C 188 168 224 166 256 172" />
-        </g>
-        <path
-          d="M 96 148 C 140 138 192 138 240 148"
-          fill="none"
-          stroke="rgba(255,255,255,0.11)"
-          strokeWidth="1"
-          strokeLinecap="round"
-        />
-
-        {/* Parcel heat — three layered flat fills per parcel (matte falloff, no blur). The ramp
-            is sequential (one hue, opacity-scaled): a cold parcel still reads as a faint node so
-            the map never looks broken; a hot one carries real weight. */}
-        {regionValues.map(({ rg, v }) => {
-          const core = (0.10 + Math.pow(v, 1.15) * 0.82) * (rg.group === 'drift' ? 1 : 0.92);
-          const color = heatColor(rg.group);
-          return (
-            <g key={rg.id}>
-              <circle cx={rg.cx} cy={rg.cy} r={rg.r * 2.4} fill={color} opacity={core * 0.13} style={fade} />
-              <circle cx={rg.cx} cy={rg.cy} r={rg.r * 1.5} fill={color} opacity={core * 0.30} style={fade} />
-              <circle cx={rg.cx} cy={rg.cy} r={rg.r} fill={color} opacity={core} style={fade} />
-              {/* Hit target — native tooltip + drives the readout row. */}
-              <circle
-                cx={rg.cx}
-                cy={rg.cy}
-                r={rg.r + 9}
-                fill="transparent"
-                onMouseEnter={() => setHovered(rg.id)}
-                onMouseLeave={() => setHovered(null)}
+      {/* ── The stimulus, beside the brain. A brain map with no stimulus is decoration. ── */}
+      <div className="mt-2.5 flex items-stretch gap-3">
+        <div className="relative w-[74px] shrink-0 overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]">
+          {videoSrc ? (
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              muted
+              playsInline
+              preload="metadata"
+              data-testid="brain-stimulus-video"
+              className="h-full w-full object-cover"
+              style={{ aspectRatio: '9 / 16' }}
+              onLoadedMetadata={(e) => {
+                const d = e.currentTarget.duration;
+                if (Number.isFinite(d)) setVideoDur(d);
+              }}
+              onTimeUpdate={(e) => setT(e.currentTarget.currentTime)}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              onEnded={() => setPlaying(false)}
+            />
+          ) : (
+            // The text stimulus — the concept landing word by word, on the same clock.
+            <p
+              className="flex h-full flex-wrap content-center gap-x-1 p-2 text-[10px] leading-[1.35]"
+              style={{ aspectRatio: '9 / 16' }}
+              data-testid="brain-stimulus-text"
+            >
+              {words.map((w, i) => (
+                <span
+                  key={`${w}-${i}`}
+                  className={
+                    i < wordsShown
+                      ? 'text-[var(--color-foreground)]'
+                      : 'text-[var(--color-foreground-muted)] opacity-30'
+                  }
+                  style={reducedMotion ? undefined : { transition: 'opacity 200ms linear, color 200ms linear' }}
+                >
+                  {w}
+                </span>
+              ))}
+            </p>
+          )}
+          {!reducedMotion && (
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pause the stimulus' : 'Play the stimulus'}
+              className="absolute inset-0 grid place-items-center transition-opacity hover:opacity-100"
+              style={{ opacity: playing ? 0 : 1 }}
+            >
+              <span
+                className="grid h-7 w-7 place-items-center rounded-full"
+                style={{ background: 'rgba(0,0,0,0.55)' }}
               >
-                <title>{`${rg.name} — ${rg.note}`}</title>
-              </circle>
-            </g>
-          );
-        })}
-      </svg>
+                <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M8 5.5v13l11-6.5L8 5.5Z" fill="var(--color-foreground)" />
+                </svg>
+              </span>
+            </button>
+          )}
+        </div>
 
-      {/* Parcel readout — the hovered (else hottest) region, stable-height. */}
-      <div className="mt-1.5 flex h-6 items-center gap-2">
-        <span
-          aria-hidden
-          className="h-[6px] w-[6px] shrink-0 rounded-full"
-          style={{ background: heatColor(readout.rg.group), opacity: 0.5 + readout.v * 0.5, ...fade }}
-        />
-        <span className="text-[12px] font-medium text-[var(--color-foreground)]">{readout.rg.name}</span>
-        <span className="min-w-0 truncate text-[11.5px] text-[var(--color-foreground-muted)]">
-          — {readout.rg.note}
-        </span>
-        <span className="ml-auto h-[3px] w-[44px] shrink-0 overflow-hidden rounded-[2px] bg-white/[0.08]">
-          <span
-            className="block h-full rounded-[2px]"
-            style={{
-              width: `${Math.round(readout.v * 100)}%`,
-              background: heatColor(readout.rg.group),
-              opacity: 0.85,
-              ...(reducedMotion ? {} : { transition: 'width 150ms linear' }),
-            }}
-          />
-        </span>
-        <span className="w-[52px] shrink-0 text-right font-mono text-[10px] text-[var(--color-foreground-secondary)]">
-          {bandWord(readout.v, REGION_WORDS)}
-        </span>
+        {/* The two cortical views — lateral + medial, left hemisphere. */}
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
+          <div className="flex gap-1.5">
+            {GEO.views.map((view, vi) => (
+              <svg
+                key={view.id}
+                viewBox={`0 0 ${GEO.width} ${GEO.height}`}
+                className="h-auto min-w-0 flex-1"
+                role="img"
+                aria-label={`${view.label} view — predicted cortical response`}
+              >
+                <defs>
+                  <clipPath id={`cx-${view.id}`}>
+                    {/* The surface clips the parcels exactly — the Voronoi cells are box-clipped,
+                        and the cortex outline does the real cut. */}
+                    <path d={toPath(view.outline)} />
+                  </clipPath>
+                </defs>
+
+                <g clipPath={`url(#cx-${view.id})`}>
+                  {view.parcels.map((parcel, pi) => {
+                    const tex = textures[vi]![pi]!;
+                    const isWall = parcel.n === 'wall';
+                    // The medial wall has no cortical signal — it stays gray, always.
+                    const v = isWall ? 0 : parcelValue(bold[parcel.n as NetworkId], tex, t);
+                    return (
+                      <polygon
+                        key={parcel.i}
+                        points={toPoints(parcel.p)}
+                        fill={parcelFill(parcel.n, v, tex.curv)}
+                        style={reducedMotion ? undefined : { transition: 'fill 260ms linear' }}
+                        onMouseEnter={() => setHovered({ net: parcel.n, v })}
+                        onMouseLeave={() => setHovered(null)}
+                      >
+                        <title>{`${NET_LABEL.get(parcel.n)} — ${NET_NOTE.get(parcel.n)}`}</title>
+                      </polygon>
+                    );
+                  })}
+                  {/* The primary fissures — the few folds deep enough to read at this scale.
+                      Kept faint: they are anatomy, not data, and must never out-shout the map. */}
+                  <g fill="none" stroke="rgba(0,0,0,0.22)" strokeWidth="1.6" strokeLinecap="round">
+                    {view.sulci.map((d, i) => (
+                      <path key={i} d={d} />
+                    ))}
+                  </g>
+                </g>
+
+                {/* The surface edge. */}
+                <path
+                  d={toPath(view.outline)}
+                  fill="none"
+                  stroke="rgba(255,255,255,0.28)"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+                <text
+                  x={GEO.width / 2}
+                  y={GEO.height - 2}
+                  textAnchor="middle"
+                  className="font-mono"
+                  fontSize="11"
+                  fill="var(--color-foreground-muted)"
+                  opacity="0.75"
+                >
+                  {view.label}
+                </text>
+              </svg>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* The verdict — the room's voice reading the scan. */}
-      <p className="mt-2.5 font-serif text-[15.5px] leading-snug tracking-[-0.005em] text-foreground">
-        {verdictFor(stopRatio)}
+      {/* Colorbar — diverging on the real axis: default-mode ⇄ task-positive. */}
+      <div className="mt-2.5 flex items-center gap-2">
+        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--color-accent-text)]">
+          drifting
+        </span>
+        <span className="flex h-[5px] min-w-0 flex-1 overflow-hidden rounded-[3px]">
+          {Array.from({ length: 44 }, (_, i) => (
+            // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
+            <span key={i} className="h-full flex-1" style={{ background: barFill((i / 43) * 2 - 1) }} />
+          ))}
+        </span>
+        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-[#a6bfa1]">
+          engaged
+        </span>
+      </div>
+      <p className="mt-1 text-center font-mono text-[9px] tracking-wide text-[var(--color-foreground-muted)]">
+        predicted BOLD · response trails {stimulusLabel} by ~{HRF_PEAK_S}s (haemodynamic lag)
       </p>
 
-      {/* The encounter timeline — Onset · Hold · Decision, playhead looping. */}
-      <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
-        <div className="relative h-4">
-          {(
-            [
-              ['onset', 'Onset', 'left-0'],
-              ['hold', 'Hold', 'left-[46%]'],
-              ['decision', 'Decision', 'right-0'],
-            ] as const
-          ).map(([key, label, pos]) => (
-            <span
-              key={key}
-              className={
-                `absolute top-0 font-mono text-[9.5px] uppercase tracking-[0.11em] ${pos} ` +
-                (phase === key
-                  ? 'text-[var(--color-foreground-secondary)]'
-                  : 'text-[var(--color-foreground-muted)] opacity-60')
-              }
-            >
-              {label}
-            </span>
-          ))}
-        </div>
-        <div className="relative mt-1 h-[2px] rounded bg-white/[0.07]">
-          <span
-            aria-hidden
-            className="absolute top-1/2 h-[6px] w-[6px] -translate-y-1/2 rounded-full bg-[var(--color-foreground)] opacity-80"
-            style={{
-              left: `calc(${(p * 100).toFixed(2)}% - 3px)`,
-              transition: reducedMotion || wrapped ? 'none' : 'left 130ms linear',
-            }}
-          />
-        </div>
+      {/* Readout — the network under the cursor, else the one that is loudest right now. */}
+      <div className="mt-3 flex h-6 items-center gap-2 border-t border-[var(--color-border)] pt-3">
+        <span
+          aria-hidden
+          className="h-[7px] w-[7px] shrink-0 rounded-full"
+          style={{ background: parcelFill(readNet, Math.max(0.6, readVal), 0.6) }}
+        />
+        <span className="text-[12px] font-medium text-[var(--color-foreground)]">
+          {NET_LABEL.get(readNet)}
+        </span>
+        <span className="min-w-0 truncate text-[11.5px] text-[var(--color-foreground-muted)]">
+          — {NET_NOTE.get(readNet)}
+        </span>
+        <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--color-foreground-secondary)] tabular-nums">
+          {readVal.toFixed(2)}
+        </span>
       </div>
 
-      {/* Network traces — small multiples (one series per row: the row label carries
-          identity, never color; coral is reserved for the drift signal). */}
-      <div className="mt-2.5 flex flex-col">
-        {NETS.map(({ key, label, words }) => {
-          const isDrift = key === 'drift';
-          const v = netNow[key];
-          const word = bandWord(v, words);
+      {/* The four networks the room actually speaks about. */}
+      <div className="mt-2 flex flex-col gap-[3px]">
+        {SPOKEN_NETWORKS.map(({ id, label, words: bandWords }) => {
+          const v = bold[id];
+          const isDefault = POLARITY.get(id) === 'default';
           return (
-            <div key={key} className="flex items-center gap-2.5">
+            <div key={id} className="flex items-center gap-2.5">
               <span className="w-[62px] shrink-0 font-mono text-[9.5px] uppercase tracking-[0.11em] text-[var(--color-foreground-muted)]">
                 {label}
               </span>
-              <svg className="h-[26px] min-w-0 flex-1" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden>
-                <line x1="0" y1="26.5" x2="100" y2="26.5" stroke="rgba(255,255,255,0.06)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                <polyline
-                  points={traces[key]}
-                  fill="none"
-                  stroke={isDrift ? 'var(--color-accent)' : 'var(--color-foreground)'}
-                  strokeOpacity={isDrift ? 0.8 : 0.62}
-                  strokeWidth="1.75"
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
+              <span className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-[2px] bg-white/[0.06]">
+                <span
+                  className="block h-full rounded-[2px]"
+                  style={{
+                    width: `${Math.round(v * 100)}%`,
+                    background: isDefault ? 'var(--color-accent)' : '#a6bfa1',
+                    opacity: 0.8,
+                    ...(reducedMotion ? {} : { transition: 'width 260ms linear' }),
+                  }}
                 />
-              </svg>
+              </span>
               <span
                 className={
                   'w-[68px] shrink-0 text-right font-mono text-[10px] ' +
-                  (isDrift && v >= 0.38
+                  (isDefault && v >= 0.45
                     ? 'text-[var(--color-accent-text)]'
                     : 'text-[var(--color-foreground-secondary)]')
                 }
               >
-                {word}
+                {bandWord(v, bandWords)}
               </span>
             </div>
           );
         })}
       </div>
 
-      {/* Foot — the honesty line. */}
-      <p className="mt-3 text-center font-mono text-[10px] tracking-wide text-[var(--color-foreground-muted)]">
-        modeled cortical response · a sketch, not a measurement
+      {/* The verdict — the room's voice reading the scan. */}
+      <p className="mt-3 font-serif text-[15px] leading-snug tracking-[-0.005em] text-foreground">
+        {verdictFor(stopRatio, bold, mode)}
+      </p>
+
+      {/* Foot — the honesty line. It must survive every redesign. */}
+      <p className="mt-2.5 text-center font-mono text-[9.5px] tracking-wide text-[var(--color-foreground-muted)]">
+        {mode === 'grounded'
+          ? 'modeled from your audience’s real retention · not a brain measurement'
+          : 'a modeled response · a sketch, not a measurement'}
       </p>
 
       <p className="sr-only">
-        Simulated neural read of &ldquo;{conceptText}&rdquo;: attention {bandWord(netNow.attention, NETS[0]!.words)},
-        emotion {bandWord(netNow.emotion, NETS[1]!.words)}, memory {bandWord(netNow.memory, NETS[2]!.words)}, drift{' '}
-        {bandWord(netNow.drift, NETS[3]!.words)}.
+        {mode === 'grounded' ? 'Modeled' : 'Simulated'} cortical response to “{conceptText}”:{' '}
+        {SPOKEN_NETWORKS.map((n) => `${n.label} ${bandWord(bold[n.id], n.words)}`).join(', ')}.
       </p>
     </div>
   );
+}
+
+// The resting cortex: a curvature-shaded gray surface — gyral crowns light, sulcal depths dark.
+// This is what a surface plot shows where nothing clears threshold, and it is most of the brain
+// most of the time. Painting every parcel is what makes a generated map look like stained glass.
+const GYRUS: RGB = [88, 87, 84];
+const SULCUS: RGB = [58, 57, 55];
+// The two poles of the diverging map, at threshold → at full activation.
+const TASK_LOW: RGB = [122, 148, 118];
+const TASK_HIGH: RGB = [206, 226, 198]; // sage → pale sage-cream
+const DMN_LOW: RGB = [176, 72, 72];
+const DMN_HIGH: RGB = [255, 120, 110]; // coral
+
+type RGB = [number, number, number];
+const mix = (a: RGB, b: RGB, t: number): RGB => [
+  Math.round(a[0] + (b[0] - a[0]) * t),
+  Math.round(a[1] + (b[1] - a[1]) * t),
+  Math.round(a[2] + (b[2] - a[2]) * t),
+];
+const css = ([r, g, b]: RGB) => `rgb(${r}, ${g}, ${b})`;
+
+/**
+ * One parcel's fill: the curvature gray, with the activation colour composited over it ONLY once
+ * it clears threshold. Diverging on the real axis — task-positive parcels go sage, the
+ * default-mode system goes coral — so the locked dosage rule survives: coral still means
+ * "you are losing them".
+ */
+function parcelFill(net: ParcelNet, v: number, curv: number): string {
+  const base = mix(SULCUS, GYRUS, curv);
+  if (net === 'wall') return css(base);
+  const x = v < 0 ? 0 : v > 1 ? 1 : v;
+  if (x <= ACTIVATION_THRESHOLD) return css(base);
+  // How far above threshold, 0..1 — the alpha AND the position on the pole's ramp.
+  const s = (x - ACTIVATION_THRESHOLD) / (1 - ACTIVATION_THRESHOLD);
+  const isDefault = POLARITY.get(net as NetworkId) === 'default';
+  const hot = isDefault ? mix(DMN_LOW, DMN_HIGH, s) : mix(TASK_LOW, TASK_HIGH, s);
+  // Composite: a parcel just over threshold barely tints; a hot one is nearly pure colour.
+  return css(mix(base, hot, 0.25 + 0.75 * s));
+}
+
+/** The colorbar's swatch at a point on the diverging axis (−1 = drifting … +1 = engaged). */
+function barFill(x: number): string {
+  const base = mix(SULCUS, GYRUS, 0.5);
+  const m = Math.abs(x);
+  if (m < 0.06) return css(base);
+  const hot = x < 0 ? mix(DMN_LOW, DMN_HIGH, m) : mix(TASK_LOW, TASK_HIGH, m);
+  return css(mix(base, hot, 0.25 + 0.75 * m));
+}
+
+/** The room's voice reading the scan — banded on the real stop ratio + the live response. */
+function verdictFor(stopRatio: number, bold: Record<NetworkId, number>, mode: SimMode): string {
+  const drifting = bold.default > bold.dorsal_attention;
+  if (drifting) {
+    return mode === 'grounded'
+      ? 'The default network is winning — the room is somewhere else while your video plays.'
+      : 'The default network is winning — minds wander before the concept lands.';
+  }
+  if (stopRatio >= 0.7)
+    return 'Salience spikes, attention holds, and the reward loop stays lit — the room keeps watching.';
+  if (stopRatio >= 0.4)
+    return 'The onset lands, then attention thins into the decision — the middle does the losing.';
+  return 'A flicker of salience, then attention collapses — they are gone before the turn.';
 }

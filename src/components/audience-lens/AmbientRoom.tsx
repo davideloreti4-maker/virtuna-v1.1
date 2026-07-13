@@ -101,6 +101,19 @@ export interface AmbientRoomProps {
    *  ranked your N" first). A targeted entry — a card's "See the room →" that pre-focuses ONE
    *  card — passes false so the Room drills straight into that card's people (prototype parity). */
   initialCompareOpen?: boolean;
+  /** A REAL video + the audience's REAL retention curve → the brain scale runs GROUNDED: the
+   *  video plays as the stimulus and the predicted response is modeled from measured retention
+   *  (see BrainView). Supplied only by the video Read, and only when both actually exist — with
+   *  no video the dock's brain stays an explicitly-labeled simulation over the concept text. */
+  brainSource?: BrainSource | null;
+}
+
+/** The grounded brain's inputs — a real video and the audience's real retention over it. */
+export interface BrainSource {
+  videoSrc: string;
+  /** Retention at normalized stimulus time u∈[0,1] → 0..1 (the measured curve). */
+  retentionAt: (u: number) => number;
+  durationS: number;
 }
 
 type Scale = 'brain' | 'people' | 'population';
@@ -162,11 +175,16 @@ export function AmbientRoom({
   onRewrite,
   rewriteNonce = 0,
   initialCompareOpen = true,
+  brainSource,
 }: AmbientRoomProps) {
-  // The brain is the LANDING view of the dock/panel Room (owner call): the creator opens the
-  // room and sees the head it landed in first, then steps out to the voices and the 1,000. The
-  // embedded variant (video Read / room drawer) has no brain segment, so it lands on the people.
-  const [scale, setScale] = useState<Scale>(embedded ? 'people' : 'brain');
+  // The brain scale exists wherever it can be honest: always in the dock (a labeled simulation
+  // over the concept text), and in the EMBEDDED Read only when a real video + a real retention
+  // curve are supplied (`brainSource`) — there it runs grounded, with the video playing as the
+  // stimulus. An embedded Room without that source (the room drawer) keeps its two segments.
+  const hasBrain = !embedded || brainSource != null;
+  // It is the LANDING view wherever it exists (owner call): open the room, see the head it landed
+  // in first, then step out to the voices and the 1,000.
+  const [scale, setScale] = useState<Scale>(hasBrain ? 'brain' : 'people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
   // The `⤺ all N` ranked view-all (prototype code name: compare). Opens on the OVERVIEW (the ranked
   // list) so the bloom always lands on "how the room ranked your N" first, not a single card's
@@ -425,7 +443,7 @@ export function AmbientRoom({
               aria-label="Audience scale"
               className="flex w-full gap-1 rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-[3px]"
             >
-              {SCALES.filter((opt) => !(opt.value === 'brain' && embedded)).map((opt) => {
+              {SCALES.filter((opt) => opt.value !== 'brain' || hasBrain).map((opt) => {
                 const active = opt.value === scale;
                 return (
                   <button
@@ -461,6 +479,9 @@ export function AmbientRoom({
                 conceptText={conceptText}
                 seedKey={focusId ?? conceptText}
                 reducedMotion={reducedMotion}
+                videoSrc={brainSource?.videoSrc}
+                retentionAt={brainSource?.retentionAt}
+                durationS={brainSource?.durationS}
               />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />

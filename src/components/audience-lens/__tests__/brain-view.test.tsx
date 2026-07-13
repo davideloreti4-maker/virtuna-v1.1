@@ -50,8 +50,26 @@ describe('AmbientRoom — the brain scale', () => {
   it('ships the honesty label — a simulation, never a claimed measurement', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
-    expect(within(brain).getByText(/neural read · simulated/i)).toBeInTheDocument();
+    expect(brain.dataset.mode).toBe('simulated');
+    expect(within(brain).getByText(/predicted cortical response · simulated/i)).toBeInTheDocument();
     expect(within(brain).getByText(/a sketch, not a measurement/i)).toBeInTheDocument();
+  });
+
+  it('plays the concept as the stimulus beside the brain (no video in the dock)', () => {
+    render(room());
+    const brain = screen.getByTestId('brain-view');
+    // The text stimulus stands in for the video: the concept's own words, on the scan clock.
+    expect(within(brain).getByTestId('brain-stimulus-text')).toBeInTheDocument();
+    expect(within(brain).queryByTestId('brain-stimulus-video')).toBeNull();
+    expect(within(brain).getByText(/haemodynamic lag/i)).toBeInTheDocument();
+  });
+
+  it('renders the real parcellated cortex — both views, hundreds of parcels', () => {
+    const { container } = render(room());
+    // A dense parcel map is the whole point: 14 blobs read as decoration.
+    expect(container.querySelectorAll('[data-testid="brain-view"] polygon').length).toBeGreaterThan(300);
+    expect(screen.getByRole('img', { name: /lateral view/i })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: /medial view/i })).toBeInTheDocument();
   });
 
   it('keeps the brain OUT of the embedded Room (video Read / room drawer), landing on the people', () => {
@@ -88,7 +106,7 @@ describe('AmbientRoom — the brain scale', () => {
 
   it('reads the room honestly: a weak concept blames the drift, a strong one does not', () => {
     const { rerender } = render(room({ fraction: '2/10 stop' }));
-    expect(screen.getByText(/default network takes over/i)).toBeInTheDocument();
+    expect(screen.getByText(/default network is winning|attention collapses/i)).toBeInTheDocument();
     rerender(room({ fraction: '9/10 stop' }));
     expect(screen.getByText(/the room keeps watching/i)).toBeInTheDocument();
   });
