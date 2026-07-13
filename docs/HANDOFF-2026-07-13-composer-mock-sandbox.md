@@ -3,7 +3,8 @@
 **Date:** 2026-07-13
 **Worktree:** `~/virtuna-explore-a` (branch `lane/explore-a`)
 **Dev server:** `localhost:3001` (this worktree). Launch: `NODE_OPTIONS='--max-old-space-size=2048' node ./node_modules/next/dist/bin/next dev --turbopack -p 3001`
-**Status:** all committed on `lane/explore-a`. Tests green (fixtures 2/2, composer-controls 16/16, home 9/9). tsc clean on touched files.
+**Status:** all committed on `lane/explore-a`. Tests green (mock-sse 18/18, fixtures 2/2, composer-controls 16/16, home 9/9). tsc + eslint clean on all touched files.
+**Split note (later this session):** the composer/home polish (§1–2) was cherry-picked to `feat/composer-quick-actions` → **PR #269** (base `main`). **Layer 2 (below) is now wired** on `lane/explore-a`.
 
 > ⚠️ The screenshots the owner pasted earlier came from **:3002 = the `~/virtuna-explore-b` worktree** (a *different* working tree). All work below is in **explore-a** and is viewable at **:3001**. explore-b still shows the old UI.
 
@@ -38,8 +39,12 @@ Goal: iterate on composer / audience / thread rendering + feel **without spendin
 
 ## Known gaps / next steps
 
-1. **Layer 2 — cheap LIVE re-triggering is NOT built yet.** The `Mock skill runs` toggle sets the `numen_mock` cookie but nothing reads it. To finish: in each `/api/tools/*` route (and `/api/account-read`), short-circuit when `isMockSkillsEnabled(cookie)` (see `src/lib/dev/dev-mock.ts`) — stream a canned STAGE→content→done timeline + persist the matching `FIXTURE_BLOCKS_BY_SKILL[skill]` instead of calling the runner. Then clicking a skill + submitting replays for free.
-   - ⚠️ Until Layer 2 lands, **submitting a skill still hits the real engine.** During this session an accidental Explore submit fired a **real Apify TikTok scrape** (~$; see dev log). Be careful clicking *Run Explore* / submitting until the routes are mocked.
+1. **Layer 2 — cheap LIVE re-triggering — ✅ WIRED this session.** SSOT: `src/lib/tools/mock/mock-sse.ts` → `maybeMockSkillRun(skill, userId)`, called right after the auth gate in **all 13** `/api/tools/*` routes. With the `Mock skill runs` toggle armed (`numen_mock=1`, dev-only via `isMockSkillsEnabled`), NO route can hit a paid engine:
+   - **5 fixture-streamed skills** — `explore · hooks · ideas · script · remix` — replay `FIXTURE_BLOCKS_BY_SKILL[skill]` over the **exact** client SSE contract (`stage → content{blocks} → per-card score → done`) and persist via the real `insertMessage`. Zero Qwen/Apify. The **accidental Explore→Apify scrape can no longer happen** when armed.
+   - **8 skip-guarded routes** — `chat · profile · simulate · predict · read · react · refine · ideas/develop` — return a cheap `503 {mockSkipped:true}` ("not mocked yet — run skipped, no engine call"). The client surfaces the message; nothing fires. Their fixtures are still viewable via the ⚙ seed (Layer 1).
+   - Pure frame-builder `buildMockFrames()` is unit-pinned by `src/lib/tools/mock/__tests__/mock-sse.test.ts` (18 tests: content carries all blocks; one score frame per band-bearing card matched by seedHook; explore emits 0 score frames; done counts).
+   - **Verification:** tsc 0 / eslint 0 across the helper + 13 routes; all 13 routes 401 unauthed in the live dev server (compile + load clean); 20 mock tests green. ⏳ *Not yet* browser-clicked end-to-end (needs an authed session; the harness kept killing the bg dev server). Manual check: arm the toggle → run Explore → Network shows no `apify` call + the fixture grid renders.
+   - **Next (Layer 2 phase 2):** promote `chat` (token-stream fixture) + `profile/simulate/predict` (JSON routes) from skip-guard to real fixture replay, so those skills also live-replay instead of skipping.
 
 2. **Profile / Simulate / Predict deliberately excluded from the default seed.** Their result blocks (`profile-read`/`reaction-distribution`/`prediction-gauge`) render **tool-independently** (pinned to the top of *every* view), so seeding them made the big Read card dominate the Hooks/Chat views (this was the "chat not accurate" bug — fixed by dropping them from `SEED_MESSAGES`). Fixtures still exist in `FIXTURE_BLOCKS_BY_SKILL` for Layer 2. To eyeball them via seed, temporarily add `{ role: "assistant", blocks: PROFILE_BLOCKS }` to `SEED_MESSAGES`.
 

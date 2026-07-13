@@ -22,6 +22,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -68,6 +69,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — skip (no fixture stream yet), no engine call ──
+  const mock = await maybeMockSkillRun("profile", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ────────────
   const guard = csrfGuard(request);
