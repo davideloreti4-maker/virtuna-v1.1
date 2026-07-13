@@ -26,7 +26,6 @@ import {
   assignPostsToPillar,
   type AccountPost,
 } from "@/lib/account-metrics/account-posts-repo";
-import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { listPillars, createPillars } from "./pillars-repo";
 
 const log = createLogger({ module: "content-pillars/cluster" });
@@ -164,25 +163,22 @@ Return JSON: {"assignments":[{"post":0,"pillar":"Money & cost"}, ...]}
 // ── orchestration ──────────────────────────────────────────────────────────────────
 
 /**
- * Cluster (first run) or classify (incremental) a user's pillars from their posts.
- * Best-effort caller (the cron) — throws only on a hard model/DB failure, which the
- * caller isolates. Returns a status + how many posts were assigned this run.
+ * Cluster (first run) or classify (incremental) ONE connected account's pillars from
+ * its posts. Best-effort caller (the cron loops every account) — throws only on a hard
+ * model/DB failure, which the caller isolates. Returns a status + how many posts were
+ * assigned this run.
  *
- * Pillars are derived from the user's PRIMARY connected account (content_pillars are
- * user-scoped today). Posts + assignments are account-scoped so a secondary account's
- * posts can't leak into the primary's themes. (Per-account pillar sets — a content_
- * pillars.account_id — is the documented follow-up for a full multi-account switcher.)
+ * Pillar rows, posts, and assignments are ALL account-scoped (content_pillars.account_id)
+ * so each handle keeps its own frozen themes and a secondary account's posts can't leak
+ * into the primary's. userId stamps row ownership (RLS + the user-level confirm flow).
  */
-export async function clusterPillarsForUser(
+export async function clusterPillarsForAccount(
   supabase: SupabaseClient,
   userId: string,
+  accountId: string,
 ): Promise<ClusterResult> {
-  const account = await getPrimaryAccount(supabase, userId);
-  if (!account) return { status: "insufficient", pillarCount: 0, assigned: 0 };
-  const accountId = account.id;
-
   const posts = await listAllPosts(supabase, accountId, POST_CAP);
-  const existing = await listPillars(supabase, userId);
+  const existing = await listPillars(supabase, accountId);
 
   if (existing.length === 0) {
     // First run — need enough captioned posts to find real themes.
@@ -197,7 +193,7 @@ export async function clusterPillarsForUser(
     // Clamp to the intended pillar count (keep the first MAX_PILLARS if the model over-produces).
     const chosen = result.pillars.slice(0, MAX_PILLARS);
     const names = chosen.map((p) => p.name.trim()).filter((n) => n.length > 0);
-    const pillars = await createPillars(supabase, userId, names);
+    const pillars = await createPillars(supabase, userId, accountId, names);
     const idByName = new Map(pillars.map((p) => [p.name.toLowerCase(), p.id]));
 
     let assigned = 0;

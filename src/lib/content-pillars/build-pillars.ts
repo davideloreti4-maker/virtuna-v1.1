@@ -139,12 +139,11 @@ export function buildPillars(
 }
 
 /**
- * Async wrapper — read the frozen pillars + one account's posts, then build. Posts are read
- * per-account so the mix/cadence/tone reflect one handle, never merged. Defaults to the
- * user's primary account; pass `accountId` (the "Your account" switcher) to build for a
- * specific connected account. Pillar ROWS are still user-scoped (the cron clusters the
- * primary only), so a non-primary account's posts carry no pillar_id → buildPillars returns
- * [] (honest empty) rather than a fabricated mix. Empty ⇒ honest empty state.
+ * Async wrapper — read one account's frozen pillars + posts, then build. Pillar rows,
+ * posts, and assignments are all account-scoped, so the mix/cadence/tone reflect one
+ * handle, never merged. Defaults to the user's primary account; pass `accountId` (the
+ * "Your account" switcher) to build for a specific connected account. Empty ⇒ honest
+ * empty state (the account genuinely hasn't been clustered / has too few posts).
  */
 export async function buildContentPillars(
   supabase: SupabaseClient,
@@ -155,7 +154,7 @@ export async function buildContentPillars(
     accountId ?? (await getPrimaryAccount(supabase, userId))?.id;
   if (!resolvedAccountId) return [];
   const [pillarRows, posts] = await Promise.all([
-    listPillars(supabase, userId),
+    listPillars(supabase, resolvedAccountId),
     listAllPosts(supabase, resolvedAccountId, POST_CAP),
   ]);
   if (pillarRows.length === 0) return [];

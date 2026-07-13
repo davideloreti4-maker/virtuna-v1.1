@@ -43,39 +43,44 @@ export async function anyUnconfirmedPillars(
   return (count ?? 0) > 0;
 }
 
-/** A user's pillars in display order. RLS-scoped (user client) / explicit (service). */
+/**
+ * One account's pillars in display order (pillar sets are per connected account —
+ * never merged across a user's handles). RLS-scoped (user client) / explicit (service).
+ */
 export async function listPillars(
   supabase: SupabaseClient,
-  userId: string,
+  accountId: string,
 ): Promise<ContentPillarRow[]> {
   const { data, error } = await (supabase as unknown as UntypedClient)
     .from("content_pillars")
     .select(PILLAR_SELECT)
-    .eq("user_id", userId)
+    .eq("account_id", accountId)
     .order("sort_order", { ascending: true });
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(normalizePillar);
 }
 
 /**
- * Create the given pillar names for a user (first-cluster). Idempotent: names that
- * already exist are ignored (ON CONFLICT DO NOTHING via ignoreDuplicates), then the
- * FULL current set is re-selected so the caller always gets stable ids to assign
- * posts against — including any pre-existing pillars. `names` order sets sort_order.
+ * Create the given pillar names for one connected account (first-cluster). Idempotent:
+ * names that already exist are ignored (ON CONFLICT DO NOTHING via ignoreDuplicates),
+ * then the FULL current set is re-selected so the caller always gets stable ids to
+ * assign posts against — including any pre-existing pillars. `names` order sets
+ * sort_order. userId still stamps ownership (RLS + the user-level confirm flow).
  */
 export async function createPillars(
   supabase: SupabaseClient,
   userId: string,
+  accountId: string,
   names: string[],
 ): Promise<ContentPillarRow[]> {
   const rows = names
     .map((n) => n.trim())
     .filter((n) => n.length > 0)
-    .map((name, i) => ({ user_id: userId, name, sort_order: i }));
+    .map((name, i) => ({ user_id: userId, account_id: accountId, name, sort_order: i }));
   if (rows.length > 0) {
     await (supabase as unknown as UntypedClient)
       .from("content_pillars")
-      .upsert(rows, { onConflict: "user_id,name", ignoreDuplicates: true });
+      .upsert(rows, { onConflict: "account_id,name", ignoreDuplicates: true });
   }
-  return listPillars(supabase, userId);
+  return listPillars(supabase, accountId);
 }
