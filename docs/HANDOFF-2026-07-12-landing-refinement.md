@@ -1,8 +1,13 @@
-# HANDOFF — Landing refinement pass (2026-07-12) · session SSOT
+# HANDOFF — Landing refinement + real screenshots (2026-07-12 → 07-13) · lane SSOT
 
-> Landing lane session #2 (worktree `~/virtuna-landing-lane`, branch `lane/landing-polish`,
+> Landing lane sessions #2–#3 (worktree `~/virtuna-landing-lane`, branch `lane/landing-polish`,
 > dev port **3010**). Previous session SSOT: `docs/HANDOFF-2026-07-11-landing-lane.md`.
 > Everything below is merged to main and browser-verified.
+>
+> **STATUS: lane CLOSED 2026-07-13** — the template-feel gap is fixed (PR #261: real app
+> screenshots in every slot). Worktree removed; branch `lane/landing-polish` retained on origin.
+> Jump to [✅ DONE — real product screenshots](#-done--real-product-screenshots-into-the-slots--pr-261-squash-cc9c5787-2026-07-13)
+> and [Lane closed](#lane-closed-2026-07-13).
 
 ## What shipped — PR #241 (squash `4fa907f5`, MERGED)
 
@@ -72,35 +77,81 @@ The real commit survived only in the local reflog.
 Skeleton set-dressing has hit its ceiling. **Next step (owner-confirmed): capture real
 product UI and swap it into the slots.**
 
-## Next session: real product screenshots into the slots
+## ✅ DONE — real product screenshots into the slots · PR #261 (squash `cc9c5787`, 2026-07-13)
 
-The slots (all built as one-swap):
-| Slot | File | Current filler | Target |
-|------|------|----------------|--------|
-| Hero window body | `hero/hero.tsx` (the div marked "this block is the `src` slot") | skeleton dashboard | real dashboard/reading screenshot |
-| Hero phone screen | `hero/hero.tsx` → `PhoneVideoSkeleton` | faux video UI | real TikTok-style capture or product mobile view |
-| Showcase window | `story/simulation-showcase.tsx` window body | flanked skeleton row | real Simulation reading screenshot |
-| 4 feature frames | `story/feature-blocks.tsx` FEATURES[].visual | per-feature skeletons | real cropped product views (score, curve, audience, drivers) |
-| (later) marquee names, testimonial avatars/quotes, "2,000+ creators" | proof components | plausible set-dressing | real accounts/quotes — **owner call** |
+The skeletons are gone from the marketing page. Every product slot holds a REAL 2× capture of
+the running app, in `public/images/landing/`:
 
-Capture path A (self-serve, no owner assets needed): run the REAL app in a worktree
-(trunk `~/virtuna-v1.1` :3000 or this one), auth via the Playwright login flow
-(memory: "Numen fixture capture"), open a seeded/demo reading + /start + /audience,
-disable animations, capture tight crops at 2× for the exact aspect boxes.
-Capture path B: owner drops captures/video into the repo; session wires + art-directs.
+| Slot | File | Now shows |
+|------|------|-----------|
+| Hero window body | `hero/hero.tsx` | `hero-read.png` — the thread rail + a reading: score **71 Strong**, 62% watch-through, biggest drop 0:08, the push-stage chart |
+| Hero phone screen | `hero/hero.tsx` | `phone-thread.png` — Maven on mobile: a hook card, scored Strong 7/10 stopped, the room's quote |
+| Showcase window | `story/simulation-showcase.tsx` | `showcase-read.png` — the reading in full: score → push stages → the levers |
+| Feature 1 "Know before you post" | `story/feature-blocks.tsx` | `feature-hook.png` — a hook card: the score AND the why beside it |
+| Feature 2 "See exactly where viewers drop" | ″ | `feature-retention.png` — the retention curve opened on its drop (−24% @ 0:06) |
+| Feature 3 "Understand your audience" | ″ | `feature-audience.png` — the people in the room and what they said |
+| Feature 4 "Fix the weakest lever" | ″ | `feature-drivers.png` — the three levers side by side |
+| (still owner-gated) marquee names, testimonial avatars/quotes, "2,000+ creators", pricing numbers | proof / pricing components | UNCHANGED — plausible set-dressing until the owner decides |
 
-Contracts to keep green when swapping: hero test asserts the four skeleton `role=img`
-labels + a `/your tiktok/i` text node + `maven.app` pill — swapping fillers for `<img>`/`src`
-means updating those assertions in the same commit (same pattern as #230/#241 test updates).
-`/simulat/i` noun-locks are component-scoped. Matte guard must stay 38/38.
+Each feature row shows a **different** surface on purpose, so the four frames read as one product
+seen from four angles instead of the same instrument four times. Slots render through `next/image`
+inside aspect-locked boxes (no CLS); the hero capture is `priority` (it is the LCP element). Device
+chrome / shadows / warm seat unchanged — only the bodies swapped. Near-zero accent dosage holds:
+the only colour inside a frame is the product's own semantic banding (green score, amber drop).
 
-Beyond screenshots, "make it pop" candidates (owner taste, propose with sketches):
-real content density in the frames, a restrained motion pass on the fold, marquee → real
-wordmarks, tightened section rhythm. Keep the near-zero-accent dosage rule (DESIGN-SYSTEM).
+`FeatureBlock` changed shape: it now takes `src` + `alt` instead of a `visual: ReactNode`.
+The skeleton primitives still exist and are still tested, but the only live consumer left is the
+final-CTA audience-cloud echo (`cta/final-cta-band.tsx`) — an abstract motif, not a fake frame.
 
-## Resume
+### Capture recipe (reuse this — it is the cheap part)
+
+`/dev/cards` is the best source: it renders every skill card 1:1 with the REAL components.
+
+- Auth via Playwright (`e2e-test@virtuna.local`), then `goto /dev/cards`.
+- `chromium.launch({ channel: "chrome" })` — this repo has **only `@playwright/test`** and no
+  downloaded browser binaries; system Chrome avoids a large download.
+- `deviceScaleFactor: 2`; inject `*,*::before,*::after{animation:none!important;transition:none!important;caret-color:transparent!important}` + `nextjs-portal{display:none!important}`.
+- **Scroll the inner `<main class="relative h-full overflow-auto">`, NOT `window`** — the app shell
+  scrolls internally, so `window.scrollTo` silently does nothing.
+- **The driver rows EXPAND, and that is where the good visuals are**: Retention opens into the real
+  drop-curve scrubber ("Drag to replay the drop"), Shareability into share/completion/comment/save
+  tiles. A collapsed reading looks far thinner than the product actually is.
+- **Hide the dev-gallery captions before shooting** — `/dev/cards` prints monospace demo labels
+  ("Your 4 people", "REPLAY IN TIMELINE — THE ROOM REACTS…", section titles like "Test / Reading").
+  They WILL ship onto the marketing page otherwise (caught twice in v1/v3 crops).
+- Crop each shot to the frame's own ratio (16:10 here) so `object-cover` never actually crops.
+
+Demo data was rich enough with no seeding: the e2e user has 60 threads / 48 analysis results / 4
+audiences. The owner's "seed a good reading first?" question resolved itself.
+
+### Test contracts (moved in the same commit)
+
+The hero + showcase gates asserted skeleton `role=img` labels (`/virality score/i`, `/retention
+curve/i`, …), a `/your tiktok/i` node, and an svg/circle structural fingerprint — none of which
+exist any more. They now assert the captures by accessible name + the aspect-locked box;
+`feature-blocks` gained a "every frame holds a named screenshot" gate.
+Marketing **78/78** · matte guard **38/38** · `tsc` 0 · `eslint` 0 · browser-verified 1440 + 390
+(all 7 captures load, no horizontal overflow, no console errors).
+
+### Known limitation (owner's call)
+
+At **390px the desktop crops shrink to texture** — you can tell it is a real product, but you cannot
+read it. This is the industry norm (Linear/Vercel do the same). The fix, if wanted, is a
+mobile-specific crop set (tighter regions) swapped in with `md:hidden` / `hidden md:block`.
+
+## Lane closed (2026-07-13)
+
+The screenshot session was the last item in this lane's brief. `lane/landing-polish` is merged and
+reset onto `origin/main` @ `cc9c5787`; the worktree `~/virtuna-landing-lane` was removed. Nothing is
+stranded (clean tree, 0 ahead / 0 behind at close; the 4 repo stashes all predate this lane).
+
+To reopen landing work, re-create the worktree from main:
 
 ```bash
-cd ~/virtuna-landing-lane   # branch lane/landing-polish, synced to main @ 4fa907f5+
+git worktree add ~/virtuna-landing-lane lane/landing-polish   # branch still exists on origin
+cd ~/virtuna-landing-lane && git reset --hard origin/main
 tail -f /dev/null | NODE_OPTIONS=--max-old-space-size=3072 node ./node_modules/next/dist/bin/next dev -p 3010
 ```
+
+Remaining owner-gated items: pricing numbers ($19 vs $29/$49/$129), the "2,000+ creators" claim,
+real marquee/testimonial identities, public domain + SSO wall + prod smoke.
