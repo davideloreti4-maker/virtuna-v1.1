@@ -68,19 +68,31 @@ What the previous version of this doc listed as "the real work" is done:
 
 ### 1. Make it purchasable (owner + code)
 
-The owner must create **6 Whop plans** (3 full-price + 3 × "$1 for 3 days, then plan price") and
-set `WHOP_PRODUCT_ID_{STARTER,PRO,STUDIO}` + `WHOP_TRIAL_PLAN_ID_{STARTER,PRO,STUDIO}`, then run
-the **three** migrations (`20260713120000`, `20260713140000`, `20260713160000`) — verified
-2026-07-13 against the live project: **none of them are applied yet**. Code side, verify against
-a real Whop sandbox purchase:
+✅ **The three migrations are APPLIED to prod (2026-07-13)** — `pricing_studio_tier`,
+`trial_window`, `reading_events`. Schema verified against the live DB; no security advisories on
+the new table.
+
+**The ledger is verified end-to-end in production** (the one claim #267 could not make, because
+the table did not exist):
+
+| Probe | Result |
+|---|---|
+| A real scored Reading (`CBPbTHPaLI77`) | **exactly 1** billed ledger row, `mode=score` |
+| A run that failed mid-pipeline (`dUJG2zArb21Z`) | placeholder `analysis_results` row left behind (the row the old meter counted) · **0** ledger rows |
+| The live meter for that account | `used: 1` — while the legacy row count says `3` |
+
+So: a failed engine run no longer costs a customer a Reading, and the meter is reading the ledger.
+Two probe rows now exist on the `e2e-test@virtuna.local` account in prod (one scored Reading, one
+dead placeholder) — harmless, but they are there.
+
+What is still owner-only: create **6 Whop plans** (3 full-price + 3 × "$1 for 3 days, then plan
+price") and set `WHOP_PRODUCT_ID_{STARTER,PRO,STUDIO}` +
+`WHOP_TRIAL_PLAN_ID_{STARTER,PRO,STUDIO}`. Then verify against a real sandbox purchase:
 
 - a $1 trial purchase lands `virtuna_tier` + `trial_started_at`/`trial_ends_at`;
 - the conversion webhook does **not** re-stamp the window (it would grant a fresh trial every
   cycle — the guard is "stamp once per membership", `src/app/api/webhooks/whop/route.ts`);
-- cancellation/expiry drops the tier back to `free`;
-- **a real Reading writes exactly one `reading_events` row, and a failed one writes none.**
-  This is the one thing #267 could not verify end-to-end: the ledger table does not exist in
-  prod yet, so every run today takes the legacy fallback path. Unit tests cover both branches.
+- cancellation/expiry drops the tier back to `free`.
 
 ### 2. The rest of the usage system
 
