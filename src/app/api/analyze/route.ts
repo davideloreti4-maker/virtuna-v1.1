@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
+import { getReadingQuotaVerdict } from "@/lib/billing/quota";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
@@ -386,6 +387,33 @@ export async function POST(request: Request) {
 
     if (!user) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // BILLING — a Reading is the metered unit (Creator 50/mo · Pro 150/mo · Studio
+    // unlimited), so the meter is checked HERE, before any engine spend. Inert until
+    // BILLING_ENFORCE_QUOTA=true: the verdict is computed and logged either way, so the
+    // real usage can be watched before the gate ever closes on a customer. Quota failures
+    // fail OPEN (see lib/billing/quota.ts) — a flaky count must not cost a paid Reading.
+    const quota = await getReadingQuotaVerdict(supabase, user.id);
+    if (quota.enforced && !quota.allowed) {
+      log.info("quota exceeded", {
+        tier: quota.tier,
+        used: quota.used,
+        limit: quota.limit,
+      });
+      return Response.json(
+        {
+          error: "reading_quota_exceeded",
+          message:
+            quota.limit === 0
+              ? "Start a plan to run a Reading."
+              : `You've used all ${quota.limit} Readings on your plan this month.`,
+          tier: quota.tier,
+          used: quota.used,
+          limit: quota.limit,
+        },
+        { status: 402 } // Payment Required — the client turns this into the upgrade prompt.
+      );
     }
 
     // D-19 (Phase 13 Plan 03): Fail fast before buffer load for oversized requests.

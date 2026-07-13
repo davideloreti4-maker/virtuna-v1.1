@@ -14,10 +14,13 @@ interface SubscriptionData {
   currentPeriodEnd: string | null;
 }
 
+// The PUBLIC names (pricing.ts): the `starter` id is sold as "Creator", and `free` is not a
+// plan — it is what you are before you start a trial, or after one lapses.
 const TIER_LABELS: Record<NumenTier, string> = {
-  free: "Free",
-  starter: "Starter",
+  free: "No plan",
+  starter: "Creator",
   pro: "Pro",
+  studio: "Studio",
 };
 
 // Plans are neutral (dosage rule — no brand color per tier); a chip, not a hue.
@@ -25,6 +28,7 @@ const PLAN_COLORS: Record<NumenTier, string> = {
   free: "text-foreground-secondary bg-[var(--color-charcoal-chip)]",
   starter: "text-foreground-secondary bg-[var(--color-charcoal-chip)]",
   pro: "text-foreground-secondary bg-[var(--color-charcoal-chip)]",
+  studio: "text-foreground-secondary bg-[var(--color-charcoal-chip)]",
 };
 
 // Status is genuine semantic state → maps to score-zone tokens.
