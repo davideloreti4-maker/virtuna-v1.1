@@ -13,7 +13,7 @@
  * Pure + deterministic (no wall-clock / PRNG) — SSR + engine-determinism-gate safe.
  */
 
-import type { ReactionPersona } from "@/lib/tools/blocks";
+import type { ReactionPersona, HookProof } from "@/lib/tools/blocks";
 import type { Tone } from "@/lib/room-contract/types";
 
 /**
@@ -38,6 +38,14 @@ export interface LiveIdeaCard {
   type: "Carousel" | "Reel";
   title: string;
   personas: ReactionPersona[];
+  /**
+   * GROUNDING (§11f) — the frozen receipt for the real outlier video whose proven STRUCTURE this
+   * idea adapted. Present ONLY when grounded generation was ON (GROUNDING_IDEAS_ENABLED) AND the
+   * pipeline attributed this idea to a real source. Absent/null on ungrounded runs (flag OFF) and
+   * on pre-grounding cached rows → the card renders exactly as before (honesty spine, no fabricated
+   * source). The glance card shows a compact <ProofLine>; the opened Room shows the full receipt.
+   */
+  proof?: HookProof | null;
 }
 
 /** The glance-tier face a card shows inline — derived from the real personas. */

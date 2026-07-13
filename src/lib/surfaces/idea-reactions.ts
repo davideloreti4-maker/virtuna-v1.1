@@ -90,6 +90,10 @@ export async function buildLiveIdeas(
       type: typeOf(b.props.format),
       title: b.props.title,
       personas,
+      // GROUNDING (§11f): carry the frozen source receipt when the grounded pipeline attributed
+      // this idea to a real outlier. null on ungrounded runs (flag OFF) → the card degrades to the
+      // pre-grounding shape (byte-identical, cache-safe). The glance card renders <ProofLine>.
+      proof: b.props.proof ?? null,
     });
   });
   const top = cards.slice(0, IDEA_TARGET);
