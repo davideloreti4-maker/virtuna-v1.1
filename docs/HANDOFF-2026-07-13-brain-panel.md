@@ -437,3 +437,100 @@ All four invariants hold; honesty labels restyled, never removed.
   probes if you touch it.**
 - The **simulated** trace is a quiet plateau (its axis never crosses zero — the synthetic encounter
   has no real timeline). Honest, but the trace only truly earns its place in **grounded**.
+
+---
+
+# 11. 🔴 ROUND 5 REJECTED — AND THE APPROACH IS THE BUG
+
+**Read this section before you touch anything. It supersedes the "next steps" in §9 and §10.**
+
+Owner, looking at `/dev/cards#room` in the real app: *"The UI design still looks really weird and not
+good at all… compared to TRIBE v2 this is not good at all."* **Fifth rejection.**
+
+## 11.1 The finding: we are generating a brain. Both references DISPLAY a scanned one.
+
+This is the thing five sessions missed, and it is not a parameter:
+
+| | What it actually is |
+|---|---|
+| **TRIBE v2** | A real **FreeSurfer cortical surface**, reconstructed from real MRI |
+| **The Sapient Company** (https://www.thesapientcompany.com/) | A real **volumetric MRI render** — translucent skull, brain glowing inside |
+| **Us** | An **ellipsoid + Perlin noise**, sculpted by hand-tuned constants |
+
+**You cannot procedurally noise your way to something that survives being placed next to real MRI.**
+Every round improved the *fake* — anisotropic ribbons, an authored profile, a three-point rig, a
+near-black well — and every round was still rejected, because "a better fake" and "good" are
+different axes. What ships today is the **uncanny valley**: at real scale in the real app it reads as
+a tan, bark-textured blob floating in front of an amorphous dark smudge that does not read as a head.
+
+**Stop tuning `cortex-mesh.ts`. The file is the problem.**
+
+## 11.2 What is actually wrong in the shipped render (for the record)
+
+Observed at real scale in the app (NOT in an isolated screenshot — that is part of why it kept
+passing my own review):
+- the cortex reads **tan/brown and muddy**, not the near-white of the references (the charcoal card
+  surrounding the well drags the perceived value down; it looked cream in isolation);
+- the gyri read as **high-frequency bark / brain-coral noise**, not as cortex;
+- the **head ghost does not read as a head** — at card scale it is an ambiguous dark smudge that
+  looks like a render artifact or a drop shadow;
+- the colorbar is crammed into the top-right and visually collides with the specimen;
+- two cards side by side make the noise *more* obvious, not less.
+
+## 11.3 The three ways forward (owner must pick — do not guess)
+
+### ▶ A. SOURCE REAL GEOMETRY (recommended)
+**The brain mesh is a PROCUREMENT problem, not an engineering problem.**
+- A royalty-free cortical mesh on **TurboSquid / CGTrader**: ~$20–100, commercial licence, ours to use.
+- Or a permissive/free anatomical model: **BodyParts3D/Anatomography** (CC-BY-SA), **Z-Anatomy**
+  (CC-BY-SA), **Sketchfab CC0** MRI-derived scans. ⚠️ Check each licence — **FreeSurfer/fsaverage is
+  still OUT** (§2), and CC-BY-**NC** is out.
+- Load as glTF/OBJ, light it with the shader **we already have**, and it looks right on day one.
+- Five sessions of Perlin tuning have already cost far more than $100.
+
+**⚠️ MOST OF THIS SESSION'S WORK SURVIVES OPTION A.** Only `src/lib/brain/cortex-mesh.ts` (procedural
+geometry) is thrown away. These all stay: the card layout, the near-black well, the colorbar + live
+marker, the engagement trace, `cortex-sim.ts` (the response model), `CortexCanvas.tsx`'s shader and
+three-point rig, the honesty spine, the tests. The swap is contained.
+
+**What a replacement mesh must supply** (so the rest keeps working):
+1. positions + indices (obviously);
+2. a **per-vertex curvature scalar** — the shader's `aCurv` drives all sulcal shading. A real mesh
+   does not ship this; compute **mean curvature** from the geometry once at load and cache it.
+3. **parcels → networks.** Today `ANCHORS` maps a shaped (x, y) to a Yeo-7 network. With a real mesh,
+   re-anchor in ITS coordinate frame (normalize the mesh's bbox first). The blend kernel
+   (`BLEND_R`/`BLEND_K`) and its four invariants port unchanged — **but re-run the gradient probes**
+   (§5), because the parcel spacing changes with the geometry and that is exactly what broke it before.
+
+### B. STOP BEING PHOTOREAL — draw a confident schematic
+A deliberate 2.5D/flat diagram in our own design language never enters the uncanny valley; a failed
+render lives there. Cheaper, fully on-brand, zero licence risk. Sapient's site is the tonal reference
+for *restraint* (white, huge light-weight sans, one hero object, enormous negative space) even though
+its brain image is a real MRI.
+
+### C. KILL THE BRAIN SCALE
+The Room already has **The people** and **Population · 1,000**. The brain is a metaphor that demands
+a fidelity we have now failed to reach five times. It is a legitimate outcome to cut it. **Ask the
+owner whether the brain earns its place at all before rebuilding it a sixth time.**
+
+## 11.4 Do NOT repeat these
+
+- ❌ Do not tune `FOLD_FREQ` / `SULCUS_WIDTH` / `PROFILE` / the lighting again. Five rounds of evidence.
+- ❌ Do not review the render in an **isolated screenshot**. It flattered the work every single time.
+  Judge it at real scale, in the app, next to the other cards — that is where it falls apart.
+- ❌ Do not add more chrome to compensate for a weak specimen.
+- ✅ Diff against the real reference **first** — that step produced every genuine finding in this
+  document (the folding, "fill the head not the frame", and now this one).
+- ✅ **Probe a series before you plot it** (§10.3) — two of three trace designs were noise drawn as data.
+
+## 11.5 State at handoff
+
+Branch `feat/audience-brain-panel`, **unpushed, no PR**. Commits this session:
+`77814f06` (card→figure) · `d68d77da` (docs) · `251121c6` (authored profile, 3-pt rig, trace,
+peak-frame open) · `fceb4f33` (polish) · `1c01dc40` (docs).
+
+Green but rejected: both modes **474px in the 516px box** · Inter+Newsreader only · 91 brain tests ·
+tsc 0 · eslint clean · full suite 3367 pass with the one pre-existing `api/tools/remix/run` SSE
+failure. **Passing gates is not the problem. The object is.**
+
+Known, unfixed: **mesh build ~500ms** blocks the main thread on first open (moot under option A).
