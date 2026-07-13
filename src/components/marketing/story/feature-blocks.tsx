@@ -1,12 +1,4 @@
-import * as React from "react";
-
 import { StaggerReveal, StaggerRevealItem } from "@/components/motion";
-import {
-  ScoreGaugeSkeleton,
-  AudienceCloudSkeleton,
-  DriverRowsSkeleton,
-  RetentionCurveSkeleton,
-} from "@/components/marketing/story/skeletons";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
@@ -29,11 +21,10 @@ import { FeatureBlock } from "./feature-block";
  * It maps a module-level FEATURES const of four benefits through <FeatureBlock>,
  * flipping the column order on alternate rows (`flip={i % 2 === 1}`) so the
  * visual side alternates left/right down the section. Each block pairs a benefit
- * headline (level-3) with exactly one intentional product skeleton (03-04),
- * framed in BrowserChrome so the visual reads as product set-dressing rather than
- * a flat empty box (GAP-1/GAP-3 component-level). Inter-row spacing is denser
- * (`gap-12 md:gap-16`) so the rows feel connected (GAP-3); page-level outer
- * whitespace is 03-06's job (this section does not touch page.tsx).
+ * headline (level-3) with exactly one REAL capture of the running app, framed in
+ * BrowserChrome. Inter-row spacing is denser (`gap-12 md:gap-16`) so the rows
+ * feel connected (GAP-3); page-level outer whitespace is 03-06's job (this
+ * section does not touch page.tsx).
  *
  * Noun discipline (D-09 carried): the product noun is "Simulation"; the retired
  * noun is never used. The banned headline words "viral" and "AI" are avoided.
@@ -50,70 +41,43 @@ interface Feature {
   title: string;
   /** One tight Inter line naming the real benefit. */
   body: string;
-  /** The intentional product skeleton shown in this row's framed visual. */
-  visual: React.ReactNode;
+  /** Public path of the app capture shown in this row's framed visual. */
+  src: string;
+  /** What the capture shows — the accessible name of the frame. */
+  alt: string;
 }
 
 /**
- * Row-1 visual — the score AND the why beside it (the copy promises "a clear
- * score and the why behind it"; a lone gauge only showed the score). Three
- * compact unlabelled-value rows — label + thin bar — deliberately LIGHTER than
- * row-4's full DriverRowsSkeleton (no captions, no coral) so the two rows read
- * as different depths of the same instrument, not a repeat.
+ * Each row shows a DIFFERENT real surface of the app, so the four frames read
+ * as one product seen from four angles rather than the same instrument four
+ * times: a scored hook card → the retention curve opened on its drop → the room
+ * that reacted → the three levers. All four are 2× crops at 16:10 (the frame's
+ * ratio), captured with animations disabled.
  */
-function ScoreWithWhy() {
-  const why = [
-    { label: "Hook", w: "w-[82%]" },
-    { label: "Retention", w: "w-[54%]" },
-    { label: "Shareability", w: "w-[71%]" },
-  ];
-  return (
-    <div className="flex w-full items-center justify-center gap-8 md:gap-10">
-      <ScoreGaugeSkeleton className="shrink-0" />
-      <div
-        className="flex w-full max-w-[220px] flex-col gap-3"
-        aria-hidden="true"
-      >
-        {why.map((r) => (
-          <div key={r.label} className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-foreground-muted">
-              {r.label}
-            </span>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground-muted/15">
-              <div
-                className={cn(
-                  "h-full rounded-full bg-foreground-secondary/80",
-                  r.w
-                )}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 const FEATURES: readonly Feature[] = [
   {
     title: "Know before you post",
     body: "A clear score and the why behind it — so you never gamble on a guess again.",
-    visual: <ScoreWithWhy />,
+    src: "/images/landing/feature-hook.png",
+    alt: "A hook scored Strong — 7 of 10 viewers stopped — with the proven structure it follows and why it works",
   },
   {
     title: "See exactly where viewers drop",
     body: "Watch-through, frame by frame, with the precise moment attention slips away.",
-    visual: <RetentionCurveSkeleton className="px-2" />,
+    src: "/images/landing/feature-retention.png",
+    alt: "The retention curve, opened on its biggest drop: −24% at 0:06, where cross-niche viewers leave",
   },
   {
     title: "Understand your audience",
     body: "A synthetic crowd reacts to your video the way real viewers will — before a single real one sees it.",
-    visual: <AudienceCloudSkeleton className="w-full px-2" />,
+    src: "/images/landing/feature-audience.png",
+    alt: "The people in the room and what they said — loyal fans stopped, new viewers said 'momentum stalls'",
   },
   {
     title: "Fix the weakest lever",
     body: "Hook, Retention, and Shareability scored side by side — so you know what to sharpen first.",
-    visual: <DriverRowsSkeleton className="w-full px-2" />,
+    src: "/images/landing/feature-drivers.png",
+    alt: "Score drivers side by side: Hook 87, Retention 55 with a drop at 0:08, Shareability 64",
   },
 ] as const;
 
@@ -137,7 +101,8 @@ export function FeatureBlocks({ className }: { className?: string }) {
             <FeatureBlock
               title={f.title}
               body={f.body}
-              visual={f.visual}
+              src={f.src}
+              alt={f.alt}
               flip={i % 2 === 1}
             />
           </StaggerRevealItem>
