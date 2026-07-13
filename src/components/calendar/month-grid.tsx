@@ -206,7 +206,6 @@ export function MonthGrid({
           <span className="size-1.5 rounded-full" style={{ background: toneDot.neutral }} />
           neutral
         </span>
-        <span className="text-foreground-muted/70">· pre-tested on your people</span>
       </div>
     </div>
   );

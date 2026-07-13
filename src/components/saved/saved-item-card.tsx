@@ -212,6 +212,12 @@ function buildVM(item: SavedItem): CardVM {
   }
 }
 
+/** Stored proof fractions occasionally carry a stray trailing token (e.g. "7/10 stop"),
+ *  which rendered as "7/10 stop stopped". Keep only the clean N/M so the chip reads right. */
+function fracNM(f: string): string {
+  return f.match(/\d+\s*\/\s*\d+/)?.[0] ?? f;
+}
+
 /** Condensed echo of the thread <ProofUnit>: band dot+word · fraction · ribbon (+ lead quote). */
 function ProofChip({
   band,
@@ -236,7 +242,7 @@ function ProofChip({
         </span>
         {fraction && (
           <span className="shrink-0 text-foreground-secondary">
-            <span className="font-semibold tabular-nums text-foreground">{fraction}</span> stopped
+            <span className="font-semibold tabular-nums text-foreground">{fracNM(fraction)}</span> stopped
           </span>
         )}
         {pct != null && (
@@ -365,7 +371,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
     const meta = vm.measured
       ? `${vm.measured.mult ?? ""}${vm.measured.views ? ` · ${vm.measured.views} views` : ""}`.replace(/^ · /, "")
       : vm.proof
-        ? `${vm.proof.band}${vm.proof.fraction ? ` · ${vm.proof.fraction} stopped` : ""}`
+        ? `${vm.proof.band}${vm.proof.fraction ? ` · ${fracNM(vm.proof.fraction)} stopped` : ""}`
         : "";
     return (
       <div className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-white/[0.02]">
