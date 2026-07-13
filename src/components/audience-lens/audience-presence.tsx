@@ -54,6 +54,7 @@ import {
   buildFieldDots,
   DEFAULT_ROSTER_DOTS,
 } from '@/components/brand/constellation';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
@@ -416,7 +417,7 @@ export function AudiencePresence({
                   className="flex w-full items-baseline gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
                 >
                   <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-foreground-secondary)]">
-                    &ldquo;{a.thought}&rdquo;
+                    &ldquo;{stripWrappingQuotes(a.thought)}&rdquo;
                   </span>
                   {p && (
                     <span className="shrink-0 text-[12px] tabular-nums text-[var(--color-foreground-muted)]">
@@ -874,7 +875,7 @@ export function AudiencePresence({
                   moment a different card is on screen. Muted, truncates with the band. */}
               {!reacting && stopRead && focus?.conceptText ? (
                 <span className="text-[var(--color-foreground-muted)]">
-                  {' · '}&ldquo;{focus.conceptText}&rdquo;
+                  {' · '}&ldquo;{stripWrappingQuotes(focus.conceptText)}&rdquo;
                 </span>
               ) : null}
             </span>

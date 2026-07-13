@@ -27,6 +27,7 @@ import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
 import { CaretToggle } from './caret-toggle';
 import { TrustBadge } from '@/components/audience/trust-badge';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -120,7 +121,7 @@ function AudienceRead({
                   </span>
                 </div>
                 <p className="text-[12.5px] italic leading-snug text-foreground-muted">
-                  &ldquo;{persona.quote}&rdquo;
+                  &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
                 </p>
               </li>
             ))}

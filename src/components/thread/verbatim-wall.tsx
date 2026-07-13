@@ -23,6 +23,7 @@
  */
 
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 type Audiences = MultiAudienceReadBlock['props']['audiences'];
 
@@ -65,7 +66,7 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
             : 'border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug'
         }
       >
-        &ldquo;{q.quote}&rdquo;
+        &ldquo;{stripWrappingQuotes(q.quote)}&rdquo;
       </blockquote>
       {/* Audience + archetype tag — small, muted, never coral. */}
       <p className="pl-3 text-[10px] uppercase tracking-wide text-muted/60">

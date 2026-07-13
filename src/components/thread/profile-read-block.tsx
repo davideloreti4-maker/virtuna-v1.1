@@ -30,6 +30,7 @@ import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 // Sanctioned deception-likelihood tones (band WORD only, never a number) — reuse the
 // success/warning/error data tokens, NEVER the terracotta accent (F-01 / DESIGN-SYSTEM dosage).
@@ -184,7 +185,7 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
             <li key={i} className="flex flex-col gap-1">
               <p className="text-sm text-foreground-secondary leading-relaxed">{t.tell}</p>
               <blockquote className="border-l-2 border-white/[0.12] pl-3 text-sm italic text-foreground/70 leading-relaxed">
-                &ldquo;{t.evidence}&rdquo;
+                &ldquo;{stripWrappingQuotes(t.evidence)}&rdquo;
               </blockquote>
             </li>
           ))}

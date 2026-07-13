@@ -27,6 +27,7 @@ import type { PredictionGaugeBlock } from '@/lib/tools/blocks';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export { PredictionGaugeBlockSchema } from '@/lib/tools/blocks';
 
@@ -217,7 +218,7 @@ export function PredictionGaugeBlockRenderer({ block }: PredictionGaugeBlockRend
                     <span className="text-xs text-foreground-muted">{LEAN_WORD[p.lean]}</span>
                   </div>
                   <blockquote className="text-sm italic text-foreground/70 leading-relaxed">
-                    &ldquo;{p.reasoning}&rdquo;
+                    &ldquo;{stripWrappingQuotes(p.reasoning)}&rdquo;
                   </blockquote>
                 </li>
               ))}
