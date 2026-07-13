@@ -1,5 +1,7 @@
 # Handoff — UI/UX P1–P2 elevation (Calendar · Discover · Audience · Library)
 
+> **Superseded for status:** see [`docs/HANDOFF-2026-07-13-ui-elevation-closeout.md`](./HANDOFF-2026-07-13-ui-elevation-closeout.md) (P0 + Calendar/Discover/Library P1 merged to `main` via #273–#276). Keep this file for mid-session context only.
+
 **Date:** 2026-07-13
 **From:** Claude Code session (hit usage limit mid-P1)
 **To:** Cursor Composer 2.5 agent
