@@ -534,3 +534,72 @@ tsc 0 · eslint clean · full suite 3367 pass with the one pre-existing `api/too
 failure. **Passing gates is not the problem. The object is.**
 
 Known, unfixed: **mesh build ~500ms** blocks the main thread on first open (moot under option A).
+
+---
+
+# 12. ✅ THE DECISION (2026-07-13, owner) — REAL MESH + TRIBE'S UI, REIMPLEMENTED
+
+Owner rejected the procedural approach AND my schematic counter-proposal (option B), on sight, at real
+scale — correctly. A hand-authored bezier cortex is the same error as Perlin noise with a different
+tool: a sixth fake. The owner then supplied a THIRD reference (a Dribbble "Medical AI / Neural
+Diagnostics" UI) which is also a **real 3D brain mesh** rendered near-white on black. Three references,
+three real meshes, zero drawings. The geometry must be real. **Option A. Settled.**
+
+## 12.1 The mesh — CHOSEN
+
+**[Brain Areas — Versal](https://sketchfab.com/3d-models/d64608a3978b47d8a39c5a15795ca8c4)** ·
+**CC Attribution 4.0** · 94,716 tris / 47,383 verts / 3.1MB glb. Near-white cortical surface, real
+gyri/sulci, right poly budget for the web (no decimation). Owner downloads → `public/brain/cortex.glb`
+(Sketchfab gates downloads behind a login; the agent cannot fetch it).
+**A CC-BY credit line for Versal is owed and must ship.**
+
+Runners-up (if Versal disappoints): `dgallichan` (CC-BY, 377k tris, a REAL FreeSurfer surface from a
+T1 MRI — highest fidelity but needs decimation + an owner call on the §2 FreeSurfer tripwire) and
+"Brain Point Cloud" (CC-BY, a different register entirely — an instrument, not a specimen).
+
+## 12.2 ⚠️ LICENCE — the line, precisely
+
+**TRIBE v2 is CC-BY-NC.** Maven is commercial (pricing shipped), so NC excludes us. But the owner's ask
+is legitimate and the distinction matters: **UI design ideas are not ownable; files are.**
+- ✅ ALLOWED: study their demo, reimplement the layout/motion/controls in our own code.
+- ⛔ FORBIDDEN: pasting their JS/CSS/shader, or shipping their fsaverage mesh (FreeSurfer, §2).
+This is why we bought our own geometry.
+
+## 12.3 What their demo actually does (dissected 2026-07-13 — nobody had done this)
+
+Captured via CDP (their WebGL loop hangs a normal Playwright screenshot — same failure as our app).
+
+1. **THE SPECIMEN OWNS THE FRAME.** Their brain is ~600×550px in a 1440px viewport — *half the screen*.
+   Ours is ~430×310 in a 474px card — **a quarter of the area.** ⚠️ **No mesh reads at our size.** We have
+   been fighting a fidelity war in a frame too small to show fidelity. **A real mesh alone will NOT fix
+   the card. The brain scale needs more room** — this is a layout decision, still OPEN with the owner.
+2. **Camera is a 3/4 perspective from slightly above** — not our flat lateral. Most of why theirs reads
+   as a volumetric object and ours reads as a sticker.
+3. **Controls = three segmented pill groups in ONE quiet row beneath the specimen**
+   (`True|Compare|Predicted` · `Normal|Inflated` · `Open|Close`). Take the PATTERN.
+   Only **`Normal | Inflated`** has meaning for us. `True|Compare` requires a ground-truth scan we do
+   not have (offering it would be a lie); `Open|Close` is for two hemispheres; we show one.
+4. **The INFLATED surface is the find.** A smooth balloon with curvature-derived shading that STILL
+   reads as a brain — because the silhouette and the curvature are real. It is what our procedural mesh
+   was imitating without the real curvature underneath. Ship it as the second view.
+5. **Their head ghost is LARGE and SOFT** — a big low-contrast mass, much bigger than the brain. Ours is
+   a hard-edged path at 8.5%, too small and too defined → reads as a smudge. Fix: bigger, softer, lower.
+6. Resting cortex is light gray-white; activation is small hot patches. Most of the brain is UNLIT
+   (we already threshold — but our resting tone was mid-tan, which is half the muddiness).
+7. Their colorbar (tiny, `Low → High`, unit "Activity") is INERT. **Ours is better** — ticks, unit, and a
+   live marker. Keep ours.
+
+## 12.4 Deliberately NOT taken
+The red/orange/yellow **hot colormap** (breaks the LOCKED accent-dosage rule — we keep the diverging
+sage/coral axis, §8.5), their font, and the two-brain true-vs-predicted comparison (dishonest for us).
+
+## 12.5 Order of work (when the .glb lands)
+1. Load glTF (three.js is already a dep) → **compute per-vertex mean curvature once at load, cache it**
+   (feeds the shader's `aCurv`; a real mesh does not ship curvature).
+2. **Re-anchor** parcels→networks in ITS bbox → **RE-RUN THE GRADIENT PROBES** (§5). Parcel spacing
+   changes with geometry and that is what silently broke the map before. Non-negotiable.
+3. Delete `cortex-mesh.ts` (688 lines) + the ~500ms main-thread build. Rewrite `cortex-mesh.test.ts`.
+4. Camera → 3/4 perspective. Head ghost → bigger + softer. Add the `Normal | Inflated` segment.
+5. **Judge at real scale at `/dev/cards#room`, beside the other cards.** Never in an isolated screenshot.
+SURVIVES UNTOUCHED: the well, colorbar + live marker, HRF trace, `cortex-sim.ts`, the shader + 3-pt rig,
+the honesty spine, `cortex-sim.test.ts`, `brain-view.test.tsx`.
