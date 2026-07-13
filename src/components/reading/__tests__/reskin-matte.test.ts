@@ -217,10 +217,13 @@ describe('matte-lint (Hybrid depth) — matte drop-shadows allowed, glow halos b
  * surface by surface (extend it as each surface PR lands).
  */
 const HYBRID_DEPTH_SURFACES = [
-  'components/audience/audience-card.tsx',
+  // The audience surface was rebuilt as index + workspace (SPEC-2026-07-13): audience-card,
+  // audience-constellation-thumb and audience-profile-view were deleted, so the guard now
+  // locks their replacements instead. Coverage moves with the code — it is never dropped.
+  'components/audience/audience-index.tsx',
+  'components/audience/audience-workspace.tsx',
+  'components/audience/audience-composition-bar.tsx',
   'components/audience/audience-manager.tsx',
-  'components/audience/audience-constellation-thumb.tsx',
-  'components/audience/audience-profile-view.tsx',
   'components/surfaces/start-page.tsx',
   'components/surfaces/surface-canvas.ts',
   'components/saved/saved-shelf.tsx',

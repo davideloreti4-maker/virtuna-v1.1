@@ -1,0 +1,397 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>/audience v3 — index + workspace</title>
+<style>
+  :root{
+    --bg:#262624; --card:#2b2b28; --card2:#2f2f2b; --sunk:#232321;
+    --cream:#ece7de; --c2:rgba(236,231,222,.64); --c3:rgba(236,231,222,.42); --c4:rgba(236,231,222,.26);
+    --line:rgba(255,255,255,.06); --line2:rgba(255,255,255,.10); --line3:rgba(255,255,255,.14);
+    --terra:#d97757; --amber:#c9a227;
+    --cold:rgba(236,231,222,.24); --warm:rgba(236,231,222,.50); --hot:rgba(217,119,87,.62);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);padding:0 0 100px;
+    font:400 14px/1.5 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+  .page{max-width:1120px;margin:0 auto;padding:30px 32px}
+  .flag{background:#1c1c1a;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:11px 32px;
+    font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--terra);font-weight:600}
+  .flag span{color:var(--c3);letter-spacing:0;text-transform:none;font-weight:400;margin-left:14px}
+  h1{font-size:22px;font-weight:600;letter-spacing:-.012em}
+  .sub{font-size:13px;color:var(--c3);margin-top:5px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;margin-bottom:26px}
+  .btn{font-size:13px;padding:7px 13px;border-radius:8px;border:1px solid var(--line);background:transparent;
+    color:var(--c2);cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:var(--line2);color:var(--cream)}
+  .btn.pri{background:var(--cream);color:#232320;border-color:var(--cream);font-weight:500}
+  .btn.sm{font-size:12px;padding:5px 10px;border-radius:6px}
+  .btn.gh{border-color:transparent;color:var(--c3)}
+
+  /* ───────── L1 : index table ───────── */
+  .tbl{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+  .th,.tr{display:grid;grid-template-columns:26px minmax(0,1fr) 190px 168px 150px 78px;gap:16px;align-items:center;
+    padding:0 16px}
+  .th{height:38px;background:var(--sunk);border-bottom:1px solid var(--line)}
+  .th div{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--c4);font-weight:500}
+  .tr{min-height:64px;border-bottom:1px solid var(--line)}
+  .tr:last-child{border-bottom:0}
+  .tr:hover{background:rgba(255,255,255,.017)}
+  .tr.own{background:rgba(255,255,255,.012)}
+  .nm{font-size:14px;font-weight:500}
+  .nm .tag{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--c4);margin-left:8px;
+    border:1px solid var(--line);border-radius:4px;padding:2px 5px}
+  .sub2{font-size:12px;color:var(--c3);margin-top:2px}
+  .src{font-size:12.5px;color:var(--c2)}
+  .src small{display:block;font-size:11px;color:var(--c4);margin-top:2px}
+  .mini{display:flex;gap:2px;height:7px;margin-bottom:5px}
+  .mini span{border-radius:1px}
+  .mini.none{background:repeating-linear-gradient(90deg,rgba(255,255,255,.07) 0 5px,transparent 5px 10px);opacity:.6;border-radius:2px}
+  .cnt{font-size:11px;color:var(--c4);font-variant-numeric:tabular-nums}
+  .use{font-size:12px;color:var(--c3)}
+  .use b{color:var(--c2);font-weight:500}
+  .radio{width:14px;height:14px;border-radius:99px;border:1px solid var(--line3);display:block}
+  .radio.on{border-color:var(--terra);box-shadow:inset 0 0 0 3px var(--terra)}
+  .empty-nudge{font-size:12px;color:var(--amber)}
+  .foot{margin-top:12px;font-size:12px;color:var(--c4)}
+
+  /* ───────── L2 : workspace ───────── */
+  .wshead{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;
+    padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:24px}
+  .wsname{font-size:20px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .wsname .pen{font-size:11px;color:var(--c4);border:1px solid var(--line);border-radius:5px;padding:2px 6px;cursor:pointer}
+  .wssrc{font-size:13px;color:var(--c3);margin-top:5px}
+  .wssrc b{color:var(--c2);font-weight:500}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:32px;align-items:start}
+  .sec{margin-bottom:30px}
+  .sec-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .sec-h b{font-size:13px;font-weight:600}
+  .sec-h i{font-style:normal;font-size:11px;color:var(--c4)}
+  .sec-d{font-size:12.5px;color:var(--c3);margin-bottom:16px}
+  .panel{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:18px 20px}
+
+  /* dials */
+  .dial{display:grid;grid-template-columns:150px 1fr 54px;gap:14px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+  .dial:last-child{border-bottom:0}
+  .dial .dn{font-size:13px}
+  .dial .dn small{display:block;font-size:11px;color:var(--c4);margin-top:1px}
+  .track{height:4px;border-radius:99px;background:rgba(255,255,255,.07);position:relative}
+  .fill{position:absolute;left:0;top:0;bottom:0;border-radius:99px;background:rgba(236,231,222,.55)}
+  .knob{position:absolute;top:50%;width:13px;height:13px;border-radius:99px;background:var(--cream);
+    transform:translate(-50%,-50%);border:2px solid var(--bg)}
+  .val{text-align:right;font-size:13px;color:var(--c2);font-variant-numeric:tabular-nums}
+  .sum{display:flex;justify-content:space-between;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);
+    font-size:12px;color:var(--c4)}
+  .sum b{color:var(--c2);font-weight:500;font-variant-numeric:tabular-nums}
+
+  /* cast */
+  .pr{display:grid;grid-template-columns:minmax(0,1fr) 150px 46px 28px;gap:14px;align-items:start;
+    padding:14px 0;border-bottom:1px solid var(--line)}
+  .pr:last-child{border-bottom:0}
+  .pr .pn{font-size:13.5px;font-weight:500}
+  .pr .rp{font-size:12.5px;color:var(--c3);margin-top:4px;border:1px dashed transparent;border-radius:6px;
+    padding:2px 0}
+  .pr:hover .rp{border-color:var(--line);padding:2px 6px;margin-left:-6px}
+  .chip{font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid var(--line);color:var(--c3)}
+  .pr .meta{display:flex;gap:6px;justify-content:flex-end}
+  .pr .sh{text-align:right;font-size:13px;color:var(--c2);font-variant-numeric:tabular-nums}
+  .pr .ed{font-size:12px;color:var(--c4);text-align:right;cursor:pointer}
+  .hint{margin-top:14px;font-size:11.5px;color:var(--c4);display:flex;gap:7px;align-items:baseline}
+  .hint s{text-decoration:none;color:var(--c3)}
+
+  /* rail */
+  .rail{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:16px 18px;margin-bottom:12px}
+  .rail h4{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--c4);font-weight:500;margin-bottom:11px}
+  .kv{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line)}
+  .kv:last-of-type{border-bottom:0}
+  .kv span{color:var(--c3)}
+  .kv b{font-weight:500;color:var(--c2)}
+  .rail .btn{width:100%;margin-top:12px;justify-content:center;text-align:center}
+  .ladder{display:flex;gap:5px;align-items:center;font-size:10px;letter-spacing:.09em;text-transform:uppercase;margin-top:3px}
+  .ladder i{color:var(--c4);font-style:normal}
+  .ladder b{color:var(--cream);font-weight:600;border:1px solid var(--line2);border-radius:5px;padding:2px 6px;background:#343430}
+  .ladder .s{color:rgba(236,231,222,.18)}
+  .danger{color:#c56b5c;font-size:12.5px;cursor:pointer}
+
+  /* save bar */
+  .save{margin-top:26px;background:#2f2f2b;border:1px solid var(--line2);border-radius:10px;
+    padding:11px 14px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+  .save p{font-size:12.5px;color:var(--c2)}
+  .save .g{display:flex;gap:8px}
+</style></head><body>
+
+<!-- ══════════ LEVEL 1 — INDEX ══════════ -->
+<div class="flag">Level 1 — the index <span>Every audience, what it was built from, who's in it, and which one seeds your work. No taxonomy to learn: origin is a column, not a section header.</span></div>
+<div class="page">
+  <div class="head">
+    <div>
+      <h1>Audiences</h1>
+      <div class="sub">The panel your work gets tested against. Every Read is scored twice — once by the audience you pick, once by General.</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn">Compare two</button>
+      <button class="btn pri">New audience</button>
+    </div>
+  </div>
+
+  <div class="tbl">
+    <div class="th">
+      <div></div><div>Audience</div><div>Built from</div><div>Who's in it</div><div>Used for</div><div></div>
+    </div>
+
+    <div class="tr own">
+      <span class="radio on" title="default"></span>
+      <div>
+        <div class="nm">Fitness Creators</div>
+        <div class="sub2">TikTok · grow my fitness following</div>
+      </div>
+      <div class="src">A description you wrote
+        <small>No account data behind it</small></div>
+      <div>
+        <div class="mini">
+          <span style="flex:25;background:var(--warm)"></span><span style="flex:20;background:var(--cold)"></span>
+          <span style="flex:15;background:var(--hot)"></span><span style="flex:15;background:var(--warm)"></span>
+          <span style="flex:10;background:var(--hot)"></span><span style="flex:15;background:var(--cold)"></span>
+        </div>
+        <div class="cnt">6 personas · warm-leaning</div>
+      </div>
+      <div class="use"><b>Default</b><br><span style="color:var(--c4);font-size:11px">seeds new threads</span></div>
+      <button class="btn sm">Open</button>
+    </div>
+
+    <div class="tr own">
+      <span class="radio"></span>
+      <div>
+        <div class="nm">test</div>
+        <div class="sub2">TikTok · personal</div>
+      </div>
+      <div class="src empty-nudge">Nothing yet
+        <small style="color:var(--c4)">Read your @handle to fill it</small></div>
+      <div>
+        <div class="mini none" style="height:7px"></div>
+        <div class="cnt">empty</div>
+      </div>
+      <div class="use" style="color:var(--c4)">—</div>
+      <button class="btn sm">Build</button>
+    </div>
+
+    <div class="tr">
+      <span class="radio"></span>
+      <div>
+        <div class="nm">General <span class="tag">Maven</span></div>
+        <div class="sub2">The control every Read is compared against</div>
+      </div>
+      <div class="src">Maven's baseline
+        <small>Same for every user</small></div>
+      <div>
+        <div class="mini">
+          <span style="flex:1;background:var(--cold)"></span><span style="flex:1;background:var(--warm)"></span>
+          <span style="flex:1;background:var(--warm)"></span><span style="flex:1;background:var(--cold)"></span>
+          <span style="flex:1;background:var(--warm)"></span><span style="flex:1;background:var(--hot)"></span>
+          <span style="flex:1;background:var(--cold)"></span><span style="flex:1;background:var(--warm)"></span>
+        </div>
+        <div class="cnt">10 personas · even</div>
+      </div>
+      <div class="use">Always on<br><span style="color:var(--c4);font-size:11px">as the control</span></div>
+      <button class="btn sm gh">View</button>
+    </div>
+
+    <div class="tr">
+      <span class="radio"></span>
+      <div>
+        <div class="nm">Growth Audience <span class="tag">Preset</span></div>
+        <div class="sub2">Weighted toward new viewers</div>
+      </div>
+      <div class="src">Ready-made mix
+        <small>Tune it after you pick it</small></div>
+      <div>
+        <div class="mini none"></div>
+        <div class="cnt">no personas</div>
+      </div>
+      <div class="use" style="color:var(--c4)">—</div>
+      <button class="btn sm">Use</button>
+    </div>
+
+    <div class="tr">
+      <span class="radio"></span>
+      <div>
+        <div class="nm">Analyst Panel <span class="tag">Preset</span></div>
+        <div class="sub2">Pressure-tests an argument — doesn't predict reach</div>
+      </div>
+      <div class="src">Ready-made mix
+        <small>Authored by Maven</small></div>
+      <div>
+        <div class="mini">
+          <span style="flex:30;background:var(--warm)"></span><span style="flex:30;background:var(--warm)"></span>
+          <span style="flex:20;background:var(--cold)"></span><span style="flex:20;background:var(--warm)"></span>
+        </div>
+        <div class="cnt">4 personas · skeptic-led</div>
+      </div>
+      <div class="use" style="color:var(--c4)">—</div>
+      <button class="btn sm">Use</button>
+    </div>
+  </div>
+  <div class="foot">Conversion Audience · Hiring Panel · Marcus Reyes · Maya — 4 more presets. <a href="#" style="color:var(--c3)">Show all</a></div>
+</div>
+
+<!-- ══════════ LEVEL 2 — WORKSPACE ══════════ -->
+<div class="flag">Level 2 — the workspace <span>Click an audience → tune it. Every control here is one the engine actually honours. Naming-only fields say so.</span></div>
+<div class="page">
+
+  <div class="wshead">
+    <div>
+      <div class="wsname">Fitness Creators <span class="pen">Rename</span></div>
+      <div class="wssrc">Built from <b>a description you wrote</b> · 20 Jun · no account data behind it</div>
+      <div class="ladder"><b>Described</b><span class="s">→</span><i>Read from @handle</i><span class="s">→</span><i>Proven by outcomes</i></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn">Compare</button>
+      <button class="btn">Duplicate</button>
+      <button class="btn pri">Read from @zachking</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+
+      <div class="sec">
+        <div class="sec-h"><b>The mix</b><i>changes what Maven predicts</i></div>
+        <div class="sec-d">How much of the room is each kind of viewer. This is the dial the engine scores with.</div>
+        <div class="panel">
+          <div class="dial">
+            <div class="dn">New viewers <small>For You page, don't follow you</small></div>
+            <div class="track"><span class="fill" style="width:65%"></span><span class="knob" style="left:65%"></span></div>
+            <div class="val">65%</div>
+          </div>
+          <div class="dial">
+            <div class="dn">Niche regulars <small>In your world, not yet yours</small></div>
+            <div class="track"><span class="fill" style="width:20%"></span><span class="knob" style="left:20%"></span></div>
+            <div class="val">20%</div>
+          </div>
+          <div class="dial">
+            <div class="dn">Loyalists <small>Watch everything you post</small></div>
+            <div class="track"><span class="fill" style="width:10%"></span><span class="knob" style="left:10%"></span></div>
+            <div class="val">10%</div>
+          </div>
+          <div class="dial">
+            <div class="dn">Cross-niche <small>Outsiders who wander in</small></div>
+            <div class="track"><span class="fill" style="width:5%"></span><span class="knob" style="left:5%"></span></div>
+            <div class="val">5%</div>
+          </div>
+          <div class="sum"><span>Must total 100%</span><b>100%</b></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><b>The cast</b><i>6 personas · shares total 100%</i></div>
+        <div class="sec-d">Who reacts when you run a Read. Their description is what the model reads — edit it and their verdicts change.</div>
+        <div class="panel">
+
+          <div class="pr">
+            <div>
+              <div class="pn">Fitness</div>
+              <div class="rp">Hardcore gym regular who screenshots form tutorials and judges sloppy reps hard.</div>
+            </div>
+            <div class="meta"><span class="chip">warm</span><span class="chip">collector</span></div>
+            <div class="sh">25%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="pr">
+            <div>
+              <div class="pn">Learner</div>
+              <div class="rp">Beginner learning routines from scratch.</div>
+            </div>
+            <div class="meta"><span class="chip">cold</span><span class="chip">scanner</span></div>
+            <div class="sh">20%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="pr">
+            <div>
+              <div class="pn">Loyalist</div>
+              <div class="rp">Follows every upload, comments first.</div>
+            </div>
+            <div class="meta"><span class="chip">hot</span><span class="chip">connector</span></div>
+            <div class="sh">15%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="pr">
+            <div>
+              <div class="pn">Saver</div>
+              <div class="rp">Saves meal-prep and workout splits.</div>
+            </div>
+            <div class="meta"><span class="chip">warm</span><span class="chip">collector</span></div>
+            <div class="sh">15%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="pr">
+            <div>
+              <div class="pn">Sharer</div>
+              <div class="rp">Shares PRs and wins to friends.</div>
+            </div>
+            <div class="meta"><span class="chip">hot</span><span class="chip">connector</span></div>
+            <div class="sh">10%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="pr">
+            <div>
+              <div class="pn">Lurker</div>
+              <div class="rp">Watches silently, rarely engages.</div>
+            </div>
+            <div class="meta"><span class="chip">cold</span><span class="chip">lurker</span></div>
+            <div class="sh">15%</div>
+            <div class="ed">Edit</div>
+          </div>
+
+          <div class="hint"><s>Naming only:</s> a persona's display name never reaches the model — the description does.</div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-h"><b>What Maven should know</b><i>optional · changes predictions</i></div>
+        <div class="sec-d">Facts about your people the scrape can't see. Added as grounding, tagged as yours — never passed off as data.</div>
+        <div class="panel">
+          <div style="font-size:12.5px;color:var(--c3);border:1px dashed var(--line2);border-radius:8px;padding:13px 14px">
+            e.g. “Most of them lift fasted before work — morning posts land better.”
+          </div>
+        </div>
+      </div>
+
+      <div class="save">
+        <p>3 unsaved changes — the mix and one persona description.</p>
+        <div class="g"><button class="btn gh">Discard</button><button class="btn pri">Save audience</button></div>
+      </div>
+    </div>
+
+    <!-- rail -->
+    <div>
+      <div class="rail">
+        <h4>Source</h4>
+        <div class="kv"><span>Built from</span><b>A description</b></div>
+        <div class="kv"><span>Account data</span><b style="color:var(--c4)">None</b></div>
+        <div class="kv"><span>Created</span><b>20 Jun</b></div>
+        <button class="btn">Read from @zachking →</button>
+        <div style="font-size:11.5px;color:var(--c4);margin-top:9px;line-height:1.45">
+          Replaces these guesses with the real shares from your last 80 videos.
+        </div>
+      </div>
+
+      <div class="rail">
+        <h4>Where it's used</h4>
+        <div class="kv"><span>New threads</span><b>Default</b></div>
+        <div class="kv"><span>Pinned in</span><b>4 threads</b></div>
+        <div class="kv"><span>Compared against</span><b>General</b></div>
+        <div style="font-size:11.5px;color:var(--c4);margin-top:10px;line-height:1.45">
+          Any thread can pin a different audience from the composer.
+        </div>
+      </div>
+
+      <div class="rail">
+        <h4>Danger</h4>
+        <div class="danger">Delete this audience</div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
