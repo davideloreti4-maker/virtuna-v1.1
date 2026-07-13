@@ -154,7 +154,7 @@ export function ThreadOutro({
   return (
     <div className="reading-reveal flex flex-col gap-3">
       {text && (
-        <div className="prose prose-invert prose-sm max-w-none" aria-label="Model follow-up">
+        <div className="md" aria-label="Model follow-up">
           <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{text}</ReactMarkdown>
         </div>
       )}

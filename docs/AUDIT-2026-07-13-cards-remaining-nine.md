@@ -38,15 +38,23 @@ The other eight cards are *drifted*. This one is *broken*, and it sits under Ask
 
 Ordered by damage × cheapness. Ranks are the fix's *shape*, not its size.
 
-### 1 — `markdown` + the dead prose classes · **STRUCTURAL** · biggest blast radius, smallest fix
-- `markdown-block.tsx` and `conversational-frame.tsx` both use `prose prose-invert prose-sm` → no-ops.
-- `reading-chat.tsx` uses `reading-chat-prose` and `ExpertChatThread.tsx` uses `prose-chat` —
-  **neither class is defined anywhere** (`globals.css` is the only stylesheet in the repo).
-  `reading-chat` degrades less badly only because it sets size/color on the wrapper itself.
-- Fix is a choice, not a lookup: install the typography plugin + `@plugin` + theme it to the cream
-  tokens (`prose-invert` would give cold grey — §1.2 forbids), **or** write the ~15 lines of
-  markdown CSS the app actually needs. The second is more in keeping with a near-zero-dosage system.
-- **Do this first.** Every other card renders its follow-up prose through it.
+### 1 — `markdown` + the dead prose classes · ✅ **FIXED 2026-07-13** (`.md` layer, globals.css)
+- Was: `markdown-block.tsx` + `conversational-frame.tsx` used `prose prose-invert prose-sm` → no-ops.
+  `reading-chat.tsx` used `reading-chat-prose`, `ExpertChatThread.tsx` uses `prose-chat` — neither
+  class defined anywhere (`globals.css` is the repo's only stylesheet).
+- **Fixed by writing the `.md` layer** rather than installing the typography plugin — `prose-invert`
+  paints cold grey (Tailwind `gray.300`), which §1.2 forbids, and theming the plugin back to the cream
+  tokens is more config than the ~40 lines the app actually needs.
+- **A second ordered-list bug surfaced during the fix.** `reading-chat` hand-rolled its own element
+  overrides, and its shared `li` renderer forced EVERY item to a dot span — so an ordered list
+  rendered as identical bullets and `1. 2. 3.` lost its numbers *there too*, by a completely
+  different mechanism. Both paths destroyed enumeration. Its overrides are gone; `.md` owns it.
+- **`ExpertChatThread.tsx` deliberately NOT touched — it is dead code.** `CommandBar` (its only
+  consumer) is not mounted anywhere in the app; `reskin-matte.test.ts` already exempts it as legacy.
+  It still carries `bg-coral/70` (the retired system). Delete the folder or leave it; do not style it.
+- **Verified in a browser against the production stylesheet**: heading now `18.4px/600` vs body
+  `16px/400` · paragraph gap `11.2px` · `<ol>` → `decimal` (numbers back) · `<ul>` → `disc` ·
+  markers cream-muted `#8a857c` · body cream `#ece7de`, not cold grey.
 
 ### 2 — The old-stack label sweep · **SMALL FIX ×4 files** · one commit, app-wide
 The contract says section labels are `text-[11px] tracking-[0.05em]` — "NOT `10px`/`0.14em`
