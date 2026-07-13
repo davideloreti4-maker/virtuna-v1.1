@@ -61,8 +61,11 @@ const LIGHT = ((): [number, number, number] => {
   return [l[0] / n, l[1] / n, l[2] / n];
 })();
 const GYRUS: [number, number, number] = [0xec, 0xe7, 0xde]; // cream — the brand's own
-const SULCUS: [number, number, number] = [0x3a, 0x38, 0x35];
-const BG: [number, number, number] = [0x26, 0x26, 0x24];
+const SULCUS: [number, number, number] = [0x24, 0x22, 0x1f];
+// The WELL — the near-black sky the specimen now sits in (see BrainView's WELL_BG). The preview
+// used to composite onto the warm-charcoal card bg, which flattered the old muddy render: a
+// mid-grey brain looks fine on mid-grey. Preview on what it actually ships against.
+const BG: [number, number, number] = [0x13, 0x12, 0x10];
 
 const buf = new Uint8Array(W * H * 3);
 for (let i = 0; i < W * H; i++) {
@@ -104,31 +107,51 @@ const shade = (
   val: number,
 ): [number, number, number] => {
   const lam = Math.max(0, n[0] * LIGHT[0] + n[1] * LIGHT[1] + n[2] * LIGHT[2]);
-  // Sulci are darker BOTH because the tissue is shadowed (ambient occlusion) and because a folded
-  // surface turns away from the light. The AO term is what sells the depth.
-  const ao = 0.3 + 0.7 * c;
-  const amb = 0.32;
-  let base = mix3(SULCUS, GYRUS, c);
-  const k = (amb + 0.9 * lam) * ao;
+  // The tone curve — mirrored EXACTLY from CortexCanvas's fragment shader. Sulci are darker both
+  // because the crease occludes its own ambient light (AO) and because the surface turns away from
+  // the lamp (lambert) — but the two must not be stacked so hard that the mid-tones crush to mud,
+  // which is what the previous version did. Lifted AO floor + lifted ambient + a smoothstepped base
+  // ramp, so the crowns actually reach cream and the sulci actually reach near-black.
+  const ao = 0.55 + 0.45 * c;
+  const diff = 0.42 + 0.78 * lam;
+  const cs = smoothstep01(c / 0.85);
+  let base = mix3(SULCUS, GYRUS, cs);
 
-  // The activation, thresholded and lit — it lies ON the folds, it does not replace them.
+  // The activation, thresholded and lit — it lies ON the folds, it does not replace them. The alpha
+  // ramps from ZERO at the contour (mirrored from the shader): opening at 0.35 stamped a hard step
+  // at every cluster edge and made the map read as translucent shapes pasted on the anatomy.
   const a = Math.abs(val);
   if (a > ACTIVATION_THRESHOLD) {
     const s = Math.min(1, (a - ACTIVATION_THRESHOLD) / ACTIVATION_SPAN);
     const hot = val > 0 ? mix3(TASK_LOW, TASK_HIGH, s) : mix3(DMN_LOW, DMN_HIGH, s);
-    base = mix3(base, hot, 0.35 + 0.65 * s);
+    base = mix3(base, hot, smoothstep01(s / 0.22) * (0.45 + 0.55 * s));
   }
 
-  // A cool rim keeps the silhouette off the background.
+  const k = diff * ao;
+
+  // The wet specular sheen of a fixed specimen — gated on curvature so it fires on the crowns.
   const vlen = Math.hypot(...vz) || 1;
-  const ndv = Math.abs((n[0] * vz[0] + n[1] * vz[1] + n[2] * vz[2]) / vlen);
-  const rim = Math.pow(1 - ndv, 3) * 0.3;
+  const V: [number, number, number] = [vz[0] / vlen, vz[1] / vlen, vz[2] / vlen];
+  const h: [number, number, number] = [LIGHT[0] + V[0], LIGHT[1] + V[1], LIGHT[2] + V[2]];
+  const hl = Math.hypot(...h) || 1;
+  const ndh = Math.max(0, (n[0] * h[0] + n[1] * h[1] + n[2] * h[2]) / hl);
+  const spec = Math.pow(ndh, 26) * 0.16 * c;
+
+  // A cool rim keeps the silhouette off the near-black well.
+  const ndv = Math.abs(n[0] * V[0] + n[1] * V[1] + n[2] * V[2]);
+  const rim = Math.pow(1 - ndv, 3) * 0.26;
   return [
-    Math.min(255, base[0] * k + 255 * rim),
-    Math.min(255, base[1] * k + 255 * rim),
-    Math.min(255, base[2] * k + 255 * rim),
+    Math.min(255, base[0] * k + 255 * (spec + rim * 0.56)),
+    Math.min(255, base[1] * k + 255 * (spec + rim * 0.65)),
+    Math.min(255, base[2] * k + 255 * (spec + rim * 0.74)),
   ];
 };
+
+/** The GLSL smoothstep(0,1,x), for the base ramp. */
+function smoothstep01(x: number): number {
+  const t = x < 0 ? 0 : x > 1 ? 1 : x;
+  return t * t * (3 - 2 * t);
+}
 
 for (let f = 0; f < indices.length; f += 3) {
   const ia = indices[f]!, ib = indices[f + 1]!, ic = indices[f + 2]!;

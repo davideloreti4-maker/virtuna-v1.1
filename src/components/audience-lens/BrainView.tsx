@@ -10,9 +10,26 @@
  * the response model (`@/lib/brain/cortex-sim`: per-network neural drive → canonical double-gamma
  * HRF → predicted BOLD per parcel).
  *
- * The surface is the point. Two earlier cuts drew this as a flat Voronoi parcel map and were both
- * rejected for looking fake: what makes a brain read as a brain is the FOLDING — gyral crowns
- * catching the light, sulci cutting shadow between them — not colour and not parcel density.
+ * ── THE CARD IS A FIGURE, NOT A DASHBOARD (the round-4 rebuild) ───────────────────────────────
+ * Three earlier cuts were rejected, and the last one for the CARD rather than the cortex: it had
+ * grown into nine stacked rows — a status line, a colorbar, a caption, a readout, four progress
+ * bars, a verdict, a footer — all shouting at one volume, in three fighting type systems, and it
+ * overflowed its own panel (554px of content in a 516px box). Diffing against TRIBE's demo showed
+ * the actual lesson, and it is not about the brain: **their chrome is three annotations and a
+ * stimulus pane.** The specimen carries the message; everything else is a label on it.
+ *
+ * So this is built as a scientific FIGURE:
+ *  • THE WELL — a near-black inset the specimen lives in. This is the one move that buys TRIBE's
+ *    figure/ground: their brain is near-white on pure black, ours was mid-beige on mid-charcoal, and
+ *    THAT is why it read as murky. The well is a legitimate matte tone-zone (docs/DESIGN-SYSTEM.md),
+ *    so the app stays flat-warm charcoal while the instrument gets its black sky.
+ *  • Its four corners carry the figure's annotations — colorbar (with ticks and a unit), the
+ *    haemodynamic-lag claim, the projection, and a hover readout. None of them cost a row.
+ *  • The stimulus gets its OWN pane, beneath. It used to be dumped on the frontal lobe, occluding
+ *    the object it exists to accompany; TRIBE gives it a deliberate home and so do we.
+ *  • Type is Inter, sentence case. The mono caps are gone — all ten of them. Mono is sanctioned for
+ *    micro-copy in this system, but at ten usages in one 360px card it stopped reading as
+ *    instrumentation and started reading as terminal output.
  *
  * The stimulus plays BESIDE the brain, because a brain map with no stimulus is decoration:
  *  • a real video (the Read) → the actual <video> drives the clock, and the response is GROUNDED
@@ -23,12 +40,14 @@
  *
  * The brain visibly LAGS the stimulus. That is not a bug and not an effect: BOLD is haemodynamic,
  * the canonical HRF peaks ~5s after the neural event, and the convolution in cortex-sim produces
- * that lag for free. The header says so.
+ * that lag for free. The figure claims the lag on screen, which is why the claim is load-bearing
+ * chrome and not decoration — it may move, it may not be deleted.
  *
  * Dosage (LOCKED) survives via real neuroscience: the map is DIVERGING on the task-positive /
  * default-mode axis — the anticorrelation is a genuine phenomenon — so engaged cortex glows
  * cream→sage and only the default-mode system (mind-wandering: the audience you are losing)
- * glows coral. Coral still means exactly what it means everywhere else in the app.
+ * glows coral. Coral still means exactly what it means everywhere else in the app. There is no
+ * red/yellow "hot" colormap here, which is the one thing of TRIBE's we deliberately did NOT take.
  *
  * Deterministic: seeded off the focus id; the first frame is a pure function of props (SSR-safe),
  * the clock only starts client-side. Reduced motion holds the response at the stimulus midpoint.
@@ -142,14 +161,12 @@ export function BrainView({
 
   const [hovered, setHovered] = useState<NetworkId | null>(null);
 
-  // The hottest network right now — the readout's subject when nothing is hovered.
+  // The hottest network right now — the one the strip emphasizes when nothing is hovered.
   const hottest = useMemo(() => {
     let best: NetworkId = NETWORK_IDS[0]!;
     for (const id of NETWORK_IDS) if (bold[id] > bold[best]) best = id;
     return best;
   }, [bold]);
-  const readNet: NetworkId = hovered ?? hottest;
-  const readVal = bold[readNet];
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -161,27 +178,105 @@ export function BrainView({
 
   return (
     <div className="flex flex-col" data-testid="brain-view" data-mode={mode}>
-      {/* Header — what this is, and the scan clock. */}
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="font-mono text-[9.5px] uppercase tracking-[0.11em] text-[var(--color-foreground-muted)]">
+      {/* ── The figure's header: what this is, and the scan clock. One quiet line of Inter —
+             this used to be two lines of mono caps that wrapped mid-phrase. ── */}
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="min-w-0 truncate text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
           Predicted cortical response · {mode === 'grounded' ? 'modeled' : 'simulated'}
         </p>
-        <p className="shrink-0 font-mono text-[10px] text-[var(--color-foreground-muted)] tabular-nums">
-          t={t.toFixed(1)}s · TR {TR_S}s
+        <p className="shrink-0 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+          t {t.toFixed(1)}s · TR {TR_S}s
         </p>
       </div>
 
-      {/* ── The cortex — the hero — with the stimulus playing on it. A brain map with no stimulus
-             is decoration; a stimulus with a thumbnail-sized brain is a diagram. ── */}
+      {/* ══ THE WELL ═══════════════════════════════════════════════════════════════════════════
+             A near-black inset — the specimen's sky. Everything a figure needs to be read sits in
+             its corners (legend, unit, lag claim, projection, hover readout), so the annotations
+             cost no rows and the cortex gets the whole frame. ── */}
       <div
         className="relative mt-2.5 w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
-        style={{ aspectRatio: '4 / 3' }}
+        style={{ aspectRatio: '4 / 3', background: WELL_BG }}
         data-testid="brain-surface"
       >
-        <CortexCanvas seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} onHover={setHovered} />
+        {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
+            specimen scale, orientation and a body to belong to — without it a lit 3D object on
+            black reads as a floating artifact rather than anatomy. Our own path. */}
+        <HeadGhost />
 
-        <div className="absolute left-2.5 top-2.5 w-[62px] overflow-hidden rounded-[8px] border border-[var(--color-border)] bg-[var(--color-surface)]">
-          {videoSrc ? (
+        <div className="absolute inset-0">
+          <CortexCanvas seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} onHover={setHovered} />
+        </div>
+
+        {/* Top-left — the hover readout. A real surface map names the region you point at, where
+            you point at it; it does not keep a permanent row reserved for the answer. */}
+        {hovered && (
+          <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="h-[6px] w-[6px] shrink-0 rounded-full"
+              style={{ background: netFill(hovered, Math.max(0.6, bold[hovered])) }}
+            />
+            <span className="text-[11px] font-medium leading-none text-[var(--cream-primary)]">
+              {NETWORK_META[hovered].label}
+            </span>
+            <span className="text-[11px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+              {bold[hovered].toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Top-right — the colorbar, the way a figure carries one: poles, TICKS, and the UNIT.
+            It used to be a raw red→green slider with two shouty mono words and no scale. */}
+        <div className="pointer-events-none absolute right-3 top-3 w-[128px]">
+          <div className="flex items-baseline justify-between">
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">drifting</span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">engaged</span>
+          </div>
+          <div className="relative mt-[4px]">
+            <span className="flex h-[4px] overflow-hidden rounded-full">
+              {Array.from({ length: 40 }, (_, i) => (
+                // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
+                <span key={i} className="h-full flex-1" style={{ background: barFill((i / 39) * 2 - 1) }} />
+              ))}
+            </span>
+            {/* Ticks — a scale, not a temperature slider. */}
+            {[0, 50, 100].map((pct) => (
+              <span
+                key={pct}
+                className="absolute top-full h-[3px] w-px bg-[rgba(255,255,255,0.22)]"
+                style={{ left: `${pct}%`, transform: pct === 100 ? 'translateX(-1px)' : undefined }}
+              />
+            ))}
+          </div>
+          <p className="mt-[6px] text-center text-[9px] leading-none text-[var(--color-foreground-muted)]">
+            predicted BOLD
+          </p>
+        </div>
+
+        {/* Bottom — the figure's footer, inside the frame: the lag claim (load-bearing: the HRF is
+            real and the UI says so) and the projection. */}
+        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+        </p>
+        <p className="pointer-events-none absolute bottom-2.5 right-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+          left hemisphere · lateral
+        </p>
+      </div>
+
+      {/* ── The stimulus, in its own pane. It is the thing the cortex is responding to; it does not
+             belong dumped on top of the cortex, dimming the object it explains. ── */}
+      {/* A FIXED height, in both modes. Left to size itself, the video thumb's intrinsic aspect drove
+          the flex row and the grounded pane came out ~2× the text one — which put the grounded card
+          back over its container (measured: 530px of content in a 516px box) while the simulated one
+          fit. The card has to fit in BOTH modes, and the two should not be different shapes. */}
+      <div className="mt-2.5 flex h-[64px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
+        {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
+            does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
+            reads as a broken image. It gets a plain transport button, and the words — which ARE
+            the stimulus — get the room instead. */}
+        {videoSrc ? (
+          // Sized off the pane's fixed height, at roughly the 9:16 of the vertical video it shows.
+          <div className="relative h-full w-[27px] shrink-0 overflow-hidden rounded-[6px] bg-[rgba(0,0,0,0.35)]">
             <video
               ref={videoRef}
               src={videoSrc}
@@ -190,7 +285,6 @@ export function BrainView({
               preload="metadata"
               data-testid="brain-stimulus-video"
               className="h-full w-full object-cover"
-              style={{ aspectRatio: '9 / 16' }}
               onLoadedMetadata={(e) => {
                 const d = e.currentTarget.duration;
                 if (Number.isFinite(d)) setVideoDur(d);
@@ -200,11 +294,42 @@ export function BrainView({
               onPause={() => setPlaying(false)}
               onEnded={() => setPlaying(false)}
             />
+            {!reducedMotion && (
+              <button
+                type="button"
+                onClick={togglePlay}
+                aria-label={playing ? 'Pause the stimulus' : 'Play the stimulus'}
+                className="absolute inset-0 grid place-items-center transition-opacity"
+                style={{ opacity: playing ? 0 : 1 }}
+              >
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-[rgba(0,0,0,0.5)] text-[var(--cream-primary)]">
+                  <PlayGlyph playing={playing} />
+                </span>
+              </button>
+            )}
+          </div>
+        ) : (
+          !reducedMotion && (
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={playing ? 'Pause the stimulus' : 'Play the stimulus'}
+              className="grid h-7 w-7 shrink-0 place-items-center self-center rounded-full border border-[var(--color-border)] text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground"
+            >
+              <PlayGlyph playing={playing} />
+            </button>
+          )
+        )}
+
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5">
+          {/* The concept landing word by word, on the scan clock — or the video's own name. */}
+          {videoSrc ? (
+            <p className="line-clamp-2 text-[11.5px] leading-[1.4] text-[var(--color-foreground-secondary)]">
+              {conceptText}
+            </p>
           ) : (
-            // The text stimulus — the concept landing word by word, on the same clock.
             <p
-              className="flex h-full flex-wrap content-center gap-x-1 p-2 text-[10px] leading-[1.35]"
-              style={{ aspectRatio: '9 / 16' }}
+              className="line-clamp-2 flex flex-wrap gap-x-1 text-[11.5px] leading-[1.4]"
               data-testid="brain-stimulus-text"
             >
               {words.map((w, i) => (
@@ -212,7 +337,7 @@ export function BrainView({
                   key={`${w}-${i}`}
                   className={
                     i < wordsShown
-                      ? 'text-[var(--color-foreground)]'
+                      ? 'text-[var(--cream-primary)]'
                       : 'text-[var(--color-foreground-muted)] opacity-30'
                   }
                   style={reducedMotion ? undefined : { transition: 'opacity 200ms linear, color 200ms linear' }}
@@ -222,112 +347,68 @@ export function BrainView({
               ))}
             </p>
           )}
-          {!reducedMotion && (
-            <button
-              type="button"
-              onClick={togglePlay}
-              aria-label={playing ? 'Pause the stimulus' : 'Play the stimulus'}
-              className="absolute inset-0 grid place-items-center transition-opacity hover:opacity-100"
-              style={{ opacity: playing ? 0 : 1 }}
-            >
-              <span
-                className="grid h-7 w-7 place-items-center rounded-full"
-                style={{ background: 'rgba(0,0,0,0.55)' }}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden>
-                  <path d="M8 5.5v13l11-6.5L8 5.5Z" fill="var(--color-foreground)" />
-                </svg>
-              </span>
-            </button>
-          )}
+          {/* The scan head — where we are in the encounter. */}
+          <span className="block h-[2px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+            <span
+              className="block h-full rounded-full bg-[rgba(236,231,222,0.35)]"
+              style={{ width: `${Math.round(u * 100)}%`, ...(reducedMotion ? {} : { transition: 'width 200ms linear' }) }}
+            />
+          </span>
         </div>
-
-        {/* The scale + unit, the way a real figure carries them. */}
-        <p className="pointer-events-none absolute bottom-2 right-3 font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--color-foreground-muted)]">
-          left hemisphere · lateral
-        </p>
       </div>
 
-      {/* Colorbar — diverging on the real axis: default-mode ⇄ task-positive. */}
-      <div className="mt-2.5 flex items-center gap-2">
-        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--color-accent-text)]">
-          drifting
-        </span>
-        <span className="flex h-[5px] min-w-0 flex-1 overflow-hidden rounded-[3px]">
-          {Array.from({ length: 44 }, (_, i) => (
-            // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
-            <span key={i} className="h-full flex-1" style={{ background: barFill((i / 43) * 2 - 1) }} />
-          ))}
-        </span>
-        <span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.08em] text-[#a6bfa1]">
-          engaged
-        </span>
-      </div>
-      <p className="mt-1 text-center font-mono text-[9px] tracking-wide text-[var(--color-foreground-muted)]">
-        predicted BOLD · response trails {stimulusLabel} by ~{HRF_PEAK_S}s (haemodynamic lag)
-      </p>
-
-      {/* Readout — the network under the cursor, else the one that is loudest right now. */}
-      <div className="mt-3 flex h-6 items-center gap-2 border-t border-[var(--color-border)] pt-3">
-        <span
-          aria-hidden
-          className="h-[7px] w-[7px] shrink-0 rounded-full"
-          style={{ background: netFill(readNet, Math.max(0.6, readVal)) }}
-        />
-        <span className="text-[12px] font-medium text-[var(--color-foreground)]">
-          {NETWORK_META[readNet].label}
-        </span>
-        <span className="min-w-0 truncate text-[11.5px] text-[var(--color-foreground-muted)]">
-          — {NETWORK_META[readNet].note}
-        </span>
-        <span className="ml-auto shrink-0 font-mono text-[10px] text-[var(--color-foreground-secondary)] tabular-nums">
-          {readVal.toFixed(2)}
-        </span>
-      </div>
-
-      {/* The four networks the room actually speaks about. */}
-      <div className="mt-2 flex flex-col gap-[3px]">
-        {SPOKEN_NETWORKS.map(({ id, label, words: bandWords }) => {
+      {/* ── The four systems the room speaks about — one compact instrument strip. This was four
+             stacked progress bars with mono caps labels, eating 69px and reading as a debug panel;
+             it is now a 4-up readout with real values, and the loudest system leads. ── */}
+      <div className="mt-3 grid grid-cols-4 gap-2.5">
+        {SPOKEN_NETWORKS.map(({ id, label }) => {
           const v = bold[id];
           const isDefault = NETWORK_POLARITY[id] < 0;
+          const lead = id === (hovered ?? hottest);
           return (
-            <div key={id} className="flex items-center gap-2.5">
-              <span className="w-[62px] shrink-0 font-mono text-[9.5px] uppercase tracking-[0.11em] text-[var(--color-foreground-muted)]">
-                {label}
-              </span>
-              <span className="h-[4px] min-w-0 flex-1 overflow-hidden rounded-[2px] bg-white/[0.06]">
+            <div key={id}>
+              <div className="flex items-baseline justify-between gap-1">
                 <span
-                  className="block h-full rounded-[2px]"
+                  className={
+                    'truncate text-[9.5px] leading-none ' +
+                    (lead ? 'text-[var(--color-foreground-secondary)]' : 'text-[var(--color-foreground-muted)]')
+                  }
+                >
+                  {label}
+                </span>
+                <span
+                  className={
+                    'shrink-0 text-[10px] leading-none tabular-nums ' +
+                    (lead ? 'text-[var(--cream-primary)]' : 'text-[var(--color-foreground-muted)]')
+                  }
+                >
+                  {v.toFixed(2)}
+                </span>
+              </div>
+              <span className="mt-[5px] block h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+                <span
+                  className="block h-full rounded-full"
                   style={{
                     width: `${Math.round(v * 100)}%`,
-                    background: isDefault ? 'var(--color-accent)' : '#a6bfa1',
-                    opacity: 0.8,
-                    ...(reducedMotion ? {} : { transition: 'width 260ms linear' }),
+                    background: isDefault ? 'var(--color-accent)' : SAGE,
+                    opacity: lead ? 0.95 : 0.65,
+                    ...(reducedMotion ? {} : { transition: 'width 260ms linear, opacity 150ms linear' }),
                   }}
                 />
-              </span>
-              <span
-                className={
-                  'w-[68px] shrink-0 text-right font-mono text-[10px] ' +
-                  (isDefault && v >= 0.45
-                    ? 'text-[var(--color-accent-text)]'
-                    : 'text-[var(--color-foreground-secondary)]')
-                }
-              >
-                {bandWord(v, bandWords)}
               </span>
             </div>
           );
         })}
       </div>
 
-      {/* The verdict — the room's voice reading the scan. */}
+      {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
+          and the finding everything above is evidence for. It used to be clipped off the bottom. */}
       <p className="mt-3 font-serif text-[15px] leading-snug tracking-[-0.005em] text-foreground">
         {verdictFor(stopRatio, bold, mode)}
       </p>
 
       {/* Foot — the honesty line. It must survive every redesign. */}
-      <p className="mt-2.5 text-center font-mono text-[9.5px] tracking-wide text-[var(--color-foreground-muted)]">
+      <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
           : 'a modeled response · a sketch, not a measurement'}
@@ -341,6 +422,47 @@ export function BrainView({
   );
 }
 
+/** The stimulus transport, in both its homes (over a video thumb, and beside the words). */
+function PlayGlyph({ playing }: { playing: boolean }) {
+  return (
+    <svg width="9" height="9" viewBox="0 0 24 24" aria-hidden fill="currentColor">
+      {playing ? (
+        <path d="M7 5h3.5v14H7V5Zm6.5 0H17v14h-3.5V5Z" />
+      ) : (
+        <path d="M8 5.5v13l11-6.5L8 5.5Z" />
+      )}
+    </svg>
+  );
+}
+
+/**
+ * The head the specimen sits in — ours, drawn as one path, facing left the way an anatomical
+ * lateral view is conventionally plated. It is deliberately almost invisible: at 4% cream on the
+ * near-black well it registers as context, not as an illustration. TRIBE's demo does the same thing
+ * and it is most of why their brain reads as *a brain in a person* rather than a lit 3D object.
+ */
+function HeadGhost() {
+  return (
+    // Drawn in the WELL's own 4:3 frame (not a portrait box that gets sliced), so the cranial vault
+    // lands exactly where the specimen sits and the face runs off the left edge the way a cropped
+    // anatomical plate does. Sliced from a portrait viewBox it came out as disconnected smudges.
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 400 300"
+      preserveAspectRatio="xMidYMid meet"
+      aria-hidden
+      data-testid="brain-head-ghost"
+    >
+      <path
+        d="M250 18 C160 18 82 70 74 140 C72 158 52 164 44 180 C36 194 58 197 60 205
+           L34 240 C27 252 48 255 64 256 C55 267 60 276 72 281 C76 292 82 298 88 300
+           L400 300 C400 220 396 90 340 48 C315 30 285 18 250 18 Z"
+        fill="rgba(236, 231, 222, 0.055)"
+      />
+    </svg>
+  );
+}
+
 // The resting cortex: a curvature-shaded gray surface — gyral crowns light, sulcal depths dark.
 // This is what a surface plot shows where nothing clears threshold, and it is most of the brain
 // most of the time. Painting every parcel is what makes a generated map look like stained glass.
@@ -351,6 +473,21 @@ const TASK_LOW: RGB = [169, 198, 160];
 const TASK_HIGH: RGB = [63, 122, 74]; // pale sage → deep, saturated sage
 const DMN_LOW: RGB = [230, 169, 157];
 const DMN_HIGH: RGB = [196, 66, 54]; // pale coral → deep coral-red
+
+/** The sage the strip's task-positive bars take — the same pole the map uses. */
+const SAGE = 'rgb(169, 198, 160)';
+
+/**
+ * THE WELL. A near-black, faintly warm sky for the specimen.
+ *
+ * This is not decoration and it is not a token we already had. TRIBE's brain reads as an organ
+ * partly because of the geometry, but mostly because of VALUE: a near-white specimen on pure black.
+ * Ours was a mid-beige specimen on mid-charcoal (`#262624`) — the same value as its surroundings,
+ * so it had no silhouette and no presence, and no amount of mesh work was going to fix that.
+ * Sinking the instrument into its own dark tone-zone buys the contrast without repainting the app
+ * (the surrounding card, and every other scale of the Room, stays flat-warm charcoal).
+ */
+const WELL_BG = '#131210';
 
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [

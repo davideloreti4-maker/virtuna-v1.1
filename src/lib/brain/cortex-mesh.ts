@@ -35,9 +35,11 @@ const B = 0.70;
 const C = 0.62;
 /** The medial face is nearly FLAT — a hemisphere is a D in cross-section, not an egg. */
 const MEDIAL_FLATTEN = 0.16;
-/** Fold field: spatial frequency (≈ how many gyri span the brain) and displacement amplitude. */
-const FOLD_FREQ = 7.2;
-const FOLD_AMP = 0.055;
+/** Fold field: spatial frequency (≈ how many gyri span the brain) and displacement amplitude.
+ *  7.2 was too fine — it packed the surface with small isotropic bumps and the whole object read as
+ *  a WALNUT. A real cortex has a few dozen broad gyri, not a hundred lumps. */
+const FOLD_FREQ = 6.6;
+const FOLD_AMP = 0.058;
 /** Sulcal creases sit at the fold field's zero-crossings; this is how wide they cut. Narrow: real
  *  gyri are broad ribbons separated by THIN deep sulci, not a field of round walnut lumps. */
 const SULCUS_WIDTH = 0.30;
@@ -161,12 +163,27 @@ const smoothstep = (a: number, b: number, x: number) => {
  * real cortex folds, and not like a golf ball.
  */
 function curvatureAt(x: number, y: number, z: number, seed: number): number {
-  // Anisotropy elongates the folds into RIBBONS instead of isotropic lumps: the noise domain is
-  // compressed along the antero-posterior axis, so a gyrus runs long front-to-back the way the
-  // superior/middle temporal gyri actually do.
+  // ── DOMAIN WARP. This is what turns corduroy into cortex.
+  //
+  // Anisotropic noise on its own gives you straight parallel bands — a ribbed shell. Real gyri are
+  // ribbons that MEANDER: they swell, bend around each other and fork. Warping the sample point by
+  // a slow, large-scale noise before evaluating the fold field buys exactly that wandering, and it
+  // is the single cheapest thing that stops the surface looking generated.
+  const wx = 0.28 * perlin3(x * 1.7, y * 1.7, z * 1.7, seed ^ 0x51ed);
+  const wy = 0.28 * perlin3(x * 1.7 + 4.7, y * 1.7 + 1.3, z * 1.7 - 2.1, seed ^ 0x2f3d);
+  const X = x + wx;
+  const Y = y + wy;
+  const Z = z + 0.5 * wx;
+
+  // ── ANISOTROPY. The previous field was near-isotropic (0.60 : 1.25, barely 2:1) and produced
+  // round lumps — the "walnut / cauliflower" the owner kept rejecting. Real gyri are long: the
+  // superior temporal, the middle frontal, the pre/postcentral all run as extended ribbons. So the
+  // noise domain is heavily COMPRESSED along the antero-posterior axis (features vary slowly
+  // front-to-back → they stretch that way) and STRETCHED across it (features vary fast top-to-bottom
+  // → they stay narrow). That is a ~4.5:1 ratio, and it is the difference between a brain and a nut.
   const n =
-    perlin3(x * FOLD_FREQ * 0.60, y * FOLD_FREQ * 1.25, z * FOLD_FREQ, seed) +
-    0.45 * perlin3(x * FOLD_FREQ * 1.5, y * FOLD_FREQ * 2.2, z * FOLD_FREQ * 2.0, seed ^ 0x9e37);
+    perlin3(X * FOLD_FREQ * 0.42, Y * FOLD_FREQ * 1.50, Z * FOLD_FREQ * 0.72, seed) +
+    0.42 * perlin3(X * FOLD_FREQ * 0.95, Y * FOLD_FREQ * 2.70, Z * FOLD_FREQ * 1.45, seed ^ 0x9e37);
   const a = Math.abs(n);
 
   // The crease network: 0 in a sulcus, 1 once clear of it. On its own this SATURATES — everywhere
