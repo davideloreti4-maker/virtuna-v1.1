@@ -87,15 +87,21 @@ renderer omits them rather than inventing them:
 | Remix | `remix-card` | ✅ **FIXED 2026-07-13** — was an anonymous thumbnail; now an attributed receipt |
 | Profile Read | `profile-read` | ✅ **FIXED 2026-07-13** — was 5 stacked labels + doubled quotes |
 | The Read | `multi-audience-read` | ✅ **FIXED 2026-07-13** — had NO card container; wall repeated itself |
-| Test / Reading | `reading/**` | ❌ **UNAUDITED.** Radii now on-scale (`18px`→16, `11px`→12, `5px`→4, `10px`→8, guarded). STILL OPEN: serif quotes where every other surface uses Inter italic. The biggest surface, only ever seen downscaled. |
-| Simulate | `reaction-distribution` | ❌ unaudited |
-| Predict | `prediction-gauge` | ❌ unaudited |
-| Account Read | `account-read` | ❌ unaudited |
-| Explore | `outlier-grid` | ❌ unaudited |
-| Ask | (`SkillResultCard`) | ❌ unaudited |
-| Band / Markdown | primitives | ❌ unaudited (low risk) |
-| **Personas** | `personas` | ❌ unaudited — but **VISIBLE as of 2026-07-13**: `/dev/cards` now covers **14/14** blocks. Fixture body is `[markdown, personas]` ON PURPOSE — the renderer only mounts the AudienceLens when a concept is present, so a bare block would demo a dead "See the room →". |
-| **Persona chat** | `persona-chat-turn` | ❌ unaudited — but **VISIBLE as of 2026-07-13**. Fixture is a 4-turn Skeptic sub-thread (one block per turn, archetype repeats), matching how it persists. |
+| Test / Reading | `reading/**` | 🟡 **AUDITED (structural pass) 2026-07-13.** Radii on-scale + guarded. 🔴 **The "serif quotes" item was a GHOST — there is no `serif`, no `blockquote`, no `&ldquo;` anywhere in `reading/**`.** (The serif is in `audience-lens/AmbientRoom.tsx`, on *headlines* — sanctioned.) REAL finding: `reading-section.tsx`, the section-label primitive every `/analyze` block is built from, still runs the old `10px`/`0.14em` stack. Still unaudited *visually*. |
+| Simulate | `reaction-distribution` | 🔴 **STRUCTURAL.** Fraction stated TWICE from two sources that can disagree (`fraction` vs client-recomputed `stopCount/total`) · provenance in the eyebrow · band-word-as-hero · no ProofUnit / no "See the room →" on the room card · 2-row action bar, no cream primary · `text-red-400`. |
+| Predict | `prediction-gauge` | 🔴 **STRUCTURAL + OWNER CALL** — renders `~35–60%`, which §0.5b forbids and its own 06-UI-SPEC requires. Also: `band` = Unlikely/Toss-up/Lean/Likely here vs Strong/Mixed/Weak everywhere else. |
+| Account Read | `account-read` | 🔴 **STRUCTURAL.** **SIX** stacked equal-weight ALL-CAPS labels (Profile Read was rebuilt at five) · no hero — opens on the creator's *name* · no disclosure · forward action is a text link, not the cream primary. |
+| Explore | `outlier-grid` | 🔴 **STRUCTURAL.** The tile has **no card surface** — the only border belongs to the nested `VideoCard`, so multiplier/fit/CTA float on the thread background. Hero = a number. Save sits above the primary. Honest where it counts ✅. |
+| Ask | (`SkillResultCard`) | 🟡 **SMALL FIX.** Header is `text-xs`, not the contract eyebrow. Load-bearing (chat + explore thread views). Inherits the markdown bug below. |
+| **Markdown** | primitive | 🔴 **BROKEN — NOT "low risk".** `prose prose-invert prose-sm` generates **ZERO CSS**: `@tailwindcss/typography` is not installed and Tailwind v4 needs an `@plugin` directive. Preflight then strips what lands: headings compute **identical to body** (16px/400), paragraphs get `margin:0` (one run-on wall), and ordered-list **numbers disappear** (`list-style:none`). Browser-verified against the real compiled CSS. Also dead: `reading-chat-prose`, `prose-chat`. Hits Ask · Explore · `/chat` · every card's follow-up. |
+| **Band** | primitive | 🟡 **SMALL FIX — but it is the SOURCE of the drift.** Band color applied **twice** (word *and* fraction — §1.3 says once) · no dot · its `text-2xl` colored band word is the hero pattern Simulate + Predict both copied. |
+| **Personas** | `personas` | 🟡 **SMALL FIX.** Real Lens entry ✅, honest ✅ — but `RoomAvatars` is **hand-copied** from `proof-unit.tsx` (two copies of the flagship cue) · quote styling diverges from `ProofUnit` · Lens target and Show/Hide button share a row (hit-area hazard). |
+| **Persona chat** | `persona-chat-turn` | ✅ **CONFORMANT** — contract eyebrow, no fabricated band/score, minimal. ONE question: §2 says the chat language is "no bubble"; this gives the persona a bordered bubble. One of the two is stale (owner call). |
+
+> **Full audit + ranked worklist: `docs/AUDIT-2026-07-13-cards-remaining-nine.md`** (2026-07-13,
+> read-only pass). Headline: the primitive rated "low risk" is the only one actually **broken**.
+> The other eight drifted; `markdown` never rendered. The honesty spine, notably, is in **better**
+> shape than the visual spine — no doubled quotes, no fabricated claims, no off-scale radii found.
 
 ⚠️ **§2 below is now partly STALE** — it still describes The Read as painting a legacy coral panel
 (stripped) and Remix's real source video as a TODO (shipped). Trust §0.5 + the code.
