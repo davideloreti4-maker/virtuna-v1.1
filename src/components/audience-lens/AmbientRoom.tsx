@@ -14,7 +14,10 @@
  *     re-focuses the Room on the prev/next sibling in place; `⤺ all N` opens the ranked
  *     "How the room ranked your N" list → tap a row to re-focus. Ranked by the real stop-count;
  *     an ad-hoc typed thought (no `focusId`) shows no stepper (the honest state).
- *   • The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the view.
+ *   • The brain ⇄ The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the
+ *     view. The brain is FIRST and the dock's landing view (owner call, 2026-07-12); it is an
+ *     explicitly-labeled simulated neural read (see BrainView's own honesty spine) gated OFF
+ *     the embedded (video-Read / room-drawer) variant, which keeps its two-segment layout.
  *   • The people = pure voices: each real persona is a named row — a TONAL avatar (calm
  *     cream for a stop; accent-soft for a bounce, the signal), the name, `ask →` (opens the
  *     in-voice PersonaChatDrawer), and its OWN verbatim serif quote as the hero. "▶ Replay"
@@ -41,6 +44,7 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
+import { BrainView } from './BrainView';
 import type { AmbientFocusSibling } from './ambient-presence-types';
 
 export interface AmbientRoomProps {
@@ -99,7 +103,14 @@ export interface AmbientRoomProps {
   initialCompareOpen?: boolean;
 }
 
-type Scale = 'people' | 'population';
+type Scale = 'brain' | 'people' | 'population';
+
+/** The scale toggle, in view order — the brain first (the dock's landing view). */
+const SCALES: { value: Scale; label: string }[] = [
+  { value: 'brain', label: 'The brain' },
+  { value: 'people', label: 'The people' },
+  { value: 'population', label: 'Population · 1,000' },
+];
 
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape. */
 function parseStop(fraction: string): { stop: number; total: number } | null {
@@ -152,7 +163,10 @@ export function AmbientRoom({
   rewriteNonce = 0,
   initialCompareOpen = true,
 }: AmbientRoomProps) {
-  const [scale, setScale] = useState<Scale>('people');
+  // The brain is the LANDING view of the dock/panel Room (owner call): the creator opens the
+  // room and sees the head it landed in first, then steps out to the voices and the 1,000. The
+  // embedded variant (video Read / room drawer) has no brain segment, so it lands on the people.
+  const [scale, setScale] = useState<Scale>(embedded ? 'people' : 'brain');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
   // The `⤺ all N` ranked view-all (prototype code name: compare). Opens on the OVERVIEW (the ranked
   // list) so the bloom always lands on "how the room ranked your N" first, not a single card's
@@ -402,19 +416,16 @@ export function AmbientRoom({
           </div>
           )}
 
-          {/* ── The people ⇄ Population · 1,000 — swaps the view (each its own motion) ── */}
+          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — swaps the view (each its own
+                motion). The brain segment is dock-only: the embedded Read/drawer keeps the
+                two-segment toggle it shipped with. ── */}
           <div className="shrink-0 px-5 pt-3">
             <div
               role="group"
               aria-label="Audience scale"
               className="flex w-full gap-1 rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-[3px]"
             >
-              {(
-                [
-                  { value: 'people', label: 'The people' },
-                  { value: 'population', label: 'Population · 1,000' },
-                ] as const
-              ).map((opt) => {
+              {SCALES.filter((opt) => !(opt.value === 'brain' && embedded)).map((opt) => {
                 const active = opt.value === scale;
                 return (
                   <button
@@ -423,7 +434,7 @@ export function AmbientRoom({
                     aria-pressed={active}
                     onClick={() => setScale(opt.value)}
                     className={
-                      'flex-1 rounded-[7px] px-3 py-1.5 text-center text-[12px] font-medium transition-colors ' +
+                      'flex-1 whitespace-nowrap rounded-[7px] px-2 py-1.5 text-center text-[11.5px] font-medium transition-colors ' +
                       (active
                         ? 'bg-[var(--color-active)] text-foreground'
                         : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
@@ -443,6 +454,14 @@ export function AmbientRoom({
               <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
                 No reaction yet — test a concept to hear the room.
               </p>
+            ) : scale === 'brain' ? (
+              <BrainView
+                stopCount={stopCount}
+                total={total}
+                conceptText={conceptText}
+                seedKey={focusId ?? conceptText}
+                reducedMotion={reducedMotion}
+              />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
             ) : (

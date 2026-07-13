@@ -23,6 +23,7 @@ import { ChatThreadView } from "@/components/thread/chat-thread-view";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { MessageBlocks } from "@/components/thread/message-blocks";
+import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { Reading } from "@/components/reading/reading";
 import { makeReadingResult } from "@/components/reading/__tests__/fixtures/reading-fixture";
 import {
@@ -185,10 +186,33 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
 
 const READING_RESULT = makeReadingResult();
 
+// ── The Room — the ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// The same <AmbientRoom> the dock blooms open, fed a fixture focus so the three scales are
+// previewable without running a skill. Non-embedded (h-full) → it lives in a fixed-height box
+// that stands in for the panel.
+const ROOM_FOCUS = {
+  conceptText: "Stop editing your videos. Do this instead.",
+  fraction: "6/10 stop",
+  // The GENERAL_ROSTER ten (real registry enums) → the named cast + `ask →` chat are live here.
+  personas: [
+    { archetype: "high_engager", verdict: "stop" as const, quote: "Wait — do WHAT instead? I need the answer." },
+    { archetype: "tough_crowd", verdict: "scroll" as const, quote: "Every editor says this. Prove it in 3 seconds." },
+    { archetype: "saver", verdict: "stop" as const, quote: "Saving this before I forget it." },
+    { archetype: "lurker", verdict: "stop" as const, quote: "" },
+    { archetype: "sharer", verdict: "stop" as const, quote: "Sending this to my editor right now." },
+    { archetype: "purposeful_viewer", verdict: "scroll" as const, quote: "The hook promises more than the caption delivers." },
+    { archetype: "loyalist", verdict: "stop" as const, quote: "You never post filler — I'm staying." },
+    { archetype: "niche_deep_buyer", verdict: "scroll" as const, quote: "Nothing here tells me what it costs me." },
+    { archetype: "niche_deep_scout", verdict: "stop" as const, quote: "That's my exact problem, honestly." },
+    { archetype: "cross_niche_curiosity", verdict: "scroll" as const, quote: "Feels like last month's advice." },
+  ],
+};
+
 export default function DevCardsPage() {
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
+    { id: "room", label: "The Room" },
     ...BLOCK_SECTIONS.map((s) => ({ id: s.type, label: s.label })),
   ];
 
@@ -250,6 +274,27 @@ export default function DevCardsPage() {
               style={{ transform: "translateZ(0)" }}
             >
               <Reading overrideData={READING_RESULT} />
+            </div>
+          </section>
+        </div>
+
+        {/* Group D — the ambient Room panel body (the dock's bloom) */}
+        <div className="flex flex-col gap-4 pt-14">
+          <SectionKicker>The Room · the ambient audience panel body</SectionKicker>
+          <section id="room" className="scroll-mt-6">
+            <SectionHead
+              label="The Room"
+              code="AmbientRoom.tsx"
+              note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ Population · 1,000. Fed a fixture focus; the box stands in for the panel."
+            />
+            <div className="h-[560px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+              <AmbientRoom
+                flatPersonas={ROOM_FOCUS.personas}
+                conceptText={ROOM_FOCUS.conceptText}
+                fraction={ROOM_FOCUS.fraction}
+                kindLabel="Hook"
+                canRewrite={false}
+              />
             </div>
           </section>
         </div>
