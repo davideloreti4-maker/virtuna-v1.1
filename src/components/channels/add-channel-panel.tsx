@@ -394,7 +394,12 @@ function SearchTab({
                   {r.displayName ?? `@${r.handle}`}
                 </p>
                 <p className="truncate text-xs tabular-nums text-foreground-muted">
-                  @{r.handle} · {formatCount(r.followerCount)} followers
+                  {/* followerCount can be null (corpus row without a profile snapshot)
+                      — drop the segment rather than render "-- followers". */}
+                  @{r.handle}
+                  {r.followerCount != null && (
+                    <> · {formatCount(r.followerCount)} followers</>
+                  )}
                 </p>
               </div>
               <AddButton
