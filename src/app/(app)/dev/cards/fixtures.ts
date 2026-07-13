@@ -219,6 +219,22 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
       whoItsFor: "Solo founders drowning in growth busywork.",
       formatBorrowed: "Talking-head confession + receipts overlay",
       coverUrl: IMG("remixsrc", 300, 400),
+      // The attributed source post. Deliberately shows the HONEST remix shape: a handle, a
+      // view count and a link back — with multiplier/baseline/fit null, because a video you
+      // pasted has no follower baseline and was never scored for audience fit. The receipt
+      // renders exactly the facts we hold, under its own eyebrow ("The post you're remixing"),
+      // never the grounded cards' "Proven structure" claim.
+      proof: {
+        handle: "danielle.builds",
+        videoUrl: "https://www.tiktok.com/@danielle.builds/video/7301",
+        coverUrl: IMG("remixsrc", 300, 400),
+        views: 2_100_000,
+        hookTemplate: null,
+        archetype: null,
+        multiplier: null,
+        baselineLabel: null,
+        fitLabel: null,
+      },
       sourceDecode: {
         hookPattern: "Opens on an irreversible, taboo decision ('I fired…') to trigger loss-aversion attention.",
         structure: "Confession → escalating proof → reframe → generalizable takeaway. Tight 4-beat spine.",

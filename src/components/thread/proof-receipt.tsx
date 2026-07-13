@@ -75,8 +75,22 @@ function TemplatedHook({ text }: { text: string }) {
   );
 }
 
-export function ProofReceipt({ proof }: { proof: HookProof }) {
-  const fit = FIT_META[proof.fitLabel];
+export function ProofReceipt({
+  proof,
+  eyebrow = 'Proven structure',
+}: {
+  proof: HookProof;
+  /**
+   * What we are claiming this source IS. Defaults to the grounded claim — "Proven structure"
+   * means retrieval found an above-baseline outlier and we borrowed its shape. Remix passes
+   * its own wording: the user picked that video, so calling it "proven" would assert an
+   * outlier check that never ran. Same receipt, only the claim differs.
+   */
+  eyebrow?: string;
+}) {
+  // Null when nothing scored this source against the audience (a remix source). Then: no
+  // glyph, no match language — the receipt states who and how many views, and stops there.
+  const fit = proof.fitLabel ? FIT_META[proof.fitLabel] : null;
   const mult = fmtMultiplier(proof.multiplier);
   const views = fmtViews(proof.views);
   const archetype = formatArchetype(proof.archetype);
@@ -88,7 +102,7 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
     <>
       {/* Thumbnail — real cover on top of a play-tile placeholder. A missing/expired cover hides the
           <img> and the play tile shows through, so a grounded card always anchors on a video tile. */}
-      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-[7px] border border-white/[0.06]">
+      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-md border border-white/[0.06]">
         <CoverFill coverUrl={proof.coverUrl} playSize={18} />
       </span>
 
@@ -96,7 +110,7 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex items-center justify-between gap-2">
           <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-foreground-muted">
-            Proven structure
+            {eyebrow}
           </span>
           {archetype && (
             <span className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary">
@@ -108,7 +122,9 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
         {proof.hookTemplate && <TemplatedHook text={proof.hookTemplate} />}
 
         <span className="flex items-center gap-1.5 text-[12px] leading-snug text-foreground-muted">
-          <span className="shrink-0" aria-hidden="true" title={fit.label}>{fit.glyph}</span>
+          {fit && (
+            <span className="shrink-0" aria-hidden="true" title={fit.label}>{fit.glyph}</span>
+          )}
           <span className="truncate text-foreground-secondary">@{proof.handle}</span>
         </span>
 
@@ -135,8 +151,9 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
   );
 
   const base =
-    'flex items-stretch gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.02] p-2.5';
-  const aria = `Proven structure from @${proof.handle}${statsAria ? `, ${statsAria}` : ''} — match: ${fit.label}`;
+    'flex items-stretch gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5';
+  const aria = `${eyebrow} from @${proof.handle}${statsAria ? `, ${statsAria}` : ''}${fit ? ` — match: ${fit.label}` : ''}`;
+  const hint = fit ? `${fit.label} — open the source video` : 'Open the source video';
 
   return proof.videoUrl ? (
     <a
@@ -144,13 +161,13 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
       target="_blank"
       rel="noopener noreferrer"
       className={`${base} transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]`}
-      title={`${fit.label} — open the proof video`}
+      title={hint}
       aria-label={`${aria}. Opens in a new tab.`}
     >
       {body}
     </a>
   ) : (
-    <div className={base} title={fit.label} aria-label={aria}>
+    <div className={base} title={fit?.label} aria-label={aria}>
       {body}
     </div>
   );
@@ -165,14 +182,15 @@ export function ProofReceipt({ proof }: { proof: HookProof }) {
  * winner" signal). Views/template/cover are omitted here — this is the cue, not the full receipt.
  */
 export function ProofLine({ proof, className }: { proof: HookProof; className?: string }) {
-  const fit = FIT_META[proof.fitLabel];
+  // Null on an unscored source (see ProofReceipt) — the glyph is a match claim, so it goes.
+  const fit = proof.fitLabel ? FIT_META[proof.fitLabel] : null;
   const mult = fmtMultiplier(proof.multiplier);
   return (
     <span
       className={`inline-flex min-w-0 items-center gap-1.5 text-[11px] leading-none text-foreground-muted${className ? ` ${className}` : ''}`}
-      title={`${fit.label}${mult ? ` — ${mult} outlier` : ''}`}
+      title={[fit?.label, mult ? `${mult} outlier` : null].filter(Boolean).join(' — ') || undefined}
     >
-      <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>
+      {fit && <span className="shrink-0" aria-hidden="true">{fit.glyph}</span>}
       <span className="min-w-0 truncate">
         from <span className="text-foreground-secondary">@{proof.handle}</span>
       </span>

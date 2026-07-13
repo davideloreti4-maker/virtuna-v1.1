@@ -115,7 +115,14 @@ export const HookProofSchema = z.object({
   multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
   views: z.number().nullable(),
   baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
-  fitLabel: z.enum(["in-audience", "adjacent", "structural"]),
+  /**
+   * The §11c per-request audience match — NULLABLE (2026-07-13). A fit label is a claim that
+   * a source was retrieved and scored against your audience, which is true of grounded
+   * hook/idea/script sources and NOT of a Remix source: you pasted that video yourself, so
+   * nothing measured its fit. Grounded runners still always set it; remix passes null and the
+   * renderer then omits the glyph rather than asserting a match nobody computed.
+   */
+  fitLabel: z.enum(["in-audience", "adjacent", "structural"]).nullable(),
 });
 export type HookProof = z.infer<typeof HookProofSchema>;
 
@@ -299,9 +306,24 @@ export const RemixCardBlockSchema = z.object({
     whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
     formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
     // Source video cover thumbnail (resolveVideoUrl → resolveAndRehost surfaces it) — an
-    // ephemeral CDN image, display-only ("Remixing this post" chip). OPTIONAL/additive
-    // (back-compat): absent → the card renders with no source thumbnail.
+    // ephemeral CDN image, display-only. OPTIONAL/additive (back-compat): absent → the card
+    // renders with no source thumbnail. SUPERSEDED for display by `proof` below, which carries
+    // the same cover plus the attribution; kept for back-compat with already-stored blocks.
     coverUrl: z.string().optional(),
+
+    /**
+     * The source post, attributed (2026-07-13). Remix is the most source-derived skill we
+     * ship — it adapts ONE specific real video — yet it used to render that video as an
+     * anonymous thumbnail: no creator, no reach, no way back to the original. It now carries
+     * the same receipt shape as the grounded cards.
+     *
+     * Honest by construction: only `handle`, `views`, `coverUrl` and `videoUrl` are ever
+     * populated here. `multiplier`/`baselineLabel` stay null (a remix source has no follower
+     * baseline, so it has no measured outlier basis) and `fitLabel` stays null (you chose this
+     * video; nothing scored it against your audience). The receipt renders exactly the facts
+     * we hold. Absent when the actor gave us no author to name.
+     */
+    proof: HookProofSchema.nullable().optional(),
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally

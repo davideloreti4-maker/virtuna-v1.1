@@ -504,7 +504,7 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       throw new IngestError("no_media_url", url);
     }
 
-    const { mediaUrls, videoMeta } = parsed.data;
+    const { mediaUrls, videoMeta, authorMeta, playCount, webVideoUrl } = parsed.data;
 
     if (!mediaUrls || mediaUrls.length === 0) {
       throw new IngestError("no_media_url", url);
@@ -527,6 +527,13 @@ export class ApifyScrapingProvider implements ScrapingProvider {
       // Display-only cover (no SSRF concern — rendered as a browser <img>, never fetched
       // server-side). Omitted when the rehost item carried no videoMeta.coverUrl.
       ...(videoMeta?.coverUrl ? { coverUrl: videoMeta.coverUrl } : {}),
+      // Attribution for the source post. Each spread only when the actor actually gave us the
+      // field, so a missing author degrades to "no receipt" rather than an anonymous one.
+      // playCount defaults to 0 in the schema; 0 views is not a fact worth printing, so it is
+      // treated as absent.
+      ...(authorMeta?.name ? { handle: authorMeta.name } : {}),
+      ...(playCount > 0 ? { views: playCount } : {}),
+      ...(webVideoUrl ? { videoUrl: webVideoUrl } : {}),
     };
   }
 

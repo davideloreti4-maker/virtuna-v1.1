@@ -652,3 +652,124 @@ describe("runRemixPipeline — FLYWHEEL-02 predicted pin", () => {
     expect(mockPinPredictedSignature).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * The source receipt (§11f on remix, 2026-07-13).
+ *
+ * Remix adapts ONE specific real video, and used to render it as an anonymous thumbnail — the
+ * card showed the post's picture but never said whose it was. These tests pin BOTH halves of
+ * the fix: the attribution now reaches the card, AND the fields we cannot honestly know about
+ * a pasted video stay null. A remix source has no follower baseline (so no outlier multiplier)
+ * and was never scored against your audience (so no fit label). Inventing either would make
+ * the receipt claim authority that retrieval earns and remix does not.
+ */
+describe("runRemixPipeline — source receipt (proof)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+  });
+
+  it("attributes the source post: handle, views and permalink reach every card", async () => {
+    setupHappyPath();
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+      coverUrl: "https://p16.tiktokcdn.com/cover-abc.jpeg",
+      handle: "braedan.health",
+      views: 621_000,
+      sourceUrl: "https://www.tiktok.com/@braedan.health/video/999",
+    });
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-proof",
+    });
+
+    expect(result.blocks.length).toBeGreaterThan(0);
+    for (const block of result.blocks as RemixCardBlock[]) {
+      const { proof } = block.props;
+      expect(proof).toBeDefined();
+      expect(proof!.handle).toBe("braedan.health");
+      expect(proof!.views).toBe(621_000);
+      expect(proof!.videoUrl).toBe("https://www.tiktok.com/@braedan.health/video/999");
+      expect(proof!.coverUrl).toBe("https://p16.tiktokcdn.com/cover-abc.jpeg");
+    }
+  });
+
+  it("never fabricates authority: multiplier, baseline and fit stay null on a pasted source", async () => {
+    setupHappyPath();
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+      handle: "braedan.health",
+      views: 621_000,
+    });
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-honesty",
+    });
+
+    const proof = (result.blocks[0] as RemixCardBlock).props.proof;
+    expect(proof).toBeDefined();
+    // No follower baseline was fetched → no outlier basis to print.
+    expect(proof!.multiplier).toBeNull();
+    expect(proof!.baselineLabel).toBeNull();
+    // Nothing scored this video against the audience → no match claim.
+    expect(proof!.fitLabel).toBeNull();
+    // Remix does not extract a bracketed reusable template from the source.
+    expect(proof!.hookTemplate).toBeNull();
+    expect(proof!.archetype).toBeNull();
+  });
+
+  it("falls back to the submitted URL when the actor returns no permalink", async () => {
+    setupHappyPath();
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+      handle: "braedan.health",
+      // no sourceUrl
+    });
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-fallback",
+    });
+
+    const proof = (result.blocks[0] as RemixCardBlock).props.proof;
+    expect(proof!.videoUrl).toBe("https://www.tiktok.com/@creator/video/123456");
+  });
+
+  it("emits NO receipt when the source cannot be named — an unattributable video is not a receipt", async () => {
+    setupHappyPath();
+    // A cover but no author: the card can show the post, but cannot say whose it is. Rather
+    // than print a receipt with an anonymous source, it emits none (buildProofFromSource's gate).
+    mockResolveAndRehost.mockResolvedValue({
+      signedUrl: "https://supabase.example.com/videos/remix-temp/req-abc.mp4",
+      cleanup: mockCleanup,
+      coverUrl: "https://p16.tiktokcdn.com/cover-abc.jpeg",
+    });
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-anon",
+    });
+
+    const props = (result.blocks[0] as RemixCardBlock).props;
+    expect(props.proof).toBeUndefined();
+    // The legacy bare cover still renders, so the card is not left empty-handed.
+    expect(props.coverUrl).toBe("https://p16.tiktokcdn.com/cover-abc.jpeg");
+  });
+});
