@@ -30,7 +30,14 @@ function normalizePillar(r: Record<string, unknown>): ContentPillarRow {
   };
 }
 
-/** True if the user has any pillar they haven't reviewed yet (drives the confirm card). */
+/**
+ * True if the user has any pillar they haven't reviewed yet (drives the confirm card).
+ *
+ * Still USER-scoped, and currently dormant (no callers; pillar-confirm-card isn't mounted).
+ * Pillars are per-account now — whoever wires the confirm card must scope this AND the
+ * `confirmed: true` sweep in actions/content-pillars/save-pillars by account_id, or
+ * confirming one handle's pillars silently confirms every handle's.
+ */
 export async function anyUnconfirmedPillars(
   supabase: SupabaseClient,
   userId: string,
