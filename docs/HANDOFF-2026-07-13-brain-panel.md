@@ -357,3 +357,83 @@ Same lesson as §5 — and note the first one **survived three rounds of visual 
   charcoal card bg; it now previews on the well's near-black).
 - ⚠️ **Backticks inside the GLSL template literal terminate it** and TS then parses the shader as JS.
   Cost two build breaks this session. No backticks in shader comments.
+
+---
+
+## 10. ✅ ROUND 5 — the specimen becomes anatomy; the card gets an instrument
+### commits `251121c6` (anatomy + trace) · `fceb4f33` (polish)
+
+Owner's steer: *"everything, and I want a really, really good UI design… even better than TRIBE v2."*
+So round 5 closes §9.5's two open items and pushes past parity.
+
+### 10.1 The egg is gone — the profile is AUTHORED
+
+Radial Gaussian lobes were never going to draw a brain, and this is worth stating so nobody retries
+it: **the sylvian notch and the temporal pole sit ~0.1 rad apart**, so any lobe stack deep enough to
+cut a real notch also drags the temporal pole out into a beak. They cannot be tuned independently.
+
+So `PROFILE` in `cortex-mesh.ts` is now an **explicit lateral outline** — frontal pole, vertex,
+tapered occipital, the flat skull-base, the temporal pole, and the notch between it and the orbital
+surface — converted to a smoothed periodic radius table (`profileRadius`). The anatomy now lives
+somewhere it can be **read and corrected**, not tuned by feel. Edit the landmarks, not the lobes.
+
+Also: folds went from ~8 coarse lumps to **~20+ fine ribbons** (`FOLD_FREQ` 6.6 → 9.4, amplitude
+down). ⚠️ This is only possible *because* the anisotropy fix landed first — at 9.4, an isotropic
+field is just a finer walnut. The sylvian is a real cleft (`SYLVIAN_DEPTH` 0.085 → 0.15) and the
+temporal lobe reads as a lobe hanging under it.
+
+**Lighting is a three-point rig** (warm key, cool bounce fill, rim) instead of one lamp + ambient.
+One lamp is *why it read as chalk*: every surface facing away from it collapsed to the same flat
+ambient grey. The warm/cool split across the form is most of what the eye scores as "real, and lit".
+
+### 10.2 The map is no longer blank on arrival
+
+A video waits for a tap, so the grounded panel opened at **t=0 — inside the haemodynamic lag**, the
+one moment that is *honestly* empty. Probing the model settled it: grounded clears threshold from
+~6s and stays lit for **14 of 17** sampled frames. **The model was right; we were showing the wrong
+frame.** The scan now opens on its **peak** — the crisis moment the audience's own retention curve
+picks out — and the video seeks to match so thumbnail and cortex agree. Only before the FIRST play;
+pausing later must not yank the clock back (guarded by a `hasPlayed` ref).
+
+### 10.3 THE TRACE — and the two versions of it that measurement killed
+
+Engagement across the whole encounter, filled **sage above zero and coral below**: the *same*
+diverging axis the cortex is painted on and the colorbar is scaled to, so the card speaks one
+language and the trace costs nothing to learn. In grounded it **crosses zero twice** — negative,
+positive through the middle, negative again — which is *"you lose them in the back half"*, drawn.
+The colorbar also gains a **live marker**: a legend tells you how to read the map; this one also
+tells you the reading. (TRIBE's is inert. Cheapest place to beat it.)
+
+⚠️ **It is the THIRD series I tried. The first two were wrong, and only measurement caught it:**
+
+1. **drive-vs-BOLD, each min-max normalized.** Made the lag pop, and was a **LIE**. Measured: the
+   drive swings 0.23→0.89 but BOLD only moves **0.590→0.645** (the HRF is a 16s low-pass that eats
+   nearly all the structure), while the series' own numerical wobble is **~18% of that 0.055 span**.
+   The normalization was amplifying **rounding noise into a full-height zigzag** — a manufactured
+   signal, drawn as data.
+2. **Both replotted on a common absolute scale.** Honest, and **inert**: a spiking stimulus and a
+   flat line. True, and worth nothing to a creator.
+
+The axis is well-conditioned (span **0.93** grounded, roughness **~1.4% of span**) and carries the
+story. **Probe a series before you plot it** — "it looks like signal" is exactly how noise gets shipped.
+
+The trace **auto-ranges in amplitude, anchored at zero** (±1 is the axis's arithmetic limit, not its
+practical range — it lives inside ±0.55). The **zero line never moves**: the sign IS the meaning.
+A floor (`TRACE_MIN_RANGE`) stops a near-silent encounter being amplified into false drama.
+
+### 10.4 Gates
+
+Both modes **474px in the 516px box**, identical shape, no overflow · fonts on every leaf node are
+**Inter + Newsreader only** · 91 brain tests green · tsc 0 · eslint clean · full suite **3367 pass**
+with the one pre-existing `api/tools/remix/run` SSE failure unchanged.
+All four invariants hold; honesty labels restyled, never removed.
+
+### 10.5 Still open
+
+- **Mesh build is ~500ms** (measured, `cortexMesh` + parcel blend at SUBDIV 6). It is memoized per
+  seed and runs behind a lazy `ssr:false` import, but it *does* block the main thread on first open.
+  SUBDIV cannot go up (7 would be ~2s). The cost is the O(V×P) farthest-point + blend (40,962 × 340).
+  A spatial grid would fix it — but that is the code the §5 bugs lived in, so **re-run the gradient
+  probes if you touch it.**
+- The **simulated** trace is a quiet plateau (its axis never crosses zero — the synthetic encounter
+  has no real timeline). Honest, but the trace only truly earns its place in **grounded**.
