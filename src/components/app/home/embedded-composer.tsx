@@ -124,7 +124,7 @@ export function EmbeddedComposer({
           <div
             role="menu"
             aria-label="Verbs"
-            className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-[248px] rounded-2xl border border-white/[0.06] bg-[#211f1d] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+            className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-[248px] rounded-2xl border border-white/[0.06] bg-surface-elevated p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
           >
             {VERB_MENU.map((m) => (
               <button

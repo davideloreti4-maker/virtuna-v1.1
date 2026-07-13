@@ -43,17 +43,29 @@ export function HomePageLayout() {
   // 760px internally) so the conversation scrolls page-wide like a real chat.
   // Empty home stays a centered 760px column (greeting above, composer pinned below).
   const threadMode = hasThread || rehydrating;
+  // True on the fresh empty home (no thread, nothing streamed). Drives the
+  // greeting + the vertical-centering of the greeting→actions→composer group.
+  const emptyHome = !hasConversation && !rehydrating;
 
   return (
     // The audience presence is a single docked card on top of the composer at every breakpoint
     // (the ≥xl right rail was retired 2026-07-07), so the work column centers full-width.
-    <div className="flex h-full w-full flex-col items-center">
-      {!hasConversation && !rehydrating && (
-        // Empty home: the serif greeting sits centered in the space ABOVE the composer,
-        // which the child pins to the bottom of the column (flex-1 hero + shrink-0 dock).
+    // On the empty home the greeting + quick-actions + composer read as ONE group,
+    // vertically centered as a unit (justify-center) with generous air on top — rather
+    // than the greeting floating alone in the upper third above a bottom-pinned dock.
+    <div
+      className={cn(
+        "flex h-full w-full flex-col items-center",
+        emptyHome && "justify-center",
+      )}
+    >
+      {emptyHome && (
+        // Empty home: the serif greeting caps the centered group. shrink-0 (natural
+        // height) so it sits directly above the actions with a comfortable gap, and a
+        // small top offset guarantees breathing room from the top chrome.
         <div
           className={cn(
-            "flex w-full max-w-[760px] flex-1 min-h-0 flex-col items-center justify-center px-4 pb-6",
+            "flex w-full max-w-[760px] shrink-0 flex-col items-center px-4 pt-6 pb-9",
             !reducedMotion && "transition-[padding] duration-300 ease-out",
           )}
         >
