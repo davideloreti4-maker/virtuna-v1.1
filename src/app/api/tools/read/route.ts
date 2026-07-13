@@ -133,6 +133,22 @@ export async function POST(request: Request): Promise<Response> {
       // Do NOT silently fall back to General for an explicit pair (CR-01).
       return Response.json({ error: "audience_not_found" }, { status: 400 });
     }
+
+    // MODE-01 — a cross-mode pair is not a comparison. A socials audience is asked whether it
+    // would stop scrolling; a general audience is asked whether it is convinced. The two answer
+    // DIFFERENT QUESTIONS, so a delta between their bands is not a fact about the concept — it's
+    // an artifact of the frame. Refuse rather than print a confident "X wins — Y bombs" on it.
+    // (Same-mode pairs are fine: panel-vs-panel and crowd-vs-crowd both compare like with like.)
+    if (firstAudience.mode !== secondPick.mode) {
+      return Response.json(
+        {
+          error: "audience_mode_mismatch",
+          message:
+            "These two audiences can't be compared — one is a social audience and the other is a custom one. They're asked different questions, so the result wouldn't mean anything.",
+        },
+        { status: 400 },
+      );
+    }
     pair = [firstAudience, secondPick];
   } else {
     // ── Default path (UNCHANGED) — active-vs-General (08-06) ─────────────────────

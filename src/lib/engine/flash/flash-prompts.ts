@@ -45,6 +45,20 @@ export type FlashFraming = "hook" | "idea" | "chat";
 
 export type IntentLens = "grow" | "sell";
 
+// ─── Domain lens (MODE-01) — the audience.mode seam ───────────────────────────
+// The socials pack simulates a TikTok FYP: ten viewer archetypes deciding whether to
+// STOP or SCROLL. That frame is wrong for a `mode: 'general'` audience (an analyst
+// panel, a hiring panel, one named person) — those reactors are not scrolling a feed,
+// they are judging something on its merits.
+//
+// `domain` selects the reaction FRAME. It swaps the system prompt's population framing
+// and the user message's question + band verbiage. The verdict TOKENS stay "stop"/"scroll"
+// so the schema, the coercion, and every block downstream are untouched — the lens only
+// re-aims what they MEAN (the same trick SELL_LENS_DIRECTIVE plays on intent):
+//   socials → "stop" = would stop scrolling.  general → "stop" = it LANDS / convinced.
+
+export type DomainLens = "socials" | "general";
+
 // Appended to the user message ONLY when intent === "sell". Verdict tokens stay "stop"/"scroll"
 // (no schema/coercion impact) — the lens only re-aims what they MEAN + what the quote voices.
 const SELL_LENS_DIRECTIVE =
@@ -85,6 +99,49 @@ const FRAMING_BAND_VERBIAGE: Record<FlashFraming, string> = {
     "Strong = high engagement pull, Mixed = moderate interest, Weak = low engagement signal.",
 };
 
+// ─── General-domain reactor definitions (MODE-01) ─────────────────────────────
+// ARCHETYPE_DEFINITIONS are irreducibly TikTok ("You scroll TikTok with a…", "a primary
+// node of TikTok's social graph"). Feeding them to a `mode: 'general'` audience is the
+// bug this seam closes: an analyst panel is not a TikTok crowd.
+//
+// These are the SAME ten slugs (the schema demands exactly 10, in order) re-described as
+// evaluative DISPOSITIONS rather than feed behaviours. A general audience's own personas
+// repaint the slots they occupy; these carry the REMAINDER honestly — as generic members
+// of a panel, not as TikTok viewers wearing a panel's name.
+//
+// KNOWN GAP (accepted, owner-agreed): a 3-persona SIM repaints 3 slots and inherits 7 of
+// these. The reactors are neutral, but they are still not *that person*. Collapsing the
+// panel to only the audience's real personas needs the 10-entry schema to go — that is
+// the General pack (domain-pack.ts reserves the slot), not this seam.
+const GENERAL_ARCHETYPE_DEFINITIONS: Record<Archetype, string> = {
+  high_engager: `You react out loud. When something moves you — for or against — you want to respond to it, argue with it, or tell the room what you think. You engage more readily than most people would.`,
+  saver: `You judge things by whether you could USE them. You are looking for the part you could apply, reuse, or come back to later. Abstract appeal without a takeaway leaves you cold.`,
+  lurker: `You form a real opinion and keep it to yourself. You will follow something all the way through if it holds you, but you volunteer nothing. Your verdict is honest precisely because you have no stake in performing it.`,
+  sharer: `You judge things by who ELSE needs to hear them. Your first instinct is whether this is worth passing to someone specific. If you can't think of that person, it didn't land.`,
+  tough_crowd: `You are the hardest person here to convince. You go straight at the weakest link — the unsupported claim, the vague premise, the leap in the logic. You concede only when something genuinely holds up.`,
+  purposeful_viewer: `You are here to get something done. You ask what this actually accomplishes and whether it moves the decision forward. You have no patience for anything that doesn't.`,
+  niche_deep_buyer: `You are the one who would actually have to commit — spend the money, stake the resource, make the call. Your standards are high because the cost is yours. You want the specific thing that resolves your specific problem.`,
+  niche_deep_scout: `You know this territory deeply. You have seen the prior art, so you hunt for what's missing, what's unoriginal, and what's been quietly assumed. Novelty and rigour are what earn your attention.`,
+  loyalist: `You are predisposed to trust the source. You extend the benefit of the doubt and you weigh long-term reliability over a single misstep. You are the easiest here to win over — which is exactly why your "no" means something.`,
+  cross_niche_curiosity: `You are an outsider to this domain. You engage only when something connects to a world you already care about. Jargon and insider framing lose you immediately.`,
+};
+
+// ─── General-domain question + band verbiage (MODE-01) ────────────────────────
+// Replaces the FYP framing entirely for a `mode: 'general'` audience. `framing`
+// (hook/idea/chat) is a SOCIALS axis — it asks which feed moment we're simulating — and it
+// has no meaning for a panel, so the general lens overrides it rather than varying by it.
+
+const GENERAL_FRAMING_QUESTION =
+  "This has been put in front of you for a judgement — a proposal, an argument, an idea, a piece " +
+  "of writing, or someone's case. Judge it on its MERITS, as yourself, using your own standards. " +
+  'Does it LAND with you — are you convinced, persuaded, would you back it or act on it (verdict: "stop") — ' +
+  'or does it fail to land, leaving you unconvinced (verdict: "scroll")? ' +
+  'Your verdict: stop (it lands) or scroll (it does not).';
+
+const GENERAL_BAND_VERBIAGE =
+  "The band reflects how much of the PANEL this convinced. Strong = it lands with most of the panel, " +
+  "Mixed = the panel is split, Weak = most of the panel is unconvinced.";
+
 // ─── STABLE system prompt (D-17 cache discipline) ────────────────────────────
 // Byte-stable across every TEXT request — never interpolates volatile data.
 // All 10 ARCHETYPE_DEFINITIONS verbatim (the byte-stable cache prefix).
@@ -95,32 +152,32 @@ const FRAMING_BAND_VERBIAGE: Record<FlashFraming, string> = {
 
 // Pure archetype-block builders, shared by the single AND batched system prompts so
 // the population definition (socials Pack #1) is byte-identical across both output shapes.
-function buildGenericArchetypeBlock(): string {
+//
+// `audienceRepaint` (MODE-01 fix): the STORED per-audience description for a slot, substituted
+// for the generic definition. This block previously ignored it — which is why a Read never
+// steered: the Read passes `niche: null`, so it landed HERE (not in the niche-aware builder,
+// the only place that honoured the repaint) and every audience got the identical General prompt.
+// Absent repaint → byte-identical to the pre-fix output (the General regression gate).
+function buildGenericArchetypeBlock(
+  audienceRepaint?: Record<string, string>,
+  domain: DomainLens = "socials",
+): string {
   return ARCHETYPES.map((a: Archetype) => {
-    const def = ARCHETYPE_DEFINITIONS[a];
+    const generic =
+      domain === "general" ? GENERAL_ARCHETYPE_DEFINITIONS[a] : ARCHETYPE_DEFINITIONS[a];
+    const def = audienceRepaint?.[a] ?? generic;
+    // The scroll/stop trigger lines are FYP mechanics — they have no meaning for a panel
+    // judging a proposal, so the general frame omits them entirely.
+    if (domain === "general") return `### ${a}\n${def}`;
     const triggers = ARCHETYPE_TRIGGERS[a];
     return `### ${a}\n${def}\n\nScrolls past when: ${triggers.scroll_past.join(", ")}.\nStops for: ${triggers.stop.join(", ")}.`;
   }).join("\n\n");
 }
 
-function buildSystemPrompt(): string {
-  const archetypeBlock = buildGenericArchetypeBlock();
-
-  return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
-
-Your task: for each of the 10 archetypes defined below, produce:
-- A verdict: "stop" (would stop and engage) or "scroll" (would scroll past)
-- A one-line first-person voice quote (max 160 characters) capturing WHY — the audience texture the creator needs to hear
-
-## Archetype Definitions (feed ALL 10 — verdicts MUST diverge based on their profiles)
-
-${archetypeBlock}
-
-## Critical Divergence Requirement
-
-These 10 archetypes have FUNDAMENTALLY different tolerances. Near-identical verdicts across all archetypes is a FAILURE — tough_crowd is the hardest to stop; loyalist is the easiest.
-
-## Output Schema
+// The output contract (schema + type rules) is IDENTICAL across domains — only the
+// population framing and the verdict's MEANING change. Shared so the two frames can
+// never drift apart on the part the parser depends on.
+const OUTPUT_CONTRACT = `## Output Schema
 
 Return ONLY a JSON object matching this EXACT shape:
 
@@ -146,10 +203,77 @@ TYPE RULES (STRICT):
 - "archetype" MUST match the archetype slug exactly
 - EXACTLY 10 persona entries — one per archetype listed above
 - Output strict JSON only — no markdown, no code fences, no explanatory text`;
+
+function buildSystemPrompt(
+  audienceRepaint?: Record<string, string>,
+  domain: DomainLens = "socials",
+): string {
+  const archetypeBlock = buildGenericArchetypeBlock(audienceRepaint, domain);
+
+  if (domain === "general") {
+    return `You are simulating a REACTION PANEL of TEN reactors judging TEXT content on its merits.
+
+This is NOT a social-media feed. Nobody is scrolling anything. Each reactor is a person forming
+a judgement about what has been put in front of them — a proposal, an argument, an idea, a piece
+of writing, a person's case.
+
+Your task: for each of the 10 reactors defined below, produce:
+- A verdict: "stop" (it LANDS — they are convinced, persuaded, or would back it) or "scroll" (it does NOT land — they are unconvinced or reject it)
+- A one-line first-person voice quote (max 160 characters) capturing WHY — in that reactor's own voice, reacting to the SUBSTANCE
+
+The tokens "stop" and "scroll" are schema artifacts. Read them as LANDS and DOES NOT LAND.
+NEVER write a quote about watching, scrolling, feeds, videos, comments, saving, or sharing —
+those belong to a different frame and are wrong here. React to the argument, not to the format.
+
+## The Panel (feed ALL 10 — verdicts MUST diverge based on their profiles)
+
+${archetypeBlock}
+
+## Critical Divergence Requirement
+
+These 10 reactors have FUNDAMENTALLY different standards. Near-identical verdicts across all of
+them is a FAILURE — tough_crowd is the hardest to convince; loyalist is the easiest.
+
+${OUTPUT_CONTRACT}`;
+  }
+
+  return `You are simulating TEN TikTok viewer archetypes reacting to TEXT content.
+
+Your task: for each of the 10 archetypes defined below, produce:
+- A verdict: "stop" (would stop and engage) or "scroll" (would scroll past)
+- A one-line first-person voice quote (max 160 characters) capturing WHY — the audience texture the creator needs to hear
+
+## Archetype Definitions (feed ALL 10 — verdicts MUST diverge based on their profiles)
+
+${archetypeBlock}
+
+## Critical Divergence Requirement
+
+These 10 archetypes have FUNDAMENTALLY different tolerances. Near-identical verdicts across all archetypes is a FAILURE — tough_crowd is the hardest to stop; loyalist is the easiest.
+
+${OUTPUT_CONTRACT}`;
 }
 
 // Build once at module load — byte-stable across every call (D-17 cache prefix).
+// No repaint, socials domain → the exact pre-MODE-01 string (General regression anchor).
 export const STABLE_FLASH_SYSTEM_PROMPT: string = buildSystemPrompt();
+
+/**
+ * The generic (non-niche) system prompt, optionally steered by a stored per-audience repaint
+ * and/or re-framed for a `mode: 'general'` audience (MODE-01).
+ *
+ * Byte-identical to STABLE_FLASH_SYSTEM_PROMPT when called with no repaint in the socials
+ * domain — the General regression gate depends on that identity, so it returns the SAME
+ * interned constant rather than a rebuilt equal string.
+ */
+export function buildGenericSystemPrompt(
+  audienceRepaint?: Record<string, string>,
+  domain: DomainLens = "socials",
+): string {
+  const hasRepaint = audienceRepaint != null && Object.keys(audienceRepaint).length > 0;
+  if (!hasRepaint && domain === "socials") return STABLE_FLASH_SYSTEM_PROMPT;
+  return buildSystemPrompt(audienceRepaint, domain);
+}
 
 // ─── Niche panel type (D-05, Plan 03-01) ─────────────────────────────────────
 
@@ -229,9 +353,18 @@ function buildNicheArchetypeBlock(
 export function buildNicheAwareSystemPrompt(
   panel: NichePanel,
   audienceRepaint?: Record<string, string>,
+  domain: DomainLens = "socials",
 ): string {
+  // A niche is a SOCIALS concept (a TikTok content vertical). A general-domain audience has no
+  // niche to instantiate, so it takes the general frame even if a panel rides along (MODE-01).
+  if (domain === "general") {
+    return buildGenericSystemPrompt(audienceRepaint, domain);
+  }
+
   if (panel.niche === null) {
-    return STABLE_FLASH_SYSTEM_PROMPT;
+    // Pre-MODE-01 this dropped the repaint on the floor. Route it through the generic builder,
+    // which honours it — and still returns the interned STABLE constant when there is none.
+    return buildGenericSystemPrompt(audienceRepaint, domain);
   }
 
   const archetypeBlock = buildNicheArchetypeBlock(panel, audienceRepaint);
@@ -296,30 +429,36 @@ export function buildFlashUserContent(
   text: string,
   framing: FlashFraming,
   intent?: IntentLens,
+  domain: DomainLens = "socials",
 ): string {
   const lines: string[] = [];
+  const isGeneral = domain === "general";
 
   lines.push("## Content to React To");
   lines.push(text || "(no content provided)");
   lines.push("");
 
   lines.push("## Your Task");
-  lines.push(FRAMING_QUESTION[framing]);
+  lines.push(isGeneral ? GENERAL_FRAMING_QUESTION : FRAMING_QUESTION[framing]);
   lines.push("");
 
   lines.push("## Band Context");
-  lines.push(FRAMING_BAND_VERBIAGE[framing]);
+  lines.push(isGeneral ? GENERAL_BAND_VERBIAGE : FRAMING_BAND_VERBIAGE[framing]);
   lines.push("");
 
   // Sell lens: re-aim the verdict toward purchase intent (calibrated audiences only).
   // grow/undefined → this block is omitted → byte-identical to the pre-intent message.
-  if (intent === "sell") {
+  // The sell lens is a SOCIALS lens (it speaks of viewers and watch-time); the general
+  // frame already judges on merit, so the two never stack.
+  if (intent === "sell" && !isGeneral) {
     lines.push(SELL_LENS_DIRECTIVE);
     lines.push("");
   }
 
   lines.push(
-    "Return a JSON object with EXACTLY 10 personas, one per archetype, in the order listed in the system prompt.",
+    isGeneral
+      ? "Return a JSON object with EXACTLY 10 personas, one per reactor, in the order listed in the system prompt."
+      : "Return a JSON object with EXACTLY 10 personas, one per archetype, in the order listed in the system prompt.",
   );
 
   return lines.join("\n");
@@ -386,10 +525,15 @@ export function buildFlashBatchSystemPrompt(
   panel?: NichePanel,
   audienceRepaint?: Record<string, string>,
 ): string {
+  // MODE-01: the null-niche branch dropped `audienceRepaint` here too — the same bug the Read
+  // had. It bites whenever a creator has no niche on their profile: the batched skills
+  // (hooks/ideas/remix) then scored against the stock archetypes and the pinned audience was
+  // inert, silently. The batched path is socials-only by construction (those skills now refuse a
+  // general audience at the route), so the domain stays "socials".
   const archetypeBlock =
     panel && panel.niche !== null
       ? buildNicheArchetypeBlock(panel, audienceRepaint)
-      : buildGenericArchetypeBlock();
+      : buildGenericArchetypeBlock(audienceRepaint);
   return wrapBatchSystemPrompt(archetypeBlock);
 }
 

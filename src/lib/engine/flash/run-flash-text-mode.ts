@@ -27,17 +27,17 @@ import {
 } from "./flash-schema";
 import type { FlashResult } from "./flash-schema";
 import {
-  STABLE_FLASH_SYSTEM_PROMPT,
   buildFlashUserContent,
+  buildGenericSystemPrompt,
   buildNicheAwareSystemPrompt,
   buildFlashBatchSystemPrompt,
   buildFlashBatchUserContent,
 } from "./flash-prompts";
-import type { FlashFraming, NichePanel, IntentLens } from "./flash-prompts";
+import type { FlashFraming, NichePanel, IntentLens, DomainLens } from "./flash-prompts";
 import type { ContentTypeSlug } from "../types";
 
-// Re-export FlashFraming, NichePanel and IntentLens so callers can import them from here
-export type { FlashFraming, NichePanel, IntentLens };
+// Re-export FlashFraming, NichePanel, IntentLens and DomainLens so callers can import them here
+export type { FlashFraming, NichePanel, IntentLens, DomainLens };
 // Re-export ContentTypeSlug for convenience (D-05 callers need it for the panel)
 export type { ContentTypeSlug };
 
@@ -91,6 +91,9 @@ export interface FlashRunResult {
  *                        verdict toward purchase intent via a user-message directive; `grow`/undefined
  *                        → byte-identical no-op. Only the USER message changes — the system-prompt
  *                        cache prefix (D-17) and ENGINE_VERSION are untouched.
+ * @param domain          Optional reaction FRAME (MODE-01). `general` swaps the TikTok-FYP population
+ *                        + question for a merit-judging panel (a `mode: 'general'` audience is not a
+ *                        crowd scrolling a feed). `socials`/undefined → byte-identical no-op.
  * @returns FlashRunResult with parsed FlashResult and any warnings.
  * @throws if the model response fails Zod validation after coercion.
  */
@@ -100,18 +103,23 @@ export async function runFlashTextMode(
   panel?: NichePanel,
   audienceRepaint?: Record<string, string>,
   intent?: IntentLens,
+  domain: DomainLens = "socials",
 ): Promise<FlashRunResult> {
   const ai = getQwenClient();
   const warnings: string[] = [];
 
   // Resolve system prompt: niche-aware if a panel with a non-null niche is provided (D-05),
-  // otherwise fall back to the byte-stable generic STABLE_FLASH_SYSTEM_PROMPT (back-compat).
-  // When audienceRepaint is provided, folds stored per-audience descriptions into the prompt
-  // (07-04 react path, AUD-04). When absent → byte-identical no-op (General safe, D-17).
+  // otherwise the generic prompt — which now ALSO honours audienceRepaint (MODE-01).
+  //
+  // It did not before, and that was the steering bug: the Read passes `niche: null`, so it took
+  // this branch and got STABLE_FLASH_SYSTEM_PROMPT with the repaint silently dropped. Every
+  // audience therefore ran the byte-identical General prompt, and the "two-audience Read"
+  // compared General to General with one side relabelled (live-verified: 10/10 identical verdicts).
+  // No repaint + socials domain → still the interned STABLE constant (General regression gate).
   const systemPrompt =
     panel && panel.niche !== null
-      ? buildNicheAwareSystemPrompt(panel, audienceRepaint)
-      : STABLE_FLASH_SYSTEM_PROMPT;
+      ? buildNicheAwareSystemPrompt(panel, audienceRepaint, domain)
+      : buildGenericSystemPrompt(audienceRepaint, domain);
 
   const callParams = {
     model: FLASH_MODEL,
@@ -122,7 +130,7 @@ export async function runFlashTextMode(
       },
       {
         role: "user" as const,
-        content: buildFlashUserContent(content_text, framing, intent),
+        content: buildFlashUserContent(content_text, framing, intent, domain),
       },
     ],
     response_format: { type: "json_object" as const },

@@ -54,6 +54,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
@@ -155,6 +156,16 @@ export async function POST(request: Request): Promise<Response> {
   // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
   // the request body — session/thread only (CR-01).
   const activeAudience = await resolveThreadAudience(supabase, openThread);
+
+  // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
+  // hooks is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
+  // named person) is not a crowd on a feed — refuse it rather than write feed content for it.
+  // The composer already hides this skill for a general audience; this catches a stale
+  // client, a restored thread, and any direct API call.
+  {
+    const refusal = requireSocialsAudience(activeAudience, "hooks");
+    if (refusal) return refusal;
+  }
 
   // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────
   // Explicit composer override wins; else default from the audience's goal_intent (4→2 lens).

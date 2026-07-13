@@ -47,7 +47,9 @@ import { getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL } from "@/lib/engine/qwe
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { BEHAVIORAL_SYSTEM_PROMPT_FLASH } from "@/lib/engine/behavioral-core";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import type { DomainLens } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import { buildAudienceRepaint } from "@/lib/engine/flash/build-reaction-panel";
 import { resolveTier } from "@/lib/audience/resolve-tier";
 import { ReactionDistributionBlockSchema } from "@/lib/tools/profile-blocks";
@@ -307,12 +309,19 @@ export async function runSimulate(
   const flash = deps.flash ?? runFlashTextMode;
   const repaint = buildAudienceRepaint(audience);
 
+  // MODE-01 — the reaction FRAME. Simulate accepts BOTH modes, and a `mode: 'general'` panel
+  // must not be asked the TikTok FYP stop-or-scroll question: it judges the draft on its merits.
+  // (Until this seam landed, the repaint was also silently dropped here — the generic prompt
+  // ignored it whenever `niche` was null, which is always on this path.)
+  const domain: DomainLens = audience.mode === "general" ? "general" : "socials";
+
   // The drafted message is the CONTENT the personas react to (data, not steering — D-08).
   const panel = { niche: null, contentType: null } as const;
-  const { result } = await flash(stimulus.content, "idea", panel, repaint);
+  const { result } = await flash(stimulus.content, "idea", panel, repaint, undefined, domain);
 
-  // Band math reused verbatim — never re-rolled (honesty spine).
-  const { band, fraction } = aggregateFlash(result.personas);
+  // Band math reused verbatim — never re-rolled (honesty spine). The audience's weight mix
+  // weights the BAND (never the displayed fraction), as it does in every other runner.
+  const { band, fraction } = aggregateFlash(result.personas, buildFlashWeighting(audience));
 
   const block: ReactionDistributionBlock = {
     type: "reaction-distribution",
