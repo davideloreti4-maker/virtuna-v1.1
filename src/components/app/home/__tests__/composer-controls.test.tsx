@@ -15,6 +15,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import {
   ComposerControls,
   ModelTag,
@@ -103,7 +104,7 @@ describe("ComposerControls — skill pill + popover", () => {
 });
 
 describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
-  it("defaults to Socials when no activeMode is passed → Make/Test/Ask + always-visible General", () => {
+  it("defaults to Socials when no activeMode is passed → Make/Test/Ask", () => {
     // No activeMode prop → "socials" default → the three verb headers + creator skills.
     renderControls();
     openSkillPopover();
@@ -113,42 +114,67 @@ describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
     expect(within(menu).getByText("Ask")).toBeInTheDocument();
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
     expect(within(menu).getByText("/test")).toBeInTheDocument();
-    // The General verbs are ALWAYS surfaced (refine lane) — own "General" group,
-    // discoverable from a creator context instead of hidden until a General audience.
-    expect(within(menu).getByText("General")).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
   });
 
-  it("shows ONLY Profile/Simulate/Predict when activeMode='general' (no creator skills)", () => {
-    renderControls({ activeMode: "general" });
+  // ── The horizontal (GSI) verbs — HIDDEN behind HORIZONTAL_ENABLED (owner call
+  //    2026-07-13: the product commits to the creator vertical for MVP). These specs are
+  //    NOT deleted; they describe real behavior that returns the day the flag flips back.
+  describe.skipIf(!HORIZONTAL_ENABLED)("the General verbs — while the horizontal is ON", () => {
+    it("surfaces them alongside the creator skills in Socials mode", () => {
+      renderControls();
+      openSkillPopover();
+      const menu = screen.getByRole("menu");
+      // Own "General" group — discoverable from a creator context.
+      expect(within(menu).getByText("General")).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+    });
+
+    it("shows ONLY Profile/Simulate/Predict when activeMode='general' (no creator skills)", () => {
+      renderControls({ activeMode: "general" });
+      openSkillPopover();
+      const menu = screen.getByRole("menu");
+      expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+      // …and the creator skills are gone (only the General group remains).
+      expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+      expect(within(menu).queryByText("/hooks")).toBeNull();
+      expect(within(menu).queryByText("/test")).toBeNull();
+      expect(within(menu).queryByText("Make")).toBeNull();
+      expect(within(menu).queryByText("Test")).toBeNull();
+      expect(within(menu).queryByText("Ask")).toBeNull();
+    });
+
+    it("SkillRows surfaces the General verbs in BOTH modes (the `/` slash menu reuses it)", () => {
+      const { rerender } = render(
+        <SkillRows active="profile" activeMode="general" onSelect={vi.fn()} />,
+      );
+      expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+      rerender(<SkillRows active="hooks" onSelect={vi.fn()} />);
+      expect(screen.getByRole("menuitemradio", { name: /hooks/i })).toBeInTheDocument();
+      expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    });
+  });
+
+  // ── …and the gate that holds the cut. `enabled: HORIZONTAL_ENABLED` is filtered by the
+  //    skill pill, the `/` slash menu AND Enter-to-select, so this covers every composer door.
+  it.skipIf(HORIZONTAL_ENABLED)("hides the horizontal verbs while HORIZONTAL_ENABLED is off", () => {
+    renderControls();
     openSkillPopover();
     const menu = screen.getByRole("menu");
-    // The three General verbs are present…
-    expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
-    // …and the creator skills are gone (only the General group remains).
-    expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
-    expect(within(menu).queryByText("/hooks")).toBeNull();
-    expect(within(menu).queryByText("/test")).toBeNull();
-    // General mode hides the Make/Test/Ask verb headers (General is the only group).
-    expect(within(menu).queryByText("Make")).toBeNull();
-    expect(within(menu).queryByText("Test")).toBeNull();
-    expect(within(menu).queryByText("Ask")).toBeNull();
-  });
-
-  it("SkillRows surfaces the General verbs in BOTH modes (the `/` slash menu reuses it)", () => {
-    const { rerender } = render(
-      <SkillRows active="profile" activeMode="general" onSelect={vi.fn()} />,
-    );
-    expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(screen.queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
-    // Socials default surfaces creator skills AND the always-visible General verbs.
-    rerender(<SkillRows active="hooks" onSelect={vi.fn()} />);
-    expect(screen.getByRole("menuitemradio", { name: /hooks/i })).toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    // The creator vertical is untouched…
+    expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+    // …and the horizontal is gone from the menu entirely — no group, no rows.
+    expect(within(menu).queryByText("General")).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /profile/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /simulate/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /predict/i })).toBeNull();
+    // SkillRows is the shared list behind the `/` slash menu — same result there.
+    render(<SkillRows active="hooks" onSelect={vi.fn()} />);
+    expect(screen.queryByRole("menuitemradio", { name: /simulate/i })).toBeNull();
   });
 });
 

@@ -25,6 +25,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
 // The skill id union, including the not-yet-shipped skills: "explore" (P11),
@@ -93,12 +94,14 @@ export const SKILLS: SkillMeta[] = [
   // ── Marketing — hidden until enabled (enabled:false → SkillRows never renders them). ──
   { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
   { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
-  // ── General — the three verbs surfaced when a General audience is active. They keep
-  //    their own always-visible "General" group in the menu (not folded into Make/Test/
-  //    Ask); `group: "creator"` is inert here. NO accent — reuse the existing row visual. ──
-  { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
-  { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: true },
-  { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
+  // ── The HORIZONTAL (GSI) verbs — HIDDEN behind HORIZONTAL_ENABLED (owner call 2026-07-13:
+  //    the product commits to the creator vertical for MVP). `enabled:false` is the same lever
+  //    the marketing rows above use: the pill menu, the `/` slash menu, and Enter-to-select all
+  //    filter on `s.enabled`, so a false here closes every composer door at once. The rows,
+  //    routes, runners and blocks all STAY — flip the flag to bring them back. ──
+  { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
+  { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
+  { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
 ];
 
 export const getSkill = (id: ToolId): SkillMeta =>

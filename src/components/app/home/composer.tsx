@@ -43,6 +43,7 @@ import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
 import dynamic from "next/dynamic";
 import { cn } from "@/lib/utils";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
@@ -1945,7 +1946,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // the existing evidence-drop file picker (the Profile/From-evidence door, do not
   // rebuild). The From-a-description path navigates to /audience/new?mode=general and
   // returns via the normal audience load on mount.
-  const buildChooser = (
+  // Not mounted while the horizontal is off — all three of its paths mint a mode:'general'
+  // SIM, so the whole chooser is horizontal. Its trigger in AudiencePresence is gated on the
+  // same flag; this keeps the dialog itself unreachable even if a trigger is ever re-added.
+  const buildChooser = !HORIZONTAL_ENABLED ? null : (
     <BuildChooser
       open={buildOpen}
       onOpenChange={setBuildOpen}
@@ -2531,12 +2535,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const homeQuickActions = !hasConversationContent ? (
     <HomeQuickActions onQuickAction={handleUserSelectTool} className="mb-5" />
   ) : null;
-  const homeFirstRunDemo = !hasConversationContent ? (
-    <HomeFirstRunDemo
-      onDemoComplete={() => void reloadProfileThread()}
-      className="mt-5"
-    />
-  ) : null;
+  // The first-run demo POSTs a canned chat fixture straight to /api/tools/profile — the ONE
+  // horizontal entry point that bypasses the skill menu entirely, so disabling the Profile
+  // verb is not enough to close it. Gated on the same flag (owner call 2026-07-13); the
+  // component and its fixture stay put for the day the horizontal comes back.
+  const homeFirstRunDemo =
+    HORIZONTAL_ENABLED && !hasConversationContent ? (
+      <HomeFirstRunDemo
+        onDemoComplete={() => void reloadProfileThread()}
+        className="mt-5"
+      />
+    ) : null;
 
   // ── Layout branches ────────────────────────────────────────────────────────
   //

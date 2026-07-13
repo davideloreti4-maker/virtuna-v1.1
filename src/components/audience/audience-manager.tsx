@@ -35,6 +35,7 @@ import { Scales, Sparkle, ArrowRight } from "@phosphor-icons/react";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 type AudienceTab = "audiences" | "account";
 
@@ -302,7 +303,11 @@ export function AudienceManager({
       { key: "yours", label: "Yours", items: yours },
       { key: "baseline", label: "Baseline", items: baseline },
       { key: "templates", label: "Templates", items: templates },
-      { key: "generalTemplates", label: "General templates", items: generalTemplates },
+      // The horizontal bucket (mode:'general' — the Analyst/Hiring panels + any SIM a past
+      // /profile run minted). Hidden while HORIZONTAL_ENABLED is off; the rows stay in the
+      // DB untouched. "Baseline" above is GENERAL_AUDIENCE (mode:'socials') and is NOT this
+      // — see THE TRAP in lib/flags/horizontal.ts.
+      { key: "generalTemplates", label: "General templates", items: HORIZONTAL_ENABLED ? generalTemplates : [] },
     ];
     let delay = 0.02;
     const rendered: React.ReactNode[] = [];

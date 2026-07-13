@@ -55,6 +55,7 @@ import {
   DEFAULT_ROSTER_DOTS,
 } from '@/components/brand/constellation';
 import { stripWrappingQuotes } from '@/lib/utils';
+import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
@@ -515,10 +516,14 @@ export function AudiencePresence({
     // mode (pre-backfill) still surface in the switcher rather than vanishing.
     ...yours.filter((a) => a.mode !== 'general'),
   ];
-  const generalRows = [
-    ...generalTemplates,
-    ...yours.filter((a) => a.mode === 'general'),
-  ];
+  // Horizontal (mode:'general') audiences are HIDDEN while HORIZONTAL_ENABLED is off — the
+  // verbs that run on them (Profile/Simulate/Predict) are gone, so offering the audience
+  // would be a dead end. Rows are not deleted, just not listed; flip the flag to restore.
+  // NOTE: GENERAL_AUDIENCE is mode:'socials' and stays in `socialsRows` — see THE TRAP in
+  // lib/flags/horizontal.ts. Do not "simplify" this to key on is_general.
+  const generalRows = HORIZONTAL_ENABLED
+    ? [...generalTemplates, ...yours.filter((a) => a.mode === 'general')]
+    : [];
 
   // One row renderer reused by both sections — existing markup verbatim + a neutral,
   // right-aligned trust badge (resolveTier → Directional/Validated, NO accent).
@@ -601,19 +606,26 @@ export function AudiencePresence({
           )}
 
           <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
-          {/* + Build an audience — opens the Build chooser (plain glyph, NO accent). */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuildAudience?.();
-              setSwitcherOpen(false);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
-          >
-            <Plus className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="flex-1">{BUILD_LABEL}</span>
-          </button>
+          {/* + Build an audience — opens the BuildChooser, whose three paths ALL mint a
+              mode:'general' SIM (description → /audience/new?mode=general · evidence →
+              the Profile runner · template → GENERAL_TEMPLATES). It is the horizontal
+              audience factory, so it goes with the horizontal. Creator-audience creation
+              is unaffected — the "/audience" link directly below still reaches
+              /audience/new, which defaults to mode:'socials'. */}
+          {HORIZONTAL_ENABLED && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuildAudience?.();
+                setSwitcherOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="flex-1">{BUILD_LABEL}</span>
+            </button>
+          )}
           <Link
             href="/audience"
             onClick={() => setSwitcherOpen(false)}

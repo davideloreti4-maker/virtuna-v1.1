@@ -90,6 +90,7 @@ vi.mock('@/hooks/queries/use-hooks-stream', () => ({
 }));
 
 import { Composer } from '../composer';
+import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
 
 const D21 = 'Maven reads TikTok videos for now';
 
@@ -237,7 +238,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     fireEvent.click(within(menu).getByRole('menuitemradio', { name: /analyst panel/i }));
   }
 
-  it('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('a General verb with NO General audience does not fire a stimulus and routes to Build', async () => {
     const { container } = renderWithClient(<Composer />);
     // No audience selected (General/null). A General verb (Predict) is activated via
     // the `/` slash menu — always resolvable for the General verbs. The T-07-04-01
@@ -253,7 +254,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     expect(calledWith('/api/tools/predict')).toBe(false);
   });
 
-  it('Simulate with a selected General audience POSTs /api/tools/simulate with the audienceId', async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('Simulate with a selected General audience POSTs /api/tools/simulate with the audienceId', async () => {
     const { container } = renderWithClient(<Composer />);
     await selectGeneralAudience();
     selectSkillBySlash('simulate');
@@ -269,7 +270,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     expect(push).not.toHaveBeenCalledWith('/audience/new');
   });
 
-  it('Predict with a selected General audience POSTs /api/tools/predict with the audienceId + scenario', async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('Predict with a selected General audience POSTs /api/tools/predict with the audienceId + scenario', async () => {
     const { container } = renderWithClient(<Composer />);
     await selectGeneralAudience();
     selectSkillBySlash('predict');
@@ -284,7 +285,7 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     expect(body.scenario).toBe('we double our price');
   });
 
-  it('selecting Profile opens the evidence-drop file input (not a topic submit)', () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('selecting Profile opens the evidence-drop file input (not a topic submit)', () => {
     const { container } = renderWithClient(<Composer />);
     const evidenceInput = container.querySelector(
       'input[type="file"][accept*=".txt"]',
