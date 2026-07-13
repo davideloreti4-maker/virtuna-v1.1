@@ -6,6 +6,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
 import { getReadingQuotaVerdict } from "@/lib/billing/quota";
+import { recordReading } from "@/lib/billing/record-reading";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
@@ -849,6 +850,14 @@ export async function POST(request: Request) {
         // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
         await persistApolloToVariants(service, jsonInsertId, user.id, finalResult, log);
         // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
+
+        // BILL THE READING — inside the success branch, on purpose. This is the moment the
+        // Reading exists; a pipeline that had failed never reaches here, so it never charges.
+        await recordReading(
+          service,
+          { userId: user.id, analysisId: jsonInsertId, mode: validated.mode, tier: quota.tier },
+          log
+        );
       }
 
       // Track usage
@@ -953,6 +962,16 @@ export async function POST(request: Request) {
               userId: user.id,
               log,
             });
+
+            // A decode is engine spend and has always billed like any other Reading (it writes
+            // an analysis_results row, which is what the old meter counted) — so it keeps
+            // billing, and the ledger does not quietly change what a customer is charged for.
+            // Only on success: a throw below means nothing was delivered.
+            await recordReading(
+              service,
+              { userId: user.id, analysisId, mode: "remix", tier: quota.tier },
+              log
+            );
           } catch (err) {
             const message = err instanceof Error ? err.message : "Decode failed";
             log.error("decode_stream_error", { error: message, analysisId });
@@ -1090,6 +1109,16 @@ export async function POST(request: Request) {
             // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
             await persistApolloToVariants(service, analysisId, user.id, finalResult, log);
             // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
+
+            // BILL THE READING — here, and not at the placeholder INSERT above. The placeholder
+            // is written BEFORE the engine runs (Pitfall #6) purely so the reconnect stream has
+            // a row to read; a run that dies mid-pipeline leaves it behind. Billing on the
+            // placeholder is what made a failed engine run cost the customer a Reading.
+            await recordReading(
+              service,
+              { userId: user.id, analysisId, mode: validated.mode, tier: quota.tier },
+              log
+            );
           }
 
           // Track usage (increments AFTER successful analysis)

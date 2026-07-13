@@ -163,9 +163,139 @@ describe("safety", () => {
 });
 
 describe("billing period", () => {
-  it("resets on the 1st of the calendar month (UTC)", () => {
+  it("falls back to the 1st of the calendar month when there is no subscription to anchor to", () => {
     expect(currentPeriodStart(new Date("2026-07-13T09:41:00Z")).toISOString()).toBe(
       "2026-07-01T00:00:00.000Z"
     );
+  });
+
+  it("anchors on the BILLING date, not the 1st — subscribe on the 28th and you get one month", () => {
+    // The bug this replaces: the period reset on the 1st, so someone who subscribed on the 28th
+    // got a whole fresh allowance three days later, every month, for free.
+    const renews = new Date("2026-08-28T14:30:00Z");
+
+    // The 30th: this period began on the 28th of THIS month.
+    expect(currentPeriodStart(new Date("2026-07-30T09:00:00Z"), renews).toISOString()).toBe(
+      "2026-07-28T14:30:00.000Z"
+    );
+
+    // The 5th: the anchor has not come round yet this month, so the period began LAST month.
+    expect(currentPeriodStart(new Date("2026-07-05T09:00:00Z"), renews).toISOString()).toBe(
+      "2026-06-28T14:30:00.000Z"
+    );
+  });
+
+  it("does not roll over early on the renewal day itself", () => {
+    // Renewal at 14:00; at 09:00 that morning the period has NOT reset yet. Anchoring at
+    // midnight would hand out the next allowance up to a day early.
+    const renews = new Date("2026-07-28T14:00:00Z");
+    expect(currentPeriodStart(new Date("2026-07-28T09:00:00Z"), renews).toISOString()).toBe(
+      "2026-06-28T14:00:00.000Z"
+    );
+    // ...and at 14:00 sharp it does.
+    expect(currentPeriodStart(new Date("2026-07-28T14:00:00Z"), renews).toISOString()).toBe(
+      "2026-07-28T14:00:00.000Z"
+    );
+  });
+
+  it("clamps a 31st anchor into short months instead of spilling into the next one", () => {
+    const renews = new Date("2026-01-31T00:00:00Z");
+    // February has no 31st: the period starts on the 28th, NOT on 3 March.
+    expect(currentPeriodStart(new Date("2026-02-27T12:00:00Z"), renews).toISOString()).toBe(
+      "2026-01-31T00:00:00.000Z"
+    );
+    expect(currentPeriodStart(new Date("2026-03-01T12:00:00Z"), renews).toISOString()).toBe(
+      "2026-02-28T00:00:00.000Z"
+    );
+  });
+
+  it("walks back to the most recent anchor even when current_period_end is stale", () => {
+    // A row Whop hasn't refreshed. Naively doing "period end minus one month" would open a
+    // window months wide and let a customer's usage accumulate against one allowance.
+    const stale = new Date("2026-03-10T00:00:00Z");
+    expect(currentPeriodStart(new Date("2026-07-13T00:00:00Z"), stale).toISOString()).toBe(
+      "2026-07-10T00:00:00.000Z"
+    );
+  });
+
+  it("counts the plan's allowance from the billing anchor", async () => {
+    const client = stubClient({ count: 0 });
+    await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW, new Date("2026-07-28T14:00:00Z"));
+    expect(client._builder.gte).toHaveBeenCalledWith("created_at", "2026-06-28T14:00:00.000Z");
+  });
+});
+
+describe("the ledger — a Reading is an event, not a row", () => {
+  /**
+   * A client that can answer differently per table, so the ledger and the legacy fallback can
+   * be told apart. `readingEvents: "missing"` = the migration hasn't been applied yet.
+   */
+  function stubTables(opts: {
+    readingEvents?: number | "missing" | "boom";
+    analysisResults?: number;
+  }) {
+    const calls: string[] = [];
+    const builderFor = (table: string) => {
+      const b = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        gte: vi.fn(() => {
+          if (table === "reading_events") {
+            if (opts.readingEvents === "missing") {
+              return Promise.resolve({
+                count: null,
+                error: { code: "42P01", message: 'relation "reading_events" does not exist' },
+              });
+            }
+            if (opts.readingEvents === "boom") {
+              return Promise.resolve({ count: null, error: { code: "08006", message: "conn lost" } });
+            }
+            return Promise.resolve({ count: opts.readingEvents ?? 0, error: null });
+          }
+          return Promise.resolve({ count: opts.analysisResults ?? 0, error: null });
+        }),
+      };
+      return b;
+    };
+    const builders: Record<string, ReturnType<typeof builderFor>> = {};
+    const client = {
+      from: vi.fn((table: string) => {
+        calls.push(table);
+        builders[table] ??= builderFor(table);
+        return builders[table]!;
+      }),
+    } as unknown as SupabaseClient;
+    return { client, calls, builders };
+  }
+
+  it("counts BILLED ledger events, ignoring unbilled ones", async () => {
+    const { client, calls, builders } = stubTables({ readingEvents: 3 });
+    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
+
+    expect(calls).toContain("reading_events");
+    expect(calls).not.toContain("analysis_results"); // the ledger answered; no fallback
+    expect(builders.reading_events!.eq).toHaveBeenCalledWith("billed", true);
+    expect(verdict.used).toBe(3);
+  });
+
+  it("falls back to the legacy analysis_results count when the ledger table does not exist yet", async () => {
+    // The owner has not run 20260713160000 — behaviour must be exactly what it was before it.
+    const { client, calls } = stubTables({ readingEvents: "missing", analysisResults: 12 });
+    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
+
+    expect(calls).toEqual(["reading_events", "analysis_results"]);
+    expect(verdict.used).toBe(12);
+    expect(verdict.allowed).toBe(true);
+  });
+
+  it("does NOT substitute the legacy count for a real ledger error — it fails open instead", async () => {
+    // Silently swapping in a different (higher) number could block a customer who is within
+    // their plan. A transient error must cost us a Reading, never them.
+    const { client, calls } = stubTables({ readingEvents: "boom", analysisResults: 999 });
+    const verdict = await checkReadingQuota(client, "u1", "starter", NO_TRIAL, NOW);
+
+    expect(calls).not.toContain("analysis_results");
+    expect(verdict.allowed).toBe(true);
+    expect(verdict.used).toBe(0);
   });
 });

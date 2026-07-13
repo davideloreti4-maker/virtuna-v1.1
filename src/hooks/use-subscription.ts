@@ -3,6 +3,26 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { NumenTier } from "@/lib/whop/config";
 
+/**
+ * The Reading balance — the meter the plans are sold on. Present whether or not enforcement
+ * is switched on (`enforced`); the numbers are honest either way, and the UI shows a customer
+ * their balance as soon as they have a plan. See lib/billing/quota.ts.
+ */
+export interface UsageData {
+  used: number;
+  /** null = unlimited (Studio, outside a trial). */
+  limit: number | null;
+  /** null = unlimited. Never negative. */
+  remaining: number | null;
+  /** Whether hitting the limit would actually block (BILLING_ENFORCE_QUOTA). */
+  enforced: boolean;
+  /** Whether the 5-Reading $1-trial pool is what's being measured. */
+  inTrial: boolean;
+  /** When the allowance resets — the renewal date, or the day the trial converts. */
+  renewsAt: string | null;
+  periodStart: string | null;
+}
+
 interface SubscriptionData {
   tier: NumenTier;
   status: string;
@@ -11,6 +31,26 @@ interface SubscriptionData {
   whopConnected: boolean;
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
+  usage: UsageData | null;
+}
+
+/**
+ * One mapper for both read paths (initial fetch + the post-checkout tier poll) — they were
+ * two hand-rolled copies of the same object literal, so a field added to one silently went
+ * missing from the other.
+ */
+function toSubscriptionData(json: Record<string, unknown>): SubscriptionData {
+  const usage = json.usage as UsageData | undefined;
+  return {
+    tier: (json.tier as NumenTier) ?? "free",
+    status: (json.status as string) ?? "active",
+    isTrial: (json.isTrial as boolean) ?? false,
+    trialEndsAt: (json.trialEndsAt as string | null) ?? null,
+    whopConnected: (json.whopConnected as boolean) ?? false,
+    cancelAtPeriodEnd: (json.cancelAtPeriodEnd as boolean) ?? false,
+    currentPeriodEnd: (json.currentPeriodEnd as string | null) ?? null,
+    usage: usage ?? null,
+  };
 }
 
 export function useSubscription() {
@@ -25,15 +65,7 @@ export function useSubscription() {
       const res = await fetch("/api/subscription");
       if (!res.ok) throw new Error("Failed to fetch subscription");
       const json = await res.json();
-      setData({
-        tier: json.tier ?? "free",
-        status: json.status ?? "active",
-        isTrial: json.isTrial ?? false,
-        trialEndsAt: json.trialEndsAt ?? null,
-        whopConnected: json.whopConnected ?? false,
-        cancelAtPeriodEnd: json.cancelAtPeriodEnd ?? false,
-        currentPeriodEnd: json.currentPeriodEnd ?? null,
-      });
+      setData(toSubscriptionData(json));
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -73,15 +105,7 @@ export function useSubscription() {
               if (newTier !== currentTier) {
                 if (pollingRef.current) clearInterval(pollingRef.current);
                 pollingRef.current = null;
-                setData({
-                  tier: newTier,
-                  status: json.status ?? "active",
-                  isTrial: json.isTrial ?? false,
-                  trialEndsAt: json.trialEndsAt ?? null,
-                  whopConnected: json.whopConnected ?? false,
-                  cancelAtPeriodEnd: json.cancelAtPeriodEnd ?? false,
-                  currentPeriodEnd: json.currentPeriodEnd ?? null,
-                });
+                setData(toSubscriptionData(json));
                 setIsPolling(false);
                 resolve(newTier);
                 return;
@@ -120,6 +144,12 @@ export function useSubscription() {
     isTrial: data?.isTrial ?? false,
     trialEndsAt: data?.trialEndsAt ?? null,
     trialDaysRemaining,
+    usage: data?.usage ?? null,
+    // The subscription row's own fields. BillingSection used to fetch /api/subscription a
+    // SECOND time just to read these three — one hook, one fetch, one shape.
+    whopConnected: data?.whopConnected ?? false,
+    cancelAtPeriodEnd: data?.cancelAtPeriodEnd ?? false,
+    currentPeriodEnd: data?.currentPeriodEnd ?? null,
     isLoading,
     error,
     refetch,
