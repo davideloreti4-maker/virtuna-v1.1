@@ -109,7 +109,10 @@ function formatDuration(s: number): string {
 
 /** Normalised view-model — the shared spine, filled per type from real snapshot fields. */
 interface CardVM {
+  /** Content-type eyebrow only (Hook / Idea / Script / …) — never a segment or marketing line. */
   kicker: string;
+  /** Audience/segment or short content detail — secondary muted tag, not the ALL-CAPS kicker. */
+  segment?: string;
   bandColor?: string;
   rank?: number;
   heroPrefix?: string; // e.g. "Lever →" (Read)
@@ -127,8 +130,10 @@ function buildVM(item: SavedItem): CardVM {
   switch (item.item_type) {
     case "hook": {
       const band = sv(snap, "band");
+      const archetype = sv(snap, "audienceArchetype");
       return {
-        kicker: sv(snap, "audienceArchetype") || "Hook",
+        kicker: TYPE_LABEL.hook,
+        segment: archetype || undefined,
         bandColor: BAND_TONE[band],
         rank: nv(snap, "rank"),
         hero: sv(snap, "hookLine") || item.title || "Hook",
@@ -143,7 +148,7 @@ function buildVM(item: SavedItem): CardVM {
       const angle = sv(snap, "angle");
       const fits = sv(snap, "whyItFits");
       return {
-        kicker: "Made for your audience",
+        kicker: TYPE_LABEL.idea,
         bandColor: BAND_TONE[band],
         hero: sv(snap, "title") || item.title || "Idea",
         why: [angle, fits].filter(Boolean).join(" — ") || undefined,
@@ -157,7 +162,8 @@ function buildVM(item: SavedItem): CardVM {
       const beats = Array.isArray(snap.beats) ? (snap.beats as Snap[]) : [];
       const opener = sv(snap, "openingBeatSeed") || (beats[0] ? sv(beats[0], "content") : "");
       return {
-        kicker: "Script · opener only",
+        kicker: TYPE_LABEL.script,
+        segment: "Opener only",
         bandColor: BAND_TONE[band],
         hero: opener || item.title || "Script",
         proof: band
@@ -171,8 +177,10 @@ function buildVM(item: SavedItem): CardVM {
       const band = sv(lead, "band");
       const lever = sv(lead, "lever");
       const persona0 = Array.isArray(lead.personas) ? (lead.personas as Snap[])[0] : undefined;
+      const audienceName = sv(lead, "name");
       return {
-        kicker: sv(lead, "name") || "The Read",
+        kicker: TYPE_LABEL.read,
+        segment: audienceName || undefined,
         bandColor: BAND_TONE[band],
         heroPrefix: lever ? "Lever →" : undefined,
         hero: lever || sv(lead, "interpretation") || item.title || "Read",
@@ -198,7 +206,7 @@ function buildVM(item: SavedItem): CardVM {
       const views = sv(snap, "views") || (viewsRaw != null ? formatCount(viewsRaw) : "");
       const durRaw = nv(snap, "durationSeconds");
       return {
-        kicker: "Outlier",
+        kicker: TYPE_LABEL.outlier,
         hero: sv(snap, "caption") || item.title || "Outlier",
         measured: { mult: mult || undefined, views: views || undefined },
         coverUrl: sv(snap, "coverUrl") || undefined,
@@ -223,12 +231,12 @@ function ProofChip({
   band,
   fraction,
   quote,
-  compact,
 }: {
   band: string;
   fraction: string;
   quote?: string;
-  compact: boolean;
+  /** @deprecated Kept for call-site compat; quote visibility is present-or-omit only. */
+  compact?: boolean;
 }) {
   const tone = BAND_TONE[band];
   const m = fraction.match(/(\d+)\s*\/\s*(\d+)/);
@@ -254,11 +262,12 @@ function ProofChip({
           </span>
         )}
       </div>
-      {!compact && quote && (
+      {/* Quote — same position always; omit the row entirely when absent. */}
+      {quote ? (
         <p className="line-clamp-1 border-l-2 border-white/[0.10] pl-2.5 text-[12px] italic leading-snug text-foreground/70">
           &ldquo;{quote}&rdquo;
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -316,6 +325,23 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
 
   const onForward = () => void handleForward();
   const forwardLabel = launching ? "Launching…" : forward?.label ?? "Use in thread →";
+
+  /** Shared CTA treatment — same weight/color/icon for card + row so the action column scans. */
+  const forwardCta = (
+    <button
+      type="button"
+      onClick={onForward}
+      disabled={launching}
+      className={cn(
+        "inline-flex items-center gap-1 whitespace-nowrap text-[12.5px] font-semibold text-foreground-secondary transition-[color,gap] hover:gap-1.5 hover:text-foreground",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 disabled:opacity-60",
+      )}
+      aria-label={`${forwardLabel} — ${TYPE_LABEL[item.item_type]}`}
+    >
+      {forwardLabel}
+      {!launching && <ArrowRight size={13} weight="bold" aria-hidden="true" />}
+    </button>
+  );
 
   // en-US pinned: `undefined` takes the ambient OS/browser locale, so SSR and
   // non-English machines rendered "29. Juni" while the product voice is English.
@@ -392,6 +418,12 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] text-foreground-muted">
             <span>{TYPE_LABEL[item.item_type]}</span>
+            {vm.segment ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span className="truncate">{vm.segment}</span>
+              </>
+            ) : null}
             {meta && (
               <>
                 <span aria-hidden="true">·</span>
@@ -401,14 +433,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={onForward}
-            disabled={launching}
-            className="hidden items-center gap-1 whitespace-nowrap text-[12.5px] font-medium text-foreground-secondary transition-colors hover:text-foreground group-hover:inline-flex"
-          >
-            {forwardLabel}
-          </button>
+          {forwardCta}
           <span className="w-[52px] text-right text-[11.5px] tabular-nums text-foreground-muted">{timestamp}</span>
           {removeDialog}
         </div>
@@ -446,10 +471,10 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
         </div>
       )}
       <div className="flex flex-col gap-2.5 p-4">
-        {/* Eyebrow — type icon + kicker (band dot) ............ rank + remove */}
+        {/* Eyebrow — content-type kicker (ALL-CAPS) · optional segment tag · rank + remove */}
         <div className="flex items-center justify-between gap-2">
-          <span className="flex min-w-0 items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-foreground-muted">
-            <TypeIcon size={13} className="shrink-0" />
+          <span className="flex min-w-0 items-center gap-2">
+            <TypeIcon size={13} className="shrink-0 text-foreground-muted" aria-hidden="true" />
             {vm.bandColor && (
               <span
                 className="h-[6px] w-[6px] shrink-0 rounded-full"
@@ -457,7 +482,14 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
                 aria-hidden="true"
               />
             )}
-            <span className="truncate">{vm.kicker}</span>
+            <span className="shrink-0 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-foreground-muted">
+              {vm.kicker}
+            </span>
+            {vm.segment ? (
+              <span className="min-w-0 truncate rounded-md bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium normal-case tracking-normal text-foreground-muted">
+                {vm.segment}
+              </span>
+            ) : null}
           </span>
           <span className="flex shrink-0 items-center gap-1.5">
             {vm.rank != null && (
@@ -499,19 +531,7 @@ export function SavedItemCard({ item, variant = "card" }: SavedItemCardProps) {
       {/* Footer — date + forward action */}
       <div className="flex items-center justify-between gap-2 border-t border-white/[0.06] px-4 py-2.5">
         <span className="text-[11.5px] tabular-nums text-foreground-muted">{timestamp}</span>
-        <button
-          type="button"
-          onClick={onForward}
-          disabled={launching}
-          className={cn(
-            "inline-flex items-center gap-1 text-[12.5px] font-semibold text-foreground-secondary transition-[color,gap] hover:gap-1.5 hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 disabled:opacity-60",
-          )}
-          aria-label={`${forwardLabel} — ${TYPE_LABEL[item.item_type]}`}
-        >
-          {forwardLabel}
-          {!launching && <ArrowRight size={13} weight="bold" />}
-        </button>
+        {forwardCta}
       </div>
     </div>
   );
