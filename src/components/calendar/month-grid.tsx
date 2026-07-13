@@ -76,7 +76,7 @@ export function MonthGrid({
           const planned = Boolean(post);
           const isToday = day === todayDay;
           const isRec = placing && recSet.has(day);
-          const isWeekend = (lead + day - 1) % 7 >= 5; // Mon-first: 5=Sat, 6=Sun
+          const isWeekend = (lead.length + day - 1) % 7 >= 5; // Mon-first: 5=Sat, 6=Sun
 
           return (
             <div
