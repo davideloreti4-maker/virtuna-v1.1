@@ -323,7 +323,7 @@ export function BrainView({
           the flex row and the grounded pane came out ~2× the text one — which put the grounded card
           back over its container (measured: 530px of content in a 516px box) while the simulated one
           fit. The card has to fit in BOTH modes, and the two should not be different shapes. */}
-      <div className="mt-2.5 flex h-[76px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
+      <div className="mt-2.5 flex h-[72px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
             reads as a broken image. It gets a plain transport button, and the words — which ARE
@@ -375,7 +375,7 @@ export function BrainView({
           )
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col justify-between gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
           {/* The concept landing word by word, on the scan clock — or the video's own name. */}
           {videoSrc ? (
             <p className="line-clamp-2 text-[11.5px] leading-[1.4] text-[var(--color-foreground-secondary)]">
@@ -421,7 +421,10 @@ export function BrainView({
           const lead = id === (hovered ?? hottest);
           return (
             <div key={id}>
-              <div className="flex items-baseline justify-between gap-1">
+              {/* Label and value read as ONE unit, set tight. Pushed apart with justify-between they
+                  drifted to opposite ends of an 80px column and the eye had to travel to pair them
+                  back up — four times over, on the least important row of the card. */}
+              <div className="flex items-baseline gap-1.5">
                 <span
                   className={
                     'truncate text-[9.5px] leading-none ' +
@@ -432,8 +435,8 @@ export function BrainView({
                 </span>
                 <span
                   className={
-                    'shrink-0 text-[10px] leading-none tabular-nums ' +
-                    (lead ? 'text-[var(--cream-primary)]' : 'text-[var(--color-foreground-muted)]')
+                    'shrink-0 text-[10.5px] leading-none tabular-nums ' +
+                    (lead ? 'text-[var(--cream-primary)]' : 'text-[var(--color-foreground-secondary)]')
                   }
                 >
                   {v.toFixed(2)}
@@ -487,6 +490,8 @@ interface Trace {
   axis: number[];
   /** The scan time of the strongest predicted response — the encounter's characteristic frame. */
   peakT: number;
+  /** The y-gain that makes this encounter's biggest deflection fill the box (see TRACE_GAIN_MAX). */
+  gain: number;
 }
 
 /**
@@ -526,20 +531,24 @@ function buildTrace(input: DriveInput, duration: number): Trace {
       peakT = t;
     }
   }
-  return { axis, peakT };
+
+  // Auto-range, ANCHORED AT ZERO. The axis is a difference of two 0..1 networks, so ±1 is its
+  // arithmetic limit but nowhere near its practical range — measured, it lives inside ±0.55, and a
+  // fixed ±1 scale drew the whole story as a flat ripple in the middle of an empty box. Scaling so
+  // this encounter's biggest deflection fills the box restores the shape.
+  //
+  // What must NOT move is the ZERO LINE: the sign is the meaning (above it the room is with you,
+  // below it they are gone), so the axis is auto-ranged in AMPLITUDE only, never re-centred. The
+  // floor stops a near-silent encounter from being amplified into false drama.
+  const maxAbs = Math.max(TRACE_MIN_RANGE, ...axis.map(Math.abs));
+  return { axis, peakT, gain: TRACE_GAIN_MAX / maxAbs };
 }
 
-/**
- * Where the zero line sits in the trace's 0..10 user space, and the gain applied to the axis.
- *
- * The gain is set so that ±0.75 fills the box, NOT ±1. The axis is a difference of two 0..1
- * networks, so ±1 is its arithmetic limit but nowhere near its practical range: measured, it lives
- * inside ±0.55. Scaling to the arithmetic limit wasted two thirds of the box and drew the whole
- * story as a flat ripple. Anything beyond ±0.75 simply clips at the edge, which has not been
- * observed and would in any case be honest — a pegged meter reads as pegged.
- */
+/** The trace's 0..10 user space: zero in the middle, and the most a deflection may reach from it. */
 const TRACE_ZERO = 5;
-const TRACE_GAIN = 6.1;
+const TRACE_GAIN_MAX = 4.4;
+/** Below this, an encounter is flat and is DRAWN flat — auto-range must not manufacture drama. */
+const TRACE_MIN_RANGE = 0.25;
 
 /**
  * The trace: engagement over the whole encounter, filled sage where the room is with you and coral
@@ -552,7 +561,7 @@ const TRACE_GAIN = 6.1;
 function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reducedMotion: boolean }) {
   const n = trace.axis.length;
   const pts = trace.axis
-    .map((v, i) => `${((i / (n - 1)) * 100).toFixed(2)},${(TRACE_ZERO - v * TRACE_GAIN).toFixed(2)}`)
+    .map((v, i) => `${((i / (n - 1)) * 100).toFixed(2)},${(TRACE_ZERO - v * trace.gain).toFixed(2)}`)
     .join(' L');
   // Closed to the ZERO LINE (not the floor), so the fill reads as a signed deflection rather than a
   // quantity — which is what a diverging axis is.
