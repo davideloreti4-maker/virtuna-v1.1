@@ -45,9 +45,6 @@ import { TodaysPlan } from "./sections/todays-plan";
 import { QuickActions } from "./sections/quick-actions";
 import { TheLoop } from "./sections/the-loop";
 import { FirstRun } from "./sections/first-run";
-// Seam 4 GRAFT — the Room-owned embeddable composer atom (was the surfaces `./embedded-composer`
-// stub, now retired). One composer atom, Room-owned, so /start and /home never drift.
-import { EmbeddedComposer } from "@/components/app/home/embedded-composer";
 import { RoomDrawer, type RoomFocus } from "./room-drawer";
 // The loop's "recalibrate" step — propose→confirm nudge, self-gated (renders null below the
 // server confidence gate). Mounted read-only here; it owns its own fetch (react-query).
@@ -170,8 +167,6 @@ export function StartPage({
   const [selectedAudienceId] = useState<string | null>(
     initialSelectedAudienceId,
   );
-  const [verb, setVerb] = useState<Verb>("Make");
-  const [seed, setSeed] = useState<{ text: string; nonce: number } | null>(null);
   const [focus, setFocus] = useState<RoomFocus | null>(null);
   const [, setReacting] = useState(false);
 
@@ -236,24 +231,25 @@ export function StartPage({
     router.push(buildThreadLaunchHref({ input, verb: launchVerb, run: true }));
   };
 
-  const seedComposer = (text: string) =>
-    setSeed({ text, nonce: (seed?.nonce ?? 0) + 1 });
-
   const handleRemix = (outlier: LiveOutlierCard) =>
     launchThread(`Remix ${outlier.handle} — ${outlier.caption}`, "Make");
 
   const handleDevelop = (f: RoomFocus) => launchThread(f.title, "Make");
 
+  // /start is a glance page — creation lives on /home. Quick actions (and the plan's "+")
+  // open the real /home composer with the chosen verb pre-selected + field focused
+  // (run:false = pre-fill only, the user's own send is still the fire). No on-page composer.
   const handleQuickAction = (action: QuickActionData) => {
-    setVerb(action.verb);
-    seedComposer(""); // focus the composer on the chosen verb
+    router.push(buildThreadLaunchHref({ input: "", verb: action.verb, run: false }));
   };
+  const openComposerOnHome = (openVerb: Verb = "Make") =>
+    router.push(buildThreadLaunchHref({ input: "", verb: openVerb, run: false }));
 
   return (
     <div className="relative min-h-full text-foreground">
       {/* pt-16 on mobile clears the floating hamburger (fixed top-4, ~50px tall) so it never
           overlaps the greeting; md: (≥768, where the sidebar is persistent) drops back to pt-10. */}
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-40 pt-16 md:pt-10 lg:px-6">
+      <div className="mx-auto w-full max-w-[1180px] px-4 pb-16 pt-16 md:pt-10 lg:px-6">
         {firstRun ? (
           <FirstRun
             // The real connect = build a personal audience from the creator's @handle
@@ -369,7 +365,7 @@ export function StartPage({
                   year={calendarMonth.year}
                   monthIndex={calendarMonth.monthIndex}
                   onOpen={openRoom}
-                  onAdd={() => seedComposer("")}
+                  onAdd={() => openComposerOnHome()}
                 />
               </div>
               <div className="rv-in" style={{ animationDelay: "0.32s" }}>
@@ -380,27 +376,11 @@ export function StartPage({
         )}
       </div>
 
-      {/* Docked embedded composer — pinned bottom, floats over the page. The backdrop is
-          transparent (only a short gradient fade above) so the page content stays visible
-          behind/under the composer instead of being masked by a solid block. The empty area
-          is click-through (pointer-events-none) so taps land on the content beneath; the
-          composer box itself re-enables pointer events. */}
-      <div className="pointer-events-none sticky bottom-0 z-30">
-        <div className="h-6 bg-gradient-to-t from-[color:var(--color-background)] to-transparent" />
-        <div className="px-4 pb-4">
-          <div className="pointer-events-auto mx-auto w-full max-w-[720px] lg:max-w-[680px]">
-            <EmbeddedComposer
-              verb={verb}
-              onVerbChange={setVerb}
-              seed={seed}
-              onLaunch={launchThread}
-              onAttach={() =>
-                toast({ variant: "default", title: "Attach", description: "Drop a video to Test, or a reference to steer." })
-              }
-            />
-          </div>
-        </div>
-      </div>
+      {/* No docked composer on /start (2026-07-13): this is a glance/briefing page, not a
+          creation surface. Creation lives on /home — reached via "New thread", the sidebar,
+          every idea/outlier card (a door), and Quick actions / plan "+" (which now route to
+          /home with the composer focused). Removing the float also retires the overlap + the
+          full-width shadow band that only existed to soften it. */}
 
       <RoomDrawer
         focus={focus}
