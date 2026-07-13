@@ -151,8 +151,7 @@ export function AnalyticsView({
 
       {/* Zone · the numbers — real account metrics over the selected range */}
       <section className="rounded-2xl bg-surface-sunken px-4 py-4">
-        <div className="mb-3.5 flex flex-wrap items-center justify-between gap-2">
-          <p className="font-mono text-[10px] text-foreground-muted">your account, over time — real numbers</p>
+        <div className="mb-3.5 flex flex-wrap items-center justify-end gap-2">
           <div className="inline-flex rounded-lg border border-border bg-surface-elevated p-0.5" role="tablist" aria-label="Time range">
             {RANGES.map((r) => (
               <button
@@ -192,7 +191,7 @@ export function AnalyticsView({
                     <div className="mt-[7px] text-[23px] font-semibold leading-none tracking-[-0.02em] text-foreground [font-variant-numeric:tabular-nums]">
                       {m.value}
                     </div>
-                    {hasTrend ? (
+                    {hasTrend && (
                       <>
                         <Sparkline points={m.spark} up={m.up} />
                         <div className="mt-[7px] flex items-center gap-1 font-mono text-[9px]" style={{ color: m.up ? "var(--color-positive)" : "var(--color-foreground-muted)" }}>
@@ -201,10 +200,6 @@ export function AnalyticsView({
                           {m.deltaPct && m.delta !== "—" && <span className="text-foreground-muted">· {m.delta}</span>}
                         </div>
                       </>
-                    ) : (
-                      <div className="mt-[9px] font-mono text-[9px] leading-none text-foreground-muted">
-                        trend builds daily
-                      </div>
                     )}
                   </div>
                 );
