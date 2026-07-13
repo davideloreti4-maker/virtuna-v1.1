@@ -24,8 +24,9 @@ export function PricingTeaser({ className }: { className?: string }) {
       {/* Eyebrow kicker + sans-serif heading — serif is voice-only (D-13) */}
       <SectionHeading eyebrow="Pricing" title="Simple pricing" />
       <p className="mt-4 max-w-[60ch] text-base text-foreground-secondary">
-        Every plan starts at {TRIAL.price} for {TRIAL.days} days. Cancel before it
-        renews and you&apos;ve spent a dollar.
+        Every plan starts at {TRIAL.price} for {TRIAL.days} days — {TRIAL.readings}{" "}
+        Readings to judge it on your own videos. Cancel before it renews and you&apos;ve
+        spent a dollar.
       </p>
 
       {/* 3-up grid — side by side on md+, stacked on mobile (D-08). */}

@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
 import { verifyWebhookSignature } from "@/lib/whop/webhook-verification";
-import { mapWhopProductToTier } from "@/lib/whop/config";
+import { mapWhopProductToTier, isTrialPlanId } from "@/lib/whop/config";
+import { TRIAL } from "@/lib/pricing";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
 
 const log = createLogger({ module: "webhook/whop" });
+
+/** The trial window a $1 purchase opens: `TRIAL.days` from the moment it is granted. */
+function trialWindowFrom(now: Date) {
+  const ends = new Date(now.getTime() + TRIAL.days * 24 * 60 * 60 * 1000);
+  return {
+    trial_started_at: now.toISOString(),
+    trial_ends_at: ends.toISOString(),
+    is_trial: true, // denormalised flag; the window is the truth the quota check reads
+  };
+}
 
 export async function POST(request: Request) {
   try {
@@ -55,6 +66,34 @@ export async function POST(request: Request) {
 
         const tier = mapWhopProductToTier(data.product_id);
 
+        // TRIAL POOL. A $1 SKU grants the plan's TIER but only 5 Readings (TRIAL.readings),
+        // so the subscription has to remember when the trial runs.
+        //
+        // The window is stamped ONCE, on the first grant of a given membership. A trial SKU
+        // renews into its plan price under the SAME plan id, and Whop re-sends went_valid on
+        // renewal — re-stamping there would hand the customer a fresh 5-Reading trial (and
+        // re-cap a now-paying Pro at 5) every billing cycle. So: only stamp when this
+        // membership has no window yet; leave it alone forever after.
+        const isTrial = isTrialPlanId(data.product_id);
+        const now = new Date();
+
+        const { data: existing } = await supabase
+          .from("user_subscriptions")
+          .select("whop_membership_id, trial_started_at")
+          .eq("user_id", supabaseUserId)
+          .maybeSingle();
+
+        const sameMembership = existing?.whop_membership_id === data.id;
+        const alreadyStamped = sameMembership && Boolean(existing?.trial_started_at);
+
+        const trialFields = isTrial
+          ? alreadyStamped
+            ? {} // trial already running (or already converted) — never re-open it
+            : trialWindowFrom(now)
+          : // A full-price plan: not a trial, and any window from a previous membership must
+            // not linger and cap a paying customer at 5.
+            { trial_started_at: null, trial_ends_at: null, is_trial: false };
+
         const { error } = await supabase
           .from("user_subscriptions")
           .upsert(
@@ -66,7 +105,8 @@ export async function POST(request: Request) {
               virtuna_tier: tier,
               status: "active",
               current_period_end: data.renewal_period_end,
-              updated_at: new Date().toISOString(),
+              updated_at: now.toISOString(),
+              ...trialFields,
             },
             { onConflict: "user_id" }
           );

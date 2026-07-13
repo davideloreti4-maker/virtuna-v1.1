@@ -28,10 +28,24 @@ export const TRIAL = {
   price: "$1",
   /** How long the trial runs before it converts to the plan's monthly price. */
   days: 3,
+  /**
+   * THE TRIAL POOL — owner-locked 2026-07-13. A $1 trial buys at most **5 Readings**, on
+   * EVERY plan, regardless of the plan's monthly allowance.
+   *
+   * This is leech protection, and it is the whole reason the trial is safe to offer on all
+   * three plans: without it, $1 would buy 150 Pro Readings (~$22 of engine spend) or an
+   * unbounded number on Studio. The trial's job is to prove the product on a few real
+   * videos, not to hand over a month of capacity for a dollar.
+   */
+  readings: 5,
   /** The badge on every pricing card. */
   badge: "$1 for 3 days",
-  /** The risk-reducer under every CTA. Says exactly what happens on day 4. */
-  microcopy: "$1 for 3 days, then the plan price — cancel anytime",
+  /**
+   * The risk-reducer under every CTA. It has to carry BOTH surprises a buyer could
+   * otherwise hit: the pool is capped at 5 Readings, and it renews at the plan price.
+   * Burying either one is how you earn chargebacks.
+   */
+  microcopy: "$1 for 3 days · 5 Readings, then the plan price — cancel anytime",
 } as const;
 
 export interface Plan {
@@ -140,8 +154,26 @@ export function readingsLabel(plan: Plan): string {
  * The monthly Reading allowance for a persisted tier — the number the quota check
  * enforces. `free` (never subscribed / lapsed / cancelled) gets nothing: the $1 trial
  * is the way in, so there is no free tier to farm.
+ *
+ * NOTE: this is the allowance for a BILLED month. Someone inside their $1 trial is capped
+ * at `TRIAL.readings` instead, whatever plan they picked — see `readingAllowanceFor`.
  */
 export function readingAllowance(tier: string): number | null {
   if (isPaidPlanId(tier)) return getPlan(tier).readingsPerMonth;
   return 0;
+}
+
+/**
+ * The allowance that actually applies right now: the trial pool while the $1 trial is
+ * running, the plan's monthly allowance once it has converted.
+ *
+ * The trial cap wins even on Studio ("unlimited"), which is the point — `null` (unlimited)
+ * must never leak into a trial.
+ */
+export function readingAllowanceFor(
+  tier: string,
+  opts: { inTrial: boolean }
+): number | null {
+  if (opts.inTrial) return TRIAL.readings;
+  return readingAllowance(tier);
 }

@@ -400,17 +400,26 @@ export async function POST(request: Request) {
         tier: quota.tier,
         used: quota.used,
         limit: quota.limit,
+        inTrial: quota.inTrial,
       });
+
+      // Three different dead-ends, three different things to say. A trialling customer has
+      // NOT hit their plan's limit — they've spent the trial pool, and the honest next step
+      // is "your plan starts on day 4", not "upgrade".
+      const message = quota.inTrial
+        ? `Your $1 trial includes ${quota.limit} Readings. Your full plan allowance starts when the trial converts.`
+        : quota.limit === 0
+          ? "Start a plan to run a Reading."
+          : `You've used all ${quota.limit} Readings on your plan this month.`;
+
       return Response.json(
         {
           error: "reading_quota_exceeded",
-          message:
-            quota.limit === 0
-              ? "Start a plan to run a Reading."
-              : `You've used all ${quota.limit} Readings on your plan this month.`,
+          message,
           tier: quota.tier,
           used: quota.used,
           limit: quota.limit,
+          inTrial: quota.inTrial,
         },
         { status: 402 } // Payment Required — the client turns this into the upgrade prompt.
       );

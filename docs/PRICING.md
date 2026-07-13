@@ -15,6 +15,24 @@ quota check all move together. Nothing else may hardcode a price.
 **Every plan starts at $1 for 3 days**, then renews at the plan price. Adopted from
 makeugc.ai's "Start for $1" (a short *paid* trial that converts, not a free trial).
 
+### The trial pool — 5 Readings, every plan
+
+A $1 trial buys **at most 5 Readings**, whatever plan was picked. This is the leech guard, and
+it is what makes the trial safe to offer on all three plans: without it, $1 would buy 150 Pro
+Readings (~$22 of engine spend at ~$0.15/Reading) or an *unbounded* number on Studio.
+
+- The pool is counted from the **moment the trial starts**, not from the 1st of the month.
+- The cap **overrides Studio's "unlimited"** — `null` (uncounted) must never leak into a trial.
+- The plan's real allowance takes over the moment the trial converts.
+- Both the cap and the renewal are stated on every card, in the FAQ and under every CTA. A
+  trial that hides either one is what chargebacks are made of.
+
+Mechanically: the Whop webhook stamps `trial_started_at` / `trial_ends_at` when the purchased
+plan is one of the `WHOP_TRIAL_PLAN_ID_*` SKUs, and the quota check reads that window. The
+window is stamped **once per membership** — a trial SKU renews into its plan price under the
+same plan id, so re-stamping on renewal would hand out a fresh 5-Reading trial (and re-cap a
+now-paying Pro at 5) every billing cycle.
+
 There is **no free plan**. `free` is a tier id, but it is not something you can buy: it is the
 state of someone who has never started a trial, or whose subscription lapsed. Its Reading
 allowance is **0** — the $1 trial is the way in.
@@ -28,11 +46,26 @@ allowance is **0** — the $1 trial is the way in.
 
 A **Reading** = one row in `analysis_results` = one full simulation of one video/concept. That
 is the unit the customer is charged for, so it is the unit we count (`src/lib/billing/quota.ts`).
-The allowance resets on the **1st of the calendar month, UTC**.
 
-The check runs in `POST /api/analyze` *before* any engine spend, and returns **402** with an
-`reading_quota_exceeded` payload when the plan is spent. It **fails open**: if the count query
-errors, the Reading is allowed — a flaky database must never cost a paying customer.
+Two windows, and **the trial wins**:
+
+| Situation | Allowance | Counted from |
+|---|---|---|
+| Inside the $1 trial | **5** (every plan) | the instant the trial started |
+| After it converts | the plan's monthly allowance | the 1st of the calendar month, UTC |
+
+The check runs in `POST /api/analyze` *before* any engine spend, and returns **402** with a
+`reading_quota_exceeded` payload when the allowance is spent (with a different message for a
+trialling customer — they have not hit their plan's limit, their plan simply hasn't started).
+It **fails open**: if the count query errors, the Reading is allowed — a flaky database must
+never cost a paying customer.
+
+### Known simplification (next session)
+
+The monthly allowance resets on the **calendar month**, not on the customer's billing date. So
+someone who subscribes on the 28th gets a fresh allowance three days later. Correct behaviour is
+to reset on `current_period_end`, which the subscription row already stores — see the usage-system
+work in `docs/HANDOFF-2026-07-13-pricing.md`.
 
 ## ⛔ What is NOT live yet — the owner's four steps
 
@@ -56,9 +89,12 @@ would lock out every existing user (all of whom are tier `free`, allowance 0).
    buyer is charged the plan price, never less than the button promised); a missing **plan** id
    makes checkout return 503 rather than silently granting access.
 
-2. **Run the migration** `supabase/migrations/20260713120000_pricing_studio_tier.sql` — it
-   widens the tier CHECK constraint so the webhook can write `studio`. Additive; no rows change.
-   Without it, a Studio purchase's webhook **will fail to persist**.
+2. **Run both migrations** — additive, no rows change:
+   - `20260713120000_pricing_studio_tier.sql` — widens the tier CHECK so the webhook can write
+     `studio`. Without it, a Studio purchase's webhook **will fail to persist**.
+   - `20260713140000_trial_window.sql` — adds `trial_started_at` (and adopts the long-dead
+     `is_trial` / `trial_ends_at` columns). Without it, the **5-Reading trial cap cannot be
+     enforced** and a $1 trial grants the plan's full monthly allowance.
 
 3. **Flip the meter on**: `BILLING_ENFORCE_QUOTA=true`. Until then the quota is computed and
    logged but never blocks — so you can watch real usage against the limits before the gate
