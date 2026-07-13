@@ -20,6 +20,80 @@ flagship **video Read** (`/analyze`). The thread block types they render (SSOT `
 `account-read`, `outlier-grid` (Discover/Explore), `band` + `personas` (test output), `persona-chat-turn`,
 `markdown`. The video Read is a separate renderer system (`src/components/reading/**`), NOT a thread block.
 
+## 0.5 THE CARD CONTRACT (canon — 2026-07-13, `lane/explore-a`)
+
+> **Read this before touching any card.** §1 below is the design *language* (tone, color, matte).
+> This is the *structure* every card must satisfy. It is not new taste — it is the hook card
+> (`hook-card-block.tsx`) written down, because that card is the bar and the others drifted from it.
+> Cards drifted precisely because each was built alone with nothing to conform to. Conform to this.
+
+**The spine, in order.** A card may omit a row it has no data for; it may not reorder them.
+
+1. **Eyebrow** — quiet uppercase kicker + a 6px dot, left. One meta item right (rank, or the trust
+   tier). Provenance does NOT go here.
+2. **Hero** — the deliverable, `text-[17px] font-semibold`. The thing the user came for reads FIRST.
+   If your card's payoff is a sentence, that sentence is the hero — not a label, not a name, not a
+   score. (Profile Read had its payoff sitting third at body weight. That was the whole bug.)
+3. **Receipt** (`<ProofReceipt>`) — when the output derives from a real video. See §0.5b.
+4. **Why-teaser** — one clamped line of the mechanism.
+5. **Proof unit** (`<ProofUnit>`) — band + fraction + lead quote + the visible "See the room →".
+6. **ONE disclosure** — `<CaretToggle>` + "Why & details", with the model tag demoted onto that
+   line (`· SIM-1 Flash`). Provenance is a footnote, never a headline. If you find yourself adding a
+   second labelled section, put it in here instead.
+7. **ONE action bar** — cream primary (`--color-action`, the forward chain step) + `<SaveAffordance
+   className="ml-auto">`. Save is an icon in the bar, never a naked row of its own.
+
+**Type + geometry.** Section labels are `text-[11px] uppercase tracking-[0.05em] text-foreground-muted`
+— NOT `10px`/`0.14em` (that was the old stack). Radius comes from the **token scale
+4/6/8/12/16/20/24** (`rounded-md` = 8, `rounded-lg` = 12, `rounded-xl` = 16). **Never write
+`rounded-[Npx]`.** Every arbitrary radius in the thread (`10px`, `7px`, `5px`, `11px`, `18px`) was
+drift, and the same element — a source thumbnail — ended up with three different corners.
+
+**A stacked ladder of equal-weight ALL-CAPS labels is the failure mode.** If a card has four or five
+of them, it has no hierarchy and reads as a spec sheet. Promote one thing; collapse the rest into §6.
+
+### 0.5b The honesty spine (do NOT paper over this to make cards match)
+
+The receipt is shared, but **what it claims is not**. Fields we cannot know stay `null`, and the
+renderer omits them rather than inventing them:
+
+- **"Proven structure" + the fit glyph (● ◐ ○) are claims RETRIEVAL earns** — an outlier verified
+  against a follower baseline, scored against your audience. Grounded hook/idea/script sources have
+  this. **A Remix source does not**: the user pasted that video, nothing measured it. So remix passes
+  its own eyebrow, and `multiplier` / `baselineLabel` / `fitLabel` are null (`fitLabel` is nullable
+  for exactly this reason). It shows the creator, the reach, a link back — and stops.
+- **No handle → no receipt.** An unattributable source is not a receipt (`buildProofFromSource`'s gate).
+- **Quotes**: components own the typographic marks; model text goes through `stripWrappingQuotes()`
+  (`@/lib/utils`) or you get `""doubled quotes""`. Eleven sites do this.
+- **Verbatims must not repeat.** Two audiences × one archetype can yield the identical line; the wall
+  merges on `(quote, archetype)` and tags BOTH audiences. A focus group that repeats itself
+  word-for-word reads as fabricated — see `collectQuotes` in `verbatim-wall.tsx`.
+- Bands only (Strong/Mixed/Weak) + fraction. **Never a 0–100 score** — except the video Read's engine
+  score, the one place a number is honest.
+
+### 0.6 Compliance status (2026-07-13)
+
+| Card | Block | Status |
+|---|---|---|
+| Hook | `hook-card` | ✅ **THE BAR.** Copy this. |
+| Idea | `idea-card` | ✅ conforms |
+| Script | `script-card` | ✅ conforms (has receipt; not re-audited visually) |
+| Remix | `remix-card` | ✅ **FIXED 2026-07-13** — was an anonymous thumbnail; now an attributed receipt |
+| Profile Read | `profile-read` | ✅ **FIXED 2026-07-13** — was 5 stacked labels + doubled quotes |
+| The Read | `multi-audience-read` | ✅ **FIXED 2026-07-13** — had NO card container; wall repeated itself |
+| Test / Reading | `reading/**` | ❌ **UNAUDITED.** Off-scale `18px`/`11px` radius; serif quotes where every other surface uses Inter italic. The biggest surface, only ever seen downscaled. |
+| Simulate | `reaction-distribution` | ❌ unaudited |
+| Predict | `prediction-gauge` | ❌ unaudited |
+| Account Read | `account-read` | ❌ unaudited |
+| Explore | `outlier-grid` | ❌ unaudited |
+| Ask | (`SkillResultCard`) | ❌ unaudited |
+| Band / Markdown | primitives | ❌ unaudited (low risk) |
+| **Personas** | `personas` | 🚫 **INVISIBLE — absent from `/dev/cards`.** Cannot be audited. |
+| **Persona chat** | `persona-chat-turn` | 🚫 **INVISIBLE — absent from `/dev/cards`.** Cannot be audited. |
+
+⚠️ **§2 below is now partly STALE** — it still describes The Read as painting a legacy coral panel
+(stripped) and Remix's real source video as a TODO (shipped). Trust §0.5 + the code.
+
 ## 1. The shared refined design language (applies to every card)
 
 1. **Flat matte** — NO inline inset-shine `boxShadow`. Resting cards = border (`white/[0.06]`) + tone only.
