@@ -76,6 +76,7 @@ export function MonthGrid({
           const planned = Boolean(post);
           const isToday = day === todayDay;
           const isRec = placing && recSet.has(day);
+          const isWeekend = (lead.length + day - 1) % 7 >= 5; // Mon-first: 5=Sat, 6=Sun
 
           return (
             <div
@@ -110,7 +111,11 @@ export function MonthGrid({
                     ? "cursor-pointer border-dashed border-[color:var(--color-accent)] bg-[color:var(--color-accent-soft)]"
                     : placing
                       ? "cursor-pointer border-border bg-[color:var(--color-surface-thread)] hover:border-border-hover"
-                      : "border-transparent hover:border-border hover:bg-[color:var(--color-surface-thread)]",
+                      : cn(
+                          "border-border hover:border-border-hover hover:bg-[color:var(--color-surface-thread)]",
+                          isWeekend ? "bg-white/[0.028]" : "bg-white/[0.012]",
+                        ),
+                isToday && "border-[color:var(--color-action)]/45",
               )}
             >
               <span className="flex items-center justify-between gap-1">
