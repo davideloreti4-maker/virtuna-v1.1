@@ -3,46 +3,70 @@ import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { PricingTeaser } from "../pricing-teaser";
+import { PLANS, TRIAL } from "@/lib/pricing";
 
 /**
  * CONVERT-01 Nyquist gate on <PricingTeaser>.
  *
- * Behaviors under test (D-08/D-09/D-10):
- *  - 2 tier names present: Starter + Pro.
- *  - Pro tier carries the "Most popular" highlight label.
- *  - Both CTAs route to /signup (at least 2 links with href="/signup").
- *  - Each card carries 3–4 bullets (total bullets 6–8 via data-testid="pricing-bullet").
- *  - No off-site links (D-10 static guard: every link href starts with "/" or "#").
+ * Re-cut 2026-07-13 for the owner-locked pricing: THREE paid plans (Creator $49 · Pro $99
+ * "Best value" · Studio $499), each startable for $1 for 3 days, and NO free plan on the
+ * page. The old gate asserted a free Starter tier and a $19 Pro — both gone.
  *
- * Wave-1 component MUST emit data-testid="pricing-bullet" on each bullet item.
- *
- * RED-by-design: module-not-found until pricing-teaser.tsx is built in Wave 1.
+ * The teaser is driven by the pricing SSOT, so these assertions read the SSOT too: the gate
+ * is "the page shows what we sell", not a second copy of the numbers that can drift from it.
+ * The numbers themselves are locked in `lib/__tests__/pricing.test.ts`.
  */
 describe("<PricingTeaser /> — CONVERT-01", () => {
-  it("renders Starter and Pro tier names", () => {
+  it("renders all three paid plans by their PUBLIC names", () => {
     render(<PricingTeaser />);
-    expect(screen.getByText(/starter/i)).toBeInTheDocument();
-    expect(screen.getByText(/pro/i)).toBeInTheDocument();
+    for (const plan of PLANS) {
+      expect(screen.getByText(plan.name)).toBeInTheDocument();
+      expect(screen.getByText(plan.price)).toBeInTheDocument();
+    }
   });
 
-  it("Pro card carries the 'Most popular' label", () => {
+  it("shows no free plan — the $1 trial is the way in", () => {
     render(<PricingTeaser />);
-    expect(screen.getByText(/most popular/i)).toBeInTheDocument();
+    // "Free" as a price or a plan name must not reappear: it is not what we sell.
+    expect(screen.queryByText(/^free$/i)).toBeNull();
+    expect(screen.queryByText(/no credit card/i)).toBeNull();
   });
 
-  it("both CTAs link to /signup (at least 2 links)", () => {
+  it("puts the '$1 for 3 days' trial on every card, and says what happens after", () => {
+    render(<PricingTeaser />);
+    expect(screen.getAllByText(TRIAL.badge)).toHaveLength(PLANS.length);
+
+    // The conversion must be stated on every card — a trial that hides its renewal is
+    // what customers file chargebacks over.
+    const microcopy = screen.getAllByText(TRIAL.microcopy);
+    expect(microcopy).toHaveLength(PLANS.length);
+    expect(TRIAL.microcopy).toMatch(/then the plan price/i);
+  });
+
+  it("marks exactly one plan as the best value (one CTA dominates)", () => {
+    render(<PricingTeaser />);
+    expect(screen.getAllByText(/best value/i)).toHaveLength(1);
+  });
+
+  it("routes every CTA to /signup", () => {
     const { container } = render(<PricingTeaser />);
     const signupLinks = Array.from(container.querySelectorAll("a")).filter(
       (a) => a.getAttribute("href") === "/signup"
     );
-    expect(signupLinks.length).toBeGreaterThanOrEqual(2);
+    expect(signupLinks.length).toBe(PLANS.length);
   });
 
-  it("renders 6–8 pricing bullets total (3–4 per card)", () => {
+  it("renders 3–4 bullets per card, led by the meter", () => {
     const { container } = render(<PricingTeaser />);
     const bullets = container.querySelectorAll('[data-testid="pricing-bullet"]');
-    expect(bullets.length).toBeGreaterThanOrEqual(6);
-    expect(bullets.length).toBeLessThanOrEqual(8);
+    expect(bullets.length).toBeGreaterThanOrEqual(PLANS.length * 3);
+    expect(bullets.length).toBeLessThanOrEqual(PLANS.length * 4);
+
+    // What they're buying is Readings — so that's the first line of every card.
+    // Exact strings, not regexes: /50 Readings/ also matches "150 Readings".
+    expect(screen.getByText("50 Readings a month")).toBeInTheDocument();
+    expect(screen.getByText("150 Readings a month")).toBeInTheDocument();
+    expect(screen.getByText("Unlimited Readings")).toBeInTheDocument();
   });
 
   it("contains no off-site links (D-10 static guard)", () => {

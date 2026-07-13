@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
+import { TRIAL } from "@/lib/pricing";
 import { AudienceCloudSkeleton } from "@/components/marketing/story/skeletons";
 
 interface FinalCtaBandProps {
@@ -85,14 +86,13 @@ export function FinalCtaBand({ className }: FinalCtaBandProps) {
             Coral is the lone accent on this surface — confined to the CTA. */}
         <div className="flex flex-col items-center gap-3">
           <Button asChild variant="primary" size="lg">
-            <Link href={SIGNUP_URL}>Try it free</Link>
+            <Link href={SIGNUP_URL}>Start for {TRIAL.price}</Link>
           </Button>
 
-          {/* D-20 risk-reducer microcopy — sits under the CTA, cream-muted,
-              zero visual weight so it supports without competing. */}
-          <p className="text-sm text-foreground-muted">
-            Free to start — no credit card
-          </p>
+          {/* D-20 risk-reducer microcopy — sits under the CTA, cream-muted, zero visual
+              weight so it supports without competing. It states the CONVERSION: there is no
+              free tier any more, so "free to start — no credit card" would be a lie. */}
+          <p className="text-sm text-foreground-muted">{TRIAL.microcopy}</p>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { Zap } from "lucide-react";
 import type { NumenTier } from "@/lib/whop/config";
+import { getPlan, isPaidPlanId } from "@/lib/pricing";
 import { Button } from "@/components/ui/button";
 
 interface UpgradeBannerProps {
@@ -10,7 +11,10 @@ interface UpgradeBannerProps {
 }
 
 export function UpgradeBanner({ requiredTier, onUpgrade }: UpgradeBannerProps) {
-  const tierLabel = requiredTier === "pro" ? "Pro" : "Starter";
+  // The PUBLIC plan name, from the pricing SSOT. This used to be
+  // `requiredTier === "pro" ? "Pro" : "Starter"`, which labelled BOTH Creator and Studio
+  // as "Starter" — a plan we do not sell.
+  const tierLabel = isPaidPlanId(requiredTier) ? getPlan(requiredTier).name : "a plan";
 
   return (
     <div className="rounded-lg border border-white/[0.06] bg-surface p-6 text-center">
