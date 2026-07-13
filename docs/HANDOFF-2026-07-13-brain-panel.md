@@ -1,12 +1,15 @@
 # Handoff — The Brain panel (Room's 3rd scale) · 2026-07-13
 
 **Worktree:** `~/virtuna-brain` · **Branch:** `feat/audience-brain-panel` (off `origin/main`, unpushed)
-**Commits:** `3c28a1a1` (first cut) → `3eccb5b3` (rebuild vs TRIBE v2) → `ab24b599` (the folded 3D cortex)
-**Status:** 🔴 **REJECTED — ROUND 3 (2026-07-13).** Owner: *"the UI design still pretty much looks like
-shit… not only the brain visual, but also the general brain card."* The geometry rewrite was necessary
-but **not sufficient**: the object is now a real folded cortex, and the *card it sits in* is an
-undesigned stack of debug rows. **Next session = a full design makeover of the whole card, not another
-mesh tweak.** See **§8**, which is the brief. Not pushed, no PR.
+**Commits:** `3c28a1a1` (first cut) → `3eccb5b3` (rebuild vs TRIBE v2) → `ab24b599` (the folded 3D
+cortex) → `77814f06` (**round 4 — the card becomes a figure**)
+**Status:** 🟡 **ROUND 4 BUILT, AWAITING UAT.** §8's brief is executed — see **§9** for what
+actually shipped and what is still open. Not pushed, no PR.
+
+> **Round 3 was 🔴 REJECTED.** Owner: *"the UI design still pretty much looks like shit… not only the
+> brain visual, but also the general brain card."* The geometry rewrite was necessary but **not
+> sufficient**: the card around the cortex was an undesigned stack of debug rows. §8 is the brief that
+> came out of that; §9 is the answer to it.
 
 ---
 
@@ -277,3 +280,80 @@ The mesh is #8 on that list, and it is the expensive one. Attack in this order:
 - The **locked accent-dosage rule** (`docs/DESIGN-SYSTEM.md`). Coral means "you are losing them",
   everywhere, always.
 - **TRIBE is CC-BY-NC + FreeSurfer** — study the output, copy nothing (§2).
+
+---
+
+## 9. ✅ ROUND 4 — what shipped (commit `77814f06`)
+
+The owner's steer this round was one line: *"I want it to look way more like TRIBE v2."* So the
+session started by driving their demo with Playwright and diffing the **CARD**, not the brain.
+
+### 9.1 The finding that reframed everything
+
+**TRIBE's brain is only ~60% of its frame.** What fills the frame is a ghosted **HEAD**, with the
+brain sitting in its cranial vault. Their chrome is *three annotations and a stimulus pane* — no
+meters, no status line, no caption. The specimen carries the message; everything else labels it.
+
+That inverts §8.2's item 8. The instinct "it floats small → make it huge" is **wrong**: a
+frame-filling brain reads as a 3D asset. A brain **in a head** reads as anatomy. Do not undo this.
+
+### 9.2 What was done, in §8.3's order (the mesh really was last)
+
+| # | §8.2 defect | Fix |
+|---|---|---|
+| 1 | nine rows, no hierarchy | Rebuilt as a **figure**: header → the well → stimulus pane → 4-up strip → verdict → honesty. The verdict is the finding; everything above is evidence. |
+| 2 | off the design system (10× mono) | **font-mono: 10 → 0.** Inter, sentence case. `font-serif` is now exactly **1** usage (the verdict — the single voice-moment). Verified in-browser: only `Inter` + `Newsreader` on any leaf node. |
+| 3 | taller than its 620px panel | **Fixed and measured.** Was 554px in a 516px box. Now **465px in both modes, `scrollH === clientH`.** |
+| 4 | stimulus dumped on the cortex | Its **own pane**, below. Fixed height in BOTH modes (see 9.4). |
+| 5 | colorbar = temperature slider | A real colorbar: **ticks + the unit** (`predicted BOLD`), living in the well's top-right corner. |
+| 6 | generic progress bars | Collapsed to a **4-up instrument strip** (was 69px of stacked bars). |
+| 7 | inconsistent alignment | One left-aligned spine; the centred caption is gone. |
+| 8 | reads as a walnut | Fold anisotropy **2:1 → 4.5:1** + a **domain warp** → long meandering ribbons. Tone curve stopped multiplying AO into lambert (it was crushing crowns to mud): **sulci ≈36, crowns ≈241**. |
+
+**THE WELL** (`WELL_BG = #131210`) is the single move that made the rest work. TRIBE's specimen is
+near-white on **black**; ours was mid-beige on mid-charcoal — *the same value as its surroundings*, so
+it had no silhouette. **No amount of mesh work could have fixed that.** The well is a matte tone-zone,
+so the app stays flat-warm charcoal and only the instrument gets its black sky.
+
+**The specimen is MIRRORED** (`scale={[-1,1,1]}`, material `DoubleSide`, and the parallax `useFrame`
+base yaw is **negative** — it overwrites `rotation.y` every frame, so flipping the sign there is not
+optional). It had been seated backwards in a head that faces left. The mirror also makes the
+long-standing `left hemisphere · lateral` label true.
+
+### 9.3 🔬 Two bugs measurement caught that eyeballing did not
+
+Same lesson as §5 — and note the first one **survived three rounds of visual review**:
+
+1. **The activation alpha opened at `0.35 + 0.65*s`** — so the instant the field crossed threshold the
+   colour jumped straight to 35% opacity. Probing the rendered pixels: **~92% of the colour swing
+   completed in ONE pixel.** That hard step is why the map read as flat translucent shapes *pasted on*
+   the anatomy, with the network boundaries showing through as seams. **The field was always smooth —
+   the gradient test was right, and the discontinuity was manufactured in the paint.** Alpha now ramps
+   from **zero** (`smoothstep(0.0, 0.22, s) * (0.45 + 0.55*s)`): zero slope at the contour → no edge to
+   see, then it climbs hard so the cluster core is unmistakably painted. Soft edge, strong body.
+   Probed after: max 1px jump **12.0 → 2.0**. ⚠️ A plain linear ramp from 0 removes the step but also
+   removes the MAP — clusters fade to a hint. The curve matters as much as the zero.
+2. **The GROUNDED card still overflowed** (530px in a 516px box) *after* the simulated one fit — the
+   video thumb's intrinsic aspect was driving the flex row. **Always measure both modes.** The
+   stimulus pane is now a fixed `h-[64px]` in both.
+
+### 9.4 Gates
+
+`91 brain tests green · tsc 0 · eslint clean · full suite 3367 pass` — with the **one pre-existing
+`api/tools/remix/run` SSE failure unchanged** (it fails identically without these changes).
+**All four invariants hold and are still pinned**; honesty labels restyled, never removed.
+
+### 9.5 Still open / next
+
+- **The silhouette is still an egg.** The ribbons and the value are right, but the outline lacks lobar
+  structure — no temporal lobe hanging below a clear sylvian fissure. This is `shape()` in
+  `cortex-mesh.ts`, and it is the last real fidelity gap. Cheapest next win.
+- **Grounded mode often paints nothing.** With threshold `0.45`, an early-video frame where every
+  network sits at 0.2–0.36 clears nothing and the cortex is bare. That is *honest* (thresholded is an
+  invariant) but it means the map is frequently invisible in the Read. Worth an owner call: is a bare
+  cortex an acceptable "nothing is firing yet", or should the threshold track the drive?
+- Tune the mesh with `npx tsx scripts/preview-cortex.ts out.png` — ~1s per iteration, and its lighting
+  is now **synced to the shader** (it was flattering the old muddy render by compositing onto the
+  charcoal card bg; it now previews on the well's near-black).
+- ⚠️ **Backticks inside the GLSL template literal terminate it** and TS then parses the shader as JS.
+  Cost two build breaks this session. No backticks in shader comments.
