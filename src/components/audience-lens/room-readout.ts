@@ -28,12 +28,56 @@
  */
 
 import type { PersonaNode } from '@/components/board/_kit';
+import { SLOT_LABEL } from '@/components/board/audience/audience-derive';
 
 /** A persona counts as having STOPPED on the same rule the Room's own views use. */
 const STOPPED = (n: PersonaNode) => n.watchThrough >= 0.5;
 
 /** The smallest segment allowed to carry a claim. One persona's vote is a coin, not a finding. */
 const MIN_SEGMENT = 2;
+
+/**
+ * ── THE TWO AUDIENCES, and why the split is the whole point ────────────────────────────────────
+ * The room's ten personas are drawn from four slots, and they answer two DIFFERENT questions:
+ *   OWNED  (loyalists + your niche)   → will the people you already have stay?      → CORE HOLD
+ *   NEW    (FYP + cross-niche)        → will this travel to people you don't have?  → REACH
+ * A single "6 of 10 stopped" hides the only thing a creator actually needs to decide: whether a
+ * concept is a retention play or a growth play. They are not the same number and they never were.
+ * Keyed off SLOT_LABEL (imported, not re-typed) so the readout cannot drift from the Room.
+ */
+const OWNED: readonly string[] = [SLOT_LABEL.loyalist, SLOT_LABEL.niche];
+const NEW: readonly string[] = [SLOT_LABEL.fyp, SLOT_LABEL.cross_niche];
+
+/** A named metric: a real count, rendered as a percentage, with a word for what it MEANS. */
+export interface Metric {
+  label: string;
+  /** 0..100 — a share of REAL votes. Never a score, never scaled, never benchmarked. */
+  pct: number;
+  /** The vote it is a share OF, so the card can always show its own denominator. */
+  stopped: number;
+  total: number;
+  /**
+   * What the number MEANS, in a word — the reference's qualifier chip. It is DESCRIPTIVE, not
+   * evaluative: it reports the shape of the vote ("Splits", "Travels"), and it never claims a
+   * benchmark like ">70 STRONG", because we have no distribution to ground one (532 teardowns
+   * carry no retention; 19 stored Reads carry a curve; engine_training_videos is empty).
+   */
+  chip: string;
+  /** true → this is the bad end of its own scale (the chip paints coral, not sage). */
+  weak: boolean;
+}
+
+const metric = (
+  label: string,
+  members: PersonaNode[],
+  word: (pct: number) => { chip: string; weak: boolean },
+): Metric | null => {
+  // No members → NO metric. A slot the audience does not contain must not be reported as 0%.
+  if (members.length < MIN_SEGMENT) return null;
+  const stopped = members.filter(STOPPED).length;
+  const pct = Math.round((stopped / members.length) * 100);
+  return { label, pct, stopped, total: members.length, ...word(pct) };
+};
 
 /** One receipt — a verbatim, attributed. Never a paraphrase, never a summary. */
 export interface Receipt {
@@ -50,6 +94,11 @@ export interface SegmentSplit {
 export interface RoomReadout {
   /** The one headline: how much of the room stopped. A count, not a score. */
   hold: { stopped: number; total: number; pct: number };
+  /**
+   * The named metrics — the reference's readout, on real votes. `core` and `reach` are null when
+   * the audience has too few of that slot to say anything (never a fabricated 0%).
+   */
+  metrics: { core: Metric | null; reach: Metric | null };
   /**
    * WHO stopped, by segment — the readout's most useful line, and the one thing neither a cortex
    * map nor a single percentage can say. A concept that holds the core and loses everyone new is a
@@ -126,11 +175,60 @@ export function buildRoomReadout(
     [...scrolled].sort((a, b) => a.watchThrough - b.watchThrough).find((n) => n.quote);
   const endorsementNode = [...stopped].sort((a, b) => b.watchThrough - a.watchThrough).find((n) => n.quote);
 
+  const metrics = {
+    core: metric('Core hold', nodes.filter((n) => n.segment && OWNED.includes(n.segment)), (p) =>
+      p >= 70
+        ? { chip: 'Holds', weak: false }
+        : p <= 30
+          ? { chip: 'Losing your core', weak: true }
+          : { chip: 'Wavering', weak: true },
+    ),
+    reach: metric('Reach', nodes.filter((n) => n.segment && NEW.includes(n.segment)), (p) =>
+      p >= 70
+        ? { chip: 'Travels', weak: false }
+        : p <= 30
+          ? { chip: 'Stays home', weak: true }
+          : { chip: 'Mixed', weak: false },
+    ),
+  };
+
   return {
     hold: { stopped: stopCount, total, pct },
+    metrics,
     segments,
     objection: receipt(objectionNode),
     endorsement: receipt(endorsementNode),
     divergence,
   };
+}
+
+/** The headline's own chip — the shape of the whole room's vote. */
+export function holdChip(pct: number): { chip: string; weak: boolean } {
+  if (pct >= 70) return { chip: 'Holds', weak: false };
+  if (pct <= 30) return { chip: 'Walks', weak: true };
+  return { chip: 'Splits', weak: true };
+}
+
+/**
+ * ── THE SCALE. The reference puts a `SCAN` marker on a bar and labels what good is. We cannot
+ * label what good is — there is no corpus to take a percentile from (§17.2). But there IS one real
+ * scale sitting right here: THE BATCH. The composer generated five hooks in this run and the Room
+ * already carries them (`siblings`, each with its own real "N/T stop"). So the bar is not an
+ * invented benchmark, it is "where this one lands against your other four" — which is the question
+ * a creator is actually asking when they look at five hooks.
+ *
+ * Returns null below two siblings: a scale with one point on it is not a scale.
+ */
+export function buildBatchScale(
+  fractions: number[],
+  mine: number,
+): { pct: number; rank: number; of: number } | null {
+  if (fractions.length < 2) return null;
+  const lo = Math.min(...fractions);
+  const hi = Math.max(...fractions);
+  // Every card in the batch scored the same → the marker has nowhere meaningful to sit. Centre it
+  // rather than divide by zero and slam it to an end that implies a ranking we do not have.
+  const pct = hi > lo ? ((mine - lo) / (hi - lo)) * 100 : 50;
+  const rank = fractions.filter((f) => f > mine).length + 1; // 1 = best
+  return { pct: Math.round(pct), rank, of: fractions.length };
 }

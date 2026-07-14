@@ -321,6 +321,19 @@ export default function DevCardsPage() {
                   // drifts. The handler is a no-op: the dev page has no composer to re-run a skill.
                   canRewrite
                   onRewrite={async () => {}}
+                  // A real batch, so the readout's SCALE ("#3 of your 5") previews too. Same reason.
+                  // `initialCompareOpen={false}` because a batch otherwise lands the Room on its
+                  // ranked-compare overview — correct in the product, but it would hide the brain
+                  // in the gallery, which exists precisely to LOOK at the brain.
+                  focusId="h3"
+                  initialCompareOpen={false}
+                  siblings={[
+                    { id: "h1", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop" },
+                    { id: "h2", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop" },
+                    { id: "h3", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop" },
+                    { id: "h4", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop" },
+                    { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
+                  ]}
                 />
               </div>
               {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the

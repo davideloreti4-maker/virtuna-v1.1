@@ -494,6 +494,12 @@ export function AmbientRoom({
                 rewriteBusy={rewriteBusy}
                 rewriteError={rewriteError}
                 rewriteDelta={rewriteDelta}
+                // The readout's SCALE — the batch this card came from, each sibling's REAL
+                // stop-ratio. Not an invented benchmark: "where this lands against your other four".
+                // A sibling with an unparseable fraction carries stop:-1 → dropped, never zeroed.
+                batchRatios={rankedSiblings
+                  .filter((s) => s.stop >= 0 && s.total > 0)
+                  .map((s) => s.stop / s.total)}
               />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />

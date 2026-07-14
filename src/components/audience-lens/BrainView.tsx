@@ -91,7 +91,7 @@ import {
   type SimMode,
 } from '@/lib/brain/cortex-sim';
 import type { PersonaNode } from '@/components/board/_kit';
-import { buildRoomReadout, type RoomReadout } from './room-readout';
+import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -174,6 +174,13 @@ export interface BrainViewProps {
   rewriteError?: string | null;
   /** Frozen at tap-time by the Room → the REAL before/after. Never a projection. */
   rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
+  /**
+   * The BATCH's stop-ratios (0..1), this card's included — the composer's other hooks from the same
+   * run. It is the readout's SCALE. The reference labels its bar ">70 STRONG"; we cannot (§17.2 —
+   * there is no corpus to take a percentile from), but "where this lands against your other four"
+   * is a real benchmark we already have, and it is the question a creator is actually asking.
+   */
+  batchRatios?: number[];
 }
 
 export function BrainView({
@@ -192,6 +199,7 @@ export function BrainView({
   rewriteBusy = false,
   rewriteError,
   rewriteDelta,
+  batchRatios,
 }: BrainViewProps) {
   const mode: SimMode = videoSrc && retentionAt ? 'grounded' : 'simulated';
   /**
@@ -221,6 +229,12 @@ export function BrainView({
   const readout = useMemo(
     () => buildRoomReadout(personas ?? [], { stopCount, total }),
     [personas, stopCount, total],
+  );
+  /** Where this card lands against the rest of its batch. Null below two cards — a scale with one
+   *  point on it is not a scale. */
+  const scale = useMemo(
+    () => buildBatchScale(batchRatios ?? [], total > 0 ? stopCount / total : 0),
+    [batchRatios, stopCount, total],
   );
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -395,7 +409,7 @@ export function BrainView({
                 className="h-[6px] w-[6px] shrink-0 rounded-full"
                 style={{ background: netFill(hovered, Math.max(0.6, response[hovered])) }}
               />
-              <span className="text-[11px] font-medium leading-none text-[var(--cream-primary)]">
+              <span className="text-[11px] font-medium leading-none text-[var(--color-cream-primary)]">
                 {NETWORK_META[hovered].label}
               </span>
               <span className="text-[11px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
@@ -476,7 +490,7 @@ export function BrainView({
             <span
               aria-hidden
               data-testid="brain-colorbar-marker"
-              className="absolute -top-[3px] h-[10px] w-[2px] rounded-full bg-[var(--cream-primary)]"
+              className="absolute -top-[3px] h-[10px] w-[2px] rounded-full bg-[var(--color-cream-primary)]"
               style={{
                 left: `${axisPct}%`,
                 transform: 'translateX(-1px)',
@@ -539,7 +553,7 @@ export function BrainView({
                 className="absolute inset-0 grid place-items-center transition-opacity"
                 style={{ opacity: playing ? 0 : 1 }}
               >
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-[rgba(0,0,0,0.5)] text-[var(--cream-primary)]">
+                <span className="grid h-6 w-6 place-items-center rounded-full bg-[rgba(0,0,0,0.5)] text-[var(--color-cream-primary)]">
                   <PlayGlyph playing={playing} />
                 </span>
               </button>
@@ -574,7 +588,7 @@ export function BrainView({
                   key={`${w}-${i}`}
                   className={
                     i < wordsShown
-                      ? 'text-[var(--cream-primary)]'
+                      ? 'text-[var(--color-cream-primary)]'
                       : 'text-[var(--color-foreground-muted)] opacity-30'
                   }
                   style={reducedMotion ? undefined : { transition: `opacity 260ms ${EASE}, color 260ms ${EASE}` }}
@@ -602,6 +616,7 @@ export function BrainView({
         <RoomReadoutPanel
           readout={readout}
           kindLabel={kindLabel}
+          scale={scale}
           canRewrite={canRewrite}
           onRewrite={onRewrite}
           rewriteBusy={rewriteBusy}
@@ -645,9 +660,29 @@ export function BrainView({
  *
  * Every row here is a count. Nothing is scored, nothing is seeded, nothing is scaled.
  */
+/**
+ * The qualifier chip — the reference's "Moderate" / "Runs High" / "Low". DESCRIPTIVE, never
+ * evaluative against an invented bar: it names the SHAPE of a real vote. Coral only where the news
+ * is bad, which is the app's one accent doing exactly what it does everywhere else.
+ */
+function Chip({ chip, weak, small = false }: { chip: string; weak: boolean; small?: boolean }) {
+  return (
+    <span
+      className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] ${small ? 'text-[8.5px]' : 'text-[9.5px]'} leading-none`}
+      style={{
+        color: weak ? 'var(--color-accent)' : 'var(--sage, #8aa383)',
+        background: weak ? 'rgba(217,119,87,0.10)' : 'rgba(138,163,131,0.10)',
+      }}
+    >
+      {chip}
+    </span>
+  );
+}
+
 function RoomReadoutPanel({
   readout,
   kindLabel,
+  scale,
   canRewrite = false,
   onRewrite,
   rewriteBusy = false,
@@ -656,13 +691,14 @@ function RoomReadoutPanel({
 }: {
   readout: RoomReadout;
   kindLabel?: string;
+  scale?: { pct: number; rank: number; of: number } | null;
   canRewrite?: boolean;
   onRewrite?: (lever: string) => void | Promise<void>;
   rewriteBusy?: boolean;
   rewriteError?: string | null;
   rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
 }) {
-  const { hold, segments, objection, divergence } = readout;
+  const { hold, metrics, objection, divergence } = readout;
   /**
    * The CTA shows only when it is HONEST and ACTIONABLE, on the same three gates the Population
    * weak-spot uses (so the two levers can never disagree): the skill is text-seedable, there is a
@@ -686,45 +722,68 @@ function RoomReadoutPanel({
       className="mt-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-2"
       data-testid="brain-readout"
     >
-      {/* The headline: how much of the room stopped. A COUNT — it needs no benchmark to be read. */}
+      {/* ── THE HERO METRIC. The reference leads with a DISPLAY NUMBER, and it is why their readout
+             reads as a product and the segment table this replaced read as a debug dump. Same move:
+             a named metric, a figure you can read across the room, and a word for what it means. ── */}
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[11px] text-[var(--color-foreground-secondary)]">
-          They stopped{scoped ? ' · on your opening beat' : ''}
+          Attention hold{scoped ? ' · opening beat' : ''}
         </span>
-        <span className="text-[11px] tabular-nums text-[var(--cream-primary)]">
-          {hold.stopped} of {hold.total}
+        <Chip {...holdChip(hold.pct)} />
+      </div>
+      <div className="mt-0.5 flex items-baseline gap-1.5">
+        <span className="font-serif text-[30px] leading-[1.05] tracking-[-0.02em] tabular-nums text-foreground">
+          {hold.pct}
+          <span className="text-[16px] text-[var(--color-foreground-muted)]">%</span>
+        </span>
+        <span className="text-[10.5px] text-[var(--color-foreground-muted)]">
+          {hold.stopped} of {hold.total} stopped
         </span>
       </div>
 
-      {/* WHO stopped. The useful line, and the one a single percentage hides: a concept that holds
-          the core and loses everyone new is a different problem from one that loses everybody. */}
-      {segments.length > 0 && (
-        <div className="mt-1.5 flex flex-col gap-1" data-testid="brain-readout-segments">
-          {segments.map((s) => {
-            const held = s.stopped / s.total;
-            return (
-              <div key={s.label} className="flex items-center gap-2">
-                <span className="w-[86px] shrink-0 truncate text-[10.5px] text-[var(--color-foreground-muted)]">
-                  {s.label}
-                </span>
-                {/* The bar is the FRACTION of that segment, drawn at its real width. Sage where they
-                    held, coral where they walked — the app's one accent, meaning what it always
-                    means: the audience you are losing. */}
-                <span className="flex h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
-                  <span
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.round(held * 100)}%`,
-                      background: held >= 0.5 ? 'var(--sage, #7f9c7a)' : 'var(--color-accent)',
-                    }}
-                  />
-                </span>
-                <span className="shrink-0 text-[10.5px] tabular-nums text-[var(--color-foreground-secondary)]">
-                  {s.stopped}/{s.total}
-                </span>
+      {/* THE SCALE — "where this one lands against your other four". Not an invented benchmark: it
+          is the batch the composer just generated, each with its own real stop-count. */}
+      {scale && (
+        <div className="mt-2" data-testid="brain-readout-scale">
+          <div className="relative">
+            <span className="flex h-[3px] overflow-hidden rounded-full bg-[rgba(255,255,255,0.08)]" />
+            <span
+              aria-hidden
+              className="absolute -top-[3px] h-[9px] w-[2px] rounded-full bg-[var(--color-cream-primary)]"
+              style={{ left: `${scale.pct}%`, transform: 'translateX(-1px)' }}
+            />
+          </div>
+          <div className="mt-[5px] flex items-baseline justify-between">
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">
+              worst of {scale.of}
+            </span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-secondary)]">
+              #{scale.rank} of your {scale.of}
+            </span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">
+              best of {scale.of}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ── THE TWO AUDIENCES. The single headline hides the only thing a creator needs to decide:
+             is this a retention play or a growth play? Core hold and Reach are different numbers and
+             they always were. Absent (not zeroed) when the audience has too few of that slot. ── */}
+      {(metrics.core || metrics.reach) && (
+        <div className="mt-2 grid grid-cols-2 gap-2" data-testid="brain-readout-metrics">
+          {[metrics.core, metrics.reach].filter(Boolean).map((m) => (
+            <div key={m!.label} className="rounded-[8px] bg-[rgba(255,255,255,0.03)] px-2 py-1">
+              <div className="flex items-baseline justify-between gap-1">
+                <span className="truncate text-[10px] text-[var(--color-foreground-muted)]">{m!.label}</span>
+                <Chip {...m!} small />
               </div>
-            );
-          })}
+              <span className="mt-0.5 block font-serif text-[19px] leading-[1.15] tabular-nums text-foreground">
+                {m!.pct}
+                <span className="text-[11px] text-[var(--color-foreground-muted)]">%</span>
+              </span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -1092,10 +1151,12 @@ const WELL_BG = '#131210';
  * truncation, no silent cap on the segment rows, nothing hidden.
  */
 const WELL_ASPECT = '20 / 19';
-// 3:2, not 4:3: adding the counterfactual CTA took instant to 515px in the 516px box — a 1px
-// "fit", which is a clip waiting for a longer persona name. The specimen yields again; it is the
-// credibility object here, and the thing the creator ACTS on is the button.
-const WELL_ASPECT_INSTANT = '3 / 2';
+// 16:9. The specimen has now yielded three times (20/19 → 4:3 → 3:2 → 16:9), and each time for the
+// same honest reason: in INSTANT it is the CREDIBILITY OBJECT, and the things the creator READS and
+// ACTS ON are the metric, the scale and the button. The reference agrees — Sapient's brain is a
+// small hero tile and the numbers dominate the layout. Measured: the readout + scale + CTA took the
+// card to 523px, clipping the verdict AND the honesty line clean off the bottom.
+const WELL_ASPECT_INSTANT = '16 / 9';
 
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [

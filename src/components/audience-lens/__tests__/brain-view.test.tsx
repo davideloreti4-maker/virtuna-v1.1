@@ -78,18 +78,46 @@ describe('AmbientRoom — the brain scale', () => {
     expect(within(brain).queryByTestId('brain-colorbar-marker')).toBeNull();
   });
 
-  it('INSTANT: the instrument is the room’s REAL votes, split by who they were', () => {
+  it('INSTANT: the instrument is a NAMED METRIC on real votes, not a contingency table', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
     const readout = within(brain).getByTestId('brain-readout');
-    // A count of real votes — no score, no invented benchmark, no threshold we cannot ground.
-    // It reports the FOCUS's own "6/10 stop" aggregate, not the node count: the card must never
-    // disagree with the Room it is sitting inside (the header and the other two scales show 6/10).
+    // The hero: a display number, from the FOCUS's own "6/10 stop" aggregate — not the node count.
+    // The card must never disagree with the Room it sits inside (the other two scales show 6/10).
+    expect(within(readout).getByText('Attention hold')).toBeInTheDocument();
     // Twice, deliberately: the visible line and its screen-reader twin.
-    expect(within(readout).getAllByText(/6 of 10/).length).toBeGreaterThanOrEqual(1);
-    expect(within(readout).getByTestId('brain-readout-segments')).toBeInTheDocument();
+    expect(within(readout).getAllByText(/6 of 10 stopped/).length).toBeGreaterThanOrEqual(1);
     // The receipt is VERBATIM and attributed — the tough_crowd persona actually scrolled.
     expect(within(readout).getByText(/too preachy/)).toBeInTheDocument();
+  });
+
+  it('INSTANT: no batch → NO scale. A bar with one point on it is not a bar', () => {
+    render(room()); // the default fixture has no siblings
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    expect(within(readout).queryByTestId('brain-readout-scale')).toBeNull();
+  });
+
+  it('INSTANT: a real batch IS a real scale — "#N of your M", never an invented threshold', () => {
+    render(
+      room({
+        focusId: 'h2',
+        fraction: '6/10 stop',
+        // With a batch, the Room lands on the ranked-compare overview first (that IS the product:
+        // "how the room ranked your N"). A targeted entry drills straight into the focused card,
+        // which is where the brain scale — and therefore the scale bar — actually lives.
+        initialCompareOpen: false,
+        siblings: [
+          { id: 'h1', conceptText: 'a', fraction: '9/10 stop' },
+          { id: 'h2', conceptText: 'b', fraction: '6/10 stop' },
+          { id: 'h3', conceptText: 'c', fraction: '2/10 stop' },
+        ],
+      }),
+    );
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    const scaleEl = within(readout).getByTestId('brain-readout-scale');
+    // 6/10 sits second of three. This is the reference's SCAN marker, on the one benchmark we
+    // actually have — the batch the composer just generated.
+    expect(within(scaleEl).getByText(/#2 of your 3/)).toBeInTheDocument();
   });
 
   it('mounts the 3D cortical surface as the hero, seeded off the focus', async () => {
@@ -170,7 +198,7 @@ describe('AmbientRoom — the brain scale', () => {
     // reads it as a verdict on their whole script.
     render(room({ kindLabel: 'Script' }));
     const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
-    expect(within(readout).getByText(/on your opening beat/i)).toBeInTheDocument();
+    expect(within(readout).getByText(/opening beat/i)).toBeInTheDocument();
   });
 
   it('does NOT scope the claim on a hook — the hook IS the whole stimulus', () => {

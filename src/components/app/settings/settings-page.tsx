@@ -142,7 +142,7 @@ function Credits() {
           href="https://sketchfab.com/3d-models/brain-cadd2bde67404c43b2359a6a3281d84a"
           target="_blank"
           rel="noreferrer noopener"
-          className="underline underline-offset-2 hover:text-[var(--cream-primary)]"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
         >
           &ldquo;Brain&rdquo;
         </a>{" "}
@@ -151,7 +151,7 @@ function Credits() {
           href="https://sketchfab.com/dgallichan"
           target="_blank"
           rel="noreferrer noopener"
-          className="underline underline-offset-2 hover:text-[var(--cream-primary)]"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
         >
           dgallichan
         </a>
@@ -160,7 +160,7 @@ function Credits() {
           href="http://creativecommons.org/licenses/by/4.0/"
           target="_blank"
           rel="noreferrer noopener"
-          className="underline underline-offset-2 hover:text-[var(--cream-primary)]"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
         >
           CC-BY-4.0
         </a>
