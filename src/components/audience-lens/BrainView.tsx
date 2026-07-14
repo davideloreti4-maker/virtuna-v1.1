@@ -428,8 +428,15 @@ export function BrainView({
       {!instant && (
       <div className="mt-2 flex items-center gap-3">
         {/* The colorbar: poles, TICKS, the UNIT — and a LIVE MARKER, which TRIBE's does not have.
-            A legend tells you how to read the map; this one also tells you the reading. */}
-        <div className="pointer-events-none min-w-0 flex-1">
+            A legend tells you how to read the map; this one also tells you the reading.
+
+            ⚠️ IT IS NARROW ON PURPOSE. Full-bleed, this was the LOUDEST thing on the card — a
+            saturated coral→sage gradient running the whole width, out-shouting the specimen it
+            annotates, in a system whose accent dosage is LOCKED at near-zero. The fix is NOT to
+            desaturate the ramp: `barFill` maps value→colour exactly as the shader paints it, so a
+            quieter ramp would make the legend LIE about the map. So the ramp stays honest and the
+            ELEMENT shrinks — TRIBE's legend is ~30% of their well's width; ours was 100%. */}
+        <div className="pointer-events-none w-[62%] min-w-0 max-w-[190px]">
           <div className="relative">
             <span className="flex h-[4px] overflow-hidden rounded-full">
               {Array.from({ length: 40 }, (_, i) => (
@@ -460,14 +467,14 @@ export function BrainView({
           </div>
           <div className="mt-[5px] flex items-baseline justify-between">
             <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">drifting</span>
-            {/* The unit, and the CLAIM. The map is a contrast now, not raw activity, and the legend is
-                the one place that has to say which. */}
-            <span className="truncate px-1 text-[9px] leading-none text-[var(--color-foreground-muted)]">
-              predicted BOLD · vs rest
-            </span>
             <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">engaged</span>
           </div>
         </div>
+        {/* The unit, and the CLAIM — BESIDE the legend, not crushed under it. The map is a contrast
+            now, not raw activity, and this is the one place that has to say which. */}
+        <span className="truncate text-[9px] leading-none text-[var(--color-foreground-muted)]">
+          predicted BOLD · vs rest
+        </span>
       </div>
       )}
 
