@@ -174,6 +174,36 @@ export function ProofReceipt({
 }
 
 /**
+ * NoSourceNote — the receipt's honest counterpart (2026-07-14, owner call).
+ *
+ * Renders in the receipt's slot when the run HAD retrieved sources but the model attributed
+ * THIS card to none of them (`grounded && !proof`). It is not a receipt and claims nothing:
+ * no handle, no multiplier, no fit glyph — there is no source to describe. It states the one
+ * thing we do know, which is that this output is original.
+ *
+ * Why it exists: a grounded Ideas run attributes some cards and not others, so the grid came
+ * out with a receipt on card 1 and a receipt-shaped hole on card 2. That is honest and it read
+ * as broken. Stating the absence makes it deliberate. The alternative — suppressing every
+ * receipt in a partly-attributed run — would have thrown away real attribution we paid a scrape
+ * for, so it was rejected.
+ *
+ * Deliberately NOT rendered on ungrounded runs (`grounded: false`): with retrieval off there is
+ * no absence to explain, and the note would sit on 100% of cards forever as pure noise.
+ *
+ * Dashed border + no thumbnail: same slot, same radius token, lighter state. It must not weigh
+ * as much as a real receipt — the card that HAS a source should still win the glance.
+ */
+export function NoSourceNote({ className }: { className?: string }) {
+  return (
+    <p
+      className={`rounded-lg border border-dashed border-white/[0.06] bg-white/[0.01] px-2.5 py-2 text-[12px] leading-snug text-foreground-muted${className ? ` ${className}` : ''}`}
+    >
+      Original — not drawn from a retrieved video.
+    </p>
+  );
+}
+
+/**
  * ProofLine — a COMPACT, non-interactive one-liner grounding attribution for dense glance
  * surfaces (the /start daily-idea cards). Same honesty spine + formatters as ProofReceipt, but
  * span-only (no <a>/<button>) so it can nest inside a card that is ITSELF a button. The full

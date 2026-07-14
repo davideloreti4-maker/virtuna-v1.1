@@ -23,7 +23,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
-import { ProofReceipt } from './proof-receipt';
+import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 
@@ -35,7 +35,7 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof } = block.props;
+  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof, grounded } = block.props;
 
   // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
   // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
@@ -82,8 +82,10 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         </div>
 
         {/* Proof receipt (§11f fan-out) — the real outlier this script's structure was drawn
-            from. Only present on grounded runs where a real source was attributed. */}
-        {proof && <ProofReceipt proof={proof} />}
+            from. Only present on grounded runs where a real source was attributed. A script has
+            no sibling to look half-rendered against, but the absence is the same fact and the
+            primitive is shared, so it states it too (2026-07-14). */}
+        {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
         {/* Proof unit — opener-only (the fraction is scoped to the opening beat). */}
         <ProofUnit

@@ -138,6 +138,28 @@ export function parseProofProp(value: unknown): HookProof | undefined {
   return parsed.success ? parsed.data : undefined;
 }
 
+/**
+ * `grounded` — did THIS RUN have retrieved sources at all? (2026-07-14)
+ *
+ * Distinct from `proof`, which answers "did the model attribute THIS CARD to one of them".
+ * The two together are what let the renderer tell apart two absences that look identical on
+ * the wire but mean opposite things:
+ *
+ *   grounded: false, no proof → retrieval found nothing (or is off). Nothing to say. Render clean.
+ *   grounded: true,  no proof → we HAD real sources and the model still wrote this one from
+ *                               scratch. That is a fact about the output, so the card states it
+ *                               (<NoSourceNote>) instead of leaving a receipt-shaped hole next to
+ *                               a sibling that has one. A half-attributed grid read as broken.
+ *
+ * OPTIONAL for back-compat: absent on persisted/pre-2026-07-14 blocks → falsy → the old
+ * render (silent omission) is preserved exactly. Never infer it from `proof` — a run where
+ * NO card attributed a source is still a grounded run, and that is precisely the case the
+ * note exists to explain.
+ */
+export function parseGroundedProp(value: unknown): boolean {
+  return value === true;
+}
+
 export const IdeaCardBlockSchema = z.object({
   type: z.literal("idea-card"),
   props: z.object({
@@ -173,6 +195,9 @@ export const IdeaCardBlockSchema = z.object({
     // this idea to a real source (sourceIndex ≥ 1) carrying a handle. OPTIONAL + nullable →
     // ungrounded/unattributed ideas omit it entirely (byte-identical pre-grounding shape).
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Ideas
+    // fan out, so this is the card type where a half-attributed grid was visible.
+    grounded: z.boolean().optional(),
   }),
 });
 
@@ -232,6 +257,9 @@ export const HookCardBlockSchema = z.object({
     // to the pre-grounding shape → regression gate) and the honesty spine holds: no receipt
     // without a real, above-baseline source.
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Hooks
+    // fan out like ideas, so the same half-attributed grid is reachable here.
+    grounded: z.boolean().optional(),
   }),
 });
 
@@ -276,6 +304,10 @@ export const ScriptCardBlockSchema = z.object({
     // generation was ON AND the model attributed the script to a real source (sourceIndex ≥ 1)
     // carrying a handle. OPTIONAL + nullable → ungrounded scripts omit it (byte-identical shape).
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if the script cited none? See parseGroundedProp. A script
+    // has no sibling to look half-rendered against (one per run), but the statement is the same
+    // fact and the receipt primitive is shared — so it says it too, rather than drifting.
+    grounded: z.boolean().optional(),
   }),
 });
 

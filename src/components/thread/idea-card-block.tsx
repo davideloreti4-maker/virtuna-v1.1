@@ -24,7 +24,7 @@ import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-r
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
-import { ProofReceipt } from './proof-receipt';
+import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 
@@ -48,6 +48,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     scored,
     scrollQuote,
     proof,
+    grounded,
   } = block.props;
 
   const platform = usePlatform();
@@ -117,8 +118,10 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         </p>
 
         {/* Proof receipt (§11f fan-out) — the real outlier this idea's structure was drawn from.
-            Only present on grounded runs where a real source was attributed (honesty spine). */}
-        {proof && <ProofReceipt proof={proof} />}
+            Only present on grounded runs where a real source was attributed (honesty spine).
+            When the run HAD sources and this idea cited none, say so rather than leaving a
+            receipt-shaped hole beside a sibling that has one (2026-07-14). */}
+        {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
         <ProofUnit

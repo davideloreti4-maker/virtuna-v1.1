@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HookCardBlock, HookProof, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -55,6 +55,10 @@ export interface PartialHookCard {
   // cards. Before this field the streaming path silently DROPPED proof — receipts only
   // appeared after a reload (caught in the 2026-07-12 flag-ON live verify).
   proof?: HookProof;
+  // Did the RUN have sources, even if this card cited none? Drives the card's <NoSourceNote>.
+  // Declared, not merely passed: the live stream is the ONLY path on which the half-attributed
+  // grid is visible, so a type that omitted it would let the boundary drop it.
+  grounded?: boolean;
 }
 
 export interface UseHooksStreamReturn {
@@ -262,6 +266,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                     ? (props.personas as ReactionPersona[])
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
+                  grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -436,6 +441,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                     ? (props.personas as ReactionPersona[])
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
+                  grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -517,6 +523,10 @@ export function useHooksStream(): UseHooksStreamReturn {
         channel: c.channel,
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
         ...(c.proof ? { proof: c.proof } : {}), // §11f: receipt renders live, not just after reload
+        // The note renders live too. This object is hand-built field-by-field, so a prop parsed
+        // off the wire but not copied HERE is silently dropped on the streaming path — the only
+        // path where a half-attributed run is ever seen.
+        ...(c.grounded ? { grounded: true } : {}),
       },
     }));
   }, [streamingCards]);
