@@ -23,8 +23,19 @@ import { ChatThreadView } from "@/components/thread/chat-thread-view";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { MessageBlocks } from "@/components/thread/message-blocks";
+import { useState } from "react";
 import { Reading } from "@/components/reading/reading";
-import { makeReadingResult } from "@/components/reading/__tests__/fixtures/reading-fixture";
+import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
+import {
+  makeReadingResult,
+  makeUnavailableResult,
+  makePartialResult,
+  makeApolloNullResult,
+  makeEmptyHeatmapResult,
+  makeEmptyPersonasResult,
+  makeEmptySegmentsResult,
+  makeNoBehavioralResult,
+} from "@/components/reading/__tests__/fixtures/reading-fixture";
 import {
   IDEA_BLOCKS,
   HOOK_BLOCKS,
@@ -180,9 +191,87 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
-const READING_RESULT = makeReadingResult();
+/**
+ * The Reading's STATES — every one of them, not just the happy path (2026-07-14).
+ *
+ * The 07-14 audit found /analyze had drifted badly (seven label stacks, a retired accent still
+ * being painted) for one reason: it is the only surface with no cheap way to LOOK at it. It was
+ * previewable here, but ONLY complete-and-healthy. Its degraded states were reachable solely by
+ * getting a real, paid analysis to fail in exactly the right way — so `makeUnavailableResult`,
+ * `makePartialResult`, `makeApolloNullResult`, the three empty-panel cases and
+ * `makeNoBehavioralResult` had sat in the repo as fixtures that **no human had ever seen render**.
+ *
+ * A `/dev/reading` route was considered and rejected: <Reading> already mounts here through the
+ * real component, so a second route would duplicate the surface and give it a second place to
+ * drift. The gap was never the route — it was the states. This is the whole value at a fraction
+ * of the cost.
+ *
+ * `loading` is NOT a fixture: `overrideData` hard-sets isLoading=false (it is a preview seam, not
+ * a fetch mock), so the skeleton is unreachable through it and <ReadingSkeleton> is mounted
+ * directly instead. It is first in the list on purpose — it is the state every user sees on every
+ * single Read, and it has had the least scrutiny of any of them.
+ */
+const READING_STATES: { id: string; label: string; note: string; node: React.ReactNode }[] = [
+  {
+    id: 'loading',
+    label: 'Loading',
+    note: 'The in-flight skeleton — what EVERY Read shows before it settles. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
+    node: <ReadingSkeleton id="preview" />,
+  },
+  {
+    id: 'complete',
+    label: 'Complete',
+    note: 'The healthy Read — score hero + drivers + audience + Fix First + Deeper read + follow-up chat. Until 2026-07-14 this was the ONLY state anyone could see.',
+    node: <Reading overrideData={makeReadingResult()} />,
+  },
+  {
+    id: 'partial',
+    label: 'Partial',
+    note: 'Some panels resolved, others did not. Watch for panels that render an ABSENCE as though it were a finding.',
+    node: <Reading overrideData={makePartialResult()} />,
+  },
+  {
+    id: 'apollo-null',
+    label: 'Apollo null',
+    note: 'The interpreter returned nothing. The engine numbers survive; the prose does not.',
+    node: <Reading overrideData={makeApolloNullResult()} />,
+  },
+  {
+    id: 'empty-personas',
+    label: 'Empty personas',
+    note: 'Nobody in the room reacted. This is the state that produces the "stopped — no words this time" line currently styled as a verbatim (§0.7 open finding #2).',
+    node: <Reading overrideData={makeEmptyPersonasResult()} />,
+  },
+  {
+    id: 'empty-heatmap',
+    label: 'Empty heatmap',
+    note: 'No retention curve — the scrubber has nothing to draw.',
+    node: <Reading overrideData={makeEmptyHeatmapResult()} />,
+  },
+  {
+    id: 'empty-segments',
+    label: 'Empty segments',
+    note: 'No audience segments resolved.',
+    node: <Reading overrideData={makeEmptySegmentsResult()} />,
+  },
+  {
+    id: 'no-behavioral',
+    label: 'No behavioral',
+    note: 'Behavioral signals absent — the drivers lose their evidence.',
+    node: <Reading overrideData={makeNoBehavioralResult()} />,
+  },
+  {
+    id: 'unavailable',
+    label: 'Unavailable',
+    note: 'The Read could not be produced at all. The terminal failure a user actually hits.',
+    node: <Reading overrideData={makeUnavailableResult()} />,
+  },
+];
 
 export default function DevCardsPage() {
+  const [readingState, setReadingState] = useState('complete');
+  const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
+
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
@@ -237,16 +326,45 @@ export default function DevCardsPage() {
             <SectionHead
               label="Test / Reading"
               code="reading.tsx"
-              note="Real-video Read: score hero + drivers + audience + Fix First + Deeper read + follow-up chat. Rendered via the real <Reading> with a fixture result (overrideData seam)."
+              note={active.note}
             />
+
+            {/* State switcher — the flagship has NINE states and only one of them was ever
+                visible. Every option below mounts the REAL component, so this cannot drift from
+                production the way a static mock would. */}
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {READING_STATES.map((s) => {
+                const on = s.id === readingState;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setReadingState(s.id)}
+                    aria-pressed={on}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                      on
+                        ? 'border-white/[0.10] bg-surface-elevated text-foreground'
+                        : 'border-white/[0.06] text-foreground-muted hover:border-white/[0.10] hover:text-foreground-secondary'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* `transform` makes this the containing block for Reading's position:fixed
                 ReadingChat composer, so it docks inside the section instead of floating
-                over the whole gallery. overflow-hidden clips it to the card. */}
+                over the whole gallery. overflow-hidden clips it to the card.
+                `key` forces a real remount per state — Reading holds reveal/cascade refs
+                (sawSkeleton) that would otherwise carry across a state switch and show you a
+                transition that no real user ever gets. */}
             <div
+              key={active.id}
               className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2"
               style={{ transform: "translateZ(0)" }}
             >
-              <Reading overrideData={READING_RESULT} />
+              {active.node}
             </div>
           </section>
         </div>
