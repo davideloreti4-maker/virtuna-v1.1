@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  hasReusableSignal,
+  hasKnownBaseline,
+  isProofGrade,
+  isAdmissible,
   isFreshTeardown,
   matchRowToExample,
   retrieveCachedExamples,
@@ -48,6 +52,8 @@ const config: RetrieveConfig = {
   freshDays: 90,
   fetchCount: 12,
   maxExamples: 3,
+  rank: "topical",
+  filterPlatform: true,
 };
 
 function fakeSupabase(rows: SharedMatchRow[]) {
@@ -86,8 +92,34 @@ describe("resolveRetrieveConfig", () => {
   it("uses documented defaults when env is unset", () => {
     const c = resolveRetrieveConfig();
     expect(c.minRows).toBe(4);
-    expect(c.minSimilarity).toBe(0.65);
+    expect(c.minSimilarity).toBe(0.58);
     expect(c.freshDays).toBe(90);
+    expect(c.rank).toBe("topical");
+  });
+
+  /**
+   * The per-skill AXIS, not just the per-skill slice. hooks ranks on structure across the whole
+   * corpus; ideas keeps the topical floor because belief↔reality is genuinely subject-bound.
+   * Measured 2026-07-14: on the shared topical path, 8 of 10 real creator asks retrieved ZERO
+   * hook rows, while the floor deleted a personal-branding video from a personal-branding query
+   * (0.576 < 0.58) and admitted a carbonara recipe (0.673).
+   */
+  it("gives hooks a structural policy: no floor, no platform gate, whole-corpus pool", () => {
+    const c = resolveRetrieveConfig("hooks");
+    expect(c.rank).toBe("structural");
+    expect(c.minSimilarity).toBe(0); // topic orders, it does not gate
+    expect(c.filterPlatform).toBe(false); // a madlib transfers across platforms too
+    expect(c.fetchCount).toBeGreaterThan(532); // must see the whole corpus to spread across it
+  });
+
+  it("keeps ideas + script on the topical path, platform-gated", () => {
+    for (const skill of ["ideas", "script"] as const) {
+      const c = resolveRetrieveConfig(skill);
+      expect(c.rank).toBe("topical");
+      expect(c.minSimilarity).toBe(0.58);
+      expect(c.filterPlatform).toBe(true);
+      expect(c.fetchCount).toBe(12);
+    }
   });
 });
 
@@ -144,5 +176,226 @@ describe("retrieveCachedExamples", () => {
         },
       ),
     ).rejects.toThrow("dashscope down");
+  });
+});
+
+/**
+ * These four reproduce the defects the 2026-07-14 curated import shipped SILENTLY —
+ * every one of them typechecked clean and left the whole suite green. A cast over raw
+ * JSONB is not a type; emptiness is not absence.
+ */
+describe("JSONB shape guards (the silent-drift regression)", () => {
+  it("REJECTS a Sandcastles-shaped idea instead of casting it into a lie", () => {
+    // Pre-migration curated rows carried THEIR key names. The old code cast this straight
+    // to IdeaFacet, so `example.idea.belief` read `undefined` on all 532 rows — forever,
+    // without a single failure anywhere.
+    const example = matchRowToExample(
+      row({ idea: { seed: "s", angle: "a", common_belief: "b", contrarian_reality: "r" } }),
+    );
+    expect(example.idea).toBeNull(); // dropped loudly, not silently half-read
+  });
+
+  it("REJECTS a Sandcastles-shaped template instead of casting it into a lie", () => {
+    const example = matchRowToExample(
+      row({ template: { narrative_structure: { structure_sections: [] } } }),
+    );
+    expect(example.template).toBeNull();
+  });
+
+  it("carries the timed named beats through when the shape IS ours", () => {
+    const example = matchRowToExample(
+      row({
+        template: {
+          name: "A/B duel",
+          slots: [],
+          skeleton: ["Topic Introduction", "Word Comparison 1"],
+          guidance: "Use when two familiar things differ in a way viewers can hear.",
+          beats: [
+            { name: "Topic Introduction", description: "State the comparison.", startSec: 0, endSec: 4 },
+            { name: "Word Comparison 1", description: "Establish the rhythm.", startSec: 4, endSec: 6 },
+          ],
+          flavor: "rapid-fire pronunciation duel",
+        },
+      }),
+    );
+    expect(example.template?.beats).toHaveLength(2);
+    expect(example.template?.beats?.[0]).toMatchObject({ name: "Topic Introduction", endSec: 4 });
+    expect(example.template?.guidance).toContain("Use when");
+  });
+
+  it("separates the WARRANT (why a row is admitted) from the CLAIM (what it proves)", () => {
+    // isProofGrade is the §12 LOCKED bar: views ÷ followers ≥ 3×.
+    expect(isProofGrade(row({ outlier_multiplier: 0.8 }))).toBe(false); // underperformed
+    expect(isProofGrade(row({ outlier_multiplier: 2.9 }))).toBe(false); // below the bar
+    expect(isProofGrade(row({ outlier_multiplier: null }))).toBe(false); // unknown proves nothing
+    expect(isProofGrade(row({ outlier_multiplier: 3 }))).toBe(true); // the bar itself
+    expect(isProofGrade(row({ outlier_multiplier: 458 }))).toBe(true);
+  });
+
+  it("admits every CURATED row — a human picked it, and that is its warrant", () => {
+    // Owner call 2026-07-14. Half the TikTok library has no score computed at all, and the
+    // scored TikTok rows have an 11.3× median — so excluding the unscored ones was discarding
+    // good videos for missing DATA, not for poor performance.
+    expect(isAdmissible(row({ source_pool: "curated", outlier_multiplier: null }))).toBe(true);
+    expect(isAdmissible(row({ source_pool: "curated", outlier_multiplier: 0.5 }))).toBe(true);
+  });
+
+  it("still holds SCRAPED rows to the metric — no human vetted those", () => {
+    // A scraped row came off a niche query with nobody in the loop. The metric is the only
+    // thing separating a real lesson from a random video, so the gate stays load-bearing.
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 2.9 }))).toBe(false);
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: null }))).toBe(false);
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 12 }))).toBe(true);
+  });
+
+  it("drops a row whose template is PRESENT but EMPTY (the '(structure)' bug)", () => {
+    // One of the 8 un-analysable curated videos produced exactly this shell. It is truthy,
+    // so a presence check keeps it — and the prompt renderer, finding nothing to say,
+    // emits the literal string "(structure)" as a grounding line attached to a real receipt.
+    const shell = row({
+      spoken_hook: null,
+      hook_template: null,
+      idea: null,
+      template: { name: "", slots: [], skeleton: [], guidance: "", beats: [] },
+    });
+    expect(hasReusableSignal(shell)).toBe(false);
+
+    // …while a row with any real signal survives.
+    expect(hasReusableSignal(row({ template: null, idea: null }))).toBe(true); // has spoken_hook
+  });
+});
+
+describe("retrieveCachedExamples — structural (hooks)", () => {
+  /** Corpus shape that broke the topical path: a dominant class that is also the most similar. */
+  function corpus(): SharedMatchRow[] {
+    return [
+      ...Array.from({ length: 8 }, (_, i) =>
+        row({
+          id: `pe-${i}`,
+          hook_archetype: "personal-experience",
+          similarity: 0.9 - i * 0.01,
+          source_pool: "curated",
+        }),
+      ),
+      row({ id: "auth", hook_archetype: "authority", similarity: 0.2, source_pool: "curated" }),
+      row({ id: "quest", hook_archetype: "question", similarity: 0.15, source_pool: "curated" }),
+      row({ id: "contra", hook_archetype: "contrarian", similarity: 0.1, source_pool: "curated" }),
+    ];
+  }
+
+  const structural: RetrieveConfig = {
+    minRows: 4,
+    minSimilarity: 0,
+    freshDays: 90,
+    fetchCount: 2000,
+    maxExamples: 4,
+    rank: "structural",
+    filterPlatform: false,
+  };
+
+  it("reads ACROSS platforms — a madlib is a madlib (the gate hid 333 IG rows from TikTok)", async () => {
+    const { supabase, rpc } = fakeSupabase(corpus());
+    await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      "match_shared_teardowns",
+      expect.objectContaining({ filter_platform: null, match_count: 2000 }),
+    );
+  });
+
+  it("returns a SPREAD of archetypes, not the topically-nearest majority class", async () => {
+    const { supabase } = fakeSupabase(corpus());
+
+    const result = await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    // Topical would have returned pe-0..pe-3 — four rehearsals of one shape.
+    expect(result.examples).toHaveLength(4);
+    expect(result.stats.archetypes).toBe(4);
+    expect(result.stats.rank).toBe("structural");
+    expect(result.enough).toBe(true);
+  });
+
+  it("grounds a query the topical floor would have starved (0.576 < 0.58 → zero rows)", async () => {
+    // Every row below the retired floor. Topical returns nothing; structural returns six shapes.
+    const belowFloor = corpus().map((r, i) =>
+      row({ ...r, similarity: 0.3, hook_archetype: ["a", "b", "c", "d", "e"][i % 5] }),
+    );
+    const { supabase } = fakeSupabase(belowFloor);
+
+    const result = await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    expect(result.examples.length).toBe(4);
+    expect(result.enough).toBe(true);
+  });
+});
+
+/**
+ * THE MIS-NAMED BASELINE (2026-07-14).
+ *
+ * The curated import stamped every Sandcastles row `baseline_label = 'vs followers'` — but 0 of the
+ * 532 rows carry a follower_count, and the raw record has no follower field at all. Its one metric,
+ * `outlier_score`, is measured against the creator's PAST VIDEO VIEWS (owner-confirmed). The card
+ * therefore printed "proven by @colinandsamir · 1226.3× vs followers · 60M views" for an account
+ * with well over a million followers, where a follower ratio would be nearer 60×.
+ *
+ * The number was always real. Only its NAME was invented — and read correctly ("1226× the views
+ * that creator's videos usually get") it is a STRONGER claim than the one we faked.
+ *
+ * The basis is therefore carried PER ROW, and a row that cannot name its basis cannot make a claim.
+ */
+describe("proof requires a NAMED basis, and the corpus has two of them", () => {
+  it("curated rows are proven against their own past views — the real Sandcastles basis", () => {
+    const curated = row({
+      source_pool: "curated",
+      outlier_multiplier: 1226.3,
+      follower_count: null, // Sandcastles never recorded one — and does not need to
+      baseline_label: "vs their usual views",
+    });
+    expect(hasKnownBaseline(curated)).toBe(true);
+    expect(isProofGrade(curated)).toBe(true);
+    expect(matchRowToExample(curated).baselineLabel).toBe("vs their usual views");
+  });
+
+  it("scraped rows keep the follower basis WE computed — the two pools stay distinct", () => {
+    const scraped = row({
+      source_pool: "scraped",
+      outlier_multiplier: 44,
+      follower_count: 14_000,
+      baseline_label: "vs followers",
+    });
+    expect(isProofGrade(scraped)).toBe(true);
+    expect(matchRowToExample(scraped).baselineLabel).toBe("vs followers");
+  });
+
+  it("a multiplier with NO named basis is not proof, however large", () => {
+    // The failure mode that shipped: a number with nothing behind it, reading as the most
+    // impressive thing in the block precisely because it is the biggest.
+    const baseless = row({
+      source_pool: "curated",
+      outlier_multiplier: 20154.7,
+      follower_count: null,
+      baseline_label: null,
+    });
+    expect(hasKnownBaseline(baseless)).toBe(false);
+    expect(isProofGrade(baseless)).toBe(false);
+    expect(matchRowToExample(baseless).baselineLabel).toBeNull();
+
+    // …but it is still ADMITTED and still teaches — the human curation is the warrant.
+    expect(isAdmissible(baseless)).toBe(true);
+  });
+
+  it("a scraped row cannot sneak in on a big number with no basis", () => {
+    expect(
+      isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 9999, baseline_label: null })),
+    ).toBe(false);
   });
 });

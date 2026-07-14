@@ -316,6 +316,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   //    `groundingExamples` maps the script's sourceIndex back to its outlier (the receipt).
   const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
+    skill: "script", // → the timed-beats slice: the pacing a proven outlier actually ran
     platform,
     queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,

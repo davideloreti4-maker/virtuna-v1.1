@@ -34,18 +34,19 @@ type Gather = typeof gatherAndExtract;
 const hit: Retrieve = async () => ({
   examples: [example("a"), example("b")],
   enough: true,
-  stats: { matched: 5, good: 2, minRows: 2, minSimilarity: 0.6 },
+  stats: { matched: 5, good: 2, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 2 },
 });
 
 const miss: Retrieve = async () => ({
   examples: [example("a")],
   enough: false,
-  stats: { matched: 2, good: 1, minRows: 2, minSimilarity: 0.6 },
+  stats: { matched: 2, good: 1, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 1 },
 });
 
 function baseInput(warnings: string[] = []) {
   return {
     enabled: true,
+    skill: "hooks" as const, // selects the per-skill slice (§1E); hooks → the madlib
     platform: "tiktok",
     queryCandidates: ["high protein breakfast"],
     niche: "food",
@@ -54,6 +55,21 @@ function baseInput(warnings: string[] = []) {
 }
 
 describe("gatherCorpusForRun — read-back first", () => {
+  /**
+   * The skill argument selects the RANKING AXIS inside retrieve (hooks → structural, ideas/script
+   * → topical), so a skill that does not survive the call is a skill that silently reverts hooks to
+   * the topical path that retrieved nothing for 8 of 10 real asks. It typechecks either way — the
+   * runner already passed `skill`, gather-for-run simply never forwarded it, and every persisted
+   * test stayed green. Assert the wire, not the type.
+   */
+  it("forwards the skill to retrieval (it picks the ranking axis, not just the render)", async () => {
+    const retrieve = vi.fn<Retrieve>(hit);
+
+    await gatherCorpusForRun({ ...baseInput(), skill: "ideas" }, { retrieve, gather: vi.fn<Gather>() });
+
+    expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ skill: "ideas" }));
+  });
+
   it("skips the scrape entirely on a cache hit", async () => {
     const gather = vi.fn<Gather>();
     const stages: Array<[string, string]> = [];
@@ -118,7 +134,38 @@ describe("gatherCorpusForRun — read-back first", () => {
     expect(warnings[0]).toContain("apify down");
   });
 
-  it("keeps the gates: disabled / non-tiktok / empty query short-circuit before any I/O", async () => {
+  it("READS the cache on Instagram but never scrapes it (read-back ≠ scrape)", async () => {
+    // The old gate short-circuited the whole step unless platform === "tiktok", because the
+    // SCRAPE is TikTok-only. But the read-back is just pgvector — it has no TikTok dependency.
+    // The curated corpus is majority Instagram (208 proof-grade rows vs TikTok's 63), so that
+    // conflation gave Instagram creators zero grounding, permanently, and left most of the
+    // corpus unreachable by anyone.
+    const gather = vi.fn<Gather>();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: hit, gather },
+    );
+
+    expect(result.examples.length).toBeGreaterThan(0); // grounded
+    expect(gather).not.toHaveBeenCalled(); // but never scraped
+  });
+
+  it("grounds on a PARTIAL Instagram cache rather than throwing proven outliers away", async () => {
+    // `minRows` decides whether skipping a scrape is worth it — it is not a quality bar. On a
+    // platform we cannot scrape there is no scrape to skip, so discarding the real proven
+    // outliers we did find, to run ungrounded, would be self-defeating. Two sources beat none.
+    const gather = vi.fn<Gather>();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: miss, gather }, // 1 example, enough=false
+    );
+
+    expect(result.examples).toHaveLength(1);
+    expect(result.corpus).toBeDefined();
+    expect(gather).not.toHaveBeenCalled();
+  });
+
+  it("keeps the gates: disabled / unsupported platform / empty query short-circuit before any I/O", async () => {
     const retrieve = vi.fn<Retrieve>();
     const gather = vi.fn<Gather>();
     const none = { corpus: undefined, examples: [] };
@@ -127,7 +174,7 @@ describe("gatherCorpusForRun — read-back first", () => {
       await gatherCorpusForRun({ ...baseInput(), enabled: false }, { retrieve, gather }),
     ).toEqual(none);
     expect(
-      await gatherCorpusForRun({ ...baseInput(), platform: "instagram" }, { retrieve, gather }),
+      await gatherCorpusForRun({ ...baseInput(), platform: "linkedin" }, { retrieve, gather }),
     ).toEqual(none);
     expect(
       await gatherCorpusForRun(
