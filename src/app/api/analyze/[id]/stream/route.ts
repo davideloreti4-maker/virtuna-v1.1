@@ -1,6 +1,10 @@
 import { nanoid } from "nanoid";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { getAudience } from "@/lib/audience/audience-repo";
+import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { GENERAL_ROSTER } from "@/lib/audience/persona-names";
+import { getOpenThread } from "@/lib/threads/threads";
 import { createLogger } from "@/lib/logger";
 
 // Phase 3 (Plan 08) — helpers for filmstrip polling and partial persona state tracking.
@@ -51,6 +55,62 @@ function extractSourceReceipt(row: Record<string, unknown>): SourceReceiptRow | 
   } catch {
     return null;
   }
+}
+
+interface RosterEntry {
+  archetype: string;
+  label: string | null;
+}
+
+/**
+ * WHO IS ABOUT TO WATCH THIS — resolved the SAME way the engine resolves the audience it
+ * actually simulates (`/api/analyze` R1′b: open thread → `active_audience_id` → `getAudience`,
+ * falling back to General). That mirroring is the whole correctness argument: the roster must
+ * name the cast the fold will really run, or it is decoration.
+ *
+ * It used to read `row.society_id`. Nothing writes that column — the Read submit path never
+ * sends `society_id` (composer.tsx sends only input_mode/content_type/tiktok_url), so it is
+ * NULL on every live row and the roster event could never fire outside a fixture. Verified
+ * against a real run (2026-07-14): row `iEbgUsLZRSFw`, society_id=null, zero roster events.
+ * `society_id` is deliberately NOT written to fix this: it is the cohort key for the
+ * niche-percentile RPC (`niche_percentiles_rpc.sql` groups by it), so populating it would
+ * silently reshape niche rankings.
+ *
+ * General (uncalibrated) resolves to GENERAL_ROSTER — the 10 archetypes the fold simulates for
+ * a General audience. That is the honest cast, not a stand-in: it is the same roster /home and
+ * the Room already show, and `GENERAL_AUDIENCE.personas` is `[]` precisely because the cast
+ * lives in the archetype list rather than in persona rows.
+ *
+ * Their REACTIONS are never sent here — those are what the Read is for.
+ */
+async function resolveRunRoster(
+  supabase: SupabaseClient,
+  userId: string,
+  societyId: unknown,
+): Promise<RosterEntry[]> {
+  const toEntries = (
+    personas: ReadonlyArray<{ archetype: string; label?: string | null }>,
+  ): RosterEntry[] =>
+    personas.map((p) => ({ archetype: p.archetype, label: p.label ?? null }));
+
+  // An explicit society pin on the row still wins, for any caller that sets one.
+  if (typeof societyId === "string" && societyId.length > 0 && societyId !== "general") {
+    const pinned = await getAudience(supabase, societyId);
+    if (pinned && pinned.personas.length > 0) return toEntries(pinned.personas);
+  }
+
+  // The thread's active audience — via the SAME shared helper every generative route uses, so
+  // the Reading names the audience the engine folds and the resolution rule lives in one place.
+  // getOpenThread (not createOpenThreadLazy): watching a Read must never create a thread.
+  const thread = await getOpenThread(userId);
+  const audience = thread
+    ? await resolveThreadAudience(supabase, thread)
+    : GENERAL_AUDIENCE;
+  if (audience.personas.length > 0) return toEntries(audience.personas);
+
+  // General — the archetype cast the fold runs when no calibrated audience is pinned.
+  // (GENERAL_AUDIENCE.personas is [] by construction; the cast lives in the archetype list.)
+  return GENERAL_ROSTER.map((archetype) => ({ archetype, label: null }));
 }
 
 // Extract partial personas array from the DB row's JSONB column.
@@ -208,19 +268,16 @@ export async function GET(
               // is sent here.
               if (!rosterSent) {
                 rosterSent = true;
-                const societyId = freshRow.society_id;
-                if (typeof societyId === "string" && societyId.length > 0) {
-                  try {
-                    const audience = await getAudience(supabase, societyId);
-                    const roster = (audience?.personas ?? []).map((p) => ({
-                      archetype: p.archetype,
-                      label: p.label ?? null,
-                    }));
-                    if (roster.length > 0) send("roster", { personas: roster });
-                  } catch (err) {
-                    // A roster we can't load costs the wait some texture, never the run.
-                    log.info("roster load failed", { id, error: String(err) });
-                  }
+                try {
+                  const roster = await resolveRunRoster(
+                    supabase,
+                    user.id,
+                    freshRow.society_id,
+                  );
+                  if (roster.length > 0) send("roster", { personas: roster });
+                } catch (err) {
+                  // A roster we can't load costs the wait some texture, never the run.
+                  log.info("roster load failed", { id, error: String(err) });
                 }
               }
 

@@ -185,17 +185,30 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     act(() =>
       es.emit('roster', {
         personas: [
-          { archetype: 'skeptic', label: 'Maya — the skeptic' },
-          { archetype: 'scanner', label: null },
+          { archetype: 'tough_crowd', label: 'Maya — the skeptic' },
+          { archetype: 'high_engager', label: null },
         ],
       }),
     );
 
     const roster = await screen.findByTestId('reading-skeleton-roster');
+    // A creator-set label always wins.
     expect(roster).toHaveTextContent('Maya — the skeptic');
-    // No label → fall back to the archetype. Never a made-up name.
-    expect(roster).toHaveTextContent('scanner');
+    // No label → the archetype's CANONICAL name (the same person the Room and the Lens show),
+    // never the raw engine slug. `label ?? archetype` used to print "high_engager" here — and
+    // on a General audience that is every one of the 10, i.e. the default case.
+    expect(roster).toHaveTextContent('Maya');
+    expect(roster).not.toHaveTextContent('high_engager');
     expect(screen.queryAllByTestId('reading-skeleton-reactor')).toHaveLength(2);
+  });
+
+  it('falls back to the raw archetype for an unknown slug — never a made-up name', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() => es.emit('roster', { personas: [{ archetype: 'legacy_slug', label: null }] }));
+
+    const roster = await screen.findByTestId('reading-skeleton-roster');
+    expect(roster).toHaveTextContent('legacy_slug');
   });
 
   it('draws every slot the run will fill as soon as the total is known', async () => {

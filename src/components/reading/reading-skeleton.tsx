@@ -15,6 +15,7 @@ import {
   type StageState,
 } from '@/components/thread/progress-checklist';
 import { formatCount } from '@/lib/account-metrics/account-metrics';
+import { resolvePersonaName } from '@/lib/audience/persona-names';
 import { READING_LABEL } from './reading-section';
 
 /**
@@ -123,7 +124,12 @@ function RosterRow({ roster, active }: { roster: RevealPersona[]; active: boolea
             // Staggered arrival — they turn up one after another rather than all at once.
             style={reduced ? undefined : { animationDelay: `${i * 0.08}s` }}
           >
-            {p.label ?? p.archetype}
+            {/* The cast is NAMED people (Maya, Dev…), never engine slugs. `label ?? archetype`
+                printed "high_engager" for every persona the creator had not renamed — which is
+                all 10 on a General audience, i.e. the default. resolvePersonaName is the one
+                place a persona's name is resolved, so the Reading names them exactly as the
+                Room and the Lens do. */}
+            {resolvePersonaName(p.archetype, p.label) ?? p.archetype}
           </span>
         ))}
       </div>
