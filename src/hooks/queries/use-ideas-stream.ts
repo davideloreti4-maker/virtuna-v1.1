@@ -30,7 +30,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { HookProof, IdeaCardBlock, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -58,6 +58,10 @@ export interface PartialIdeaCard {
   // §11f: the grounded receipt, streamed WITH the face. undefined on ungrounded/unattributed
   // cards (mirrors use-hooks-stream — the stream path must never drop proof).
   proof?: HookProof;
+  // Did the RUN have sources, even if this card cited none? Drives the card's <NoSourceNote>.
+  // Must be declared here, not merely passed: the live stream is the ONLY path on which the
+  // half-attributed grid is visible, so a type that omits it would let the boundary drop it.
+  grounded?: boolean;
 }
 
 export interface UseIdeasStreamReturn {
@@ -266,6 +270,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     ? (props.personas as ReactionPersona[])
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
+                  grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -443,6 +448,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     ? (props.personas as ReactionPersona[])
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
+                  grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -523,6 +529,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         model: 'sim1-flash',
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
         ...(c.proof ? { proof: c.proof } : {}), // §11f: receipt renders live, not just after reload
+        // The note renders live too. This object is hand-built field-by-field, so a prop that is
+        // parsed off the wire but not copied HERE is silently dropped on the streaming path —
+        // and the streaming path is the only one where the half-attributed grid is ever seen.
+        ...(c.grounded ? { grounded: true } : {}),
       },
     }));
   }, [streamingCards]);

@@ -77,7 +77,11 @@ export const IDEA_BLOCKS: IdeaCardBlock[] = [
       scored: true,
       personas: PERSONAS,
       // §11f fan-out — the grounded idea variant carries the SAME shared ProofReceipt as the
-      // hook card (real outlier the structure was drawn from). Second fixture stays ungrounded.
+      // hook card (real outlier the structure was drawn from). The second fixture is the same
+      // RUN but cited no source, so together these two ARE the half-attributed grid the owner
+      // saw: receipt here, stated absence there. Keep them paired — this is the only place the
+      // mixed state is previewable without a live grounded run.
+      grounded: true,
       proof: {
         handle: "nourish.me.now",
         videoUrl: "https://www.tiktok.com/@nourish.me.now/video/7300000000000000002",
@@ -109,6 +113,10 @@ export const IDEA_BLOCKS: IdeaCardBlock[] = [
       model: "sim1-flash",
       scored: true,
       personas: PERSONAS.slice(2, 8),
+      // Same grounded run as the card above, but the model wrote this one from scratch (no
+      // sourceIndex). It renders <NoSourceNote>, not a hole. Drop `grounded` here and you are
+      // looking at the original bug.
+      grounded: true,
     },
   },
 ];
