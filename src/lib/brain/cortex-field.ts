@@ -270,8 +270,17 @@ export function buildField(positions: Float32Array, seed = 0x5eed): CortexField 
   for (let k = 0; k < parcelCount; k++) {
     const v = seeds[k]! * 3;
     const px = positions[v]!, py = positions[v + 1]!, pz = positions[v + 2]!;
-    parcelCx[k] = px;
-    parcelCy[k] = py;
+    // ⚠️ NORMALISE the centroid before it reaches `parcelTexture`, and feed it the axes we actually
+    // LOOK at.
+    //
+    // Two traps here. (1) Its spatial noise was tuned for a ~±100 coordinate range; the shipped mesh
+    // is quantized ints in the ±30,000s, and fed raw the noise is effectively constant across the
+    // whole surface — every parcel gets the same bias, which is a flat, obviously-fake map. (2) The
+    // noise takes two coordinates, and they must be the two that vary across the VISIBLE lateral
+    // face: anterior-posterior (z) and superior-inferior (y). Feeding it left-right (x) makes the
+    // bias near-constant along the very axis the camera is looking down, so no clusters can form.
+    parcelCx[k] = ((pz - cz) / hz) * 100;   // anterior ⇄ posterior
+    parcelCy[k] = ((py - cy) / hy) * 100;   // superior ⇄ inferior
     let best: NetworkId = anchors3[0]!.net;
     let bd = Infinity;
     for (const a of anchors3) {

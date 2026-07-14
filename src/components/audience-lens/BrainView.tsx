@@ -55,7 +55,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { NETWORK_META, NETWORK_POLARITY } from '@/lib/brain/cortex-mesh';
+import { NETWORK_META, NETWORK_POLARITY } from '@/lib/brain/cortex-field';
 import {
   ACTIVATION_SPAN,
   ACTIVATION_THRESHOLD,
@@ -195,13 +195,6 @@ export function BrainView({
 
   const [hovered, setHovered] = useState<NetworkId | null>(null);
 
-  // The hottest network right now — the one the strip emphasizes when nothing is hovered.
-  const hottest = useMemo(() => {
-    let best: NetworkId = NETWORK_IDS[0]!;
-    for (const id of NETWORK_IDS) if (bold[id] > bold[best]) best = id;
-    return best;
-  }, [bold]);
-
   // Where the room sits on the diverging axis right now: task-positive attention MINUS the
   // default-mode system. This is the same anticorrelation the map is painted on, read as one number.
   const axisPct = useMemo(() => {
@@ -233,10 +226,15 @@ export function BrainView({
       {/* ══ THE WELL ═══════════════════════════════════════════════════════════════════════════
              A near-black inset — the specimen's sky. Everything a figure needs to be read sits in
              its corners (legend, unit, lag claim, projection, hover readout), so the annotations
-             cost no rows and the cortex gets the whole frame. ── */}
+             cost no rows and the cortex gets the whole frame.
+
+             9:8, not 11:8. The 4-up network strip below used to eat 69px; the specimen gets them.
+             Measured against TRIBE: their brain is ~600x550px in a 1440px viewport — half the screen
+             — while ours was ~430x310 in a 474px card, a QUARTER of the area. No mesh reads at that
+             size, and no amount of geometry was ever going to fix a frame too small to show it. ── */}
       <div
         className="relative mt-2.5 w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
-        style={{ aspectRatio: '11 / 8', background: WELL_BG }}
+        style={{ aspectRatio: '9 / 8', background: WELL_BG }}
         data-testid="brain-surface"
       >
         {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
@@ -409,53 +407,6 @@ export function BrainView({
                  encounter. ── */}
           <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
         </div>
-      </div>
-
-      {/* ── The four systems the room speaks about — one compact instrument strip. This was four
-             stacked progress bars with mono caps labels, eating 69px and reading as a debug panel;
-             it is now a 4-up readout with real values, and the loudest system leads. ── */}
-      <div className="mt-3 grid grid-cols-4 gap-2.5">
-        {SPOKEN_NETWORKS.map(({ id, label }) => {
-          const v = bold[id];
-          const isDefault = NETWORK_POLARITY[id] < 0;
-          const lead = id === (hovered ?? hottest);
-          return (
-            <div key={id}>
-              {/* Label and value read as ONE unit, set tight. Pushed apart with justify-between they
-                  drifted to opposite ends of an 80px column and the eye had to travel to pair them
-                  back up — four times over, on the least important row of the card. */}
-              <div className="flex items-baseline gap-1.5">
-                <span
-                  className={
-                    'truncate text-[9.5px] leading-none ' +
-                    (lead ? 'text-[var(--color-foreground-secondary)]' : 'text-[var(--color-foreground-muted)]')
-                  }
-                >
-                  {label}
-                </span>
-                <span
-                  className={
-                    'shrink-0 text-[10.5px] leading-none tabular-nums ' +
-                    (lead ? 'text-[var(--cream-primary)]' : 'text-[var(--color-foreground-secondary)]')
-                  }
-                >
-                  {v.toFixed(2)}
-                </span>
-              </div>
-              <span className="mt-[5px] block h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
-                <span
-                  className="block h-full rounded-full"
-                  style={{
-                    width: `${Math.round(v * 100)}%`,
-                    background: isDefault ? 'var(--color-accent)' : SAGE,
-                    opacity: lead ? 0.95 : 0.65,
-                    ...(reducedMotion ? {} : { transition: 'width 260ms linear, opacity 150ms linear' }),
-                  }}
-                />
-              </span>
-            </div>
-          );
-        })}
       </div>
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
@@ -648,16 +599,23 @@ function HeadGhost() {
       aria-hidden
       data-testid="brain-head-ghost"
     >
-      {/* The cranium HUGS the specimen. Drawn too large, the brain rattles around inside a skull two
-          sizes too big and the gap reads as dead space rather than as anatomy; drawn too small, the
-          cortex bursts out through the skull. So this outline is registered to the cortex's MEASURED
-          projection (x 49–357, y 55–256 at the camera in CortexCanvas) with a thin skull-and-dura
-          margin. If you move the camera or the group's position, this path moves with it. */}
+      {/* ⚠️ BIG AND SOFT, not small and sharp.
+          Diffed against TRIBE: their head is a LARGE, low-contrast mass that the brain sits inside,
+          and it fills the frame. Ours was a hard-edged path at 8.5% cream — small enough and defined
+          enough that at card scale it read as "an amorphous dark smudge" rather than as a head, which
+          is exactly how the owner described it. So: bigger than the specimen, blurred at the edge, and
+          quieter. It should register as context in peripheral vision and never as an illustration. */}
+      <defs>
+        <filter id="head-soft" x="-15%" y="-15%" width="130%" height="130%">
+          <feGaussianBlur stdDeviation="7" />
+        </filter>
+      </defs>
       <path
-        d="M235 36 C165 30 82 70 46 132 C40 146 30 152 24 166 C16 182 34 186 36 194
-           L14 232 C7 245 28 248 42 249 C34 260 38 268 48 274 C52 285 60 294 72 300
-           L400 300 C400 230 400 110 380 76 C360 42 305 40 235 36 Z"
-        fill="rgba(236, 231, 222, 0.085)"
+        d="M262 18 C170 12 74 58 34 132 C26 148 12 156 6 172 C-3 192 20 196 22 206
+           L-2 250 C-10 266 14 270 30 271 C20 284 25 294 37 300 L400 300
+           C400 220 402 96 378 60 C352 22 330 22 262 18 Z"
+        fill="rgba(236, 231, 222, 0.055)"
+        filter="url(#head-soft)"
       />
     </svg>
   );

@@ -266,12 +266,14 @@ export const ACTIVATION_THRESHOLD = 0.45;
 /**
  * How far above the threshold a parcel must run to be painted at FULL colour.
  *
- * This is not cosmetic. Predicted BOLD lives in a narrow band — after the HRF (a low-pass) the hot
- * parcels land around 0.55–0.85, never near 1.0. Ramping the colour over threshold→1.0 therefore
- * leaves every real response stranded at the pale end of the ramp, and the map washes out into a
- * tint you cannot read. The ramp has to span the values that actually occur.
+ * This is not cosmetic, and the rule is: THE RAMP MUST SPAN THE VALUES THAT ACTUALLY OCCUR.
+ *
+ * It was 0.3, measured against the old procedural surface. On the real mesh the field runs to 0.97
+ * (measured), so a 0.3 span saturated at 0.75 and PINNED roughly half the cortex at the deepest end of
+ * the ramp — the specimen came out as one dark green mass instead of a map. 0.5 spans 0.45→0.95, which
+ * is the range the values genuinely occupy, so only the hottest cores reach full colour.
  */
-export const ACTIVATION_SPAN = 0.3;
+export const ACTIVATION_SPAN = 0.5;
 
 /** One parcel's predicted BOLD at time `t`, from its network's response and its own texture. */
 export function parcelValue(networkValue: number, tex: ParcelTexture, t: number): number {
