@@ -1,5 +1,12 @@
 # Handoff — /audience, after P1–P3 + the rollup + the platform guard
 
+> # 👉 NOT THE START-HERE DOC ANY MORE
+> **Read `docs/HANDOFF-2026-07-14-per-persona-generation.md` FIRST** (session 3). It carries the two
+> rules, the corrected 5-touchpoint list, the corrected gate command, and the next task.
+> **This document remains the deep reference** for the /audience subsystem — the F1–F10 facts (§3),
+> the traps (§6), and why P4 is dead as specced (§4). Come back here for detail, not for orientation.
+
+
 **Updated:** 2026-07-14 (session 3) · **Worktree:** `~/virtuna-explore-b`
 **Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ **its P2 divergence design is WRONG.** See §4.
 **Shipped:** P1 (#280) · mode seam (#281) · archetype binding (#282) · progress+receipts (#284)
