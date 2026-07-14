@@ -1,70 +1,73 @@
-# Handoff — /audience, after P1 shipped
+# Handoff — /audience, after P1–P3 shipped
 
-**Date:** 2026-07-13 · **Worktree:** `~/virtuna-explore-b` · **Dev server:** `:3002`
-**Spec (read this first):** `docs/SPEC-2026-07-13-audience-redesign.md`
-**Shipped:** P1 — the index + workspace rebuild. Merged to `main`.
+**Updated:** 2026-07-14 · **Worktree:** `~/virtuna-explore-b` (branch `explore-b-sync`, synced to `main`)
+**Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ read §2 F10 below before trusting it.
+**Shipped:** P1 (index + workspace, #280) · **P3 the mode seam (#281)** · **archetype binding (#282)**
+· **progress staging + persona receipts (#284)**. All merged to `main` (`f7c82352`).
 
----
-
-## 1 · What just happened
-
-`/audience` was a database table with a UI on top. It rendered `is_general` / `is_preset` /
-`mode` / trust-tier and made the user infer meaning; it could not answer *"which audience am I
-being tested against?"* even though `GET /api/audiences` has always returned `lastAudienceId`.
-
-It is now two levels:
-
-- **Index** (`/audience`) — a table. Provenance is a **column** ("Built from"), which retired the
-  four section headers and the whole six-term badge vocabulary. The **default radio** renders and
-  writes `user_settings.last_audience_id`. General sits in the table as *"Always on · as the
-  control"*. A **Social / Custom** track switch splits the horizontal (`mode: general`) audiences.
-- **Workspace** (`/audience/[id]`) — the console. Four **mix sliders** = `persona_weights`, which
-  the engine consumes as `analysis_override` → moving one moves a prediction (the product had never
-  exposed this). The **cast** shows each persona's `repaint` — the sentence the SIM actually scores
-  with — and states that a persona's display `label` never reaches the model. Grounding writes
-  `custom_context`.
-
-**Deleted:** `audience-card`, `audience-constellation-thumb`, `audience-temp-bar`,
-`audience-status-chip`, `audience-profile-view`, the rail marketing paragraph, and
-`personas modeled · receipts pending`.
-**Kept:** `trust-badge.tsx` — three thread blocks still render it, where the tier describes the
-*run's model*, not the audience.
+> ⚠️ **This document lied to its last reader.** Its old §4.3 said *"no audience in live data carries
+> `evidence`"* and blamed the description-calibration path for inventing archetype names. **Both were
+> false**, and acting on them cost real time. Everything below is code- or live-verified on 2026-07-14.
+> If you add a claim here, say how you verified it.
 
 ---
 
-## 2 · The ten facts the design rests on
+## 1 · The pattern that has now produced THREE bugs — read this first
 
-They're in the spec (§2) with file:line evidence. The four that will bite you if you forget them:
+**The one input that makes the feature the feature, dropped in silence, with every test green.**
+
+- **#281** — the Read never steered. A `niche: null` fall-through silently discarded the persona
+  repaint, and the weights were computed then thrown away (`void resolved`). Every Read compared
+  General to General and relabelled one side. **10/10 identical verdicts**, live.
+- **#282** — `archetype` is the engine's **binding key**. A slug outside the fixed 10 matched no slot
+  in any niche, so its repaint reached the model *never*. One prod row had **45% of its own declared
+  share** dead.
+- **#284** — the SSE progress copy named the wrong phase for **126 of 128 seconds**, and
+  `isPersonaGrounded` had zero callers.
+
+**When auditing this subsystem, ask of every input: does it actually reach the model, and what
+happens if it doesn't?** Grep for silent fall-throughs (`?? stock`, `if (!x) return DEFAULT`) on any
+path carrying audience data. **Only a live run has ever caught one of these.** Not tsc, not eslint,
+not 3,400 unit tests.
+
+---
+
+## 2 · ✅ THE MOAT WORKS — proven live, 2026-07-14
+
+Before this date **no audience in prod had ever been scrape-calibrated.** Every signature had
+`videos_analyzed: 0` and an empty provenance handle; no row had `calibration.source = 'scrape'`. The
+whole pipeline was built, unit-tested with mocked I/O, and **never once run against reality.**
+
+One real calibration (`POST /api/audiences/calibrate`, handle `zachking`, real Apify + DashScope):
 
 | | |
 |---|---|
-| **F1** | `persona_weights` {fyp, niche, loyalist, cross_niche} Σ=1.0 is the prediction dial (`resolve-audience-weights.ts:63`). `personas[].share` is NOT — it steers discovery ranking and the lead persona. |
-| **F3** | The engine emits **bands, never scores** — `Strong\|Mixed\|Weak` + `"6/10 stop"`. The block schema is `.strict()` and rejects a smuggled 0-100 (`blocks.ts:49`). **Never design a numeric score.** |
-| **F5** | Audience is pinned **per thread** (`threads.active_audience_id`, set from the composer). `last_audience_id` only *seeds* new threads. `/audience` must never claim to show what a given thread used. |
-| **F10** | **No runner branches on `mode`.** This is the open bug — see P3. |
+| **128.8s**, HTTP 200 | `calibration.source = "scrape"` — the first in the database |
+| provenance | `handle: zachking · videos_analyzed: 12 · videos_watched: 5 · sub_coverage: 8/12` |
+| **the omni video-watch works** | the fragile part (Apify KV mp4 + `?token=` + SSRF allowlist) |
+| **10/10 personas carry REAL evidence** | *"Massive view counts (8M–45M) dwarfing active engagement metrics."* |
+| repaints are account-specific | *"Skeptical of the 'magic,' looking for glitches to debunk the illusion."* |
+
+Cost ≈ $0.05–0.15 + one Apify scrape. **The Qwen client reads `DASHSCOPE_API_KEY`** (not
+`QWEN_API_KEY` — that one is absent and unused). Row: `6b1114e6-…` ("Zach King").
 
 ---
 
-## 3 · What's next, in the order I'd do it
+## 3 · The facts the design rests on (corrected)
 
-### P3 — the mode seam (do this FIRST: it's a correctness bug, not an enhancement)
-`GENERAL_AUDIENCE` is `mode: "socials"`, `platform: "tiktok"` (`audience-repo.ts:41-47`), and no
-runner reads `mode`. So today:
-- Run a Read with **Analyst Panel** → the engine compares a non-social panel against a **TikTok
-  crowd**, and prints a confident band on it.
-- Hand **Marcus Reyes** to the hook writer or the remix tool — both TikTok-shaped by construction —
-  and nothing refuses.
+| | |
+|---|---|
+| **F1** | `persona_weights` {fyp, niche, loyalist, cross_niche} Σ=1.0 is the prediction dial (`resolve-audience-weights.ts:63`). `personas[].share` is NOT. |
+| **F3** | The engine emits **bands, never scores** — `Strong\|Mixed\|Weak`. The block schema is `.strict()` and rejects a smuggled 0-100 (`blocks.ts:49`). **Never design a numeric score.** |
+| **F5** | Audience is pinned **per thread** (`threads.active_audience_id`). `last_audience_id` only *seeds* new threads. |
+| **F7** | `personas[].repaint` reaches the SIM. `label` never does. **`archetype` is the BINDING KEY** — outside the 10-slug `ARCHETYPES` enum it binds to nothing (#282). |
+| **F10** | ~~"No runner branches on `mode`."~~ **WAS ALWAYS WRONG** — `predict` always did. The seam is now CLOSED (#281): a `mode:general` audience reads **single**, gets a general reaction frame, and socials-only skills refuse it server-side (400). Cross-mode pairs → 400. |
 
-Two pieces of work:
-1. **Skill gating.** `hooks` / `remix` / `discover` / `calendar` are socials-only → the composer's
-   audience picker must not offer a custom audience for them. `read` / `chat` / `simulate` accept both.
-2. **The control rule.** A `mode: general` audience must not be paired against `GENERAL_AUDIENCE`.
-   **OWNER DECISION OUTSTANDING:** run it single-audience (no comparison), or author a general-mode
-   control? Don't guess — ask.
+---
 
-Touches the composer + runners → coordinate with lane a (audience/room), and keep it its own PR.
+## 4 · What's next, in the order I'd do it
 
-### P2 — make the workspace alive
+### P2 — make the workspace alive  ← **START HERE (needs a fresh context; it's a real feature)**
 Two data-backed additions, both blocked on the same missing piece:
 - **Per-persona quotes** — each persona's last real reaction from your Reads (verdict `stop|scroll`
   + a ≤160-char first-person quote).
@@ -72,50 +75,70 @@ Two data-backed additions, both blocked on the same missing piece:
   with the two verdicts per concept. **In bands. Never a score (F3).**
 
 Both live inside `multi-audience-read` blocks in **thread-message JSONB**. There is no scores table
-and no query for them. So P2 starts with a rollup endpoint (scan the user's assistant messages for
-those blocks, roll up per-persona reactions + audience-vs-General verdicts). That's engine/data
-work, not UI.
+and no query for them. So P2 starts with a **rollup endpoint** (scan the user's assistant messages
+for those blocks; roll up per-persona reactions + audience-vs-General verdicts). Engine/data work,
+not UI. **Now genuinely worth building: as of #281 the two sides of a Read actually differ**, so a
+divergence panel finally has real divergence to report. Before #281 it would have rendered "your
+people agreed with the generic crowd 12/12 times" — because the engine ran the identical prompt twice.
 
 ### P4 — dissolve the account tab
-Owner already agreed: the account numbers become the **provenance receipt** on the audience
-("read from @zachking · 85.9M followers · 608 posts"); **What to do next** and **Content pillars**
-move to `/start`, where they already live. `/audience` loses its tabs and the H1 stops flipping.
-Touches `/start` → separate PR.
+The account numbers become the **provenance receipt** on the audience. **Half of this already
+exists**: the workspace renders *"Built from Read from @zachking · 12 videos · TikTok"* (#284 added
+the per-persona receipts under it). What remains is folding in follower/post counts
+(*"· 85.9M followers · 608 posts"*), moving **What to do next** + **Content pillars** to `/start`,
+and dropping the tabs so the H1 stops flipping. Touches `/start` → separate PR.
 
 ---
 
-## 4 · Open questions for the owner
+## 5 · Open questions — 2 of 3 are now ANSWERED
 
-1. **The general-mode control** (P3.2) — what does a custom audience get compared against, if anything?
-2. **`SignatureProvenance` in prod** — does the scrape path actually populate `videos_analyzed` /
-   `scraped_at`? The source line renders them and must degrade honestly if they're absent.
-3. **Persona `evidence` (F7)** — **no audience in live data carries it.** Fixture gap, or does the
-   production scrape never write it? If the latter, the "Read" rung is thinner than the ladder implies.
+1. ~~**The general-mode control**~~ — **ANSWERED (owner, 2026-07-13):** a custom audience is compared
+   against **nothing** — it reads single. A real general-mode control needs an authored general panel,
+   which belongs to the **General pack** (`packs/index.ts` still throws on any id but `"socials"`).
+2. ~~**`SignatureProvenance` in prod**~~ — **ANSWERED (live, 2026-07-14): YES, fully populated.**
+   `videos_analyzed: 12`, `videos_watched: 5`, `scraped_at`, `sub_coverage: 8/12`. The source line
+   renders them correctly. See §2.
+3. ~~**Persona `evidence` — "no audience in live data carries it"**~~ — **THAT WAS FALSE.** Every
+   signature carries it (3/3, 4/4, 4/4 on the authored rows; **10/10 on the scraped one**). The
+   authored rows' "evidence" is conversational quotes; **the scraped row's is genuine
+   engagement-ratio proof.** It is now RENDERED per-persona in the workspace (#284), and shown *only*
+   when a scrape actually earned it — a described audience shows none and claims none.
+
+**Still genuinely open:** the 10-slot Flash schema means a 6-persona audience repaints 6 slots and
+inherits 4 neutral ones. Collapsing the panel to only the audience's real personas = the General pack.
 
 ---
 
-## 5 · Traps (I hit both of these; they cost real time)
+## 6 · Traps (every one of these cost real time)
 
-- **`bg-cream` is NOT a token in this design system.** It compiles to `rgba(0,0,0,0)` — my slider
-  thumbs were invisible while the screenshot looked fine. Probe with
+- **A grep that excludes the obvious place is not evidence.** I "proved" `getPersonaRoster` was dead
+  code by grepping every file *except its own* — it has **5 callers** there. Deleting it would have
+  broken the module. **Verify a claim before acting on it, especially a claim about deleting.**
+- **A test that asserts presence is not a test.** The old route test asserted
+  `statusEvents.length >= 2` — which the **broken ordering satisfied happily**. Ask whether your test
+  would still pass if the things happened in the wrong order, or described the wrong thing.
+- **Test the shape the CALLER actually sends.** #281 shipped a guard on a branch that never fires,
+  because its unit test used a shape the route never sends (the route always passes a 2-element
+  array). `persona-edit-form` PATCHes the **full** personas array — one bad sibling fails the payload.
+- **`bg-cream` is NOT a token.** It compiles to `rgba(0,0,0,0)`. Probe with
   `getComputedStyle(el).backgroundColor` before trusting any colour class you didn't grep for.
-- **A `signature` does not prove a scrape.** The authored custom audiences (Marcus Reyes, Maya)
-  carry one with an **empty provenance handle** — keying off `audience.signature` alone rendered
-  *"Read from @"*, claiming account data that doesn't exist. The **handle** is the evidence.
-- **Verify behaviour, not appearance.** Both bugs above passed tsc, eslint, and 73 unit tests.
+- **A `signature` does not prove a scrape.** The authored customs (Marcus Reyes, Maya) carry one with
+  an **empty provenance handle**. The **handle** is the evidence.
+- **Persona `temperature`/`disposition` are USER-EDITABLE** (`persona-edit-form.tsx`) — a value that
+  differs from `TEMPERATURE_DISPOSITION` may be deliberate, not drift. Only realign them when the
+  **archetype itself** was wrong.
 - **Never `npm test` / `npx vitest`** — a shim prints fake results. Use
   `node ./node_modules/vitest/vitest.mjs run <path>`.
 
 ---
 
-## 6 · Run & verify
+## 7 · Run & verify
 
 ```bash
-# dev server (from ~/virtuna-explore-b)
-NODE_OPTIONS=--max-old-space-size=2048 node ./node_modules/next/dist/bin/next dev -p 3002
+NODE_OPTIONS=--max-old-space-size=3072 node ./node_modules/next/dist/bin/next dev -p 3007
 ```
 **Auth:** `npx tsx e2e/create-test-user.ts` → `/login` with `e2e-test@virtuna.local` /
-`e2e-test-password-2026`. **Routes:** `/audience` · `/audience/[id]` · `/audience?tab=account`.
+`e2e-test-password-2026`. **Routes:** `/audience` · `/audience/[id]`.
 
 **Screenshots hang** (ambient animations never settle) — inject before capturing:
 ```js
@@ -126,20 +149,17 @@ document.head.appendChild(s);
 
 **Green gates before any commit:**
 ```bash
-npx tsc --noEmit                                  # 0
-npx eslint <changed files>                        # clean
-node ./node_modules/vitest/vitest.mjs run src/components/audience/__tests__/ \
-  src/components/reading/__tests__/reskin-matte.test.ts   # 73/73
+npx tsc --noEmit                                   # 0
+npx eslint <changed files>                         # 0 errors
+node ./node_modules/vitest/vitest.mjs run src/lib/audience src/components/audience \
+  src/app/api/audiences src/lib/engine/flash       # 531 passed
 ```
-
-**Live-data note:** the test user's only `personal` audience (`test`) is **empty**, and
-`lastAudienceId` is **null** — so the app is scoring every Read with General, and the index now
-says so. That is correct, not a bug.
+⚠️ The **full** suite has **12 pre-existing full-suite-only failures** (tools routes + billing quota;
+they pass in isolation). They are NOT yours — confirm against the base commit before chasing one.
 
 ---
 
-## 7 · Design mockups (throwaway, kept for reference)
+## 8 · Design mockups (throwaway, kept for reference)
 
 `docs/audit-2026-07-13/mockup-audience-v3.html` — the agreed concept (index + workspace).
-v1/v2 kept only to show what was rejected and why (see the spec's history).
 Serve with: `python3 -m http.server 8099` inside `docs/audit-2026-07-13/`.
