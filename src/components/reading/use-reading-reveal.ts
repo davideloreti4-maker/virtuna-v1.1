@@ -11,11 +11,14 @@ import { useEffect, useRef, useState } from 'react';
  *
  * SOURCE: the reconnect SSE route GET /api/analyze/[id]/stream (the SAME route
  * useAnalysisStream's reconnect ladder uses). On an in-flight row it short-polls
- * the DB and emits `partial` (the accumulated Pass-2 persona array) and
- * `filmstrip_segment_ready` (per keyframe) deltas, then `complete`. The frozen
- * engine never emits per-stage `stage_start`/`stage_end` to a reconnecting client
- * (those live only on the POST body-reader the composer owns and aborts on nav),
- * so these two deltas + `complete` are the honest live signals available here.
+ * the DB and emits `source` (the scraped post), `roster` (who is about to watch),
+ * `filmstrip_plan` + `filmstrip_segment_ready` (the real keyframes), then `complete`.
+ * The frozen engine never emits per-stage `stage_start`/`stage_end` to a reconnecting
+ * client (those live only on the POST body-reader the composer owns and aborts on nav),
+ * so those deltas + `complete` are the honest live signals available here.
+ *
+ * There is NO `partial` persona event. This docblock used to name one, and the route used to
+ * try to emit one, and it never fired once — see the long note beside the listeners below.
  *
  * STORE-FREE (milestone invariant): the reading cluster never imports
  * useBoardStore. useAnalysisStream does (board-store coupled) — so this is a
@@ -59,8 +62,6 @@ export interface ReadingRevealState {
    * Their REACTIONS are what the Read produces — those are not here, and are never guessed.
    */
   roster: RevealPersona[];
-  /** Count of personas seen streaming in (Pass-2 audience forming). */
-  personaCount: number;
   /**
    * The keyframes themselves, ascending by idx — REAL frames of the user's own video, which
    * is the only honest proof-of-work available while the engine runs.
@@ -82,7 +83,6 @@ export interface ReadingRevealState {
 const INITIAL: ReadingRevealState = {
   source: null,
   roster: [],
-  personaCount: 0,
   frames: [],
   frameTotal: 0,
   keyframeCount: 0,
@@ -116,19 +116,24 @@ export function useReadingReveal(
       return;
     }
 
-    const onPartial = (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { personas?: unknown[] };
-        const n = Array.isArray(data.personas) ? data.personas.length : 0;
-        setState((s) => ({
-          ...s,
-          phase: 'live',
-          personaCount: Math.max(s.personaCount, n),
-        }));
-      } catch {
-        /* malformed frame — ignore */
-      }
-    };
+    // NOTE — there is no `partial` listener, deliberately.
+    //
+    // This hook used to listen for a `partial` event carrying a growing personas array, and grew a
+    // `personaCount` from it to drive a progressive "the audience is forming" reveal. It NEVER
+    // FIRED, not once. The emitter (/api/analyze/[id]/stream) read `row.analysis_results.partial
+    // .personas` — and `analysis_results` is a separate TABLE, not a column on the polled row, so
+    // the lookup was `undefined` on every poll of every run. `personaCount` had no consumers
+    // either: dead state, fed by a dead event, driving nothing.
+    //
+    // It cannot be "fixed" by pointing it at the right column, because there is no partial state
+    // to point it at: the fold produces all 10 personas in ONE call, at the END (the 10-pass loop
+    // that streamed them one by one was deleted in Phase 4 Plan 05). A progressive persona reveal
+    // is not a thing this engine can honestly emit today. If that changes, add the emitter FIRST
+    // and let a real event drive a real reveal — do not resurrect a listener for a promise the
+    // engine cannot keep.
+    //
+    // The wait is not left empty by this: `source`, `roster`, `filmstrip_plan` and
+    // `filmstrip_segment_ready` all fire for real, and all four already set phase 'live'.
 
     const onSource = (e: MessageEvent) => {
       try {
@@ -213,7 +218,6 @@ export function useReadingReveal(
 
     es.addEventListener('source', onSource);
     es.addEventListener('roster', onRoster);
-    es.addEventListener('partial', onPartial);
     es.addEventListener('filmstrip_plan', onFilmstripPlan);
     es.addEventListener('filmstrip_segment_ready', onFilmstrip);
     es.addEventListener('complete', onComplete);
@@ -222,7 +226,6 @@ export function useReadingReveal(
     return () => {
       es.removeEventListener('source', onSource);
       es.removeEventListener('roster', onRoster);
-      es.removeEventListener('partial', onPartial);
       es.removeEventListener('filmstrip_plan', onFilmstripPlan);
       es.removeEventListener('filmstrip_segment_ready', onFilmstrip);
       es.removeEventListener('complete', onComplete);
