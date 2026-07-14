@@ -222,6 +222,51 @@ export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 // channel: multi-modal hint (spoken/visual/caption/edit/audio) per corpus/hooks.md.
 //   nullable — not every hook maps to a specific delivery channel.
 
+// ─── Hook target (per-persona generation) ─────────────────────────────────────
+//
+// WHO this hook was written for, and whether that person then bit.
+//
+// The audience was MEASURED not to steer generation (handoff §4c: 20 runs, embeddings p=0.43,
+// a blind judge told exactly who the audience is scored 45% — chance). The data reached the
+// writer and the writer ignored it. So the audience is made explicit in the OUTPUT instead:
+// each hook is assigned one named reader, and the model must say which.
+//
+// `verdict`/`quote` are that reader's OWN reaction from the SIM panel — the receipt that the
+// aim actually landed. Both nullable: the target archetype may not appear in the run's panel,
+// and we never fabricate a reaction (honesty spine — same rule as the band).
+//
+// `label` is display-only. It NEVER reaches the model (F7); `archetype` is the binding key and
+// `repaint` is what the writer is given. Snapshotting the label here is deliberate — it records
+// what the persona was CALLED when the hook was written, so a later rename cannot silently
+// rewrite history (the same reasoning that put `audienceId` on the Read block — never key on a
+// user-editable display string).
+// NOTE the name: `HookTarget` (select-hook-targets.ts) is the SELECTION-side shape — it carries
+// the `repaint`, which is prompt input and must never be persisted onto a card or shipped to the
+// client. This is the CARD-side shape: display + receipt, no prompt text. Keeping them distinct
+// types is what stops the repaint leaking into a block by an innocent-looking spread.
+export const HookCardTargetSchema = z.object({
+  archetype: z.string(),                       // binding key — one of the fixed 10
+  label: z.string(),                           // display only — snapshot at generation time
+  share: z.number(),                           // 0..1 share of the audience
+  verdict: z.enum(["stop", "scroll"]).nullable(), // did the person we AIMED at bite?
+  quote: z.string().nullable(),                // that person's own words — never invented
+});
+
+export type HookCardTarget = z.infer<typeof HookCardTargetSchema>;
+
+/**
+ * `target` at the wire boundary — safeParse, not trust-the-wire (mirrors parseProofProp).
+ *
+ * A malformed target → undefined → the card renders with no target line, exactly like an
+ * uncalibrated one. The honesty spine again: a card must never name a reader off a payload we
+ * could not actually validate.
+ */
+export function parseTargetProp(value: unknown): HookCardTarget | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed = HookCardTargetSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export const HookCardBlockSchema = z.object({
   type: z.literal("hook-card"),
   props: z.object({
@@ -260,6 +305,12 @@ export const HookCardBlockSchema = z.object({
     // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Hooks
     // fan out like ideas, so the same half-attributed grid is reachable here.
     grounded: z.boolean().optional(),
+    // PER-PERSONA GENERATION: the named reader this hook was WRITTEN FOR, and how that exact
+    // person then reacted to it in the SIM. Present ONLY on a calibrated run where the model
+    // echoed back a target we actually assigned (see hooks-runner) — a run whose writer ignored
+    // the assignment loses the line rather than mislabelling the hook. OPTIONAL → General and
+    // every persisted pre-target card stay byte-identical (regression gate).
+    target: HookCardTargetSchema.optional(),
   }),
 });
 
