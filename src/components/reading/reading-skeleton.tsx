@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import {
@@ -18,15 +18,17 @@ import { formatCount } from '@/lib/account-metrics/account-metrics';
 import { READING_LABEL } from './reading-section';
 
 /**
- * The Read's pipeline, as the user experiences it. Three steps, each ANCHORED on a real signal
- * the stream already delivers — so the spine advances when the work advances and can never sit
- * lying on a step (the failure mode of every timer-driven progress bar).
+ * The Read's pipeline, as the user experiences it. Three steps, each anchored on a real signal the
+ * stream already delivers, so the spine advances when the WORK advances rather than on a timer:
  *
  *   Fetching your video      → done when the scrape receipt lands (`source`)
  *   Watching it frame by frame → done when every keyframe has been seen (the extractor only runs
  *                                AFTER the video model is finished, so frames landing IS the
  *                                signal that the footage has been read)
  *   Simulating your audience → runs until `complete`
+ *
+ * ...with an elapsed-time FLOOR under each step (STEP_FALLBACK_MS), because none of those signals
+ * is guaranteed to arrive. Signals win when they come; time carries the spine when they don't.
  *
  * Scoring is deliberately NOT a step: it is a tail of a few hundred ms, and a step that flashes
  * is worse than no step (the same reason "Self-judge" was dropped from the skill spines).
@@ -37,18 +39,43 @@ const READ_PLAN = [
   'Simulating your audience',
 ] as const;
 
-function deriveStages(reveal: ReadingRevealState): StageState[] {
+/**
+ * How long a step may stay active with NO signal before the spine advances it anyway.
+ *
+ * The signals are real but they are not guaranteed. Every one of them can go missing on a run
+ * that is otherwise working perfectly:
+ *   - an upload is never scraped, so it emits no `source` at all;
+ *   - `triggerFilmstripGeneration` returns silently when FILMSTRIP_EXTRACT_SECRET is unset
+ *     (filmstrip/queue.ts) — no seed, no frames, no `filmstrip_plan`, on EVERY run;
+ *   - a video whose frames all fail to extract emits a plan and then nothing.
+ *
+ * Anchored purely on signals, those runs park the spine on one step for two minutes and then snap
+ * all three to done in a single frame — worse than the shimmer it replaced. So elapsed time is the
+ * floor: a real signal always advances the spine EARLIER, and never lets it stall. The order of
+ * the pipeline is fixed and known, so advancing on time is an estimate, not an invention — no
+ * number, picture or reaction is ever fabricated by it.
+ */
+const STEP_FALLBACK_MS = [12_000, 75_000];
+
+function deriveStages(reveal: ReadingRevealState, elapsedMs: number): StageState[] {
   const done = reveal.phase === 'complete';
   const hasFootage = reveal.frameTotal > 0;
 
   // Completion is measured in segments SEEN, not frames shown: a segment the extractor failed on
   // never produces a picture, so counting pictures would leave this step pending forever.
-  const footageRead =
-    done || (hasFootage && reveal.keyframeCount >= reveal.frameTotal);
+  const footageReadBySignal =
+    hasFootage && reveal.keyframeCount >= reveal.frameTotal;
 
   // The scrape receipt is the signal — but an upload is never scraped, so frames landing also
   // proves we have the video. Without this the upload path would sit on step 1 for the whole run.
-  const gotVideo = done || Boolean(reveal.source) || hasFootage;
+  const gotVideo =
+    done ||
+    Boolean(reveal.source) ||
+    hasFootage ||
+    elapsedMs > STEP_FALLBACK_MS[0]!;
+
+  const footageRead =
+    done || footageReadBySignal || elapsedMs > STEP_FALLBACK_MS[1]!;
 
   return [
     { name: READ_PLAN[0], status: gotVideo ? 'done' : 'active' },
@@ -245,7 +272,20 @@ export function ReadingSkeleton({ id, preview }: ReadingSkeletonProps) {
   // reveal state, and the live path is untouched (no preview → the hook runs exactly as before).
   const live = useReadingReveal(id, !preview);
   const reveal = preview ? { ...live, ...preview } : live;
-  const stages = deriveStages(reveal);
+
+  // Elapsed-since-mount, the floor under the spine (see STEP_FALLBACK_MS). Ticks every 2s — it
+  // only ever gates two thresholds, so a fast timer would just re-render for nothing. A preview
+  // is a fixed state, not a run: it must not advance on its own, or the gallery would drift off
+  // the state it is meant to be showing.
+  const [elapsedMs, setElapsedMs] = useState(0);
+  useEffect(() => {
+    if (preview) return;
+    const startedAt = Date.now();
+    const t = setInterval(() => setElapsedMs(Date.now() - startedAt), 2_000);
+    return () => clearInterval(t);
+  }, [preview]);
+
+  const stages = deriveStages(reveal, elapsedMs);
   const simulating = stages[2]?.status === 'active';
 
   // The one-sentence version of the spine, for screen readers — so it can never say a different

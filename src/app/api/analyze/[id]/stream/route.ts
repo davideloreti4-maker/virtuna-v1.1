@@ -84,11 +84,21 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const SHORT_POLL_INTERVAL_MS = 2_000;
-// 145 * 2s = 290s, just inside maxDuration (300s). The old ceiling was 90s "(>60s engine SLA)",
-// but a real Read runs ~120s (the live moat run was 128s) — so EVERY Read outlived its own
-// progress stream, hit "Stream timed out — analysis still running", and only recovered because
-// EventSource silently reconnects. The watcher must outlive the work it is watching.
-const SHORT_POLL_MAX_ATTEMPTS = 145;
+/**
+ * Wall-clock budget for the poll loop, NOT an attempt count.
+ *
+ * The old ceiling was 45 attempts ("90s, >60s engine SLA"), but a real Read runs ~120s (the live
+ * moat run was 128s) — so EVERY Read outlived its own progress stream, hit "Stream timed out —
+ * analysis still running", and only recovered because EventSource silently reconnects. The
+ * watcher must outlive the work it is watching.
+ *
+ * Counting attempts would have been the same bug in a new place: each iteration also awaits a DB
+ * read, and this route now reads a `variants` blob that GROWS across the run (up to 50 segments,
+ * each with a signed URL). At 145 attempts the unbudgeted read latency alone (~50-100ms each) is
+ * 7-15s of drift — enough to be force-killed by maxDuration (300s) mid-frame, losing the graceful
+ * timeout this budget exists to give. A deadline absorbs that drift by construction.
+ */
+const POLL_BUDGET_MS = 280_000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
 
 export async function GET(
@@ -158,7 +168,7 @@ export async function GET(
         if (row.overall_score !== null) {
           send("complete", row, "complete");
         } else {
-          let attempts = 0;
+          const deadline = Date.now() + POLL_BUDGET_MS;
           // Phase 3 (Plan 08) — filmstrip polling state.
           // Track which segment indices already have keyframe_uri so we only
           // emit filmstrip_segment_ready ONCE per segment (delta-only emission).
@@ -172,7 +182,7 @@ export async function GET(
           // Track last personas array reference for change detection.
           let lastPersonasJson = "";
 
-          while (attempts < SHORT_POLL_MAX_ATTEMPTS) {
+          while (Date.now() < deadline) {
             if (aborted.value) break;
             const { data: fresh, error: pollErr } = await supabase
               .from("analysis_results")
@@ -271,9 +281,8 @@ export async function GET(
               if (aborted.value) { clearTimeout(t); r(); }
             });
             if (aborted.value) break;
-            attempts++;
           }
-          if (attempts >= SHORT_POLL_MAX_ATTEMPTS && !aborted.value) {
+          if (Date.now() >= deadline && !aborted.value) {
             send("error", { error: "Stream timed out — analysis still running" });
           }
         }

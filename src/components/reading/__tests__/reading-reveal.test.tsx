@@ -152,6 +152,33 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(1);
   });
 
+  it('never freezes when the footage signal never arrives (the prod-env failure)', async () => {
+    // triggerFilmstripGeneration returns SILENTLY when FILMSTRIP_EXTRACT_SECRET is unset, so a
+    // perfectly healthy run can emit no filmstrip_plan and no frames AT ALL. Anchored purely on
+    // signals, the spine parked on one step for ~2min and then snapped all three to done in a
+    // single frame — worse than the shimmer it replaced. Elapsed time is the floor.
+    vi.useFakeTimers();
+    try {
+      render(<ReadingSkeleton id="sim-1" />);
+      // No source, no filmstrip_plan, no frames — ever.
+      expect(screen.getByLabelText('Fetching your video: active')).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(20_000);
+      });
+      expect(screen.getByLabelText('Fetching your video: done')).toBeInTheDocument();
+      expect(screen.getByLabelText('Watching it frame by frame: active')).toBeInTheDocument();
+
+      await act(async () => {
+        vi.advanceTimersByTime(70_000);
+      });
+      expect(screen.getByLabelText('Watching it frame by frame: done')).toBeInTheDocument();
+      expect(screen.getByLabelText('Simulating your audience: active')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('shows the cast while their reactions are being simulated — never their reactions', async () => {
     render(<ReadingSkeleton id="sim-1" />);
     const es = MockEventSource.instances[0]!;
