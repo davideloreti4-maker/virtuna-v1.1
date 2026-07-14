@@ -420,7 +420,11 @@ export const ACTIVATION_THRESHOLD = 0.42;
  * ⚠️ THIS CONSTANT IS DOWNSTREAM OF THE MODEL. If the response scale changes again, it is stale again
  * — and it goes stale SILENTLY, by making the map fade out rather than by making anything fail.
  */
-export const ACTIVATION_SPAN = 0.3;
+// 0.3 → 0.6. The map came out ONE COLOUR (all yellow): s = (a − threshold) / span, so with a narrow
+// span every voxel that cleared threshold clamped to s = 1 and took the TOP of the ramp. The
+// red→orange→yellow gradient existed and was never reachable. Widen the span and the cluster gets a
+// hot core and cooler shoulders — which is what an fMRI cluster actually looks like.
+export const ACTIVATION_SPAN = 0.6;
 
 /** One parcel's predicted BOLD at time `t`, from its network's response and its own texture. */
 export function parcelValue(networkValue: number, tex: ParcelTexture, t: number): number {

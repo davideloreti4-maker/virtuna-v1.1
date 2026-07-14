@@ -489,13 +489,20 @@ function Cortex({
  * we were pointing the camera at the part of it that carries almost none. The card looked unlit and the
  * model was innocent — the activation was simply facing away.
  *
- * −1.72 is the classic lateral plate: the left hemisphere in profile, frontal pole to the left,
- * cerebellum tucked under the occipital lobe, and the sulcal shadows raking across the surface. It is
- * the view every anatomical figure uses, and the view TRIBE's demo opens on, and it is where the
- * clusters actually are. (Found by orbiting the specimen in the real app and screenshotting, which is
- * also the fastest possible proof that OrbitControls works.)
+ * 🔴 +1.72, NOT −1.72 — THE SPECIMEN WAS MIRRORED, AND THE COMMENT HERE ASSERTED OTHERWISE.
+ *
+ * The old value claimed "the left hemisphere in profile, frontal pole to the left". Work it out
+ * against the frame above: anterior is −Z, and a yaw of θ maps −Z to screen-x = −sin(θ). At θ = −1.72
+ * that is +0.99 — the frontal pole points screen-RIGHT. So the brain faced RIGHT inside a head facing
+ * LEFT: a brain in a skull, back to front. It shipped for six rounds because nobody ever diffed the
+ * specimen's orientation against the head's, and the comment SAID it was correct.
+ *
+ * At θ = +1.72 the frontal pole lands screen-LEFT and the subject's right hemisphere turns away, so
+ * this is the true left-lateral plate — the view every anatomical figure uses, the view TRIBE opens
+ * on, and the one that agrees with the silhouette it sits in.
+ * (A comment is not a measurement. This one was wrong for as long as it existed.)
  */
-const BASE_YAW = -1.72;
+const BASE_YAW = 1.72;
 const BASE_PITCH = 0.16;
 /**
  * The bounding-sphere radius the specimen is scaled to, in world units. The camera sits at z = 4.6
