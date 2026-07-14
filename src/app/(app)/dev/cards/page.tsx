@@ -158,9 +158,6 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         isStreaming={false}
         error={null}
         platform="tiktok"
-        audience={null}
-        hasTrackedAccounts
-        onQuickAction={noop}
         userTurn={USER_TURNS.explore}
         audienceLabel={AUDIENCE}
       />

@@ -91,7 +91,7 @@ import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-she
 import { Spinner } from "@/components/ui/spinner";
 import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "@/components/audience-lens/audience-presence";
 import { BuildChooser } from "./build-chooser";
-import { HomeQuickActions, HomeFirstRunDemo } from "./home-starter";
+import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
@@ -474,6 +474,27 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Account content = streaming or a result block (does NOT flip on tool selection alone).
   const hasAccountContent = account.isStreaming || account.block !== null;
 
+  // ── Per-skill idle (THE STARTER CONTRACT) ─────────────────────────────────────
+  // "Armed, but has produced nothing yet." These three skills used to each own an idle
+  // block INSIDE their thread view; the blocks now come from the one starter, so the
+  // predicates that gated them move here — same conditions, one place.
+  //
+  // They are deliberately per-skill and NOT `!hasConversationContent`: a creator can arm
+  // Account inside a thread that already holds ideas, and the read must still be offered
+  // there (it has no other door — canSubmit is false for `account`).
+  const chatIdle =
+    !chat.isStreaming && chatBlocks.length === 0 && persistedChatBlocks.length === 0;
+  const exploreIdle =
+    !explore.isStreaming &&
+    exploreBlocks.length === 0 &&
+    persistedExploreBlocks.length === 0 &&
+    !explore.error;
+  const accountIdle =
+    !account.isStreaming &&
+    !account.block &&
+    !account.error &&
+    !account.fallbackMessage;
+
   // ── Tracked accounts presence (Plan 11-07 — drives card-2 honest degrade) ──
   // Whether the creator has any tracked accounts; gates ExploreThreadView card 2
   // ("What competitors shipped" → "Track an account first" when false). Fetched on
@@ -505,9 +526,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     persistedRemixBlocks.length > 0 ||
     persistedExploreBlocks.length > 0 ||
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
-    showChatView || // chat view always shown when chip is active (owns empty state)
-    showExploreView || // explore view always shown when chip is active (owns idle quick-actions)
-    showAccountView; // account read view always shown when chip is active (owns idle CTA)
+    hasAccountContent;
+  // ⚠️ DO NOT re-add `showChatView || showExploreView || showAccountView` here.
+  // Arming a skill is not a thread. Those three lines used to flip hasThread on TOOL
+  // SELECTION ALONE (they were the only skills owning an idle view), which tore the empty
+  // home in half: HomePageLayout reads hasThread and hasConversation SEPARATELY, so
+  // threadMode dropped the `justify-center` and stretched the composer to the bottom while
+  // emptyHome kept rendering the greeting — greeting pinned top, composer pinned bottom, a
+  // dead gap between, and Ask/Explore/Account each looked like a different app from Make.
+  // hasThread now means what it says: real content exists (streaming or persisted).
+  // The idle offer for those three skills is the starter (THE STARTER CONTRACT), which the
+  // composer renders in BOTH branches — so nothing is lost by not lying here.
 
   // Notify parent whenever thread presence changes (HomePageLayout uses this).
   useEffect(() => {
@@ -528,6 +557,22 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // ── Starter prefill (Ask cards) ───────────────────────────────────────────────
+  // An Ask starter card drops its question INTO the field and puts the cursor at the end
+  // — it NEVER submits (D-05: no card auto-fires a run). The creator reads the question,
+  // finds it already typed, and presses send. A prompt you have to retype is not a prompt.
+  const fieldRef = useRef<HTMLTextAreaElement | null>(null);
+  const handleStarterPrefill = useCallback((text: string) => {
+    setUrl(text);
+    const el = fieldRef.current;
+    if (!el) return;
+    el.focus();
+    // Defer so the caret lands after React has flushed the new value, not before it.
+    requestAnimationFrame(() => {
+      el.setSelectionRange(el.value.length, el.value.length);
+    });
+  }, []);
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
   // covers the gap where the upload path returns before stream.start (was a silent no-op).
@@ -2150,11 +2195,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       )}
 
       {/* Explore thread view — renders above the composer when the Explore tool is active.
-          Owns its idle quick-actions (D-07/EXPLORE-04) so showExploreView is unconditional
-          (mirrors ChatThreadView). The grid taps fire the discover→remix chain internally,
-          surfacing the persisted remix-card via onThreadReload (in-place, RESEARCH Q2).
-          CRITICAL: Explore NEVER navigates to /analyze — onQuickAction/onRetry call
-          explore.start (no pendingNavRef, Pitfall 1). hasTrackedAccounts drives card-2 degrade. */}
+          Its idle quick-actions moved OUT to the starter (THE STARTER CONTRACT), so this
+          view now renders only what Explore produces: the progress spine, the error, the
+          outlier grids. Tile taps fire the discover→remix chain internally, surfacing the
+          persisted remix-card via onThreadReload (in-place, RESEARCH Q2).
+          CRITICAL: Explore NEVER navigates to /analyze — the starter's cards and onRetry
+          both call explore.start (no pendingNavRef, Pitfall 1). */}
       {showExploreView && (
         <ExploreThreadView
           persistedBlocks={persistedExploreBlocks}
@@ -2163,9 +2209,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           isStreaming={explore.isStreaming}
           error={explore.error}
           platform={platform}
-          audience={selectedAudience}
-          hasTrackedAccounts={hasTrackedAccounts}
-          onQuickAction={(params) => void explore.start(params)}
           onRetry={() => void explore.start({})}
           onThreadReload={() => void reloadOpenThread()}
           {...threadPresentation}
@@ -2331,6 +2374,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             {/* Row 1 — the field. textarea (auto-multiline); Enter submits, Shift+Enter
                 newlines (onFieldKeyDown). Test/Remix carry a URL; `/` opens the skill menu. */}
             <textarea
+              ref={fieldRef}
               rows={1}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -2523,17 +2567,37 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     </div>
   );
 
-  // ── Home empty-state starter (UX-05 / D-04) ─────────────────────────────────
-  // Rendered ONLY in the empty home region (Branch B, no conversation) and split so
-  // the two pieces bracket the composer: the quick-actions grid leads INTO the field
-  // (above), the show-once demo is a quiet footer (below).
+  // ── The starter (THE STARTER CONTRACT — home-starter.tsx) ────────────────────
+  // ONE empty state for every skill. The armed skill picks WHICH cards fill it; it does
+  // NOT get to pick a layout. Ask/Explore/Account each used to own a differently-shaped
+  // idle block inside its own thread view — that is what made the four surfaces read as
+  // four different apps, so the blocks were deleted from the views and rebuilt here.
   //
-  // Grid — each card reaches a composer skill flow directly via handleUserSelectTool:
-  // a Make skill (idea/hooks/script/remix) arms its stream on the active audience;
-  // Test → reveals the video drop zone; Account → a Read on the creator's own posts.
-  // Demo — onDemoComplete reloads the open thread so the profile-read card surfaces.
-  const homeQuickActions = !hasConversationContent ? (
-    <HomeQuickActions onQuickAction={handleUserSelectTool} className="mb-5" />
+  //   chat/explore/account → shown while THAT skill is idle, even inside a live thread
+  //                          (Account has no other entry — canSubmit is false for it).
+  //   everything else      → the DEFAULT 6-card grid, on the fresh home only. It doubles
+  //                          as the skill switcher, so it stays put once a Make skill is
+  //                          armed and only retires when real content lands.
+  const showStarter =
+    activeTool === "chat"
+      ? chatIdle
+      : activeTool === "explore"
+        ? exploreIdle
+        : activeTool === "account"
+          ? accountIdle
+          : !hasConversationContent;
+
+  const homeStarter = showStarter ? (
+    <HomeStarter
+      tool={activeTool}
+      onSelectTool={handleUserSelectTool}
+      onExplore={(params) => void explore.start(params)}
+      onAccountRun={() => void account.start()}
+      onPrefill={handleStarterPrefill}
+      hasTrackedAccounts={hasTrackedAccounts}
+      audienceNiche={selectedAudience?.goal_label || selectedAudience?.name || undefined}
+      className="mb-5"
+    />
   ) : null;
   // The first-run demo POSTs a canned chat fixture straight to /api/tools/profile — the ONE
   // horizontal entry point that bypasses the skill menu entirely, so disabling the Profile
@@ -2595,7 +2659,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             {rehydrating && !hasConversationContent ? (
               <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
             ) : (
-              threadContent
+              <>
+                {threadContent}
+                {/* The starter follows the creator into the thread. Arming Ask/Explore/
+                    Account inside a live thread must still offer that skill's way in —
+                    and for Account it is the ONLY way in (canSubmit is false). It rides
+                    at the BOTTOM here, directly above the dock, so it reads as "what
+                    now?" rather than as a header the conversation scrolled past. */}
+                {homeStarter}
+              </>
             )}
           </div>
         </div>
@@ -2622,10 +2694,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   return (
     <div className={cn("w-full max-w-[760px] mx-auto flex flex-col pb-4", className)}>
       {threadContent}
-      {/* Quick-actions grid rides ABOVE the composer, so the empty home reads
-          greeting → actions → composer: the actions are the on-ramp INTO the field,
-          not a footer you scroll past. The show-once demo stays a quiet footer below. */}
-      {homeQuickActions}
+      {/* The starter rides ABOVE the composer, so the empty home reads greeting → starter
+          → composer: the cards are the on-ramp INTO the field, not a footer you scroll
+          past. The show-once demo stays a quiet footer below. */}
+      {homeStarter}
       {composerDock}
       {homeFirstRunDemo}
     </div>

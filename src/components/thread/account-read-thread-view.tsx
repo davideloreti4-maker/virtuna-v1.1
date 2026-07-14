@@ -40,8 +40,6 @@ export function AccountReadThreadView({
   onRun,
   userTurn,
 }: AccountReadThreadViewProps) {
-  const isIdle = !isStreaming && !block && !error && !fallbackMessage;
-
   return (
     <ThreadShell userTurn={userTurn}>
       {/* Streaming — the profile-shaped skeleton (A5). */}
@@ -79,24 +77,12 @@ export function AccountReadThreadView({
         </ThreadAssistantTurn>
       )}
 
-      {/* Idle — one-tap entry (no input; the read resolves your own handle server-side). */}
-      {isIdle && (
-        <div className="flex flex-col items-center gap-4 py-10 text-center">
-          <div className="max-w-md space-y-2">
-            <h2 className="text-base font-semibold leading-snug text-foreground">
-              A Read on your own account
-            </h2>
-            <p className="text-sm leading-normal text-foreground-secondary">
-              Maven scrapes your latest posts and maps what&apos;s working, what&apos;s
-              falling flat, and where to double down — grounded in your real account, not a
-              handle over a wall of text.
-            </p>
-          </div>
-          <Button variant="primary" onClick={onRun}>
-            Read my account
-          </Button>
-        </div>
-      )}
+      {/* Idle is NOT this view's business any more — it was a CENTERED block with a
+          <Button>, an idiom nothing else on the home used. The one-tap entry now comes
+          from the ONE starter (home-starter.tsx — THE STARTER CONTRACT), which the
+          composer renders in BOTH layout branches precisely because this skill has no
+          other door: canSubmit is false for `account`, so if the starter did not follow
+          the creator into thread mode, the read would become unreachable there. */}
     </ThreadShell>
   );
 }
