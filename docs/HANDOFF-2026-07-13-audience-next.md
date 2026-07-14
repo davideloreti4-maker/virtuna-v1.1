@@ -1,18 +1,29 @@
-# Handoff — /audience, after P1–P3 shipped
+# Handoff — /audience, after P1–P3 + the rollup + the platform guard
 
-**Updated:** 2026-07-14 · **Worktree:** `~/virtuna-explore-b` (branch `explore-b-sync`, synced to `main`)
-**Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ read §2 F10 below before trusting it.
-**Shipped:** P1 (index + workspace, #280) · **P3 the mode seam (#281)** · **archetype binding (#282)**
-· **progress staging + persona receipts (#284)**. All merged to `main` (`f7c82352`).
+**Updated:** 2026-07-14 (session 2) · **Worktree:** `~/virtuna-explore-b` (branch `explore-b-sync`,
+synced to `main` @ `34dc98d4`, clean)
+**Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ **its P2 divergence design is WRONG.** See §4.
+**Shipped:** P1 (#280) · mode seam (#281) · archetype binding (#282) · progress+receipts (#284)
+· **the Read rollup (#286)** · **the calibrate platform guard (#289)**.
 
-> ⚠️ **This document lied to its last reader.** Its old §4.3 said *"no audience in live data carries
-> `evidence`"* and blamed the description-calibration path for inventing archetype names. **Both were
-> false**, and acting on them cost real time. Everything below is code- or live-verified on 2026-07-14.
-> If you add a claim here, say how you verified it.
+> ⚠️ **This document lied to its last reader once already.** Everything in it is code- or
+> live-verified. **If you add a claim here, say how you verified it.** "I read the code" is not
+> verification in this subsystem — four times now, the code read fine and the live run was broken.
 
 ---
 
-## 1 · The pattern that has now produced THREE bugs — read this first
+## 0 · START HERE — the one rule that matters
+
+**NOTHING IS DONE UNTIL IT HAS BEEN RUN ONCE AGAINST REAL DATA.** Not a mocked test. A real call, a
+real row, eyes on the output.
+
+The base rate is not a figure of speech: **every single feature in this subsystem that was run
+against reality for the first time was broken.** Four for four. tsc, eslint and 3,400 unit tests
+caught **none** of them. One live run caught **each** of them, usually in under two minutes.
+
+---
+
+## 1 · The pattern that has now produced FOUR bugs — read this first
 
 **The one input that makes the feature the feature, dropped in silence, with every test green.**
 
@@ -24,11 +35,18 @@
   share** dead.
 - **#284** — the SSE progress copy named the wrong phase for **126 of 128 seconds**, and
   `isPersonaGrounded` had zero callers.
+- **#289** — **`platform` reached nothing that scrapes.** Picking *Instagram* in the new-audience form
+  ran a **TikTok** scrape: `scrapeBundle(handle, limit)` is `clockworks/tiktok-profile-scraper` and
+  takes no platform. `platform` was written onto the audience row, the connected account, and its
+  snapshot — and passed to the scraper never. Live: `@zachking` + `platform:"instagram"` → **HTTP 200
+  in 75s**, 10 personas, and a snapshot of **86.1M followers / 610 posts / 1.3B hearts — TikTok's
+  numbers exactly** (his real IG is 30.7M, and Instagram has no "hearts" metric at all).
+  **And a handle is NOT one identity across platforms** — so the real failure was building a
+  *stranger's* audience and presenting it as the user's own. Now refused in 1s, honestly.
 
-**When auditing this subsystem, ask of every input: does it actually reach the model, and what
-happens if it doesn't?** Grep for silent fall-throughs (`?? stock`, `if (!x) return DEFAULT`) on any
-path carrying audience data. **Only a live run has ever caught one of these.** Not tsc, not eslint,
-not 3,400 unit tests.
+**When auditing this subsystem, ask of every input: does it actually reach the model / the scraper /
+the prompt, and what happens if it doesn't?** Grep for silent fall-throughs (`?? stock`,
+`if (!x) return DEFAULT`) and for parameters that are destructured, stored, and never passed on.
 
 ---
 
@@ -106,12 +124,80 @@ as a finding. The rollup reports them as `legacyUnattributed` (live: 7) and neve
 **Still to build:** the UI — per-persona quote cards + the divergence panel, reading from this
 endpoint. `reads`/`compared`/`personaDiverged`/`cases[].personaFlips` are the fields it wants.
 
-### P4 — dissolve the account tab
-The account numbers become the **provenance receipt** on the audience. **Half of this already
-exists**: the workspace renders *"Built from Read from @zachking · 12 videos · TikTok"* (#284 added
-the per-persona receipts under it). What remains is folding in follower/post counts
-(*"· 85.9M followers · 608 posts"*), moving **What to do next** + **Content pillars** to `/start`,
-and dropping the tabs so the H1 stops flipping. Touches `/start` → separate PR.
+### P4 — 🔴 DO NOT "dissolve the account tab" as specced. It cannot work.
+
+**The spec says: fold the account numbers into the audience as provenance, drop the tab. That is
+impossible, and the #289 bug is what proves it.**
+
+**An Instagram/YouTube account can have analytics but CANNOT have an audience.** Calibration is
+TikTok-only (#289 — the scrape stack takes no platform, and the IG/YT actors return a profile with
+**no videos**, which enrichment requires). So an IG account has **no audience to fold into**. Dissolve
+the tab and every non-TikTok account loses its only home — along with **Connect** itself.
+
+**Verified live, 2026-07-14 — multi-account WORKS (first time ever run):**
+`POST /api/connected-accounts/connect {platform:"instagram", handle:"zachking"}` → **200 in 11.2s**,
+real IG data (`cdninstagram.com` avatar), snapshot **30.7M followers · 1,306 posts · heart_count 0**
+— *nothing like* TikTok's 86.1M/610/1.3B. The connect route and the refresh cron **do** branch per
+platform, correctly (`scrapeInstagramProfile` / `scrapeYouTubeChannel`). The `/audience?tab=account`
+switcher appears with 2 accounts, `?account=<id>` switches the panel, and **the "Likes" tile
+disappears for Instagram** rather than fabricating a zero. This path is honest and it works.
+
+**The shape of the data (live-verified):**
+- `connected_accounts` — unique per (user × platform × handle), `is_primary`. **Multi-account is real.**
+- `audiences.source_account_id` → set **only** when `type === 'personal'` && platform ≠ custom && the
+  scrape returned a profile (`calibrate/route.ts:163`). **Scraping a competitor (`target`) never
+  creates a connected account** — verified: Fitness Creators / Marcus Reyes / Maya all have `null`.
+- **One account backs MANY audiences (N:1, not 1:1)** — `zachking/tiktok` already backs *two*
+  ("Zach King" + "test"). ⚠️ This kills the tempting idea "the personal audience IS the account page":
+  there is no single audience to be it.
+
+**What P4 should actually be:**
+- **"What to do next" + Content pillars → `/start`.** They are *actions*; they don't belong on a
+  numbers page. (This part of the spec was always right.)
+- **The account view SHRINKS to a roster, it does not die.** It is the home for Connect, and for
+  accounts that cannot have people (IG/YT).
+- The follower/post counts **also** ride as provenance on the TikTok audience built from them.
+  Duplication is fine — provenance in one place, inventory in the other.
+
+**🔴 OWNER DECISION, and it gates this whole ticket:** *is a connected account allowed to back more
+than one personal audience?* If **no** → enforce it, and the account collapses into its (single)
+audience for TikTok. If **yes** → the account stays first-class forever. Today the schema says yes
+and the data already has a case.
+
+### 🎯 What I'd do next, in order
+
+1. **P2's UI** — per-persona quote cards + the divergence panel, reading `GET /api/audiences/[id]/rollup`.
+   Fields: `reads` · `compared` · **`personaDiverged`** · `cases[].personaFlips` · `personas[]`.
+   **Build the panel on `personaFlips`, NOT on bands** (§4). ⚠️ **Design the EMPTY state first** — a real
+   user has `reads: 0` today (the 7 legacy blocks are excluded by design), so "nothing yet" is the
+   *main* state until Reads accumulate. It must not render a confident "0 disagreements".
+2. **Sanity-check that divergence is INTERESTING before investing in the UI.** Run ~10 Reads against a
+   calibrated audience and count how often `personaFlips` is non-empty. Evidence so far is **2 Reads,
+   1 with flips**. If flips turn out to be rare, the panel is honest but boring — and that finding
+   ("calibration barely moves the verdict") is far more important than the panel.
+3. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
+4. **Keep live-firing.** The paths that have *never* been run for real are the ones with bugs in them.
+   Known-unrun: the **audience-drift cron** (it calls `calibrateFromScrape`; prod crons are dead for a
+   missing `SUPABASE_SERVICE_ROLE_KEY`), and whether a calibrated audience actually steers
+   **hooks/ideas/script** the way #281 fixed for the Read.
+
+---
+
+## 4b · State I left behind (so you don't chase ghosts)
+
+- **The e2e test user now has TWO connected accounts** — `zachking/tiktok` (primary) and
+  `zachking/instagram`. The IG one I created deliberately: it is **real, correct data** and the only
+  multi-account fixture in the DB. **Keep it** — it's what makes the switcher testable.
+- **Two real Reads** exist on that user (waterfall concept + "5 morning habits"), correctly
+  id-attributed. They are what the rollup returns today.
+- **Deleted:** the fabricated `Zach King (IG)` audience + its connected account + snapshot, created by
+  the pre-#289 IG calibration (TikTok data labelled Instagram). Gone; don't look for them.
+- ⚠️ **`src/app/api/tools/explore` — 7 of 8 tests FAIL on `main`**, in isolation, not just full-suite,
+  and without any of my branches. **Not mine, but nobody is counting them.** The old claim in §7 that
+  the pre-existing failures "pass in isolation" is **false for these**.
+- ⚠️ **Running two vitest scopes concurrently produces phantom failures** (call-count assertions in
+  hooks/script/steer runners go red under load). If you see 5 mystery failures, re-run serially before
+  believing them. I did; they vanished across 3 consecutive clean runs.
 
 ---
 
@@ -177,10 +263,14 @@ document.head.appendChild(s);
 npx tsc --noEmit                                   # 0
 npx eslint <changed files>                         # 0 errors
 node ./node_modules/vitest/vitest.mjs run src/lib/audience src/components/audience \
-  src/app/api/audiences src/lib/engine/flash       # 531 passed
+  src/app/api/audiences src/lib/engine/flash src/lib/tools    # 799 passed @ 34dc98d4
 ```
-⚠️ The **full** suite has **12 pre-existing full-suite-only failures** (tools routes + billing quota;
-they pass in isolation). They are NOT yours — confirm against the base commit before chasing one.
+**Run the suites SERIALLY.** Two vitest scopes at once → phantom failures (see §4b).
+
+⚠️ **Before chasing ANY failure, confirm it against the base commit** — `git stash` and re-run. That
+one habit saved this session twice: 5 "failures" were concurrency phantoms, and 7 explore-route
+failures turned out to be pre-existing on `main`. The old note here — *"the pre-existing failures pass
+in isolation"* — **is false** for the explore ones; they fail in isolation too.
 
 ---
 
