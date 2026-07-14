@@ -56,7 +56,7 @@ import { ReactionDistributionBlockSchema } from "@/lib/tools/profile-blocks";
 import type { ReactionDistributionBlock } from "@/lib/tools/profile-blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { Stimulus } from "@/lib/engine/stimulus/types";
+import type { Stimulus, StimulusKind } from "@/lib/engine/stimulus/types";
 
 // ─── The reserved subjectKind marker (persisted by Profile, 05-04) ───────────────
 
@@ -67,6 +67,15 @@ type SubjectKind = "person" | "panel";
 
 /** Max quote length the reaction-distribution `read` accepts (block schema `.max(160)`). */
 const QUOTE_MAX = 160;
+
+/** Block cap for the carried stimulus (mirrors ReactionDistributionBlockSchema.props.stimulus). */
+const STIMULUS_MAX = 500;
+
+/**
+ * The stimulus kinds whose `content` is real, human-readable text. `image` / `video` carry a
+ * storage key or a base64 blob there, which is NOT a concept — see the schema note on `stimulus`.
+ */
+const STIMULUS_HAS_TEXT: ReadonlySet<StimulusKind> = new Set<StimulusKind>(["text", "file_text"]);
 
 // ─── IO contract + injectable deps ──────────────────────────────────────────────
 
@@ -331,6 +340,14 @@ export async function runSimulate(
       subjectKind: "panel",
       band,
       fraction,
+      // The concept the room reacted to — carried so the card's Lens door ("See the room →")
+      // opens GROUNDED on the real stimulus instead of on nothing. Text-bearing kinds only:
+      // for an image/video stimulus `content` is a storage key or a base64 blob, and grounding
+      // "Ask them why" on a filename is worse than not offering the door at all (the renderer
+      // drops the Lens when this is absent — an honest degrade, not a broken affordance).
+      ...(STIMULUS_HAS_TEXT.has(stimulus.kind) && stimulus.content.trim()
+        ? { stimulus: stimulus.content.trim().slice(0, STIMULUS_MAX) }
+        : {}),
       themes: clusterThemes(result.personas),
       reactions: result.personas.map((p) => ({
         archetype: p.archetype,

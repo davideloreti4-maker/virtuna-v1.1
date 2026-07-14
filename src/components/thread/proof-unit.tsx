@@ -40,6 +40,17 @@ export interface ProofUnitProps {
   quote?: string;
   /** Optional honesty qualifier shown after the count, e.g. "opener only" / "adapted hook". */
   suffix?: string;
+  /**
+   * The verb the count is stated in. Defaults to "stopped" — the FYP scroll-stop question every
+   * hook/idea/script/remix card asks.
+   *
+   * Simulate passes "react": its panel can run in `mode: 'general'`, which the runner is explicit
+   * must NOT be asked the TikTok stop-or-scroll question (MODE-01) — it judges a draft on its
+   * merits — and its engine emits the fraction as "N/10 react". Hardcoding "stopped" here would
+   * have silently RE-WORDED the engine's claim into a stronger, FYP-flavoured one the run never
+   * made. The number is not the only thing that has to be true.
+   */
+  verb?: string;
   /** Flat Shape-B reactions → the Lens (empty ⇒ no open affordance, honest degrade). */
   flatPersonas: FlatPersonaReaction[];
   /** The concept the room reacted to — grounds the "Ask them why →" chat. */
@@ -88,6 +99,7 @@ export function ProofUnit({
   fraction,
   quote,
   suffix,
+  verb = 'stopped',
   flatPersonas,
   conceptText,
   rewrite,
@@ -134,7 +146,7 @@ export function ProofUnit({
                 <span className="font-semibold tabular-nums text-foreground">
                   {parsed.stop}/{parsed.total}
                 </span>{' '}
-                stopped
+                {verb}
               </>
             ) : (
               fraction
