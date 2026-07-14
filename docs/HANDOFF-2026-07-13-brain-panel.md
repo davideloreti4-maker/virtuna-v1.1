@@ -1010,14 +1010,27 @@ instrument.
 Both pinned by tests. **This is the same failure the card has made in every round: a confident story
 told over a signal too thin to carry it.**
 
-## 17.5 ▶ OPEN — and read 17.2/17.3 before touching any of it
-- **The Expand is APPROVED but UNBUILT — and its justification has largely evaporated.** It existed
-  to house (a) the beat-stepper and (b) a bigger scrubber. **(a) is dead (§17.3)** and **(b) fits:**
-  grounded is 510px in the 516px box, instant 476px. Building it now is a surface for content that
-  does not exist. **Take this back to the owner before building it.**
-- **The counterfactual is the real prize** and it is mostly BUILT: Sapient's *"with the recommended
-  cut → 74%"* is our `canRewrite`/`onRewrite` rewrite lever, already shipped in `AmbientRoom` and
-  simply not exposed on the brain card. That is the cheapest large win left.
+## 17.5 ✅ THE COUNTERFACTUAL — shipped (`fcd56226`), and it is the card's reason to exist
+Sapient's *"with the recommended cut → 74%"* vs *"as scanned → 52%"* is the move that turns a
+diagnosis into an action — **and it is a PREDICTION.** We do it the honest way round and it is
+strictly better: **we do not predict what a rewrite would do, we RE-RUN the skill steered by the
+bouncers' real words and report what it ACTUALLY did.** The machinery was already built and simply
+never exposed here (AmbientRoom's PR-3 lever: tap-time prior snapshot → frozen honest delta).
+- **The lever IS the objection the card is already showing.** The readout quotes a real scroller
+  verbatim; the button re-runs against *that exact quote*. The card cannot recommend one thing and
+  act on another (pinned by a test).
+- Gated on the SAME three conditions as the Population weak-spot so the two levers can never
+  disagree: skill is text-seedable (Remix is URL-seeded → no reseed path) · a REAL bouncer quote
+  exists to steer by (**no quote → no CTA; it must not invent a direction**) · somebody is left to
+  win back. The delta is gated on ITSELF, not the button — a rewrite that wins the whole room hides
+  the CTA, and the payoff must still show.
+- `/dev/cards` now previews it (`canRewrite` was `false` → the state could not be looked at).
+
+## 17.5b ▶ OPEN — and read 17.2/17.3 before touching any of it
+- **The Expand is APPROVED but UNBUILT, deliberately — its justification EVAPORATED.** It existed to
+  house (a) the beat-stepper and (b) a bigger scrubber. **(a) is dead (§17.3)** and **(b) fits:**
+  grounded 510px, instant 485px, in the 516px box. Building it now is a surface for content that does
+  not exist. **Take it back to the owner before building it.**
 - Reason CATEGORIES (Visual Pull / Mental Effort / Hesitation) still need a Flash schema enum —
   `factor` is FREE TEXT and only `quote` reaches the client. Do not bucket free text with heuristics.
 - Near-white is 25.4% vs TRIBE's 39.1%. Close, and the folds are intact — push further only with the
