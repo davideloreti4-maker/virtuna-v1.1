@@ -1,14 +1,21 @@
 # Handoff — /audience, after P1–P3 + the rollup + the platform guard
 
-**Updated:** 2026-07-14 (session 2) · **Worktree:** `~/virtuna-explore-b` (branch `explore-b-sync`,
-synced to `main` @ `34dc98d4`, clean)
+**Updated:** 2026-07-14 (session 3) · **Worktree:** `~/virtuna-explore-b`
 **Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ **its P2 divergence design is WRONG.** See §4.
 **Shipped:** P1 (#280) · mode seam (#281) · archetype binding (#282) · progress+receipts (#284)
-· **the Read rollup (#286)** · **the calibrate platform guard (#289)**.
+· the Read rollup (#286) · the calibrate platform guard (#289) · the divergence panel (#294)
+· **the dead route-test layer + the dropped `grounded` prop (#298)**
+· **PER-PERSONA HOOK GENERATION (#299) — the audience now steers the WRITING, measured.**
 
 > ⚠️ **This document lied to its last reader once already.** Everything in it is code- or
 > live-verified. **If you add a claim here, say how you verified it.** "I read the code" is not
-> verification in this subsystem — four times now, the code read fine and the live run was broken.
+> verification in this subsystem — **six times now**, the code read fine and the live run was broken.
+>
+> **The two rules are equal partners, and session 3 needed both:**
+> 1. **RUN IT FOR REAL.** Caught #299's binding bug — the model returned `"[lurker]"` with brackets,
+>    every target silently dropped, 3,600 tests green.
+> 2. **MEASURE YOUR INSTRUMENT.** The per-persona result (60%) is only meaningful because a CONTROL
+>    arm scored 13.3% — *below* chance. Without it, 60% is a number with no scale.
 
 ---
 
@@ -26,6 +33,30 @@ caught **none** of them. One live run caught **each** of them, usually in under 
 ## 1 · The pattern that has now produced FOUR bugs — read this first
 
 **The one input that makes the feature the feature, dropped in silence, with every test green.**
+
+> ### 🔴 THE RULE THIS DOCUMENT GOT WRONG — the touchpoint list is **FIVE**, not four
+>
+> #287 taught that a new card prop has four touchpoints (schema → runner → parse → `toBlocks`).
+> **That list is missing the route.** Found 2026-07-14 (#298): the SSE `content` event hand-builds
+> its props field-by-field in the route, and it **omitted `grounded`** — so #287's own no-source
+> note could only ever appear *after a reload*, never on the live stream. The line directly above
+> it fixes the identical bug for `proof`, with a comment saying so. Fixed once; reintroduced one
+> field later.
+>
+> ```
+> schema → runner → ROUTE SSE EMIT → stream parse → toBlocks
+>                   ^^^^^^^^^^^^^^ the one everybody forgets
+> ```
+>
+> **And the reason nobody caught it: the route test layer had been DEAD for months.** Every
+> `/api/tools/*` route opens with `maybeMockSkillRun()` → `await cookies()`, which throws outside a
+> Next request scope, and no test file anywhere mocked `next/headers`. The throw fired before any
+> route body ran. On `main` @ `ea61c970`: **`src/app/api/tools` = 15 passed / 73 failed**; full suite
+> **3548 passed / 72 failed**. That includes the **7/8 explore failures §4b logged as unexplained** —
+> 7 failures, 7 `cookies` errors, one line. Fixed in #298 (now 88/88, full suite 3639/0).
+>
+> ⚠️ **THE GATE COMMAND IN §7 WAS PART OF THE PROBLEM** — it runs `src/lib/tools` but **not**
+> `src/app/api/tools`. The route layer was outside the gate *and* untested. §7 is now corrected.
 
 - **#281** — the Read never steered. A `niche: null` fall-through silently discarded the persona
   repaint, and the weights were computed then thrown away (`void resolved`). Every Read compared
@@ -192,7 +223,7 @@ than one personal audience?* If **no** → enforce it, and the account collapses
 audience for TikTok. If **yes** → the account stays first-class forever. Today the schema says yes
 and the data already has a case.
 
-### 🎯 What I'd do next, in order
+### 🎯 The ledger of what's been settled
 
 1. ~~**P2's UI**~~ — ✅ **SHIPPED** (§4). Built on `personaFlips`; empty state designed first; three
    live states browser-verified.
@@ -200,12 +231,30 @@ and the data already has a case.
    diverge persona-wise, 80% reproducible, against a 0.2 flips/Read noise floor. **Calibration moves
    the verdict — but it moves it under the band, which is why the band never saw it.**
 3. ~~**Does the calibrated audience steer anything OTHER than the Read?**~~ — ✅ **MEASURED. See §4c.
-   The answer is NO for GENERATION, YES for RANKING.** The obvious fix was tried and it FAILED.
-4. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
-5. **Keep live-firing.** The paths that have *never* been run for real are the ones with bugs in them.
-   Known-unrun: the **audience-drift cron** (it calls `calibrateFromScrape`; prod crons are dead for a
-   missing `SUPABASE_SERVICE_ROLE_KEY`), and whether a calibrated audience actually steers
-   **hooks/ideas/script** the way #281 fixed for the Read.
+   NO for generation-as-context, YES for ranking — and now YES for generation-as-ASSIGNMENT (#299).**
+4. ~~**Per-persona generation**~~ — ✅ **SHIPPED + MEASURED (#299).** 60% vs a 13.3% control. See §4c.
+
+### 🎯 What I'd do next, in order (written 2026-07-14, session 3)
+
+1. **The archetype display names — the one thing blocking #299 from feeling finished.** The card
+   currently says **"FOR YOUR CROSS NICHE CURIOSITY"** because the scraped personas carry no
+   creator-set `label` and we fall back to the archetype slug. It is honest and it is ugly. This is
+   a **product-voice call**, which is why I did not invent the names. Two options: a static
+   human-name map for the 10 archetypes, or have calibration name them (it already writes repaints).
+2. **Fan the assignment out to `ideas` and `script`.** They share the exact runner shape, the same
+   `overrides` seam, and the same 5-touchpoint prop path — and `select-hook-targets.ts` is already
+   generic. The measurement harness generalises with a one-line change of pipeline.
+   ⚠️ **Re-run `scripts/measure-hook-targeting.ts` per skill.** A script is not a hook; do not
+   assume the effect transfers because it worked here. **Measure it.**
+3. **Settle whether the effect survives OFF-niche topics + a fresh audience.** #299's n=6 were all
+   on-niche Zach King (best case), and one topic scored *below chance*. Before the product copy
+   claims anything, run the harness on a second calibrated audience and on off-niche asks.
+4. **A judge from a different model family.** #299's judge is the same family as the writer. The
+   control rules out phantom-matching, not self-preference. This is the cheapest remaining hole.
+5. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
+6. **Keep live-firing.** The paths never run for real are where the bugs are. Known-unrun: the
+   **audience-drift cron** (calls `calibrateFromScrape`; prod crons are dead for a missing
+   `SUPABASE_SERVICE_ROLE_KEY`), and **grounding with the flag ON** (#298 fixed a prop it needs).
 
 ---
 
@@ -246,6 +295,53 @@ user the audience model is doing something. Untried; the harness to test it alre
 **Caveats, honestly:** one topic, n=10 per arm, the judge's CI is wide. But two differently-shaped
 methods agree and the prompt was verified to contain the data.
 
+### ✅ 4c-RESOLVED — PER-PERSONA GENERATION WORKS (measured 2026-07-14, PR #299)
+
+The direction §4c pointed at was built and **measured against a control arm.** It works.
+
+| arm | blind judge matches hook → persona |
+|---|---|
+| chance (1 of 5) | 20.0% |
+| **CONTROL** — hooks written for nobody | **13.3%** (4/30) ← the instrument's phantom rate |
+| **TREATMENT** — hooks written per-persona | **60.0%** (18/30); two topics matched **5/5** |
+
+**The control landing BELOW chance is the load-bearing number** — the judge is not finding phantom
+structure in hooks where none was put, so 60% is signal and not an instrument that flatters whatever
+you feed it. (Rule 2, applied: a win from one blunt look is no more a finding than a null is.)
+
+**What changed vs the §4c dead end:** the persona stopped being ambient CONTEXT the writer could
+ignore and became a **structural ASSIGNMENT carried by the output contract** — hook N is written for
+person N, and the model must echo `targetArchetype` back. Differentiation is guaranteed by the schema
+instead of prayed for. **Do not** re-read this as "so more audience text does work after all." It
+does not. The contract is the mechanism.
+
+Harness: **`scripts/measure-hook-targeting.ts`** (committed — re-run it before trusting any change here).
+
+**Caveats, stated:** n=6 topics, all on-niche (best case); **one topic scored 1/5 — BELOW chance**, so
+the effect is large but NOT uniform; the 5 matches within a topic are dependent (forced 1:1
+permutation); and **the judge is the same model family as the writer** — the control rules out generic
+phantom-matching but NOT same-model self-preference. A human rater would settle that.
+
+**🔴 THE BUG THE LIVE RUN CAUGHT — the 6th of the §1 shape, and the sharpest yet.**
+The assignment list renders each person as `1. [lurker] …` and the contract said *"use the exact
+bracketed slug"* — so the model returned `"targetArchetype": "[lurker]"`, **brackets and all**. The
+assignment map is keyed on the bare slug, every lookup missed, and **every card silently lost its
+target line.** The writer had complied *perfectly* (its own reasoning cited "the lurker", "the
+loyalist", "the niche buyer" by name) — **the BINDING broke, not the generation.** tsc, eslint and
+3,600 tests were green; the feature was **100% dead on the only path a user watches.**
+
+⚠️ **The generalisable lesson: an exact-match lookup on free-form model output is a silent-failure
+machine.** Brackets, quotes, case and spacing must never decide whether a value binds
+(`normalizeTargetArchetype` absorbs them). What must STILL fail loudly is a value we never assigned —
+a writer that ignores its brief yields a card with **no target line**, never a generic hook wearing a
+personalised label.
+
+**⚠️ OPEN DESIGN CALL (owner):** the scraped audience carries no creator-set labels, so the card falls
+back to archetype-derived names and the eyebrow reads **"FOR YOUR CROSS NICHE CURIOSITY"** —
+engineering vocabulary leaking to users. Honest, but not good. Needs a human display-name map for the
+10 archetypes, or calibration prompted to name them. **Product-voice call — names deliberately NOT
+invented.**
+
 ⚠️ **METHOD LESSON — it cost me a wrong conclusion twice in one day.** I first called this null from the
 embedding metric alone. That metric was **topic-dominated**: two runs of the SAME condition scored only
 0.91 similar, because every hook about one topic lands in the same corner of the vector space. **A null
@@ -262,9 +358,11 @@ agreed *and* the prompt dump proved the input had arrived. (Same shape as the di
   id-attributed. They are what the rollup returns today.
 - **Deleted:** the fabricated `Zach King (IG)` audience + its connected account + snapshot, created by
   the pre-#289 IG calibration (TikTok data labelled Instagram). Gone; don't look for them.
-- ⚠️ **`src/app/api/tools/explore` — 7 of 8 tests FAIL on `main`**, in isolation, not just full-suite,
-  and without any of my branches. **Not mine, but nobody is counting them.** The old claim in §7 that
-  the pre-existing failures "pass in isolation" is **false for these**.
+- ~~⚠️ **`src/app/api/tools/explore` — 7 of 8 tests FAIL on `main`**~~ — **SOLVED 2026-07-14 (#298).**
+  Not mysterious and not specific to explore: **7 failures, 7 `cookies` errors.** Every `/api/tools/*`
+  route opens with `maybeMockSkillRun()` → `await cookies()`, which throws outside a Next request
+  scope, and nothing mocked `next/headers`. The whole tools route-test surface was dead
+  (**73 failing**). One line in `src/test/setup.ts` fixed all of them.
 - ⚠️ **Running two vitest scopes concurrently produces phantom failures** (call-count assertions in
   hooks/script/steer runners go red under load). If you see 5 mystery failures, re-run serially before
   believing them. I did; they vanished across 3 consecutive clean runs.
@@ -332,8 +430,16 @@ document.head.appendChild(s);
 ```bash
 npx tsc --noEmit                                   # 0
 npx eslint <changed files>                         # 0 errors
+
+# ⚠️ CORRECTED 2026-07-14 — the old gate ran `src/lib/tools` but NOT `src/app/api/tools`.
+# The ROUTE layer was outside the gate AND its tests were dead (73 failing, see §1), which is
+# exactly how the route's hand-built SSE `content` map silently dropped a card prop and stayed
+# green. The route is where props go to die. GATE IT.
 node ./node_modules/vitest/vitest.mjs run src/lib/audience src/components/audience \
-  src/app/api/audiences src/lib/engine/flash src/lib/tools    # 799 passed @ 34dc98d4
+  src/app/api/audiences src/app/api/tools src/lib/engine/flash src/lib/tools
+
+# Better still, when a change touches a shared file (e.g. src/test/setup.ts) — run EVERYTHING:
+node ./node_modules/vitest/vitest.mjs run          # 3639 passed / 0 failed @ a97609cd
 ```
 **Run the suites SERIALLY.** Two vitest scopes at once → phantom failures (see §4b).
 

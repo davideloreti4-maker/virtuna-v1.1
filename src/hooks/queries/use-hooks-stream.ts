@@ -27,8 +27,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookCardBlock, HookProof, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp, parseGroundedProp } from '@/lib/tools/blocks';
+import type { HookCardBlock, HookCardTarget, HookProof, ReactionPersona } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp, parseTargetProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -59,6 +59,11 @@ export interface PartialHookCard {
   // Declared, not merely passed: the live stream is the ONLY path on which the half-attributed
   // grid is visible, so a type that omitted it would let the boundary drop it.
   grounded?: boolean;
+  // PER-PERSONA GENERATION: the named reader this hook was written for + that reader's own SIM
+  // reaction. undefined on General/uncalibrated runs, and on a calibrated run whose writer named
+  // nobody we assigned. This is THE field that shows the user the audience model did work, so it
+  // is exactly the one whose silent loss would be invisible — five touchpoints, all of them.
+  target?: HookCardTarget;
 }
 
 export interface UseHooksStreamReturn {
@@ -267,6 +272,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -442,6 +448,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this hook was written for + how they reacted
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -527,6 +534,9 @@ export function useHooksStream(): UseHooksStreamReturn {
         // off the wire but not copied HERE is silently dropped on the streaming path — the only
         // path where a half-attributed run is ever seen.
         ...(c.grounded ? { grounded: true } : {}),
+        // Same hazard, same fix: the target line is the ONLY visible evidence that the audience
+        // model steered anything, and the live stream is where the user watches for it.
+        ...(c.target ? { target: c.target } : {}),
       },
     }));
   }, [streamingCards]);

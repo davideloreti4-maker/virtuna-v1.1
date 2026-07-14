@@ -29,6 +29,46 @@ import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import type { HookCardTarget } from '@/lib/tools/blocks';
+
+/**
+ * TargetReaction — "we aimed this at your skeptics, and here is what your skeptics said."
+ *
+ * This line is the entire visible payoff of per-persona generation. The audience was MEASURED
+ * not to steer the WRITING (handoff §4c: two independent methods, both at chance), so the moat
+ * on hooks was selection-only and completely invisible on the card. Now the aim is stated, and
+ * the aimed-at reader's OWN verdict is the receipt that it landed.
+ *
+ * HONESTY: `verdict`/`quote` are looked up from the SIM panel, never invented. When the target
+ * archetype did not appear in this run's panel, both are null and the line states the aim WITHOUT
+ * claiming a reaction. A miss is shown as plainly as a hit — a hook whose own target scrolled
+ * past is the single most useful thing this card can tell a creator, and hiding it would make the
+ * feature decorative.
+ */
+function TargetReaction({ target }: { target: HookCardTarget }) {
+  const { label, share, verdict, quote } = target;
+  const stopped = verdict === 'stop';
+
+  return (
+    <div className="flex flex-col gap-1 rounded-[8px] border border-white/[0.06] px-3 py-2">
+      <p className="text-[12px] leading-snug text-foreground-secondary">
+        <span className="text-foreground-muted">Written for </span>
+        <span className="font-medium text-foreground">{label}</span>
+        <span className="text-foreground-muted"> · {Math.round(share * 100)}% of your audience</span>
+      </p>
+
+      {/* The receipt. No verdict in the panel → state the aim, claim nothing about the reaction. */}
+      {verdict && (
+        <p className="text-[12.5px] leading-relaxed text-foreground-secondary">
+          <span className={stopped ? 'font-medium text-foreground' : 'text-foreground-muted'}>
+            {stopped ? 'They stopped' : 'They scrolled past'}
+          </span>
+          {quote && <span className="text-foreground-muted"> — “{quote}”</span>}
+        </p>
+      )}
+    </div>
+  );
+}
 
 export interface HookCardRendererProps {
   block: HookCardBlock;
@@ -51,6 +91,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     channel,
     proof,
     grounded,
+    target,
   } = block.props;
 
   // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →", the forward chain).
@@ -70,11 +111,17 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     >
       {/* FACE — always visible (D-11) */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — archetype kicker (band-colored dot) + rank. The hook reads first. */}
+        {/* Eyebrow — archetype kicker (band-colored dot) + rank. The hook reads first.
+            On a targeted (calibrated) run the kicker names WHO THIS WAS WRITTEN FOR instead of
+            the derived `audienceArchetype`. Both are archetype tags, but they answer different
+            questions — the target is the INTENT ("who it's for"), audienceArchetype is a post-hoc
+            SIM derivation ("who reacted"). Showing both side by side reads as two competing
+            labels for one thing; the intent is the stronger, more honest signal, so it wins the
+            eyebrow and the derivation stays available in `audienceArchetype` for the handoff. */}
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            {audienceArchetype}
+            {target ? `For your ${target.label}` : audienceArchetype}
           </span>
           <span className="shrink-0 text-[12px] font-semibold tabular-nums text-foreground-muted" aria-label={`Rank ${rank}`}>
             #{rank}
@@ -85,6 +132,11 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
           {hookLine}
         </p>
+
+        {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
+            Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
+            we assigned — an honest silence, never a personalised label over a generic hook. */}
+        {target && <TargetReaction target={target} />}
 
         {/* Proof receipt (§11f) — the real outlier this hook's structure was drawn from. Only
             present on grounded runs where a real source was attributed (honesty spine). When the
