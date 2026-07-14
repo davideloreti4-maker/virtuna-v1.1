@@ -28,6 +28,7 @@ import type {
   PersonaWeights,
 } from "@/lib/audience/audience-types";
 import { AudienceCompositionBar } from "./audience-composition-bar";
+import { AudienceReads } from "./audience-reads";
 import { PersonaEditForm, archetypeDerivedName } from "./persona-edit-form";
 import {
   getBuiltFrom,
@@ -484,6 +485,12 @@ export function AudienceWorkspace({
               </p>
             )}
           </section>
+
+          {/* ── What they've said + where they split (P2) ─────────────────── */}
+          {/* Fetches its own rollup: it is the only thing on this page that depends on the
+              user's Reads rather than the audience row, and a slow scan must not block the
+              mix or the cast from rendering. */}
+          <AudienceReads audience={audience} className="mb-8" />
 
           {/* ── Grounding ────────────────────────────────────────────────── */}
           {editable && (

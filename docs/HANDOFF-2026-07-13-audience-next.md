@@ -121,8 +121,36 @@ index (the two Flash runs carry no ordering guarantee). **Build the panel on `pe
 4 of their 5 two-sided rows "agree" *as an artifact of the bug*. Folding them in would render a bug
 as a finding. The rollup reports them as `legacyUnattributed` (live: 7) and never guesses.
 
-**Still to build:** the UI — per-persona quote cards + the divergence panel, reading from this
-endpoint. `reads`/`compared`/`personaDiverged`/`cases[].personaFlips` are the fields it wants.
+**✅ SHIPPED — the UI (`audience-reads.tsx`), and the MEASUREMENT that had to come first.**
+
+Before writing a line of UI, the question in step 2 below got answered, because a boring panel and a
+lying panel are both worth knowing about *before* you build one. `scripts/measure-divergence.ts` ran
+**10 concepts × 2 independent pairs** against the scrape-calibrated Zach King row (real DashScope,
+real audience). Both numbers matter:
+
+| | |
+|---|---|
+| **bands moved** | **1/10 Reads** |
+| **personas diverged** | **8/10 Reads** — and all 8 **reproduced** on an independent re-run |
+| noise floor | **0.2 flips/Read** — the same audience compared against *itself* |
+| treatment | **1.5 flips/Read** · **80% of them survive a re-run** |
+
+**Divergence is real signal, not sampler jitter — and the spec's band-based design would have been a
+disaster.** It would have told the user *"your audience agrees with the generic crowd"* on **nine
+Reads out of ten**, while their people were plainly disagreeing underneath. The panel is therefore
+built on **`personaFlips`**, and `diverged` (the band count) is never the headline.
+
+⚠️ **RUN THE NOISE ARM IF YOU EVER RE-MEASURE.** `runFlashTextMode` sets `temperature:0` + a pinned
+seed — but that is a *request*, not a guarantee, and my FIRST pass (3 control concepts) hit an
+outlier that put the noise floor at 1.3 flips/Read, which made real signal look like pure jitter.
+The paired 10-concept design corrected it to 0.2. **A noise estimate off a tiny control arm will
+tell you whatever it wants to.**
+
+The three live states are verified in the browser, not just in tests: **populated** (5 Reads on the
+e2e user), **empty** (`reads: 0` — the main state), and **custom** (`mode: general` → nothing to
+compare against). The tag on each case reads `verdict moved` / **`same verdict, different people`** /
+`agreed` — the middle one is the case the band panel hides, and a mutation test locks it (regress the
+tag to band-only logic and exactly that test goes red).
 
 ### P4 — 🔴 DO NOT "dissolve the account tab" as specced. It cannot work.
 
@@ -166,17 +194,19 @@ and the data already has a case.
 
 ### 🎯 What I'd do next, in order
 
-1. **P2's UI** — per-persona quote cards + the divergence panel, reading `GET /api/audiences/[id]/rollup`.
-   Fields: `reads` · `compared` · **`personaDiverged`** · `cases[].personaFlips` · `personas[]`.
-   **Build the panel on `personaFlips`, NOT on bands** (§4). ⚠️ **Design the EMPTY state first** — a real
-   user has `reads: 0` today (the 7 legacy blocks are excluded by design), so "nothing yet" is the
-   *main* state until Reads accumulate. It must not render a confident "0 disagreements".
-2. **Sanity-check that divergence is INTERESTING before investing in the UI.** Run ~10 Reads against a
-   calibrated audience and count how often `personaFlips` is non-empty. Evidence so far is **2 Reads,
-   1 with flips**. If flips turn out to be rare, the panel is honest but boring — and that finding
-   ("calibration barely moves the verdict") is far more important than the panel.
-3. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
-4. **Keep live-firing.** The paths that have *never* been run for real are the ones with bugs in them.
+1. ~~**P2's UI**~~ — ✅ **SHIPPED** (§4). Built on `personaFlips`; empty state designed first; three
+   live states browser-verified.
+2. ~~**Sanity-check that divergence is INTERESTING**~~ — ✅ **ANSWERED, and it is** (§4): 8/10 Reads
+   diverge persona-wise, 80% reproducible, against a 0.2 flips/Read noise floor. **Calibration moves
+   the verdict — but it moves it under the band, which is why the band never saw it.**
+3. **🔴 The question this raises, and I'd chase it next: does the calibrated audience steer anything
+   OTHER than the Read?** #281 fixed the steering seam *for the Read only*. Hooks / ideas / script
+   have **never been checked** — and the measurement above gives you the tool to check them cheaply:
+   run the same concept through each skill with the calibrated audience vs General and see whether
+   the output actually changes. If it doesn't, the moat is one surface deep. **This is the highest-
+   value unknown in the subsystem.**
+4. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
+5. **Keep live-firing.** The paths that have *never* been run for real are the ones with bugs in them.
    Known-unrun: the **audience-drift cron** (it calls `calibrateFromScrape`; prod crons are dead for a
    missing `SUPABASE_SERVICE_ROLE_KEY`), and whether a calibrated audience actually steers
    **hooks/ideas/script** the way #281 fixed for the Read.
