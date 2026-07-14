@@ -174,11 +174,19 @@ describe("rankHookTargets — slot-spread beats naive top-N", () => {
     expect(t!.repaint).toBe("Skeptical of the magic, hunting for the cut.");
   });
 
-  it("falls back to an archetype-derived label when the creator set none", () => {
+  /**
+   * The COMMON case — a scraped audience carries repaints and shares but no creator-set `label`.
+   * It used to fall back to the title-cased slug, so the card announced "FOR YOUR NICHE DEEP BUYER".
+   * It now falls back to the human name (SSOT: archetype-names.ts).
+   */
+  it("carries NO label when the creator set none — the name is derived at RENDER, not baked in", () => {
     const audience = makeAudience({
       personas: [persona({ archetype: "niche_deep_buyer", share: 0.5 })],
     });
-    expect(rankHookTargets(audience, 5)[0]!.label).toBe("Niche Deep Buyer");
+    // Baking "Deep Fans" in here would freeze it onto the persisted card, so improving our
+    // vocabulary later would leave every old card reading the old name. Only a CREATOR'S name is
+    // history worth snapshotting; ours is resolved by archetypeDisplayName at render.
+    expect(rankHookTargets(audience, 5)[0]!.label).toBeUndefined();
   });
 });
 

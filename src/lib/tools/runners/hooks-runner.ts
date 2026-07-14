@@ -471,7 +471,10 @@ function bindHookTarget(
 
   return {
     archetype: claimed.archetype,
-    label: claimed.label, // display only — never went near the prompt (F7)
+    // Only a CREATOR-SET name is persisted (display only — it never went near the prompt, F7).
+    // When absent, the card derives the name from `archetype` at render, so improving our
+    // vocabulary improves every card ever generated. See HookCardTargetSchema.
+    ...(claimed.label ? { label: claimed.label } : {}),
     share: claimed.share,
     verdict: (reaction?.verdict as "stop" | "scroll" | undefined) ?? null,
     quote: reaction?.quote ?? null,
