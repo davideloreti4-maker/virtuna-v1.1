@@ -33,7 +33,7 @@ did. **Before auditing any surface next session: make sure you can see it, in ev
 | **#287** | **The no-source note** — a grounded run that cited no source for a card now *says so*. |
 | **#288** | **The Reading audit** — 7 label stacks → 1, retired accent killed, both guarded. |
 | **#290** | The `Sidebar.recent` flake (module warm-up, not a slow render). |
-| **#291** | **`/dev/cards` now previews ALL NINE Reading states** — incl. the loading skeleton. |
+| **#292** | **`/dev/cards` now previews ALL NINE Reading states** — incl. the loading skeleton. |
 
 ### Two traps that are now guarded — know they exist
 
