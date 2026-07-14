@@ -47,6 +47,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
@@ -289,6 +290,16 @@ export async function POST(request: Request): Promise<Response> {
   // ── (3) Open thread + active audience (CR-01 — id NEVER from body) ─────────
   const openThread = await createOpenThreadLazy(user.id);
   const activeAudience = await resolveThreadAudience(supabase, openThread);
+
+  // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
+  // explore is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
+  // named person) is not a crowd on a feed — refuse it rather than write feed content for it.
+  // The composer already hides this skill for a general audience; this catches a stale
+  // client, a restored thread, and any direct API call.
+  {
+    const refusal = requireSocialsAudience(activeAudience, "explore");
+    if (refusal) return refusal;
+  }
 
   // ── (4) Per-user daily cap (read-only check; consume only on a real scrape) ──
   const cap = checkUserCap(user.id);

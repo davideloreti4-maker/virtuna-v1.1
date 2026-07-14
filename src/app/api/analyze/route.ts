@@ -13,6 +13,7 @@ import { resolvePack } from "@/lib/engine/packs";
 // skills use) so the Read fold simulates the REAL audience, not generic archetypes.
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import type { Audience } from "@/lib/audience/audience-types";
 // stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
 import { AnalysisInputSchema } from "@/lib/engine/types";
@@ -556,6 +557,36 @@ export async function POST(request: Request) {
         },
         { status: 429 }
       );
+    }
+
+    // -------------------------------------------------------
+    // MODE-01 — the socials-skill guard. Runs AFTER the quota + daily-limit gates (so a
+    // request that is about to be 429'd never pays for these two reads) and BEFORE any
+    // engine spend.
+    //
+    // `test` (a real video) scores against a TikTok FYP; a `mode: 'general'` audience is a
+    // panel, not a crowd on a feed. The audience is resolved again far below (R1′b) to steer
+    // the fold — but that happens AFTER the pipeline has run and persisted, far too late to
+    // refuse. So resolve the pin here and reject up front.
+    //
+    // Fails OPEN (a resolve error → fall through → General): a flaky lookup must never cost
+    // a customer a paid Reading.
+    // -------------------------------------------------------
+    try {
+      const pinnedThread = await createOpenThreadLazy(user.id);
+      const pinnedId =
+        (pinnedThread as typeof pinnedThread & { active_audience_id?: string | null })
+          .active_audience_id ?? null;
+      if (pinnedId) {
+        const pinned = await getAudience(supabase, pinnedId);
+        const refusal = requireSocialsAudience(pinned, "test");
+        if (refusal) {
+          cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
+          return refusal;
+        }
+      }
+    } catch {
+      // Non-fatal — fall through and run against General (D-04).
     }
 
     // -------------------------------------------------------

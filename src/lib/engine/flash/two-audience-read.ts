@@ -28,7 +28,8 @@
  * Isolation: imports the flash engine + audience domain only. No thread/route imports.
  */
 
-import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
+import type { DomainLens } from "@/lib/engine/flash/run-flash-text-mode";
 import { runFlashTextMode } from "./run-flash-text-mode";
 import { aggregateFlash } from "./flash-aggregate";
 import type { FlashBand } from "./flash-aggregate";
@@ -51,6 +52,13 @@ const BAND_VERB: Record<FlashBand, string> = {
   Weak: "bombs",
 };
 
+/** The same verbs for a `mode: 'general'` panel, which judges a case rather than a feed (MODE-01). */
+const GENERAL_BAND_VERB: Record<FlashBand, string> = {
+  Strong: "is convinced",
+  Mixed: "is split",
+  Weak: "isn't convinced",
+};
+
 type ReadEntry = MultiAudienceReadBlock["props"]["audiences"][number];
 
 /**
@@ -62,10 +70,15 @@ async function readForAudience(
   concept: string,
   audience: Audience,
 ): Promise<{ entry: Omit<ReadEntry, "interpretation" | "lever">; band: FlashBand }> {
-  // (1) The SECOND resolve is real: resolve EACH audience separately (array-shaped).
-  //     Result is wired for the Max path; Flash steering rides the repaint below.
-  const resolved = resolveAudienceWeights([audience]);
-  void resolved;
+  // (1) The audience's WEIGHT MIX (persona_weights → analysis_override) weights the band,
+  //     exactly as it does in the hooks/ideas/script/remix runners.
+  //
+  //     MODE-01: this used to be `resolveAudienceWeights([audience]); void resolved;` — computed,
+  //     then thrown away. Together with the dropped repaint (below) it meant NOTHING about the
+  //     audience reached the model or the band, so the /audience workspace's mix sliders moved
+  //     every other skill but were inert on the Read. buildFlashWeighting returns undefined for
+  //     General and for any audience without an analysis_override → the regression gate holds.
+  const weighting = buildFlashWeighting(audience);
 
   // archetype-slug → repaint map (undefined for General/no personas → byte-identical
   // Flash no-op, preserving the General regression gate). Mirrors the runner pattern.
@@ -74,13 +87,26 @@ async function readForAudience(
       ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
       : undefined;
 
-  // (2) Flash per audience — "idea" framing (the concept Read). Niche panel left null
-  //     here (the steer rides the per-audience repaint); contentType null.
-  const panel = { niche: null, contentType: null } as const;
-  const { result } = await runFlashTextMode(concept, "idea", panel, audienceRepaint);
+  // (2) The reaction FRAME (MODE-01). A `mode: 'general'` audience — an analyst panel, a hiring
+  //     panel, one named person — is not a TikTok crowd, so it must not be asked the FYP
+  //     stop-or-scroll question. The verdict tokens are unchanged; their MEANING is re-aimed.
+  const domain: DomainLens = audience.mode === "general" ? "general" : "socials";
 
-  // (3) Aggregate — reuse the band math (do NOT re-roll). Bands only, no score.
-  const { band, fraction } = aggregateFlash(result.personas);
+  // (3) Flash per audience — "idea" framing (the concept Read). Niche panel left null here;
+  //     the steer rides the per-audience repaint, which the generic prompt now honours.
+  const panel = { niche: null, contentType: null } as const;
+  const { result } = await runFlashTextMode(
+    concept,
+    "idea",
+    panel,
+    audienceRepaint,
+    undefined,
+    domain,
+  );
+
+  // (4) Aggregate — reuse the band math (do NOT re-roll). Bands only, no score.
+  //     `fraction` stays the honest raw count; the weighting moves only the qualitative band.
+  const { band, fraction } = aggregateFlash(result.personas, weighting);
 
   // (4) who-not-for — the scrolls-past segment from cold dispositions (D-10, no model call).
   const whoNotFor = deriveWhoNotFor(audience.personas);
@@ -177,17 +203,48 @@ export async function runTwoAudienceRead(
     }
   }
 
+  // ── MODE-01 — the control rule: drop any audience the LEAD is not comparable to ──
+  //
+  // GENERAL_AUDIENCE is `mode: 'socials'`, `platform: 'tiktok'` (audience-repo.ts:38-47). It is a
+  // TikTok crowd, NOT a neutral control. Pairing an analyst panel or a named person against it
+  // printed a confident band on a comparison that means nothing — live, before this fix:
+  //   "Marcus Reyes splits (Mixed) — General splits (Mixed)."
+  //   "Both Marcus Reyes and General land the same — lean into what they share."
+  //
+  // The two sides are asked DIFFERENT QUESTIONS (would you scroll past · are you convinced), so a
+  // delta between their bands is an artifact of the frame, not a fact about the concept.
+  //
+  // This filter runs on the DEDUPED list, BEFORE defaulting, because the route always hands us a
+  // 2-element [active, second] array — a length check would never catch the real shape (the bug a
+  // unit test missed and a live run caught). A general-mode lead keeps only general-mode company;
+  // everything else is dropped and it reads SINGLE (the self-pair collapse below).
+  //
+  // A general-mode CONTROL would have to be an authored general panel. That belongs to the General
+  // pack (domain-pack.ts reserves the slot), not to this seam.
+  const lead = distinct[0];
+  const comparable = lead ? distinct.filter((a) => a.mode === lead.mode) : distinct;
+
   // Default pair (D-09): a single active audience compares against General.
   // Dedupe the explicit General case so we never compare General to General.
   let pair: Audience[];
-  if (distinct.length === 0) {
+  if (comparable.length === 0) {
     pair = [GENERAL_AUDIENCE, GENERAL_AUDIENCE];
-  } else if (distinct.length === 1) {
-    const first = distinct[0]!;
-    pair = first.is_general ? [GENERAL_AUDIENCE, GENERAL_AUDIENCE] : [first, GENERAL_AUDIENCE];
+  } else if (comparable.length === 1) {
+    const first = comparable[0]!;
+    if (first.is_general) {
+      pair = [GENERAL_AUDIENCE, GENERAL_AUDIENCE];
+    } else if (first.mode === "general") {
+      // Self-pair → collapses to ONE honest entry below. Compared against nothing, because
+      // there is nothing here it is comparable to.
+      pair = [first, first];
+    } else {
+      pair = [first, GENERAL_AUDIENCE];
+    }
   } else {
-    // Two distinct audiences — the genuine compare path (cap already applied above).
-    pair = distinct;
+    // Two distinct, SAME-MODE audiences — the genuine compare path (panel-vs-panel or
+    // crowd-vs-crowd). Cross-mode explicit pairs are also rejected upstream at the route
+    // (400 audience_mode_mismatch) so the user gets an explanation, not a silent drop.
+    pair = comparable;
   }
 
   // ── Single-audience Read (CR-02): both sides are the SAME identity ──────────
@@ -200,9 +257,21 @@ export async function runTwoAudienceRead(
     const { entry, band } = await readForAudience(concept, pair[0]!);
     // No comparison audience → no delta. The interpretation states this audience's
     // verdict on its own terms; the lever points at the single verdict.
-    const interpretation = `${entry.name} ${BAND_VERB[band]} (${band}).`;
-    const lever =
-      band === "Strong"
+    //
+    // MODE-01: the socials copy ("sharpen the hook", "tighten the opener", "wins/bombs") is FYP
+    // language — it tells a panel of analysts to fix a scroll-stopper. A general-mode audience
+    // gets copy about its own frame: the case either lands or it doesn't.
+    const isGeneral = pair[0]!.mode === "general";
+    const interpretation = isGeneral
+      ? `${entry.name} ${GENERAL_BAND_VERB[band]} (${band}).`
+      : `${entry.name} ${BAND_VERB[band]} (${band}).`;
+    const lever = isGeneral
+      ? band === "Strong"
+        ? `Lands with ${entry.name}. The case holds — the panel is with you.`
+        : band === "Weak"
+          ? `${entry.name} isn't convinced. Answer the objection they keep raising, then re-read.`
+          : `${entry.name} is split. Shore up the weakest claim to bring the holdouts over.`
+      : band === "Strong"
         ? `Strong for ${entry.name}. Calibrate a second audience to see where it diverges.`
         : band === "Weak"
           ? `Soft for ${entry.name}. Sharpen the hook, then re-read.`
