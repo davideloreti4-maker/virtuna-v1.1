@@ -58,7 +58,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 const SHORT_POLL_INTERVAL_MS = 2_000;
-const SHORT_POLL_MAX_ATTEMPTS = 45; // 45 * 2s = 90s ceiling (>60s engine SLA)
+// 145 * 2s = 290s, just inside maxDuration (300s). The old ceiling was 90s "(>60s engine SLA)",
+// but a real Read runs ~120s (the live moat run was 128s) — so EVERY Read outlived its own
+// progress stream, hit "Stream timed out — analysis still running", and only recovered because
+// EventSource silently reconnects. The watcher must outlive the work it is watching.
+const SHORT_POLL_MAX_ATTEMPTS = 145;
 const HEARTBEAT_INTERVAL_MS = 15_000;
 
 export async function GET(
@@ -133,6 +137,8 @@ export async function GET(
           // Track which segment indices already have keyframe_uri so we only
           // emit filmstrip_segment_ready ONCE per segment (delta-only emission).
           const knownKeyframeIndices = new Set<number>();
+          // Emit the frame count once, the first poll that sees a seeded grid.
+          let filmstripTotalSent = false;
           // Track last personas array reference for change detection.
           let lastPersonasJson = "";
 
@@ -167,6 +173,16 @@ export async function GET(
               // Phase 3 (Plan 08) — filmstrip segment ready polling.
               // Emit filmstrip_segment_ready for each newly populated keyframe_uri.
               const filmstripSegs = extractFilmstripSegments(freshRow);
+
+              // The extract route seeds the WHOLE grid (every idx, keyframe_uri null) before it
+              // reads the first frame, so the total is known long before the frames arrive. Send
+              // it once: the loading Reading draws that many empty slots and fills them in, which
+              // is what makes the strip read as progress ("3 of 8") rather than as a growing pile.
+              if (!filmstripTotalSent && filmstripSegs.length > 0) {
+                filmstripTotalSent = true;
+                send("filmstrip_plan", { total: filmstripSegs.length });
+              }
+
               for (const seg of filmstripSegs) {
                 if (seg.keyframe_uri && !knownKeyframeIndices.has(seg.idx)) {
                   knownKeyframeIndices.add(seg.idx);

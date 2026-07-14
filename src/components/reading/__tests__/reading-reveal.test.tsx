@@ -110,13 +110,73 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     );
   });
 
-  it('shows the frame count only once footage starts landing (real signal)', async () => {
+  it('draws every slot the run will fill as soon as the total is known', async () => {
     render(<ReadingSkeleton id="sim-1" />);
     const es = MockEventSource.instances[0]!;
-    act(() => es.emit('filmstrip_segment_ready', { segment_idx: 0 }));
-    act(() => es.emit('filmstrip_segment_ready', { segment_idx: 1 }));
+    act(() => es.emit('filmstrip_plan', { total: 4 }));
+
     await waitFor(() =>
-      expect(screen.getByTestId('reading-skeleton-frames')).toHaveTextContent(/2 frames read/i),
+      expect(screen.getByTestId('reading-skeleton-frames-strip')).toBeInTheDocument(),
     );
+    // 4 slots, 0 filled — the wait shows how much footage is coming before any of it arrives.
+    expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(0);
+    expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
+      /Reading the footage — 0 of 4 frames/i,
+    );
+  });
+
+  it('SHOWS each keyframe as it lands — the picture, not a tally', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() => es.emit('filmstrip_plan', { total: 3 }));
+    act(() =>
+      es.emit('filmstrip_segment_ready', {
+        segment_idx: 0,
+        keyframe_uri: 'https://signed.example/0.jpg',
+      }),
+    );
+    act(() =>
+      es.emit('filmstrip_segment_ready', {
+        segment_idx: 1,
+        keyframe_uri: 'https://signed.example/1.jpg',
+      }),
+    );
+
+    // The REAL frames of the user's video are on screen. This is the whole point: the
+    // keyframe_uri has always been on the wire, and the skeleton used to drop it and render
+    // the string "2 frames read" instead.
+    await waitFor(() =>
+      expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(2),
+    );
+    const imgs = screen.getAllByRole('presentation', { hidden: true }) as HTMLImageElement[];
+    const srcs = imgs.filter((el) => el.tagName === 'IMG').map((el) => el.src);
+    expect(srcs).toContain('https://signed.example/0.jpg');
+    expect(srcs).toContain('https://signed.example/1.jpg');
+    expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
+      /Reading the footage — 2 of 3 frames/i,
+    );
+  });
+
+  it('never renders a picture for a segment that carries no keyframe (no broken slot)', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() => es.emit('filmstrip_plan', { total: 2 }));
+    // A segment the extractor could not read: it counts as read, but there is nothing to show
+    // for it. It must leave an EMPTY slot, never an <img> with an undefined src.
+    act(() => es.emit('filmstrip_segment_ready', { segment_idx: 0, keyframe_uri: null }));
+    act(() => es.emit('filmstrip_segment_ready', { segment_idx: 1 }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('reading-skeleton-frames-strip')).toBeInTheDocument(),
+    );
+    expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(0);
+    expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
+      /Reading the footage — 0 of 2 frames/i,
+    );
+  });
+
+  it('shows no strip at all before any footage signal (nothing fabricated)', () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    expect(screen.queryByTestId('reading-skeleton-frames-strip')).not.toBeInTheDocument();
   });
 });

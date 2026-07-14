@@ -61,6 +61,78 @@ const BodySchema = z.object({
 });
 
 // =====================================================
+// Incremental segment persistence
+// =====================================================
+
+interface FilmstripSegmentRow {
+  idx: number;
+  keyframe_uri: string | null;
+}
+
+/**
+ * Build a persister that publishes filmstrip segments to the row AS THEY ARE EXTRACTED.
+ *
+ * Reads the row's existing segments ONCE (lazily, on first publish), then keeps the merged
+ * array in memory and upserts by idx — so each call costs one small `patch_analysis_variants`
+ * RPC, not a re-read. The patch touches ONLY `filmstrip_segments`, so it cannot clobber
+ * craft / apollo / remix written concurrently by the score / remix flows (Bug #7 lost-update).
+ *
+ * Never throws: a failed publish is logged and the extraction carries on. A frame that fails
+ * to publish is a frame the loading Reading won't paint — it is not a reason to fail the run.
+ */
+function createSegmentPersister(analysisId: string, log: ReturnType<typeof createLogger>) {
+  const supabase = createServiceClient();
+  let merged: FilmstripSegmentRow[] | null = null;
+
+  return async function publish(updates: FilmstripSegmentRow[]): Promise<void> {
+    if (merged === null) {
+      const { data: row, error } = await supabase
+        .from("analysis_results")
+        .select("variants")
+        .eq("id", analysisId)
+        .single();
+
+      if (error || !row) {
+        log.error("filmstrip: failed to read analysis_results row", {
+          analysisId,
+          error: error?.message,
+        });
+        return;
+      }
+
+      const variants = (row.variants ?? {}) as Record<string, unknown>;
+      merged = Array.isArray(variants.filmstrip_segments)
+        ? [...(variants.filmstrip_segments as FilmstripSegmentRow[])]
+        : [];
+    }
+
+    for (const update of updates) {
+      const at = merged.findIndex((s) => s.idx === update.idx);
+      // A seed (`keyframe_uri: null`) must never overwrite a frame we already published —
+      // otherwise a re-seed would blank the strip the user is watching fill up.
+      if (at >= 0) {
+        if (update.keyframe_uri !== null) merged[at] = update;
+      } else {
+        merged.push(update);
+      }
+    }
+
+    const { error: writeError } = await supabase.rpc("patch_analysis_variants", {
+      p_id: analysisId,
+      p_patch: { filmstrip_segments: merged } as unknown as Json,
+      // secret-authed service job (no session user) — keys on id, as the prior write did.
+    });
+
+    if (writeError) {
+      log.error("filmstrip: failed to persist keyframe_uri to variants", {
+        analysisId,
+        error: writeError.message,
+      });
+    }
+  };
+}
+
+// =====================================================
 // SSRF deny-list (T-03-07-03)
 // Supabase-signed video URLs are external by design — this blocks internal ranges.
 // =====================================================
@@ -188,7 +260,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // Download once; fall back to per-frame remote seeking if the download fails.
   let temp: { path: string; dir: string } | null = null;
 
+  // The frames are the ONLY honest proof-of-work the in-flight Reading can show while the
+  // engine runs (~2 min): they are real frames of the user's own video. That means WHEN they
+  // reach the DB is a UX decision, not just a persistence one — the loading skeleton polls this
+  // row (GET /api/analyze/[id]/stream) and renders each frame as it lands.
+  //
+  // So we persist INCREMENTALLY (once per frame) instead of once after the loop. The old
+  // single write at the end meant every frame appeared in one burst, minutes in — the strip
+  // could never "fill up" while the video was being read, which is the whole point of showing
+  // it. patch_analysis_variants patches ONLY the filmstrip_segments key, so N small patches are
+  // as safe against concurrent craft/apollo/remix writers as the one big one was (Bug #7).
+  const persist = createSegmentPersister(analysisId, log);
+
   try {
+    // Seed the full grid up front (every idx, keyframe_uri: null). This is what lets the client
+    // show "0 of 8" — i.e. HOW MANY frames are coming — from the first poll, instead of only
+    // learning the total once the last one lands. Consumers are already null-safe
+    // (resolveKeyframeUrl skips null uris; the stream route only emits segments that have one).
+    await persist(segments.map((_, i) => ({ idx: i, keyframe_uri: null })));
+
     temp = await downloadToTempFile(videoUrl, analysisId);
     const frameSource = temp?.path ?? videoUrl;
 
@@ -206,74 +296,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       results.push({ idx: i, keyframe_uri: uri });
 
       if (uri) {
+        // Publish THIS frame before extracting the next one — the watching Reading paints it now.
+        await persist([{ idx: i, keyframe_uri: uri }]);
         log.info("filmstrip segment ready", { analysisId, segmentIdx: i });
       }
     }
 
-    // ---- Persist keyframe_uri into analysis_results.variants JSONB ----
-    //
-    // DB schema note: the plan originally referenced `analyses.analysis_results.heatmap`
-    // but no `heatmap` column exists in the `analysis_results` table (Plan 03 migration
-    // created the filmstrips bucket only). The `variants` JSONB column is available and
-    // currently unused — we use it as the filmstrip state store so Plan 08 can read and
-    // emit filmstrip_segment_ready SSE events.
-    //
-    // Structure written: { filmstrip_segments: [{ idx, keyframe_uri }] }
+    // Every successful frame is already in the row (published one-by-one above). Failed frames
+    // keep the seeded `keyframe_uri: null`, which is exactly what they are: a segment we could
+    // not read. Nothing left to write here.
     const successResults = results.filter((r) => r.keyframe_uri !== null);
-    if (successResults.length > 0) {
-      const supabase = createServiceClient();
-
-      // Read current variants to merge (preserve other keys if any)
-      const { data: analysisRow, error: readError } = await supabase
-        .from("analysis_results")
-        .select("variants")
-        .eq("id", analysisId)
-        .single();
-
-      if (readError || !analysisRow) {
-        log.error("filmstrip: failed to read analysis_results row", {
-          analysisId,
-          error: readError?.message,
-        });
-      } else {
-        const currentVariants = (analysisRow.variants ?? {}) as Record<string, unknown>;
-        const existingSegments = Array.isArray(currentVariants.filmstrip_segments)
-          ? (currentVariants.filmstrip_segments as Array<{ idx: number; keyframe_uri: string | null }>)
-          : [];
-
-        // Merge new results into existing segments array (upsert by idx). The array merge
-        // stays app-side (this extract is single-flight per analysis), but the WRITE patches
-        // ONLY filmstrip_segments atomically — so it can't clobber craft / apollo / remix
-        // written concurrently by the score/remix flows (Bug #7 lost-update fix).
-        const merged = [...existingSegments];
-        for (const result of successResults) {
-          const existing = merged.findIndex((s) => s.idx === result.idx);
-          if (existing >= 0) {
-            merged[existing] = result;
-          } else {
-            merged.push(result);
-          }
-        }
-
-        const { error: writeError } = await supabase.rpc("patch_analysis_variants", {
-          p_id: analysisId,
-          p_patch: { filmstrip_segments: merged } as unknown as Json,
-          // secret-authed service job (no session user) — keys on id, as the prior write did.
-        });
-
-        if (writeError) {
-          log.error("filmstrip: failed to persist keyframe_uri to variants", {
-            analysisId,
-            error: writeError.message,
-          });
-        } else {
-          log.info("filmstrip: keyframe_uris persisted to variants", {
-            analysisId,
-            count: successResults.length,
-          });
-        }
-      }
-    }
+    log.info("filmstrip: keyframe_uris persisted to variants", {
+      analysisId,
+      count: successResults.length,
+    });
 
     return NextResponse.json({
       ok: true,

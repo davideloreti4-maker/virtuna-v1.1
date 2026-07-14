@@ -211,12 +211,40 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
  * directly instead. It is first in the list on purpose — it is the state every user sees on every
  * single Read, and it has had the least scrutiny of any of them.
  */
+/**
+ * Stand-in keyframes for the `loading-frames` preview. In a live run these are signed URLs to
+ * real JPEGs cut from the user's video; here they are app screenshots that already ship in
+ * /public, so the strip renders REAL images (correct crop, aspect, load behaviour) with no
+ * network fixture. Five of eight — so the preview shows a strip mid-fill, not a full one.
+ */
+const PREVIEW_FRAMES = [
+  { idx: 0, uri: '/images/landing/hero-read.png' },
+  { idx: 1, uri: '/images/landing/feature-audience.png' },
+  { idx: 2, uri: '/images/landing/feature-drivers.png' },
+  { idx: 3, uri: '/images/landing/hero-read.png' },
+  { idx: 4, uri: '/images/landing/feature-audience.png' },
+];
+
 const READING_STATES: { id: string; label: string; note: string; node: React.ReactNode }[] = [
   {
     id: 'loading',
-    label: 'Loading',
-    note: 'The in-flight skeleton — what EVERY Read shows before it settles. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
+    label: 'Loading · waiting',
+    note: 'The in-flight skeleton in its FIRST seconds — before the extractor has cut a single frame. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
     node: <ReadingSkeleton id="preview" />,
+  },
+  {
+    id: 'loading-frames',
+    label: 'Loading · frames landing',
+    note: 'The SAME skeleton mid-run: real keyframes of the user\'s own video appearing as the engine reads them (5 of 8 here). This is what the 2-minute wait actually looks like once the footage starts landing — and it was invisible to everyone until this preview existed, because it only occurs during a live run.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{
+          frameTotal: 8,
+          frames: PREVIEW_FRAMES,
+        }}
+      />
+    ),
   },
   {
     id: 'complete',
