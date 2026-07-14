@@ -245,8 +245,18 @@ export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 // client. This is the CARD-side shape: display + receipt, no prompt text. Keeping them distinct
 // types is what stops the repaint leaking into a block by an innocent-looking spread.
 export const HookCardTargetSchema = z.object({
-  archetype: z.string(),                       // binding key — one of the fixed 10
-  label: z.string(),                           // display only — snapshot at generation time
+  archetype: z.string(),                       // binding key — one of the fixed 10. THE NAME IS DERIVED FROM THIS.
+  /**
+   * The CREATOR'S OWN name for this persona — present ONLY when they set one. Display only; it
+   * never reached the model (F7).
+   *
+   * ⚠️ OPTIONAL ON PURPOSE. When absent the renderer derives the name from `archetype` via
+   * `archetypeDisplayName`. The split is deliberate: a creator's name is HISTORY and is snapshotted
+   * (a later rename must not rewrite what a card said when it was written), while OUR name for an
+   * archetype is just our current vocabulary and is resolved at RENDER — so improving it improves
+   * every card ever generated instead of leaving old ones reading "NICHE DEEP BUYER" forever.
+   */
+  label: z.string().optional(),
   share: z.number(),                           // 0..1 share of the audience
   verdict: z.enum(["stop", "scroll"]).nullable(), // did the person we AIMED at bite?
   quote: z.string().nullable(),                // that person's own words — never invented

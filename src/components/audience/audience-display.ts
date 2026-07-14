@@ -10,6 +10,7 @@ import type {
   SignaturePersona,
   Temperature,
 } from "@/lib/audience/audience-types";
+import { archetypeDisplayName } from "@/lib/audience/archetype-names";
 
 export type CalibrationStatus =
   | "baseline"
@@ -90,8 +91,17 @@ export function getPlatformLabel(audience: Audience): string {
   return PLATFORM_LABELS[audience.platform] ?? audience.platform;
 }
 
+/**
+ * The user-facing name for a persona archetype. Delegates to the SSOT map
+ * (`@/lib/audience/archetype-names`) so the workspace and the hook cards call the same person the
+ * same thing — before this, both title-cased the raw slug and the app said "Cross Niche Curiosity"
+ * at the user. An unknown slug still title-cases (those rows exist — #282).
+ *
+ * ⚠️ Display only. The engine binds on `archetype`; the model is briefed with `repaint`. This
+ * string must never reach a prompt (F7).
+ */
 export function formatArchetype(archetype: string): string {
-  return archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return archetypeDisplayName(archetype);
 }
 
 /** Top-N personas by share for card preview lines. */
