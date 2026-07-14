@@ -28,7 +28,7 @@ register({
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { retrieveCachedExamples, isProofGrade, hasReusableSignal, isFreshTeardown, resolveRetrieveConfig } =
   require("@/lib/grounding/retrieve");
-const { buildCorpusBlock, CORPUS_CHAR_BUDGET } = require("@/lib/grounding/prompt");
+const { buildCorpusBlock, corpusBudgetFor } = require("@/lib/grounding/prompt");
 const { getCorpusClient, matchSharedTeardowns } = require("@/lib/grounding/corpus");
 const { embedQueryText } = require("@/lib/grounding/embedder");
 
@@ -68,28 +68,35 @@ async function debugRejects(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const res = await retrieveCachedExamples({ query: QUERY, platform: PLATFORM, niche: null });
-
   console.log(`\nQUERY: "${QUERY}"  ·  platform: ${PLATFORM}`);
-  console.log(
-    `retrieved ${res.examples.length} examples · enough=${res.enough} · ` +
-      `matched=${res.stats.matched} · good=${res.stats.good} · minSim=${res.stats.minSimilarity}`,
-  );
 
   if (DEBUG) await debugRejects();
 
-  if (res.examples.length === 0) {
-    console.log("\nNo examples cleared the bar — generation would run ungrounded (honestly labeled).");
-    return;
-  }
-
+  // RETRIEVE PER SKILL. The three skills no longer share a retrieval: `skill` selects the ranking
+  // AXIS (hooks → structural archetype-spread across the whole corpus; ideas/script → topical
+  // cosine, platform-gated), not merely the rendered slice. Retrieving once and rendering it three
+  // ways would show a hooks block this pipeline never actually builds — which is the exact class
+  // of lie this preview exists to catch.
   for (const skill of SKILLS) {
-    const { corpus, used } = buildCorpusBlock(res.examples, skill);
+    const res = await retrieveCachedExamples({ query: QUERY, platform: PLATFORM, skill, niche: null });
     const bar = "=".repeat(96);
     console.log(`\n${bar}`);
+
+    if (res.examples.length === 0) {
+      console.log(`  ${skill.toUpperCase()} SLICE — rank=${res.stats.rank} · NO EXAMPLES`);
+      console.log(bar);
+      console.log(
+        `  matched=${res.stats.matched} good=${res.stats.good} minSim=${res.stats.minSimilarity}\n` +
+          `  → generation runs UNGROUNDED (honestly labeled — no fabricated source).`,
+      );
+      continue;
+    }
+
+    const { corpus, used } = buildCorpusBlock(res.examples, skill);
     console.log(
-      `  ${skill.toUpperCase()} SLICE — ${corpus.length}/${CORPUS_CHAR_BUDGET} chars · ` +
-        `${used.length}/${res.examples.length} examples rendered`,
+      `  ${skill.toUpperCase()} SLICE — rank=${res.stats.rank} · ` +
+        `${used.length}/${res.examples.length} examples · ${res.stats.archetypes} archetypes · ` +
+        `${corpus.length}/${corpusBudgetFor(skill)} chars · enough=${res.enough}`,
     );
     console.log(bar);
     console.log(corpus);

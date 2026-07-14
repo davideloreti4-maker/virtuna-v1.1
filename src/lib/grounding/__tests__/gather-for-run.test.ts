@@ -34,13 +34,13 @@ type Gather = typeof gatherAndExtract;
 const hit: Retrieve = async () => ({
   examples: [example("a"), example("b")],
   enough: true,
-  stats: { matched: 5, good: 2, minRows: 2, minSimilarity: 0.6 },
+  stats: { matched: 5, good: 2, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 2 },
 });
 
 const miss: Retrieve = async () => ({
   examples: [example("a")],
   enough: false,
-  stats: { matched: 2, good: 1, minRows: 2, minSimilarity: 0.6 },
+  stats: { matched: 2, good: 1, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 1 },
 });
 
 function baseInput(warnings: string[] = []) {
@@ -55,6 +55,21 @@ function baseInput(warnings: string[] = []) {
 }
 
 describe("gatherCorpusForRun — read-back first", () => {
+  /**
+   * The skill argument selects the RANKING AXIS inside retrieve (hooks → structural, ideas/script
+   * → topical), so a skill that does not survive the call is a skill that silently reverts hooks to
+   * the topical path that retrieved nothing for 8 of 10 real asks. It typechecks either way — the
+   * runner already passed `skill`, gather-for-run simply never forwarded it, and every persisted
+   * test stayed green. Assert the wire, not the type.
+   */
+  it("forwards the skill to retrieval (it picks the ranking axis, not just the render)", async () => {
+    const retrieve = vi.fn<Retrieve>(hit);
+
+    await gatherCorpusForRun({ ...baseInput(), skill: "ideas" }, { retrieve, gather: vi.fn<Gather>() });
+
+    expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ skill: "ideas" }));
+  });
+
   it("skips the scrape entirely on a cache hit", async () => {
     const gather = vi.fn<Gather>();
     const stages: Array<[string, string]> = [];

@@ -22,16 +22,37 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { MIN_OUTLIER_MULTIPLIER } from "./outlier-gate";
 import { getCorpusClient, matchSharedTeardowns, type SharedMatchRow } from "./corpus";
 import { embedQueryText } from "./embedder";
+import { selectStructuralExamples } from "./rank";
+import type { GroundingSkill } from "./prompt";
 import { parseIdeaFacet, parseTeardownTemplate, type FitLabel, type RetrievedExample } from "./types";
 
 /** Pre-prune placeholder fit — same as the scrape path (real §11c label is deferred). */
 const DEFAULT_FIT: FitLabel = "adjacent";
 
+/**
+ * How a skill finds its rows.
+ *
+ *  • "topical"     — cosine over the subject embedding, gated by a similarity floor. Correct when
+ *                    the lesson is BOUND to the subject. That is `ideas`: belief↔reality is a claim
+ *                    about what a specific audience believes ("they thought you needed 10k followers
+ *                    → actually 800 engaged ones"), and it is worthless to a creator in another
+ *                    niche. Here the floor earns its keep.
+ *
+ *  • "structural"  — archetype-spread over the whole corpus, topic demoted to a tiebreaker (see
+ *                    rank.ts). Correct when the lesson is the SHAPE and the subject is a worked
+ *                    example. That is `hooks`: a madlib is a hook with the topic already lifted out.
+ *
+ * The two were the same path until 2026-07-14, and hooks paid for it — 8 of 10 real creator asks
+ * retrieved nothing at all, while 515 usable madlibs sat unreachable behind a topical floor they
+ * were never meant to clear.
+ */
+export type RankStrategy = "topical" | "structural";
+
 /** Read-back knobs (resolved from env per call so tests/ops can tune without reload). */
 export interface RetrieveConfig {
   /** Cache-hit bar: this many good rows → the scrape is skipped. */
   minRows: number;
-  /** Cosine floor — below this a row is topically unrelated, never "good". */
+  /** Cosine floor — below this a row is topically unrelated, never "good". Ignored when structural. */
   minSimilarity: number;
   /** Freshness window (days) on proof_captured_at; null/absent timestamps pass. */
   freshDays: number;
@@ -39,6 +60,17 @@ export interface RetrieveConfig {
   fetchCount: number;
   /** Examples handed to generation on a hit (mirrors the scrape path's topN yield). */
   maxExamples: number;
+  /** How the fetched rows are ranked down to `maxExamples`. */
+  rank: RankStrategy;
+  /**
+   * Hard-gate the RPC on the run's platform?
+   *
+   * TOPICAL skills do (a platform's subjects are its own). STRUCTURAL does NOT: a madlib is a
+   * madlib, and the same argument that carries a hook across niches carries it across platforms.
+   * The gate was costing hooks two-thirds of the corpus before cosine even ran — a TikTok creator
+   * could not see any of the 333 Instagram rows, of which 208 are proof-grade.
+   */
+  filterPlatform: boolean;
 }
 
 function envInt(name: string, fallback: number): number {
@@ -51,26 +83,63 @@ function envFloat(name: string, fallback: number): number {
   return Number.isFinite(raw) && raw > 0 && raw < 1 ? raw : fallback;
 }
 
-export function resolveRetrieveConfig(): RetrieveConfig {
-  return {
+/**
+ * Structural retrieval ranks the WHOLE corpus (532 rows today), so it must fetch the whole corpus
+ * — a cosine-ordered top-N pool would smuggle the topical bias back in through the pool boundary,
+ * which is the bug we are fixing. Sized with headroom; revisit if the corpus outgrows a few
+ * thousand rows, at which point the round-robin belongs in SQL.
+ */
+const STRUCTURAL_POOL = 2000;
+
+/**
+ * Per-skill retrieval policy. `skill` is optional: callers that do not name one (and the scrape
+ * path's own tests) keep the historical topical behaviour exactly.
+ */
+export function resolveRetrieveConfig(skill?: GroundingSkill): RetrieveConfig {
+  const base = {
     minRows: envInt("GROUNDING_CACHE_MIN_ROWS", 4),
-    // RE-CALIBRATED 2026-07-14 against the real 532-row curated corpus: 0.65 → 0.58.
-    //
-    // The old 0.65 was tuned on a 22-row TEST corpus, and on the real one it sat INSIDE the
-    // true-positive band — silently rejecting almost everything. Measured on the live corpus:
-    //   on-topic  ("personal branding for founders", "faceless content ideas") → 0.58–0.68,
-    //             including @jarrydsinclair 39×, @brian_blum 48×, @peter.visuals 160×
-    //   off-topic ("carbonara recipe", "leaking radiator", "puppy training")   → ≤ 0.54
-    // A 0.65 floor kept ~nothing; 0.58 clears every off-topic hit observed with headroom.
-    //
-    // Curated rows embed a thinner subject than scraped ones (no caption/hashtags in the
-    // Sandcastles record), which drags their cosine down across the board — the floor has to
-    // be set against the corpus we actually have, not the one we tested on. Re-measure with
-    // `npx tsx scripts/preview-grounding-slices.ts "<query>" <platform> --debug` before moving it.
-    minSimilarity: envFloat("GROUNDING_CACHE_MIN_SIMILARITY", 0.58),
     freshDays: envInt("GROUNDING_CACHE_FRESH_DAYS", 90),
-    fetchCount: 12,
     maxExamples: 6,
+  };
+
+  // Escape hatch: GROUNDING_HOOKS_RANK=topical reverts hooks to the old path without a deploy.
+  const hooksRank: RankStrategy =
+    process.env.GROUNDING_HOOKS_RANK === "topical" ? "topical" : "structural";
+
+  if (skill === "hooks" && hooksRank === "structural") {
+    return {
+      ...base,
+      // No floor. Every curated row is a human-picked teaching example whose structure is sound
+      // regardless of its subject, and the floor's only measured effect on hooks was to delete
+      // them: it dropped a personal-branding video from a personal-branding query (0.576 < 0.58)
+      // while admitting a carbonara recipe (0.673). Topic still ORDERS the results — it just no
+      // longer decides whether the creator gets grounding at all.
+      minSimilarity: 0,
+      fetchCount: envInt("GROUNDING_HOOKS_POOL", STRUCTURAL_POOL),
+      rank: "structural",
+      filterPlatform: false,
+    };
+  }
+
+  return {
+    ...base,
+    // TOPICAL FLOOR — ideas + script only.
+    //
+    // ⚠️ 0.58 is MIS-CALIBRATED and known to be so. It was measured on the corpus UNFILTERED,
+    // but every runner passes filterPlatform, and the platform-filtered distribution sits lower:
+    // "personal branding for founders" peaks at 0.629 across all 532 rows but only 0.576 across
+    // the 177 TikTok ones — under its own floor. The comment this replaces also claimed off-topic
+    // asks land ≤0.54; "carbonara recipe" measures 0.673. The floor does not separate relevant
+    // from irrelevant, it detects whether the corpus happens to hold your subject.
+    //
+    // It is left at 0.58 deliberately: hooks no longer depends on it, and re-tuning it for ideas
+    // needs its own measurement (belief↔reality is genuinely subject-bound, so the fix there is a
+    // better-calibrated floor, NOT this structural path). Re-measure PER PLATFORM before moving it:
+    //   npx tsx scripts/probe-hook-transfer.ts
+    minSimilarity: envFloat("GROUNDING_CACHE_MIN_SIMILARITY", 0.58),
+    fetchCount: 12,
+    rank: "topical",
+    filterPlatform: true,
   };
 }
 
@@ -189,6 +258,18 @@ export function matchRowToExample(row: SharedMatchRow): RetrievedExample {
 export interface RetrieveInput {
   query: string;
   platform: string;
+  /**
+   * Which skill is retrieving — selects the RANKING AXIS, not just the rendered slice.
+   *
+   * This is the load-bearing argument. Until 2026-07-14 the three skills shared one retrieval
+   * (same query, same floor, same rows) and differed only in how the winning rows were RENDERED
+   * into the prompt. But hooks and ideas want opposite things from the corpus: hooks wants a
+   * spread of SHAPES regardless of subject, ideas wants a subject match. Slicing the render while
+   * sharing the selection meant hooks was served rows chosen on a criterion it does not use.
+   *
+   * Optional so pre-existing callers/tests keep the historical topical behaviour.
+   */
+  skill?: GroundingSkill;
   /** Creator niche — reserved for facet-filtered rungs; NOT a filter in topical MVP. */
   niche?: string | null;
 }
@@ -197,7 +278,15 @@ export interface RetrieveResult {
   examples: RetrievedExample[];
   /** True when examples.length ≥ config.minRows — the caller may skip the scrape. */
   enough: boolean;
-  stats: { matched: number; good: number; minRows: number; minSimilarity: number };
+  stats: {
+    matched: number;
+    good: number;
+    minRows: number;
+    minSimilarity: number;
+    rank: RankStrategy;
+    /** Distinct hook archetypes across the returned examples (structural's whole point). */
+    archetypes: number;
+  };
 }
 
 /**
@@ -213,7 +302,7 @@ export async function retrieveCachedExamples(
     now?: Date;
   } = {},
 ): Promise<RetrieveResult> {
-  const config = deps.config ?? resolveRetrieveConfig();
+  const config = deps.config ?? resolveRetrieveConfig(input.skill);
   const supabase = deps.supabase ?? getCorpusClient();
   const embed = deps.embedQuery ?? embedQueryText;
 
@@ -221,9 +310,13 @@ export async function retrieveCachedExamples(
   const rows = await matchSharedTeardowns(supabase, {
     embedding,
     count: config.fetchCount,
-    filterPlatform: input.platform,
+    // Structural retrieval reads across platforms on purpose — see RetrieveConfig.filterPlatform.
+    filterPlatform: config.filterPlatform ? input.platform : null,
   });
 
+  // Admissibility is NOT ranking: these three drop rows that must never reach the model at all
+  // (unproven scrapes, stale proof, rows whose craft fields are empty). The similarity floor sits
+  // here too, but at 0 for structural it is a no-op rather than a special case.
   const good = rows.filter(
     (r) =>
       r.similarity >= config.minSimilarity &&
@@ -231,7 +324,13 @@ export async function retrieveCachedExamples(
       isAdmissible(r) &&
       hasReusableSignal(r),
   );
-  const examples = good.slice(0, config.maxExamples).map(matchRowToExample);
+
+  const picked =
+    config.rank === "structural"
+      ? selectStructuralExamples(good, config.maxExamples)
+      : good.slice(0, config.maxExamples);
+
+  const examples = picked.map(matchRowToExample);
 
   return {
     examples,
@@ -241,6 +340,8 @@ export async function retrieveCachedExamples(
       good: good.length,
       minRows: config.minRows,
       minSimilarity: config.minSimilarity,
+      rank: config.rank,
+      archetypes: new Set(examples.map((e) => e.hookArchetype ?? "(unclassified)")).size,
     },
   };
 }

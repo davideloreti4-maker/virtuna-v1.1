@@ -51,6 +51,8 @@ const config: RetrieveConfig = {
   freshDays: 90,
   fetchCount: 12,
   maxExamples: 3,
+  rank: "topical",
+  filterPlatform: true,
 };
 
 function fakeSupabase(rows: SharedMatchRow[]) {
@@ -89,11 +91,34 @@ describe("resolveRetrieveConfig", () => {
   it("uses documented defaults when env is unset", () => {
     const c = resolveRetrieveConfig();
     expect(c.minRows).toBe(4);
-    // 0.58, re-measured 2026-07-14 against the real 532-row corpus. The old 0.65 was tuned on
-    // a 22-row test corpus and sat INSIDE the true-positive band (on-topic 0.58–0.68), so it
-    // rejected 39×/48×/160× outliers that were dead-on topic. Off-topic tops out at 0.54.
     expect(c.minSimilarity).toBe(0.58);
     expect(c.freshDays).toBe(90);
+    expect(c.rank).toBe("topical");
+  });
+
+  /**
+   * The per-skill AXIS, not just the per-skill slice. hooks ranks on structure across the whole
+   * corpus; ideas keeps the topical floor because belief↔reality is genuinely subject-bound.
+   * Measured 2026-07-14: on the shared topical path, 8 of 10 real creator asks retrieved ZERO
+   * hook rows, while the floor deleted a personal-branding video from a personal-branding query
+   * (0.576 < 0.58) and admitted a carbonara recipe (0.673).
+   */
+  it("gives hooks a structural policy: no floor, no platform gate, whole-corpus pool", () => {
+    const c = resolveRetrieveConfig("hooks");
+    expect(c.rank).toBe("structural");
+    expect(c.minSimilarity).toBe(0); // topic orders, it does not gate
+    expect(c.filterPlatform).toBe(false); // a madlib transfers across platforms too
+    expect(c.fetchCount).toBeGreaterThan(532); // must see the whole corpus to spread across it
+  });
+
+  it("keeps ideas + script on the topical path, platform-gated", () => {
+    for (const skill of ["ideas", "script"] as const) {
+      const c = resolveRetrieveConfig(skill);
+      expect(c.rank).toBe("topical");
+      expect(c.minSimilarity).toBe(0.58);
+      expect(c.filterPlatform).toBe(true);
+      expect(c.fetchCount).toBe(12);
+    }
   });
 });
 
@@ -236,5 +261,78 @@ describe("JSONB shape guards (the silent-drift regression)", () => {
 
     // …while a row with any real signal survives.
     expect(hasReusableSignal(row({ template: null, idea: null }))).toBe(true); // has spoken_hook
+  });
+});
+
+describe("retrieveCachedExamples — structural (hooks)", () => {
+  /** Corpus shape that broke the topical path: a dominant class that is also the most similar. */
+  function corpus(): SharedMatchRow[] {
+    return [
+      ...Array.from({ length: 8 }, (_, i) =>
+        row({
+          id: `pe-${i}`,
+          hook_archetype: "personal-experience",
+          similarity: 0.9 - i * 0.01,
+          source_pool: "curated",
+        }),
+      ),
+      row({ id: "auth", hook_archetype: "authority", similarity: 0.2, source_pool: "curated" }),
+      row({ id: "quest", hook_archetype: "question", similarity: 0.15, source_pool: "curated" }),
+      row({ id: "contra", hook_archetype: "contrarian", similarity: 0.1, source_pool: "curated" }),
+    ];
+  }
+
+  const structural: RetrieveConfig = {
+    minRows: 4,
+    minSimilarity: 0,
+    freshDays: 90,
+    fetchCount: 2000,
+    maxExamples: 4,
+    rank: "structural",
+    filterPlatform: false,
+  };
+
+  it("reads ACROSS platforms — a madlib is a madlib (the gate hid 333 IG rows from TikTok)", async () => {
+    const { supabase, rpc } = fakeSupabase(corpus());
+    await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    expect(rpc).toHaveBeenCalledWith(
+      "match_shared_teardowns",
+      expect.objectContaining({ filter_platform: null, match_count: 2000 }),
+    );
+  });
+
+  it("returns a SPREAD of archetypes, not the topically-nearest majority class", async () => {
+    const { supabase } = fakeSupabase(corpus());
+
+    const result = await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    // Topical would have returned pe-0..pe-3 — four rehearsals of one shape.
+    expect(result.examples).toHaveLength(4);
+    expect(result.stats.archetypes).toBe(4);
+    expect(result.stats.rank).toBe("structural");
+    expect(result.enough).toBe(true);
+  });
+
+  it("grounds a query the topical floor would have starved (0.576 < 0.58 → zero rows)", async () => {
+    // Every row below the retired floor. Topical returns nothing; structural returns six shapes.
+    const belowFloor = corpus().map((r, i) =>
+      row({ ...r, similarity: 0.3, hook_archetype: ["a", "b", "c", "d", "e"][i % 5] }),
+    );
+    const { supabase } = fakeSupabase(belowFloor);
+
+    const result = await retrieveCachedExamples(
+      { query: "personal branding for founders", platform: "tiktok", skill: "hooks" },
+      { supabase, embedQuery: async () => new Array(768).fill(0.1), config: structural, now: NOW },
+    );
+
+    expect(result.examples.length).toBe(4);
+    expect(result.enough).toBe(true);
   });
 });

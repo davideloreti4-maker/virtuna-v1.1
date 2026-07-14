@@ -99,10 +99,21 @@ export async function gatherCorpusForRun(
     // 1. read-back: enough good cached teardowns → skip the scrape (instant + free).
     let partial: RetrievedExample[] = [];
     try {
-      const cached = await retrieve({ query, platform: input.platform, niche: input.niche });
+      // `skill` selects the RANKING AXIS, not just the rendered slice — hooks ranks on structure
+      // (archetype spread, topic demoted to a tiebreaker), ideas/script rank on topical cosine.
+      // Forwarding it is load-bearing: without it every skill silently retrieves topically, which
+      // is the defect this argument exists to fix.
+      const cached = await retrieve({
+        query,
+        platform: input.platform,
+        skill: input.skill,
+        niche: input.niche,
+      });
       if (cached.enough) {
         console.info(
-          `[grounding] cache HIT for "${query}" — ${cached.examples.length} cached teardowns (≥${cached.stats.minRows}), scrape skipped`,
+          `[grounding] cache HIT for "${query}" (${input.skill}/${cached.stats.rank}) — ` +
+            `${cached.examples.length} teardowns across ${cached.stats.archetypes} archetypes ` +
+            `(≥${cached.stats.minRows}), scrape skipped`,
         );
         // `used` (not the input list) — the model can only cite what it was actually shown,
         // and the runner resolves sourceIndex positionally against this array.

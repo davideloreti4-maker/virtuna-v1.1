@@ -57,10 +57,49 @@ export type GroundingSkill = "hooks" | "ideas" | "script";
  */
 export const CORPUS_CHAR_BUDGET = 1800;
 
+/**
+ * PER-SKILL budget. One number could not serve both shapes of grounding, and hooks paid for it.
+ *
+ * The block costs a ~700-char fixed header plus ~400 per example, so 1800 fits exactly TWO
+ * examples. For ideas/script that is fine — their examples are near-substitutes (more of the same
+ * kind of evidence), so the 3rd adds little. For hooks it is fatal: after 2026-07-14 the hooks
+ * ranker returns six DIFFERENT ARCHETYPES on purpose, and each one is a distinct lesson. Capping
+ * that at two does not trim redundancy, it deletes four of the six things we set out to teach —
+ * silently, tail-first, with the block still looking perfectly well-formed.
+ *
+ * 2800 was MEASURED, not guessed, against the worst case (a fat profile + a long ask): the
+ * assembled bundle lands ~3.6k against BUNDLE_CHAR_CAP (4000), so the corpus still cannot evict a
+ * creator's profile roles — the hazard the comment above exists to prevent. Re-measure both
+ * together if either moves.
+ */
+const SKILL_CHAR_BUDGET: Record<GroundingSkill, number> = {
+  hooks: 2800,
+  ideas: CORPUS_CHAR_BUDGET,
+  script: CORPUS_CHAR_BUDGET,
+};
+
+/** The budget actually applied to a skill's block (the preview tool must not report the wrong one). */
+export function corpusBudgetFor(skill: GroundingSkill): number {
+  return SKILL_CHAR_BUDGET[skill];
+}
+
 /** Cap the per-beat prose so one chatty teardown cannot consume the whole budget. */
 const MAX_BEATS_RENDERED = 6;
 const MAX_BEAT_DESC = 70;
 const MAX_EVIDENCE = 140;
+
+/**
+ * The hook lines were the ONLY unclipped fields in any renderer, and after the structural ranker
+ * landed that became load-bearing. The budget is spent tail-first, so a single chatty row does not
+ * merely render long — it evicts the archetypes behind it. With six DIFFERENT shapes in the block,
+ * every evicted example is a distinct lesson lost, and the block still looks perfectly well-formed
+ * on the way out. Measured: unclipped, a fat row collapsed a 6-archetype spread to 3.
+ *
+ * Bounding the two hook fields caps an example at ~500 chars, which guarantees at least 4 shapes
+ * survive even the fattest rows in the corpus, and lets a typical row fit 5–6.
+ */
+const MAX_MADLIB = 130;
+const MAX_SPOKEN = 110;
 
 /**
  * `whyItWorks` on curated rows is Sandcastles' hook_alignment + format_reasoning glued
@@ -185,12 +224,14 @@ function renderHooks(ex: RetrievedExample, n: number): string {
   const lines: string[] = [];
 
   if (ex.hookTemplate) {
-    lines.push(`${n}. ${archetype}MADLIB: ${ex.hookTemplate}`);
-    if (ex.spokenHook) lines.push(`   ran as: "${ex.spokenHook}"`);
+    lines.push(`${n}. ${archetype}MADLIB: ${clip(ex.hookTemplate, MAX_MADLIB)}`);
+    if (ex.spokenHook) lines.push(`   ran as: "${clip(ex.spokenHook, MAX_SPOKEN)}"`);
   } else if (ex.spokenHook) {
     // Honest degrade: we have the proven line but never generalized it. Say so — do not
     // dress a raw line up as a reusable template.
-    lines.push(`${n}. ${archetype}proven line (no madlib extracted): "${ex.spokenHook}"`);
+    lines.push(
+      `${n}. ${archetype}proven line (no madlib extracted): "${clip(ex.spokenHook, MAX_SPOKEN)}"`,
+    );
   } else {
     lines.push(`${n}. ${archetype}structure: ${ex.template?.name ?? "(unnamed)"}`);
   }
@@ -277,6 +318,7 @@ export function buildCorpusBlock(
 
   const render = RENDERERS[skill];
   const header = HEADERS[skill];
+  const budget = SKILL_CHAR_BUDGET[skill];
 
   const rendered: string[] = [];
   const used: RetrievedExample[] = [];
@@ -286,7 +328,7 @@ export function buildCorpusBlock(
     const line = render(ex, used.length + 1);
     // +2 for the blank-line join. Keep at least one example even if it alone is over budget:
     // a single over-long proof still beats silently ungrounded generation.
-    if (used.length > 0 && size + line.length + 2 > CORPUS_CHAR_BUDGET) break;
+    if (used.length > 0 && size + line.length + 2 > budget) break;
     rendered.push(line);
     used.push(ex);
     size += line.length + 2;

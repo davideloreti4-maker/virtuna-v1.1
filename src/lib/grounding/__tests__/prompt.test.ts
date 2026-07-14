@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildCorpusBlock, CORPUS_CHAR_BUDGET } from "../prompt";
+import { assembleBundle, BUNDLE_CHAR_CAP } from "@/lib/kc/assembler";
 import type { RetrievedExample } from "../types";
 
 const ex = (over: Partial<RetrievedExample> = {}): RetrievedExample => ({
@@ -206,5 +207,104 @@ describe("the budget — grounding must never evict the creator's own profile", 
     });
     const { used } = buildCorpusBlock([monster], "script");
     expect(used).toHaveLength(1);
+  });
+});
+
+/**
+ * THE BUDGET IS A SAFETY INVARIANT, NOT A PREFERENCE.
+ *
+ * `corpus` is a fenced section inside assembleBundle's BUNDLE_CHAR_CAP (4000). When the bundle
+ * overflows, the assembler drops whole PROFILE ROLES from the tail first (assembler.ts §4a) — so
+ * an oversized grounding block does not get truncated, it silently EVICTS the creator's own voice
+ * and wins to make room for someone else's proven video. Exactly backwards.
+ *
+ * Raising hooks to 2800 (to fit the 6 archetypes the structural ranker now returns, where 1800 fit
+ * only 2) was measured against the worst case and lands ~3.8k — inside the cap, but with only a few
+ * hundred chars of slack. That slack is invisible: fatten the header or a renderer by a few lines
+ * and the first symptom is a de-personalised prompt that still looks perfectly well-formed. So the
+ * margin is asserted here rather than trusted.
+ *
+ * If this fails: do NOT just raise BUNDLE_CHAR_CAP. Invert the assembler's drop order so the corpus
+ * trims BEFORE the profile (six sources still teach with four; there is only one creator).
+ */
+describe("corpus budget vs BUNDLE_CHAR_CAP (the profile-eviction guard)", () => {
+  const FAT_PROFILE = {
+    niche_primary: "founder personal branding",
+    target_audience: "early-stage B2B SaaS founders, 25-40, pre-seed to Series A, technical background",
+    primary_goal: "inbound leads for a fractional CMO offer",
+    past_wins: [
+      "hit 40k followers in 6 months",
+      "a thread on pricing did 2M views",
+      "founder-story video drove 12 demo calls",
+    ],
+    past_flops: ["long-form explainers underperform badly", "polished b-roll flops vs raw selfie video"],
+    target_platforms: ["tiktok", "instagram"],
+    writing_voice_sample:
+      "Direct, opinionated, plain-spoken. Short sentences. No hype, no emoji, no growth-hack cliches. " +
+      "I say the quiet part out loud and I do not soften it for anyone.",
+  };
+  const LONG_ASK =
+    "give me 10 hooks for a video about why founders should post daily even when it feels cringe, " +
+    "aimed at technical founders who think marketing is beneath them and who have never posted before";
+
+  /** Six maximally-fat examples — every optional field present and at its clip length. */
+  function fatExamples(n: number): RetrievedExample[] {
+    return Array.from({ length: n }, (_, i) => ({
+      teardownId: `td-${i}`,
+      handle: "a-fairly-long-creator-handle",
+      videoUrl: null,
+      coverUrl: null,
+      platform: "tiktok",
+      multiplier: 44.5,
+      views: 2_400_000,
+      baselineLabel: "vs followers",
+      fitLabel: "adjacent" as const,
+      hookArchetype: ["authority", "question", "contrarian", "tutorial", "list", "problem"][i] ?? "authority",
+      format: "talking-head",
+      spokenHook: "S".repeat(160),
+      hookTemplate: "T".repeat(120),
+      template: null,
+      idea: null,
+      whyItWorks: "W".repeat(600), // the real corpus averages 578 chars here, 760 at the tail
+      sourcePool: "curated" as const,
+      trustWeight: 1.5,
+      fromPersonal: false,
+    }));
+  }
+
+  it("a full hooks block + a fat profile + a long ask stays inside BUNDLE_CHAR_CAP", () => {
+    const { corpus, used } = buildCorpusBlock(fatExamples(6), "hooks");
+    const bundle = assembleBundle(
+      { ask: LONG_ASK, platform: "tiktok", mode: "hooks", corpus },
+      FAT_PROFILE as never,
+    );
+
+    expect(used.length).toBeGreaterThanOrEqual(4); // the spread must survive the budget
+    expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+  });
+
+  it("adding the corpus never evicts a profile role (the hazard, asserted)", () => {
+    const { corpus } = buildCorpusBlock(fatExamples(6), "hooks");
+    const withCorpus = assembleBundle(
+      { ask: LONG_ASK, platform: "tiktok", mode: "hooks", corpus },
+      FAT_PROFILE as never,
+    );
+    const without = assembleBundle(
+      { ask: LONG_ASK, platform: "tiktok", mode: "hooks" },
+      FAT_PROFILE as never,
+    );
+
+    // Every profile signal present without the corpus must still be present with it.
+    for (const signal of ["founder personal branding", "quiet part out loud", "Past wins", "Past flops"]) {
+      if (without.includes(signal)) expect(withCorpus).toContain(signal);
+    }
+  });
+
+  it("hooks gets a bigger budget than ideas/script — its examples are not substitutes", () => {
+    // ideas/script examples are more of the same KIND of evidence; hooks examples are six
+    // different SHAPES, and dropping four of them drops four distinct lessons.
+    const hooks = buildCorpusBlock(fatExamples(6), "hooks");
+    const ideas = buildCorpusBlock(fatExamples(6), "ideas");
+    expect((hooks.corpus ?? "").length).toBeGreaterThan((ideas.corpus ?? "").length);
   });
 });
