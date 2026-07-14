@@ -416,6 +416,8 @@ const REACTION_DISTRIBUTION_BLOCK: ReactionDistributionBlock = {
     subjectKind: "panel",
     band: "Strong",
     fraction: "7/10 react",
+    // The concept the room reacted to — what grounds the Lens door ("See the room →").
+    stimulus: "Fire your team. Use AI. Here's the 3-person stack that replaced 12 hires.",
     themes: [
       { label: "Relief", quote: "Finally someone says the quiet part — I don't need a big team." },
       { label: "Doubt", quote: "Sounds great until it breaks at scale, then what?" },

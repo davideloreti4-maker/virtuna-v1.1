@@ -99,6 +99,18 @@ export const ReactionDistributionBlockSchema = z.object({
       // panel path — distribution + clustered themes + representative quotes
       band: z.enum(["Strong", "Mixed", "Weak"]).nullable().optional(),
       fraction: z.string().nullable().optional(), // "7/10 react" — from aggregateFlash, never re-rolled
+      /**
+       * The stimulus the room actually reacted to, carried so the card can open the
+       * AudienceLens ("See the room →" / "Ask them why →") GROUNDED on the real concept.
+       * Additive + optional → `.strict()`-safe and back-compat with pre-2026-07-14 blocks.
+       *
+       * Set ONLY when the stimulus is text-bearing (`text` / `file_text`). An image or video
+       * stimulus has no honest concept string — `Stimulus.content` there is a storage key or a
+       * base64 blob, and passing THAT as the concept would ground "Ask them why" on a filename.
+       * Absent ⇒ the card renders its band row without the Lens door, which is the honest
+       * degrade: no door beats a door onto nothing.
+       */
+      stimulus: z.string().min(1).max(500).optional(),
       themes: z
         .array(z.object({ label: z.string(), quote: z.string().min(1).max(160) }))
         .optional(),
