@@ -925,3 +925,106 @@ real model.
    thing shipped blind last session (the entrance fade) produced an invisible brain and cost an hour.
 4. **A test fixture that cannot occur is not a test** (§15.2). It let a contrast silently paint 0.0%
    coral — deleting the card's whole point — with the suite green.
+
+---
+
+# 17. ✅ ROUND 7 — the design+product round (2026-07-14)
+### commits `1b510af8` (value/chroma/silhouette) · `5fe93496` (polymorphic card + readout) · `16a2712b` (script scoping) · `08572868` (colorbar)
+
+## 17.0 The two blockers in §16.0, resolved
+1. **The reference was never the owner's to supply.** TRIBE v2 is Meta's PUBLIC demo —
+   `https://aidemos.atmeta.com/tribev2/`, recorded in §2 of this very document. §16.0's "ASK THE
+   OWNER FOR THE REFERENCE" was wrong. It was dissected directly (two modal gates: cookies, then
+   "I Agree", which RE-ARMS on entering the demo section and blurs the whole page — every pixel
+   measured before dismissing it is garbage). ⚠️ CDP `captureScreenshot` with a `clip` DROPS the
+   WebGL layer and returns pure black; shoot the full viewport and crop in analysis.
+2. **The owner answered the product question**, and the answer reframed the card: *"maybe a
+   combination of when and where or how — a hook doesn't require same as a video or script."*
+   → **THE CARD IS POLYMORPHIC ON ITS STIMULUS, NOT ON THE SKILL NAME.**
+
+## 17.1 The owner also brought a second, better reference: **Sapient** (`thesapientcompany.com`)
+TRIBE, productised. Their whole deliverable is six named metrics + a headline + one chart, and the
+lesson is: **they never show you a network name.** `Visual Pull` · `Cognitive Grip` · `Mental
+Effort` · `Hesitation Risk` · `Attention Hold` — creator language, a qualifier chip, and a
+THRESHOLD (`>70 STRONG`, `<40 IDEAL`, two of them inverted). The threshold is what makes a number
+useful; a cortex map cannot tell you whether 61 is good.
+Also worth taking: `TIMELINE THIRDS — OPEN 88 / MIDDLE 64 / CLOSE 71` (the "when", with no
+scrubber) and `With the recommended cut · 74%` vs `As scanned · 52%` (a counterfactual — which we
+ALREADY have built as AmbientRoom's `canRewrite`/`onRewrite` lever, unexposed on this card).
+⚠️ Take the structure, not the rigour: their page also ships "your eyebrow density is in the mid
+40th percentile" and "lip smoothness 56%" — a face-scan template with the copy half-swapped.
+
+## 17.2 🔴 WHY WE DID NOT ADOPT THEIR SCORES (the finding that drove the round)
+Measured before building, and it does not hold. **In the card's non-video mode, `cortex-sim`'s
+per-network drive is a SEEDED function of `(stopRatio, hash(seedKey))`.** Two different hooks with
+the same stop-count get a different "Visual Pull" **purely from the card's id hash.** Scoring that
+fabricates the metric; a `>70 STRONG` bar under it fabricates the benchmark too.
+And the benchmark could not have been grounded anyway — **checked, do not re-check**:
+`outlier_teardowns` = 532 rows, **no per-second retention** · `analysis_results` = 57 Reads, only
+**19** with a real curve (4–9 points) · `engine_training_videos` = **0 rows**. There is no
+distribution to take a percentile from.
+
+## 17.3 What shipped
+**THE SPECIMEN (`1b510af8`).** Same probe run over both specimens; every number MEASURED.
+| | before | after | TRIBE |
+|---|---|---|---|
+| median luminance | 0.384 | **0.724** | 0.769 |
+| p95 | 0.692 | 0.978 | 1.00 |
+| near-white (>0.85) | **0.2%** | **25.4%** | 39.1% |
+| cortex carrying tint | 53% | **8.3%** | ~6% |
+- **VALUE**: `ao` scaled the AMBIENT too (no floor light in a cavity) · a raw Lambert key abandoned
+  every surface not facing L (→ half-lambert wrap) · the base ramp closed at 0.68, putting the
+  MEDIAN of the surface only 60% of the way to cream (→ 0.42) · **and the sulcal floor was DARK.
+  The comment on `uSulcus` already said "mid-grey creases" while the value said `0x514d46`.**
+- **CHROMA — a finding §16 did not have**: the map was not a weak wash, **the SULCUS was.** At
+  saturation 0.17 it put chroma on half the cortex before a single region activated, so an
+  activation had nothing to stand out FROM (TRIBE's field is 93% achromatic). Neutralised.
+- **SILHOUETTE**: never missing, **unseeable** — a 4:3 viewBox in a near-square well LETTERBOXED it
+  (`meet`), so the cranium never registered with the brain; the specimen at `FIT_RADIUS` 1.15
+  covered the vault; and σ9 at 5.5% is a smudge, not a shape. **TRIBE's head is barely blurred —
+  you can read the nose and chin. It is quiet by VALUE, not by destroying the edge.** Redrawn in the
+  well's own aspect; the specimen backs off to 0.74 — *you cannot seat a brain in a head when the
+  brain is the frame.*
+
+**THE CARD (`5fe93496`).** INSTANT (hooks/ideas/chat — six of eight skills) no longer invents an
+encounter: the 15s timeline, the TR clock, the HRF trace and the colorbar are GONE, and the specimen
+renders **at rest by construction** (`contrastBold` subtracts `RESTING_BOLD`, so feeding it back is
+exactly zero). **The readout replaces them** (`room-readout.ts`): Sapient's STRUCTURE on a substrate
+they don't have — the ten personas' REAL votes. A count needs no benchmark ("6 of your 10 stopped"),
+and *"3/3 loyal fans stopped, 0/3 new viewers did"* is a finding no cortical map can give you, with
+a VERBATIM receipt from a real scroller. Absent, never zeroed, when nobody spoke.
+
+**SCRIPT (`16a2712b`).** The planned beat-stepper ("beat 3 loses them") is **DEAD** —
+`ScriptCardBlockSchema` says *"band/fraction describe the OPENER beat only"* and its per-beat
+`retentionMarker` is *"prose, never a numeric score."* **Nobody measured beat 3.** Script collapses
+into INSTANT with the claim scoped to the opening beat, rather than growing a fourth fabricated
+instrument.
+
+## 17.4 🔴 TWO BUGS ONLY RENDERING AT 1:1 COULD CATCH (source read fine; suite was green)
+- The verdict ended with a hardcoded *"— you are writing for the people you already have"*, a
+  core-held/new-lost story. On the first real render it fired while **HOLDING new viewers and LOSING
+  cross-niche** and told the creator the exact opposite of what their room had done.
+- It built that divergence out of a segment of **ONE persona** (`Cross-niche 0/1`). **A 0/1 segment
+  is a coin, not a finding.** Divergence now needs n≥2 on both sides; the thin segment is still
+  REPORTED (it is real), it just cannot carry a verdict.
+Both pinned by tests. **This is the same failure the card has made in every round: a confident story
+told over a signal too thin to carry it.**
+
+## 17.5 ▶ OPEN — and read 17.2/17.3 before touching any of it
+- **The Expand is APPROVED but UNBUILT — and its justification has largely evaporated.** It existed
+  to house (a) the beat-stepper and (b) a bigger scrubber. **(a) is dead (§17.3)** and **(b) fits:**
+  grounded is 510px in the 516px box, instant 476px. Building it now is a surface for content that
+  does not exist. **Take this back to the owner before building it.**
+- **The counterfactual is the real prize** and it is mostly BUILT: Sapient's *"with the recommended
+  cut → 74%"* is our `canRewrite`/`onRewrite` rewrite lever, already shipped in `AmbientRoom` and
+  simply not exposed on the brain card. That is the cheapest large win left.
+- Reason CATEGORIES (Visual Pull / Mental Effort / Hesitation) still need a Flash schema enum —
+  `factor` is FREE TEXT and only `quote` reaches the client. Do not bucket free text with heuristics.
+- Near-white is 25.4% vs TRIBE's 39.1%. Close, and the folds are intact — push further only with the
+  histogram in hand, and LOOK, because value can wash the folds out.
+
+## 17.6 The rule that earned everything, again
+**MEASURE, and RENDER IT AT 1:1.** Every real finding this round came from a probe (a luminance
+histogram, a saturation histogram, a DOM height measurement) or from putting the thing on screen.
+The source review found a drifted verdict; *rendering* it found the verdict was actively lying. And
+the reference had to be on screen first — as it has been in every round of this document.
