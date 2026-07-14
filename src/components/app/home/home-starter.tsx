@@ -17,24 +17,38 @@
  * tore the page into a half-thread layout: greeting pinned top, composer pinned bottom,
  * a dead gap between. (Fixed at the source — see `hasThread` in composer.tsx.)
  *
- * So the idle state is now ONE shape, and skills only choose WHAT fills it:
+ * So the idle state is now ONE shape — and, since the owner call of 2026-07-14, ONE SET:
  *
  *     greeting          ← HomePageLayout (unchanged, centered, serif)
- *     starter grid      ← StarterCard × N. THE one card anatomy. 2-col ≥sm.
+ *     starter grid      ← the SAME SIX cards, always. THE one card anatomy. 2-col ≥sm.
  *     composer          ← the field the grid ramps INTO
  *
- * RULES — a new skill adds a STARTERS entry. It does NOT invent a layout.
+ * ⚠️ THE SIX ARE CONSTANT. They do not change with the armed skill. The first pass gave
+ * each skill its own set (Ask got 4 questions, Explore 3 pulls, Account 1 button) — which
+ * fixed the *shape* but kept the surface shifting under the creator: arm a skill, and the
+ * six things you could do became four different things. The grid is the map of what this
+ * app DOES; a map that redraws itself when you turn is not a map. So the grid is now fixed
+ * furniture, and the ARMED skill is told by the composer instead:
+ *
+ *     what the app can do   → these six cards (constant)
+ *     what is armed RIGHT NOW → the skill chip, which now names the SKILL
+ *     what that skill wants → the placeholder, which is now the per-skill instruction
+ *
+ * That split is why PLACEHOLDER_BY_TOOL in composer.tsx is load-bearing copy, not flavour.
+ *
+ * RULES:
  *   1. One card anatomy: `StarterCard`. Icon left, filled sunken surface, r12, title
  *      14px/medium — and NOTHING ELSE. Never a second card component.
- *   2. NO PROSE. No lede above the grid, no sub-line under a title. Both existed and both
- *      were cut: the titles are already verbs, so the sub-lines only made the grid chatty,
- *      and the lede was the last surviving fragment of the four-prose-blocks era. The one
- *      exception is `disabledReason`, which renders ONLY on a dead card — a card that
- *      cannot fire and does not say why reads as broken instead of honest (D-02).
+ *   2. NO PROSE. No lede above the grid, no sub-line under a title. The titles are verbs.
+ *      (The earlier `disabledReason` escape hatch went with Explore's competitors card —
+ *      there are no dead cards left, so there is nothing left to explain. If a future card
+ *      CAN be dead, it must say why: a card that cannot fire and does not say so reads as
+ *      broken rather than honest, which is D-02, not a style rule.)
  *   3. Cards NEVER auto-fire (D-05/D-07). onSelect runs on tap, only on tap.
  *   4. Matte, NO accent (dosage rule) — the presence's liveness dot is the only
  *      sanctioned accent on this surface.
- *   5. A skill with nothing to offer gets the DEFAULT set — never a bare screen.
+ *   5. A card either ARMS a skill or RUNS one. Account runs (it takes no input); the other
+ *      five arm, because they need the field. No card is a dead end.
  *
  * HomeFirstRunDemo (below) is unrelated to the contract: a show-once footer, gated
  * on HORIZONTAL_ENABLED by its caller.
@@ -43,7 +57,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Ico, type ToolId } from "./composer-controls";
-import type { ExploreQuickActionParams } from "@/components/thread/explore-thread-view";
 
 /** Show-once localStorage flag for the first-run demo (D-04 — single-device is acceptable). */
 const DEMO_SEEN_KEY = "numen.home.demo.seen";
@@ -57,18 +70,8 @@ interface StarterCardModel {
   icon: string;
   /** Action-phrased — what the creator GETS, never the internal skill name. */
   title: string;
-  /**
-   * The reason this card CANNOT fire. Rendered ONLY when the card is disabled.
-   *
-   * The card is a title and nothing else when it works — the titles are already verbs and
-   * a sub-line under each one just made the grid chatty. But a dead card that does not say
-   * why it is dead is a bug, not a minimalism: it reads as broken instead of as honest
-   * (D-02 — the competitors card degrades, it never fabricates a feed). So the sub-line
-   * survives in exactly the one place it carries weight.
-   */
-  disabledReason?: string;
-  onSelect?: () => void;
-  disabled?: boolean;
+  onSelect: () => void;
+  /** Spans both columns. Unused by the six (they pair evenly) — kept for a future odd set. */
   wide?: boolean;
 }
 
@@ -78,173 +81,69 @@ const CARD_CLASS =
   "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20";
 
 const CARD_ENABLED = "hover:border-white/[0.10] hover:bg-surface-elevated";
-/** The quiet degrade — the card still SAYS what it would do, it just can't yet. */
-const CARD_DISABLED = "cursor-default opacity-50";
 
 function StarterCard({ card }: { card: StarterCardModel }) {
-  const disabled = card.disabled || !card.onSelect;
   return (
     <button
       type="button"
       onClick={card.onSelect}
-      disabled={disabled}
       aria-label={card.title}
-      className={cn(
-        CARD_CLASS,
-        disabled ? CARD_DISABLED : CARD_ENABLED,
-        card.wide && "sm:col-span-2",
-      )}
+      className={cn(CARD_CLASS, CARD_ENABLED, card.wide && "sm:col-span-2")}
     >
-      <span
-        className={cn(
-          "mt-px shrink-0 text-foreground-secondary transition-colors",
-          !disabled && "group-hover:text-foreground",
-        )}
-      >
+      <span className="mt-px shrink-0 text-foreground-secondary transition-colors group-hover:text-foreground">
         <Ico name={card.icon} size={18} />
       </span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="text-[14px] font-medium leading-snug text-foreground">
-          {card.title}
-        </span>
-        {/* Only on a dead card, and it wraps rather than truncating — a card that eats its
-            own sentence is worse than a card two lines tall. */}
-        {disabled && card.disabledReason && (
-          <span className="text-[12.5px] leading-snug text-foreground-muted">
-            {card.disabledReason}
-          </span>
-        )}
+      <span className="text-[14px] font-medium leading-snug text-foreground">
+        {card.title}
       </span>
     </button>
   );
 }
 
-// ── The starter sets ──────────────────────────────────────────────────────────
+// ── The six ──────────────────────────────────────────────────────────────────
 
 /**
- * DEFAULT — the creator's week, in order: idea → hook → script → remix, then the two
- * "judge something real" reads (a video · your own posts). Each card arms a real skill.
- * Shown for every skill that has no idle offer of its own (idea/hooks/script/remix/test),
- * so it doubles as the skill switcher on a fresh home.
+ * THE SIX — constant under every skill. The creator's week, in the order it actually
+ * flows: idea → hook → script → remix, then the two "judge something real" reads (a
+ * video · your own posts).
+ *
+ * `run: true` means the card FIRES the skill instead of arming it. Only Account does,
+ * because only Account takes no input — arming it would leave the creator staring at a
+ * field with nothing to type. Every other card arms and hands off to the placeholder.
  */
-const DEFAULT_CARDS: { tool: ToolId; icon: string; title: string }[] = [
+const THE_SIX: { tool: ToolId; icon: string; title: string; run?: boolean }[] = [
   { tool: "idea",    icon: "bulb",      title: "Get content ideas" },
   { tool: "hooks",   icon: "anchor",    title: "Write scroll-stopping hooks" },
   { tool: "script",  icon: "doc",       title: "Script a video" },
   { tool: "remix",   icon: "shuffle",   title: "Remix a viral video" },
   { tool: "test",    icon: "crosshair", title: "Test a video" },
-  { tool: "account", icon: "search",    title: "Read my recent posts" },
-];
-
-/**
- * ASK — was a paragraph telling the creator that Maven is grounded. A paragraph is a
- * claim; a question they can send is proof. These PREFILL the field (never auto-send),
- * so the ramp is: read one → it's already typed → send.
- *
- * Scoped to what chat actually knows — the niche + the calibrated audience. Nothing here
- * promises account analytics; that's the Account read's job, and claiming it here would
- * be the same dishonesty the card contract exists to prevent.
- */
-const ASK_PROMPTS: { icon: string; title: string }[] = [
-  { icon: "target", title: "What should I post this week?" },
-  { icon: "people", title: "What is my audience tired of?" },
-  { icon: "chat",   title: "Pressure-test an idea for me" },
-  { icon: "bulb",   title: "What makes a hook land in my niche?" },
+  { tool: "account", icon: "search",    title: "Read my recent posts", run: true },
 ];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 export interface HomeStarterProps {
-  /** The armed skill. Chooses WHICH set fills the grid — never the layout. */
-  tool: ToolId;
-  /** Arm a skill (handleUserSelectTool) — the DEFAULT set's action. */
+  /** Arm a skill (handleUserSelectTool). Five of the six do this. */
   onSelectTool: (tool: ToolId) => void;
-  /** Fire an Explore pull (explore.start). Tap-only, never on render (D-07). */
-  onExplore: (params: ExploreQuickActionParams) => void;
-  /** Run the one-tap Account read (account.start). Tap-only, never on render (D-05). */
+  /**
+   * Arm AND run the Account read. Tap-only, never on render (D-05) — and it spends a
+   * Reading, so the tap has to be the creator's, not ours.
+   */
   onAccountRun: () => void;
-  /** Drop a prompt into the composer field + focus it. NEVER submits. */
-  onPrefill: (text: string) => void;
-  /** Gates Explore's competitors card into its honest degrade (CR-02). */
-  hasTrackedAccounts: boolean;
-  /** Active audience's niche, threaded into the Explore pull params. */
-  audienceNiche?: string;
   className?: string;
 }
 
 /**
- * The empty-home starter. ONE shape for every skill (see THE STARTER CONTRACT above);
- * the armed skill only picks which cards fill it.
+ * The empty-home starter: the same six cards, always. What is ARMED is told by the skill
+ * chip and the placeholder — not by this grid rearranging itself.
  */
-export function HomeStarter({
-  tool,
-  onSelectTool,
-  onExplore,
-  onAccountRun,
-  onPrefill,
-  hasTrackedAccounts,
-  audienceNiche,
-  className,
-}: HomeStarterProps) {
-  const niche = (audienceNiche || "").trim() || undefined;
-
-  let cards: StarterCardModel[];
-
-  if (tool === "chat") {
-    cards = ASK_PROMPTS.map((p) => ({
-      id: p.title,
-      icon: p.icon,
-      title: p.title,
-      onSelect: () => onPrefill(p.title),
-    }));
-  } else if (tool === "explore") {
-    cards = [
-      {
-        id: "explore-top",
-        icon: "compass",
-        title: "Top performers in my niche today",
-        onSelect: () => onExplore({ niche, timeWindow: "today" }),
-      },
-      {
-        id: "explore-competitors",
-        icon: "people",
-        title: "What competitors shipped",
-        // The ONE surviving sub-line: a dead card must say why it is dead, or it reads as
-        // broken rather than honest (D-02 — degrade, never a fabricated feed).
-        disabledReason: "Track an account first",
-        disabled: !hasTrackedAccounts,
-        onSelect: hasTrackedAccounts
-          ? () => onExplore({ tracked: true, timeWindow: "week" })
-          : undefined,
-      },
-      {
-        id: "explore-surprise",
-        icon: "spark",
-        title: "Surprise me",
-        onSelect: () => onExplore({ niche, serendipity: 1 }),
-        // Three cards in a 2-col grid leaves the third orphaned at half width on its own
-        // row. Spanning the row makes the 2+1 read as composed rather than left over.
-        wide: true,
-      },
-    ];
-  } else if (tool === "account") {
-    cards = [
-      {
-        id: "account-run",
-        icon: "search",
-        title: "Read my recent posts",
-        onSelect: onAccountRun,
-        wide: true,
-      },
-    ];
-  } else {
-    cards = DEFAULT_CARDS.map((c) => ({
-      id: c.tool,
-      icon: c.icon,
-      title: c.title,
-      onSelect: () => onSelectTool(c.tool),
-    }));
-  }
+export function HomeStarter({ onSelectTool, onAccountRun, className }: HomeStarterProps) {
+  const cards: StarterCardModel[] = THE_SIX.map((c) => ({
+    id: c.tool,
+    icon: c.icon,
+    title: c.title,
+    onSelect: c.run ? onAccountRun : () => onSelectTool(c.tool),
+  }));
 
   return (
     <div className={cn("flex w-full flex-col gap-4", className)}>

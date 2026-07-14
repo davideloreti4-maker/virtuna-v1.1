@@ -143,21 +143,36 @@ const ERROR_SESSION_EXPIRED =
 const ERROR_UPLOAD_FAILED =
   "That upload didn't go through. Check your connection and try again.";
 
-// Placeholder copy per tool — Test reuses the existing URL/upload copy (D-07).
-// Idea is live in P3 (D-12). Hooks live in P4 (D-09). Chat — P5. Script/Remix — P6 (06-05).
+/**
+ * The front door. The app used to open on `test`, so a brand-new thread greeted the creator
+ * with "Paste a TikTok link or drop a video…" — a demand for an asset before they had said a
+ * word, and the narrowest of the eight skills. Chat is the one skill that takes a plain
+ * sentence, so it is the honest default; every other skill is one pick away.
+ *
+ * This is the fallback for a thread with nothing to restore from, too (see the rehydration
+ * restore) — a new thread lands here, never on whatever the last thread happened to be.
+ */
+const DEFAULT_TOOL: ToolId = "chat";
+
+// Placeholder copy per tool.
+//
+// ⚠️ THE PLACEHOLDER IS NOW THE PER-SKILL INSTRUCTION. The starter grid is the same six
+// cards under every skill (THE STARTER CONTRACT), so it no longer teaches what the ARMED
+// skill wants from you — this map is the only thing that does. Each line must therefore
+// answer "what do I type here, and what happens if I don't?" in the creator's words. A
+// vague placeholder ("Ask anything…") is now a dead end, not a small blemish.
 const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   test: PLACEHOLDER_EMPTY,
-  // Account Read takes no input (one-tap; the read resolves your own handle server-side),
-  // so the field is inert — canSubmit is false and the in-view CTA is the entry.
-  account: "Read your own account — no input needed, just run it…",
-  idea: "What idea or topic do you want to test? (or leave empty for Auto)",
-  hooks: "What topic do you want hooks for? (or leave empty for Auto)",
-  chat: "Ask anything…",
-  script: "Carry a hook in, or type a topic to script…",
-  remix: "Paste a trending or competitor TikTok URL to remix…",
+  // Account takes NO input — the read resolves your own handle. Send runs it.
+  account: "No input needed — press send and I'll read your latest posts…",
+  idea: "A topic to build ideas around — or leave empty and I'll pick the angles…",
+  hooks: "A topic to write hooks for — or leave empty and I'll pick the angles…",
+  chat: "Ask about your niche, your audience, or an idea you're weighing…",
+  script: "A topic to script — or leave empty to carry in the hook you picked…",
+  remix: "Paste a TikTok URL — I'll decode why it worked, then rebuild it as yours…",
+  explore: "A niche or competitor to scan — or leave empty and I'll pull your niche…",
   // Not-yet-shipped skills (P11/P16) — render as disabled rows in the selector,
   // so these placeholders are never actually reached (kept for the Record contract).
-  explore: "Explore what's working for your audience…",
   offer: "Describe a product, price, or positioning to validate…",
   ad: "Paste an ad concept to pre-flight, ROAS-framed…",
   // General verbs (P7 / UX-02) — surfaced only when a General audience is active.
@@ -286,7 +301,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // activeTool drives the placeholder + active-model field (D-09).
   // Default: "test" — the only live tool in P1 (D-08). Idea live in P3 (D-12).
   // NOTE: chip selection is NOT a submit; it MUST NEVER arm pendingNavRef (Pitfall #5).
-  const [activeTool, setActiveTool] = useState<ToolId>("test");
+  const [activeTool, setActiveTool] = useState<ToolId>(DEFAULT_TOOL);
   // Tracks whether the creator has manually picked a tool this mount. Guards the
   // open-thread rehydration's activeTool RESTORE (below) so it never overrides a
   // deliberate pick made while the GET /api/threads/open fetch was in flight.
@@ -474,32 +489,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Account content = streaming or a result block (does NOT flip on tool selection alone).
   const hasAccountContent = account.isStreaming || account.block !== null;
 
-  // ── Per-skill idle (THE STARTER CONTRACT) ─────────────────────────────────────
-  // "Armed, but has produced nothing yet." These three skills used to each own an idle
-  // block INSIDE their thread view; the blocks now come from the one starter, so the
-  // predicates that gated them move here — same conditions, one place.
-  //
-  // They are deliberately per-skill and NOT `!hasConversationContent`: a creator can arm
-  // Account inside a thread that already holds ideas, and the read must still be offered
-  // there (it has no other door — canSubmit is false for `account`).
-  const chatIdle =
-    !chat.isStreaming && chatBlocks.length === 0 && persistedChatBlocks.length === 0;
-  const exploreIdle =
-    !explore.isStreaming &&
-    exploreBlocks.length === 0 &&
-    persistedExploreBlocks.length === 0 &&
-    !explore.error;
-  const accountIdle =
-    !account.isStreaming &&
-    !account.block &&
-    !account.error &&
-    !account.fallbackMessage;
+  // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
+  // and stop, because the other five skills need the field; Account takes no input, so arming
+  // alone would leave the creator in front of a composer with nothing to type. Declared here
+  // (after `account`, not up beside handleUserSelectTool) so it closes over a live binding
+  // rather than a TDZ one. It spends a Reading — so it fires from the creator's tap, never a
+  // render (D-05).
+  const handleStarterAccountRun = useCallback(() => {
+    handleUserSelectTool("account");
+    void account.start();
+  }, [handleUserSelectTool, account]);
 
-  // ── Tracked accounts presence (Plan 11-07 — drives card-2 honest degrade) ──
-  // Whether the creator has any tracked accounts; gates ExploreThreadView card 2
-  // ("What competitors shipped" → "Track an account first" when false). Fetched on
-  // mount; silent on 401 (mirrors the audiences fetch). Never fabricates a feed (D-02).
-  const [hasTrackedAccounts, setHasTrackedAccounts] = useState(false);
 
   // ── Thread-presence signal (UX-pin fix, post-UAT) ─────────────────────────
   // True when any idea/hook thread content exists to show (streaming or persisted).
@@ -558,21 +558,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // ── Starter prefill (Ask cards) ───────────────────────────────────────────────
-  // An Ask starter card drops its question INTO the field and puts the cursor at the end
-  // — it NEVER submits (D-05: no card auto-fires a run). The creator reads the question,
-  // finds it already typed, and presses send. A prompt you have to retype is not a prompt.
   const fieldRef = useRef<HTMLTextAreaElement | null>(null);
-  const handleStarterPrefill = useCallback((text: string) => {
-    setUrl(text);
-    const el = fieldRef.current;
-    if (!el) return;
-    el.focus();
-    // Defer so the caret lands after React has flushed the new value, not before it.
-    requestAnimationFrame(() => {
-      el.setSelectionRange(el.value.length, el.value.length);
-    });
-  }, []);
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
   // covers the gap where the upload path returns before stream.start (was a silent no-op).
@@ -663,12 +649,20 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               // than dead-ending. The server is the real trust boundary (T-07-04-01).
               : activeTool === "simulate" || activeTool === "predict"
                 ? !submitting && trimmedUrl.length > 0
-                // Profile (07-04): never depends on the topic field — the evidence-drop
-                // affordance is the entry (handled in onSubmitForm via evidenceFile). The
-                // bare topic submit is inert for Profile.
-                : activeTool === "profile" || activeTool === "account"
-                  ? false
-                  : (isValidTikTok || file !== null) && !submitting;
+                // Account: takes NO input — the read resolves your own handle server-side.
+                // It used to be unsubmittable (`false`), which made an in-view CTA its only
+                // door; that CTA was the thing forcing the starter to carry a bespoke
+                // per-skill card. Send now RUNS it, so the skill has a door in every state
+                // (fresh home, live thread, keyboard) and the starter needs no exception.
+                // The empty field is not a missing input — there is no input.
+                : activeTool === "account"
+                  ? !submitting && !account.isStreaming
+                  // Profile (07-04): never depends on the topic field — the evidence-drop
+                  // affordance is the entry (handled in onSubmitForm via evidenceFile). The
+                  // bare topic submit is inert for Profile.
+                  : activeTool === "profile"
+                    ? false
+                    : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -797,7 +791,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
             }
           }
-          if (restored && !hasUserSelectedToolRef.current) setActiveTool(restored);
+          // A thread with cards restores ITS tool. A thread with none — a brand-new thread —
+          // resets to the DEFAULT. Without the else, "New Thread" silently inherited the last
+          // thread's skill: open a hooks thread, hit New Thread, and you got a blank page
+          // still armed with Hooks. The empty thread has nothing to restore, so it must fall
+          // back to the front door rather than to whatever you happened to do last.
+          if (!hasUserSelectedToolRef.current) {
+            setActiveTool(restored ?? DEFAULT_TOOL);
+          }
         }
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
@@ -845,25 +846,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       }
     }
     void fetchAudiences();
-    return () => { cancelled = true; };
-  }, []);
-
-  // ── Tracked-accounts presence fetch (Plan 11-07 — card-2 honest degrade) ───
-  // GET /api/tracked-accounts → { accounts }. Drives ExploreThreadView card 2.
-  // Silent on 401 (not logged in yet) — mirrors the audiences fetch posture.
-  useEffect(() => {
-    let cancelled = false;
-    async function fetchTrackedAccounts() {
-      try {
-        const res = await fetch("/api/tracked-accounts");
-        if (!res.ok || cancelled) return;
-        const data = (await res.json()) as { accounts?: unknown[] };
-        if (!cancelled) setHasTrackedAccounts((data.accounts ?? []).length > 0);
-      } catch {
-        // silent — card 2 degrades to "Track an account first" (honest, never a fake feed)
-      }
-    }
-    void fetchTrackedAccounts();
     return () => { cancelled = true; };
   }, []);
 
@@ -1276,6 +1258,16 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       activeTool === "explore"
     ) {
       await ensureThreadForSend();
+    }
+
+    // ── Account Read path (SELF-01/02/03) ───────────────────────────────────
+    // Bodyless: the read resolves the creator's OWN handle server-side, so the field is
+    // ignored entirely. This fires from an explicit send (a real user gesture), which is
+    // what D-05 requires — it is not an auto-fire on render.
+    if (activeTool === "account") {
+      setUrl(""); // the field was never an input here; don't leave a stale draft behind
+      await account.start();
+      return;
     }
 
     // ── Idea tool path (D-12) ───────────────────────────────────────────────
@@ -2467,7 +2459,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                   type="submit"
                   variant="primary"
                   size="sm"
-                  aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : "Simulate"}
+                  // Account fell through to "Simulate" here — it was never submittable, so the
+                  // chain never needed a case for it. Now that send RUNS the read, the button
+                  // has to say so: a screen-reader user pressing "Simulate" and being charged
+                  // for an account scrape is the same bug as a sighted one, just louder.
+                  aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
                   disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
                   loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
                   style={{ boxShadow: "none" }}
@@ -2568,34 +2564,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   );
 
   // ── The starter (THE STARTER CONTRACT — home-starter.tsx) ────────────────────
-  // ONE empty state for every skill. The armed skill picks WHICH cards fill it; it does
-  // NOT get to pick a layout. Ask/Explore/Account each used to own a differently-shaped
-  // idle block inside its own thread view — that is what made the four surfaces read as
-  // four different apps, so the blocks were deleted from the views and rebuilt here.
+  // The SAME SIX cards under every skill — the map of what the app does, which must not
+  // redraw itself when the creator turns. It shows on the fresh home only, and retires the
+  // moment real content lands. What is ARMED is told by the skill chip + the placeholder,
+  // not by this grid.
   //
-  //   chat/explore/account → shown while THAT skill is idle, even inside a live thread
-  //                          (Account has no other entry — canSubmit is false for it).
-  //   everything else      → the DEFAULT 6-card grid, on the fresh home only. It doubles
-  //                          as the skill switcher, so it stays put once a Make skill is
-  //                          armed and only retires when real content lands.
-  const showStarter =
-    activeTool === "chat"
-      ? chatIdle
-      : activeTool === "explore"
-        ? exploreIdle
-        : activeTool === "account"
-          ? accountIdle
-          : !hasConversationContent;
-
-  const homeStarter = showStarter ? (
+  // It no longer needs to follow the creator into thread mode: that was only ever to keep
+  // Account reachable, and Account now rides the send button like every other skill.
+  const homeStarter = !hasConversationContent ? (
     <HomeStarter
-      tool={activeTool}
       onSelectTool={handleUserSelectTool}
-      onExplore={(params) => void explore.start(params)}
-      onAccountRun={() => void account.start()}
-      onPrefill={handleStarterPrefill}
-      hasTrackedAccounts={hasTrackedAccounts}
-      audienceNiche={selectedAudience?.goal_label || selectedAudience?.name || undefined}
+      onAccountRun={handleStarterAccountRun}
       className="mb-5"
     />
   ) : null;
@@ -2656,18 +2635,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 or the centered serif hero. When the persisted blocks arrive (or it's a
                 brand-new empty thread) hasConversationContent / rehydrating settle and
                 threadContent takes over. */}
+            {/* No starter here. It used to follow the creator into thread mode purely to keep
+                Account reachable (its in-view CTA was its only door); Account now rides the
+                send button, so the grid stays what it should be — a fresh-home affordance. */}
             {rehydrating && !hasConversationContent ? (
               <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
             ) : (
-              <>
-                {threadContent}
-                {/* The starter follows the creator into the thread. Arming Ask/Explore/
-                    Account inside a live thread must still offer that skill's way in —
-                    and for Account it is the ONLY way in (canSubmit is false). It rides
-                    at the BOTTOM here, directly above the dock, so it reads as "what
-                    now?" rather than as a header the conversation scrolled past. */}
-                {homeStarter}
-              </>
+              threadContent
             )}
           </div>
         </div>

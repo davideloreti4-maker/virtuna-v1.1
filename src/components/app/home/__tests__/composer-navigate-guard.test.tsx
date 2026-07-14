@@ -80,15 +80,22 @@ function submitButton(): HTMLButtonElement {
   return screen.getByRole('button', { name: /simulate|submit|send/i }) as HTMLButtonElement;
 }
 
-/** Find the Test chip by its visible label span text. */
-function testChip(): HTMLButtonElement {
-  const btns = screen.getAllByRole('button');
-  const btn = btns.find((b) => {
-    const spans = b.querySelectorAll('span');
-    return spans.length > 0 && spans[0]?.textContent?.trim() === 'Test';
-  });
-  if (!btn) throw new Error('Test chip not found');
-  return btn as HTMLButtonElement;
+/**
+ * The skill chip. Found by aria-label, not by face text: the chip used to render the VERB
+ * GROUP ("Test"), and this helper matched that literal string. It now renders the SKILL's
+ * own name, so the group name is not on the chip face at all — matching text here would
+ * couple the navigation guard to skill copy, which is exactly the kind of brittleness that
+ * makes people stop trusting a guard. The aria-label is the stable handle.
+ */
+function skillChip(): HTMLButtonElement {
+  return screen.getByRole('button', { name: /skill:/i }) as HTMLButtonElement;
+}
+
+/** Arm a skill through the `/` slash menu (Enter resolves it) — what a real creator does. */
+function selectSkillBySlash(command: string) {
+  const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+  fireEvent.change(field, { target: { value: `/${command}` } });
+  fireEvent.keyDown(field, { key: 'Enter' });
 }
 
 beforeEach(() => {
@@ -119,6 +126,10 @@ describe('Composer navigate guard (WR-05)', () => {
   it('DOES navigate after a real submit produces a new id', async () => {
     const { rerender } = renderWithClient(<Composer />);
 
+    // Arm Test first: the composer boots into Chat now, and only the video skill navigates
+    // to /analyze. Chat/ideas/hooks never do — that is the whole point of the guard.
+    selectSkillBySlash('test');
+
     // Type a valid TikTok URL and submit — this arms pendingNavRef.
     fireEvent.change(urlInput(), {
       target: { value: 'https://www.tiktok.com/@creator/video/123' },
@@ -143,13 +154,13 @@ describe('Composer navigate guard (WR-05)', () => {
 });
 
 describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)', () => {
-  it('does NOT navigate after clicking the Test chip (chip is not a submit)', () => {
+  it('does NOT navigate after clicking the skill chip (chip is not a submit)', () => {
     // Pinned layout — routeId is set in beforeEach.
     const { rerender } = renderWithClient(<Composer />);
     expect(push).not.toHaveBeenCalled();
 
-    // Click the Test chip — this is purely a tool-selection action, not a submit.
-    fireEvent.click(testChip());
+    // Click the skill chip — purely opens the picker; it is not a submit (Pitfall #5).
+    fireEvent.click(skillChip());
     expect(push).not.toHaveBeenCalled();
 
     // Even if a hydration analysisId arrives after the chip click, no navigation.
@@ -166,7 +177,7 @@ describe('Composer chip-select does NOT arm navigation (Pitfall #5 / Plan 01-04)
     const { rerender } = renderWithClient(<Composer />);
 
     // Click chip — not a submit
-    fireEvent.click(testChip());
+    fireEvent.click(skillChip());
 
     // Hydration sets analysisId (simulates the URL on mount)
     analysisId = 'permalink-xyz';

@@ -85,12 +85,16 @@ export const SKILLS: SkillMeta[] = [
   { id: "idea",    label: "Ideas",   desc: "Funnel-top idea cards",          command: "/ideas",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "script",  label: "Script",  desc: "Beats + retention markers",      command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "remix",   label: "Remix",   desc: "Decode a winner → your version", command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "explore", label: "Explore", desc: "Audience-curated discovery",     command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "explore", label: "Explore", desc: "Find what's working",            command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Test — judge something real (a video · your own account). ──
   { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
   { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Ask — converse / probe. ──
-  { id: "chat",    label: "The room", desc: "Drop a raw thought",             command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // Label is "Chat", not "The room". The Room is the ambient-audience surface and it has its
+  // own front door; using its name for the CHAT skill meant the app's default state — now
+  // chat — announced itself with a phrase that does not contain the word "chat". The skill
+  // id, the /command and the Room itself are all untouched; only what the creator reads.
+  { id: "chat",    label: "Chat",    desc: "Ask anything, in your context",  command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Marketing — hidden until enabled (enabled:false → SkillRows never renders them). ──
   { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
   { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
@@ -315,6 +319,18 @@ export function SkillRows({
    *  partition (socials) vs the General group. Defaults to "socials". */
   activeMode?: SkillMode;
 }) {
+  // Scroll the ARMED row into view when the menu opens.
+  //
+  // The list is taller than the popover's max-h-[60vh] cap, so it scrolls — and the armed
+  // skill is often below the fold. Chat is the default and sits in the LAST group, so the
+  // app's own default state opened a menu that appeared to have nothing selected at all.
+  // A picker that hides your current choice is worse than one that never showed it: it
+  // actively tells you the wrong thing. `block: "nearest"` keeps rows already in view still.
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
+  useLayoutEffect(() => {
+    activeRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, []);
+
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
     !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
@@ -341,6 +357,7 @@ export function SkillRows({
     return (
       <button
         key={s.id}
+        ref={isActive ? activeRowRef : undefined}
         type="button"
         role="menuitemradio"
         aria-checked={isActive}
@@ -351,12 +368,16 @@ export function SkillRows({
           if (s.enabled) onSelect(s.id);
         }}
         className={cn(
-          // Full-row surface — active is a persistent subtle fill (was a broken
-          // partial bar painted behind just the label span); hover is a lighter tint.
-          "group/row flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors duration-100",
+          // Full-row surface. The active fill used to be white/[0.06] — one notch above the
+          // hover tint, which meant "selected" and "the row my mouse happens to be over"
+          // looked nearly the same. Selection now reads harder than hover, because a creator
+          // running the wrong skill is a wasted Reading, not a cosmetic slip.
+          "group/row relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors duration-100",
           !s.enabled && "cursor-not-allowed opacity-45",
           s.enabled && !isActive && "cursor-pointer hover:bg-white/[0.035]",
-          s.enabled && isActive && "cursor-pointer bg-white/[0.06]",
+          s.enabled &&
+            isActive &&
+            "cursor-pointer bg-white/[0.10] ring-1 ring-inset ring-white/[0.10]",
         )}
       >
         <Ico
@@ -381,45 +402,27 @@ export function SkillRows({
             {s.desc}
           </span>
         </span>
-        {/* Right rail — /command (or "soon"), then a reserved check slot so the
-            commands stay right-aligned whether or not a row carries the check. */}
-        {s.enabled ? (
-          <span
-            className={cn(
-              "shrink-0 font-mono text-[11px] tracking-tight transition-colors",
-              isActive
-                ? "text-foreground-secondary"
-                : "text-foreground-muted/45 group-hover/row:text-foreground-muted/70",
-            )}
-          >
-            {s.command}
-          </span>
-        ) : (
+        {/* ONE right slot, never two. It used to hold the /command AND a permanently
+            reserved (usually empty) check column beside it, so every row paid for a slot
+            only one row ever used. The check now REPLACES the command on the active row:
+            the selected skill is the one wearing a tick, and nothing else has to move. */}
+        {!s.enabled ? (
           <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
             soon
           </span>
+        ) : isActive ? (
+          <Ico name="check" size={15} className="shrink-0 text-foreground" />
+        ) : (
+          <span className="shrink-0 font-mono text-[11px] tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
+            {s.command}
+          </span>
         )}
-        <Ico
-          name="check"
-          size={15}
-          className={cn(
-            "shrink-0 text-foreground transition-opacity",
-            isActive ? "opacity-100" : "opacity-0",
-          )}
-        />
       </button>
     );
   };
 
   return (
     <>
-      <div className="flex items-center gap-2 px-2.5 pb-2 pt-1.5 text-[11px] text-foreground-muted/45">
-        <Ico name="search" size={13} className="text-foreground-muted/40" />
-        <span>type to filter</span>
-        <span className="text-foreground-muted/25">·</span>
-        <span>↵ to select</span>
-      </div>
-      <div className="mx-1 mb-1 h-px bg-white/[0.05]" />
       {/* Make / Test / Ask — the three intent verbs (Socials mode). Section headers
           alone separate them (no dividers); each row is a skill under that verb. */}
       {make.length > 0 && <GroupLabel>Make</GroupLabel>}
@@ -568,10 +571,13 @@ export function ComposerControls({
 
   return (
     <div ref={rootRef} className={cn("flex items-center gap-1.5", className)}>
-      {/* Verb chip (v6) — Make / Test / Ask over the same SkillRows menu. The composer's
-          ONE accented control: a terracotta ✦ spark + the verb + a chevron. Opens the skill
-          popover, now grouped under the same three verbs (Phase 3). aria-label keeps
-          "Skill: …" so the picker stays discoverable to assistive tech + the tests reach it. */}
+      {/* SKILL chip — it names the SKILL, and it did not always.
+          It used to render VERB_BY_TOOL[activeTool], i.e. the GROUP: pick "Script" and the
+          chip said "Make". Pick "Explore" and it said "Make". So the only place the armed
+          skill was actually stated was a checkmark hidden inside a closed popover, and the
+          creator could sit there with the wrong skill armed and no way to notice. The chip
+          is the one control that is always on screen — it has to tell the truth.
+          The skill's own icon rides with it, so it echoes the row you picked. */}
       <div className="relative">
         <button
           ref={skillRef}
@@ -587,8 +593,8 @@ export function ComposerControls({
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}
         >
-          <Ico name="spark" size={15} className="text-foreground-muted" />
-          <span>{VERB_BY_TOOL[activeTool]}</span>
+          <Ico name={SKILL_ICON[activeTool]} size={15} className="text-foreground-secondary" />
+          <span>{skill.label}</span>
           <Ico name="chev" size={13} className="text-foreground-muted" />
         </button>
         <Popover open={pop === "skill"} anchorRef={skillRef} menuRef={menuRef} labelledBy="composer-skill-pill">

@@ -46,12 +46,10 @@ function openSkillPopover() {
 beforeEach(() => cleanup());
 
 describe("ComposerControls — skill pill + popover", () => {
-  it("shows the active skill on the pill (Test verb + aria)", () => {
+  it("shows the active skill on the pill by NAME (aria + face agree)", () => {
     renderControls({ activeTool: "test" });
-    // The chip face shows the VERB (Test); the aria-label carries the skill's row label
-    // ("A real video" under the Test verb — a "Test" row under a "Test" header is redundant).
     const pill = screen.getByRole("button", { name: /skill: a real video/i });
-    expect(pill).toHaveTextContent("Test");
+    expect(pill).toHaveTextContent("A real video");
   });
 
   it("opens a popover grouped Make / Test / Ask with /command labels + MAX badge", () => {
@@ -61,11 +59,30 @@ describe("ComposerControls — skill pill + popover", () => {
     expect(within(menu).getByText("Make")).toBeInTheDocument();
     expect(within(menu).getByText("Test")).toBeInTheDocument();
     expect(within(menu).getByText("Ask")).toBeInTheDocument();
-    // /command labels are present (the id + command stay stable under the relabeled rows)
-    expect(within(menu).getByText("/test")).toBeInTheDocument();
+    // /command labels ride the inactive rows (the active one wears the check instead).
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+    expect(within(menu).getByText("/chat")).toBeInTheDocument();
     // MAX badge appears for the video skill (Test row); Ad is hidden until enabled.
     expect(within(menu).getAllByText("MAX").length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * ONE right slot per row, never two. The rail used to hold the /command AND a permanently
+   * reserved (nearly always empty) check column beside it — every row paying for a slot that
+   * only one row ever used. The check now REPLACES the command on the active row.
+   */
+  it("gives the active row a check INSTEAD of its slash command — one slot, not two", () => {
+    renderControls({ activeTool: "test" });
+    openSkillPopover();
+    const menu = screen.getByRole("menu");
+
+    // The armed row does not also advertise the shortcut for reaching itself.
+    expect(within(menu).queryByText("/test")).toBeNull();
+    // …while every other row still teaches its shortcut.
+    expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+
+    const active = within(menu).getByRole("menuitemradio", { name: /a real video/i });
+    expect(active).toHaveAttribute("aria-checked", "true");
   });
 
   it("marks the active skill with aria-checked", () => {
@@ -112,8 +129,10 @@ describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
     expect(within(menu).getByText("Make")).toBeInTheDocument();
     expect(within(menu).getByText("Test")).toBeInTheDocument();
     expect(within(menu).getByText("Ask")).toBeInTheDocument();
+    // Slash hints ride the INACTIVE rows. The active row (test, here) spends its one right
+    // slot on the check instead — see the "one right slot" test below.
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
-    expect(within(menu).getByText("/test")).toBeInTheDocument();
+    expect(within(menu).getByText("/ideas")).toBeInTheDocument();
   });
 
   // ── The horizontal (GSI) verbs — HIDDEN behind HORIZONTAL_ENABLED (owner call
@@ -200,21 +219,42 @@ describe("ModelTag — read-only model indicator (D-09)", () => {
   });
 });
 
-describe("ComposerControls — verb chip (v6 clean composer)", () => {
-  // The pill collapses ~13 skills → three verbs on the chip face (Make / Test / Ask).
-  // The popover groups every skill under those same three verbs (Phase 3); the chip's
-  // aria-label keeps "Skill: …" so assistive tech + openSkillPopover reach it.
-  it("labels the chip Make for a generation skill", () => {
+describe("ComposerControls — the chip names the SKILL, not the verb group", () => {
+  /**
+   * ⚠️ This inverts what this suite used to assert, on purpose.
+   *
+   * The chip used to render the VERB GROUP: pick "Script" and it said "Make". Pick
+   * "Explore" and it said "Make". So the armed skill was stated NOWHERE on screen — only
+   * as a checkmark inside a popover the creator had to reopen to read. A creator could sit
+   * with the wrong skill armed and spend a Reading on it with no way to notice. The chip is
+   * the one control always in view; it has to name the thing it arms.
+   *
+   * The verb groups still HEAD the menu (Make / Test / Ask) — they organise the list. They
+   * just never again stand in for the skill on the chip face.
+   */
+  it("names a Make skill by its own label, never 'Make'", () => {
     renderControls({ activeTool: "hooks" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Make");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("Hooks");
+    expect(pill).not.toHaveTextContent("Make");
   });
-  it("labels the chip Test for the Test skill", () => {
+  it("names the video skill by its own label, never 'Test'", () => {
     renderControls({ activeTool: "test" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Test");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("A real video");
   });
-  it("labels the chip Ask for the Chat skill", () => {
+  it("names the chat skill 'Chat' — the app's default state says the word 'chat'", () => {
     renderControls({ activeTool: "chat" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Ask");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("Chat");
+    expect(pill).not.toHaveTextContent("Ask");
+  });
+  it("distinguishes two skills that share a verb group (the old chip could not)", () => {
+    const { unmount } = renderControls({ activeTool: "script" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Script");
+    unmount();
+    renderControls({ activeTool: "explore" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Explore");
   });
 });
 

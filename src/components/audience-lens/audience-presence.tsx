@@ -668,6 +668,17 @@ export function AudiencePresence({
             />
           )}
         </span>
+        {/* "General" is a REAL audience — the default socials baseline — so the creator is
+            never running on nothing, and this is not an error state. But it is the
+            UNCALIBRATED one, and it is named so innocuously that a creator can spend Readings
+            against a generic crowd for a week while believing they are testing against their
+            own. The tag is the difference between a default and an accident. It is a quiet
+            muted tag, not a warning: correct, just not yours yet. */}
+        {isGeneral && (
+          <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[9px] font-semibold uppercase leading-[1.5] tracking-[0.06em] text-[var(--color-foreground-muted)]">
+            not calibrated
+          </span>
+        )}
         <ChevronDown
           className={
             "h-3.5 w-3.5 shrink-0 transition-transform text-[var(--color-foreground-muted)] " +
