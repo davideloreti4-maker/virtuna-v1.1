@@ -27,16 +27,46 @@ The suite was green for all three. Two real runs (~5 min, a few cents) caught al
 
 ---
 
-## 1. ▶ FIRST — merge PR #300 (engine: the dead-audience confidence fix)
+## 1. ✅ DONE — PR #300 merged (engine: the dead-audience confidence fix)
 
-Branch `fix/audience-failure-honesty` (`d6b15bc0` + docs `04a8c0c4`). Open, mergeable, 3563 tests
-pass (same 72 pre-existing failures as a clean tree), tsc 0.
+**Merged 2026-07-14.** Two things happened during the merge that are worth carrying forward.
 
-**Review it properly — it changes confidence semantics.** The bug: the fold has three states and the
-aggregator modelled two, so a fold that **ran and died** took the *text-mode* branch and its agreement
-term fell back to apollo-vs-behavioral — two numbers out of the **same Apollo call**. That is the
-"self-agreement" the code's own docblock already condemned, and it handed the broken run the **0.4
-maximum agreement bonus** → `0.2 + 0.1 + 0.4 = 0.7 = HIGH`.
+### 1a. The PR had to be REBUILT — it would have reverted three merged PRs
+
+The branch was cut *before* #295 squash-merged. By the time it was reviewed, main had moved four PRs
+(#295, #296/#297, #298/#299, #301) and the branch still carried #295's commits unsquashed. Its diff
+against main was **−5,229 lines**: merging it would have deleted the structural grounding retrieval
+(#297), the per-persona hook targeting (#298/#299), and two applied migrations. GitHub called it
+"CONFLICTING", which reads like a formatting problem and is not — **a conflicting long-lived branch is
+a revert waiting to happen.** Rebuilt by resetting to `origin/main` and cherry-picking only the three
+genuinely-new commits (backup ref: `backup/audience-failure-honesty-pre-rebuild`).
+
+▶ **The lesson for the next lane: a branch that outlives its base is a liability.** Check
+`git diff origin/main HEAD --stat` for surprise deletions before you merge *anything* that has sat.
+
+### 1b. The fix had a second door, found in review
+
+The original fix keyed "the audience was supposed to exist" off `foldOutcome !== null`. But the
+pipeline had **two** ways to lose a fold and only one sets that field:
+
+| how the fold dies | `foldOutcome` | scored as |
+|---|---|---|
+| `runFold` returns `fold_success:false` | set | failed ✅ |
+| `runFold` **throws** | **null** | **text mode** ❌ — 0.4 bonus, HIGH again |
+
+`getQwenClient()` and `buildFoldUserContent()` run *outside* `runFold`'s per-attempt try/catch, so a
+missing or rotated DashScope key throws straight out — **the most likely fold failure in prod, and it
+would still have shipped HIGH on zero personas.** Fixed in `2391b41e`: a thrown fold now records the
+attempt. And the test that should have caught it *was the bug* — "fold: PipelineResult valid when fold
+throws" never mocked a throw; it ran text mode and asserted `foldOutcome === null`. Green, and pinning
+the defect in place. (Third green-suite lie this week. See the rule at the top.)
+
+### The original bug, for the record
+
+The fold has three states and the aggregator modelled two, so a fold that **ran and died** took the
+*text-mode* branch and its agreement term fell back to apollo-vs-behavioral — two numbers out of the
+**same Apollo call**. That is the "self-agreement" the code's own docblock already condemned, and it
+handed the broken run the **0.4 maximum agreement bonus** → `0.2 + 0.1 + 0.4 = 0.7 = HIGH`.
 
 Measured live (the control arm that found it):
 
@@ -49,7 +79,7 @@ Measured live (the control arm that found it):
 keys on it. Without it, every already-cached fold-failed row keeps replaying its old HIGH badge on a
 cache hit — the fix would never reach the rows that *have* the bug. Do not "tidy" it away.
 
-Suggested: `/code-review` on the branch → merge → then §2.
+▶ **Next session picks up at §2.**
 
 ---
 
