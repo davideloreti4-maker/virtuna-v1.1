@@ -125,7 +125,13 @@ export interface CalibrationFallback {
   reason: "thin";
 }
 export interface CalibrationError {
-  error: "scrape_failed";
+  /**
+   * `scrape_failed`        — Apify/network failure. The handle may be wrong; retry is sensible.
+   * `platform_unsupported` — the requested platform CANNOT be calibrated (see PLATFORM guard in
+   *                          calibrateFromScrape). Retrying changes nothing; the copy must not
+   *                          tell the user to "check the handle" — the handle is fine.
+   */
+  error: "scrape_failed" | "platform_unsupported";
   message?: string;
 }
 /**
@@ -205,6 +211,37 @@ export async function calibrateFromScrape(
     deps.scrapeNiche ?? ((q: string, limit?: number) => new ApifyScrapingProvider().scrapeVideos(q, limit ?? 20, "search"));
   const enrich = deps.enrich ?? enrichSignature;
   const onStage = deps.onStage;
+
+  // ── PLATFORM guard — the whole scrape stack below is TikTok-ONLY ──────────────────────
+  //
+  // `scrapeBundle` is `clockworks/tiktok-profile-scraper` and `scrapeNiche` is the TikTok
+  // discover actor. NEITHER takes a platform: look at the signature — `(handle, limit)`. So
+  // `platform` was destructured, written onto the audience row (and onto the connected account,
+  // and onto its snapshot), and NEVER passed to the thing that does the scraping.
+  //
+  // Live, before this guard (2026-07-14): calibrating @zachking with platform:"instagram"
+  // returned HTTP 200 in 75s with 10 personas, a connected_accounts row marked `instagram`, and
+  // an account_snapshot of 86.1M followers / 610 posts / 1.3B hearts — TikTok's numbers exactly
+  // (his real IG is nothing like that, and Instagram has no "hearts" at all). The audience was
+  // built from TikTok and labelled Instagram.
+  //
+  // And a handle is NOT one identity across platforms: @foo on Instagram and @foo on TikTok are
+  // usually different people. So the failure isn't "slightly stale numbers" — it is building a
+  // STRANGER'S audience and presenting it as the user's own, with provenance that says otherwise.
+  //
+  // Instagram/YouTube ARE genuinely supported for CONNECT → analytics (`/api/connected-accounts/
+  // connect` and the refresh cron both branch correctly onto scrapeInstagramProfile /
+  // scrapeYouTubeChannel). Those actors return a PROFILE ONLY — no videos — and enrichment needs
+  // videos, so real IG/YT calibration is a feature, not a guard. Until it exists, refuse:
+  // an honest "we can't do that yet" beats a confident fabrication.
+  //
+  // `custom` stays allowed: it is the DESCRIBED path, which claims no platform provenance.
+  if (platform !== "tiktok" && platform !== "custom") {
+    return {
+      error: "platform_unsupported",
+      message: `Maven can only build an audience from a TikTok account right now. ${platform === "instagram" ? "Instagram" : "YouTube"} is supported for connecting your account's analytics, but not yet for calibration.`,
+    };
+  }
 
   // Every path below starts by hitting Apify — including the niche fallback's second call.
   onStage?.("scraping");
