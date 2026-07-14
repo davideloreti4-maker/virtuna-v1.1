@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
+import { getAudience } from "@/lib/audience/audience-repo";
 import { createLogger } from "@/lib/logger";
 
 // Phase 3 (Plan 08) — helpers for filmstrip polling and partial persona state tracking.
@@ -166,6 +167,8 @@ export async function GET(
           let filmstripTotalSent = false;
           // Emit the scrape receipt once, the first poll that sees it.
           let sourceSent = false;
+          // Emit the audience roster once (it is fixed for the run).
+          let rosterSent = false;
           // Track last personas array reference for change detection.
           let lastPersonasJson = "";
 
@@ -185,6 +188,31 @@ export async function GET(
             }
             if (fresh) {
               const freshRow = fresh as Record<string, unknown>;
+
+              // The ROSTER — who is about to watch this. Known before the run even starts (it is
+              // the audience the user calibrated), but the in-flight Reading had no way to see it,
+              // so the ~60s the audience sim takes was the emptiest stretch of the whole wait.
+              // Emit it once and the wait can show the actual people it is simulating.
+              //
+              // Their REACTIONS are not known yet — those are what the Read is for. Only the cast
+              // is sent here.
+              if (!rosterSent) {
+                rosterSent = true;
+                const societyId = freshRow.society_id;
+                if (typeof societyId === "string" && societyId.length > 0) {
+                  try {
+                    const audience = await getAudience(supabase, societyId);
+                    const roster = (audience?.personas ?? []).map((p) => ({
+                      archetype: p.archetype,
+                      label: p.label ?? null,
+                    }));
+                    if (roster.length > 0) send("roster", { personas: roster });
+                  } catch (err) {
+                    // A roster we can't load costs the wait some texture, never the run.
+                    log.info("roster load failed", { id, error: String(err) });
+                  }
+                }
+              }
 
               // The source receipt — emitted once, as soon as the scrape lands. This is what the
               // user sees FIRST: the video we're about to read, with its author.

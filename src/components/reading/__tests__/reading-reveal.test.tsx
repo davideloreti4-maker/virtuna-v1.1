@@ -89,25 +89,86 @@ describe('useReadingReveal — real-signal liveness (REVEAL-01)', () => {
 });
 
 describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
-  it('renders the calm default caption + IA placeholders before any signal', () => {
+  it('opens on the first step, with nothing fabricated ahead of it', () => {
     render(<ReadingSkeleton id="sim-1" />);
     expect(screen.getByTestId('reading-skeleton')).toBeInTheDocument();
+    // The spine opens ACTIVE on step 1 — never a column of hollow dots, never a fake count.
+    expect(screen.getByLabelText('Fetching your video: active')).toBeInTheDocument();
+    expect(screen.getByLabelText('Watching it frame by frame: pending')).toBeInTheDocument();
     expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
-      /Reading your simulation/i,
+      /Fetching your video/i,
     );
-    // No fabricated frame count before footage lands.
-    expect(screen.queryByTestId('reading-skeleton-frames')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading-skeleton-frames-strip')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('reading-skeleton-roster')).not.toBeInTheDocument();
   });
 
-  it('reflects real persona progress in the caption as personas stream in', async () => {
+  it('advances the spine on REAL signals: video → footage → audience', async () => {
     render(<ReadingSkeleton id="sim-1" />);
     const es = MockEventSource.instances[0]!;
-    act(() => es.emit('partial', { personas: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }));
-    await waitFor(() =>
-      expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
-        /3 viewers so far/i,
-      ),
+
+    // 1. the scrape lands → we have the video.
+    act(() =>
+      es.emit('source', {
+        cover_url: 'https://cdn.example/c.jpg',
+        handle: 'zachking',
+        views: 10,
+        video_url: null,
+      }),
     );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Fetching your video: done')).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Watching it frame by frame: active')).toBeInTheDocument();
+
+    // 2. every frame seen → the footage has been read; the audience sim is what runs now.
+    act(() => es.emit('filmstrip_plan', { total: 2 }));
+    act(() =>
+      es.emit('filmstrip_segment_ready', { segment_idx: 0, keyframe_uri: 'https://x/0.jpg' }),
+    );
+    act(() =>
+      es.emit('filmstrip_segment_ready', { segment_idx: 1, keyframe_uri: 'https://x/1.jpg' }),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Watching it frame by frame: done')).toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText('Simulating your audience: active')).toBeInTheDocument();
+  });
+
+  it('completes the footage step even when a frame failed to extract', async () => {
+    // A failed segment yields NO picture, so counting pictures would strand this step on
+    // "active" for the rest of the run. Completion is measured in segments SEEN.
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() => es.emit('filmstrip_plan', { total: 2 }));
+    act(() =>
+      es.emit('filmstrip_segment_ready', { segment_idx: 0, keyframe_uri: 'https://x/0.jpg' }),
+    );
+    act(() => es.emit('filmstrip_segment_ready', { segment_idx: 1, keyframe_uri: null }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('Watching it frame by frame: done')).toBeInTheDocument(),
+    );
+    // One picture, two segments read — we show what we have, and claim nothing more.
+    expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(1);
+  });
+
+  it('shows the cast while their reactions are being simulated — never their reactions', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() =>
+      es.emit('roster', {
+        personas: [
+          { archetype: 'skeptic', label: 'Maya — the skeptic' },
+          { archetype: 'scanner', label: null },
+        ],
+      }),
+    );
+
+    const roster = await screen.findByTestId('reading-skeleton-roster');
+    expect(roster).toHaveTextContent('Maya — the skeptic');
+    // No label → fall back to the archetype. Never a made-up name.
+    expect(roster).toHaveTextContent('scanner');
+    expect(screen.queryAllByTestId('reading-skeleton-reactor')).toHaveLength(2);
   });
 
   it('draws every slot the run will fill as soon as the total is known', async () => {
@@ -121,7 +182,7 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     // 4 slots, 0 filled — the wait shows how much footage is coming before any of it arrives.
     expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(0);
     expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
-      /Reading the footage — 0 of 4 frames/i,
+      /Watching it frame by frame — 0 of 4 frames/i,
     );
   });
 
@@ -153,7 +214,7 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     expect(srcs).toContain('https://signed.example/0.jpg');
     expect(srcs).toContain('https://signed.example/1.jpg');
     expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
-      /Reading the footage — 2 of 3 frames/i,
+      /Watching it frame by frame — 2 of 3 frames/i,
     );
   });
 
@@ -171,7 +232,7 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     );
     expect(screen.queryAllByTestId('reading-skeleton-frame')).toHaveLength(0);
     expect(screen.getByTestId('reading-skeleton-caption')).toHaveTextContent(
-      /Reading the footage — 0 of 2 frames/i,
+      /Simulating your audience|Watching it frame by frame/i,
     );
   });
 

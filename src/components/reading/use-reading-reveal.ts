@@ -45,9 +45,20 @@ export interface RevealSource {
   video_url: string | null;
 }
 
+/** One of the user's calibrated reactors — the cast, not their reactions. */
+export interface RevealPersona {
+  archetype: string;
+  label: string | null;
+}
+
 export interface ReadingRevealState {
   /** The scraped post we are reading — the first evidence of the run. null until it lands. */
   source: RevealSource | null;
+  /**
+   * WHO is about to watch this: the user's calibrated audience, known before the run starts.
+   * Their REACTIONS are what the Read produces — those are not here, and are never guessed.
+   */
+  roster: RevealPersona[];
   /** Count of personas seen streaming in (Pass-2 audience forming). */
   personaCount: number;
   /**
@@ -70,6 +81,7 @@ export interface ReadingRevealState {
 
 const INITIAL: ReadingRevealState = {
   source: null,
+  roster: [],
   personaCount: 0,
   frames: [],
   frameTotal: 0,
@@ -124,6 +136,17 @@ export function useReadingReveal(
         // Only take a receipt that actually carries something to show.
         if (data && (data.cover_url || data.handle)) {
           setState((s) => ({ ...s, phase: 'live', source: data }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onRoster = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { personas?: RevealPersona[] };
+        if (Array.isArray(data.personas) && data.personas.length > 0) {
+          setState((s) => ({ ...s, phase: 'live', roster: data.personas! }));
         }
       } catch {
         /* malformed frame — ignore */
@@ -189,6 +212,7 @@ export function useReadingReveal(
     };
 
     es.addEventListener('source', onSource);
+    es.addEventListener('roster', onRoster);
     es.addEventListener('partial', onPartial);
     es.addEventListener('filmstrip_plan', onFilmstripPlan);
     es.addEventListener('filmstrip_segment_ready', onFilmstrip);
@@ -197,6 +221,7 @@ export function useReadingReveal(
 
     return () => {
       es.removeEventListener('source', onSource);
+      es.removeEventListener('roster', onRoster);
       es.removeEventListener('partial', onPartial);
       es.removeEventListener('filmstrip_plan', onFilmstripPlan);
       es.removeEventListener('filmstrip_segment_ready', onFilmstrip);
