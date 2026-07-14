@@ -16,14 +16,29 @@
 **Look at the running thing. The tests will not tell you.**
 
 Every real defect this week was found by rendering or running the surface, never by reading code and
-never by a green suite. Three separate bugs were live *while every test passed*:
+never by a green suite. The bugs that were live *while every test passed*:
 
 - the roster read `society_id` — **a column nothing writes** (dead in prod, green in tests);
 - the cast rendered as `high_engager` instead of Maya;
-- a Read whose **entire audience simulation died** shipped as **HIGH confidence**.
+- a Read whose **entire audience simulation died** shipped as **HIGH confidence**;
+- the `partial` SSE event read `analysis_results` — **also a column that does not exist** — so a
+  progressive reveal was wired end to end and **never fired once** (#308);
+- Simulate stated the audience fraction **twice, from two sources that can disagree** (#306);
+- an **absence** was styled as an italic verbatim, so a persona who never spoke read as one who
+  murmured (#307).
 
-The suite was green for all three. Two real runs (~5 min, a few cents) caught all three.
-**Budget a live run before you call anything done.**
+**The sharper form of the rule, learned this session — the test is often the accomplice, not the
+witness.** Three of these had a *green test standing directly over them*:
+
+- `"fold: PipelineResult valid when fold throws"` **never mocked a throw** — it ran text mode and
+  asserted the buggy `null`;
+- the `partial` test **emitted a fake frame** for an event the server cannot send (a mock
+  `EventSource` will emit any event you name);
+- Simulate's tests fed it **consistent** fixture data, so the doubled fraction agreed with itself.
+
+So: when a test covers the thing you are about to change, **read what it actually asserts** — and
+make your new test **fail against the old code before you trust it**. And budget a live run
+(~5 min, a few cents) before you call anything done.
 
 ---
 
@@ -83,18 +98,28 @@ cache hit — the fix would never reach the rows that *have* the bug. Do not "ti
 
 ---
 
-## 2. The card backlog — Band primitive FIRST
+## 2. The card backlog — ✅ Band + Simulate DONE, four cards left
 
 `docs/HANDOFF-2026-07-14-cards-and-loading.md §0.6` + `AUDIT-2026-07-13-cards-remaining-nine.md`.
 
-**Start with the 🟡 Band primitive.** It is *the source of the drift*: band colour applied twice (word
-*and* fraction; §1.3 says once), no dot, and its `text-2xl` coloured band-word **is the hero pattern
-Simulate and Predict both copied.** Fixing it unblocks two others — do not start with Simulate.
+✅ **Band primitive — DONE (#305).** Colour applied once (dot + word), fraction neutral, and the 24px
+band-word hero is gone, so the pattern Simulate and Predict copied no longer has a source. Also
+deduped the copy-pasted `BAND_COLOR` map and moved the last 6 section labels onto the 11px/0.05em
+stack. **New gate: `section-label-scale.test.ts`** (sibling of the radius gate).
+▶ Worth knowing: **no production runner emits a `band` block.** The drift originated in a primitive
+nothing renders — the damage was entirely in the copies.
 
-Then, in order:
-- **Simulate** (`reaction-distribution`) — fraction stated TWICE from two sources that can disagree ·
-  provenance in the eyebrow · band-word-as-hero · no ProofUnit / no "See the room →" · 2-row action
-  bar, no cream primary · `text-red-400` (a RETIRED accent).
+✅ **Simulate — DONE (#306).** The honesty bug is fixed: the fraction was stated TWICE, from the
+engine (`aggregateFlash`, "never re-rolled") *and* from a client-side recount of `reactions`, which
+can disagree. It now has a real `<ProofUnit>` (with the room's REAL personas — Simulate is the one
+card that carries them), the stimulus threaded through so the Lens door opens on a real concept,
+provenance demoted, one action bar with a cream primary, and `text-red-400` retired.
+▶ Worth knowing: `ProofUnit` hardcoded **"N/10 stopped"** while Simulate's engine emits **"N/10
+react"** — and a `mode: 'general'` panel must not be asked the FYP stop-or-scroll question at all. It
+takes a `verb` prop now (default `"stopped"`, so no other caller moved). **Silently re-wording the
+engine's claim is the same defect class as double-stating it.**
+
+**Still open, in order:**
 - **Account Read** (`account-read`) — SIX stacked equal-weight ALL-CAPS labels · no hero · no
   disclosure · forward action is a text link, not the cream primary.
 - **Explore** (`outlier-grid`) — the tile has **no card surface**; multiplier/fit/CTA float on the
@@ -103,21 +128,28 @@ Then, in order:
   cue); quote styling diverges from `ProofUnit`.
 - 🟡 **Ask** (`SkillResultCard`) — header is `text-xs`, not the contract eyebrow. Load-bearing.
 
+All four are **visual drift only** — no honesty bugs left in the card set. The two that carried real
+correctness defects (Band, Simulate) are done.
+
 **Predict** (`prediction-gauge`) is an **owner call** — see §3.
 
 ---
 
 ## 3. 🔴 OWNER CALLS — do not decide these silently
 
-Four information-design calls on the Reading (`ui-skill-cards.md §0.7`). They are design, not drift.
+Information-design calls on the Reading (`ui-skill-cards.md §0.7`). They are design, not drift.
 
-1. **The empty persona slot is wearing a verbatim's clothing.** When a persona didn't speak, the quote
-   slot renders *"stopped — no words this time"* — **italic, in the quote position**. It reads as
-   something the persona *said*. We are scrupulous about never fabricating a quote, then style the
-   **absence** of one to look like a quiet one. **This is the sharpest one** — and the same *class* of
-   bug #287 already solved for cards, and that today's fix solved for the failed audience: *state the
-   absence, don't dress it up.* The fix pattern exists. Arguably not even a real "call" — just do it.
-   ▶ Reproduce: `/dev/cards` → Reading → **"Empty personas"**.
+1. ✅ **DONE (#307) — the empty persona slot was wearing a verbatim's clothing.** It was not a real
+   "call": italic **is** this app's verbatim idiom (PopulationSwarm renders a real quote in italic),
+   so an absence in the quote slot, in italic, read as something the persona *said*. Now stated as an
+   absence, borrowing `NoSourceNote`'s spine: dashed, muted, **not** italic, "Stopped. No words
+   recorded." Guarded by `ambient-room-absence.test.tsx`.
+   ▶ **The real lesson is why it survived:** the gallery state that was supposed to show it —
+   `/dev/cards` → Reading → **"Empty personas"** — sets `personas: []`, which degrades the roster to
+   PanelEmpty: **zero rows, zero quote slots, so the line never rendered there.** Its note nonetheless
+   claimed *in writing* to be "the state that produces the 'stopped — no words this time' line". It
+   never did. **A preview that lies about what it previews is worse than no preview.** The state that
+   actually shows it now exists: **"Silent personas"** (every persona present, not one verbatim).
 2. **Provenance sits in the hero eyebrow** (`TEST · POWERED BY SIM-1 MAX`). §0.5 says provenance is a
    footnote, never a headline — but Reading is a *page*, not a card, so it has no disclosure row to
    demote onto. A hero restructure, not a class swap.
@@ -142,12 +174,16 @@ tell you*. Same failure shape as the dead crons (missing `SUPABASE_SERVICE_ROLE_
 
 ## 5. Loose ends found today (small, real)
 
-- **Dead code — the `partial` SSE event has never once fired.** `extractPartialPersonas`
-  (`src/app/api/analyze/[id]/stream/route.ts`) reads `row.analysis_results.partial.personas`, and
-  **there is no `analysis_results` column** on that table (fields are top-level: `personas`,
-  `variants`, …). Harmless today (the fold only produces personas at the end, so there is no partial
-  state to stream) but it is a progressive-reveal hook that silently does nothing. **Delete it or wire
-  it to something real.**
+- ✅ **DONE (#308) — the `partial` SSE event that never fired once.** Deleted, not repaired: there was
+  nothing to repair it *to*. The fold produces all 10 personas in ONE call at the END (the 10-pass loop
+  that streamed them one by one died in Phase 4 Plan 05), so **the event outlived the thing it reported
+  on**. Downstream, `use-reading-reveal` grew a `personaCount` from it that **had no consumers** — dead
+  state, fed by a dead event, driving nothing — and a test emitted a **fake** `partial` frame to prove
+  the handler worked for an event the server cannot send.
+  ▶ **This was the SECOND reader pointed at a column that does not exist** (the roster read
+  `society_id`; this read `analysis_results`), and **both times the suite was green.** Name the
+  pattern: *a test that mocks the transport proves the **handler** works, never that the **event
+  happens**.* If progressive reveal is ever wanted, **the engine emits first.**
 - **The calibrated-audience roster path was never watched live.** Today's roster fix is proven on a
   *General* (uncalibrated) audience — the default, and the broken case. The calibrated branch is
   covered by a unit test but never rendered in a real run. If the account has a calibrated audience,
