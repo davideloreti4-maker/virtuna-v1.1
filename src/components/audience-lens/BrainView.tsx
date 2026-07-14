@@ -149,6 +149,14 @@ export interface BrainViewProps {
    * and the verdict alone; it never fabricates a room.
    */
   personas?: PersonaNode[];
+  /**
+   * What the room actually reacted to ("Hook" | "Idea" | "Script" | "Remix"). It exists for ONE
+   * reason, and it is an honesty one: on a SCRIPT, the ten personas voted on the OPENING BEAT only
+   * (`ScriptCardBlockSchema`: "band/fraction describe the OPENER beat only"). The readout must say
+   * so, or a creator reads "6 of 10 stopped" as a verdict on their whole script when it is a verdict
+   * on their first three seconds.
+   */
+  kindLabel?: string;
 }
 
 export function BrainView({
@@ -161,6 +169,7 @@ export function BrainView({
   retentionAt,
   durationS,
   personas,
+  kindLabel,
 }: BrainViewProps) {
   const mode: SimMode = videoSrc && retentionAt ? 'grounded' : 'simulated';
   /**
@@ -560,7 +569,7 @@ export function BrainView({
       {/* ══ THE READOUT (INSTANT) ═══════════════════════════════════════════════════════════════
              The instrument, on the only substrate that is real here: the ten personas actually voted.
              Counts of real votes — no score, no invented benchmark, no threshold we cannot ground. ── */}
-      {instant && readout && <RoomReadoutPanel readout={readout} />}
+      {instant && readout && <RoomReadoutPanel readout={readout} kindLabel={kindLabel} />}
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
@@ -597,8 +606,16 @@ export function BrainView({
  *
  * Every row here is a count. Nothing is scored, nothing is seeded, nothing is scaled.
  */
-function RoomReadoutPanel({ readout }: { readout: RoomReadout }) {
+function RoomReadoutPanel({ readout, kindLabel }: { readout: RoomReadout; kindLabel?: string }) {
   const { hold, segments, objection, divergence } = readout;
+  /**
+   * ⚠️ SCOPE THE CLAIM. A script's ten personas voted on its OPENING BEAT — the schema says so in as
+   * many words, and its per-beat retentionMarker is explicitly "prose, never a numeric score". So
+   * there is no honest per-beat read, and "6 of 10 stopped" on a script is a verdict on the first
+   * three seconds, not on the script. The card says which. (The beat-stepper this card was going to
+   * grow — "beat 3 loses them" — is dead for exactly this reason: nobody measured beat 3.)
+   */
+  const scoped = kindLabel?.toLowerCase() === 'script';
   return (
     <div
       className="mt-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-2"
@@ -606,7 +623,9 @@ function RoomReadoutPanel({ readout }: { readout: RoomReadout }) {
     >
       {/* The headline: how much of the room stopped. A COUNT — it needs no benchmark to be read. */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] text-[var(--color-foreground-secondary)]">They stopped</span>
+        <span className="text-[11px] text-[var(--color-foreground-secondary)]">
+          They stopped{scoped ? ' · on your opening beat' : ''}
+        </span>
         <span className="text-[11px] tabular-nums text-[var(--cream-primary)]">
           {hold.stopped} of {hold.total}
         </span>

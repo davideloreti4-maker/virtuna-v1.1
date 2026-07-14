@@ -163,6 +163,22 @@ describe('AmbientRoom — the brain scale', () => {
     expect(c.querySelector('[data-testid="brain-view"]')!.innerHTML).not.toBe(first);
   });
 
+  it('SCRIPT: scopes the claim to the opening beat — the room never voted on the rest', () => {
+    // ScriptCardBlockSchema, in as many words: "band/fraction describe the OPENER beat only — NOT
+    // the full-watch retention", and the per-beat retentionMarker is "prose, never a numeric score".
+    // So "6 of 10 stopped" on a script is a verdict on the first three seconds. Unscoped, a creator
+    // reads it as a verdict on their whole script.
+    render(room({ kindLabel: 'Script' }));
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    expect(within(readout).getByText(/on your opening beat/i)).toBeInTheDocument();
+  });
+
+  it('does NOT scope the claim on a hook — the hook IS the whole stimulus', () => {
+    render(room({ kindLabel: 'Hook' }));
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    expect(within(readout).queryByText(/opening beat/i)).toBeNull();
+  });
+
   it('reads the room honestly: the verdict follows the real vote, not the seeded cortex', () => {
     // INSTANT's verdict is now read off the personas' actual votes. It used to be read off the
     // simulated network response — which is a function of (stopRatio, hash(seedKey)), so the card

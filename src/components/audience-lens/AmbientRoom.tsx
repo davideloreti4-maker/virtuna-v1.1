@@ -485,6 +485,8 @@ export function AmbientRoom({
                 // The room's REAL votes. Without a video the brain has no honest timeline, so THESE
                 // become the card's instrument (BrainView's INSTANT mode + ./room-readout).
                 personas={nodes}
+                // Scopes the readout's claim: on a SCRIPT the room only ever voted on the opener.
+                kindLabel={kindLabel}
               />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
