@@ -1,0 +1,275 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>/audience roster row — 3 directions</title>
+<style>
+  :root{
+    --bg:#262624; --card:#2b2b28; --cream:#ece7de; --cream-2:rgba(236,231,222,.62);
+    --cream-3:rgba(236,231,222,.40); --cream-4:rgba(236,231,222,.26);
+    --line:rgba(255,255,255,.06); --line-2:rgba(255,255,255,.10);
+    --terracotta:#d97757; --amber:#c9a227;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--cream);
+    font:400 14px/1.45 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;padding:40px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .lane{margin-bottom:56px}
+  .lane > h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--terracotta);
+    margin-bottom:6px;font-weight:600}
+  .lane > p.note{font-size:12px;color:var(--cream-3);margin-bottom:18px;max-width:760px}
+  .grid{max-width:840px}
+  .sec{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--cream-4);
+    margin:20px 0 8px;font-weight:500}
+  .sec:first-child{margin-top:0}
+  .row{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;
+    margin-bottom:10px;display:flex;gap:16px;align-items:center}
+  .row:hover{border-color:var(--line-2)}
+  .name{font-size:15px;font-weight:500;color:var(--cream)}
+  .meta{font-size:12px;color:var(--cream-3);margin-top:2px}
+  .prov{font-size:11px;color:var(--cream-4);margin-top:6px}
+  .chip{font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--line);
+    color:var(--cream-2);white-space:nowrap}
+  .chip.act{border-color:rgba(201,162,39,.35);color:var(--amber);background:rgba(201,162,39,.07)}
+  .grow{flex:1;min-width:0}
+
+  /* A: composition bar is the mark */
+  .a-bar{display:flex;height:8px;border-radius:999px;overflow:hidden;gap:2px;margin-top:10px}
+  .a-seg{height:100%;border-radius:2px}
+  .a-legend{display:flex;gap:14px;margin-top:8px;font-size:11px;color:var(--cream-3)}
+  .a-legend b{font-weight:500;color:var(--cream-2)}
+  .a-empty{margin-top:10px;height:8px;border-radius:999px;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 6px,transparent 6px 12px)}
+
+  /* B: persona stack is the mark */
+  .b-stack{display:flex;flex-shrink:0}
+  .b-dot{width:34px;height:34px;border-radius:999px;border:1px solid var(--line-2);
+    background:#302f2c;display:flex;align-items:center;justify-content:center;
+    font-size:10px;font-weight:600;letter-spacing:.02em;margin-left:-9px;color:var(--cream-2)}
+  .b-dot:first-child{margin-left:0}
+  .b-dot.hot{background:#3a302b;color:#e2b9a4}
+  .b-dot.warm{background:#33312c}
+  .b-dot.cold{background:#2c2e30;color:rgba(236,231,222,.5)}
+  .b-dot.more{background:transparent;border-style:dashed;color:var(--cream-4);font-weight:400}
+  .b-dot.empty{border-style:dashed;background:transparent}
+
+  /* C: ledger / column row */
+  .c-row{display:grid;grid-template-columns:1fr 132px 128px;gap:20px;align-items:center}
+  .c-mix{display:flex;gap:3px;align-items:flex-end;height:22px}
+  .c-mix i{flex:1;border-radius:2px;display:block}
+  .c-mixlabel{font-size:10px;color:var(--cream-4);margin-top:5px;letter-spacing:.04em}
+  .c-state{text-align:right;font-size:12px;color:var(--cream-3)}
+  .c-state .act{color:var(--amber)}
+  .c-count{font-size:13px;color:var(--cream-2);font-variant-numeric:tabular-nums}
+  .dim{opacity:.55}
+</style></head><body><div class="wrap">
+
+<div class="lane">
+  <h2>Direction A — the composition IS the mark</h2>
+  <p class="note">Delete the dot-scatter entirely. The row leads with the thing that is actually true and actually useful: who is in this room, by share. Segments = personas, weighted; tone = temperature (cold → hot). No trust pill. One chip, only when there is something to do. An uncalibrated room shows an honest empty bar, not a fake one.</p>
+  <div class="grid">
+    <div class="sec">Yours</div>
+
+    <div class="row"><div class="grow">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <span class="name">Fitness Creators</span>
+        <span class="meta" style="margin:0">TikTok · 6 personas</span>
+      </div>
+      <div class="a-bar">
+        <span class="a-seg" style="flex:25;background:rgba(236,231,222,.55)"></span>
+        <span class="a-seg" style="flex:20;background:rgba(236,231,222,.30)"></span>
+        <span class="a-seg" style="flex:15;background:rgba(217,119,87,.55)"></span>
+        <span class="a-seg" style="flex:15;background:rgba(236,231,222,.45)"></span>
+        <span class="a-seg" style="flex:10;background:rgba(217,119,87,.40)"></span>
+        <span class="a-seg" style="flex:15;background:rgba(236,231,222,.18)"></span>
+      </div>
+      <div class="a-legend"><span><b>Fitness</b> 25%</span><span><b>Learner</b> 20%</span><span><b>Loyalist</b> 15%</span><span style="color:var(--cream-4)">+3</span></div>
+      <div class="prov">Built from your description · 20 Jun</div>
+    </div></div>
+
+    <div class="row"><div class="grow">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <span class="name">test</span>
+        <span class="chip act">Calibrate</span>
+      </div>
+      <div class="meta">TikTok · no personas yet</div>
+      <div class="a-empty"></div>
+      <div class="prov">Nothing modelled yet — Reads fall back to General.</div>
+    </div></div>
+
+    <div class="sec">Start from</div>
+
+    <div class="row"><div class="grow">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <span class="name">General</span>
+        <span class="meta" style="margin:0">10 universal personas</span>
+      </div>
+      <div class="a-bar dim">
+        <span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span><span class="a-seg" style="flex:1;background:rgba(236,231,222,.30)"></span>
+      </div>
+      <div class="prov">Maven's default room · used when you haven't calibrated.</div>
+    </div></div>
+
+    <div class="row"><div class="grow">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+        <span class="name">Analyst Panel</span>
+        <span class="meta" style="margin:0">4 personas</span>
+      </div>
+      <div class="a-bar">
+        <span class="a-seg" style="flex:30;background:rgba(236,231,222,.45)"></span>
+        <span class="a-seg" style="flex:30;background:rgba(236,231,222,.38)"></span>
+        <span class="a-seg" style="flex:20;background:rgba(236,231,222,.20)"></span>
+        <span class="a-seg" style="flex:20;background:rgba(236,231,222,.30)"></span>
+      </div>
+      <div class="a-legend"><span><b>Tough crowd</b> 30%</span><span><b>Purposeful</b> 30%</span><span style="color:var(--cream-4)">+2</span></div>
+      <div class="prov">Authored template — not built from data.</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="lane">
+  <h2>Direction B — the roster IS the mark</h2>
+  <p class="note">The page says "here are the people who watch you" — so show them as people-shaped things. One node per persona, warmth = temperature, initials from the real archetype. An empty room shows dashed outlines: visibly, honestly, unfilled. Trust pill gone; provenance moves to a plain line a human can read.</p>
+  <div class="grid">
+    <div class="sec">Yours</div>
+
+    <div class="row">
+      <div class="b-stack">
+        <span class="b-dot warm">FI</span><span class="b-dot cold">LE</span><span class="b-dot hot">LO</span>
+        <span class="b-dot warm">SA</span><span class="b-dot hot">SH</span><span class="b-dot cold">LU</span>
+      </div>
+      <div class="grow">
+        <div class="name">Fitness Creators</div>
+        <div class="meta">6 personas · TikTok · warm-leaning room</div>
+        <div class="prov">Built from your description · 20 Jun</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="b-stack">
+        <span class="b-dot empty"></span><span class="b-dot empty"></span><span class="b-dot empty"></span>
+      </div>
+      <div class="grow">
+        <div class="name">test</div>
+        <div class="meta">TikTok · empty room</div>
+        <div class="prov">Reads fall back to General until you calibrate.</div>
+      </div>
+      <span class="chip act">Calibrate</span>
+    </div>
+
+    <div class="sec">Start from</div>
+
+    <div class="row">
+      <div class="b-stack dim">
+        <span class="b-dot cold">SC</span><span class="b-dot warm">SK</span><span class="b-dot warm">CO</span>
+        <span class="b-dot hot">CN</span><span class="b-dot warm">CV</span><span class="b-dot more">+5</span>
+      </div>
+      <div class="grow">
+        <div class="name">General</div>
+        <div class="meta">10 universal personas</div>
+        <div class="prov">Maven's default room · used when you haven't calibrated.</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="b-stack dim">
+        <span class="b-dot warm">TC</span><span class="b-dot warm">PV</span><span class="b-dot cold">CN</span><span class="b-dot warm">ND</span>
+      </div>
+      <div class="grow">
+        <div class="name">Analyst Panel</div>
+        <div class="meta">4 personas · custom</div>
+        <div class="prov">Authored template — not built from data.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lane">
+  <h2>Direction C — the ledger row</h2>
+  <p class="note">Keep a mark, but make every row line up in columns so the roster scans like an instrument, not a feed. Columns: identity · composition · state. The right-hand void the audit complained about becomes the state column. Only the actionable state carries colour; everything else is quiet text, not a pill.</p>
+  <div class="grid">
+    <div class="sec">Yours</div>
+
+    <div class="row"><div class="c-row" style="width:100%">
+      <div>
+        <div class="name">Fitness Creators</div>
+        <div class="meta">TikTok · Target · warm-leaning</div>
+        <div class="prov">Built from your description · 20 Jun</div>
+      </div>
+      <div>
+        <div class="c-mix">
+          <i style="height:35%;background:rgba(236,231,222,.22)"></i>
+          <i style="height:40%;background:rgba(236,231,222,.45)"></i>
+          <i style="height:25%;background:rgba(217,119,87,.55)"></i>
+        </div>
+        <div class="c-mixlabel">COLD · WARM · HOT</div>
+      </div>
+      <div class="c-state">
+        <div class="c-count">6 personas</div>
+        <div style="margin-top:4px">Calibrated</div>
+      </div>
+    </div></div>
+
+    <div class="row"><div class="c-row" style="width:100%">
+      <div>
+        <div class="name">test</div>
+        <div class="meta">TikTok · Personal</div>
+        <div class="prov">Reads fall back to General until you calibrate.</div>
+      </div>
+      <div>
+        <div class="c-mix">
+          <i style="height:14%;background:rgba(255,255,255,.06)"></i>
+          <i style="height:14%;background:rgba(255,255,255,.06)"></i>
+          <i style="height:14%;background:rgba(255,255,255,.06)"></i>
+        </div>
+        <div class="c-mixlabel" style="color:rgba(236,231,222,.18)">NO DATA</div>
+      </div>
+      <div class="c-state">
+        <div class="c-count">0 personas</div>
+        <div style="margin-top:4px" class="act">Needs calibration</div>
+      </div>
+    </div></div>
+
+    <div class="sec">Start from</div>
+
+    <div class="row"><div class="c-row" style="width:100%">
+      <div>
+        <div class="name">General</div>
+        <div class="meta">Maven's default room</div>
+        <div class="prov">Used for every Read until you calibrate your own.</div>
+      </div>
+      <div>
+        <div class="c-mix dim">
+          <i style="height:33%;background:rgba(236,231,222,.28)"></i>
+          <i style="height:34%;background:rgba(236,231,222,.28)"></i>
+          <i style="height:33%;background:rgba(236,231,222,.28)"></i>
+        </div>
+        <div class="c-mixlabel">EVEN</div>
+      </div>
+      <div class="c-state">
+        <div class="c-count">10 personas</div>
+        <div style="margin-top:4px">Baseline</div>
+      </div>
+    </div></div>
+
+    <div class="row"><div class="c-row" style="width:100%">
+      <div>
+        <div class="name">Analyst Panel</div>
+        <div class="meta">Custom · authored</div>
+        <div class="prov">Authored template — not built from data.</div>
+      </div>
+      <div>
+        <div class="c-mix dim">
+          <i style="height:20%;background:rgba(236,231,222,.22)"></i>
+          <i style="height:80%;background:rgba(236,231,222,.45)"></i>
+          <i style="height:6%;background:rgba(236,231,222,.14)"></i>
+        </div>
+        <div class="c-mixlabel">COLD · WARM · HOT</div>
+      </div>
+      <div class="c-state">
+        <div class="c-count">4 personas</div>
+        <div style="margin-top:4px">Template</div>
+      </div>
+    </div></div>
+  </div>
+</div>
+
+</div></body></html>

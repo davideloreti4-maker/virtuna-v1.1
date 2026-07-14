@@ -32,6 +32,7 @@ import {
   enrichSignature,
   type EnrichInput,
   type EnrichDeps,
+  type EnrichStage,
 } from "./enrich-signature";
 import type {
   Audience,
@@ -96,11 +97,27 @@ export interface CalibrationInput {
   description?: string;
 }
 
+/**
+ * The phases of a calibration, announced as each one BEGINS.
+ *
+ * WHY: the caller (the SSE route) awaits ONE opaque promise covering scrape + omni-watch +
+ * synthesis, so it cannot see the boundaries from outside. It used to guess: it sent "Reading
+ * your followers…", awaited the whole pipeline, and only THEN sent "Building your audience
+ * profile…" — right before the DB write. Live (@zachking, 2026-07-14) that meant the user read
+ * "Reading your followers…" for 126 SECONDS while the app was actually watching videos and
+ * synthesizing, then "Building your audience profile…" flashed for 1s while a row was saved.
+ * The staged SSE exists precisely so a 1-3 min run is never opaque (Pitfall 4) — so the stages
+ * have to come from the code that can actually see them. This is that seam.
+ */
+export type CalibrationStage = "scraping" | EnrichStage;
+
 /** Injection points for tests — defaults wire to the real Apify + enrichment stack. */
 export interface CalibrationDeps {
   scrapeBundle?: (handle: string, limit?: number) => Promise<ProfileBundle>;
   scrapeNiche?: (query: string, limit?: number) => Promise<VideoData[]>;
   enrich?: (input: EnrichInput, deps?: EnrichDeps) => Promise<AudienceSignature>;
+  /** Progress reporter. Threaded into enrichment so its two phases report themselves. */
+  onStage?: (stage: CalibrationStage) => void;
 }
 
 export interface CalibrationFallback {
@@ -187,6 +204,10 @@ export async function calibrateFromScrape(
   const scrapeNiche =
     deps.scrapeNiche ?? ((q: string, limit?: number) => new ApifyScrapingProvider().scrapeVideos(q, limit ?? 20, "search"));
   const enrich = deps.enrich ?? enrichSignature;
+  const onStage = deps.onStage;
+
+  // Every path below starts by hitting Apify — including the niche fallback's second call.
+  onStage?.("scraping");
 
   // Resolved by the path below into { profile, videos, subCoverage, source, scrapedHandle }.
   let profile: ProfileData;
@@ -246,13 +267,18 @@ export async function calibrateFromScrape(
   // ── Enrich → frozen signature (one-time, temp 0 + seed) ────────────────────────
   let signature: AudienceSignature;
   try {
-    signature = await enrich({
-      handle: scrapedHandle ?? normalizeHandle(name),
-      profile,
-      videos,
-      subCoverage,
-      goalIntent,
-    });
+    signature = await enrich(
+      {
+        handle: scrapedHandle ?? normalizeHandle(name),
+        profile,
+        videos,
+        subCoverage,
+        goalIntent,
+      },
+      // Thread the reporter in — enrichment owns the watch/synthesize boundary. This arg was
+      // simply never passed before, so those two phases could not report themselves at all.
+      { onStage },
+    );
   } catch (err) {
     return {
       error: "scrape_failed",

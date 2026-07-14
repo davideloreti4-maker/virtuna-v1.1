@@ -21,6 +21,7 @@ import {
   listAudiences,
   createAudience,
 } from "@/lib/audience/audience-repo";
+import { CalibratedPersonasSchema } from "@/lib/audience/persona-schema";
 import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
 
 // ─── Input validation ──────────────────────────────────────────────────────────
@@ -69,9 +70,10 @@ const CreateAudienceSchema = z.object({
     .max(50)
     .optional(),
   persona_weights: WeightsSchema.optional(),
-  // Cap the array count at the untrusted boundary (storage-DoS guard, WR-02). Deep element-shape
-  // + repaint-string validation is deferred with the General scorer-prompt hardening (IN-02).
-  personas: z.array(z.unknown()).max(50).optional(),
+  // Element shape validated (shared with the repo gate): `archetype` is the ENGINE BINDING KEY,
+  // so a slug outside the 10 can never bind to a slot and its repaint reaches the model never.
+  // Was z.array(z.unknown()) — the deferral (IN-02) that let a hand-written row store `fitness`.
+  personas: CalibratedPersonasSchema.optional(),
   profile: z.unknown().nullable().optional(),
   calibration: z.unknown().nullable().optional(),
 });

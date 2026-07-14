@@ -25,6 +25,7 @@ import {
   deleteAudience,
   SENTINEL_IDS,
 } from "@/lib/audience/audience-repo";
+import { CalibratedPersonasSchema } from "@/lib/audience/persona-schema";
 
 // ─── Input validation ──────────────────────────────────────────────────────────
 
@@ -69,9 +70,13 @@ const PatchAudienceSchema = z
       .max(50)
       .optional(),
     persona_weights: WeightsSchema.optional(),
-    // Cap array count at the untrusted boundary (storage-DoS guard, WR-02); element/repaint
-    // shaping deferred with the General scorer-prompt hardening (IN-02).
-    personas: z.array(z.unknown()).max(50).optional(),
+    // Element shape validated (shared with the repo gate): `archetype` is the ENGINE BINDING KEY.
+    // NOTE this rejects the WHOLE array, and persona-edit-form.tsx PATCHes the full `personas`
+    // list (it edits one index and re-sends the siblings) — so a row still holding a bad slug
+    // becomes un-editable until repaired. That is intentional: the alternative is to keep
+    // accepting a persona the engine will silently ignore. The one such row was repaired with
+    // this change (see the migration).
+    personas: CalibratedPersonasSchema.optional(),
     profile: z.unknown().nullable().optional(),
     calibration: z.unknown().nullable().optional(),
   })
