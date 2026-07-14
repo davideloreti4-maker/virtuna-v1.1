@@ -13,6 +13,7 @@
  * don't mint a 4th vocabulary." We re-export the slugs from the shipped NICHE_TREE.
  */
 
+import { z } from "zod";
 import { NICHE_TREE } from "@/lib/niches/taxonomy";
 
 // ─── Versioning ─────────────────────────────────────────────────────────────
@@ -43,7 +44,9 @@ export const FIT_GLYPH: Record<FitLabel, string> = {
 };
 
 // ─── Facet seed vocabulary (§11b — Sandcastles taxonomy as the seed, growable) ─
-/** Hook (text/spoken) archetypes — Message dimension. */
+/** Hook (text/spoken) archetypes — Message dimension.
+ *  Grown 2026-07-14 from the 532-row curated import: the five slugs below the rule
+ *  are concepts the seed vocab lacked, observed in the wild (counts in the import). */
 export const HOOK_ARCHETYPES = [
   "question",
   "personal-experience",
@@ -53,9 +56,16 @@ export const HOOK_ARCHETYPES = [
   "list",
   "case-study",
   "trap-mistake",
+  // ── grown from the curated corpus ──
+  "tutorial",
+  "scenario-hypothetical",
+  "problem",
+  "ranking-rating",
+  "comparison",
 ] as const;
 
-/** Format — the container (Form dimension). */
+/** Format — the container (Form dimension).
+ *  Grown 2026-07-14 from the curated import (same rule as above). */
 export const FORMATS = [
   "about-me",
   "a-vs-b-comparison",
@@ -73,9 +83,24 @@ export const FORMATS = [
   "skit",
   "tutorial",
   "yap",
+  // ── grown from the curated corpus ──
+  "personal-learning-epiphany",
+  "episodic-series-social-show",
+  "personal-update",
+  "levels",
+  "common-trap-mistake",
 ] as const;
 
-/** Visual hook — the first-frame device (Form dimension, video-proof). */
+/**
+ * Visual hook — the FIRST-FRAME DEVICE (Form dimension, video-proof).
+ *
+ * ⚠️ Do not confuse this with the SETTING (studio / greenscreen / car / in-world).
+ * This facet answers "what motion or image grabs the eye in frame one", which only an
+ * omni WATCH pass can honestly fill — the text tier leaves it null. The 2026-07-14
+ * curated import wrote Sandcastles' `visual_layout_category` (a setting) into this
+ * column; that data is being moved to its own facet and this column nulled for those
+ * rows. Never read visual_hook expecting a setting.
+ */
 export const VISUAL_HOOKS = [
   "crash-zoom",
   "camera-whip",
@@ -86,7 +111,9 @@ export const VISUAL_HOOKS = [
   "text-slide-in",
 ] as const;
 
-/** Editing style (Form dimension, video-proof). */
+/** Editing style (Form dimension, video-proof).
+ *  Grown 2026-07-14 from the curated import — Sandcastles' visual_layout_type, which
+ *  IS this dimension (unlike visual_layout_category; see VISUAL_HOOKS above). */
 export const EDITING_STYLES = [
   "split-screen",
   "whiteboard",
@@ -94,6 +121,31 @@ export const EDITING_STYLES = [
   "vlog-pov",
   "faceless-animation",
   "man-on-street",
+  // ── grown from the curated corpus ──
+  "vlog-hybrid",
+  "vlog-interactive",
+  "vlog-reflective",
+  "vlog-music",
+  "vlog-timelapse",
+  "visual-greenscreen",
+  "notes-article-greenscreen",
+  "office-room-yap",
+  "car-yap",
+  "full-screen-hybrid",
+  "faceless-visual-explainer",
+  "faceless-physical-explainer",
+  "faceless-text-conversation",
+  "faceless-clipping",
+  "skit-solo",
+  "skit-group",
+  "skit-lip-sync",
+  "skit-transformation-reveal",
+  "reaction",
+  "comparison-clone",
+  "podcast-clips",
+  "static-image-slideshow",
+  "man-on-street-single-interview",
+  "man-on-street-multiple-interviews",
 ] as const;
 
 /** Signature series — recurring-format identity (meta). */
@@ -157,6 +209,8 @@ export interface IdeaFacet {
   belief: string; // common belief to challenge
   reality: string; // contrarian reality
   evidence: string; // supporting evidence
+  /** What the video is ABOUT, plainly (present on curated rows; optional for the text tier). */
+  topic?: string;
 }
 
 /** One fillable slot in a template. */
@@ -166,12 +220,100 @@ export interface TemplateSlot {
   example: string;
 }
 
+/**
+ * One named, TIMED beat of a proven narrative structure — the per-video blueprint a
+ * real outlier actually ran (Sandcastles `narrative_structure.structure_sections`).
+ * Richer than `skeleton` (which is just the ordered beat NAMES): a beat carries the
+ * retention purpose and the seconds it occupied. Only a source that WATCHED the video
+ * can fill this honestly, so the text tier leaves it absent.
+ */
+export interface TeardownBeat {
+  name: string;
+  description: string;
+  startSec: number | null;
+  endSec: number | null;
+}
+
 /** template JSONB — the generalized reusable structure (§13 proposed sub-shape). */
 export interface TeardownTemplate {
   name: string;
   slots: TemplateSlot[];
-  skeleton: string[]; // ordered beats
-  guidance: string;
+  skeleton: string[]; // ordered beat names
+  guidance: string; // WHEN to use this structure (curated: Sandcastles' format_reasoning)
+  /** The timed named beats behind `skeleton` — the script skill's proven scaffold. */
+  beats?: TeardownBeat[];
+  /** One-line specific read of the format ("rapid-fire A/B pronunciation duel"). */
+  flavor?: string | null;
+}
+
+// ─── JSONB parse guards (the anti-silent-drift rule) ─────────────────────────
+/**
+ * `idea` and `template` are raw JSONB. A plain TS cast over them is a LIE the compiler
+ * cannot catch: the 2026-07-14 curated import stored Sandcastles' own key names
+ * (`common_belief`, `narrative_structure`) while this module's readers expected ours
+ * (`belief`, `skeleton`) — every read silently returned `undefined`, typechecked clean,
+ * and passed every test. These schemas make that failure LOUD instead. Parse the jsonb;
+ * never cast it.
+ */
+const TemplateSlotSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  example: z.string(),
+});
+
+const TeardownBeatSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  startSec: z.number().nullable(),
+  endSec: z.number().nullable(),
+});
+
+export const IdeaFacetSchema = z.object({
+  seed: z.string(),
+  angle: z.string(),
+  belief: z.string(),
+  reality: z.string(),
+  evidence: z.string(),
+  topic: z.string().optional(),
+});
+
+export const TeardownTemplateSchema = z.object({
+  name: z.string(),
+  slots: z.array(TemplateSlotSchema),
+  skeleton: z.array(z.string()),
+  guidance: z.string(),
+  beats: z.array(TeardownBeatSchema).optional(),
+  flavor: z.string().nullable().optional(),
+});
+
+/** Parse an `idea` JSONB value. Null on absent; null + a LOUD warn on shape drift. */
+export function parseIdeaFacet(value: unknown): IdeaFacet | null {
+  if (value === null || value === undefined) return null;
+  const parsed = IdeaFacetSchema.safeParse(value);
+  if (!parsed.success) {
+    console.warn(
+      `[grounding] idea JSONB failed its schema — dropping (keys: ${
+        value && typeof value === "object" ? Object.keys(value).join(",") : typeof value
+      })`,
+    );
+    return null;
+  }
+  return parsed.data;
+}
+
+/** Parse a `template` JSONB value. Null on absent; null + a LOUD warn on shape drift. */
+export function parseTeardownTemplate(value: unknown): TeardownTemplate | null {
+  if (value === null || value === undefined) return null;
+  const parsed = TeardownTemplateSchema.safeParse(value);
+  if (!parsed.success) {
+    console.warn(
+      `[grounding] template JSONB failed its schema — dropping (keys: ${
+        value && typeof value === "object" ? Object.keys(value).join(",") : typeof value
+      })`,
+    );
+    return null;
+  }
+  return parsed.data;
 }
 
 /**

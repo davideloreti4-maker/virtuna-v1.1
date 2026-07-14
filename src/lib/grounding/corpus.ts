@@ -263,8 +263,14 @@ export interface SharedMatchRow {
   spoken_hook: string | null;
   hook_template: string | null;
   hook_source: HookSource | null;
-  idea: IdeaFacet | null;
-  template: TeardownTemplate | null;
+  /**
+   * RAW JSONB — deliberately `unknown`, NOT IdeaFacet/TeardownTemplate. Typing these as
+   * the domain shape is a cast the compiler cannot verify, and it silently lied for the
+   * whole curated corpus (Sandcastles key names vs ours). Run them through
+   * parseIdeaFacet / parseTeardownTemplate at the boundary instead.
+   */
+  idea: unknown;
+  template: unknown;
   why_it_works: string | null;
 }
 

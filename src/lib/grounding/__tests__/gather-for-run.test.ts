@@ -46,6 +46,7 @@ const miss: Retrieve = async () => ({
 function baseInput(warnings: string[] = []) {
   return {
     enabled: true,
+    skill: "hooks" as const, // selects the per-skill slice (§1E); hooks → the madlib
     platform: "tiktok",
     queryCandidates: ["high protein breakfast"],
     niche: "food",
@@ -118,7 +119,38 @@ describe("gatherCorpusForRun — read-back first", () => {
     expect(warnings[0]).toContain("apify down");
   });
 
-  it("keeps the gates: disabled / non-tiktok / empty query short-circuit before any I/O", async () => {
+  it("READS the cache on Instagram but never scrapes it (read-back ≠ scrape)", async () => {
+    // The old gate short-circuited the whole step unless platform === "tiktok", because the
+    // SCRAPE is TikTok-only. But the read-back is just pgvector — it has no TikTok dependency.
+    // The curated corpus is majority Instagram (208 proof-grade rows vs TikTok's 63), so that
+    // conflation gave Instagram creators zero grounding, permanently, and left most of the
+    // corpus unreachable by anyone.
+    const gather = vi.fn<Gather>();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: hit, gather },
+    );
+
+    expect(result.examples.length).toBeGreaterThan(0); // grounded
+    expect(gather).not.toHaveBeenCalled(); // but never scraped
+  });
+
+  it("grounds on a PARTIAL Instagram cache rather than throwing proven outliers away", async () => {
+    // `minRows` decides whether skipping a scrape is worth it — it is not a quality bar. On a
+    // platform we cannot scrape there is no scrape to skip, so discarding the real proven
+    // outliers we did find, to run ungrounded, would be self-defeating. Two sources beat none.
+    const gather = vi.fn<Gather>();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: miss, gather }, // 1 example, enough=false
+    );
+
+    expect(result.examples).toHaveLength(1);
+    expect(result.corpus).toBeDefined();
+    expect(gather).not.toHaveBeenCalled();
+  });
+
+  it("keeps the gates: disabled / unsupported platform / empty query short-circuit before any I/O", async () => {
     const retrieve = vi.fn<Retrieve>();
     const gather = vi.fn<Gather>();
     const none = { corpus: undefined, examples: [] };
@@ -127,7 +159,7 @@ describe("gatherCorpusForRun — read-back first", () => {
       await gatherCorpusForRun({ ...baseInput(), enabled: false }, { retrieve, gather }),
     ).toEqual(none);
     expect(
-      await gatherCorpusForRun({ ...baseInput(), platform: "instagram" }, { retrieve, gather }),
+      await gatherCorpusForRun({ ...baseInput(), platform: "linkedin" }, { retrieve, gather }),
     ).toEqual(none);
     expect(
       await gatherCorpusForRun(

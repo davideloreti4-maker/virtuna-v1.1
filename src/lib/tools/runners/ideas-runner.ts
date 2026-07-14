@@ -357,6 +357,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   //    `groundingExamples` maps each idea's sourceIndex back to its outlier (the receipt).
   const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
+    skill: "ideas", // → the belief↔reality slice: the tension that made the video travel
     platform,
     queryCandidates: [ask, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,

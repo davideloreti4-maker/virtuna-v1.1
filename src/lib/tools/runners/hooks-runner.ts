@@ -381,6 +381,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   //    step can map each hook's sourceIndex back to the outlier it adapted (the on-card receipt).
   const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
+    skill: "hooks", // → the madlib slice: the reusable skeleton a proven hook ran on
     platform,
     queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,

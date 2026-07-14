@@ -1,6 +1,9 @@
 import { describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  hasReusableSignal,
+  isProofGrade,
+  isAdmissible,
   isFreshTeardown,
   matchRowToExample,
   retrieveCachedExamples,
@@ -86,7 +89,10 @@ describe("resolveRetrieveConfig", () => {
   it("uses documented defaults when env is unset", () => {
     const c = resolveRetrieveConfig();
     expect(c.minRows).toBe(4);
-    expect(c.minSimilarity).toBe(0.65);
+    // 0.58, re-measured 2026-07-14 against the real 532-row corpus. The old 0.65 was tuned on
+    // a 22-row test corpus and sat INSIDE the true-positive band (on-topic 0.58–0.68), so it
+    // rejected 39×/48×/160× outliers that were dead-on topic. Off-topic tops out at 0.54.
+    expect(c.minSimilarity).toBe(0.58);
     expect(c.freshDays).toBe(90);
   });
 });
@@ -144,5 +150,91 @@ describe("retrieveCachedExamples", () => {
         },
       ),
     ).rejects.toThrow("dashscope down");
+  });
+});
+
+/**
+ * These four reproduce the defects the 2026-07-14 curated import shipped SILENTLY —
+ * every one of them typechecked clean and left the whole suite green. A cast over raw
+ * JSONB is not a type; emptiness is not absence.
+ */
+describe("JSONB shape guards (the silent-drift regression)", () => {
+  it("REJECTS a Sandcastles-shaped idea instead of casting it into a lie", () => {
+    // Pre-migration curated rows carried THEIR key names. The old code cast this straight
+    // to IdeaFacet, so `example.idea.belief` read `undefined` on all 532 rows — forever,
+    // without a single failure anywhere.
+    const example = matchRowToExample(
+      row({ idea: { seed: "s", angle: "a", common_belief: "b", contrarian_reality: "r" } }),
+    );
+    expect(example.idea).toBeNull(); // dropped loudly, not silently half-read
+  });
+
+  it("REJECTS a Sandcastles-shaped template instead of casting it into a lie", () => {
+    const example = matchRowToExample(
+      row({ template: { narrative_structure: { structure_sections: [] } } }),
+    );
+    expect(example.template).toBeNull();
+  });
+
+  it("carries the timed named beats through when the shape IS ours", () => {
+    const example = matchRowToExample(
+      row({
+        template: {
+          name: "A/B duel",
+          slots: [],
+          skeleton: ["Topic Introduction", "Word Comparison 1"],
+          guidance: "Use when two familiar things differ in a way viewers can hear.",
+          beats: [
+            { name: "Topic Introduction", description: "State the comparison.", startSec: 0, endSec: 4 },
+            { name: "Word Comparison 1", description: "Establish the rhythm.", startSec: 4, endSec: 6 },
+          ],
+          flavor: "rapid-fire pronunciation duel",
+        },
+      }),
+    );
+    expect(example.template?.beats).toHaveLength(2);
+    expect(example.template?.beats?.[0]).toMatchObject({ name: "Topic Introduction", endSec: 4 });
+    expect(example.template?.guidance).toContain("Use when");
+  });
+
+  it("separates the WARRANT (why a row is admitted) from the CLAIM (what it proves)", () => {
+    // isProofGrade is the §12 LOCKED bar: views ÷ followers ≥ 3×.
+    expect(isProofGrade(row({ outlier_multiplier: 0.8 }))).toBe(false); // underperformed
+    expect(isProofGrade(row({ outlier_multiplier: 2.9 }))).toBe(false); // below the bar
+    expect(isProofGrade(row({ outlier_multiplier: null }))).toBe(false); // unknown proves nothing
+    expect(isProofGrade(row({ outlier_multiplier: 3 }))).toBe(true); // the bar itself
+    expect(isProofGrade(row({ outlier_multiplier: 458 }))).toBe(true);
+  });
+
+  it("admits every CURATED row — a human picked it, and that is its warrant", () => {
+    // Owner call 2026-07-14. Half the TikTok library has no score computed at all, and the
+    // scored TikTok rows have an 11.3× median — so excluding the unscored ones was discarding
+    // good videos for missing DATA, not for poor performance.
+    expect(isAdmissible(row({ source_pool: "curated", outlier_multiplier: null }))).toBe(true);
+    expect(isAdmissible(row({ source_pool: "curated", outlier_multiplier: 0.5 }))).toBe(true);
+  });
+
+  it("still holds SCRAPED rows to the metric — no human vetted those", () => {
+    // A scraped row came off a niche query with nobody in the loop. The metric is the only
+    // thing separating a real lesson from a random video, so the gate stays load-bearing.
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 2.9 }))).toBe(false);
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: null }))).toBe(false);
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 12 }))).toBe(true);
+  });
+
+  it("drops a row whose template is PRESENT but EMPTY (the '(structure)' bug)", () => {
+    // One of the 8 un-analysable curated videos produced exactly this shell. It is truthy,
+    // so a presence check keeps it — and the prompt renderer, finding nothing to say,
+    // emits the literal string "(structure)" as a grounding line attached to a real receipt.
+    const shell = row({
+      spoken_hook: null,
+      hook_template: null,
+      idea: null,
+      template: { name: "", slots: [], skeleton: [], guidance: "", beats: [] },
+    });
+    expect(hasReusableSignal(shell)).toBe(false);
+
+    // …while a row with any real signal survives.
+    expect(hasReusableSignal(row({ template: null, idea: null }))).toBe(true); // has spoken_hook
   });
 });
