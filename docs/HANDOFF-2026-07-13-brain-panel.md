@@ -667,3 +667,68 @@ field* for exactly that reason.
   task-positive), but TRIBE's map is sparser. If the owner wants sparsity, the lever is a contrast against a
   resting baseline — a change to `cortex-sim`, i.e. a change to what the card CLAIMS. Owner call.
 - Camera could sit slightly more lateral; the specimen could grow a little more in frame.
+
+---
+
+# 14. ▶ THE NEXT BRIEF — MOTION, SMOOTHNESS, AND THE CARD'S UI (owner, 2026-07-14)
+
+Owner verdict on the shipped mesh: **"this looks way better"** — the specimen is ACCEPTED. The geometry
+fight is over; do not reopen it. What is NOT accepted: **"ui design, animation, smoothness, motion and more
+still needs a lot of work."**
+
+⛔ **DO NOT touch the geometry, the axes, or the blend kernel to "improve" this.** They are correct, measured
+and pinned (§13). The remaining work is MOTION and CHROME.
+
+## 14.1 🔴 THE PERFORMANCE BUG — start here, it is most of "smoothness"
+
+**`buildField` blocks the main thread for 2,427ms on first open. Measured.** We deleted the old ~500ms mesh
+build and silently replaced it with something five times worse.
+
+The cause is not the parcel count — it is the K-nearest insertion loop: **every one of 64,397 vertices tests
+all 400 parcels**, and each hit does an O(K) insertion into a stride-43 list. ≈1.1 BILLION operations.
+
+**The fix is a spatial grid.** Bucket the parcels into a uniform grid with cell size = `blendR`; each vertex
+then only tests the parcels in its own cell + neighbours (~27 cells, a handful of parcels each). Expect
+**<100ms**. ⚠️ §5 warns that a spatial grid is exactly where the old bugs lived — but we now HAVE the
+gradient probes (`cortex-field.test.ts`), so **re-run them after** and they will catch a regression.
+
+Also measured: `surfaceValues` = **4.6ms per tick**, and blend arrays cost **16.6MB** at stride 43. Both are
+survivable; the 2.4s is not.
+
+## 14.2 🔴 THE MAP STEPS — it does not flow
+The scan clock ticks at `TR/4` (~372ms) and each tick **snaps** a whole new `aVal` buffer into the geometry.
+Nothing interpolates between ticks, so the activation moves in visible 372ms jumps. BOLD is genuinely slow —
+that is honest — but the *rendering* of it should be continuous. Lerp `aVal` toward its target in `useFrame`
+(the buffer is already mutated in place; interpolate rather than assign), or drive a continuous clock and
+sample the model at frame time.
+
+## 14.3 The motion, honestly
+- **The drift is a raw sine** on yaw + pitch (`CortexCanvas`, `useFrame`). Mechanical, no easing, no variation.
+  TRIBE uses **OrbitControls** — the user can grab and turn the specimen. That is a real affordance and we
+  have none: the brain is currently a thing you watch, not a thing you handle.
+- **There is no entrance.** `Suspense fallback={null}` → the well sits empty, then a brain pops in. It needs
+  a settle: fade + a small scale-in, and a skeleton in the well while the mesh loads (1.84MB + the field build).
+- **Everything eases LINEAR** — the colorbar's live marker (260ms linear), the trace playhead (200ms linear),
+  the stimulus words. Linear is the tell of un-designed motion.
+- `reducedMotion` holds the response at the stimulus midpoint and runs the canvas on `demand`. Keep that.
+
+## 14.4 The card's UI (owner: "improve the brain card's UI design")
+Unresolved from §11.2 and still true:
+- the **colorbar is crammed into the top-right and collides with the specimen**;
+- the well's four corners carry four separate annotations (colorbar, lag claim, projection, hover readout) —
+  it works as a *figure*, but it has never been *designed*;
+- there is no **`Normal | Inflated`** toggle. It is TRIBE's best idea and it needs a SECOND GEOMETRY —
+  an inflated surface with **matching vertex order**, shipped as a morph target and lerped. A build-script
+  step (`scripts/build-cortex-mesh.mjs`). **Do not fake it with a shader.**
+- the specimen could sit slightly larger and more lateral in the frame.
+
+## 14.5 The one OWNER-GATED question
+The engaged map lights **~50% of the cortex** (measured). That is honest to the model — six of the seven
+networks are task-positive — but TRIBE's map is far sparser. Making ours sparser means painting a CONTRAST
+against a resting baseline, which changes what the card CLAIMS. **That is the owner's call, not the
+implementer's.** Do not quietly retune the threshold to make it look better.
+
+## 14.6 The rule that earned everything in §13
+**Judge it at real scale, in the real app, beside the other cards.** Never in an isolated screenshot — that
+flattered five straight rounds of bad work. And when something looks wrong, **measure it** rather than tune
+constants: every real finding in this document came from a probe, and every wasted round came from a guess.
