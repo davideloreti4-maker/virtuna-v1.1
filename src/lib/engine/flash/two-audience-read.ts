@@ -115,6 +115,11 @@ async function readForAudience(
     band,
     entry: {
       name: audience.name,
+      // ROLLUP-01 — the attribution key. `name` is user-editable; the id is the stable handle
+      // the /audience/[id] rollup keys on. "general" here is the GENERAL_AUDIENCE sentinel, so
+      // the General side of a compare is attributable too (that's what makes the divergence
+      // panel able to say WHO disagreed with whom).
+      audienceId: audience.id,
       band,
       fraction,
       whoNotFor,
@@ -285,6 +290,9 @@ export async function runTwoAudienceRead(
         // Presentation-only; resolveTier is the single source of truth (never-Validated-
         // for-general rule, T-03-15). Self-pair: lead === the single audience.
         tier: resolveTier(pair[0]!),
+        // ROLLUP-01 — what was read. A single-audience Read has no second side, so it
+        // contributes persona reactions to the rollup but NEVER a divergence case.
+        concept,
       },
     };
   }
@@ -317,6 +325,9 @@ export async function runTwoAudienceRead(
       // (pair[0]). Presentation-only; resolveTier owns the never-Validated-for-general
       // rule (T-03-15). The badge rides the run, not a per-audience entry.
       tier: resolveTier(pair[0]!),
+      // ROLLUP-01 — what was read. This is the two-sided path, so this block is exactly
+      // one divergence case: the same concept, two audiences, two verdicts.
+      concept,
     },
   };
 }

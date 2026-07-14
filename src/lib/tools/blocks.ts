@@ -426,6 +426,18 @@ export const MultiAudienceReadBlockSchema = z.object({
         z
           .object({
             name: z.string().min(1),                      // audience display name
+            // ROLLUP-01 — the ATTRIBUTION key. `name` is a user-editable display string, so
+            // rolling a persisted Read up to /audience/[id] by name would re-attribute (or
+            // silently drop) every Read the moment an audience is renamed — and would attach
+            // one audience's history to a DIFFERENT audience later recreated under the same
+            // name. The id is the only stable handle. "general" is the GENERAL_AUDIENCE
+            // sentinel (audience-repo.ts:40), so the General side of a compare is attributable
+            // too. OPTIONAL because it is purely additive: the 7 blocks already persisted omit
+            // it, and `.strict()` re-validates on EVERY rehydration (loadMessages) — a required
+            // field here would turn every one of them into an `__unsupported__` placeholder in
+            // the thread UI. Un-attributed legacy blocks are EXCLUDED from the rollup, never
+            // guessed at by name.
+            audienceId: z.string().min(1).optional(),
             band: z.enum(["Strong", "Mixed", "Weak"]),    // aggregate band — NO score (Pitfall 5)
             fraction: z.string().min(1),                  // e.g. "8/10 stop"
             interpretation: z.string().min(1),            // the one-line Read interpretation
@@ -450,6 +462,16 @@ export const MultiAudienceReadBlockSchema = z.object({
     // `.strict()` entry: that entry forbids unknown keys (would reject this), and the
     // tier is RUN-level, not per-audience. Does NOT touch the bands-only honesty spine.
     tier: z.enum(["Validated", "Directional"]).optional(),
+    // ROLLUP-01 — WHAT was read. The Read route persists ONLY this assistant block; unlike
+    // /api/tools/chat it never writes a user turn, so before this field the concept text
+    // survived NOWHERE — not in the block, not in the thread. A divergence panel reports
+    // "the two verdicts per concept", which is unreadable without the concept.
+    //
+    // RUN-level (one concept per Read), so it sits beside `model`/`tier` and NOT inside the
+    // `.strict()` per-audience entry, which forbids unknown keys. Capped at the route's own
+    // MAX_CONCEPT_LENGTH so a payload the route accepts can never fail its own write
+    // boundary. Optional + additive: the already-persisted blocks omit it.
+    concept: z.string().min(1).max(2000).optional(),
   }),
 });
 

@@ -67,19 +67,44 @@ Cost ≈ $0.05–0.15 + one Apify scrape. **The Qwen client reads `DASHSCOPE_API
 
 ## 4 · What's next, in the order I'd do it
 
-### P2 — make the workspace alive  ← **START HERE (needs a fresh context; it's a real feature)**
-Two data-backed additions, both blocked on the same missing piece:
-- **Per-persona quotes** — each persona's last real reaction from your Reads (verdict `stop|scroll`
-  + a ≤160-char first-person quote).
-- **The divergence panel** — *"12 Reads · your people disagreed with the generic crowd 4 times"*,
-  with the two verdicts per concept. **In bands. Never a score (F3).**
+### P2 — make the workspace alive  ← **the ROLLUP (the data half) is SHIPPED. UI is what's left.**
 
-Both live inside `multi-audience-read` blocks in **thread-message JSONB**. There is no scores table
-and no query for them. So P2 starts with a **rollup endpoint** (scan the user's assistant messages
-for those blocks; roll up per-persona reactions + audience-vs-General verdicts). Engine/data work,
-not UI. **Now genuinely worth building: as of #281 the two sides of a Read actually differ**, so a
-divergence panel finally has real divergence to report. Before #281 it would have rendered "your
-people agreed with the generic crowd 12/12 times" — because the engine ran the identical prompt twice.
+**Shipped (ROLLUP-01):** `GET /api/audiences/[id]/rollup` + `src/lib/audience/read-rollup.ts`.
+Returns per-persona latest reactions (verdict + quote) and audience-vs-other divergence, bands only.
+Live-verified 2026-07-14 against real Flash runs on the scrape-calibrated **Zach King** audience.
+
+Three things the build had to fix before the rollup could exist at all — each verified in the DB:
+
+- **The block carried no audience id.** Entries had `name` only, so a rollup could only have keyed on
+  a *user-editable display string* — silently re-attributing history on rename, and inheriting a
+  deleted audience's Reads to a new one of the same name. Added `audienceId` (optional, additive) per
+  entry; `"general"` is the sentinel, so **both sides of a compare are attributable**.
+- **The concept was persisted NOWHERE.** The Read route writes only the assistant block and (unlike
+  `/api/tools/chat`) never a user turn. A panel keyed on "the two verdicts per concept" had no
+  concept. Added `concept` to `props` (run-level, beside `model`/`tier` — the per-audience entry is
+  `.strict()`).
+- **⚠️ THE BODY IS NOT AN ARRAY.** `insertMessage` writes `{kcGenVersion, blocks:[…]}` whenever a KC
+  stamp is passed — which every tools route does. **All 7 Read blocks in prod are in the wrapper
+  shape; ZERO are bare arrays.** So `body @> '[{"type":"multi-audience-read"}]'` matches **nothing**
+  and looks exactly like "this user has never run a Read." Unwrap both shapes.
+
+**🔴 The finding that changes the P2 spec — A MATCHING BAND IS NOT AGREEMENT.**
+The spec's divergence metric (compare the two bands) **under-reports, and would have shipped a panel
+that lies.** The band aggregates 10 persona verdicts, so **offsetting flips cancel out.** The very
+first live Read proved it: Zach King and General **both landed Strong at 7/10** — while disagreeing
+about *who* stopped (`niche_deep_buyer` stopped for Zach, scrolled for General; `tough_crowd` did the
+reverse). Band-only says *"agreed."* Across the 2 live Reads: **band-diverged 0/2, persona-diverged
+1/2.** So the rollup returns BOTH: `diverged` (the aggregate moved) and **`personaDiverged` + per-case
+`personaFlips`** (your people wanted something different) — pair by **archetype**, never by array
+index (the two Flash runs carry no ordering guarantee). **Build the panel on `personaFlips`.**
+
+**Legacy rows are EXCLUDED, not name-matched.** The 7 pre-existing blocks (all `e2e-test@`, all
+2026-07-13) carry no id — and they all predate #281, when both sides ran the identical prompt, so
+4 of their 5 two-sided rows "agree" *as an artifact of the bug*. Folding them in would render a bug
+as a finding. The rollup reports them as `legacyUnattributed` (live: 7) and never guesses.
+
+**Still to build:** the UI — per-persona quote cards + the divergence panel, reading from this
+endpoint. `reads`/`compared`/`personaDiverged`/`cases[].personaFlips` are the fields it wants.
 
 ### P4 — dissolve the account tab
 The account numbers become the **provenance receipt** on the audience. **Half of this already
