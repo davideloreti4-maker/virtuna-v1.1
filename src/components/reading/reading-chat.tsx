@@ -1,5 +1,6 @@
 'use client';
 
+import { READING_LABEL } from './reading-section';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -126,7 +127,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
       {/* section eyebrow — same quiet-uppercase spec as ReadingSection's label
           (10px/0.14em); the hairline is dropped so every section label on the
           surface carries one grammar. */}
-      <p className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+      <p className={`ml-0.5 ${READING_LABEL}`}>
         Ask anything
       </p>
 
@@ -256,7 +257,7 @@ function ChatBubble({
   const content = stripChatArtifacts(message.content);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+      <span className={READING_LABEL}>
         Maven
       </span>
       {/* `.md` (globals.css) owns the markdown structure. It replaces both the dead

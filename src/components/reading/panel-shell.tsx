@@ -1,5 +1,6 @@
 'use client';
 
+import { READING_LABEL } from './reading-section';
 import type { ReactNode } from 'react';
 
 // PanelShell — the shared inline template every accordion drill-down wraps in
@@ -62,7 +63,7 @@ export function LegendKey({
 export function PanelSection({ label, children }: { label: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
-      <h4 className="text-[10px] font-medium uppercase tracking-[0.1em] text-foreground-muted">
+      <h4 className={READING_LABEL}>
         {label}
       </h4>
       {children}

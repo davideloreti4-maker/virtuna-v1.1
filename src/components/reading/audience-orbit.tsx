@@ -12,6 +12,19 @@ import {
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ReadingSection } from './reading-section';
 
+/**
+ * The READING_LABEL stack for SVG <text>, which cannot take the Tailwind class. Same 11px /
+ * 0.05em / muted-cream the rest of /analyze uses — these three in-chart labels ran 9.5px/0.1em
+ * and 10px/0.06em, two more rungs on the ladder (2026-07-14). Keep in lockstep with
+ * READING_LABEL; `reading-labels.test.ts` pins both.
+ */
+const SVG_LABEL = {
+  fontSize: 11,
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+  fill: 'var(--color-foreground-muted)',
+} as const;
+
 // AudienceOrbit — the labeled retention orbit (audience-viz-v2, LOCKED 2026-06-15).
 // Replaces the dead random dot-cloud. The video sits at the center; the audience
 // archetypes orbit it by HOW LONG THEY STAY (close = watches to the end, far =
@@ -153,12 +166,10 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
           </g>
 
           {/* radial meaning */}
-          <text x={CX} y={26} textAnchor="middle"
-            style={{ fontSize: 9.5, letterSpacing: '0.1em', textTransform: 'uppercase', fill: 'var(--color-foreground-muted)' }}>
+          <text x={CX} y={26} textAnchor="middle" style={SVG_LABEL}>
             watches to the end
           </text>
-          <text x={VIEW_W - 34} y={VIEW_H - 16} textAnchor="end"
-            style={{ fontSize: 9.5, letterSpacing: '0.1em', textTransform: 'uppercase', fill: 'var(--color-foreground-muted)' }}>
+          <text x={VIEW_W - 34} y={VIEW_H - 16} textAnchor="end" style={SVG_LABEL}>
             leaves early
           </text>
 
@@ -172,8 +183,7 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
           {/* center: the video */}
           <circle cx={CX} cy={CY} r={22} fill="#2a2926" stroke="rgba(255,255,255,0.10)" />
           <path d={`M${CX - 5} ${CY - 8} l11 8 -11 8 z`} fill="var(--color-foreground)" />
-          <text x={CX} y={CY + 42} textAnchor="middle"
-            style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', fill: 'var(--color-foreground-muted)' }}>
+          <text x={CX} y={CY + 42} textAnchor="middle" style={SVG_LABEL}>
             your video
           </text>
 
@@ -181,8 +191,13 @@ export function AudienceOrbit({ heatmap, simResults, dropT }: AudienceOrbitProps
           {nodes.map((n) => {
             const labelX = n.side === 'left' ? n.x - n.r - 8 : n.x + n.r + 8;
             const anchor = n.side === 'left' ? 'end' : 'start';
+            // n.bad marks the archetype that bounced. It was rgba(217,119,87,0.95) — the RETIRED
+            // terracotta — doing exactly the same semantic job (the negative marker) that the
+            // persona list twenty pixels above does with the LIVE --color-accent. Same meaning,
+            // two different reds, one screen. The literal tracked no token, so it survived the
+            // accent migration untouched.
             const fill = n.bad
-              ? 'rgba(217,119,87,0.95)'
+              ? 'color-mix(in srgb, var(--color-accent) 95%, transparent)'
               : `rgba(236,231,222,${lerp(0.42, 0.85, n.group.pct / 100).toFixed(2)})`;
             return (
               <g key={n.group.key}>

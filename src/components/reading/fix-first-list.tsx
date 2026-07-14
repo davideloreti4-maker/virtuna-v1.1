@@ -1,5 +1,6 @@
 'use client';
 
+import { READING_LABEL } from './reading-section';
 import { useState } from 'react';
 import type { CounterfactualSuggestionItem, ApolloRewrite } from '@/lib/engine/types';
 import { bandTone } from '@/components/board/verdict/verdict-derive';
@@ -80,7 +81,7 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
 
     return (
       <section data-testid="fix-first" className="flex flex-col gap-2">
-        <h3 className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+        <h3 className={`ml-0.5 ${READING_LABEL}`}>
           Fix first
         </h3>
         {solid ? (
@@ -115,7 +116,7 @@ export function FixFirstList({ fixes, rewrites, score, weakestLever }: FixFirstL
 
   return (
     <section data-testid="fix-first" className="flex flex-col gap-2">
-      <h3 className="text-xs font-medium uppercase tracking-[0.08em] text-foreground-muted">
+      <h3 className={READING_LABEL}>
         Fix first
       </h3>
 
@@ -158,7 +159,7 @@ function RewriteSection({ rewrites }: { rewrites: ApolloRewrite[] }) {
       : null;
   return (
     <div className="flex flex-col gap-2" data-testid="fix-first-rewrites">
-      <p className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+      <p className={`ml-0.5 ${READING_LABEL}`}>
         Hook rewrites
       </p>
       {shared && (

@@ -311,7 +311,14 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
                   className="absolute inset-x-0 bottom-0"
                   style={{
                     height: `${s.rate}%`,
-                    background: s.cleared ? 'rgba(95,191,115,0.26)' : 'rgba(217,119,87,0.28)',
+                    // Was two hardcoded rgba literals. The "not cleared" fill was
+                    // rgba(217,119,87,…) — #d97757, the RETIRED terracotta accent — rendering a
+                    // second, different red four hundred pixels from the live --color-accent
+                    // (#FF6363) dot in the same Reading. Neither literal tracked a token, so
+                    // the accent migration silently skipped the flagship surface.
+                    background: s.cleared
+                      ? 'color-mix(in srgb, var(--color-success) 26%, transparent)'
+                      : 'color-mix(in srgb, var(--color-accent) 28%, transparent)',
                   }}
                 />
                 <div

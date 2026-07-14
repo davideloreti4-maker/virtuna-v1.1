@@ -93,7 +93,7 @@ renderer omits them rather than inventing them:
 | Remix | `remix-card` | ✅ **FIXED 2026-07-13** — was an anonymous thumbnail; now an attributed receipt |
 | Profile Read | `profile-read` | ✅ **FIXED 2026-07-13** — was 5 stacked labels + doubled quotes |
 | The Read | `multi-audience-read` | ✅ **FIXED 2026-07-13** — had NO card container; wall repeated itself |
-| Test / Reading | `reading/**` | 🟡 **AUDITED (structural pass) 2026-07-13.** Radii on-scale + guarded. 🔴 **The "serif quotes" item was a GHOST — there is no `serif`, no `blockquote`, no `&ldquo;` anywhere in `reading/**`.** (The serif is in `audience-lens/AmbientRoom.tsx`, on *headlines* — sanctioned.) REAL finding: `reading-section.tsx`, the section-label primitive every `/analyze` block is built from, still runs the old `10px`/`0.14em` stack. Still unaudited *visually*. |
+| Test / Reading | `reading/**` | 🟠 **AUDITED VISUALLY 2026-07-14 (first time ever — see §0.7).** Type + accent FIXED and now guarded (`reading-labels.test.ts`). The 07-13 note below UNDERSTATED it: `reading-section.tsx` was **one of ELEVEN** label declarations in **SEVEN** stacks, and the surface also painted the **retired terracotta** in two places. Both closed. 🔴 **REMAINING = information design, not drift** (§0.7): provenance in the hero eyebrow · an empty state rendered as a verbatim · personas and segments stacked in one undifferentiated list · a duplicated replay action. Those need an owner call. |
 | Simulate | `reaction-distribution` | 🔴 **STRUCTURAL.** Fraction stated TWICE from two sources that can disagree (`fraction` vs client-recomputed `stopCount/total`) · provenance in the eyebrow · band-word-as-hero · no ProofUnit / no "See the room →" on the room card · 2-row action bar, no cream primary · `text-red-400`. |
 | Predict | `prediction-gauge` | 🔴 **STRUCTURAL + OWNER CALL** — renders `~35–60%`, which §0.5b forbids and its own 06-UI-SPEC requires. Also: `band` = Unlikely/Toss-up/Lean/Likely here vs Strong/Mixed/Weak everywhere else. |
 | Account Read | `account-read` | 🔴 **STRUCTURAL.** **SIX** stacked equal-weight ALL-CAPS labels (Profile Read was rebuilt at five) · no hero — opens on the creator's *name* · no disclosure · forward action is a text link, not the cream primary. |
@@ -103,6 +103,60 @@ renderer omits them rather than inventing them:
 | **Band** | primitive | 🟡 **SMALL FIX — but it is the SOURCE of the drift.** Band color applied **twice** (word *and* fraction — §1.3 says once) · no dot · its `text-2xl` colored band word is the hero pattern Simulate + Predict both copied. |
 | **Personas** | `personas` | 🟡 **SMALL FIX.** Real Lens entry ✅, honest ✅ — but `RoomAvatars` is **hand-copied** from `proof-unit.tsx` (two copies of the flagship cue) · quote styling diverges from `ProofUnit` · Lens target and Show/Hide button share a row (hit-area hazard). |
 | **Persona chat** | `persona-chat-turn` | ✅ **CONFORMANT** — contract eyebrow, no fabricated band/score, minimal. ONE question: §2 says the chat language is "no bubble"; this gives the persona a bordered bubble. One of the two is stale (owner call). |
+
+## 0.7 The Reading cluster (`/analyze`) — the first visual audit, 2026-07-14
+
+> The flagship — the surface the whole engine exists to produce — had **never been looked at at 1:1**.
+> Not for lack of care: it has **no dev route of its own**. The only ways to see it are to run a real,
+> paid analysis on a video, or to find it downscaled inside `/dev/cards`, where it renders in an
+> 860px gallery column. So it drifted in the one place nobody could see, and the 07-13 pass — which
+> read the source but never rendered it — undercounted the damage by an order of magnitude.
+>
+> **The lesson is the gate, not the fixes.** A surface with no cheap way to look at it will drift,
+> and the drift will be invisible to source-reading review. `/dev/cards` is why the thread cards
+> stayed honest. Reading has no equivalent.
+
+**FIXED + GUARDED (`reading/__tests__/reading-labels.test.ts`, mutation-tested):**
+
+1. **The label ladder — 11 declarations, 7 stacks, 0 conformant.** The contract says one stack:
+   `text-[11px] uppercase tracking-[0.05em]`. The rendered surface ran `10px/0.14em` (×4),
+   `12px/0.08em`, `10px/0.1em`, `11px/0.08em`, `9.5px/0.11em` **in a mono face**, and two SVG
+   `<text>` stacks at `9.5px/0.1em` and `10px/0.06em`. `fix-first-list.tsx` alone used **three
+   different sizes for its own three labels.** §0.5's "stacked ladder of equal-weight ALL-CAPS
+   labels" failure mode, in full. All now route through `READING_LABEL` / `SVG_LABEL`.
+   *The 07-13 entry named only `reading-section.tsx` — fixing that alone would have corrected
+   1 of 11 and left the ladder standing.*
+2. **The retired terracotta was still being painted — twice.** `audience-breakout.tsx` (stage-bar
+   fill) and `audience-orbit.tsx` (the "bad" archetype node, at 0.95 alpha) hardcoded
+   `rgba(217,119,87,…)` = `#d97757`. Because they were raw literals tracking no token, the accent
+   migration to `--color-accent` (#FF6363) **silently skipped the flagship** — so the orbit marked
+   its negative node in the dead terracotta while the persona list twenty pixels above marked *its*
+   negative person in the live accent. Same meaning, two different reds, one screen.
+
+**OPEN — information design, needs an owner call (NOT silently restyled):**
+
+3. **Provenance sits in the hero eyebrow.** `TEST · [POWERED BY SIM-1 MAX]`, as a bordered pill,
+   top-left, first thing you read. §0.5 is explicit — *"Provenance does NOT go here… Provenance is
+   a footnote, never a headline"* — and §0.6 already flags exactly this on Simulate. But Reading is
+   a **page**, not a card, and has no disclosure row to demote it onto, so the fix is a hero
+   restructure, not a class swap. Allowlisted in the guard until decided.
+4. **An empty state is wearing a verbatim's clothing.** When a persona didn't speak, the quote slot
+   renders *"stopped — no words this time"* in the same italic as a real quote — on 2 of the 4
+   people in the default fixture. It reads as something the persona said. Adjacent to the §0.5b
+   honesty spine: we are careful never to fabricate a quote, then style the *absence* of one to look
+   like a quiet one.
+5. **Two entity types, one undifferentiated list.** Segments (Loyal fans, New viewers) and named
+   personas (Maya, Sam) share identical anatomy — dot, name, quote — but only the personas are
+   askable, and the sole cue is an `ask →` link on two of the four rows. Nothing tells you why.
+6. **The replay action is duplicated** — a `▶ Replay the room` link and a `Replay reactions` button,
+   both in the audience block, ~300px apart.
+
+**ALSO NOTED:** `Your N people` (`10px/1.2px`) is the last off-contract label on the surface, but it
+belongs to `audience-lens/AmbientRoom.tsx`, which Reading *embeds* — a shared component the ambient
+room also uses (elevated in #257). Out of `reading/**` scope; do not reach across that boundary
+without checking the Room. And the seven degraded fixtures (`makeUnavailableResult`,
+`makePartialResult`, `makeApolloNullResult`, empty heatmap/personas/segments, `makeNoBehavioralResult`)
+are **all invisible** — no route renders them, so every degraded state of the flagship is unreviewed.
 
 > **Full audit + ranked worklist: `docs/AUDIT-2026-07-13-cards-remaining-nine.md`** (2026-07-13,
 > read-only pass). Headline: the primitive rated "low risk" is the only one actually **broken**.
