@@ -78,8 +78,36 @@ describe('AmbientRoom — the brain scale', () => {
     expect(within(brain).getByTestId('brain-surface')).toBeInTheDocument();
     const canvas = await within(brain).findByTestId('cortex-canvas');
     expect(canvas).toBeInTheDocument();
-    // It is a real hemisphere in a real projection, and the figure says which.
-    expect(within(brain).getByText(/left hemisphere · lateral/i)).toBeInTheDocument();
+  });
+
+  it('does NOT claim a fixed projection — the specimen is yours to turn', () => {
+    render(room());
+    const brain = screen.getByTestId('brain-view');
+    // This used to assert the figure said "left hemisphere · lateral", and that label was false
+    // TWICE OVER by the time it was deleted:
+    //   • the shipped mesh is a WHOLE BRAIN — both hemispheres and the cerebellum (cortex-field's own
+    //     test asserts the anchors are bilateral, precisely because half the specimen would otherwise
+    //     go dark the moment it turned). "Left hemisphere" described the retired procedural mesh.
+    //   • the specimen now has OrbitControls, so the projection is whatever the viewer last turned it
+    //     to. A caption claiming "lateral" becomes a lie on the first drag.
+    // A claim the UI cannot keep is worse than no claim, so it is gone — and stays gone.
+    expect(within(brain).queryByText(/left hemisphere/i)).toBeNull();
+    expect(within(brain).queryByText(/lateral/i)).toBeNull();
+  });
+
+  it('does NOT ship a fake `Inflated` view — it is cut until the geometry is real', () => {
+    render(room());
+    // TRIBE's Normal | Inflated toggle is their best idea and we want it. It was BUILT (a Taubin
+    // inflation baked as a glTF morph target, scripts/build-inflated-mesh.mjs) and then CUT, because
+    // our asset cannot carry it: the mesh is a DECIMATED WHOLE BRAIN, its sulci are full of slivers,
+    // and smoothing turns them inside out — 2.3% of triangles inverted after 20 steps, and a
+    // back-facing triangle is culled, so the inflated brain rendered as a perforated shell.
+    //
+    // It passed every statistic it was gated on (roughness fell 80%, the shape held to 1.00) and was
+    // obviously broken on sight. Hence this test: an inflated toggle must not come back until it is
+    // driven by a REAL inflated surface. FreeSurfer emits one (lh/rh.inflated) alongside the surface
+    // this mesh was reconstructed from — source that, and the toggle becomes trivial and correct.
+    expect(screen.queryByTestId('brain-inflate-toggle')).toBeNull();
   });
 
   it('keeps the brain OUT of the embedded Room (video Read / room drawer), landing on the people', () => {

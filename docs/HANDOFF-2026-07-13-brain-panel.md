@@ -732,3 +732,92 @@ implementer's.** Do not quietly retune the threshold to make it look better.
 **Judge it at real scale, in the real app, beside the other cards.** Never in an isolated screenshot — that
 flattered five straight rounds of bad work. And when something looks wrong, **measure it** rather than tune
 constants: every real finding in this document came from a probe, and every wasted round came from a guess.
+
+---
+
+# 15. ✅ MOTION, THE MAP, AND THE CARD (2026-07-14) — and the one thing that got CUT
+
+Brief was §14: *"ui design, animation, smoothness, motion and more still needs a lot of work"*, with the
+standing ask to get **as close to TRIBE v2 as we can**. The geometry fight stayed closed — the mesh,
+the axes and the blend kernel were not touched.
+
+## 15.1 What shipped
+
+| | before | after |
+|---|---|---|
+| **Main-thread block on open** | **2,605ms** (measured) | **~240ms** — a spatial grid over the parcels |
+| **Cortex lit when engaged** | **57%** (continents) | **26% at a strong hook's peak, ~8% typical** (a map) |
+| **The map between ticks** | snapped a new buffer every 372ms | lerped every frame toward its target |
+| **Turning the specimen** | you could not | **OrbitControls** — grab it; the drift yields, then resumes |
+| **Arrival** | empty well, then a brain pops in | skeleton → CSS fade + settle, on a real *ready* signal |
+| **Easing** | every transition `linear` | one ease-out curve, shared |
+| **Colorbar** | jammed in the well's top-right, colliding with the specimen | its own row under the figure, where a legend goes |
+| **Default camera** | ¾ of the brain's **top** | the **lateral plate** — which is where the map actually lives |
+
+**buildField:** the kernel is compactly supported, so only parcels inside `blendR` can matter. Bucket
+them into a grid whose cell IS `blendR` and each vertex tests ~38 candidates instead of 400, with no
+sorted insertion (hence `field.nearest`). Diagnostics came back **identical** — the grid changed the
+cost, not the field.
+
+**The map is now a CONTRAST against rest** (owner-approved, §14.5) — and that is what an fMRI figure has
+always been. Two further corrections were forced by measurement, not taste:
+- each network is scaled by **its own p95 response** (`RESPONSE_P95`), because a map is a *normalised*
+  statistic. Without it the DMN — ceiling 0.27, versus attention's 0.74 — **mathematically could not
+  clear the threshold**;
+- `ACTIVATION_SPAN` 0.5 → 0.3, because the painted quantity's range changed underneath it and a vertex
+  that had just cleared threshold was painting at **alpha 0.004**. Lit in every histogram, invisible on
+  screen.
+
+## 15.2 🔴 THE NEAR-MISS, and the test lesson worth more than any of the code
+
+Re-basing the map onto a contrast **silently deleted the one thing the card exists to say.** On a real
+encounter where the audience visibly walks out, the surface painted **0.0% coral**. "You are losing
+them" simply stopped rendering.
+
+**Every test stayed green.** They asserted against hand-written vectors (`default: 0.83`) that are
+**hotter than anything `predictedBold` can actually produce**. A fixture that cannot occur is not a
+test — it is a second, imaginary model, and we were regression-testing that one.
+
+The fixtures in `cortex-field.test.ts` are now **sampled from the drive model itself**, at the moments
+that matter, and there is a floor on the coral. Do not replace them with numbers you typed.
+
+## 15.3 ⛔ WHAT GOT CUT: `Normal | Inflated`
+
+TRIBE's best idea, and we do not have it. It was built — a Taubin inflation baked as a glTF morph
+target, `scripts/build-inflated-mesh.mjs` — and it **shreds the brain**: our mesh is a *decimated whole
+brain*, its sulci are full of slivers, smoothing turns them inside out (2.3% of triangles at 20 steps),
+and culled back-faces render as **holes**. It passed every gate the script had (roughness −80%, shape
+1.00) and was obviously broken the instant it was on screen.
+
+**The fix is procurement, not engineering — again.** FreeSurfer *emits* `lh/rh.inflated` alongside the
+surface this mesh came from, with exact vertex correspondence. Source the subject's actual surfaces
+(not a Sketchfab export), decimate both with a shared mapping, and the toggle is trivial and correct.
+The script stays in the repo with its measurements; it is not wired to anything.
+
+## 15.4 New traps (all cost real time)
+
+1. **NEVER gate visibility on a value only the render loop advances.** The entrance fade started as a
+   uniform (`col * uFade`). On a page with several canvases one loop stalls and **freezes on the frame
+   it last drew** — which was `uFade ≈ 0`. The brain sat there as a perfect **black silhouette**, right
+   shape, fully lit, completely invisible, nothing thrown. The entrance is now a **CSS transition on
+   the wrapper**: the compositor owns it, and a stalled canvas now freezes on a *lit* brain.
+2. An **alpha** fade on a transparent ShaderMaterial in an alpha canvas made the specimen vanish
+   outright. The well is near-black; fade *brightness*, or better, fade in the DOM.
+3. **The shader is a template literal — NO BACKTICKS IN ITS COMMENTS.** It is warned about at the top
+   of the file and it still bit twice in one session.
+4. `blendIdx[v * blendK]` is **no longer the nearest parcel** (the list is unsorted now — that is where
+   the 2.4s went). Use `field.nearest`, or the hover readout names a real but *wrong* region.
+5. The projection label (*"left hemisphere · lateral"*) is **deleted and stays deleted**: the mesh is a
+   whole brain, and with OrbitControls the viewer picks the projection. A claim the UI cannot keep is
+   worse than no claim.
+
+## 15.5 Still open
+- The **inflated view** (§15.3) — needs the real FreeSurfer surface.
+- The card is **509px in its 516px box**. It has ~7px of headroom. Anything you add to the chrome comes
+  out of the specimen, or clips the verdict.
+- The specimen could still grow; `FIT_RADIUS` is 1.15 and the well is `20/19`.
+
+## 15.6 Gates
+tsc **0** · eslint clean · **98 brain/lens tests** · full suite **3,374 pass** with the one pre-existing
+`api/tools/remix/run` SSE failure. Verified in the real app at `/dev/cards`, at real scale, beside the
+other cards — hover reads out live (`Visual Δ1.00`), the orbit drag works, both modes fit their box.

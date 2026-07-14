@@ -25,7 +25,7 @@
 
 import { Suspense, useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildField, surfaceValues, parcelTextures, type CortexField } from '@/lib/brain/cortex-field';
 import { ACTIVATION_SPAN, ACTIVATION_THRESHOLD, type NetworkId } from '@/lib/brain/cortex-sim';
@@ -121,6 +121,19 @@ const FRAG = /* glsl */ `
     float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.12;
     col += uRim * rim;
 
+    // ⚠️ THE SPECIMEN IS ALWAYS DRAWN AT FULL BRIGHTNESS. THE ENTRANCE IS NOT IN HERE.
+    //
+    // It was, twice, and both were wrong. First as an alpha on a transparent material (the specimen
+    // never appeared at all). Then as a brightness multiply on the colour, driven from useFrame —
+    // which worked, until it did not: on /dev/cards, where several WebGL canvases compete, one
+    // canvas's render loop stalls early and FREEZES ON THE FRAME IT LAST DREW. With the fade in the
+    // shader, that frame is uFade ≈ 0, so the brain sat there as a PURE BLACK SILHOUETTE — the right
+    // shape, perfectly lit, and completely invisible. Nothing threw.
+    //
+    // The lesson generalises: never gate whether an object is VISIBLE on a value that only advances
+    // while the render loop is healthy. The entrance is now a CSS opacity/transform on the canvas
+    // wrapper (see BrainView) — the compositor owns it, it cannot be starved by a stalled GL loop,
+    // and a frozen canvas freezes on a fully-lit brain instead of a black one.
     gl_FragColor = vec4(col, 1.0);
 
     // ⚠️ CONVERT TO THE OUTPUT COLOUR SPACE. Without this the specimen renders BLACK.
@@ -142,26 +155,33 @@ const rgb = (hex: number) => new THREE.Color(hex);
  * where the ~500ms open cost came from.)
  */
 let FIELD: CortexField | null = null;
-function fieldFor(geometry: THREE.BufferGeometry): CortexField {
-  if (!FIELD) {
-    const pos = geometry.getAttribute('position');
-    // ⚠️ Read through the ACCESSOR, never `pos.array`.
-    //
-    // The shipped mesh is quantized, and three loads quantized attributes as an INTERLEAVED buffer —
-    // so `pos.array` is not positions, it is position+normal+curvature woven together. Copying it
-    // straight into buildField fed it garbage: the bounding box was nonsense, every anchor failed to
-    // find a vertex on its side of the midline, and the field came back with zero networks
-    // ("Cannot read properties of undefined (reading 'net')"). getX/getY/getZ are correct for both
-    // interleaved and plain layouts.
-    const xyz = new Float32Array(pos.count * 3);
-    for (let i = 0; i < pos.count; i++) {
-      xyz[i * 3] = pos.getX(i);
-      xyz[i * 3 + 1] = pos.getY(i);
-      xyz[i * 3 + 2] = pos.getZ(i);
-    }
-    FIELD = buildField(xyz);
-  }
+/**
+ * `positions` are the FOLDED surface, already read through the accessors and baked to world space by
+ * the loader below. The parcellation is anatomical, so it is built on the real cortex and then simply
+ * travels with the vertices when they inflate — which is exactly what FreeSurfer does, and the reason
+ * an inflated view could show the same map without recomputing anything (see docs — not shipped).
+ *
+ * (The old signature took the geometry and read the accessors itself, with a long warning about never
+ * touching `pos.array` on a quantized mesh — that warning now lives at the one place that reads it.)
+ */
+function fieldFor(positions: Float32Array): CortexField {
+  if (!FIELD) FIELD = buildField(positions);
   return FIELD;
+}
+
+/** Motion, in one place. Everything is a RATE (per second) so the feel does not change with the display. */
+/** How fast the map chases the BOLD it has been given. Slow enough to read as haemodynamics, fast
+ *  enough that a 372ms tick lands as a swell rather than a step. */
+const BOLD_LERP_RATE = 5.5;
+/** How long the specimen rests after you let go of it, before it starts turning again. */
+const DRIFT_RESUME_S = 2.4;
+
+const easeInOutCubic = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+/** Whether a hand is currently on the specimen, and how long ago it let go. Shared with OrbitControls. */
+export interface Interaction {
+  grabbed: boolean;
+  since: number;
 }
 
 function Cortex({
@@ -169,17 +189,23 @@ function Cortex({
   bold,
   t,
   reducedMotion,
+  interaction,
   onHover,
+  onReady,
 }: {
   seed: number;
   bold: Record<NetworkId, number>;
   t: number;
   reducedMotion: boolean;
+  interaction: React.RefObject<Interaction>;
   onHover?: (net: NetworkId | null) => void;
+  onReady?: () => void;
 }) {
   const gltf = useGLTF(MESH_URL);
   const invalidate = useThree((s) => s.invalidate);
   const group = useRef<THREE.Group>(null);
+
+  const driftT = useRef(0);
 
   // The shipped mesh is a single joined primitive. Clone the geometry so our per-vertex `aVal` buffer
   // is ours to mutate — useGLTF caches the loaded scene across mounts.
@@ -195,7 +221,7 @@ function Cortex({
    * Reading through getX/getY/getZ and baking the world matrix in by hand is correct for every layout,
    * costs one pass over 64k vertices at load, and leaves us with plain buffers we own.
    */
-  const geometry = useMemo(() => {
+  const { geometry, basePos } = useMemo(() => {
     let src: THREE.Mesh | null = null;
     gltf.scene.updateMatrixWorld(true);
     gltf.scene.traverse((o) => {
@@ -248,23 +274,39 @@ function Cortex({
     g.setAttribute('aCurv', new THREE.BufferAttribute(curvature, 1));
     g.setAttribute('aVal', new THREE.BufferAttribute(new Float32Array(n), 1));
     g.setIndex(Array.from(idx.array as ArrayLike<number>));
-    return g;
+    return { geometry: g, basePos: positions };
   }, [gltf]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
 
-  const field = useMemo(() => fieldFor(geometry), [geometry]);
-  const textures = useMemo(() => parcelTextures(field, seed), [field, seed]);
-  const values = useMemo(() => surfaceValues(field, textures, bold, t), [field, textures, bold, t]);
 
-  // Push the new predicted BOLD into the surface. The attribute is reused — a fresh buffer every tick
-  // would churn the GPU for nothing.
+  const field = useMemo(() => fieldFor(basePos), [basePos]);
+  const textures = useMemo(() => parcelTextures(field, seed), [field, seed]);
+  /**
+   * The specimen is HERE — the mesh is parsed, the field is built, and the next frame will draw a
+   * lit brain. This is what the card's entrance waits for; without it we would fade in an empty well
+   * and let the brain pop into it, which is what the old `Suspense fallback={null}` did.
+   */
   useEffect(() => {
-    const attr = geometry.getAttribute('aVal') as THREE.BufferAttribute;
-    (attr.array as Float32Array).set(values);
-    attr.needsUpdate = true;
+    onReady?.();
+  }, [onReady, geometry, field]);
+
+  /**
+   * ⚠️ THE TARGET, not the displayed value.
+   *
+   * The scan clock ticks every ~372ms (TR/4) and this used to be written STRAIGHT into the geometry —
+   * so the activation jumped to a whole new buffer four times a second and the map moved in visible
+   * steps. BOLD really is that slow, and that is honest; but the RENDERING of it has no business being
+   * slow in the same way. So the tick sets a target and `useFrame` walks the surface toward it, every
+   * frame, continuously.
+   */
+  const target = useMemo(() => surfaceValues(field, textures, bold, t), [field, textures, bold, t]);
+  const settled = useRef(false);
+
+  useEffect(() => {
+    settled.current = false;
     invalidate();
-  }, [geometry, values, invalidate]);
+  }, [target, invalidate]);
 
   const uniforms = useMemo(
     () => ({
@@ -291,11 +333,66 @@ function Cortex({
     [],
   );
 
-  // A slow parallax drift — enough to read as a solid being turned, never a spinning gimmick.
-  useFrame(({ clock }) => {
-    if (!group.current || reducedMotion) return;
-    group.current.rotation.y = BASE_YAW + 0.075 * Math.sin(clock.elapsedTime * 0.16);
-    group.current.rotation.x = BASE_PITCH + 0.02 * Math.sin(clock.elapsedTime * 0.11);
+  /**
+   * ── THE FRAME. Everything that moves, moves here, and nothing here is linear.
+   *
+   * Three things are in flight at once, and they are deliberately on different clocks:
+   *
+   *  1. THE ENTRANCE. The well used to sit empty and then a brain would pop into it (`Suspense
+   *     fallback={null}`). Now the specimen fades and settles up into frame — 700ms, ease-out — so it
+   *     ARRIVES rather than appears.
+   *  2. THE MAP. Walked toward its target every frame instead of being snapped four times a second
+   *     (§14.2). The rate is per-second and frame-rate independent — `1 - exp(-k·dt)` rather than a
+   *     fixed lerp factor, which would make the map faster on a 120Hz screen than on a 60Hz one.
+   *  3. THE DRIFT. A slow turn, which now yields to the hand: grab the specimen and it stops; let go
+   *     and it takes a breath before it starts breathing again.
+   */
+  useFrame((_, dt) => {
+    // A frame can be arbitrarily long after a tab wakes up; an unclamped dt would teleport everything.
+    const d = Math.min(dt, 1 / 20);
+    let dirty = false;
+
+    // 1 ── the map, flowing rather than stepping
+    if (!settled.current) {
+      const attr = geometry.getAttribute('aVal') as THREE.BufferAttribute;
+      const cur = attr.array as Float32Array;
+      const k = 1 - Math.exp(-BOLD_LERP_RATE * d);
+      let maxDelta = 0;
+      for (let i = 0; i < cur.length; i++) {
+        const diff = target[i]! - cur[i]!;
+        cur[i]! += diff * k;
+        const a = Math.abs(diff);
+        if (a > maxDelta) maxDelta = a;
+      }
+      // Snap and stop once the difference is below what a 8-bit-ish display could ever show. Without
+      // this the loop runs forever, chasing an asymptote nobody can see.
+      if (maxDelta < 0.002) {
+        cur.set(target);
+        settled.current = true;
+      }
+      attr.needsUpdate = true;
+      dirty = true;
+    }
+
+    // 2 ── the drift, which yields to the hand
+    if (group.current && !reducedMotion) {
+      const hand = interaction.current;
+      const idle = hand.grabbed ? 0 : Math.min(1, hand.since / DRIFT_RESUME_S);
+      if (!hand.grabbed) hand.since += d;
+      // The amplitude eases in and out — a drift that switches on at full strength the instant you let
+      // go reads as the object twitching.
+      const amp = easeInOutCubic(idle);
+      driftT.current += d * amp;
+      const yaw = BASE_YAW + 0.075 * Math.sin(driftT.current * 0.16);
+      const pitch = BASE_PITCH + 0.02 * Math.sin(driftT.current * 0.11);
+      // Applied as an OFFSET to whatever the user turned it to, so grabbing the specimen does not get
+      // fought by the drift snapping it back to a canonical pose.
+      group.current.rotation.y = yaw;
+      group.current.rotation.x = pitch;
+      if (amp > 0.001) dirty = true;
+    }
+
+    if (dirty) invalidate();
   });
 
   // FIT THE SPECIMEN TO THE FRAME, measured — do not hand-tune a magic number. The mesh is in
@@ -309,7 +406,11 @@ function Cortex({
   }, [geometry]);
 
   return (
-    <group ref={group} rotation={[BASE_PITCH, BASE_YAW, 0]} scale={scale}>
+    <group
+      ref={group}
+      rotation={[BASE_PITCH, BASE_YAW, 0]}
+      scale={scale}
+    >
       <mesh
         geometry={geometry}
         onPointerMove={(e) => {
@@ -317,13 +418,21 @@ function Cortex({
           const idx = geometry.getIndex();
           const v = idx?.getX(e.faceIndex * 3);
           if (v == null) return;
-          // The vertex's dominant parcel → that parcel's network.
-          const parcel = field.blendIdx[v * field.blendK];
+          // The vertex's NEAREST parcel → that parcel's network.
+          //
+          // ⚠️ This used to read `blendIdx[v * blendK]`, which was only the nearest parcel because the
+          // blend list happened to be kept sorted by distance. It is not sorted any more (keeping it
+          // sorted is what cost 2.4 seconds), so index 0 is now just whichever parcel the grid handed
+          // over first. Reading it would name a real but WRONG region — a hover readout that is subtly
+          // lying, which nothing on screen would flag.
+          const parcel = field.nearest[v];
           if (parcel === undefined) return;
           onHover(field.parcelNet[parcel] ?? null);
         }}
         onPointerOut={() => onHover?.(null)}
       >
+        {/* OPAQUE, and always at full brightness. The entrance is a CSS fade on the wrapper (BrainView)
+            — see the shader for the two ways doing it in here went wrong. */}
         <shaderMaterial vertexShader={VERT} fragmentShader={FRAG} uniforms={uniforms} />
       </mesh>
     </group>
@@ -331,22 +440,35 @@ function Cortex({
 }
 
 /**
- * ── THE CAMERA. A 3/4 view from slightly above, which is TRIBE's, and it is most of why theirs reads
- *    as a volumetric object while a flat lateral projection reads as a sticker.
+ * ── THE CAMERA, AND WHY THE OLD POSE WAS HIDING THE MAP.
  *
- * The mesh ships LEVELLED and in a known frame (see build-cortex-mesh.mjs, which asserts it):
+ * The mesh ships LEVELLED and in a known frame (build-cortex-mesh.mjs asserts it):
  *   +X = the subject's right   ·   +Y = superior   ·   −Z = ANTERIOR (the frontal pole)
- * so yawing the specimen to bring its LEFT lateral face toward the camera — the surface every
- * anatomical plate shows, and the one our label claims — is a rotation about Y.
+ *
+ * The old yaw (−0.62) looked down on the brain from the front — three-quarters, but three-quarters of
+ * the TOP. That is not a cosmetic complaint: the Yeo network anchors are placed out on the LATERAL
+ * surface (`cortex-field`, at 0.82 of the half-width), so the map LIVES on the side of the brain, and
+ * we were pointing the camera at the part of it that carries almost none. The card looked unlit and the
+ * model was innocent — the activation was simply facing away.
+ *
+ * −1.72 is the classic lateral plate: the left hemisphere in profile, frontal pole to the left,
+ * cerebellum tucked under the occipital lobe, and the sulcal shadows raking across the surface. It is
+ * the view every anatomical figure uses, and the view TRIBE's demo opens on, and it is where the
+ * clusters actually are. (Found by orbiting the specimen in the real app and screenshotting, which is
+ * also the fastest possible proof that OrbitControls works.)
  */
-const BASE_YAW = -0.62;
+const BASE_YAW = -1.72;
 const BASE_PITCH = 0.16;
 /**
  * The bounding-sphere radius the specimen is scaled to, in world units. The camera sits at z = 4.6
- * with a 30° fov, so it sees ±1.23 units at the origin; 1.06 fills the well with a small margin for
- * the parallax drift to move inside without the silhouette ever touching the frame.
+ * with a 30° fov, so it sees ±1.23 units at the origin.
+ *
+ * ⚠️ THE SPECIMEN MUST OWN THE FRAME. Measured against TRIBE's demo: their brain is ~600×550 in a
+ * 1440px viewport — HALF THE SCREEN — while ours was ~430×310 in a 474px card, a quarter of the area.
+ * Five rounds fought a fidelity war in a frame too small to show fidelity. This fills the (now square)
+ * well, leaving only the margin the drift and a hand-turn need in order not to clip the occipital pole.
  */
-const FIT_RADIUS = 1.06;
+const FIT_RADIUS = 1.15;
 
 export interface CortexCanvasProps {
   seed: number;
@@ -356,9 +478,20 @@ export interface CortexCanvasProps {
   t: number;
   reducedMotion?: boolean;
   onHover?: (net: NetworkId | null) => void;
+  /** Fires once the mesh is parsed and the field is built — the card fades the well in on this. */
+  onReady?: () => void;
 }
 
-export default function CortexCanvas({ seed, bold, t, reducedMotion = false, onHover }: CortexCanvasProps) {
+export default function CortexCanvas({
+  seed,
+  bold,
+  t,
+  reducedMotion = false,
+  onHover,
+  onReady,
+}: CortexCanvasProps) {
+  const interaction = useRef<Interaction>({ grabbed: false, since: DRIFT_RESUME_S });
+
   return (
     <Canvas
       data-testid="cortex-canvas"
@@ -369,8 +502,52 @@ export default function CortexCanvas({ seed, bold, t, reducedMotion = false, onH
       style={{ width: '100%', height: '100%' }}
     >
       <Suspense fallback={null}>
-        <Cortex seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} onHover={onHover} />
+        <Cortex
+          seed={seed}
+          bold={bold}
+          t={t}
+          reducedMotion={reducedMotion}
+          interaction={interaction}
+          onHover={onHover}
+          onReady={onReady}
+        />
       </Suspense>
+
+      {/**
+       * ── YOU CAN PICK IT UP.
+       *
+       * TRIBE lets you GRAB the specimen and turn it; ours was a thing you watched. That is the
+       * difference between an instrument and a picture, and it costs one component.
+       *
+       * Deliberately constrained: no pan and no zoom, because neither means anything here and both let
+       * you lose the brain off the edge of a 400px card. What is left is the one gesture that does mean
+       * something — turning the specimen over to look at the other side of the map. Damping is what
+       * makes it feel like an object with mass rather than a value being edited.
+       */}
+      {!reducedMotion && (
+        <OrbitControls
+          makeDefault
+          // The drift and the hand must not fight over the same object. Grab it and the turn stops
+          // dead; let go and it waits (DRIFT_RESUME_S) before easing back into its slow rotation —
+          // so the specimen never twitches out from under the cursor.
+          onStart={() => {
+            interaction.current.grabbed = true;
+          }}
+          onEnd={() => {
+            interaction.current.grabbed = false;
+            interaction.current.since = 0;
+          }}
+          enablePan={false}
+          enableZoom={false}
+          enableDamping
+          dampingFactor={0.08}
+          rotateSpeed={0.55}
+          // Keep the specimen upright. A brain rolled onto its crown is not a view of anything, and
+          // being able to reach it is how a viewer discovers it can be broken.
+          minPolarAngle={Math.PI * 0.22}
+          maxPolarAngle={Math.PI * 0.78}
+        />
+      )}
     </Canvas>
   );
 }

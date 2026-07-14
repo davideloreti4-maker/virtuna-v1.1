@@ -71,6 +71,30 @@ export interface DriveInput {
   seedKey: string;
 }
 
+/**
+ * ── THE RESTING STATE ─────────────────────────────────────────────────────────────────────────────
+ *
+ * The brain is never off. Left alone it runs a characteristic idle: the sensory systems tick over,
+ * and the DEFAULT-MODE network — mind-wandering, self-talk, the inner monologue — is the loudest
+ * thing in the head. That is why it is called the default mode.
+ *
+ * This is the drive when there is no stimulus, and it is now the BASELINE the map is painted against
+ * (see `contrastBold`). Before, the map painted raw predicted BOLD, which lit ~57% of the cortex the
+ * moment anything happened — six of our seven networks are task-positive, so "engaged" meant "almost
+ * everything is on". Honest to the model, but it does not look like an fMRI, because an fMRI does not
+ * show you activity: it shows you a CONTRAST — this condition minus that one — and the reason a real
+ * statistical map is mostly grey is that most of the cortex is doing about what it always does.
+ */
+export const RESTING_DRIVE: Record<NetworkId, number> = {
+  visual: 0.10,
+  somatomotor: 0.08,
+  dorsal_attention: 0.08,
+  salience: 0.10,
+  limbic: 0.10,
+  control: 0.10,
+  default: 0.42,
+};
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const gauss = (x: number, c: number, w: number) => Math.exp(-((x - c) * (x - c)) / w);
 const smooth = (a: number, b: number, x: number) => {
@@ -138,12 +162,7 @@ export function neuralDrive(input: DriveInput, t: number): Record<NetworkId, num
   if (mode === 'grounded' && input.retentionAt) {
     // Before the video starts there is no stimulus — only resting-state, where the default
     // network is (correctly) the loudest thing in the head. The HRF window reaches back here.
-    if (t < 0) {
-      return {
-        visual: 0.10, somatomotor: 0.08, dorsal_attention: 0.08,
-        salience: 0.10, limbic: 0.10, control: 0.10, default: 0.42,
-      } as Record<NetworkId, number>;
-    }
+    if (t < 0) return { ...RESTING_DRIVE };
     // GROUNDED — the drive comes from the audience's REAL retention curve.
     const r = clamp01(input.retentionAt(u));
     const dU = 0.04;
@@ -211,6 +230,90 @@ export function predictedBold(input: DriveInput, t: number): Record<NetworkId, n
 }
 
 /**
+ * The predicted BOLD at REST — the baseline every map is now painted against.
+ *
+ * A sustained drive `c` comes out of the convolution as `c · Σw` (the kernel is area-normalised over
+ * |w|, and the undershoot is negative, so Σw < 1), then takes the same gain `predictedBold` applies.
+ * Computed rather than asserted, so it cannot drift out of step with the kernel above it.
+ */
+const KERNEL_SUM = HRF_KERNEL.reduce((s, { w }) => s + w, 0);
+
+export const RESTING_BOLD: Record<NetworkId, number> = (() => {
+  const out = {} as Record<NetworkId, number>;
+  for (const id of NETWORK_IDS) out[id] = clamp01(RESTING_DRIVE[id] * KERNEL_SUM * 1.12);
+  return out;
+})();
+
+/**
+ * ── THE CONTRAST. What an fMRI figure actually shows. ─────────────────────────────────────────────
+ *
+ * Not "activity" — a DIFFERENCE. Every statistical map you have ever seen is one condition minus
+ * another (task minus rest, faces minus houses), thresholded, and it is mostly grey precisely because
+ * most of the cortex is doing roughly what it always does. We were painting raw predicted BOLD, and
+ * six of our seven networks are task-positive, so anything engaging lit 57% of the surface. That is a
+ * true statement about the model and a false-looking picture of a brain.
+ *
+ * So: each network's response is expressed as the fraction of its OWN HEADROOM above its OWN resting
+ * level. Normalising per network matters — the default-mode system idles at 0.42 while attention
+ * idles at 0.08, so a raw subtraction would make attention look dramatic and the DMN look inert for
+ * reasons that have nothing to do with the stimulus.
+ *
+ * Values below rest come back ZERO — an activation map shows activations. Suppression is real (the
+ * DMN genuinely goes quiet when you concentrate) but painting it would put a second meaning on the
+ * same colour, and the accent-dosage rule is LOCKED: coral means "you are losing them", full stop.
+ */
+export function contrastBold(bold: Record<NetworkId, number>): Record<NetworkId, number> {
+  const out = {} as Record<NetworkId, number>;
+  for (const id of NETWORK_IDS) {
+    const rest = RESTING_BOLD[id];
+    const headroom = clamp01((bold[id] - rest) / Math.max(1e-6, 1 - rest));
+    out[id] = clamp01(headroom / RESPONSE_P95[id]);
+  }
+  return out;
+}
+
+/**
+ * ── AND WHY THE CONTRAST IS THEN SCALED PER NETWORK. This is the part that took a measurement.
+ *
+ * A statistical map is not painted in raw signal — it is painted in a NORMALISED statistic (a z- or
+ * t-map), where each unit is expressed relative to the variation that unit actually shows. Ours was
+ * not, and the networks turn out to have wildly different reachable ranges. Measured, over every drive
+ * the model produces (7 stop-ratios × 5 seeds × simulated + 3 retention slopes, sampled 25× each):
+ *
+ *      network            p95 contrast
+ *      dorsal_attention        0.739
+ *      visual                  0.724
+ *      limbic                  0.603
+ *      salience                0.509
+ *      control                 0.386
+ *      somatomotor             0.296
+ *      default                 0.270   ← the one that matters most
+ *
+ * One threshold across those units is not one threshold at all: attention clears it easily while the
+ * DEFAULT-MODE system — whose whole job on this card is to say "you are losing them" — mathematically
+ * CANNOT, because its ceiling sits below the cut. That is exactly what happened: measured on a real
+ * encounter where the audience visibly walks out, the map went 0.0% coral. The finding the card exists
+ * to deliver had been silently removed, and every test still passed, because the tests asserted against
+ * hand-written vectors far hotter than the model's real output.
+ *
+ * So each network's response is divided by the strongest response THAT network produces. A reading of
+ * 1.0 now means the same thing everywhere: "this system is running about as hard as it ever runs."
+ *
+ * ⚠️ These are MEASURED CONSTANTS, not knobs. If the drive model in `neuralDrive` changes, they are
+ * stale — re-measure them (the probe is trivial: sample contrastBold over a grid of drives and take
+ * the p95). Do not hand-tune them to make the picture nicer.
+ */
+export const RESPONSE_P95: Record<NetworkId, number> = {
+  visual: 0.724,
+  somatomotor: 0.296,
+  dorsal_attention: 0.739,
+  salience: 0.509,
+  limbic: 0.603,
+  control: 0.386,
+  default: 0.270,
+};
+
+/**
  * A parcel's stable texture — how hot it runs relative to its network, and its own slow drift.
  * Real parcel maps are heterogeneous WITHIN a network; a flat network fill is the tell of a fake
  * map. Computed ONCE per surface (not per frame) — the caller memoizes.
@@ -245,16 +348,35 @@ export function parcelTexture(parcelIndex: number, seed: number, cx = 0, cy = 0)
       0.5 * Math.sin(cx * 0.075 + cy * 0.066 + p3)) /
     2.3; // → about −1..1
   return {
-    // 0.35 … 1.40, smooth across neighbours. The RANGE matters as much as the smoothness: a narrow
-    // band (the old 0.78–1.28) puts every parcel on the same side of the threshold at the same
-    // moment, so the whole cortex washes one colour instead of forming clusters — a uniform tint
-    // reads as a filter over a picture of a brain, not as a measurement of one.
-    bias: 0.35 + (n * 0.5 + 0.5) * 1.05,
+    // ── TUNING, and why it is a POWER curve rather than a flat band.
+    //
+    // `bias` is how strongly this parcel answers to its network. It used to be a flat 0.35…1.40, i.e.
+    // the average parcel responded at about full strength — so when a network fired, most of the
+    // cortex it owns lit up, and the map came out as broad continents of colour. Real cortex is not
+    // like that: a given stimulus is carried by a MINORITY of parcels, because most of them are not
+    // tuned to it. That selectivity — not the threshold — is what makes a real map sparse.
+    //
+    // Raising the smooth spatial noise to a power keeps the field smooth and contiguous (the same
+    // sinusoids, so neighbours still agree — no salt-and-pepper speckle, which is the tell of a fake
+    // map) while pushing the BULK of the distribution down: most parcels answer weakly, a few answer
+    // hard, and the hot ones form clusters because the noise underneath them is spatial.
+    //
+    // ⚠️ Do not "fix" sparsity by raising ACTIVATION_THRESHOLD. That hides the response instead of
+    // modelling it, and it was explicitly ruled out (handoff §14.5).
+    bias: BIAS_MAX * Math.pow(clamp01(n * 0.5 + 0.5), SELECTIVITY),
     phase: rng() * Math.PI * 2,
     rate: 0.25 + rng() * 0.5,
     curv: rng(),
   };
 }
+
+/**
+ * How selectively parcels answer their network. 1 = the old flat band (everything responds, the map
+ * is continents); higher = fewer, hotter, more clustered parcels. MEASURED against the lit fraction
+ * of the surface, which is the number that actually matters — see `cortex-field.test.ts`.
+ */
+const SELECTIVITY = 1.8;
+const BIAS_MAX = 1.30;
 
 /**
  * The activation THRESHOLD. A real statistical map is thresholded — most of the cortex sits at
@@ -268,12 +390,20 @@ export const ACTIVATION_THRESHOLD = 0.45;
  *
  * This is not cosmetic, and the rule is: THE RAMP MUST SPAN THE VALUES THAT ACTUALLY OCCUR.
  *
- * It was 0.3, measured against the old procedural surface. On the real mesh the field runs to 0.97
- * (measured), so a 0.3 span saturated at 0.75 and PINNED roughly half the cortex at the deepest end of
- * the ramp — the specimen came out as one dark green mass instead of a map. 0.5 spans 0.45→0.95, which
- * is the range the values genuinely occupy, so only the hottest cores reach full colour.
+ * It was 0.3 against the old procedural surface, then 0.5 when the field ran to 0.97 — and 0.5 is now
+ * WRONG again, for the third time, because the painted quantity changed underneath it. The map is a
+ * normalised contrast now (`contrastBold`) and the field tops out around 0.8, so a 0.5 span meant that
+ * a vertex which had just cleared the threshold painted at an alpha of about 0.004. It was "lit" in
+ * every measurement and INVISIBLE on screen: 8% of the surface over threshold, 0.2% of the pixels
+ * showing any colour at all. A map you can only see in a histogram is not a map.
+ *
+ * Measured against the values the field actually produces now (0.45 → ~0.80), so the supra-threshold
+ * range gets the whole ramp rather than the first tenth of it.
+ *
+ * ⚠️ THIS CONSTANT IS DOWNSTREAM OF THE MODEL. If the response scale changes again, it is stale again
+ * — and it goes stale SILENTLY, by making the map fade out rather than by making anything fail.
  */
-export const ACTIVATION_SPAN = 0.5;
+export const ACTIVATION_SPAN = 0.3;
 
 /** One parcel's predicted BOLD at time `t`, from its network's response and its own texture. */
 export function parcelValue(networkValue: number, tex: ParcelTexture, t: number): number {

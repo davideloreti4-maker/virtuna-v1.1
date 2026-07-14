@@ -5,10 +5,10 @@
  * modeled on TRIBE v2 (Meta FAIR's trimodal brain encoder, Algonauts 2025).
  *
  * We reproduce the SHAPE of that work, never its code: TRIBE is CC-BY-NC-4.0 and its fsaverage
- * geometry is FreeSurfer-derived, so neither can ship here. Our cortical surface is our own
- * (`@/lib/brain/cortex-mesh`: a folded 3D hemisphere, lit — rendered by `./CortexCanvas`), and so is
- * the response model (`@/lib/brain/cortex-sim`: per-network neural drive → canonical double-gamma
- * HRF → predicted BOLD per parcel).
+ * geometry is FreeSurfer-derived, so neither can ship here. Our cortical surface is a REAL one we are
+ * allowed to use (`public/brain/cortex.glb` — a FreeSurfer reconstruction of a T1-weighted MRI,
+ * CC-BY dgallichan — rendered by `./CortexCanvas`), and the response model is ours
+ * (`@/lib/brain/cortex-sim`: per-network neural drive → canonical double-gamma HRF → predicted BOLD).
  *
  * ── THE CARD IS A FIGURE, NOT A DASHBOARD (the round-4 rebuild) ───────────────────────────────
  * Three earlier cuts were rejected, and the last one for the CARD rather than the cortex: it had
@@ -19,17 +19,35 @@
  * stimulus pane.** The specimen carries the message; everything else is a label on it.
  *
  * So this is built as a scientific FIGURE:
- *  • THE WELL — a near-black inset the specimen lives in. This is the one move that buys TRIBE's
- *    figure/ground: their brain is near-white on pure black, ours was mid-beige on mid-charcoal, and
- *    THAT is why it read as murky. The well is a legitimate matte tone-zone (docs/DESIGN-SYSTEM.md),
- *    so the app stays flat-warm charcoal while the instrument gets its black sky.
- *  • Its four corners carry the figure's annotations — colorbar (with ticks and a unit), the
- *    haemodynamic-lag claim, the projection, and a hover readout. None of them cost a row.
- *  • The stimulus gets its OWN pane, beneath. It used to be dumped on the frontal lobe, occluding
- *    the object it exists to accompany; TRIBE gives it a deliberate home and so do we.
+ *  • THE WELL — a near-black, SQUARE inset the specimen lives in. This is the one move that buys
+ *    TRIBE's figure/ground: their brain is near-white on pure black, ours was mid-beige on
+ *    mid-charcoal, and THAT is why it read as murky. The well is a legitimate matte tone-zone
+ *    (docs/DESIGN-SYSTEM.md), so the app stays flat-warm charcoal while the instrument gets its
+ *    black sky.
+ *  • THE SPECIMEN OWNS THE FRAME. Measured against TRIBE: their brain is half their viewport, ours
+ *    was a quarter of the card. The well is square now and the cortex is scaled to fill it — which
+ *    is only possible because the colorbar MOVED OUT of the well's top-right corner, where it used
+ *    to collide with the very object it annotates.
+ *  • THE INSTRUMENT ROW, beneath the well: TRIBE's pattern of one quiet row under the specimen. It
+ *    carries the colorbar, which a figure's legend has always belonged under — and which had to leave
+ *    the well's corner before the cortex could grow into its frame. TRIBE's `Normal | Inflated` toggle
+ *    is NOT here: it was built and cut, and the row explains why.
+ *  • The stimulus gets its OWN pane, beneath that. It used to be dumped on the frontal lobe,
+ *    occluding the object it exists to accompany; TRIBE gives it a deliberate home and so do we.
  *  • Type is Inter, sentence case. The mono caps are gone — all ten of them. Mono is sanctioned for
  *    micro-copy in this system, but at ten usages in one 360px card it stopped reading as
  *    instrumentation and started reading as terminal output.
+ *
+ * ── WHAT THE MAP CLAIMS (changed 2026-07-14, owner-approved) ──────────────────────────────────
+ * The surface is painted with a CONTRAST AGAINST REST, not with raw predicted BOLD. An fMRI figure
+ * has never shown "activity" — it shows a difference between two conditions, thresholded, which is
+ * why a real statistical map is mostly grey. Painting raw BOLD lit 57% of the cortex (six of our
+ * seven networks are task-positive, so "engaged" meant "nearly all of it"), and that is the single
+ * biggest reason ours read as continents while TRIBE's reads as a map. Measured on the real model:
+ * a strong hook peaks at 26% (was 40%), a typical moment sits near 8%, and — the part that nearly went
+ * wrong — the DEFAULT-MODE system still turns coral when the room walks out. It briefly did not, and
+ * every test still passed, because the tests asserted against fixtures hotter than the model can be.
+ * The colorbar says `vs rest`, because the card must claim exactly what it draws.
  *
  * The stimulus plays BESIDE the brain, because a brain map with no stimulus is decoration:
  *  • a real video (the Read) → the actual <video> drives the clock, and the response is GROUNDED
@@ -64,6 +82,7 @@ import {
   TR_S,
   HRF_PEAK_S,
   bandWord,
+  contrastBold,
   hashSeed,
   predictedBold,
   type DriveInput,
@@ -77,8 +96,28 @@ import {
  */
 const CortexCanvas = dynamic(() => import('./CortexCanvas'), {
   ssr: false,
-  loading: () => <div className="h-full w-full" aria-hidden />,
+  loading: () => <WellSkeleton />,
 });
+
+/**
+ * The well while the specimen is still on its way. It is 1.8MB of mesh plus a parcellation build, and
+ * what used to happen in that window was NOTHING — `fallback={null}`, an empty black box, and then a
+ * brain would pop into existence. An instrument that is loading should look like an instrument that is
+ * loading.
+ *
+ * So: the frame the specimen will occupy, breathing. No spinner (a spinner says "wait"), no progress
+ * bar (we cannot honestly report progress on a WebGL warm-up) — just the well, alive.
+ */
+function WellSkeleton() {
+  return (
+    <div className="grid h-full w-full place-items-center" aria-hidden data-testid="brain-skeleton">
+      <span
+        className="h-[46%] w-[52%] rounded-[50%] motion-safe:animate-pulse"
+        style={{ background: 'rgba(236,231,222,0.045)' }}
+      />
+    </div>
+  );
+}
 
 /** The playback clock ticks at TR/4 — BOLD is slow (TR = 1.49s); a 60fps repaint would be a lie. */
 const TICK_MS = Math.round((TR_S / 4) * 1000);
@@ -194,13 +233,23 @@ export function BrainView({
   const seed = useMemo(() => hashSeed(seedKey), [seedKey]);
 
   const [hovered, setHovered] = useState<NetworkId | null>(null);
+  /** The specimen has arrived (mesh parsed + field built) — the well fades from its skeleton to it. */
+  const [ready, setReady] = useState(false);
+  const onReady = useCallback(() => setReady(true), []);
+
+  /**
+   * THE RESPONSE, as the map paints it: a CONTRAST against the resting baseline, not raw BOLD.
+   *
+   * Everything on this card that reports a number now reads from here — the colorbar's live marker,
+   * the hover readout, the trace, the verdict. That is not tidiness, it is the difference between a
+   * figure and a dashboard: if the legend is scaled to one quantity and the surface is painted with
+   * another, the card is quietly lying about what you are looking at.
+   */
+  const response = useMemo(() => contrastBold(bold), [bold]);
 
   // Where the room sits on the diverging axis right now: task-positive attention MINUS the
   // default-mode system. This is the same anticorrelation the map is painted on, read as one number.
-  const axisPct = useMemo(() => {
-    const axis = Math.max(-1, Math.min(1, bold.dorsal_attention - bold.default));
-    return ((axis + 1) / 2) * 100;
-  }, [bold]);
+  const axisPct = useMemo(() => ((axisOf(response) + 1) / 2) * 100, [response]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -212,17 +261,6 @@ export function BrainView({
 
   return (
     <div className="flex flex-col" data-testid="brain-view" data-mode={mode}>
-      {/* ── The figure's header: what this is, and the scan clock. One quiet line of Inter —
-             this used to be two lines of mono caps that wrapped mid-phrase. ── */}
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="min-w-0 truncate text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
-          Predicted cortical response · {mode === 'grounded' ? 'modeled' : 'simulated'}
-        </p>
-        <p className="shrink-0 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          t {t.toFixed(1)}s · TR {TR_S}s
-        </p>
-      </div>
-
       {/* ══ THE WELL ═══════════════════════════════════════════════════════════════════════════
              A near-black inset — the specimen's sky. Everything a figure needs to be read sits in
              its corners (legend, unit, lag claim, projection, hover readout), so the annotations
@@ -233,8 +271,8 @@ export function BrainView({
              — while ours was ~430x310 in a 474px card, a QUARTER of the area. No mesh reads at that
              size, and no amount of geometry was ever going to fix a frame too small to show it. ── */}
       <div
-        className="relative mt-2.5 w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
-        style={{ aspectRatio: '9 / 8', background: WELL_BG }}
+        className="relative w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
+        style={{ aspectRatio: WELL_ASPECT, background: WELL_BG }}
         data-testid="brain-surface"
       >
         {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
@@ -242,43 +280,104 @@ export function BrainView({
             black reads as a floating artifact rather than anatomy. Our own path. */}
         <HeadGhost />
 
-        <div className="absolute inset-0">
-          <CortexCanvas seed={seed} bold={bold} t={t} reducedMotion={reducedMotion} onHover={setHovered} />
+        {/* ── THE ENTRANCE, and why it lives HERE in the DOM rather than in the shader.
+               The specimen used to pop into an empty well. The obvious fix was to fade it in from
+               inside the render loop — and that shipped a worse bug than the one it fixed: on a page
+               with several WebGL canvases, one canvas's loop stalls and freezes on the last frame it
+               drew, which was the frame where the fade had not yet started. The brain sat there as a
+               perfect BLACK SILHOUETTE, and nothing threw.
+               So the fade is a CSS transition on the wrapper. The compositor runs it, a stalled GL
+               loop cannot starve it, and the worst case is now a fully-lit brain that is not moving —
+               instead of an invisible one. It waits for `onReady` (mesh parsed, field built), so what
+               fades in is the specimen, never an empty canvas. */}
+        {!ready && <WellSkeleton />}
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity: ready ? 1 : 0,
+            transform: ready || reducedMotion ? 'scale(1)' : 'scale(0.96)',
+            ...(reducedMotion ? {} : { transition: `opacity 620ms ${EASE}, transform 820ms ${EASE}` }),
+          }}
+        >
+          <CortexCanvas
+            seed={seed}
+            bold={bold}
+            t={t}
+            reducedMotion={reducedMotion}
+            onHover={setHovered}
+            onReady={onReady}
+          />
         </div>
 
-        {/* Top-left — the hover readout. A real surface map names the region you point at, where
-            you point at it; it does not keep a permanent row reserved for the answer. */}
-        {hovered && (
-          <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5">
-            <span
-              aria-hidden
-              className="h-[6px] w-[6px] shrink-0 rounded-full"
-              style={{ background: netFill(hovered, Math.max(0.6, bold[hovered])) }}
-            />
-            <span className="text-[11px] font-medium leading-none text-[var(--cream-primary)]">
-              {NETWORK_META[hovered].label}
+        {/* ── TOP-LEFT — what this is, and what you are pointing at, in the SAME slot.
+               The two never need to be read at once: a figure's caption is what you read until you
+               start interrogating the figure, at which point the region under the cursor IS the
+               caption. Sharing the slot is what let the header row leave the card body entirely —
+               and the card was overflowing its 516px box by 93px, clipping the verdict off the
+               bottom, which is a worse crime than a caption that yields on hover.
+               The hover number is the CONTRAST (what the surface is actually painted with) — hence Δ. */}
+        <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-1.5">
+          {hovered ? (
+            <>
+              <span
+                aria-hidden
+                className="h-[6px] w-[6px] shrink-0 rounded-full"
+                style={{ background: netFill(hovered, Math.max(0.6, response[hovered])) }}
+              />
+              <span className="text-[11px] font-medium leading-none text-[var(--cream-primary)]">
+                {NETWORK_META[hovered].label}
+              </span>
+              <span className="text-[11px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+                Δ{response[hovered].toFixed(2)}
+              </span>
+            </>
+          ) : (
+            <span className="text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
+              Predicted cortical response · {mode === 'grounded' ? 'modeled' : 'simulated'}
             </span>
-            <span className="text-[11px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-              {bold[hovered].toFixed(2)}
-            </span>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Top-right — the colorbar, the way a figure carries one: poles, TICKS, and the UNIT.
-            It used to be a raw red→green slider with two shouty mono words and no scale. */}
-        <div className="pointer-events-none absolute right-3 top-3 w-[128px]">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">drifting</span>
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">engaged</span>
-          </div>
-          <div className="relative mt-[4px]">
+        {/* Top-right — the scan clock. */}
+        <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+          t {t.toFixed(1)}s · TR {TR_S}s
+        </p>
+
+        {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
+            trails the stimulus because of it, and the figure says so out loud. It may move. It may not
+            be deleted. */}
+        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+        </p>
+      </div>
+
+      {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
+             TRIBE puts its controls in ONE quiet row beneath the specimen. We take the PATTERN — and
+             the colorbar lives here now, because it used to be crammed into the well's top-right where
+             it collided with the specimen it annotates. A figure's legend belongs UNDER the figure,
+             and moving it is what let the cortex grow to fill its frame.
+
+             ⚠️ TRIBE's `Normal | Inflated` toggle IS NOT HERE, and it is the one thing of theirs we
+             wanted most. It was BUILT and then CUT, for a reason worth keeping (docs, and
+             scripts/build-inflated-mesh.mjs): an inflated surface has to be a real second geometry,
+             and ours cannot be derived from the asset we ship. Smoothing our decimated whole-brain
+             mesh turns its sulcal slivers inside out — measured, 2.3% of triangles inverted after only
+             20 smoothing steps — and back-facing triangles are culled, so the "inflated" brain renders
+             as a rotted, perforated shell. It looked plausible in every statistic (roughness fell 80%,
+             the shape held) and was obviously broken the moment it was on screen.
+             The real fix is upstream: FreeSurfer EMITS an inflated surface (lh/rh.inflated) next to the
+             one this mesh came from. Source that, and the toggle is trivial and correct. ── */}
+      <div className="mt-2 flex items-center gap-3">
+        {/* The colorbar: poles, TICKS, the UNIT — and a LIVE MARKER, which TRIBE's does not have.
+            A legend tells you how to read the map; this one also tells you the reading. */}
+        <div className="pointer-events-none min-w-0 flex-1">
+          <div className="relative">
             <span className="flex h-[4px] overflow-hidden rounded-full">
               {Array.from({ length: 40 }, (_, i) => (
                 // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
                 <span key={i} className="h-full flex-1" style={{ background: barFill((i / 39) * 2 - 1) }} />
               ))}
             </span>
-            {/* Ticks — a scale, not a temperature slider. */}
             {[0, 50, 100].map((pct) => (
               <span
                 key={pct}
@@ -286,33 +385,30 @@ export function BrainView({
                 style={{ left: `${pct}%`, transform: pct === 100 ? 'translateX(-1px)' : undefined }}
               />
             ))}
-            {/* THE LIVE MARKER — where the room is sitting on the axis RIGHT NOW. A legend only tells
-                you how to read the map; this also tells you the reading, and it moves with the scan.
-                (TRIBE's colorbar is inert. This is the cheapest place to be better than it.) */}
             <span
               aria-hidden
+              data-testid="brain-colorbar-marker"
               className="absolute -top-[3px] h-[10px] w-[2px] rounded-full bg-[var(--cream-primary)]"
               style={{
                 left: `${axisPct}%`,
                 transform: 'translateX(-1px)',
                 boxShadow: '0 0 0 1.5px rgba(19,18,16,0.9)',
-                ...(reducedMotion ? {} : { transition: 'left 260ms linear' }),
+                // Not linear. The marker is riding a haemodynamic response, and the response eases —
+                // so the thing that reports it should ease too. Linear is the tell of undesigned motion.
+                ...(reducedMotion ? {} : { transition: `left 320ms ${EASE}` }),
               }}
             />
           </div>
-          <p className="mt-[6px] text-center text-[9px] leading-none text-[var(--color-foreground-muted)]">
-            predicted BOLD
-          </p>
+          <div className="mt-[5px] flex items-baseline justify-between">
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">drifting</span>
+            {/* The unit, and the CLAIM. The map is a contrast now, not raw activity, and the legend is
+                the one place that has to say which. */}
+            <span className="truncate px-1 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+              predicted BOLD · vs rest
+            </span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">engaged</span>
+          </div>
         </div>
-
-        {/* Bottom — the figure's footer, inside the frame: the lag claim (load-bearing: the HRF is
-            real and the UI says so) and the projection. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
-          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-        </p>
-        <p className="pointer-events-none absolute bottom-2.5 right-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
-          left hemisphere · lateral
-        </p>
       </div>
 
       {/* ── The stimulus, in its own pane. It is the thing the cortex is responding to; it does not
@@ -321,7 +417,7 @@ export function BrainView({
           the flex row and the grounded pane came out ~2× the text one — which put the grounded card
           back over its container (measured: 530px of content in a 516px box) while the simulated one
           fit. The card has to fit in BOTH modes, and the two should not be different shapes. */}
-      <div className="mt-2.5 flex h-[72px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
+      <div className="mt-2 flex h-[60px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
             reads as a broken image. It gets a plain transport button, and the words — which ARE
@@ -392,7 +488,7 @@ export function BrainView({
                       ? 'text-[var(--cream-primary)]'
                       : 'text-[var(--color-foreground-muted)] opacity-30'
                   }
-                  style={reducedMotion ? undefined : { transition: 'opacity 200ms linear, color 200ms linear' }}
+                  style={reducedMotion ? undefined : { transition: `opacity 260ms ${EASE}, color 260ms ${EASE}` }}
                 >
                   {w}
                 </span>
@@ -412,12 +508,12 @@ export function BrainView({
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
           It leads on size and weight because it is the answer; everything above it is the working. */}
-      <p className="mt-3.5 font-serif text-[16px] leading-[1.35] tracking-[-0.01em] text-foreground">
-        {verdictFor(stopRatio, bold, mode)}
+      <p className="mt-2.5 font-serif text-[15.5px] leading-[1.35] tracking-[-0.01em] text-foreground">
+        {verdictFor(stopRatio, response, mode)}
       </p>
 
       {/* Foot — the honesty line. It must survive every redesign. */}
-      <p className="mt-2.5 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
+      <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
           : 'a modeled response · a sketch, not a measurement'}
@@ -473,7 +569,8 @@ function buildTrace(input: DriveInput, duration: number): Trace {
   for (let i = 0; i < TRACE_N; i++) {
     const t = (i / (TRACE_N - 1)) * duration;
     const b = predictedBold(input, t);
-    axis.push(Math.max(-1, Math.min(1, b.dorsal_attention - b.default)));
+    // The SAME axis the map is painted on and the colorbar is scaled to — a contrast against rest.
+    axis.push(axisOf(contrastBold(b)));
     // The characteristic frame is the loudest MOMENT overall, not the loudest attention — a scan
     // dominated by the default network is still a scan, and its peak is still where the story is.
     const loudest = Math.max(...NETWORK_IDS.map((n) => b[n]));
@@ -562,10 +659,29 @@ function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reduce
       {/* The playhead. */}
       <span
         className="pointer-events-none absolute inset-y-0 w-px bg-[rgba(236,231,222,0.5)]"
-        style={{ left: `${u * 100}%`, ...(reducedMotion ? {} : { transition: 'left 200ms linear' }) }}
+        style={{ left: `${u * 100}%`, ...(reducedMotion ? {} : { transition: `left 240ms ${EASE}` }) }}
       />
     </div>
   );
+}
+
+/**
+ * The card's easing curve. ONE curve, everywhere.
+ *
+ * Every transition on this card used to be `linear` — the colorbar marker (260ms linear), the trace
+ * playhead (200ms linear), the stimulus words. Linear motion is the single most reliable tell that
+ * nobody designed the motion: nothing in the physical world starts and stops at a constant rate, so
+ * the eye reads it as mechanical. This is a standard ease-out — quick to commit, slow to arrive.
+ */
+const EASE = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
+
+/**
+ * THE DIVERGING AXIS, defined once: task-positive attention MINUS the default-mode system, both read
+ * as contrasts against rest. The map is painted on it, the colorbar is scaled to it, the trace plots
+ * it and the verdict reads it. One definition, or they drift apart and the card contradicts itself.
+ */
+function axisOf(response: Record<NetworkId, number>): number {
+  return Math.max(-1, Math.min(1, response.dorsal_attention - response.default));
 }
 
 /** The stimulus transport, in both its homes (over a video thumb, and beside the words). */
@@ -647,6 +763,22 @@ const SAGE = 'rgb(169, 198, 160)';
  */
 const WELL_BG = '#131210';
 
+/**
+ * ⚠️ THE WELL'S ASPECT IS A HEIGHT BUDGET, NOT A TASTE.
+ *
+ * The card lives in a 516px box, and everything in it is stacked, so the well's height is whatever is
+ * left after the chrome — and if it takes more, the VERDICT (the answer the whole card exists to
+ * deliver) is silently clipped off the bottom. That is exactly what a square well did: measured 573px
+ * of content in the 516px box, with the verdict cut in half.
+ *
+ * So the specimen was given every pixel that could be TAKEN FROM THE CHROME rather than invented:
+ * the header row moved into the well's corners (which the colorbar had vacated), the stimulus pane
+ * lost 12px, the margins were tightened. What is left is this ratio. It is MEASURED against the box
+ * (see the fit check in the verification script) — if you change anything above it, re-measure, and do
+ * not let it steal from the verdict.
+ */
+const WELL_ASPECT = '20 / 19';
+
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [
   Math.round(a[0] + (b[0] - a[0]) * t),
@@ -681,8 +813,12 @@ function barFill(x: number): string {
 }
 
 /** The room's voice reading the scan — banded on the real stop ratio + the live response. */
-function verdictFor(stopRatio: number, bold: Record<NetworkId, number>, mode: SimMode): string {
-  const drifting = bold.default > bold.dorsal_attention;
+function verdictFor(stopRatio: number, response: Record<NetworkId, number>, mode: SimMode): string {
+  // Read off the CONTRAST, not raw BOLD. Raw, the default-mode system idles at 0.42 while attention
+  // idles at 0.08 — so "is the DMN louder than attention?" was biased toward yes before the stimulus
+  // had done anything at all. Against rest, the question is the one the card actually asks: which of
+  // them has moved MORE than it normally sits at.
+  const drifting = response.default > response.dorsal_attention;
   if (drifting) {
     return mode === 'grounded'
       ? 'The default network is winning — the room is somewhere else while your video plays.'
