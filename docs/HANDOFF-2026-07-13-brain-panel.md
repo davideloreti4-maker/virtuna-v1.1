@@ -821,3 +821,107 @@ The script stays in the repo with its measurements; it is not wired to anything.
 tsc **0** · eslint clean · **98 brain/lens tests** · full suite **3,374 pass** with the one pre-existing
 `api/tools/remix/run` SSE failure. Verified in the real app at `/dev/cards`, at real scale, beside the
 other cards — hover reads out live (`Visual Δ1.00`), the orbit drag works, both modes fit their box.
+
+---
+
+# 16. ▶ THE NEXT BRIEF — THE CARD'S DESIGN, AND ITS JOB (owner, 2026-07-14, after §15)
+
+Owner, on the shipped §15 build:
+
+> *"we need to fix and improve the ui design and make it cleaner and more accurate to the tribe v2, same
+> is also for the card, it needs to be actually useful with better UX, UI design and user value. the
+> colors, shape and more are also not complete and accurate + the human silhouette is also missing."*
+
+**This is a DESIGN + PRODUCT round, not an engineering one.** The engine under the card is now correct
+and fast (§15). What is wrong is what it LOOKS like and what it is FOR. Do not go back into the mesh,
+the field, the grid, the axes or the response model — they are measured, pinned, and not the problem.
+
+## 16.0 ⛔ BEFORE YOU WRITE ANY CODE — do these two things, in this order
+
+**1. PUT THE REFERENCE ON SCREEN AND DIFF AGAINST IT.** Every genuine finding in this entire document
+came from that one step, and every wasted round came from skipping it (the folding; "fill the head, not
+the frame"; the specimen owning the frame; the lateral pose). Their demo is CC-BY-NC, so we may study
+and reimplement it and may **never** ship their files (§12.2).
+⚠️ **ASK THE OWNER FOR THE TRIBE v2 REFERENCE** (URL, or screenshots dropped into the repo). The last
+dissection was done via CDP because their WebGL loop hangs a normal screenshot — the same failure as
+ours. **Do not design from memory of it.**
+
+**2. ASK WHAT THE CARD IS FOR.** "Make it actually useful" is a PRODUCT question and it is the owner's
+to answer, not yours to guess. The Room already has *The people* and *Population · 1,000*, and both
+answer "who stopped and why" more directly than a cortex does. So put the question plainly, with
+options — this is the highest-leverage decision in the whole round:
+  - **(a) THE WHEN.** The brain's real edge is TIME: the trace + the haemodynamic lag show *where in the
+    encounter you lose them* — "the middle does the losing". Lean all the way into the timeline: make the
+    card a scrubber over the encounter, make the map follow the playhead, make the verdict name the
+    moment. (Strongest case, in my view — it is the one thing neither other scale can say.)
+  - **(b) THE WHERE.** Lean into the systems: attention vs salience vs drift, named, with the map as the
+    evidence. Risk: it is jargon unless every network is translated into creator language.
+  - **(c) THE PROOF.** The card is not an instrument at all — it is the *credibility object* that makes
+    the Room's verdict feel earned. Then it should be quieter and simpler, not more featureful.
+  - **(d) CUT IT.** Still a legitimate outcome (§11.3-C). It has now been rebuilt six times.
+
+## 16.1 🔴 THE HUMAN SILHOUETTE — it is not missing from the code, it is INVISIBLE
+
+`HeadGhost` still mounts and still paints (`data-testid="brain-head-ghost"`, measured in the DOM at
+362×344 in a 364×346 well). It cannot be seen, for three compounding reasons — all measured:
+
+1. **Its viewBox is `0 0 400 300` (4:3) inside a now near-square well (`20/19`).** With
+   `preserveAspectRatio="xMidYMid meet"` it scales to 364×273 and gets letterboxed — so the cranial
+   vault no longer sits where the specimen sits. The skull and the brain are no longer registered to
+   each other.
+2. **The specimen grew to fill the frame** (`FIT_RADIUS` 1.06 → 1.15, §15) and now COVERS the vault the
+   ghost used to sit behind.
+3. **It is 5.5% cream, gaussian-blurred at σ7** — at the edge of perception even when it is not covered.
+
+**This is a real loss and it should come back properly.** §12.3-5 measured TRIBE's: their head is a
+LARGE, SOFT, low-contrast mass, noticeably bigger than the brain, and it is most of why theirs reads as
+*a brain in a person* rather than a lit object on black. Ours must be drawn in the WELL's own aspect,
+sized so the brain sits inside the cranium where it belongs, and — since the specimen now fills the
+frame — either the head gets bigger than the well (cropped by it, like an anatomical plate) or the
+specimen backs off. **That is a composition decision: sketch it before coding it.**
+
+## 16.2 🔴 THE VALUE STRUCTURE — the specimen is MID-GREY. TRIBE's is near-white.
+
+Measured on the shipped card (screenshot → luminance histogram of the specimen's pixels, 0 = black,
+1 = white):
+
+| | p05 | p25 | **median** | p75 | **p95** | max |
+|---|---|---|---|---|---|---|
+| ours | 0.11 | 0.12 | **0.31** | 0.45 | **0.64** | 0.89 |
+
+**A near-white specimen has its crowns up around 0.85–0.95 and a median well above 0.5.** Ours peaks at
+0.64 and sits at 0.31 — it is a *grey* brain, which is exactly the "muddy / not accurate colours" the
+owner is seeing. The tokens are not the problem (`uGyrus` is cream `#ece7de`); the LIGHTING is: the key
+is 0.62, the ambient 0.46, and `ao` scales everything down again, so a lit crown never reaches its own
+base colour. Re-derive the rig against the histogram above — **and re-measure it, do not eyeball it.**
+The sulci are already deep (p05 0.11); it is the crowns that never arrive.
+⚠️ Keep `#include <colorspace_fragment>` (§13.2-4) and keep the system MATTE — the answer is *value*,
+not gloss.
+
+## 16.3 The card, as UX (unresolved from §11.2, and now the main event)
+- It is a **figure with a verdict**, and it does not yet let you DO anything. There is no scrub, no
+  compare, no "show me the moment it breaks", no way to act on what it says.
+- The **stimulus pane** is a thumbnail, a line of text and a trace crammed into 60px.
+- The **trace is the best thing on the card** (it is the one instrument TRIBE has no answer to) and it is
+  18px tall in a corner. If option (a) wins, the trace is the card.
+- The **colorbar** now sits in its own row and is honest, but the row is otherwise empty and reads as a
+  leftover.
+- Budget is brutal and it is REAL: **509px of content in a 516px box.** Anything added comes out of the
+  specimen or clips the verdict. **If the card needs more room, that is a layout decision to take to the
+  owner** (§12.3-1 flagged it and it is still open) — a bigger card, or a drill-in.
+
+## 16.4 What is DONE and must not be redone (§15)
+`buildField` 2,605ms → ~240ms · the map is a contrast vs rest (57% → 26% peak, ~8% typical) · per-network
+p95 normalisation · `ACTIVATION_SPAN` 0.3 · the map lerps per frame · OrbitControls · the entrance (CSS,
+**not** a shader uniform) · one ease-out curve · the lateral-plate camera · fixtures sampled from the
+real model.
+
+## 16.5 The rules that earned everything in this document
+1. **Diff against the real reference FIRST.**
+2. **Judge at real scale, in the real app, at `/dev/cards`, beside the other cards.** Never an isolated
+   screenshot — it flattered five straight rounds of bad work.
+3. **When something looks wrong, MEASURE IT** — do not tune constants. Every real finding here came from
+   a probe (a long-task observer, a pixel readback, a luminance histogram, a parameter sweep). The one
+   thing shipped blind last session (the entrance fade) produced an invisible brain and cost an hour.
+4. **A test fixture that cannot occur is not a test** (§15.2). It let a contrast silently paint 0.0%
+   coral — deleting the card's whole point — with the suite green.
