@@ -211,12 +211,97 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
  * directly instead. It is first in the list on purpose — it is the state every user sees on every
  * single Read, and it has had the least scrutiny of any of them.
  */
+/**
+ * Stand-in keyframes for the `loading-frames` preview. In a live run these are signed URLs to
+ * real JPEGs cut from the user's video; here they are app screenshots that already ship in
+ * /public, so the strip renders REAL images (correct crop, aspect, load behaviour) with no
+ * network fixture. Five of eight — so the preview shows a strip mid-fill, not a full one.
+ */
+/** The user's calibrated reactors — the cast, known before the run starts. */
+const PREVIEW_ROSTER = [
+  { archetype: 'skeptic', label: 'Maya — the skeptic' },
+  { archetype: 'scanner', label: 'Sam — the scanner' },
+  { archetype: 'collector', label: 'Priya — the collector' },
+  { archetype: 'connector', label: 'Leo — the connector' },
+  { archetype: 'lurker', label: 'Dana — the lurker' },
+  { archetype: 'converter', label: 'Alex — the converter' },
+];
+
+/** The scrape receipt, as it arrives seconds into a real tiktok_url run. */
+const PREVIEW_SOURCE = {
+  cover_url: '/images/landing/hero-read.png',
+  handle: 'zachking',
+  views: 12_400_000,
+  video_url: 'https://www.tiktok.com/@zachking/video/1234567890123',
+};
+
+const PREVIEW_FRAMES = [
+  { idx: 0, uri: '/images/landing/hero-read.png' },
+  { idx: 1, uri: '/images/landing/feature-audience.png' },
+  { idx: 2, uri: '/images/landing/feature-drivers.png' },
+  { idx: 3, uri: '/images/landing/hero-read.png' },
+  { idx: 4, uri: '/images/landing/feature-audience.png' },
+];
+
+/** All 8 frames in — the footage has been fully read. */
+const PREVIEW_FRAMES_FULL = [
+  ...PREVIEW_FRAMES,
+  { idx: 5, uri: '/images/landing/feature-drivers.png' },
+  { idx: 6, uri: '/images/landing/hero-read.png' },
+  { idx: 7, uri: '/images/landing/feature-audience.png' },
+];
+
 const READING_STATES: { id: string; label: string; note: string; node: React.ReactNode }[] = [
   {
     id: 'loading',
-    label: 'Loading',
-    note: 'The in-flight skeleton — what EVERY Read shows before it settles. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
+    label: 'Loading · waiting',
+    note: 'The in-flight skeleton in its FIRST seconds — before the extractor has cut a single frame. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
     node: <ReadingSkeleton id="preview" />,
+  },
+  {
+    id: 'loading-source',
+    label: 'Loading · source landed',
+    note: 'Seconds into the run: the scrape has resolved, so the wait can show the post it went and fetched (cover + author + views) long before any frame is cut. In video_upload mode nothing is scraped, so no receipt renders — we never dress an absence up as a source.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{ source: PREVIEW_SOURCE }}
+      />
+    ),
+  },
+  {
+    id: 'loading-frames',
+    label: 'Loading · frames landing',
+    note: 'The SAME skeleton mid-run: real keyframes of the user\'s own video appearing as the engine reads them (5 of 8 here). This is what the 2-minute wait actually looks like once the footage starts landing — and it was invisible to everyone until this preview existed, because it only occurs during a live run.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{
+          source: PREVIEW_SOURCE,
+          roster: PREVIEW_ROSTER,
+          frameTotal: 8,
+          frames: PREVIEW_FRAMES,
+          keyframeCount: 5,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'loading-audience',
+    label: 'Loading · audience watching',
+    note: 'The back half of the wait: the footage has been read (all 8 frames in) and the audience sim is running — the ~60s stretch that used to be completely empty. Their REACTIONS are what the Read produces and are never guessed here; only the cast is shown.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{
+          source: PREVIEW_SOURCE,
+          roster: PREVIEW_ROSTER,
+          frameTotal: 8,
+          frames: PREVIEW_FRAMES_FULL,
+          keyframeCount: 8,
+        }}
+      />
+    ),
   },
   {
     id: 'complete',

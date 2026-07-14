@@ -26,9 +26,53 @@ import { useEffect, useRef, useState } from 'react';
  * reads as a calm "Reading your simulation…" until the real Reading swaps in.
  * No throw on a closed/absent EventSource (guarded for SSR + jsdom).
  */
+export interface RevealFrame {
+  idx: number;
+  /** 30-day signed URL minted by the extract route — renderable as-is. */
+  uri: string;
+}
+
+/**
+ * The scraped post: cover, author, views. Lands seconds into the run (the scrape is the first
+ * thing the pipeline does), so it is what the in-flight Reading can show while the engine is
+ * still working. null in video_upload mode — nothing was scraped, so there is no receipt, and
+ * we show none rather than inventing one.
+ */
+export interface RevealSource {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
+/** One of the user's calibrated reactors — the cast, not their reactions. */
+export interface RevealPersona {
+  archetype: string;
+  label: string | null;
+}
+
 export interface ReadingRevealState {
+  /** The scraped post we are reading — the first evidence of the run. null until it lands. */
+  source: RevealSource | null;
+  /**
+   * WHO is about to watch this: the user's calibrated audience, known before the run starts.
+   * Their REACTIONS are what the Read produces — those are not here, and are never guessed.
+   */
+  roster: RevealPersona[];
   /** Count of personas seen streaming in (Pass-2 audience forming). */
   personaCount: number;
+  /**
+   * The keyframes themselves, ascending by idx — REAL frames of the user's own video, which
+   * is the only honest proof-of-work available while the engine runs.
+   *
+   * These arrived on the wire all along: `filmstrip_segment_ready` has always carried
+   * `keyframe_uri` next to `segment_idx`, and this hook parsed the index, threw the picture
+   * away, and kept a count — so the wait rendered the text "7 frames read" instead of the seven
+   * frames. Keep the pictures.
+   */
+  frames: RevealFrame[];
+  /** How many frames are coming in total (`filmstrip_plan`); 0 until the grid is seeded. */
+  frameTotal: number;
   /** Count of distinct keyframes extracted (the filmstrip filling in). */
   keyframeCount: number;
   /** Live transport phase for the skeleton's copy. */
@@ -36,7 +80,11 @@ export interface ReadingRevealState {
 }
 
 const INITIAL: ReadingRevealState = {
+  source: null,
+  roster: [],
   personaCount: 0,
+  frames: [],
+  frameTotal: 0,
   keyframeCount: 0,
   phase: 'idle',
 };
@@ -56,7 +104,7 @@ export function useReadingReveal(
     }
 
     keyframeIdx.current = new Set();
-    setState({ personaCount: 0, keyframeCount: 0, phase: 'connecting' });
+    setState({ ...INITIAL, phase: 'connecting' });
 
     let es: EventSource;
     try {
@@ -82,17 +130,69 @@ export function useReadingReveal(
       }
     };
 
+    const onSource = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as RevealSource;
+        // Only take a receipt that actually carries something to show.
+        if (data && (data.cover_url || data.handle)) {
+          setState((s) => ({ ...s, phase: 'live', source: data }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onRoster = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { personas?: RevealPersona[] };
+        if (Array.isArray(data.personas) && data.personas.length > 0) {
+          setState((s) => ({ ...s, phase: 'live', roster: data.personas! }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onFilmstripPlan = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { total?: number };
+        if (typeof data.total === 'number' && data.total > 0) {
+          setState((s) => ({ ...s, phase: 'live', frameTotal: data.total! }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
     const onFilmstrip = (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data) as { segment_idx?: number };
-        if (typeof data.segment_idx === 'number') {
-          keyframeIdx.current.add(data.segment_idx);
-        }
-        setState((s) => ({
-          ...s,
-          phase: 'live',
-          keyframeCount: keyframeIdx.current.size,
-        }));
+        const data = JSON.parse(e.data) as {
+          segment_idx?: number;
+          keyframe_uri?: string | null;
+        };
+        if (typeof data.segment_idx !== 'number') return;
+
+        const idx = data.segment_idx;
+        const uri = data.keyframe_uri;
+        keyframeIdx.current.add(idx);
+
+        setState((s) => {
+          // Keep the picture, not just the tally. A frame with no uri is a segment the extractor
+          // could not read — it still counts as read (the engine moved past it), but there is
+          // nothing to show for it, so it never enters `frames`.
+          const frames =
+            typeof uri === 'string' && uri.length > 0 && !s.frames.some((f) => f.idx === idx)
+              ? [...s.frames, { idx, uri }].sort((a, b) => a.idx - b.idx)
+              : s.frames;
+
+          return {
+            ...s,
+            phase: 'live',
+            frames,
+            frameTotal: Math.max(s.frameTotal, idx + 1),
+            keyframeCount: keyframeIdx.current.size,
+          };
+        });
       } catch {
         /* malformed frame — ignore */
       }
@@ -111,13 +211,19 @@ export function useReadingReveal(
       }
     };
 
+    es.addEventListener('source', onSource);
+    es.addEventListener('roster', onRoster);
     es.addEventListener('partial', onPartial);
+    es.addEventListener('filmstrip_plan', onFilmstripPlan);
     es.addEventListener('filmstrip_segment_ready', onFilmstrip);
     es.addEventListener('complete', onComplete);
     es.addEventListener('error', onErr);
 
     return () => {
+      es.removeEventListener('source', onSource);
+      es.removeEventListener('roster', onRoster);
       es.removeEventListener('partial', onPartial);
+      es.removeEventListener('filmstrip_plan', onFilmstripPlan);
       es.removeEventListener('filmstrip_segment_ready', onFilmstrip);
       es.removeEventListener('complete', onComplete);
       es.removeEventListener('error', onErr);

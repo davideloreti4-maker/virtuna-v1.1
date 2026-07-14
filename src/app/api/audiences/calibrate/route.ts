@@ -126,7 +126,13 @@ export async function POST(request: Request): Promise<Response> {
         // the route awaits one opaque promise and cannot see those boundaries from out here.
         const calibrationResult = await calibrateFromScrape(
           { handle, type, platform, goalIntent, name, description },
-          { onStage: (stage) => send("status", { message: STAGE_COPY[stage] }) },
+          {
+            onStage: (stage) => send("status", { message: STAGE_COPY[stage] }),
+            // The account + the posts we're about to watch, the moment the scrape returns —
+            // ~2 minutes before the audience they produce. A status line claims we are working;
+            // the creator's own face and covers prove it.
+            onEvidence: (evidence) => send("evidence", evidence),
+          },
         );
 
         // ── Handle calibration outcomes ───────────────────────────────────

@@ -287,3 +287,48 @@ describe("calibrateFromScrape — platform guard", () => {
     expect("error" in result).toBe(false);
   });
 });
+
+describe("calibrateFromScrape — onEvidence (the ~2min wait shows the account it read)", () => {
+  it("reports the scraped account + its covers as soon as the scrape returns", async () => {
+    const onEvidence = vi.fn();
+    const deps = makeDeps({ onEvidence });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onEvidence).toHaveBeenCalledTimes(1);
+    const evidence = onEvidence.mock.calls[0]![0];
+    expect(evidence.handle).toBeTruthy();
+    expect(evidence.followerCount).toBe(50_000);
+    expect(evidence.videos).toHaveLength(15);
+  });
+
+  it("fires BEFORE enrichment — it is proof during the wait, not a result of it", async () => {
+    const order: string[] = [];
+    const deps = makeDeps({
+      onEvidence: vi.fn(() => order.push("evidence")),
+      enrich: vi.fn(async () => {
+        order.push("enrich");
+        return makeSignature();
+      }),
+    });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    // The whole point: the account is on screen while the ~2min enrichment is still running.
+    expect(order).toEqual(["evidence", "enrich"]);
+  });
+
+  it("reports NO evidence on the niche fallback — that profile is synthetic", async () => {
+    // A thin account falls back to a niche search and SYNTHESISES a profile. Showing that as
+    // "the account we read" would put a face on the screen that we never scraped.
+    const onEvidence = vi.fn();
+    const deps = makeDeps({
+      // Thin = NO follower tier AND too few videos (isThin) → the niche fallback path.
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(20)),
+      onEvidence,
+    });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect("audience" in result || "fallback" in result).toBe(true);
+    expect(onEvidence).not.toHaveBeenCalled();
+  });
+});

@@ -129,6 +129,16 @@ const STAGE_COPY: Record<string, string> = {
  * rotation. A live `stage.detail` from the backend still overrides the rotation entirely.
  */
 const STAGE_COPY_ROTATION: Record<string, string[]> = {
+  // The video Read (/analyze) — the longest wait in the product (~2 min).
+  'Fetching your video': [
+    'Pulling the post',
+    'Downloading the footage',
+  ],
+  'Watching it frame by frame': [
+    'Watching it the way your audience would',
+    'Marking where attention holds',
+    'Finding the moment they drop',
+  ],
   Generating: [
     'Drafting angles against your audience',
     'Pushing past the obvious openers',

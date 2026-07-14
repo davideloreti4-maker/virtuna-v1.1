@@ -118,6 +118,26 @@ export interface CalibrationDeps {
   enrich?: (input: EnrichInput, deps?: EnrichDeps) => Promise<AudienceSignature>;
   /** Progress reporter. Threaded into enrichment so its two phases report themselves. */
   onStage?: (stage: CalibrationStage) => void;
+  /**
+   * Evidence reporter — fires the moment the scrape returns, with the account we actually pulled
+   * and the posts we are about to watch.
+   *
+   * Calibration takes ~2 minutes and used to show a single line of text for all of it, even
+   * though within seconds it is holding the creator's avatar, follower count and every video
+   * cover. Those are the strongest proof that the work is real, so they go to the client the
+   * instant they exist. Purely additive: an absent callback changes nothing.
+   */
+  onEvidence?: (evidence: CalibrationEvidence) => void;
+}
+
+/** What the scrape actually pulled — shown during the wait, not just used and hidden. */
+export interface CalibrationEvidence {
+  handle: string;
+  displayName: string;
+  avatarUrl: string;
+  followerCount: number;
+  /** The posts we are about to watch, newest-first as the scraper returned them. */
+  videos: { coverUrl: string | null; views: number }[];
 }
 
 export interface CalibrationFallback {
@@ -211,6 +231,7 @@ export async function calibrateFromScrape(
     deps.scrapeNiche ?? ((q: string, limit?: number) => new ApifyScrapingProvider().scrapeVideos(q, limit ?? 20, "search"));
   const enrich = deps.enrich ?? enrichSignature;
   const onStage = deps.onStage;
+  const onEvidence = deps.onEvidence;
 
   // ── PLATFORM guard — the whole scrape stack below is TikTok-ONLY ──────────────────────
   //
@@ -276,6 +297,20 @@ export async function calibrateFromScrape(
         subCoverage = bundle.subCoverage;
         source = "scrape";
         scrapedHandle = bundle.profile.handle || handle;
+
+        // The account is real and in hand — show it, ~2 minutes before the audience it produces.
+        // Only on the real-scrape branch: the niche fallback builds a SYNTHETIC profile (no real
+        // account was found), and showing that as "the account we read" would be a lie.
+        onEvidence?.({
+          handle: scrapedHandle,
+          displayName: bundle.profile.displayName,
+          avatarUrl: bundle.profile.avatarUrl,
+          followerCount: bundle.profile.followerCount,
+          videos: bundle.videos.map((v) => ({
+            coverUrl: v.coverUrl ?? null,
+            views: v.views,
+          })),
+        });
       }
     } else {
       // ── Target with no reference handle → niche search from the description ──
