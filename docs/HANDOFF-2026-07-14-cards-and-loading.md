@@ -51,7 +51,15 @@ did. **Before auditing any surface next session: make sure you can see it, in ev
 
 ## OPEN — ranked for next session
 
-### 🥇 1. The Reading's loading state (`reading-skeleton.tsx`) — **start here**
+### ✅ ~~1. The Reading's loading state~~ — **DONE (#295, merged `c1f503ff`). DO NOT REDO.**
+
+> Shipped 2026-07-14: the post we fetched → its REAL keyframes filling in → the #207 spine → the cast
+> arriving. Then a live run found the roster was reading `society_id`, **a column nothing writes** —
+> the audience state was dead in prod while green in tests. Fixed. See
+> `HANDOFF-2026-07-14-loading-states.md`. **The closeout SSOT is now
+> `HANDOFF-2026-07-15-CLOSEOUT.md`.** Original text kept below for context only.
+
+<details><summary>original (superseded)</summary>
 
 A real Read takes **~2 minutes** (the live moat run was 128s). For that entire time the user looks at
 a **generic grey shimmer** — anonymous circle + bars + a static line, *"Reading your simulation…"*.
@@ -64,6 +72,8 @@ never got it.** The longest wait in the product has the weakest loading state in
 ▶ **Now visible at `/dev/cards` → Reading → "Loading".** First tab, on purpose.
 ⚠️ Verify what the *live* `/analyze` actually shows during a real run before designing — the skeleton
 may be swapped for a progress component partway. Don't design against the fixture alone.
+
+</details>
 
 ### 🥈 2. The four Reading information-design calls (`§0.7`) — **owner decisions**
 

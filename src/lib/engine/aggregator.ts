@@ -301,6 +301,7 @@ function calculateConfidence(
   behavioralScore: number,
   foldAudienceScore: number, // F22 — independent audience-sim signal (0-100); the agreement counterpart on video
   foldOn: boolean,           // F22 — true when the fold produced a usable audience score
+  foldFailed: boolean,       // the fold RAN and died — not the same as never having run (see below)
   ruleResult: RuleScoreResult,
   trendEnrichment: TrendEnrichment,
   hasVideo: boolean,
@@ -324,28 +325,57 @@ function calculateConfidence(
   // Model agreement component (0-0.4)
   // F22/F44 (plan 01-04): Apollo composite vs the INDEPENDENT fold audience score on video;
   // fall back to apollo-vs-behavioral when the fold is unavailable (no independent counterpart).
-  const counterpartScore = foldOn ? foldAudienceScore : behavioralScore;
+  //
+  // AUD-FAIL-01 (2026-07-14) — the fold has THREE states, and this only modelled two:
+  //   1. fold ran and produced an audience  → agree against it (a real independent signal);
+  //   2. fold never applicable (text mode)  → fall back to apollo-vs-behavioral;
+  //   3. fold RAN AND DIED                  → was ALSO taking branch 2. That is the bug.
+  //
+  // Branch 2's counterpart is derived from the SAME Apollo call as apolloScore (this function's
+  // own docblock calls it "self-agreement, a fake trust anchor that pinned the term at its 0.4
+  // max on every healthy run"). So a run whose ENTIRE audience simulation timed out was handed
+  // the MAXIMUM agreement bonus — and shipped as HIGH confidence with zero personas behind it.
+  // Measured live: row iEbgUsLZRSFw (fold aborted ×2, 0 personas) → 78/HIGH, while the run that
+  // actually simulated all 10 people (VdwSBcf0i3bO) reported LOW.
+  //
+  // A dead audience is NOT evidence of agreement. When the fold was expected and failed, there is
+  // no counterpart at all, so the term is 0 — and the label is capped below. Text mode (branch 2)
+  // is untouched: it never promised an audience.
   const apolloDirection = apolloScore - 50;
-  const counterpartDirection = counterpartScore - 50;
   let agreement: number;
 
-  if (
-    (apolloDirection >= 0 && counterpartDirection >= 0) ||
-    (apolloDirection < 0 && counterpartDirection < 0)
-  ) {
-    // Same sign — the two independent signals agree on direction
-    agreement = 0.4;
-  } else if (Math.abs(apolloDirection - counterpartDirection) <= 15) {
-    // Different signs but close together
-    agreement = 0.2;
-  } else {
-    // Different signs and far apart
+  if (foldFailed) {
     agreement = 0.0;
+  } else {
+    const counterpartScore = foldOn ? foldAudienceScore : behavioralScore;
+    const counterpartDirection = counterpartScore - 50;
+
+    if (
+      (apolloDirection >= 0 && counterpartDirection >= 0) ||
+      (apolloDirection < 0 && counterpartDirection < 0)
+    ) {
+      // Same sign — the two independent signals agree on direction
+      agreement = 0.4;
+    } else if (Math.abs(apolloDirection - counterpartDirection) <= 15) {
+      // Different signs but close together
+      agreement = 0.2;
+    } else {
+      // Different signs and far apart
+      agreement = 0.0;
+    }
   }
 
   const confidence = Math.min(1, Math.max(0, signal + agreement));
-  const confidence_label: ConfidenceLevel =
+  let confidence_label: ConfidenceLevel =
     confidence >= 0.7 ? "HIGH" : confidence >= 0.4 ? "MEDIUM" : "LOW";
+
+  // The audience half of the ensemble is gone. Whatever the surviving signals say about
+  // themselves, this Read cannot be HIGH confidence — the product's claim IS the audience.
+  // Explicit cap (not just the agreement=0 above) so a future bump to the signal component
+  // can never quietly buy back a HIGH on an audience that never ran.
+  if (foldFailed && confidence_label === "HIGH") {
+    confidence_label = "MEDIUM";
+  }
 
   return { confidence, confidence_label };
 }
@@ -861,6 +891,12 @@ export async function aggregateScores(
   // -------------------------------------------------
   const foldAgg = pipelineResult.personaBehavioralAggregate;
   const foldOn = (pipelineResult.foldOutcome?.fold_success ?? false) && foldAgg !== null;
+
+  // AUD-FAIL-01 — the fold was ATTEMPTED and did not produce a usable audience (it timed out,
+  // failed to parse, or salvaged too few personas). Distinct from "no fold was ever run" (text
+  // mode → foldOutcome null), which promises no audience in the first place. Only the former is
+  // a broken promise, and only the former must not read as a confident Read.
+  const foldFailed = pipelineResult.foldOutcome !== null && !foldOn;
   const fold_audience_score = foldOn
     ? Math.round(
         0.50 * foldAgg!.completion_pct +
@@ -925,6 +961,7 @@ export async function aggregateScores(
     behavioral_score, // fallback counterpart when fold is unavailable (text/tiktok_url / fold failure)
     fold_audience_score,
     foldOn,
+    foldFailed,
     ruleResult,
     trendEnrichment,
     hasVideo,
@@ -960,6 +997,16 @@ export async function aggregateScores(
       .map(([k]) => k);
     warnings.push(
       `Weights redistributed — missing signals: ${missingSources.join(", ")}`
+    );
+  }
+
+  // AUD-FAIL-01 — say it out loud. The audience simulation was attempted and produced nothing,
+  // so this score is an expert read with NO audience behind it. Previously the only trace was a
+  // quiet "No audience reaction landed for this video" in the middle of the page, under a HIGH
+  // confidence badge. The score stays (Apollo genuinely ran) — the claim about it does not.
+  if (foldFailed) {
+    warnings.push(
+      "The audience simulation did not run — this score is an expert read only, with no audience behind it"
     );
   }
 

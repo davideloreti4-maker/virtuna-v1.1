@@ -90,7 +90,7 @@ one nothing writes. Both bugs were in the seam between two subsystems that each 
 
 ---
 
-## 🔴 THE BIG ONE — a failed audience ships as HIGH confidence (NOT ours; do not silently patch)
+## ✅ THE BIG ONE — a failed audience shipped as HIGH confidence (FIXED, `d6b15bc0`)
 
 Two runs, same session, same user — a natural control:
 
@@ -104,13 +104,37 @@ The Read whose **entire audience simulation failed** — both fold attempts time
 that actually simulated ten people called itself LOW. The only tell for the user was one quiet line
 mid-page: *"No audience reaction landed for this video."*
 
-So the confidence label does not know whether the audience ran. A user can pay for a Reading, wait
-~2.5 minutes, and get a confident verdict with **nothing behind it**. This is the same family as the
-§0.7 owner call (an empty persona slot styled as a verbatim), but worse: it is the headline number.
+### The cause — the fold has three states and the aggregator modelled two
 
-**This is engine/verdict territory, not loading states — hence untouched.** Owner call: at minimum a
-fold-failure must (a) suppress or downgrade the confidence label and (b) say plainly that the
-audience did not run. Evidence is in the two rows above; `warnings` already carries the reason.
+1. fold ran and produced an audience → agree against it (a real independent signal);
+2. fold **never applicable** (text mode) → fall back to apollo-vs-behavioral;
+3. fold **ran and died** → was ALSO taking branch 2. **That is the bug.**
+
+Branch 2's counterpart is derived from the *same Apollo call* as the thing it is compared against —
+`calculateConfidence`'s own docblock already called it *"self-agreement, a fake trust anchor that
+pinned the term at its 0.4 max"*. So the broken run was handed the **maximum agreement bonus**:
+`0.2 base + 0.1 video + 0.4 fake agreement = 0.7 = HIGH`.
+
+### The fix (`d6b15bc0`, branch `fix/audience-failure-honesty`)
+
+- A fold that was **attempted and failed** scores agreement **0** — there is no counterpart — and is
+  **capped so it can never read HIGH**, explicitly, so a future bump to the signal component cannot
+  quietly buy the HIGH back.
+- It **says so** in `warnings` instead of leaving the user to infer it from a missing section.
+- The Read stops implying the room watched and shrugged. *"No audience reaction landed for this
+  video"* reads as a verdict; it now says **"Your audience didn't get to watch this one — the
+  simulation failed… the score above is an expert read only, with no audience behind it."**
+- **Text mode is untouched.** It never promised an audience, so its fallback is legitimate.
+- The **score is kept** (Apollo genuinely ran). What changes is the *claim made about it*.
+
+**`ENGINE_VERSION` 3.20.0 → 3.21.0 — required, not cosmetic.** The prediction cache keys on it;
+without the bump every already-cached fold-failed row keeps replaying its old HIGH badge on a cache
+hit, and the fix never reaches the rows that have the bug.
+
+**Verified live, not just in tests:** forced the fold to fail (`FOLD_ATTEMPT_TIMEOUT_MS=1`) on a real
+Read → engine 3.21.0, 0 personas, confidence **LOW**, and the honest note on screen. The 3
+behavioural guards fail without the change; the text-mode guard passes both ways by design (that is
+its job).
 
 ## 🔴 OWNER — still open
 
@@ -161,11 +185,12 @@ but it is a progressive-reveal hook that silently does nothing. Delete it or wir
 
 ## ▶ Next session
 
-1. **Merge #295** (now includes the roster fix, `53bea342`).
-2. **Raise the fold-confidence finding with the owner** (§ above). It is the sharpest honesty defect
-   in the product right now and it outranks the card backlog: the headline number lies when the
-   audience half of the engine dies, and that happened on **1 of the 2 runs** watched today.
-3. Then the card backlog below.
+1. ✅ **#295 merged** (`c1f503ff`) — loading states + the roster fix.
+2. **Merge `fix/audience-failure-honesty`** (`d6b15bc0`) — the confidence fix above. Note the
+   `ENGINE_VERSION` bump invalidates the prediction cache by design.
+3. 🔴 **OWNER — `FILMSTRIP_EXTRACT_SECRET` in Vercel prod** (still open; owner had no Vercel access
+   2026-07-14). Without it the frame strip silently does not exist in production.
+4. Then the card backlog below.
 
 **Two timing facts worth designing around** (both measured today, neither is a bug):
 - the source card cannot appear before ~24s (the scrape is the floor), so the *opening* of the wait

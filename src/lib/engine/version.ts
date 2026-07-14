@@ -130,5 +130,21 @@
  * AND the gate changed from cut-Weak-and-trim to keep-all-ranked — a deliberate scoring-path
  * change, so the version bumps and the determinism/regression gates rebaseline to the batched
  * path (steer-closure + audience-regression-gate). The N=1 react/script paths are unchanged.
+ *
+ * 3.20.0 → 3.21.0 (AUD-FAIL-01, 2026-07-14 — a dead audience must not read as a confident Read):
+ * a CONFIDENCE change on video rows. The fold has three states, and the aggregator modelled two:
+ * a fold that RAN AND DIED took the same branch as text mode ("no fold"), so its agreement term
+ * fell back to apollo-vs-behavioral — two numbers out of the SAME Apollo call, which F22 had
+ * already condemned as self-agreement pinned at its 0.4 max. Net effect: a Read whose ENTIRE
+ * audience simulation timed out was handed the MAXIMUM agreement bonus and shipped as HIGH
+ * confidence with zero personas. Measured on two live runs (2026-07-14): the fold-dead run
+ * reported 78/HIGH while the run that actually simulated all 10 people reported LOW.
+ * Now: a failed fold scores agreement 0, can never be labelled HIGH, and emits an explicit
+ * warning. Text mode (which never promised an audience) is untouched.
+ *
+ * D-23 cache invariant: prediction-cache.ts keys on ENGINE_VERSION. This bump is REQUIRED, not
+ * cosmetic — without it every already-cached fold-failed row keeps replaying its old HIGH badge
+ * on a cache hit ("cache_hit — silent replay"), and the fix would never reach the rows that have
+ * the bug.
  */
-export const ENGINE_VERSION = "3.20.0";
+export const ENGINE_VERSION = "3.21.0";
