@@ -33,6 +33,7 @@ import {
   makeApolloNullResult,
   makeEmptyHeatmapResult,
   makeEmptyPersonasResult,
+  makeSilentPersonasResult,
   makeEmptySegmentsResult,
   makeNoBehavioralResult,
 } from "@/components/reading/__tests__/fixtures/reading-fixture";
@@ -324,8 +325,14 @@ const READING_STATES: { id: string; label: string; note: string; node: React.Rea
   {
     id: 'empty-personas',
     label: 'Empty personas',
-    note: 'Nobody in the room reacted. This is the state that produces the "stopped — no words this time" line currently styled as a verbatim (§0.7 open finding #2).',
+    note: 'NO personas at all — the roster degrades to PanelEmpty. (This state used to claim it produced the "no words" line. It cannot: with zero personas there are no rows, so there are no quote slots. See "Silent personas" for that.)',
     node: <Reading overrideData={makeEmptyPersonasResult()} />,
+  },
+  {
+    id: 'silent-personas',
+    label: 'Silent personas',
+    note: 'The room is FULL and nobody said a word — every persona present, not one verbatim. The ONLY state that renders the "No words recorded." line. It is stated as an absence (dashed, muted, NOT italic), because italic is this app\'s verbatim idiom and an absence must never wear a quote\'s clothing.',
+    node: <Reading overrideData={makeSilentPersonasResult()} />,
   },
   {
     id: 'empty-heatmap',

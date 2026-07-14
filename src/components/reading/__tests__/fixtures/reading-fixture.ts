@@ -218,6 +218,29 @@ export function makeEmptyPersonasResult(over: Partial<PredictionResult> = {}): P
   });
 }
 
+/**
+ * The room is FULL and nobody said anything — every persona present, not one verbatim.
+ *
+ * This is NOT `makeEmptyPersonasResult` (which sets `personas: []` and degrades the whole panel
+ * to PanelEmpty — no roster rows at all, so no quote slots, so nothing to look at). It is the
+ * state where each persona HAS a row and that row's quote slot is EMPTY — the only state in which
+ * the Room renders its "no words recorded" line.
+ *
+ * It did not exist, which is why the defect it exposes (the absence styled as an italic verbatim)
+ * survived: the gallery's "Empty personas" state CLAIMED to reproduce it and could not.
+ * `segment_reasons: {}` is the whole trick — the verbatim comes from there (see prediction-to-read).
+ */
+export function makeSilentPersonasResult(over: Partial<PredictionResult> = {}): PredictionResult {
+  return makeReadingResult({
+    heatmap: {
+      ...HEATMAP,
+      personas: HEATMAP.personas.map((p) => ({ ...p, segment_reasons: {} })),
+    } as HeatmapPayload,
+    persona_simulation_results: undefined,
+    ...over,
+  });
+}
+
 /** heatmap present but `segments: []` → no retention curve/table rows to draw →
  *  the retention panel degrades to PanelEmpty instead of an empty SVG. Personas are
  *  KEPT so ONLY the segment-derived paths go empty. */

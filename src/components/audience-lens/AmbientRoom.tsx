@@ -559,8 +559,22 @@ function PeopleView({
                       &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-[12px] italic text-[var(--color-foreground-muted)]">
-                      {bounced ? 'scrolled past' : 'stopped — no words this time'}
+                    /* An ABSENCE, styled as an absence.
+                     *
+                     * This slot used to render `italic` — and italic IS this app's verbatim idiom
+                     * (PopulationSwarm renders a real quote in italic; the thread's blockquotes are
+                     * italic). So the one thing standing where a quote goes, wearing a quote's
+                     * clothing, was the fact that the persona NEVER SPOKE. We are scrupulous about
+                     * never fabricating a quote, and then dressed the absence of one to look like a
+                     * quiet remark.
+                     *
+                     * Same defect class as the missing proof receipt (#287 → NoSourceNote) and the
+                     * dead audience that shipped as HIGH confidence: STATE THE ABSENCE, DON'T DRESS
+                     * IT UP. So this borrows NoSourceNote's exact spine — dashed hairline, muted,
+                     * NOT italic, a plain declarative sentence — because a slot that is empty
+                     * should LOOK empty. */
+                    <span className="mt-1.5 block rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-2 py-1 text-[12px] not-italic leading-snug text-[var(--color-foreground-muted)]">
+                      {bounced ? 'Scrolled past. No words recorded.' : 'Stopped. No words recorded.'}
                     </span>
                   )}
                 </span>
