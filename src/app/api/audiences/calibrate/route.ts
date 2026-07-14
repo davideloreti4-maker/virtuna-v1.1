@@ -132,6 +132,18 @@ export async function POST(request: Request): Promise<Response> {
         // ── Handle calibration outcomes ───────────────────────────────────
 
         if ("error" in calibrationResult) {
+          // `platform_unsupported` is NOT a failed scrape — nothing was scraped, and the handle
+          // is fine. Telling the user to "check the handle and try again" would send them round a
+          // loop that can never succeed. Carry the domain's own message and do NOT offer retry.
+          if (calibrationResult.error === "platform_unsupported") {
+            send("error", {
+              message:
+                calibrationResult.message ??
+                "Maven can only build an audience from a TikTok account right now.",
+              retry: false,
+            });
+            return;
+          }
           // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
           send("error", {
             message: "Calibration failed. Check the handle and try again.",

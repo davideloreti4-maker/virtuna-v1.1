@@ -31,10 +31,21 @@ const ACCOUNT_PLATFORM_LABEL: Record<AccountOption["platform"], string> = {
   youtube: "YouTube",
 };
 
+// Only the platforms an audience can HONESTLY be calibrated from.
+//
+// Instagram + YouTube were offered here, and picking one silently ran a TIKTOK scrape: the whole
+// calibration stack (scrapeProfileBundle / the niche discover actor) is TikTok-only and takes no
+// platform. The resulting audience was built from TikTok, stamped `instagram`, and — because a
+// handle is not one identity across platforms — could be a COMPLETE STRANGER'S audience presented
+// as the user's own. The server now refuses these (calibration.ts PLATFORM guard); this list stops
+// us offering the user a choice the engine cannot keep.
+//
+// Instagram/YouTube remain fully supported for CONNECT → analytics, which is a different flow
+// (/api/connected-accounts/connect) and genuinely branches per platform. Restore an option here
+// only when calibration can actually scrape that platform's VIDEOS (profile-only is not enough —
+// enrichment needs videos).
 const PLATFORM_OPTIONS = [
   { value: "tiktok", label: "TikTok" },
-  { value: "instagram", label: "Instagram" },
-  { value: "youtube", label: "YouTube" },
   { value: "custom", label: "Custom" },
 ];
 

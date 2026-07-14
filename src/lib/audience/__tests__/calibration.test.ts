@@ -242,3 +242,48 @@ describe("calibrateFromScrape — onStage", () => {
     expect("audience" in result).toBe(true);
   });
 });
+
+// ─── PLATFORM guard — the scrape stack is TikTok-only ──────────────────────────
+//
+// Live bug (2026-07-14): platform:"instagram" ran a TIKTOK scrape and returned HTTP 200 with a
+// full audience, a connected account marked `instagram`, and a snapshot carrying TikTok's
+// follower count. `platform` was written onto every row and passed to NOTHING. Because a handle
+// is not one identity across platforms, that builds a stranger's audience and calls it yours.
+//
+// The load-bearing assertion in each test below is `scrapeBundle` NOT being called: an error
+// return alone would still pass if we scraped first and threw the result away.
+describe("calibrateFromScrape — platform guard", () => {
+  for (const platform of ["instagram", "youtube"] as const) {
+    it(`refuses ${platform} WITHOUT scraping — no Apify spend, no TikTok data`, async () => {
+      const deps = makeDeps();
+
+      const result = await calibrateFromScrape({ ...BASE_INPUT, platform }, deps);
+
+      expect(result).toMatchObject({ error: "platform_unsupported" });
+      // THE assertion: the TikTok scraper never ran.
+      expect(deps.scrapeBundle).not.toHaveBeenCalled();
+      expect(deps.scrapeNiche).not.toHaveBeenCalled();
+      expect(deps.enrich).not.toHaveBeenCalled();
+    });
+
+    it(`tells the user the truth about ${platform} — never "check the handle"`, async () => {
+      const result = await calibrateFromScrape({ ...BASE_INPUT, platform }, makeDeps());
+      const { message } = result as { message: string };
+      expect(message).toMatch(/TikTok/);
+      expect(message).not.toMatch(/check the handle/i);
+    });
+  }
+
+  it("still calibrates TikTok — the guard does not break the path that works", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "tiktok" }, deps);
+    expect("audience" in result).toBe(true);
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+  });
+
+  it("still allows `custom` — the DESCRIBED path claims no platform provenance", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "custom" }, deps);
+    expect("error" in result).toBe(false);
+  });
+});
