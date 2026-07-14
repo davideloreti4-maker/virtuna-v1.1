@@ -28,13 +28,23 @@
  * SCOPE: resolveAudienceWeights is intentionally NOT included here — in the runners it is
  *   `void resolvedWeights` (dead-wired for the future Max path), not part of the Flash reaction path.
  *
- * ISOLATION: imports only the niche resolver + the NichePanel type + the domain types.
+ * ISOLATION: imports only the niche resolver, the archetype vocabulary, the NichePanel type +
+ *   the domain types (plus logger/Sentry for the unbindable-archetype warning — see
+ *   buildAudienceRepaint). No behaviour change to the prompt bytes.
  */
 
+import * as Sentry from "@sentry/nextjs";
+import { createLogger } from "@/lib/logger";
 import { resolveNicheKey } from "@/lib/engine/wave3/niche-resolver";
+import { ARCHETYPES } from "@/lib/engine/wave3/persona-registry";
 import type { NichePanel } from "@/lib/engine/flash/run-flash-text-mode";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
+
+const log = createLogger({ module: "engine.flash.reaction-panel" });
+
+/** The 10 slugs the engine's slots are keyed by — the only keys a repaint can bind to. */
+const ARCHETYPE_SET = new Set<string>(ARCHETYPES);
 
 // ─── Return shape ──────────────────────────────────────────────────────────────
 
@@ -68,9 +78,39 @@ export interface ReactionPanel {
 export function buildAudienceRepaint(
   audience: Audience | null,
 ): Record<string, string> | undefined {
-  return audience && !audience.is_general && audience.personas && audience.personas.length > 0
-    ? Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]))
-    : undefined;
+  if (!(audience && !audience.is_general && audience.personas && audience.personas.length > 0)) {
+    return undefined;
+  }
+
+  // A persona whose archetype is outside the 10-slug vocabulary matches NO engine slot in ANY
+  // niche (the prompt builders look this map up BY SLOT archetype), so its repaint reaches the
+  // model never. Pre-MODE-01 that was invisible: the key simply never hit, the slot fell back to
+  // its stock text, and the run looked healthy. Say it out loud instead — a calibrated audience
+  // quietly losing a slice of its own weight is the exact class of bug that let the Read compare
+  // General to General for its entire life. The write boundary now rejects these
+  // (CalibratedPersonaSchema), so this fires only for rows written before it, or straight to the DB.
+  const unbindable = audience.personas.filter((p) => !ARCHETYPE_SET.has(p.archetype));
+  if (unbindable.length > 0) {
+    const lostShare = unbindable.reduce((s, p) => s + (p.share ?? 0), 0);
+    log.warn("audience personas cannot bind to any engine slot — their repaint is ignored", {
+      audience_id: audience.id,
+      audience_name: audience.name,
+      unbindable_archetypes: unbindable.map((p) => p.archetype),
+      lost_share: Number(lostShare.toFixed(3)),
+    });
+    Sentry.captureMessage("audience persona archetype does not bind to an engine slot", {
+      level: "warning",
+      extra: {
+        audience_id: audience.id,
+        unbindable_archetypes: unbindable.map((p) => p.archetype),
+        lost_share: Number(lostShare.toFixed(3)),
+      },
+    });
+  }
+
+  // The unbindable entries are still projected: they cannot collide with a slot key, so the
+  // prompt bytes are identical either way. Filtering them would only hide them from a debugger.
+  return Object.fromEntries(audience.personas.map((p) => [p.archetype, p.repaint]));
 }
 
 // ─── buildReactionPanel ─────────────────────────────────────────────────────────

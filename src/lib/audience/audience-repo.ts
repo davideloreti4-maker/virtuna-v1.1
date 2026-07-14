@@ -21,6 +21,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { CalibratedPersonasSchema } from "./persona-schema";
 import type { Audience, GoalIntent } from "./audience-types";
 import { biasForGoalIntent } from "./goal-intent";
 
@@ -283,7 +284,10 @@ export const WritableAudienceSchema = z.object({
   // Nullable FK → connected_accounts (the account this audience calibrated from).
   source_account_id: z.string().uuid().nullable().optional(),
   persona_weights: WeightsSchema.optional(),
-  personas: z.array(z.unknown()).optional(),
+  // The repo is the last app-layer gate and is never weaker than its callers (IN-01): the
+  // element shape is validated HERE, so both POST /api/audiences and PATCH /api/audiences/[id]
+  // inherit it (each also validates at its own boundary, to answer 400 rather than 500).
+  personas: CalibratedPersonasSchema.optional(),
   profile: z.unknown().nullable().optional(),
   calibration: z.unknown().nullable().optional(),
   // §P real signature — opaque JSONB at the repo boundary (shape validated by enrich's Zod).
