@@ -27,7 +27,7 @@
 
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS, KHRMeshQuantization } from '@gltf-transform/extensions';
-import { weld, join, simplify, prune, dedup, quantize } from '@gltf-transform/functions';
+import { weld, join, simplify, prune, dedup, quantize, flatten, clearNodeTransform } from '@gltf-transform/functions';
 import { MeshoptSimplifier } from 'meshoptimizer';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -63,10 +63,20 @@ console.log(`source        : ${countVerts().toLocaleString()} verts / ${countTri
 // and leaves cracks along the boundaries between them.
 await doc.transform(
   dedup(),
+  flatten(),
   weld({ tolerance: 0.0001 }),
   join(),
 );
-console.log(`welded+joined : ${countVerts().toLocaleString()} verts / ${countTris().toLocaleString()} tris`);
+
+// ⚠️ BAKE OUT THE NODE TRANSFORM, or the levelling below is a lie.
+//
+// Sketchfab's export carries a root rotation node (the RAS → glTF Y-up conversion). Rotating the
+// VERTEX data without clearing that node means three re-applies the rotation at load: measured, the
+// file said the bbox was 140 x 133 x 188 while three saw 140 x 188 x 133 — Y and Z silently swapped.
+// Every axis the app relies on would have been wrong, and the render would have looked merely...
+// off. So: put the vertices in world space and leave the node at identity.
+for (const node of doc.getRoot().listNodes()) clearNodeTransform(node);
+console.log(`welded+joined : ${countVerts().toLocaleString()} verts / ${countTris().toLocaleString()} tris (node transforms baked out)`);
 
 // Simplify to land under the 16-bit ceiling. `error` is in mesh units (mm here) — 0.35mm is well
 // under the width of a sulcus, so the folding survives; that folding is the entire point of the mesh.
@@ -163,6 +173,235 @@ for (const mesh of doc.getRoot().listMeshes()) {
   }
 }
 
+// ── LEVEL THE BRAIN ───────────────────────────────────────────────────────────────────────────
+//
+// This is an MRI in NATIVE SCANNER SPACE: the subject's head was tilted in the scanner, and the mesh
+// inherits that tilt. Measured on the raw asset, the two ends of the A-P axis reach wildly different
+// heights (one tops out at 48% of the brain's height, the other at 90%) — the whole specimen is
+// nose-down.
+//
+// That is not just a camera nuisance. The network anchors are placed in NORMALISED anatomical
+// coordinates ("superior 0.6, anterior 0.02" = roughly the central sulcus), and a tilt shears that
+// coordinate frame — so every parcel lands somewhere slightly wrong, and "visual cortex at the
+// occipital pole" quietly stops being true. Levelling here means the app can trust its own axes.
+//
+// PCA gives the frame for free: a brain is longest front-to-back (A-P ≈ 182mm), then top-to-bottom
+// (S-I ≈ 142mm), then side-to-side (L-R ≈ 134mm), so the principal axes come out in exactly that
+// order. Only the SIGNS need anatomy, and each one has an unambiguous physical tell:
+//
+//   • UP is the side the BRAINSTEM does not point at. The stem is a narrow stalk descending from the
+//     base; the vertex is a broad dome. So the end whose extreme vertices are tightly clustered in
+//     cross-section is INFERIOR.
+//   • POSTERIOR is the side the CEREBELLUM hangs under. Once level, the posterior-inferior region
+//     dips below the anterior-inferior one, because the cerebellum sits below the occipital lobe and
+//     nothing comparable sits below the frontal pole.
+//   • LEFT/RIGHT cannot be read off a near-symmetric brain, so we simply refuse to mirror it: the
+//     rotation is forced to a positive determinant, which preserves the scan's original handedness.
+//     (A mirrored brain is anatomically a different person's, and nothing in the render would say so.)
+{
+  const prim = doc.getRoot().listMeshes()[0].listPrimitives()[0];
+  const pos = prim.getAttribute('POSITION');
+  const nrm = prim.getAttribute('NORMAL');
+  const n = pos.getCount();
+  const p = [0, 0, 0];
+
+  const mean = [0, 0, 0];
+  for (let i = 0; i < n; i++) { pos.getElement(i, p); for (let k = 0; k < 3; k++) mean[k] += p[k] / n; }
+
+  const C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (let i = 0; i < n; i++) {
+    pos.getElement(i, p);
+    const d = [p[0] - mean[0], p[1] - mean[1], p[2] - mean[2]];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a][b] += (d[a] * d[b]) / n;
+  }
+
+  // Jacobi eigen-decomposition of a symmetric 3x3.
+  let V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const A = C.map((r) => r.slice());
+  for (let sweep = 0; sweep < 24; sweep++) {
+    let p_ = 0, q_ = 1, off = Math.abs(A[0][1]);
+    for (const [a, b] of [[0, 2], [1, 2]]) if (Math.abs(A[a][b]) > off) { off = Math.abs(A[a][b]); p_ = a; q_ = b; }
+    if (off < 1e-10) break;
+    const theta = (A[q_][q_] - A[p_][p_]) / (2 * A[p_][q_]);
+    const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+    const c = 1 / Math.sqrt(t * t + 1), s = t * c;
+    const R = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    R[p_][p_] = c; R[q_][q_] = c; R[p_][q_] = s; R[q_][p_] = -s;
+    const An = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++)
+      for (let k = 0; k < 3; k++) for (let l = 0; l < 3; l++) An[a][b] += R[k][a] * A[k][l] * R[l][b];
+    const Vn = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++)
+      for (let k = 0; k < 3; k++) Vn[a][b] += V[a][k] * R[k][b];
+    for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { A[a][b] = An[a][b]; V[a][b] = Vn[a][b]; }
+  }
+
+  const order = [0, 1, 2].sort((a, b) => A[b][b] - A[a][a]);
+  const evec = (j) => [V[0][order[j]], V[1][order[j]], V[2][order[j]]];
+
+  const project = (i, ax) => {
+    pos.getElement(i, p);
+    return (p[0] - mean[0]) * ax[0] + (p[1] - mean[1]) * ax[1] + (p[2] - mean[2]) * ax[2];
+  };
+
+  // PC1 is unambiguously A-P: a brain is ~188mm front-to-back against ~140 and ~133 the other ways.
+  const axZ = evec(0);
+
+  // ⚠️ PC2 vs PC3 CANNOT be told apart by variance. L-R (140mm) and S-I (133mm) are nearly equal, so
+  // the ordering is essentially a coin flip — and the bounding box does NOT catch the mistake, because
+  // a swapped pair produces an equally plausible bbox. (It shipped: the render came back showing the
+  // TOP of the brain from what the code called a lateral camera.)
+  //
+  // The discriminator is MIRROR SYMMETRY, measured — not skewness. (Skew was tried first and is
+  // useless here: it came back −0.047 vs 0.018, both indistinguishable from zero, because the
+  // brainstem is far too small a fraction of the surface to lopside the distribution.)
+  //
+  // What IS unmistakable: reflecting a brain across its SAGITTAL plane maps it almost exactly onto
+  // itself — that is what bilateral symmetry means. Reflecting it top-to-bottom does not. So voxelise
+  // the surface and measure, for each candidate axis, what fraction of occupied cells survive being
+  // mirrored across the plane normal to it. The winner is left-right; the loser is superior-inferior.
+  const symmetryOf = (ax, other) => {
+    const G = 28; // a coarse grid — we are measuring gross shape, not detail
+    const key = (a, b, c) => `${a},${b},${c}`;
+    const cells = new Set();
+    const coords = [];
+    let max = 0;
+    for (let i = 0; i < n; i++) {
+      const u = project(i, ax), v = project(i, other), w = project(i, axZ);
+      coords.push([u, v, w]);
+      max = Math.max(max, Math.abs(u), Math.abs(v), Math.abs(w));
+    }
+    const q = (x) => Math.round(((x / max) * 0.5 + 0.5) * (G - 1));
+    for (const [u, v, w] of coords) cells.add(key(q(u), q(v), q(w)));
+    let hit = 0;
+    for (const [u, v, w] of coords) if (cells.has(key(q(-u), q(v), q(w)))) hit++;
+    return hit / coords.length;
+  };
+  const symA = symmetryOf(evec(1), evec(2));
+  const symB = symmetryOf(evec(2), evec(1));
+  // High symmetry under reflection ⇒ that axis is the sagittal normal ⇒ LEFT-RIGHT.
+  let axX = symA >= symB ? evec(1) : evec(2);
+  const axY = symA >= symB ? evec(2) : evec(1);
+  console.log(
+    `levelled      : mirror symmetry PC2=${(symA * 100).toFixed(1)}% PC3=${(symB * 100).toFixed(1)}% → ` +
+    `the SYMMETRIC axis is LEFT-RIGHT (a brain mirrors across the sagittal plane; it does not mirror top-to-bottom)`,
+  );
+
+  // UP: the CENTROID sits above the bounding box's centre.
+  //
+  // The cerebrum is a bulky dome; the brainstem is a thin stalk. Mass therefore piles up superiorly
+  // while the surface still REACHES further inferiorly, down the stem. So measured from the centroid
+  // (which is where `project` is zero), the extent to the inferior side is larger than to the
+  // superior side. Whichever way the long thin tail points is DOWN.
+  //
+  // (The obvious test — compare the cross-sectional spread of the extreme vertices at each end,
+  // stalk vs dome — was tried and is far too weak on this mesh: 14.9 vs 15.4, a coin flip. And a coin
+  // flip here ships the brain upside down.)
+  let reachUp = -Infinity, reachDown = Infinity;
+  for (let i = 0; i < n; i++) {
+    const y = project(i, axY);
+    reachUp = Math.max(reachUp, y);
+    reachDown = Math.min(reachDown, y);
+  }
+  if (Math.abs(reachDown) < reachUp) axY.forEach((_, k) => (axY[k] = -axY[k])); // tail was at +Y → flip
+  console.log(
+    `levelled      : from the centroid, the surface reaches ${Math.max(Math.abs(reachDown), reachUp).toFixed(1)}mm one way and ` +
+    `${Math.min(Math.abs(reachDown), reachUp).toFixed(1)}mm the other → the long thin tail is the BRAINSTEM, and it points DOWN`,
+  );
+
+  // NOTE: the A-P sign is NOT guessed here. An earlier version predicted it from the centroid-relative
+  // point cloud, and the prediction disagreed with the result measured on the rotated mesh (the two
+  // used different origins). Both flips are now applied AFTER the rotation, on the data we actually
+  // ship — measured, not modelled. See "correct the result" below.
+
+  // Recompute X so the frame stays right-handed after any sign flips.
+  axX = [
+    axY[1] * axZ[2] - axY[2] * axZ[1],
+    axY[2] * axZ[0] - axY[0] * axZ[2],
+    axY[0] * axZ[1] - axY[1] * axZ[0],
+  ];
+
+  const rot = (v) => [
+    v[0] * axX[0] + v[1] * axX[1] + v[2] * axX[2],
+    v[0] * axY[0] + v[1] * axY[1] + v[2] * axY[2],
+    v[0] * axZ[0] + v[1] * axZ[1] + v[2] * axZ[2],
+  ];
+  for (let i = 0; i < n; i++) {
+    pos.getElement(i, p);
+    pos.setElement(i, rot([p[0] - mean[0], p[1] - mean[1], p[2] - mean[2]]));
+    nrm.getElement(i, p);
+    const r = rot(p);
+    const len = Math.hypot(...r) || 1;
+    nrm.setElement(i, [r[0] / len, r[1] / len, r[2] / len]);
+  }
+
+  // ── CORRECT THE RESULT, then verify it. ────────────────────────────────────────────────────
+  //
+  // Every sign above is an if-statement, and an if-statement that fires the wrong way mirrors the
+  // brain with nothing on screen to say so. So rather than predict the signs from the unrotated
+  // cloud (which was tried, and which disagreed with the rotated result), measure the ROTATED mesh
+  // and flip it into place.
+  //
+  //   UP        the brainstem is a narrow stalk: the end with far less cross-section is DOWN.
+  //   POSTERIOR the cerebellar VERMIS is a big midline mass under the occipital lobe, and nothing
+  //             like it sits under the frontal pole. The heavy midline end is the BACK.
+  //
+  // A single-axis flip would mirror the brain (a left hemisphere would become a right one), so each
+  // flip negates TWO axes — a 180° rotation, which preserves handedness.
+  const measure = () => {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let i = 0; i < n; i++) {
+      pos.getElement(i, p);
+      x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
+      y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]);
+      z0 = Math.min(z0, p[2]); z1 = Math.max(z1, p[2]);
+    }
+    const xc = (x0 + x1) / 2, yc = (y0 + y1) / 2, zc = (z0 + z1) / 2;
+    const xh = (x1 - x0) / 2, yh = (y1 - y0) / 2, zh = (z1 - z0) / 2;
+    let vermisPos = 0, vermisNeg = 0, capUp = 0, capDown = 0;
+    for (let i = 0; i < n; i++) {
+      pos.getElement(i, p);
+      if (Math.abs(p[0] - xc) < xh * 0.10) {
+        if (p[2] - zc >  zh * 0.55) vermisPos++;
+        if (p[2] - zc < -zh * 0.55) vermisNeg++;
+      }
+      if (p[1] - yc >  yh * 0.80) capUp++;
+      if (p[1] - yc < -yh * 0.80) capDown++;
+    }
+    return { vermisPos, vermisNeg, capUp, capDown };
+  };
+  /** Negate two axes = a 180° rotation. Never one — that would mirror the brain into someone else's. */
+  const spin = (a, b) => {
+    for (let i = 0; i < n; i++) {
+      pos.getElement(i, p); p[a] = -p[a]; p[b] = -p[b]; pos.setElement(i, [p[0], p[1], p[2]]);
+      nrm.getElement(i, p); p[a] = -p[a]; p[b] = -p[b]; nrm.setElement(i, [p[0], p[1], p[2]]);
+    }
+  };
+
+  let m = measure();
+  // The brainstem end has a far smaller cross-section than the dome. If the SMALL cap is up, we are
+  // upside down — spin about Z (negating X and Y).
+  if (m.capUp < m.capDown) {
+    spin(0, 1);
+    m = measure();
+    console.log('levelled      : the narrow brainstem cap was UP → spun 180° about Z');
+  }
+  if (m.vermisNeg > m.vermisPos) {
+    spin(0, 2);
+    m = measure();
+    console.log('levelled      : the cerebellar vermis was at −Z → spun 180° about Y');
+  }
+
+  if (m.vermisNeg > m.vermisPos) {
+    throw new Error(`vermis still at −Z (${m.vermisNeg} vs ${m.vermisPos}) — the A-P axis is mirrored`);
+  }
+  if (m.capUp < m.capDown) {
+    throw new Error(`the narrow brainstem cap is still UP — the brain is upside down`);
+  }
+  console.log(`verified      : vermis at +Z (${m.vermisPos} vs ${m.vermisNeg}) → POSTERIOR = +Z, so ANTERIOR = −Z ✓`);
+  console.log(`verified      : the broad dome is UP, the narrow brainstem is DOWN (cap ${m.capUp} vs ${m.capDown}) ✓`);
+}
+
 // Drop the source's COLOR_0. It is ALL ZEROS (verified) — dead weight, and a live trap: any future
 // `vertexColors: true` on this geometry would render the cortex pure black.
 for (const mesh of doc.getRoot().listMeshes()) {
@@ -209,6 +448,16 @@ Modified for Maven: welded, simplified, mean curvature baked into _CURV, recentr
 See scripts/build-cortex-mesh.mjs.
 `,
 );
+
+// Prove the file means what it says: no residual rotation on the node, so the axes the app reads
+// are the axes we just levelled. (quantize() adds its own scale/translate — that is expected, and
+// three applies it correctly; a ROTATION is what would betray us.)
+for (const node of doc.getRoot().listNodes()) {
+  const r = node.getRotation();
+  const spun = Math.abs(r[0]) + Math.abs(r[1]) + Math.abs(r[2]) > 1e-6;
+  if (spun) throw new Error(`node "${node.getName()}" still carries a rotation ${JSON.stringify(r)} — three would re-apply it and the levelled axes would be wrong`);
+}
+console.log(`axes          : node rotations clear — the file's axes ARE the app's axes`);
 
 console.log(`\nwrote         : ${OUT}`);
 console.log(`size          : ${(glb.byteLength / 1e6).toFixed(2)} MB  ${glb.byteLength <= 3e6 ? '✓ under the 3MB budget' : '✗ OVER BUDGET'}`);
