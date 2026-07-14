@@ -1041,3 +1041,103 @@ never exposed here (AmbientRoom's PR-3 lever: tap-time prior snapshot → frozen
 histogram, a saturation histogram, a DOM height measurement) or from putting the thing on screen.
 The source review found a drifted verdict; *rendering* it found the verdict was actively lying. And
 the reference had to be on screen first — as it has been in every round of this document.
+
+---
+
+# 18. ▶ STOP — READ THIS BEFORE ANYTHING ELSE (2026-07-14, end of round 7)
+
+**The owner is starting FRESH with a new approach. This section exists so you do not repeat a
+single thing that already failed.** §17 is what round 7 shipped. §18 is what it LEARNED, including
+the parts that were rejected.
+
+## 18.0 The owner's verdict, verbatim, at the end
+> *"the silouette doesnt look real at all and the brain is turned the wrong way round. color mesh
+> also doesnt look good at all and is only one color? and are you sure we cant copy just the ui demo"*
+> — and then: *"they both look really ugly and are wrong dont look real or anything like tribe v2.
+> i said just copy them."*
+
+**The card was rejected on LOOK, four rounds running.** Do not open this file and start tuning
+constants. The two things that will actually move it are PROCUREMENT (§18.2), not code.
+
+## 18.1 🔴 THE FOUR BUGS ROUND 7 FOUND — all real, all now fixed, do NOT reintroduce
+1. **THE SPECIMEN WAS MIRRORED.** Mesh frame is `−Z = anterior`; a yaw of θ maps −Z to
+   `screen-x = −sin(θ)`. The shipped `BASE_YAW = −1.72` put the frontal pole screen-RIGHT while the
+   head silhouette faced LEFT. **A brain in a skull, back to front, for six rounds.** It survived
+   because the comment above the constant ASSERTED "frontal pole to the left", and because nobody
+   ever diffed the specimen's orientation against the head's — they were built in different rounds.
+   Now `+1.72`. ⚠️ **A COMMENT IS NOT A MEASUREMENT.**
+2. **THE MAP WAS ONE COLOUR.** `s = (a − threshold) / span`. With `span = 0.3` every voxel that
+   cleared threshold clamped to `s = 1` and took the TOP of the ramp — the red→orange→yellow
+   gradient was unreachable. Now `span = 0.6`.
+3. **`--cream-primary` IS NOT A TOKEN** (it is `--color-cream-primary`). For TEXT an invalid CSS var
+   silently falls back to the inherited colour, so 5 usages sat unnoticed; for `background-color` it
+   computes to TRANSPARENT. **The colorbar's live marker was invisible from the day it was written** —
+   what we had been looking at was its drop-shadow. Fixed here and in `settings-page.tsx`.
+4. **THE HASH IN THE RESPONSE.** `neuralDrive` wobbled every network by `hashSeed(seedKey)` "so two
+   concepts never look identical" — so **two hooks with the same room response produced different
+   brains, and renaming a card changed its map.** Deleted. Same room → same brain. The determinism
+   test asserted the OPPOSITE (different seed → different value): it was encoding the bug. Inverted.
+
+## 18.2 ⛔ THE TWO THINGS BLOCKING FIDELITY — BOTH ARE PROCUREMENT. GET THEM FIRST.
+**Do not attempt either of these in code. Four rounds have proved it does not work.**
+
+1. **THE MESH IS THE "DOESN'T LOOK REAL".** `public/brain/cortex.glb` is decimated
+   **215,601 → 65,535 verts (a 70% loss)** purely to stay under a **16-bit index ceiling**
+   (`MAX_VERTS` in `scripts/build-cortex-mesh.mjs`). **WebGL2 supports 32-bit indices — the ceiling
+   is self-imposed.** That decimation is the melted, lumpy surface; no shader, no lighting rig and no
+   colormap will fix it, and three rounds of trying is the proof.
+   → **ASK THE OWNER TO DOWNLOAD THE SOURCE** (Sketchfab, dgallichan, **CC-BY — commercially fine**):
+     `https://sketchfab.com/3d-models/brain-cadd2bde67404c43b2359a6a3281d84a`
+     Then raise `MAX_VERTS`, re-run `build-cortex-mesh.mjs`, verify the `_curv` bake survives.
+2. **THE HEAD SILHOUETTE.** It was hand-authored in SVG beziers and **REJECTED THREE TIMES**
+   ("a potato", "doesn't look real at all"). Each attempt is a different potato. **Do not author a
+   fourth by hand.**
+   → Ask the owner for a head-profile asset (any stock anatomical lateral profile), **or drop the
+     silhouette entirely and put the specimen on plain black** — a legitimate look, and better than a
+     bad head. Put this to the owner as a real option.
+
+## 18.3 ⚖️ THE LICENCE — CHECKED, not assumed. Settled; do not re-litigate.
+The owner asked *"are you sure we cant copy just the ui demo. only the engine is licenced"*.
+**Checked:** `facebookresearch/algonauts-2025` — *"This repository is CC-BY-NC licensed, as found in
+the LICENSE file."* That is **the CODE, not just the weights**, and the demo's own gate says *"may
+not be used for any commercial purpose(s)"*. Maven is commercial (pricing shipped) ⇒ **NC excludes
+us from their files.** Reimplementing the LOOK is unaffected and is what we do. Our own mesh is
+CC-BY (commercially fine) — the fidelity path is OUR higher-res surface, never their assets.
+
+## 18.4 What round 7 got RIGHT and must not be thrown away in the rebuild
+- **The specimen's VALUE structure** (measured against the reference with the same probe):
+  median luminance **0.384 → 0.724** (TRIBE 0.769), near-white **0.2% → 25.4%** (39.1%). The dark
+  `uSulcus` was crushing value AND (at saturation 0.17) putting chroma on half the cortex.
+- **The hot/cold colormap.** We refused it for five rounds citing the LOCKED accent dosage; that was
+  the design system talking over the reference. It is also the standard neuroimaging map.
+  **OWNER OVERRIDE — it stays.**
+- **THE READOUT** (`room-readout.ts`) — built on the ten personas' **real votes**, not the cortex.
+  `Attention hold` (hero) · `Core hold` (will the people you have stay?) · `Reach` (will it travel?).
+  Absent, never zeroed, when a slot is too thin. **A 0/1 segment is a coin, not a finding (n≥2).**
+- **THE SCALE IS REAL:** "#3 of your 5" — the batch the composer just generated (`siblings`, each
+  with its own real stop-count). We have NO corpus benchmark (§17.2) and this needs none.
+- **THE COUNTERFACTUAL:** Sapient PREDICTS ("with the recommended cut → 74%"); we **re-run** the skill
+  steered by the bouncer's verbatim and report what ACTUALLY happened. The lever IS the objection the
+  card is showing.
+
+## 18.5 The rules, restated, because round 7 broke two of them and paid for it
+1. **MEASURE — and RENDER IT AT 1:1.** Every real finding came from a probe or from putting it on
+   screen. The source read fine while the verdict was actively lying to the creator.
+2. **A COMMENT IS NOT A MEASUREMENT** (§18.1-1). Two constants had comments asserting the opposite of
+   what they did — the camera yaw, and `uSulcus` ("mid-grey creases" over a dark value).
+3. **DEFENSIBLE ≠ VALUABLE.** The first readout was a segment contingency table: perfectly honest,
+   perfectly useless. The owner's words: *"the information isn't really that valuable."*
+4. **DON'T FIX A SYMPTOM AND LEAVE THE CAUSE.** The map was benched at rest because its drive was
+   hash-seeded. The right fix was to delete the HASH, not the MAP. That cost two full rounds.
+5. **AND THE TESTS EARNED THEIR KEEP:** lowering the activation threshold to 0.30 lit **43% of the
+   cortex** (the "stained glass" failure returning). The pixel probe MISSED it — the vertex-fraction
+   test caught it instantly. Landed at 0.42.
+
+## 18.6 State
+Branch `feat/audience-brain-panel`, 8 commits this round, **nothing pushed, no PR**. Gates: tsc 0 ·
+eslint clean · **115 brain/lens tests** · full suite **3,391 pass** (1 pre-existing
+`api/tools/remix/run` SSE failure, not ours). Dev: `:3400`, `/dev/cards#room` (box raised to 900px so
+the whole card is visible). Login `e2e-test@virtuna.local` / `e2e-test-password-2026`.
+⚠️ Playwright screenshots hang on this app — use `scripts/dev-shot-brain.mjs` (CDP). CDP
+`captureScreenshot` with a `clip` DROPS the WebGL layer and returns BLACK: shoot the full viewport
+and crop in analysis.
