@@ -7,7 +7,7 @@
  * — the `overall_score` virality fold, anti-virality, CTA-penalty math — lives
  * inside `aggregateScores` and is wrapped WHOLE (opaque, D-06/D-07): `scoring.run`
  * is a REFERENCE assignment, never a re-derivation. Behaviour is preserved by
- * construction, so ENGINE_VERSION stays `3.20.0` and the prediction cache stays
+ * construction, so ENGINE_VERSION stays in step with version.ts (now `3.21.0`) and the prediction cache stays
  * valid (T-01-RR / T-01-CP).
  *
  * ANTI-PATTERNS (do NOT): move apollo-core/deepseek/fold modules into `packs/`

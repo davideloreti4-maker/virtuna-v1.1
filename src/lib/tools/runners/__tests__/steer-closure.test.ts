@@ -15,7 +15,7 @@
  *     (remix / hooks / script) runFlashTextMode receives a per-archetype audienceRepaint map.
  *
  * This mirrors the shipped 07-04 ideas-runner shape replicated across the four runners.
- * The General path MUST stay deterministic + weighting-free (ENGINE_VERSION 3.20.0 — see
+ * The General path MUST stay deterministic + weighting-free (ENGINE_VERSION 3.21.0 — see
  * audience-regression-gate.test.ts).
  *
  * S3′ rebaseline: hooks/remix now SIM via the batched runFlashTextModeBatch (script stays

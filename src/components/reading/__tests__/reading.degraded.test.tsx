@@ -8,6 +8,7 @@ import {
   makeUnavailableResult,
   makePartialResult,
   makeApolloNullResult,
+  makeEmptyPersonasResult,
 } from './fixtures/reading-fixture';
 
 // Drive the container with each D-13 degraded fixture via the mocked single source.
@@ -234,5 +235,50 @@ describe('Reading container — CR-01 hero watch% honesty (no fabricated 0% watc
     // The healthy fixture has personas → a real, non-null watch% stat renders in the
     // hero scorecard ("54%" value beside its "Watch-through" label).
     expect(screen.getByTestId('reading-watch')).toHaveTextContent(/^\d+%$/);
+  });
+
+  // ── AUD-FAIL-01 — a failed audience is not an audience that shrugged ────────────────────
+  it('SAYS the audience simulation failed, instead of implying the room watched and felt nothing', () => {
+    // The live run this pins (row iEbgUsLZRSFw, 2026-07-14): the fold timed out twice, zero
+    // personas, and the only trace on the page was "No audience reaction landed for this video"
+    // — which reads as a VERDICT (they watched, they shrugged). They never watched at all.
+    mockState = {
+      id: 'sim-1',
+      data: makeEmptyPersonasResult({
+        input_mode: 'tiktok_url',
+        signal_availability: {
+          ...makeReadingResult().signal_availability,
+          personas: false,
+        },
+      }),
+      isLoading: false,
+    };
+    render(<Reading />);
+
+    const note = screen.getByTestId('reading-audience-did-not-run');
+    expect(note).toHaveTextContent(/simulation failed/i);
+    expect(note).toHaveTextContent(/no audience behind it/i);
+    // The old wording must NOT be what a failed run shows.
+    expect(note.textContent ?? '').not.toMatch(/No audience reaction landed/i);
+  });
+
+  it('keeps the neutral empty note when the audience simply produced nothing (guard is not vacuous)', () => {
+    // personas availability TRUE = the sim ran. Empty nodes here are a genuine "nothing landed",
+    // not a failure — so it must NOT claim the simulation failed.
+    mockState = {
+      id: 'sim-1',
+      data: makeEmptyPersonasResult({
+        input_mode: 'tiktok_url',
+        signal_availability: {
+          ...makeReadingResult().signal_availability,
+          personas: true,
+        },
+      }),
+      isLoading: false,
+    };
+    render(<Reading />);
+
+    expect(screen.queryByTestId('reading-audience-did-not-run')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reading-audience-context')).toHaveTextContent(/No audience reaction landed/i);
   });
 });
