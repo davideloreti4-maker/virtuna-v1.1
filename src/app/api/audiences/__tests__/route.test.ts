@@ -611,7 +611,17 @@ describe("POST /api/audiences/calibrate", () => {
       },
     };
 
-    mocks.mockCalibrateFromScrape.mockResolvedValue({ audience: mockAudienceInput });
+    // The route no longer GUESSES the stages — it renders whatever the pipeline announces via
+    // onStage. So the fake pipeline has to announce, exactly as the real one does. (Before
+    // 2026-07-14 the route sent "Reading your followers…", awaited ALL the work, then sent
+    // "Building your audience profile…" — so the copy on screen described the wrong phase for
+    // 126 of 128 seconds. This mock is now the shape the real caller drives.)
+    mocks.mockCalibrateFromScrape.mockImplementation(async (_input, deps) => {
+      deps?.onStage?.("scraping");
+      deps?.onStage?.("watching");
+      deps?.onStage?.("synthesizing");
+      return { audience: mockAudienceInput };
+    });
 
     const persistedAudience = {
       id: "new-uuid",
@@ -641,8 +651,13 @@ describe("POST /api/audiences/calibrate", () => {
     const statusEvents = events.filter((e) => e.event === "status");
     const doneEvent = events.find((e) => e.event === "done");
 
-    // At least 2 status events: "Reading your followers…" + "Building your audience profile…"
-    expect(statusEvents.length).toBeGreaterThanOrEqual(2);
+    // Each stage the pipeline announces becomes one status frame, in order — and the copy names
+    // the phase that is ACTUALLY starting, which is the whole point of the fix.
+    expect(statusEvents.map((e) => (e.data as { message: string }).message)).toEqual([
+      "Reading your followers…",
+      "Watching your top videos…",
+      "Building your audience profile…",
+    ]);
 
     expect(doneEvent).toBeDefined();
     expect((doneEvent!.data as { audience: { id: string } }).audience.id).toBe("new-uuid");

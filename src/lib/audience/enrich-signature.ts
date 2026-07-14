@@ -205,6 +205,12 @@ export function vttToText(vtt: string): string {
 
 // ─── Injectable deps ─────────────────────────────────────────────────────────────
 
+/**
+ * The two phases of enrichment, announced as they BEGIN. Only this module can see the
+ * boundary — the caller awaits one opaque promise (see `onStage` in CalibrationDeps).
+ */
+export type EnrichStage = "watching" | "synthesizing";
+
 export interface EnrichDeps {
   /** Watch one mp4 with omni-flash → WatchNote (default: real DashScope call). */
   watchVideo?: (mp4Url: string, ctx: string) => Promise<WatchNote | null>;
@@ -212,6 +218,8 @@ export interface EnrichDeps {
   fetchSubtitle?: (url: string) => Promise<string | null>;
   /** Synthesize the signature from the payload → validated SynthSchema shape. */
   synthesize?: (payload: SynthPayload) => Promise<z.infer<typeof SynthSchema>>;
+  /** Fired as each phase STARTS, so a 2-minute run can report what it is actually doing. */
+  onStage?: (stage: EnrichStage) => void;
 }
 
 export interface EnrichInput {
@@ -390,8 +398,12 @@ export async function enrichSignature(
   const watchVideo = deps.watchVideo ?? defaultWatchVideo;
   const fetchSubtitle = deps.fetchSubtitle ?? defaultFetchSubtitle;
   const synthesize = deps.synthesize ?? defaultSynthesize;
+  const onStage = deps.onStage;
 
   const top = selectTopVideos(videos);
+
+  // The omni watch is the long pole here (N video calls, 60s timeout each) — say so.
+  onStage?.("watching");
 
   // ── Watch the top videos directly from the bundle mp4 (no rehost), parallel, fail→null ──
   // `mediaUrl` is the downloaded Apify KV record from the single bundle scrape; prepareWatchUrl
@@ -454,6 +466,7 @@ export async function enrichSignature(
     goalIntent,
   };
 
+  onStage?.("synthesizing");
   const synth = await synthesize(payload);
 
   // ── Engine-fill temperature/disposition from the canonical map (engine truth) ─────

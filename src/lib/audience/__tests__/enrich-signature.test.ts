@@ -264,3 +264,53 @@ describe("enrichSignature", () => {
     expect(sig.provenance.sub_coverage).toBe("1/1");
   });
 });
+
+// ─── Progress staging (2026-07-14) ──────────────────────────────────────────────
+//
+// The SSE route awaits ONE opaque promise covering watch + synthesis, so it cannot see these
+// boundaries from outside. Live (@zachking) the UI therefore sat on "Reading your followers…"
+// for 126s while THIS code was watching videos, then flashed "Building your audience profile…"
+// for 1s while a DB row was written. These tests pin the announcement to the WORK — a stage must
+// fire BEFORE the phase it names, not after it.
+
+describe("enrichSignature — onStage announces each phase as it BEGINS", () => {
+  const videos = [makeVideo(0, 10_000, 400, 100), makeVideo(1, 8_000, 200, 50)];
+
+  it("emits watching → synthesizing, each BEFORE its own work runs", async () => {
+    const timeline: string[] = [];
+
+    await enrichSignature(makeInput(videos), {
+      watchVideo: vi.fn(async () => {
+        timeline.push("work:watch");
+        return WATCH_NOTE;
+      }),
+      fetchSubtitle: vi.fn(async () => null),
+      synthesize: vi.fn(async () => {
+        timeline.push("work:synthesize");
+        return makeSynth();
+      }),
+      onStage: (stage) => timeline.push(`stage:${stage}`),
+    });
+
+    // The announcement precedes the work it names — that is the whole contract.
+    expect(timeline.indexOf("stage:watching")).toBeGreaterThanOrEqual(0);
+    expect(timeline.indexOf("stage:watching")).toBeLessThan(timeline.indexOf("work:watch"));
+    expect(timeline.indexOf("stage:synthesizing")).toBeLessThan(
+      timeline.indexOf("work:synthesize"),
+    );
+    // ...and synthesis is announced only AFTER the watching is done — not up front.
+    expect(timeline.lastIndexOf("work:watch")).toBeLessThan(
+      timeline.indexOf("stage:synthesizing"),
+    );
+  });
+
+  it("is entirely optional — no onStage, no throw (every existing caller still works)", async () => {
+    await expect(
+      enrichSignature(makeInput(videos), {
+        watchVideo: vi.fn(async () => WATCH_NOTE),
+        fetchSubtitle: vi.fn(async () => null),
+        synthesize: vi.fn(async () => makeSynth()),
+      }),
+    ).resolves.toBeTruthy();
+  });
+});

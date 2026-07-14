@@ -268,3 +268,94 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
     expect(screen.getByText("Couldn't save this persona. Try again.")).toBeInTheDocument();
   });
 });
+
+// ─── Persona receipts (2026-07-14) ──────────────────────────────────────────────
+//
+// `evidence` is the engagement pattern in the SCRAPE that put a persona in the room. It lives
+// ONLY on the frozen `signature` reactors — the editable `personas` column has no such field.
+// So a receipt may appear iff a real scrape produced one. `isPersonaGrounded` was written for
+// exactly this and sat with ZERO callers until today, because until the first real calibration
+// ran (@zachking) no audience in prod had any evidence to show.
+//
+// The honesty claim lives in the ASYMMETRY, so both directions are asserted.
+
+/** A scrape-backed audience: signature reactors carry the receipts, keyed by archetype. */
+function scrapedAudience(): Audience {
+  const base = calibratedAudience([
+    persona({ archetype: "tough_crowd", repaint: "Debunks the illusion.", share: 0.5 }),
+    persona({ archetype: "loyalist", repaint: "Watches everything.", share: 0.5 }),
+  ]);
+  return {
+    ...base,
+    signature: {
+      creator_persona: {
+        content_description: "",
+        context: "",
+        writing_style_sample: "",
+        format_signature: "",
+      },
+      audience: {
+        follower_tier: "mega",
+        maturity: "established",
+        temperature_mix: { cold: 0.4, warm: 0.4, hot: 0.2 },
+        interest_tags: [],
+        what_resonates: "",
+        what_falls_flat: "",
+        persona_weights: base.persona_weights,
+        personas: [
+          {
+            archetype: "tough_crowd",
+            share: 0.5,
+            temperature: "cold",
+            disposition: "skeptic",
+            reaction_frame: "Debunks the illusion.",
+            evidence: "Low comment-to-view ratios on standard tricks.",
+          },
+          {
+            archetype: "loyalist",
+            share: 0.5,
+            temperature: "hot",
+            disposition: "connector",
+            reaction_frame: "Watches everything.",
+            evidence: "", // the scrape found no receipt for this one — claim nothing
+          },
+        ],
+      },
+      summary: "",
+      provenance: {
+        handle: "zachking",
+        scraped_at: "2026-07-14T00:00:00.000Z",
+        videos_analyzed: 12,
+        videos_watched: 5,
+        sub_coverage: "8/12",
+      },
+    },
+  } as Audience;
+}
+
+describe("Persona receipts — shown iff the scrape actually produced one", () => {
+  it("renders the engagement receipt under a grounded persona", () => {
+    render(<AudienceWorkspace audience={scrapedAudience()} {...workspaceProps()} />);
+    expect(
+      screen.getByText(/Low comment-to-view ratios on standard tricks\./),
+    ).toBeInTheDocument();
+  });
+
+  it("claims NOTHING for a persona whose evidence is empty (no fabricated receipt)", () => {
+    const { container } = render(
+      <AudienceWorkspace audience={scrapedAudience()} {...workspaceProps()} />,
+    );
+    // Two personas, but only ONE carries evidence — so exactly one receipt may render.
+    const receipts = within(container).getAllByText(/^Evidence ·/);
+    expect(receipts).toHaveLength(1);
+  });
+
+  it("a DESCRIBED audience (no signature) shows no receipts at all", () => {
+    const described = calibratedAudience([persona(), persona({ archetype: "loyalist" })]);
+    const { container } = render(
+      <AudienceWorkspace audience={described} {...workspaceProps()} />,
+    );
+    expect(within(container).queryAllByText(/^Evidence ·/)).toHaveLength(0);
+    expect(screen.queryByText(/Evidence is the engagement pattern/)).not.toBeInTheDocument();
+  });
+});
