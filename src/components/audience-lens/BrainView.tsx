@@ -705,32 +705,52 @@ function PlayGlyph({ playing }: { playing: boolean }) {
  */
 function HeadGhost() {
   return (
-    // Drawn in the WELL's own 4:3 frame (not a portrait box that gets sliced), so the cranial vault
-    // lands exactly where the specimen sits and the face runs off the left edge the way a cropped
-    // anatomical plate does. Sliced from a portrait viewBox it came out as disconnected smudges.
+    // ⚠️ THE VIEWBOX MUST BE THE WELL'S OWN ASPECT (20/19). It was 400x300 — a 4:3 box inside a
+    // near-square well — and with xMidYMid meet that LETTERBOXES: the head scaled to 364x273 and
+    // floated in the middle band, so the cranial vault no longer sat where the specimen sat. The
+    // skull and the brain were simply not registered to each other. That, plus a specimen grown to
+    // FIT_RADIUS 1.15 which covered the vault, plus 5.5% cream under a blur, is why the head was
+    // reported "missing" while the element mounted and painted the whole time. 400x380 = 20/19.
     <svg
       className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 400 300"
-      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 400 380"
+      preserveAspectRatio="xMidYMid slice"
       aria-hidden
       data-testid="brain-head-ghost"
     >
-      {/* ⚠️ BIG AND SOFT, not small and sharp.
-          Diffed against TRIBE: their head is a LARGE, low-contrast mass that the brain sits inside,
-          and it fills the frame. Ours was a hard-edged path at 8.5% cream — small enough and defined
-          enough that at card scale it read as "an amorphous dark smudge" rather than as a head, which
-          is exactly how the owner described it. So: bigger than the specimen, blurred at the edge, and
-          quieter. It should register as context in peripheral vision and never as an illustration. */}
+      {/* MEASURED on TRIBE: the head is a LARGE soft mass filling the whole well (557x607 of a
+          558x608 frame) while the brain is only 340x242 INSIDE it — the head is ~2.5x the brain's
+          height. That ratio is most of why theirs reads as "a brain in a person" and ours read as a
+          lit object on black. So the head is drawn BIGGER THAN THE WELL and cropped by it, the way an
+          anatomical plate crops — and the specimen backs off (FIT_RADIUS) to leave a cranium to sit
+          inside. It must register as context in peripheral vision, never as an illustration. */}
       <defs>
-        <filter id="head-soft" x="-15%" y="-15%" width="130%" height="130%">
-          <feGaussianBlur stdDeviation="7" />
+        {/* Barely blurred. A sigma-9 cloud at 7.5% is not a silhouette, it is a smudge — and that is
+            what shipped. On TRIBE's you can read the nose, the lips, the chin and the ear: it is a
+            COHERENT, defined shape held at ~7% luminance. The quietness must come from the VALUE,
+            not from destroying the edge. */}
+        <filter id="head-soft" x="-8%" y="-8%" width="116%" height="116%">
+          <feGaussianBlur stdDeviation="2.4" />
         </filter>
       </defs>
+      {/* A left-facing profile — crown, forehead, brow, nose, lips, chin, jaw, ear, neck — sized so
+          the cranial VAULT encloses the specimen's measured bbox (x 88..313, y 104..275 in these
+          viewBox units, with the canvas centring the brain at 200,190). The neck and shoulder run off
+          the bottom edge, the way an anatomical plate crops. */}
       <path
-        d="M262 18 C170 12 74 58 34 132 C26 148 12 156 6 172 C-3 192 20 196 22 206
-           L-2 250 C-10 266 14 270 30 271 C20 284 25 294 37 300 L400 300
-           C400 220 402 96 378 60 C352 22 330 22 262 18 Z"
-        fill="rgba(236, 231, 222, 0.055)"
+        d="M206 62
+           C 140 62, 92 96, 78 148
+           C 70 178, 66 196, 58 212
+           C 44 236, 30 248, 32 258
+           C 34 266, 52 264, 60 268
+           C 54 280, 56 292, 66 300
+           C 74 308, 78 316, 92 322
+           C 118 336, 152 344, 186 346
+           C 200 356, 208 366, 210 380
+           L 400 380
+           C 400 300, 400 200, 396 168
+           C 386 104, 300 62, 206 62 Z"
+        fill="rgba(236, 231, 222, 0.07)"
         filter="url(#head-soft)"
       />
     </svg>

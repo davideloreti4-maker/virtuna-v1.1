@@ -83,16 +83,37 @@ const FRAG = /* glsl */ `
     //    a sulcal depth, positive on a gyral crown.
     //    (NO BACKTICKS IN THIS SHADER. They terminate the template literal and TS parses the GLSL
     //     as JavaScript; it has broken the build twice.)
+    //    MEASURED against the reference (luminance histogram of each specimen's pixels, sRGB):
+    //      ours BEFORE  p05 0.22 · median 0.38 · p95 0.69 · near-white 0.2%
+    //      TRIBE        p05 0.40 · median 0.77 · p95 1.00 · near-white 39%
+    //    Their crowns reach white and their creases bottom out MID-GREY. Three multiplicative
+    //    terms were crushing ours, and none of them was the tokens:
+    //      1. ao scaled the AMBIENT too, so a cavity got no floor light at all;
+    //      2. a raw Lambert key abandons every surface not facing L — half a lateral cortex;
+    //      3. the sulcal floor was DARK (linear 0.08), so the base was dragged down before a
+    //         single photon landed. The comment on uSulcus already said "mid-grey creases".
     float curv01 = clamp(vCurv * 0.5 + 0.5, 0.0, 1.0);
-    float ao = mix(0.68, 1.0, curv01);
-    float key = 0.62 * lam;
-    float fill = 0.26 * max(dot(N, uFillDir), 0.0);
-    vec3 light = (uAmbient * 0.46 + uKeyCol * key + uFillCol * fill) * ao;
+    // Cavity occlusion, with a FLOOR. It shades the creases; it must not black them out.
+    float ao = mix(0.84, 1.0, curv01);
+    // Half-lambert wrap: the standard matte-specimen key. The terminator softens and the
+    // shadow side keeps reading as form instead of falling off a cliff. Not a glow — a wrap.
+    float hl = dot(N, L) * 0.5 + 0.5;
+    // The key is deliberately strong enough that a well-lit crown OVERSHOOTS 1.0 and clips.
+    // That is not a bug and it is not gloss: a cream surface under a bright key IS white at the
+    // crown, and clipping there is the only way to get the reference's 39%-near-white crowns out
+    // of a base colour that tops out at 0.93. Matte is about the absence of a SPECULAR lobe, not
+    // about refusing to be bright.
+    float key = 0.88 * pow(hl, 1.30);
+    float fill = 0.18 * max(dot(N, uFillDir), 0.0);
+    vec3 light = (uAmbient * 0.66 + uKeyCol * key + uFillCol * fill) * ao;
 
-    // The base ramp is centred on the curvature this mesh ACTUALLY has (measured: mean −0.18, so
-    // curv01 sits around 0.41 with 75% of the surface in the mid band). The old 0.12→0.72 window was
-    // tuned for the procedural mesh and left most of a real cortex down at the sulcal end.
-    vec3 base = mix(uSulcus, uGyrus, smoothstep(0.05, 0.68, curv01));
+    // The base ramp. The mesh's curvature sits around curv01 0.41, so a 0.05→0.68 window put the
+    // MEDIAN of the surface only 60% of the way to cream — the whole specimen came out grey and no
+    // amount of light fixed it (measured: median 0.38, then 0.55, then 0.61, each time still short).
+    // A real specimen is CREAM almost everywhere and grey only in the true depths, so the window
+    // now closes at 0.42: mid-curvature surface reads as gyral crown, and only a genuine sulcus
+    // (curv01 < ~0.2) falls to the floor. Value contrast, not a wider tint.
+    vec3 base = mix(uSulcus, uGyrus, smoothstep(0.02, 0.42, curv01));
     vec3 col = base * light;
 
     // A whisper of sheen, and no more. The system is MATTE — no glow, no shine (docs/DESIGN-SYSTEM).
@@ -312,9 +333,15 @@ function Cortex({
     () => ({
       // Cream, not white (#fff is banned) — but a lit crown now actually REACHES it.
       uGyrus: { value: rgb(0xece7de) },
-      // The sulcal floor. NOT near-black: TRIBE's specimen is near-white with mid-grey creases, and a
-      // black-floored cortex on a near-black well loses its folds into the sky behind it.
-      uSulcus: { value: rgb(0x514d46) },
+      // The sulcal floor. MID-GREY, and now the value actually agrees with this sentence: at
+      // 0x514d46 (linear 0.08) it was a DARK floor, and since base multiplies the light, it dragged
+      // the whole specimen to a median of 0.38 no matter how the rig was tuned. The reference's
+      // darkest 5% still sits at 0.40 sRGB — a lit specimen has no black in it, only creases.
+      // ...and NEUTRAL. At 0x7f7469 this was a warm brown-grey at saturation 0.17, which meant HALF
+      // the cortex carried chroma before a single region activated — the "wide weak tint" that made
+      // the map unreadable was the SULCUS, not the activation. The reference's field is 93%
+      // achromatic: a neutral specimen is what gives a hot patch something to stand out FROM.
+      uSulcus: { value: rgb(0x7a7671) },
       uTaskLow: { value: rgb(0xa9c6a0) },
       uTaskHigh: { value: rgb(0x3f7a4a) },
       uDmnLow: { value: rgb(0xe6a99d) },
@@ -468,7 +495,12 @@ const BASE_PITCH = 0.16;
  * Five rounds fought a fidelity war in a frame too small to show fidelity. This fills the (now square)
  * well, leaving only the margin the drift and a hand-turn need in order not to clip the occipital pole.
  */
-const FIT_RADIUS = 1.15;
+// The specimen BACKS OFF so there is a cranium for it to sit in. At 1.15 it filled the frame
+// edge-to-edge and covered the head ghost's vault entirely — and you cannot seat a brain in a head
+// when the brain IS the frame. MEASURED on TRIBE: their brain occupies ~61% of the well's width and
+// ~40% of its height; the rest of the well is head. This is the composition trade the handoff called
+// out and it is the whole reason the silhouette reads at all.
+const FIT_RADIUS = 0.74;
 
 export interface CortexCanvasProps {
   seed: number;
