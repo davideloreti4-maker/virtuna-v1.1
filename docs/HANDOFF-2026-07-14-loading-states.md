@@ -59,29 +59,69 @@ Pacing/stagger/step-ordering are presentation and are fair game (owner call, 202
 
 ---
 
-## ▶ FIRST TASK NEXT SESSION — watch one live run
+## ✅ THE LIVE RUN — DONE (2026-07-14, two real runs)
 
-**Everything above is verified against FIXTURES in `/dev/cards`. The live 2-minute run has never been
-watched end-to-end.** That is exactly the failure mode this lane existed to fix, so do not let it
-stand. `.env.local` has the Apify/DashScope keys **and** `FILMSTRIP_EXTRACT_SECRET`, so a local run
-exercises the whole path for real.
+Two real Reads, watched end-to-end, DOM measured (not eyeballed). **It found two bugs that had
+shipped green — and one much bigger thing that is not ours.**
 
-Verify, with the browser open on `/analyze/[id]`:
-1. `source` fires within seconds → the post card appears.
-2. Frames land **incrementally** (the strip fills) — NOT in one burst. This is the change with the
-   most room to be wrong: it depends on the per-frame `patch_analysis_variants` write landing and the
-   2s poll picking it up.
-3. The `roster` query actually resolves the audience via the row's `society_id`.
-4. The spine advances on signals, not on the elapsed-time floor.
+| # | claim | live verdict |
+|---|---|---|
+| 1 | `source` fires "within seconds" | ✅ fires — but at **24s**, not "seconds" (that is the Apify scrape). The opening 24s of the wait still has no source card. |
+| 2 | frames land incrementally | ✅ confirmed — 3 poll ticks (79s → 81s → 83s), not one burst. But extraction only *starts* at ~77s and the whole strip fills in **~4s** of a ~150s run. |
+| 3 | `roster` resolves via `society_id` | ❌ **DEAD.** Fixed → `53bea342`. |
+| 4 | spine advances on signals | ✅ steps advanced on real signals; a mid-run reload correctly re-shows the spine (not a stale verdict). |
 
-Cost: ~2 min, a small API spend, one Reading billed to the ledger.
+### The two bugs (both shipped green, both invisible to the suite)
 
-## 🔴 OWNER — check before this matters in prod
+1. **The roster could never fire.** It read `row.society_id` — **nothing writes that column.** The
+   submit path sends only `input_mode`/`content_type`/`tiktok_url`, so `/api/analyze` stores
+   `society_id: null` on every live row. The "your audience is watching" state — the whole point of
+   the emptiest 60s — did not exist in the real app. It now resolves the audience the way the engine
+   does (`resolveThreadAudience`, the same helper every generative route uses).
+   *`society_id` was deliberately NOT written to fix it: it is the cohort key for the niche-percentile
+   RPC, so populating it would silently reshape niche rankings.*
+2. **The cast rendered as engine slugs.** `label ?? archetype` printed `high_engager` for every
+   persona without a creator-set label — on a General audience that is all ten, i.e. the default.
+
+Now proven live: the wait shows **Maya, Dev, Priya, Sam, Jordan, Alex, Theo, Nadia, Elena, Robin**.
+
+**The generalisable lesson, again:** a fixture cannot tell you that the *column your query reads* is
+one nothing writes. Both bugs were in the seam between two subsystems that each looked correct.
+
+---
+
+## 🔴 THE BIG ONE — a failed audience ships as HIGH confidence (NOT ours; do not silently patch)
+
+Two runs, same session, same user — a natural control:
+
+| run | score | personas | confidence | warnings |
+|---|---|---|---|---|
+| `VdwSBcf0i3bO` (fold OK) | 64 | **10** | **LOW** — "limited signal data" | — |
+| `iEbgUsLZRSFw` (fold died) | 78 | **0** | **HIGH** | `Request was aborted` ×2 |
+
+The Read whose **entire audience simulation failed** — both fold attempts timed out at 45s
+(`FOLD_ATTEMPT_TIMEOUT_MS`), zero personas — presented itself as **78 / HIGH confidence**. The run
+that actually simulated ten people called itself LOW. The only tell for the user was one quiet line
+mid-page: *"No audience reaction landed for this video."*
+
+So the confidence label does not know whether the audience ran. A user can pay for a Reading, wait
+~2.5 minutes, and get a confident verdict with **nothing behind it**. This is the same family as the
+§0.7 owner call (an empty persona slot styled as a verbatim), but worse: it is the headline number.
+
+**This is engine/verdict territory, not loading states — hence untouched.** Owner call: at minimum a
+fold-failure must (a) suppress or downgrade the confidence label and (b) say plainly that the
+audience did not run. Evidence is in the two rows above; `warnings` already carries the reason.
+
+## 🔴 OWNER — still open
 
 **`FILMSTRIP_EXTRACT_SECRET` must be set in Vercel.** `triggerFilmstripGeneration` **returns
-silently** when it is absent (`filmstrip/queue.ts:28`) — no error, no frames, ever. The frame strip
-(the best part of the feature) would simply not exist in prod and *nothing would tell you*. Same
-failure shape as the dead crons (missing `SUPABASE_SERVICE_ROLE_KEY`, see `RESUME-HERE-2026-07-13`).
+silently** when it is absent (`filmstrip/queue.ts:28`) — no error, no frames, ever. Same failure
+shape as the dead crons (missing `SUPABASE_SERVICE_ROLE_KEY`).
+
+**Local gotcha for the next live run:** the trigger POSTs to `${NEXT_PUBLIC_APP_URL}/api/filmstrip/extract`,
+and `.env.local` pins that to **:3000**. Run the dev server on **3000**, not 3001, or the frames fire
+into a dead port and you will "verify" a false negative. Also: a repeat of the same URL is a
+**cache hit** ("silent replay") — use a fresh video for a real run.
 
 ---
 
@@ -107,7 +147,31 @@ by top-level key**; arrays are replaced wholesale. So `source` / `filmstrip_segm
 `apollo` / `remix` patches **cannot clobber each other**, and the per-frame array write is safe
 (single writer per analysis). The roster query is RLS-bound and IDOR-clean.
 
+**Now confirmed on a live row, not just by reading the migration** — `iEbgUsLZRSFw` ended the run with
+all six keys intact side by side: `hero`, `craft`, `apollo`, `source`, `engagement_range`,
+`filmstrip_segments`. The concurrent per-frame writes clobbered nothing.
+
+**Dead code found while tracing:** `extractPartialPersonas` (stream/route.ts) reads
+`row.analysis_results.partial.personas` — **there is no `analysis_results` column** on the table (the
+fields are top-level: `personas`, `variants`, …). So the `partial` event has never once fired. It is
+harmless today (the fold only produces personas at the end, so there is no partial state to stream)
+but it is a progressive-reveal hook that silently does nothing. Delete it or wire it to something real.
+
 ---
+
+## ▶ Next session
+
+1. **Merge #295** (now includes the roster fix, `53bea342`).
+2. **Raise the fold-confidence finding with the owner** (§ above). It is the sharpest honesty defect
+   in the product right now and it outranks the card backlog: the headline number lies when the
+   audience half of the engine dies, and that happened on **1 of the 2 runs** watched today.
+3. Then the card backlog below.
+
+**Two timing facts worth designing around** (both measured today, neither is a bug):
+- the source card cannot appear before ~24s (the scrape is the floor), so the *opening* of the wait
+  is still the thinnest part;
+- the frame strip only exists for the last ~4s of a ~150s read (extraction starts at ~77s, after
+  wave-0). The strip is real, but it is not what fills the wait — the spine is.
 
 ## Still open (untouched — needs real context, don't start it at <50%)
 
