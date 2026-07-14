@@ -151,15 +151,33 @@ function clip(text: string, max: number): string {
  * So the multiplier is printed only where it SUPPORTS the line: at ≥1× it is a real result
  * worth stating; below 1× or absent it proves nothing and is omitted rather than spun.
  */
+/**
+ * "Proven" is a sentence with two halves — "cleared ≥3× ITS FOLLOWER COUNT" — and we may only say
+ * it when BOTH are true. A multiplier with no recorded baseline (the entire curated corpus: 0 of
+ * 532 rows carry a follower_count) satisfies the first half and invents the second. Such a row is
+ * an EXEMPLAR: its warrant is that a human picked it, which is real, and it teaches perfectly well
+ * without a performance claim it cannot support.
+ *
+ * The score is still SHOWN — it is genuine source data and the owner's call is to keep it — but it
+ * is named for what it is ("outlier score", the source's own metric) rather than dressed up as a
+ * follower ratio we never measured.
+ */
 function receipt(ex: RetrievedExample): string {
-  const proven = ex.multiplier !== null && ex.multiplier >= MIN_OUTLIER_MULTIPLIER;
+  // A baseline label survives retrieval only when the row can actually back it (hasFollowerBaseline),
+  // so its presence IS the signal that the number means something. No baseline → NO NUMBER: a bare
+  // "20154×" in the prompt is not a neutral fact, it is a boast with nothing behind it, and it is
+  // exactly what let a fabricated follower ratio read as proof. The score is not lost — it still
+  // ranks the corpus (rank.ts) and still reaches the card — it just stops making a claim here.
+  const baselined = Boolean(ex.baselineLabel);
+  const proven = baselined && ex.multiplier !== null && ex.multiplier >= MIN_OUTLIER_MULTIPLIER;
   const parts: string[] = [];
 
   if (ex.handle) parts.push(`@${ex.handle}`);
 
   // Below 1× the video underperformed its own account — the number would undercut the example.
-  const mult = ex.multiplier !== null && ex.multiplier >= 1 ? fmtMultiplier(ex.multiplier) : "";
-  if (mult) parts.push(`${mult}${ex.baselineLabel ? ` ${ex.baselineLabel}` : ""}`);
+  if (baselined && ex.multiplier !== null && ex.multiplier >= 1) {
+    parts.push(`${fmtMultiplier(ex.multiplier)} ${ex.baselineLabel}`);
+  }
 
   parts.push(`${fmtViews(ex.views)} views`);
 
@@ -184,10 +202,10 @@ function fmtBeat(b: TeardownBeat): string {
  * underperformed. The distinction has to reach the model, not just the renderer.
  */
 const WARRANT_NOTE =
-  'Each is tagged "proven by" (cleared a real outlier bar — ≥3× its follower count; the number ' +
-  'is shown) or "curated exemplar" (hand-picked for craft; no performance claim). Learn from ' +
-  "both, but NEVER call an exemplar proven, viral, or high-performing, and never attach a " +
-  "number to one.";
+  'Each is tagged "proven by" (cleared a REAL, recorded follower baseline by ≥3×; the number is ' +
+  'shown) or "curated exemplar" (hand-picked for craft by a human; its performance was never ' +
+  "measured, so no number is shown and none exists). Learn the craft from both, but NEVER call an " +
+  "exemplar proven, viral, or high-performing, and never attach a number to one.";
 
 const HEADERS: Record<GroundingSkill, string> = {
   hooks:

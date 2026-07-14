@@ -103,9 +103,26 @@ describe("the receipt never asserts what it cannot show", () => {
     expect(out).toContain("NEVER call an exemplar proven");
   });
 
-  it("omits the basis rather than inventing one when baselineLabel is absent", () => {
-    const out = buildCorpusBlock([ex({ baselineLabel: null })], "hooks").corpus!;
-    expect(out).toContain("9.2× · 14.7M views");
+  /**
+   * TIGHTENED 2026-07-14. This used to assert that a row with no baseline still printed its bare
+   * number ("9.2× · 14.7M views") — omitting the basis rather than inventing one. That was not
+   * enough. A bare multiplier is not a neutral fact: retrieval hands the model whatever number the
+   * row carries, and the curated corpus carries scores up to 20,154× that are measured against
+   * nothing at all (0 of 532 rows have a follower_count). Printed bare, "20154×" reads as the most
+   * proven thing in the block.
+   *
+   * No baseline → NO NUMBER. The score still ranks the corpus and still reaches the card; it just
+   * stops making a claim to the model.
+   */
+  it("prints NO number at all when the row has no baseline to measure it against", () => {
+    const out = buildCorpusBlock([ex({ baselineLabel: null, multiplier: 20154.7 })], "hooks").corpus!;
+    // The header legitimately EXPLAINS the ≥3× rule, so assert on the example body, not the block.
+    const body = out.slice(out.indexOf("\n\n1."));
+
+    expect(body).toContain("curated exemplar");
+    expect(body).toContain("14.7M views");
+    expect(body).not.toContain("20154"); // the boast with nothing behind it
+    expect(body).not.toMatch(/\d+(\.\d+)?×/); // no multiplier of any size survives without a basis
   });
 
   it("clips a bloated whyItWorks so one source cannot eat the whole block", () => {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   hasReusableSignal,
+  hasFollowerBaseline,
   isProofGrade,
   isAdmissible,
   isFreshTeardown,
@@ -334,5 +335,58 @@ describe("retrieveCachedExamples — structural (hooks)", () => {
 
     expect(result.examples.length).toBe(4);
     expect(result.enough).toBe(true);
+  });
+});
+
+/**
+ * THE FABRICATED BASELINE (2026-07-14).
+ *
+ * The curated import mapped Sandcastles' `outlier_score` onto `outlier_multiplier` and stamped
+ * `baseline_label = 'vs followers'` — but 0 of the 532 rows carry a follower_count, and the raw
+ * record has no follower data anywhere. 396 rows therefore printed a claim about a baseline nobody
+ * had: "proven by @colinandsamir · 1226.3× vs followers · 60M views", for an account with over a
+ * million followers. 56 rows claimed >100×; the top claimed 20,154×.
+ *
+ * The WARRANT (a human picked it) was always real. The CLAIM (N× vs followers) was invented.
+ */
+describe("proof requires a baseline we actually recorded", () => {
+  it("a multiplier with NO follower_count is not proof, however large", () => {
+    // The real @kis_noemi row: a 20,154× "vs followers" claim with no followers recorded.
+    const fabricated = row({
+      source_pool: "curated",
+      outlier_multiplier: 20154.7,
+      follower_count: null,
+      baseline_label: "vs followers",
+    });
+    expect(hasFollowerBaseline(fabricated)).toBe(false);
+    expect(isProofGrade(fabricated)).toBe(false);
+
+    // …but it is still ADMITTED and still teaches — the human curation is the warrant.
+    expect(isAdmissible(fabricated)).toBe(true);
+  });
+
+  it("DROPS the 'vs followers' label when no follower count backs it — keeps the score", () => {
+    const ex = matchRowToExample(
+      row({ source_pool: "curated", outlier_multiplier: 1226.3, follower_count: null, baseline_label: "vs followers" }),
+    );
+    expect(ex.baselineLabel).toBeNull(); // the invented half
+    expect(ex.multiplier).toBe(1226.3); // the real half (owner call: keep the score)
+  });
+
+  it("keeps 'vs followers' when the row CAN back it (scraped rows compute it for real)", () => {
+    const measured = row({
+      source_pool: "scraped",
+      outlier_multiplier: 44,
+      follower_count: 14_000,
+      baseline_label: "vs followers",
+    });
+    expect(hasFollowerBaseline(measured)).toBe(true);
+    expect(isProofGrade(measured)).toBe(true);
+    expect(matchRowToExample(measured).baselineLabel).toBe("vs followers");
+  });
+
+  it("a scraped row with no follower baseline cannot sneak in on a big number", () => {
+    // isAdmissible gates scraped rows on isProofGrade — which now demands a real baseline.
+    expect(isAdmissible(row({ source_pool: "scraped", outlier_multiplier: 9999, follower_count: null }))).toBe(false);
   });
 });
