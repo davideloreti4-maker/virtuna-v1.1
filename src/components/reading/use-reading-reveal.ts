@@ -32,7 +32,22 @@ export interface RevealFrame {
   uri: string;
 }
 
+/**
+ * The scraped post: cover, author, views. Lands seconds into the run (the scrape is the first
+ * thing the pipeline does), so it is what the in-flight Reading can show while the engine is
+ * still working. null in video_upload mode — nothing was scraped, so there is no receipt, and
+ * we show none rather than inventing one.
+ */
+export interface RevealSource {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
 export interface ReadingRevealState {
+  /** The scraped post we are reading — the first evidence of the run. null until it lands. */
+  source: RevealSource | null;
   /** Count of personas seen streaming in (Pass-2 audience forming). */
   personaCount: number;
   /**
@@ -54,6 +69,7 @@ export interface ReadingRevealState {
 }
 
 const INITIAL: ReadingRevealState = {
+  source: null,
   personaCount: 0,
   frames: [],
   frameTotal: 0,
@@ -97,6 +113,18 @@ export function useReadingReveal(
           phase: 'live',
           personaCount: Math.max(s.personaCount, n),
         }));
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onSource = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as RevealSource;
+        // Only take a receipt that actually carries something to show.
+        if (data && (data.cover_url || data.handle)) {
+          setState((s) => ({ ...s, phase: 'live', source: data }));
+        }
       } catch {
         /* malformed frame — ignore */
       }
@@ -160,6 +188,7 @@ export function useReadingReveal(
       }
     };
 
+    es.addEventListener('source', onSource);
     es.addEventListener('partial', onPartial);
     es.addEventListener('filmstrip_plan', onFilmstripPlan);
     es.addEventListener('filmstrip_segment_ready', onFilmstrip);
@@ -167,6 +196,7 @@ export function useReadingReveal(
     es.addEventListener('error', onErr);
 
     return () => {
+      es.removeEventListener('source', onSource);
       es.removeEventListener('partial', onPartial);
       es.removeEventListener('filmstrip_plan', onFilmstripPlan);
       es.removeEventListener('filmstrip_segment_ready', onFilmstrip);

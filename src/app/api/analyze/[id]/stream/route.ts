@@ -27,6 +27,31 @@ function extractFilmstripSegments(row: Record<string, unknown>): FilmstripSegmen
   }
 }
 
+interface SourceReceiptRow {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
+/**
+ * The scrape's own receipt (`variants.source`), written by the pipeline seconds into the run —
+ * the post's cover, author and view count. It is the FIRST evidence available to the in-flight
+ * Reading, long before any keyframe is cut, so it is what fills the opening ~30s of the wait.
+ * Null until the scrape resolves (and forever, in video_upload mode — nothing was scraped).
+ */
+function extractSourceReceipt(row: Record<string, unknown>): SourceReceiptRow | null {
+  try {
+    const variants = row.variants as { source?: SourceReceiptRow } | null;
+    const source = variants?.source;
+    if (!source || typeof source !== "object") return null;
+    if (!source.cover_url && !source.handle) return null;
+    return source;
+  } catch {
+    return null;
+  }
+}
+
 // Extract partial personas array from the DB row's JSONB column.
 // Returns null when not yet written (pre-Pass-1 state).
 function extractPartialPersonas(row: Record<string, unknown>): unknown[] | null {
@@ -139,6 +164,8 @@ export async function GET(
           const knownKeyframeIndices = new Set<number>();
           // Emit the frame count once, the first poll that sees a seeded grid.
           let filmstripTotalSent = false;
+          // Emit the scrape receipt once, the first poll that sees it.
+          let sourceSent = false;
           // Track last personas array reference for change detection.
           let lastPersonasJson = "";
 
@@ -158,6 +185,16 @@ export async function GET(
             }
             if (fresh) {
               const freshRow = fresh as Record<string, unknown>;
+
+              // The source receipt — emitted once, as soon as the scrape lands. This is what the
+              // user sees FIRST: the video we're about to read, with its author.
+              if (!sourceSent) {
+                const source = extractSourceReceipt(freshRow);
+                if (source) {
+                  sourceSent = true;
+                  send("source", source);
+                }
+              }
 
               // Phase 3 (Plan 08) — partial persona state emission (D-15).
               // Emit a `partial` event when personas array changes (new pass2 state added).

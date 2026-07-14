@@ -7,7 +7,10 @@ import {
   useReadingReveal,
   type ReadingRevealState,
   type RevealFrame,
+  type RevealSource,
 } from './use-reading-reveal';
+import { formatCount } from '@/lib/account-metrics/account-metrics';
+import { READING_LABEL } from './reading-section';
 
 export interface ReadingSkeletonProps {
   id: string | null;
@@ -16,6 +19,54 @@ export interface ReadingSkeletonProps {
    * When set, the EventSource subscription is disabled entirely.
    */
   preview?: Partial<ReadingRevealState>;
+}
+
+/**
+ * SourceCard — the post we are reading, shown as soon as the scrape resolves it.
+ *
+ * This is the FIRST evidence a Read can offer. The scrape lands within seconds and already
+ * holds the cover, the author and the view count; the pipeline used to keep the mp4 URL and drop
+ * all three, so the opening ~30s of a two-minute wait (before any keyframe is cut) had nothing
+ * in it at all. Now the wait opens by showing the user the video it went and fetched.
+ *
+ * Honest by construction: rendered only when the scrape actually returned something. In
+ * video_upload mode nothing is scraped, so there is no receipt and none is shown — we never
+ * dress up an absence as a source.
+ */
+function SourceCard({ source }: { source: RevealSource }) {
+  const [coverFailed, setCoverFailed] = useState(false);
+  const showCover = source.cover_url && !coverFailed;
+
+  return (
+    <div
+      data-testid="reading-skeleton-source"
+      className="reading-reveal flex items-center gap-3 rounded-lg border border-white/[0.06] p-3"
+    >
+      {showCover && (
+        <div className="h-[64px] w-[36px] shrink-0 overflow-hidden rounded-md border border-white/[0.06]">
+          {/* Ephemeral TikTok-CDN cover — plain <img>, decorative alt. Removes itself on error. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={source.cover_url!}
+            alt=""
+            className="h-full w-full object-cover"
+            onError={() => setCoverFailed(true)}
+          />
+        </div>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className={READING_LABEL}>Reading</p>
+        <p className="mt-1 truncate text-[15px] font-medium text-foreground">
+          {source.handle ? `@${source.handle}` : 'Your video'}
+        </p>
+        {typeof source.views === 'number' && (
+          <p className="mt-0.5 text-[13px] text-foreground-muted">
+            {formatCount(source.views)} views
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -123,8 +174,10 @@ export function ReadingSkeleton({ id, preview }: ReadingSkeletonProps) {
       aria-busy="true"
       aria-live="polite"
     >
-      {/* The frames of THEIR video, as we read them — the proof, so it goes above the fold and
-          above the placeholders. Absent (no video / pre-extraction) → nothing renders. */}
+      {/* The evidence, in the order the engine actually produces it: first the post we fetched
+          (seconds in), then the frames we cut from it (as they are read). Both absent → nothing
+          renders and the wait degrades to the calm placeholder IA, exactly as before. */}
+      {reveal.source && <SourceCard source={reveal.source} />}
       <FrameStrip frames={reveal.frames} total={reveal.frameTotal} />
 
       {/* liveness caption — real progress, no fake stage labels */}

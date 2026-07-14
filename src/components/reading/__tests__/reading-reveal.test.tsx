@@ -179,4 +179,40 @@ describe('ReadingSkeleton — branded in-flight IA (REVEAL-02)', () => {
     render(<ReadingSkeleton id="sim-1" />);
     expect(screen.queryByTestId('reading-skeleton-frames-strip')).not.toBeInTheDocument();
   });
+
+  it('shows the scraped post as soon as it lands — cover, author, views', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() =>
+      es.emit('source', {
+        cover_url: 'https://cdn.example/cover.jpg',
+        handle: 'zachking',
+        views: 12_400_000,
+        video_url: 'https://www.tiktok.com/@zachking/video/1',
+      }),
+    );
+
+    const card = await screen.findByTestId('reading-skeleton-source');
+    expect(card).toHaveTextContent('@zachking');
+    expect(card).toHaveTextContent('12.4M views');
+    expect(card.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/cover.jpg');
+  });
+
+  it('renders NO source receipt when nothing was scraped (video_upload)', () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    // No `source` event ever arrives in upload mode — the absence must stay an absence.
+    expect(screen.queryByTestId('reading-skeleton-source')).not.toBeInTheDocument();
+  });
+
+  it('ignores an empty source receipt rather than rendering a blank card', async () => {
+    render(<ReadingSkeleton id="sim-1" />);
+    const es = MockEventSource.instances[0]!;
+    act(() =>
+      es.emit('source', { cover_url: null, handle: null, views: null, video_url: null }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('reading-skeleton-caption')).toBeInTheDocument(),
+    );
+    expect(screen.queryByTestId('reading-skeleton-source')).not.toBeInTheDocument();
+  });
 });

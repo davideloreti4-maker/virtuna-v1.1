@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createLogger } from "@/lib/logger";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { Json } from "@/types/database.types";
 import {
   AnalysisInputSchema,
   type AnalysisInput,
@@ -219,6 +220,48 @@ async function timed<T>(
     });
   }
 }
+
+// =====================================================
+// Source receipt — the scrape's own evidence, published for the in-flight Reading
+// =====================================================
+
+export interface SourceReceipt {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
+/**
+ * Write the resolved post's cover / author / views to `variants.source` so the loading Reading
+ * can show WHAT it is reading, seconds into a two-minute run.
+ *
+ * Graceful-degradation contract (mirrors triggerFilmstripGeneration): never throws, never
+ * awaited by the pipeline. A receipt that fails to publish costs the user a thumbnail during
+ * the wait — it must never cost them the run.
+ *
+ * The patch touches ONLY the `source` key, so it cannot clobber craft / apollo / remix /
+ * filmstrip_segments written concurrently (Bug #7 lost-update).
+ */
+async function publishSourceReceipt(
+  supabase: ReturnType<typeof createServiceClient>,
+  analysisId: string,
+  source: SourceReceipt,
+): Promise<void> {
+  // Nothing worth showing (no cover AND no author) → don't write an empty receipt.
+  if (!source.cover_url && !source.handle) return;
+
+  const { error } = await supabase.rpc("patch_analysis_variants", {
+    p_id: analysisId,
+    p_patch: { source } as unknown as Json,
+  });
+
+  if (error) {
+    sourceLog.error("source receipt publish failed", { analysisId, error: error.message });
+  }
+}
+
+const sourceLog = createLogger({ module: "engine.source-receipt" });
 
 // =====================================================
 // Default fallback values for non-critical stages
@@ -455,6 +498,24 @@ export async function runPredictionPipeline(
       // The returned mp4Url is an SSRF-validated https://api.apify.com/...  URL.
       const resolver = new ApifyScrapingProvider();
       const resolved = await resolver.resolveVideoUrl(validated.tiktok_url);
+
+      // Step 1b: publish the SOURCE RECEIPT — the first honest evidence of the run.
+      //
+      // The scrape lands within seconds and already holds the post's cover, author and view
+      // count; the pipeline used to keep `mp4Url` and drop all of it. That left the in-flight
+      // Reading with nothing to show for the first ~30s (keyframes only start after Wave 0), so
+      // the user's opening impression of a 2-minute wait was a grey shimmer.
+      //
+      // Fire-and-forget, exactly like the filmstrip trigger: this is a UX affordance, and it
+      // must never add latency to — or fail — the engine run.
+      if (opts?.analysisId) {
+        void publishSourceReceipt(supabase, opts.analysisId, {
+          cover_url: resolved.coverUrl ?? null,
+          handle: resolved.handle ?? null,
+          views: resolved.views ?? null,
+          video_url: resolved.videoUrl ?? validated.tiktok_url,
+        });
+      }
 
       // Step 2: Download mp4 bytes SERVER-SIDE with the Apify token.
       // Token is ONLY used for this server-side fetch — it is NEVER put in the URL
