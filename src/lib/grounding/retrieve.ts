@@ -191,42 +191,40 @@ export function isFreshTeardown(
  * prompt.ts `receipt`). Every row gets in; no row gets a receipt it did not earn.
  */
 /**
- * Is this row's multiplier measured against a REAL, RECORDED baseline?
+ * Does this row know what its multiplier is measured AGAINST?
  *
- * 🔴 It is not, for the entire curated corpus. Measured 2026-07-14: **0 of 532 rows carry a
- * follower_count**, yet 396 of them stored `baseline_label = 'vs followers'` — and 56 of those
- * claim over 100×, topping out at 20,154×. The raw Sandcastles record has exactly one metric,
- * `outlier_score`, and no follower data anywhere in it. The import mapped that score onto
- * `outlier_multiplier` and stamped a baseline nobody had.
+ * A multiplier is only a claim if you can name its basis, and the corpus holds TWO honest bases —
+ * which is precisely what went wrong. The curated import stamped every Sandcastles row
+ * `baseline_label = 'vs followers'`, but 0 of the 532 rows carry a follower_count and the raw
+ * record has no follower field at all. Its single metric, `outlier_score`, is measured against the
+ * creator's PAST VIDEO VIEWS (owner, 2026-07-14). So the card told users
+ * "proven by @colinandsamir · 1226.3× vs followers · 60M views" — for an account with well over a
+ * million followers, where a follower ratio would be nearer 60×.
  *
- * The consequence was user-facing and false: the card receipt printed
- * "proven by @colinandsamir · 1226.3× vs followers · 60M views" for an account with well over a
- * million followers (the true ratio is nearer 60×), and the prompt told the model these rows had
- * "cleared a real outlier bar — ≥3× its follower count".
+ * The number was always real. Only its NAME was invented. Read correctly, 1226× the views that
+ * creator's videos normally get is both true and a far STRONGER claim than the one we faked.
  *
- * This is the WARRANT/CLAIM rule at its sharpest. The WARRANT is real — a human hand-picked the
- * row, which is why it is admitted (see isAdmissible). The CLAIM — "N× vs followers" — was
- * invented. The score itself is kept (it is genuine source data and still ranks the corpus); what
- * is dropped is the assertion about what it is measured AGAINST, because we do not know.
+ * So the basis is not hardcoded — it is carried per row, and the label is what distinguishes the
+ * two pools:
+ *   • curated → "vs their usual views"  (Sandcastles outlier_score; views ÷ their own past videos)
+ *   • scraped → "vs followers"          (computed by outlier-gate from a follower count we captured)
  *
- * Scraped rows are unaffected: the orchestrator computes their multiplier from a follower count it
- * actually captured, so for them "vs followers" is a claim we can stand behind.
+ * A row with no label has no basis, so it cannot make a claim — see receipt(): no basis, no number.
  */
-export function hasFollowerBaseline(row: SharedMatchRow): boolean {
-  const f = row.follower_count;
-  return typeof f === "number" && Number.isFinite(f) && f > 0;
+export function hasKnownBaseline(row: SharedMatchRow): boolean {
+  return typeof row.baseline_label === "string" && row.baseline_label.trim().length > 0;
 }
 
 /**
- * May this row be CALLED PROVEN — "cleared ≥3× its follower count"?
+ * May this row be CALLED PROVEN?
  *
- * Only when both halves of that sentence are true: a real recorded follower baseline AND a
- * multiplier that clears the bar against it. A big number measured against nothing is not proof;
- * it is a number. Rows failing this are still admitted and still teach — they are cited as curated
- * exemplars, with their score shown but no baseline asserted.
+ * "Proven" is a sentence with two halves — "cleared the ≥3× bar AGAINST A NAMED BASIS" — and we may
+ * only say it when both are true. A big number measured against nothing is not proof, it is a
+ * number. Rows failing this are still admitted and still teach; they are cited as curated exemplars
+ * with no performance claim attached.
  */
 export function isProofGrade(row: SharedMatchRow): boolean {
-  if (!hasFollowerBaseline(row)) return false;
+  if (!hasKnownBaseline(row)) return false;
   const m = row.outlier_multiplier;
   return typeof m === "number" && Number.isFinite(m) && m >= MIN_OUTLIER_MULTIPLIER;
 }
@@ -276,11 +274,11 @@ export function matchRowToExample(row: SharedMatchRow): RetrievedExample {
     platform: row.platform,
     multiplier: honestMultiplier(row.outlier_multiplier),
     views: row.views,
-    // A baseline we never recorded is not a baseline. The curated import stored 'vs followers' on
-    // 396 rows that carry no follower_count at all — so the label is dropped unless the row can
-    // actually back it. The SCORE survives (honestMultiplier above); only the false claim about
-    // what it was measured against is removed. See hasFollowerBaseline.
-    baselineLabel: hasFollowerBaseline(row) ? row.baseline_label : null,
+    // The basis travels WITH the row — "vs their usual views" for curated, "vs followers" for
+    // scraped — because the two pools measure different things and only the label says which.
+    // A row with no label states no basis, and receipt() then shows no number: a bare multiplier
+    // is not a neutral fact, it is a boast with nothing behind it. See hasKnownBaseline.
+    baselineLabel: hasKnownBaseline(row) ? row.baseline_label : null,
     fitLabel: DEFAULT_FIT,
     hookArchetype: row.hook_archetype,
     format: row.format,

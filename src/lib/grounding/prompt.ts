@@ -99,7 +99,7 @@ const MAX_EVIDENCE = 140;
  * survive even the fattest rows in the corpus, and lets a typical row fit 5–6.
  */
 const MAX_MADLIB = 130;
-const MAX_SPOKEN = 110;
+const MAX_SPOKEN = 100;
 
 /**
  * `whyItWorks` on curated rows is Sandcastles' hook_alignment + format_reasoning glued
@@ -109,7 +109,7 @@ const MAX_SPOKEN = 110;
  * their second-person coaching voice ("For your version, ensure your text overlay…"), which
  * is their product talking, not evidence. Clip to the mechanism.
  */
-const MAX_WHY = 140;
+const MAX_WHY = 120;
 
 function fmtViews(n: number | null): string {
   if (n === null || !Number.isFinite(n)) return "?";
@@ -201,11 +201,16 @@ function fmtBeat(b: TeardownBeat): string {
  * these are proven outliers, the model will happily repeat that about a video that
  * underperformed. The distinction has to reach the model, not just the renderer.
  */
+/**
+ * Every word here is paid for out of the example budget — it is ~1/4 of the block, and each 400
+ * chars of header is one proven source the model never sees. Keep the two LOCKED rules (an exemplar
+ * is never "proven"; a multiplier never travels without its basis) and cut everything else.
+ */
 const WARRANT_NOTE =
-  'Each is tagged "proven by" (cleared a REAL, recorded follower baseline by ≥3×; the number is ' +
-  'shown) or "curated exemplar" (hand-picked for craft by a human; its performance was never ' +
-  "measured, so no number is shown and none exists). Learn the craft from both, but NEVER call an " +
-  "exemplar proven, viral, or high-performing, and never attach a number to one.";
+  'Tagged "proven by" (beat a named baseline by ≥3× — number AND basis are both shown, e.g. ' +
+  '"44× vs their usual views") or "curated exemplar" (hand-picked for craft; never measured, so it ' +
+  "carries no number). Learn craft from both. NEVER call an exemplar proven, viral, or " +
+  "high-performing; never attach a number to one; never repeat a multiplier without its basis.";
 
 const HEADERS: Record<GroundingSkill, string> = {
   hooks:
