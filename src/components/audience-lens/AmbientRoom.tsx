@@ -487,6 +487,13 @@ export function AmbientRoom({
                 personas={nodes}
                 // Scopes the readout's claim: on a SCRIPT the room only ever voted on the opener.
                 kindLabel={kindLabel}
+                // The counterfactual — the SAME lever the Population weak-spot pulls, on the same
+                // state, so the two can never disagree about what the room said or what to do.
+                canRewrite={canRewrite}
+                onRewrite={handleRewriteTap}
+                rewriteBusy={rewriteBusy}
+                rewriteError={rewriteError}
+                rewriteDelta={rewriteDelta}
               />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />

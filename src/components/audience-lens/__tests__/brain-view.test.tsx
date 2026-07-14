@@ -179,6 +179,40 @@ describe('AmbientRoom — the brain scale', () => {
     expect(within(readout).queryByText(/opening beat/i)).toBeNull();
   });
 
+  it('THE COUNTERFACTUAL: acts on the objection it is SHOWING, not on a different one', async () => {
+    const onRewrite = vi.fn().mockResolvedValue(undefined);
+    render(room({ canRewrite: true, onRewrite }));
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    // The lever is the verbatim the card just quoted. The card must never recommend one thing and
+    // act on another — so it is steered by the SAME objection the readout displays.
+    expect(within(readout).getByText(/too preachy/)).toBeInTheDocument();
+    fireEvent.click(within(readout).getByTestId('brain-rewrite'));
+    expect(onRewrite).toHaveBeenCalledWith('too preachy');
+  });
+
+  it('THE COUNTERFACTUAL: no lever without a real objection to steer by', () => {
+    // A room where the scroller said NOTHING. There is no quote, so there is nothing honest to
+    // steer a rewrite by — and the CTA must not invent a direction.
+    render(
+      room({
+        canRewrite: true,
+        onRewrite: vi.fn(),
+        flatPersonas: [
+          { archetype: 'high_engager', verdict: 'stop' as const, quote: 'got me' },
+          { archetype: 'tough_crowd', verdict: 'scroll' as const, quote: '' },
+        ],
+      }),
+    );
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    expect(within(readout).queryByTestId('brain-rewrite')).toBeNull();
+  });
+
+  it('THE COUNTERFACTUAL: gated off when the skill cannot be reseeded (Remix)', () => {
+    render(room({ canRewrite: false, onRewrite: vi.fn() }));
+    const readout = within(screen.getByTestId('brain-view')).getByTestId('brain-readout');
+    expect(within(readout).queryByTestId('brain-rewrite')).toBeNull();
+  });
+
   it('reads the room honestly: the verdict follows the real vote, not the seeded cortex', () => {
     // INSTANT's verdict is now read off the personas' actual votes. It used to be read off the
     // simulated network response — which is a function of (stopRatio, hash(seedKey)), so the card

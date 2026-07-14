@@ -316,7 +316,11 @@ export default function DevCardsPage() {
                   conceptText={ROOM_FOCUS.conceptText}
                   fraction={ROOM_FOCUS.fraction}
                   kindLabel="Hook"
-                  canRewrite={false}
+                  // ON here so the gallery actually PREVIEWS the counterfactual — the brain card's
+                  // rewrite CTA is a real state, and a state you cannot cheaply look at is one that
+                  // drifts. The handler is a no-op: the dev page has no composer to re-run a skill.
+                  canRewrite
+                  onRewrite={async () => {}}
                 />
               </div>
               {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the

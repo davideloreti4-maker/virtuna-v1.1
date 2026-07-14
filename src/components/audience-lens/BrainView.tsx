@@ -157,6 +157,23 @@ export interface BrainViewProps {
    * on their first three seconds.
    */
   kindLabel?: string;
+  // ── THE COUNTERFACTUAL (the rewrite loop, already built — see AmbientRoom's PR-3 lever) ─────────
+  /**
+   * Sapient's headline instrument is a counterfactual: "with the recommended cut → 74%" against
+   * "as scanned → 52%". It is the move that turns a diagnosis into an action — and it is a
+   * PREDICTION, which is the one thing we will not fake.
+   *
+   * We do it the honest way round, and it is strictly better: we do not predict what a rewrite
+   * would do, we RE-RUN the skill steered by the bouncers' real words and show what it ACTUALLY
+   * did. The lever is the objection verbatim — the same quote the readout is already showing, so
+   * the card cannot recommend one thing and act on another.
+   */
+  canRewrite?: boolean;
+  onRewrite?: (lever: string) => void | Promise<void>;
+  rewriteBusy?: boolean;
+  rewriteError?: string | null;
+  /** Frozen at tap-time by the Room → the REAL before/after. Never a projection. */
+  rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
 }
 
 export function BrainView({
@@ -170,6 +187,11 @@ export function BrainView({
   durationS,
   personas,
   kindLabel,
+  canRewrite = false,
+  onRewrite,
+  rewriteBusy = false,
+  rewriteError,
+  rewriteDelta,
 }: BrainViewProps) {
   const mode: SimMode = videoSrc && retentionAt ? 'grounded' : 'simulated';
   /**
@@ -576,7 +598,17 @@ export function BrainView({
       {/* ══ THE READOUT (INSTANT) ═══════════════════════════════════════════════════════════════
              The instrument, on the only substrate that is real here: the ten personas actually voted.
              Counts of real votes — no score, no invented benchmark, no threshold we cannot ground. ── */}
-      {instant && readout && <RoomReadoutPanel readout={readout} kindLabel={kindLabel} />}
+      {instant && readout && (
+        <RoomReadoutPanel
+          readout={readout}
+          kindLabel={kindLabel}
+          canRewrite={canRewrite}
+          onRewrite={onRewrite}
+          rewriteBusy={rewriteBusy}
+          rewriteError={rewriteError}
+          rewriteDelta={rewriteDelta}
+        />
+      )}
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
@@ -613,8 +645,34 @@ export function BrainView({
  *
  * Every row here is a count. Nothing is scored, nothing is seeded, nothing is scaled.
  */
-function RoomReadoutPanel({ readout, kindLabel }: { readout: RoomReadout; kindLabel?: string }) {
+function RoomReadoutPanel({
+  readout,
+  kindLabel,
+  canRewrite = false,
+  onRewrite,
+  rewriteBusy = false,
+  rewriteError,
+  rewriteDelta,
+}: {
+  readout: RoomReadout;
+  kindLabel?: string;
+  canRewrite?: boolean;
+  onRewrite?: (lever: string) => void | Promise<void>;
+  rewriteBusy?: boolean;
+  rewriteError?: string | null;
+  rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
+}) {
   const { hold, segments, objection, divergence } = readout;
+  /**
+   * The CTA shows only when it is HONEST and ACTIONABLE, on the same three gates the Population
+   * weak-spot uses (so the two levers can never disagree): the skill is text-seedable, there is a
+   * REAL bouncer quote to steer by, and there is somebody left to win back. The lever IS the
+   * objection the readout is already showing — the card cannot recommend one thing and act on
+   * another.
+   */
+  const lever = objection?.quote ?? '';
+  const showRewrite = canRewrite && !!onRewrite && lever.length > 0 && hold.total > 0 && hold.pct < 90;
+  const left = hold.total - hold.stopped;
   /**
    * ⚠️ SCOPE THE CLAIM. A script's ten personas voted on its OPENING BEAT — the schema says so in as
    * many words, and its per-beat retentionMarker is explicitly "prose, never a numeric score". So
@@ -675,6 +733,43 @@ function RoomReadoutPanel({ readout, kindLabel }: { readout: RoomReadout; kindLa
         <p className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
           <span className="text-[var(--color-foreground-secondary)]">{objection.who}</span> scrolled:
           “{objection.quote}”
+        </p>
+      )}
+
+      {/* ── THE COUNTERFACTUAL. Sapient's "with the recommended cut → 74%" is a PREDICTION of what a
+             change would do. Ours re-runs the skill steered by that exact quote and reports what it
+             ACTUALLY did — the honest version of the same move, and the only one this codebase is
+             allowed to make. The prior is snapshotted at tap-time by the Room, so the before/after
+             is real and frozen; it is never a projection. ── */}
+      {showRewrite && !rewriteDelta && (
+        <button
+          type="button"
+          onClick={() => void onRewrite?.(lever)}
+          disabled={rewriteBusy}
+          data-testid="brain-rewrite"
+          className="mt-2 w-full rounded-[8px] border border-[var(--color-border)] px-2 py-[7px] text-left text-[10.5px] text-[var(--color-accent)] transition-colors hover:border-[var(--color-border-hover)] disabled:opacity-60"
+        >
+          {rewriteBusy
+            ? 'Rewriting, and re-running the room…'
+            : `Rewrite it against ${objection?.who ?? 'them'} — win back the ${left} who scrolled →`}
+        </button>
+      )}
+
+      {/* The payoff. Gated on the DELTA, not the button — a rewrite that wins the whole room leaves
+          nobody to win back, which hides the CTA, and the result must still be shown. */}
+      {rewriteDelta && (
+        <p
+          className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-secondary)]"
+          data-testid="brain-rewrite-delta"
+        >
+          {rewriteDelta.prior.stop}/{rewriteDelta.prior.total} → {rewriteDelta.next.stop}/
+          {rewriteDelta.next.total} — you re-ran it against their own words.
+        </p>
+      )}
+
+      {rewriteError && (
+        <p className="mt-2 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
+          {rewriteError}
         </p>
       )}
 
@@ -997,7 +1092,10 @@ const WELL_BG = '#131210';
  * truncation, no silent cap on the segment rows, nothing hidden.
  */
 const WELL_ASPECT = '20 / 19';
-const WELL_ASPECT_INSTANT = '4 / 3';
+// 3:2, not 4:3: adding the counterfactual CTA took instant to 515px in the 516px box — a 1px
+// "fit", which is a clip waiting for a longer persona name. The specimen yields again; it is the
+// credibility object here, and the thing the creator ACTS on is the button.
+const WELL_ASPECT_INSTANT = '3 / 2';
 
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [
