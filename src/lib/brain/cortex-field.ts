@@ -550,7 +550,14 @@ export function surfaceValues(
   const parcels = new Float32Array(field.parcelCount);
   for (let k = 0; k < field.parcelCount; k++) {
     const net = field.parcelNet[k]!;
-    parcels[k] = parcelValue(response[net], textures[k]!, t) * NETWORK_POLARITY[net];
+    // ⚠️ NO POLARITY FLIP. It used to multiply by NETWORK_POLARITY so the default-mode system painted
+    // on the cold side — a device that was only needed because `contrastBold` was UNSIGNED and could
+    // not produce a cold value on its own. It is signed now, so flipping the DMN's sign would invert
+    // it twice: a suppressed DMN (contrast < 0) would come out POSITIVE and paint an engaged brain's
+    // mind-wandering regions WARM. What we paint is the canonical figure — the signed contrast itself,
+    // task minus rest — where warm is "above this system's own resting level" and cold is "below it".
+    // That is what the reference's colours mean, and it is what our colorbar now says they mean.
+    parcels[k] = parcelValue(response[net], textures[k]!, t);
   }
   const out = new Float32Array(field.vertexCount);
   const K = field.blendK;

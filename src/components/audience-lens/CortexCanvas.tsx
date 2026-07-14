@@ -17,10 +17,19 @@
  * bit of sulcal shading — gyral crowns catch the light, sulci fall into shadow — and computing it at
  * load would have re-introduced exactly the ~500ms main-thread stall this swap exists to delete.
  *
- * Dosage (LOCKED) survives: the map is DIVERGING on the task-positive / default-mode axis — a real
- * anticorrelation — so engaged cortex glows sage and only the default-mode system (mind-wandering: the
- * audience you are losing) glows coral. There is no red/yellow "hot" colormap here, which is the one
- * thing of TRIBE's we deliberately did NOT take.
+ * ── THE MAP (rebuilt 2026-07-14) ──────────────────────────────────────────────────────────────────
+ * EVERY VERTEX IS PAINTED, from one continuous diverging ramp (see cortex-colormap.ts, whose ten
+ * stops were measured off the reference's own canvas). There is no cream anatomical base and no
+ * activation threshold: both existed for seven rounds, and between them they produced a white brain
+ * with a single orange smudge — "only one color?", four rejections running.
+ *
+ * Warm = above that system's own resting level; cold = below it. The cold half only exists because
+ * `contrastBold` became SIGNED in the same pass: it used to clamp below-rest values to zero, which
+ * silently deleted default-mode suppression — the most reliable effect in the task-vs-rest
+ * literature, and the only thing that can paint a cortex blue.
+ *
+ * The anatomy lives entirely in the LIGHT now — curvature, occlusion, key, fill and a real specular
+ * lobe. Hue belongs to the data alone.
  */
 
 import { Suspense, useEffect, useMemo, useRef } from 'react';
@@ -28,7 +37,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildField, surfaceValues, parcelTextures, type CortexField } from '@/lib/brain/cortex-field';
-import { ACTIVATION_SPAN, ACTIVATION_THRESHOLD, type NetworkId } from '@/lib/brain/cortex-sim';
+import { glslRamp, SPAN_WARM, SPAN_COLD } from '@/lib/brain/cortex-colormap';
+import { type NetworkId } from '@/lib/brain/cortex-sim';
 
 const MESH_URL = '/brain/cortex.glb';
 
@@ -52,94 +62,81 @@ const VERT = /* glsl */ `
 
 const FRAG = /* glsl */ `
   precision highp float;
-  uniform vec3 uGyrus;
-  uniform vec3 uSulcus;
-  uniform vec3 uTaskLow;
-  uniform vec3 uTaskHigh;
-  uniform vec3 uDmnLow;
-  uniform vec3 uDmnHigh;
   uniform vec3 uLight;
   uniform vec3 uRim;
   uniform vec3 uKeyCol;
   uniform vec3 uFillCol;
   uniform vec3 uFillDir;
   uniform vec3 uAmbient;
-  uniform float uThreshold;
-  uniform float uSpan;
+  uniform float uSpanWarm;
+  uniform float uSpanCold;
   varying float vCurv;
   varying float vVal;
   varying vec3 vNormal;
   varying vec3 vView;
 
+  // The diverging map, generated from CORTEX_RAMP so the surface and the colorbar cannot drift.
+  // (NO BACKTICKS ANYWHERE IN THIS SHADER. They terminate the template literal and TS then parses
+  //  the GLSL as JavaScript; it has broken the build twice.)
+${glslRamp()}
+
   void main() {
     vec3 N = normalize(vNormal);
     vec3 V = normalize(vView);
     vec3 L = normalize(uLight);
-    float lam = max(dot(N, L), 0.0);
 
-    // ── VALUE. A specimen reads as a specimen because of its VALUE STRUCTURE: near-white crowns
-    //    against near-black sulci, the full range used. Now that the folds are REAL, the curvature
-    //    signal is real too: aCurv is mean curvature measured on the geometry, signed — negative in
-    //    a sulcal depth, positive on a gyral crown.
-    //    (NO BACKTICKS IN THIS SHADER. They terminate the template literal and TS parses the GLSL
-    //     as JavaScript; it has broken the build twice.)
-    //    MEASURED against the reference (luminance histogram of each specimen's pixels, sRGB):
-    //      ours BEFORE  p05 0.22 · median 0.38 · p95 0.69 · near-white 0.2%
-    //      TRIBE        p05 0.40 · median 0.77 · p95 1.00 · near-white 39%
-    //    Their crowns reach white and their creases bottom out MID-GREY. Three multiplicative
-    //    terms were crushing ours, and none of them was the tokens:
-    //      1. ao scaled the AMBIENT too, so a cavity got no floor light at all;
-    //      2. a raw Lambert key abandons every surface not facing L — half a lateral cortex;
-    //      3. the sulcal floor was DARK (linear 0.08), so the base was dragged down before a
-    //         single photon landed. The comment on uSulcus already said "mid-grey creases".
+    // aCurv is mean curvature measured on the geometry, signed: negative in a sulcal depth,
+    // positive on a gyral crown. Baked into the asset by scripts/build-cortex-mesh.mjs.
     float curv01 = clamp(vCurv * 0.5 + 0.5, 0.0, 1.0);
-    // Cavity occlusion, with a FLOOR. It shades the creases; it must not black them out.
-    float ao = mix(0.84, 1.0, curv01);
-    // Half-lambert wrap: the standard matte-specimen key. The terminator softens and the
-    // shadow side keeps reading as form instead of falling off a cliff. Not a glow — a wrap.
+
+    // ══ EVERY VERTEX IS PAINTED. THIS IS THE REBUILD. ════════════════════════════════════════════
+    //
+    // The old shader kept a CREAM anatomical base and blended colour in only where |value| cleared
+    // ACTIVATION_THRESHOLD (0.42) — a thresholded statistical map, which is a real neuroimaging
+    // convention and is NOT the one the reference uses. The reference paints the WHOLE cortex with a
+    // continuous diverging map, always. That is the entire difference between a specimen that reads
+    // as a scan and one that reads as a cream sculpture with a smudge on it.
+    //
+    // MEASURED on our own render before this change: essentially none of the surface cleared the
+    // threshold, so the cortex came back white with one orange patch on the occipital pole. The
+    // owner's words were "color mesh doesnt look good at all and is only one color?" — literally
+    // true, and it was this if-statement, not the mesh.
+    //
+    // The anatomy is not lost by painting over it: THE FOLDS READ THROUGH THE MAP, carried by the
+    // shading term below, exactly as they do on the reference.
+    //
+    // ONE SPAN PER TAIL — this must stay identical to valueToRamp() in cortex-colormap.ts, or the
+    // colorbar starts lying about the surface. The cold tail reaches nearly twice as far as the warm
+    // one (the DMN suppresses hard, over a lot of cortex); a single span wide enough for it crushed
+    // every warm value into one hue.
+    float s = vVal >= 0.0
+      ? 0.5 + vVal / (2.0 * uSpanWarm)
+      : 0.5 + vVal / (2.0 * uSpanCold);
+    vec3 mapCol = cortexRamp(clamp(s, 0.0, 1.0));
+
+    // Curvature drives VALUE, never hue — sulci fall into shadow, crowns catch the key. Hue belongs
+    // to the data; if curvature tinted it too, you could not tell a fold from a finding.
+    float ao = mix(0.55, 1.0, smoothstep(0.04, 0.52, curv01));
+
+    // Half-lambert wrap: the shadow side keeps reading as form instead of falling off a cliff.
     float hl = dot(N, L) * 0.5 + 0.5;
-    // The key is deliberately strong enough that a well-lit crown OVERSHOOTS 1.0 and clips.
-    // That is not a bug and it is not gloss: a cream surface under a bright key IS white at the
-    // crown, and clipping there is the only way to get the reference's 39%-near-white crowns out
-    // of a base colour that tops out at 0.93. Matte is about the absence of a SPECULAR lobe, not
-    // about refusing to be bright.
-    float key = 0.88 * pow(hl, 1.30);
-    float fill = 0.18 * max(dot(N, uFillDir), 0.0);
-    vec3 light = (uAmbient * 0.66 + uKeyCol * key + uFillCol * fill) * ao;
+    float key = 0.82 * pow(hl, 1.25);
+    float fill = 0.20 * max(dot(N, uFillDir), 0.0);
+    vec3 light = (uAmbient * 0.52 + uKeyCol * key + uFillCol * fill) * ao;
 
-    // The base ramp. The mesh's curvature sits around curv01 0.41, so a 0.05→0.68 window put the
-    // MEDIAN of the surface only 60% of the way to cream — the whole specimen came out grey and no
-    // amount of light fixed it (measured: median 0.38, then 0.55, then 0.61, each time still short).
-    // A real specimen is CREAM almost everywhere and grey only in the true depths, so the window
-    // now closes at 0.42: mid-curvature surface reads as gyral crown, and only a genuine sulcus
-    // (curv01 < ~0.2) falls to the floor. Value contrast, not a wider tint.
-    vec3 base = mix(uSulcus, uGyrus, smoothstep(0.02, 0.42, curv01));
-    vec3 col = base * light;
+    vec3 col = mapCol * light;
 
-    // A whisper of sheen, and no more. The system is MATTE — no glow, no shine (docs/DESIGN-SYSTEM).
-    // At the old 0.18 the specimen read as wet chrome against the well, which is a different lie from
-    // the one we started with but a lie all the same.
+    // ── GLOSS, and why the matte law does not forbid it.
+    //    The reference's specimen is WET: a real specular lobe, and it is most of what sells the
+    //    thing as a physical object rather than a diagram. We had it at 0.05 — a "whisper of sheen"
+    //    — because docs/DESIGN-SYSTEM.md says the system is matte. That law governs CHROME: cards,
+    //    buttons, borders, the surfaces the UI is BUILT from. The cortex is a rendered specimen
+    //    sitting INSIDE a frame, no more bound by it than a photograph of a wet object would be.
     vec3 H = normalize(L + V);
-    col += uKeyCol * (pow(max(dot(N, H), 0.0), 30.0) * 0.05 * curv01);
-
-    // The activation, THRESHOLDED. Most of the cortex sits at baseline: painting every vertex is what
-    // makes a generated map look like stained glass instead of a statistical map.
-    float lit = 0.42 + 0.78 * lam;
-    float a = abs(vVal);
-    if (a > uThreshold) {
-      float s = clamp((a - uThreshold) / uSpan, 0.0, 1.0);
-      vec3 hot = vVal > 0.0 ? mix(uTaskLow, uTaskHigh, s) : mix(uDmnLow, uDmnHigh, s);
-
-      // The alpha ramps from ZERO at the contour: smoothstep gives a genuinely soft edge (zero slope
-      // AT the threshold, so there is no edge to see), then the linear term climbs hard so the cluster
-      // core is unmistakably painted. Soft edge, strong body — which is how a real cluster looks. A
-      // hard opening step made the map read as flat shapes PASTED ON the anatomy.
-      float alpha = smoothstep(0.0, 0.22, s) * (0.45 + 0.55 * s);
-      col = mix(col, hot * lit * ao, alpha);
-    }
+    col += vec3(1.0, 0.98, 0.94) * pow(max(dot(N, H), 0.0), 40.0) * 0.30 * mix(0.30, 1.0, curv01);
 
     // A cool rim keeps the silhouette off the near-black well. Quiet — it is separation, not a glow.
-    float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.12;
+    float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0) * 0.10;
     col += uRim * rim;
 
     // ⚠️ THE SPECIMEN IS ALWAYS DRAWN AT FULL BRIGHTNESS. THE ENTRANCE IS NOT IN HERE.
@@ -329,34 +326,19 @@ function Cortex({
     invalidate();
   }, [target, invalidate]);
 
+  /**
+   * ⚠️ THERE IS NO BASE COLOUR HERE ANY MORE, and that is the point.
+   *
+   * `uGyrus` (cream) and `uSulcus` (grey) are gone: the surface no longer has an anatomical base
+   * colour that activation is composited ON TOP OF. It is painted, everywhere, from CORTEX_RAMP —
+   * the ten stops measured off the reference's own canvas (see cortex-colormap.ts). The pole colours
+   * (uTaskLow/High, uDmnLow/High) are gone with them; a diverging ramp has no poles to mix between.
+   *
+   * The anatomy now lives entirely in the LIGHT — curvature, occlusion, key, fill, gloss — which is
+   * where it lives on the reference too.
+   */
   const uniforms = useMemo(
     () => ({
-      // Cream, not white (#fff is banned) — but a lit crown now actually REACHES it.
-      uGyrus: { value: rgb(0xece7de) },
-      // The sulcal floor. MID-GREY, and now the value actually agrees with this sentence: at
-      // 0x514d46 (linear 0.08) it was a DARK floor, and since base multiplies the light, it dragged
-      // the whole specimen to a median of 0.38 no matter how the rig was tuned. The reference's
-      // darkest 5% still sits at 0.40 sRGB — a lit specimen has no black in it, only creases.
-      // ...and NEUTRAL. At 0x7f7469 this was a warm brown-grey at saturation 0.17, which meant HALF
-      // the cortex carried chroma before a single region activated — the "wide weak tint" that made
-      // the map unreadable was the SULCUS, not the activation. The reference's field is 93%
-      // achromatic: a neutral specimen is what gives a hot patch something to stand out FROM.
-      uSulcus: { value: rgb(0x7a7671) },
-      // ── THE COLORMAP — the canonical fMRI hot/cold ramp, and the single biggest reason TRIBE's
-      //    specimen reads as a real scan and ours read as a tinted sculpture.
-      //
-      //    We deliberately did NOT take this for five rounds, on the LOCKED near-zero accent-dosage
-      //    rule (docs/DESIGN-SYSTEM.md), and substituted a muted sage/coral axis. That was the design
-      //    system talking over the reference. OWNER OVERRIDE (2026-07-14): "just copy them."
-      //
-      //    Red→orange→yellow for engaged cortex, blue→cyan for the default-mode system (the audience
-      //    drifting away). That is not merely TRIBE's look — hot/cold IS the standard neuroimaging
-      //    diverging map, so it buys the reference's realism AND keeps our own semantics: coral no
-      //    longer means "drift" here, blue does, and the accent is off the specimen entirely.
-      uTaskLow: { value: rgb(0x8c1d0e) },
-      uTaskHigh: { value: rgb(0xffe066) },
-      uDmnLow: { value: rgb(0x0d3b66) },
-      uDmnHigh: { value: rgb(0x53d7f5) },
       uLight: { value: new THREE.Vector3(-0.45, 0.72, 0.85) },
       uRim: { value: rgb(0x8fa7bd) },
       // Warm key + cool fill is the oldest trick in specimen photography, and the reason a lit form
@@ -365,8 +347,8 @@ function Cortex({
       uFillCol: { value: new THREE.Vector3(0.62, 0.7, 0.82) },
       uFillDir: { value: new THREE.Vector3(0.65, -0.35, 0.35).normalize() },
       uAmbient: { value: new THREE.Vector3(0.85, 0.83, 0.8) },
-      uThreshold: { value: ACTIVATION_THRESHOLD },
-      uSpan: { value: ACTIVATION_SPAN },
+      uSpanWarm: { value: SPAN_WARM },
+      uSpanCold: { value: SPAN_COLD },
     }),
     [],
   );
@@ -513,12 +495,13 @@ const BASE_PITCH = 0.16;
  * Five rounds fought a fidelity war in a frame too small to show fidelity. This fills the (now square)
  * well, leaving only the margin the drift and a hand-turn need in order not to clip the occipital pole.
  */
-// The specimen BACKS OFF so there is a cranium for it to sit in. At 1.15 it filled the frame
-// edge-to-edge and covered the head ghost's vault entirely — and you cannot seat a brain in a head
-// when the brain IS the frame. MEASURED on TRIBE: their brain occupies ~61% of the well's width and
-// ~40% of its height; the rest of the well is head. This is the composition trade the handoff called
-// out and it is the whole reason the silhouette reads at all.
-const FIT_RADIUS = 0.74;
+// 0.74 → 1.08. The specimen used to BACK OFF to leave a cranium for it to sit in — a real trade,
+// and it was paid to the head ghost, which is now deleted (see BrainView: three hand-authored
+// silhouettes, three rejections, and a reference that has no head at all). With nothing to sit in,
+// backing off only bought empty well: a small brain floating in a big black box, which is exactly
+// what "doesn't look real" described. The specimen owns the frame again, keeping just the margin the
+// drift and a hand-turn need in order not to clip the occipital pole.
+const FIT_RADIUS = 1.08;
 
 export interface CortexCanvasProps {
   seed: number;

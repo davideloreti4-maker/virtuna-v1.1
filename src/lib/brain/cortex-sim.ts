@@ -271,16 +271,35 @@ export const RESTING_BOLD: Record<NetworkId, number> = (() => {
  * idles at 0.08, so a raw subtraction would make attention look dramatic and the DMN look inert for
  * reasons that have nothing to do with the stimulus.
  *
- * Values below rest come back ZERO — an activation map shows activations. Suppression is real (the
- * DMN genuinely goes quiet when you concentrate) but painting it would put a second meaning on the
- * same colour, and the accent-dosage rule is LOCKED: coral means "you are losing them", full stop.
+ * ⚠️ IT IS SIGNED, AND THAT IS THE 2026-07-14 FIX. Below-rest values used to come back ZERO, on this
+ * reasoning: "an activation map shows activations. Suppression is real (the DMN genuinely goes quiet
+ * when you concentrate) but painting it would put a second meaning on the same colour, and the
+ * accent-dosage rule is LOCKED."
+ *
+ * That was the design system overruling the physiology, and it cost us the entire cold half of the
+ * map. A SUPPRESSED DEFAULT-MODE NETWORK IS THE SIGNATURE OF AN ENGAGED BRAIN — it is the most
+ * reliable thing in the whole task-vs-rest literature, and clamping it to zero meant a diverging
+ * colormap could only ever produce one sign. Measured before the fix: 100% of the specimen's coloured
+ * pixels were warm, against 74%/26% warm/cool on the reference. The reference paints both signs and
+ * says exactly what they mean — "negative is below its usual level for this clip; positive is above".
+ * So do we now.
  */
 export function contrastBold(bold: Record<NetworkId, number>): Record<NetworkId, number> {
   const out = {} as Record<NetworkId, number>;
   for (const id of NETWORK_IDS) {
     const rest = RESTING_BOLD[id];
-    const headroom = clamp01((bold[id] - rest) / Math.max(1e-6, 1 - rest));
-    out[id] = clamp01(headroom / RESPONSE_P95[id]);
+    // Signed headroom: above rest normalises against the room left ABOVE it, below rest against the
+    // room left BELOW it. Without the asymmetry a network that idles high (the DMN rests at 0.42)
+    // would show a huge negative swing and a tiny positive one for the same physiological move.
+    const d = bold[id] - rest;
+    const headroom = d >= 0 ? d / Math.max(1e-6, 1 - rest) : d / Math.max(1e-6, rest);
+    // Each tail is divided by the range THAT TAIL actually reaches. A network with no measured
+    // suppression falls back to its positive scale, so a rare dip reads proportionally instead of
+    // being amplified to full blue by a near-zero divisor.
+    const denom =
+      d >= 0 ? RESPONSE_P95[id] : Math.max(SUPPRESSION_P95[id], RESPONSE_P95[id]);
+    const scaled = headroom / Math.max(1e-6, denom);
+    out[id] = scaled < -1 ? -1 : scaled > 1 ? 1 : scaled;
   }
   return out;
 }
@@ -324,6 +343,34 @@ export const RESPONSE_P95: Record<NetworkId, number> = {
   limbic: 0.603,
   control: 0.386,
   default: 0.270,
+};
+
+/**
+ * The SAME statistic for the other tail — how far below its own resting level each network actually
+ * falls. It exists because the contrast became signed and the negative half had no scale of its own.
+ *
+ * ⚠️ THE TWO TAILS ARE NOT SYMMETRIC, and using RESPONSE_P95 for both is what pegged the default-mode
+ * system at exactly −1.000 on every frame: full deep blue, permanently, with no dynamic range left to
+ * report anything with. Measured over the same grid the positive constants come from (2 modes × 5
+ * seeds × 7 stop-ratios × 4 retention curves × 25 timepoints):
+ *
+ *      network             p95 below rest
+ *      default                  0.857   ← the only network that meaningfully suppresses
+ *      control                  0.047
+ *      everything else          0.000   ← never drops below rest at all
+ *
+ * That asymmetry is not a modelling artefact, it is the physiology: task-positive systems idle near
+ * the floor and have nowhere to fall, while the default-mode system idles HIGH (rest 0.42) and its
+ * suppression under load is the single most reliable effect in the task-vs-rest literature.
+ */
+export const SUPPRESSION_P95: Record<NetworkId, number> = {
+  visual: 0.0,
+  somatomotor: 0.0,
+  dorsal_attention: 0.0,
+  salience: 0.0,
+  limbic: 0.0,
+  control: 0.047,
+  default: 0.857,
 };
 
 /**
@@ -426,9 +473,17 @@ export const ACTIVATION_THRESHOLD = 0.42;
 // hot core and cooler shoulders — which is what an fMRI cluster actually looks like.
 export const ACTIVATION_SPAN = 0.6;
 
-/** One parcel's predicted BOLD at time `t`, from its network's response and its own texture. */
+/**
+ * One parcel's predicted BOLD at time `t`, from its network's response and its own texture.
+ *
+ * ⚠️ IT CLAMPS TO [−1, 1], NOT [0, 1]. `contrastBold` is signed now (a network can run BELOW its own
+ * resting level, and the default-mode system routinely does), and a `clamp01` here would silently
+ * eat every one of those values — the diverging map would come back one-sided and nothing would
+ * throw. That is precisely how this map spent seven rounds unable to reach its cold half.
+ */
 export function parcelValue(networkValue: number, tex: ParcelTexture, t: number): number {
-  return clamp01(networkValue * tex.bias + 0.05 * Math.sin(t * tex.rate + tex.phase));
+  const v = networkValue * tex.bias + 0.05 * Math.sin(t * tex.rate + tex.phase);
+  return v < -1 ? -1 : v > 1 ? 1 : v;
 }
 
 /** Band a 0..1 value into one of four plain-language words. */

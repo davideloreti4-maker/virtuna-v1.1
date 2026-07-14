@@ -13,7 +13,17 @@ const BASE = 'http://localhost:3400';
 const OUT = process.env.OUT ?? '/tmp';
 
 const browser = await chromium.launch();
-const ctx = await browser.newContext({ viewport: { width: 1400, height: 1000 }, deviceScaleFactor: 2 });
+// ⚠️ reducedMotion PINS THE CLOCK, and without it this tool cannot be used to compare two builds.
+// The response animates, so every capture lands at a different `t` with a different map — two runs of
+// the SAME code produce different colour statistics, and a change measured across them is measuring
+// the clock. BrainView holds the response at the stimulus midpoint under reduced motion, which makes
+// the capture a pure function of the code. (Learned the hard way: a "regression" in the cold half of
+// the map turned out to be two shots taken 3 seconds apart.)
+const ctx = await browser.newContext({
+  viewport: { width: 1400, height: 1000 },
+  deviceScaleFactor: 2,
+  reducedMotion: 'reduce',
+});
 const page = await ctx.newPage();
 const errors = [];
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });

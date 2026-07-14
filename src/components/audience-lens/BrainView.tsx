@@ -38,16 +38,19 @@
  *    micro-copy in this system, but at ten usages in one 360px card it stopped reading as
  *    instrumentation and started reading as terminal output.
  *
- * ── WHAT THE MAP CLAIMS (changed 2026-07-14, owner-approved) ──────────────────────────────────
- * The surface is painted with a CONTRAST AGAINST REST, not with raw predicted BOLD. An fMRI figure
- * has never shown "activity" — it shows a difference between two conditions, thresholded, which is
- * why a real statistical map is mostly grey. Painting raw BOLD lit 57% of the cortex (six of our
- * seven networks are task-positive, so "engaged" meant "nearly all of it"), and that is the single
- * biggest reason ours read as continents while TRIBE's reads as a map. Measured on the real model:
- * a strong hook peaks at 26% (was 40%), a typical moment sits near 8%, and — the part that nearly went
- * wrong — the DEFAULT-MODE system still turns coral when the room walks out. It briefly did not, and
- * every test still passed, because the tests asserted against fixtures hotter than the model can be.
- * The colorbar says `vs rest`, because the card must claim exactly what it draws.
+ * ── WHAT THE MAP CLAIMS ────────────────────────────────────────────────────────────────────────
+ * The surface is painted with a CONTRAST AGAINST REST, not with raw predicted BOLD — a difference
+ * between two conditions, which is what an fMRI figure has always shown. The colorbar says
+ * `vs rest`, because the card must claim exactly what it draws.
+ *
+ * ⚠️ IT IS NOT THRESHOLDED, AND THAT IS THE 2026-07-14 REBUILD. Every vertex is painted, always,
+ * from one continuous diverging ramp. The previous seven rounds kept a cream anatomical base and
+ * only coloured cortex whose |value| cleared ACTIVATION_THRESHOLD, on the theory that "painting
+ * every parcel is what makes a generated map look like stained glass instead of an fMRI". Measured
+ * on the actual render, almost nothing ever cleared it: the specimen came back cream-white with a
+ * single orange smudge, which is precisely the "only one color?" the owner rejected four rounds
+ * running. The reference (thesapientcompany.com/intelligence) paints its whole cortex, continuously,
+ * and reads as a scan. See cortex-colormap.ts — the ramp's ten stops were measured off its pixels.
  *
  * The stimulus plays BESIDE the brain, because a brain map with no stimulus is decoration:
  *  • a real video (the Read) → the actual <video> drives the clock, and the response is GROUNDED
@@ -61,11 +64,16 @@
  * that lag for free. The figure claims the lag on screen, which is why the claim is load-bearing
  * chrome and not decoration — it may move, it may not be deleted.
  *
- * Dosage (LOCKED) survives via real neuroscience: the map is DIVERGING on the task-positive /
- * default-mode axis — the anticorrelation is a genuine phenomenon — so engaged cortex glows
- * cream→sage and only the default-mode system (mind-wandering: the audience you are losing)
- * glows coral. Coral still means exactly what it means everywhere else in the app. There is no
- * red/yellow "hot" colormap here, which is the one thing of TRIBE's we deliberately did NOT take.
+ * ── THE ACCENT DOSAGE, and how the specimen escapes it ─────────────────────────────────────────
+ * The map is DIVERGING on the task-positive / default-mode axis — the anticorrelation is a genuine
+ * phenomenon — so a warm cortex means the room is engaged and a cold one means it is drifting.
+ *
+ * It IS a hot/cold colormap, and we refused it for five rounds on the LOCKED near-zero accent-dosage
+ * rule (docs/DESIGN-SYSTEM.md), substituting a muted sage/coral axis. That was the design system
+ * talking over the reference, and it cost four rejections. OWNER OVERRIDE (2026-07-14): "just copy
+ * them." The rule is not actually violated: dosage governs CHROME — the surfaces the UI is built
+ * from — and the cortex is a rendered specimen inside a frame, no more bound by it than a
+ * photograph would be. The app around this card is still charcoal, cream and terracotta.
  *
  * Deterministic: seeded off the focus id; the first frame is a pure function of props (SSR-safe),
  * the clock only starts client-side. Reduced motion holds the response at the stimulus midpoint.
@@ -73,10 +81,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { NETWORK_META, NETWORK_POLARITY } from '@/lib/brain/cortex-field';
+import { NETWORK_META } from '@/lib/brain/cortex-field';
+import { cssRamp, rampAt, valueToRamp } from '@/lib/brain/cortex-colormap';
 import {
-  ACTIVATION_SPAN,
-  ACTIVATION_THRESHOLD,
   NETWORK_IDS,
   SPOKEN_NETWORKS,
   TR_S,
@@ -356,10 +363,13 @@ export function BrainView({
         style={{ aspectRatio: instant ? WELL_ASPECT_INSTANT : WELL_ASPECT, background: WELL_BG }}
         data-testid="brain-surface"
       >
-        {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
-            specimen scale, orientation and a body to belong to — without it a lit 3D object on
-            black reads as a floating artifact rather than anatomy. Our own path. */}
-        <HeadGhost />
+        {/* ⚠️ THERE IS NO HEAD HERE. It was hand-authored in SVG beziers and REJECTED THREE TIMES
+               ("a potato", "doesn't look real at all"), and each rewrite produced a different potato.
+               The argument for it was that a lit 3D object on black "reads as a floating artifact
+               rather than anatomy" — and the reference settles that empirically: it shows the
+               specimen on a PLAIN background, no head, no skull, no silhouette, and reads as more
+               anatomical than ours ever did with one. A bad head is worse than no head.
+               DO NOT AUTHOR A FOURTH. */}
 
         {/* ── THE ENTRANCE, and why it lives HERE in the DOM rather than in the shader.
                The specimen used to pop into an empty well. The obvious fix was to fade it in from
@@ -492,9 +502,15 @@ export function BrainView({
               }}
             />
           </div>
+          {/* ⚠️ THE POLES SAY WHAT THE COLOUR MEANS, NOT WHAT IT IMPLIES. They read "drifting" and
+              "engaged" while the map was an unsigned magnitude with the default-mode system flipped
+              to the cold pole by hand. The map is the signed contrast now — cold is simply "this
+              system is running BELOW its own resting level", and on an engaged brain that is exactly
+              what the DMN does. Labelling that patch "drifting" would be precisely backwards.
+              The engaged/drifting reading is the VERDICT's job, and it still says it, in words. */}
           <div className="mt-[5px] flex items-baseline justify-between">
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">drifting</span>
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">engaged</span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">below rest</span>
+            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">above rest</span>
           </div>
         </div>
         {/* The unit, and the CLAIM — BESIDE the legend, not crushed under it. The map is a contrast
@@ -961,8 +977,8 @@ function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reduce
 
         {/* The trace rides the SAME hot/cold axis the map and the colorbar do. It was sage/coral
             while the specimen went red/yellow — an instrument disagreeing with its own map. */}
-        <path d={area} clipPath="url(#trace-up)" fill={css(TASK_HIGH)} fillOpacity="0.13" />
-        <path d={area} clipPath="url(#trace-down)" fill={css(DMN_HIGH)} fillOpacity="0.13" />
+        <path d={area} clipPath="url(#trace-up)" fill={css(TRACE_ENGAGED)} fillOpacity="0.13" />
+        <path d={area} clipPath="url(#trace-down)" fill={css(TRACE_DRIFTING)} fillOpacity="0.13" />
 
         {/* Zero — the line the room is either above or below. */}
         <line
@@ -1023,82 +1039,18 @@ function PlayGlyph({ playing }: { playing: boolean }) {
   );
 }
 
-/**
- * The head the specimen sits in — ours, drawn as one path, facing left the way an anatomical
- * lateral view is conventionally plated. It is deliberately almost invisible: at 4% cream on the
- * near-black well it registers as context, not as an illustration. TRIBE's demo does the same thing
- * and it is most of why their brain reads as *a brain in a person* rather than a lit 3D object.
- */
-function HeadGhost() {
-  return (
-    // ⚠️ THE VIEWBOX MUST BE THE WELL'S OWN ASPECT (20/19). It was 400x300 — a 4:3 box inside a
-    // near-square well — and with xMidYMid meet that LETTERBOXES: the head scaled to 364x273 and
-    // floated in the middle band, so the cranial vault no longer sat where the specimen sat. The
-    // skull and the brain were simply not registered to each other. That, plus a specimen grown to
-    // FIT_RADIUS 1.15 which covered the vault, plus 5.5% cream under a blur, is why the head was
-    // reported "missing" while the element mounted and painted the whole time. 400x380 = 20/19.
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 400 380"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden
-      data-testid="brain-head-ghost"
-    >
-      {/* MEASURED on TRIBE: the head is a LARGE soft mass filling the whole well (557x607 of a
-          558x608 frame) while the brain is only 340x242 INSIDE it — the head is ~2.5x the brain's
-          height. That ratio is most of why theirs reads as "a brain in a person" and ours read as a
-          lit object on black. So the head is drawn BIGGER THAN THE WELL and cropped by it, the way an
-          anatomical plate crops — and the specimen backs off (FIT_RADIUS) to leave a cranium to sit
-          inside. It must register as context in peripheral vision, never as an illustration. */}
-      <defs>
-        {/* Barely blurred. A sigma-9 cloud at 7.5% is not a silhouette, it is a smudge — and that is
-            what shipped. On TRIBE's you can read the nose, the lips, the chin and the ear: it is a
-            COHERENT, defined shape held at ~7% luminance. The quietness must come from the VALUE,
-            not from destroying the edge. */}
-        <filter id="head-soft" x="-8%" y="-8%" width="116%" height="116%">
-          <feGaussianBlur stdDeviation="1.6" />
-        </filter>
-      </defs>
-      {/* A left-facing profile at REAL head proportions — crown, frontal eminence, brow, nasion, a
-          nose that actually projects, lips, chin, jawline, throat. The previous two attempts read as
-          "a potato" (owner, twice) for one reason: the landmarks were mushy. TRIBE's head is quiet by
-          VALUE (~7% luminance — measured, same as ours) but its FEATURES are crisp. So the blur comes
-          down and the path gets its anatomy. */}
-      <path
-        d="M 200 40
-           C 150 40, 105 70, 82 128
-           C 70 155, 62 178, 58 196
-           C 56 206, 60 214, 58 222
-           C 50 234, 32 244, 28 252
-           C 26 258, 50 262, 60 266
-           C 66 274, 62 282, 66 290
-           C 70 298, 74 308, 86 318
-           C 100 330, 130 338, 165 342
-           C 190 346, 205 352, 212 380
-           L 400 380
-           C 400 318, 382 240, 352 180
-           C 336 100, 288 40, 200 40 Z"
-        fill="rgba(236, 231, 222, 0.085)"
-        filter="url(#head-soft)"
-      />
-    </svg>
-  );
-}
 
-// The resting cortex: a curvature-shaded gray surface — gyral crowns light, sulcal depths dark.
-// This is what a surface plot shows where nothing clears threshold, and it is most of the brain
-// most of the time. Painting every parcel is what makes a generated map look like stained glass.
-const GYRUS: RGB = [88, 87, 84];
-const SULCUS: RGB = [58, 57, 55];
-// The two poles of the diverging map, at threshold → at full activation.
-// The colorbar's ramp MUST be the shader's ramp — a legend that disagrees with its map is a lie.
-// Canonical fMRI hot/cold (see CortexCanvas's uniforms for why this replaced sage/coral).
-const TASK_LOW: RGB = [140, 29, 14];
-const TASK_HIGH: RGB = [255, 224, 102]; // deep red → orange → yellow (engaged)
-const DMN_LOW: RGB = [13, 59, 102];
-const DMN_HIGH: RGB = [83, 215, 245]; // deep blue → cyan (drifting)
-
-/** The sage the strip's task-positive bars take — the same pole the map uses. */
+// ⚠️ THE RESTING-CORTEX GREYS AND THE TWO POLES ARE GONE, with the base colour that needed them.
+// GYRUS/SULCUS existed because the surface had an anatomical base that activation was composited
+// over; TASK_*/DMN_* were the ends of two one-sided ramps growing out of it. The surface is now
+// painted everywhere from ONE diverging ramp (CORTEX_RAMP), so there is no base and there are no
+// poles — and, more to the point, no second copy of the map's colours to fall out of sync with it.
+//
+// The trace's two fills are literally the ends of that ramp, sampled, so the curve above the
+// baseline is the colour the cortex takes when it is engaged and the curve below is the colour it
+// takes when the room is drifting. Read from the ramp, never restated.
+const TRACE_ENGAGED: RGB = rampAt(1);
+const TRACE_DRIFTING: RGB = rampAt(0);
 
 /**
  * THE WELL. A near-black, faintly warm sky for the specimen.
@@ -1147,37 +1099,32 @@ const WELL_ASPECT = '20 / 19';
 // (AmbientRoom), so the 516px "budget" was a self-imposed dev-page box, never a real constraint.
 const WELL_ASPECT_INSTANT = WELL_ASPECT;
 
-type RGB = [number, number, number];
-const mix = (a: RGB, b: RGB, t: number): RGB => [
-  Math.round(a[0] + (b[0] - a[0]) * t),
-  Math.round(a[1] + (b[1] - a[1]) * t),
-  Math.round(a[2] + (b[2] - a[2]) * t),
-];
+import type { RGB } from '@/lib/brain/cortex-colormap';
 const css = ([r, g, b]: RGB) => `rgb(${r}, ${g}, ${b})`;
 
 /**
- * A network's swatch: the resting cortex gray, with the activation colour composited over it ONLY
- * once it clears threshold. Diverging on the real axis — task-positive goes sage, the default-mode
- * system goes coral — so the locked dosage rule survives: coral still means "you are losing them".
- * The same ramp the shader applies to the surface, so the readout dot matches the cortex.
+ * A network's swatch — read straight off CORTEX_RAMP, which is what the surface is painted with.
+ *
+ * ⚠️ IT NEITHER THRESHOLDS NOR FLIPS POLARITY, for the same reason the surface no longer does. The
+ * old one returned a flat resting grey until the value cleared ACTIVATION_THRESHOLD and then flipped
+ * the default-mode system to the cold pole by hand. Both devices existed to prop up an UNSIGNED
+ * contrast. The contrast is signed now, so the dot is simply the network's own value on the ramp:
+ * warm = above its resting level, cold = below it. Same number, same ramp, same meaning as the
+ * cortex it annotates — which is the entire job of a legend.
  */
-function netFill(net: NetworkId, v: number): string {
-  const base = mix(SULCUS, GYRUS, 0.6);
-  const x = v < 0 ? 0 : v > 1 ? 1 : v;
-  if (x <= ACTIVATION_THRESHOLD) return css(base);
-  // How far above threshold, 0..1 — the alpha AND the position on the pole's ramp.
-  const s = Math.min(1, (x - ACTIVATION_THRESHOLD) / ACTIVATION_SPAN);
-  const hot = NETWORK_POLARITY[net] < 0 ? mix(DMN_LOW, DMN_HIGH, s) : mix(TASK_LOW, TASK_HIGH, s);
-  return css(mix(base, hot, 0.35 + 0.65 * s));
+function netFill(_net: NetworkId, v: number): string {
+  return cssRamp(valueToRamp(v));
 }
 
-/** The colorbar's swatch at a point on the diverging axis (−1 = drifting … +1 = engaged). */
+/**
+ * The colorbar's swatch at a point on the diverging axis (−1 = fully below rest … +1 = fully above).
+ *
+ * The bar IS the ramp, laid out linearly — and it must be, because the MARKER's position is
+ * `(axis + 1) / 2` of the bar's width (see axisPct). If the swatches were placed by any other
+ * mapping, the marker would sit on a colour the cortex is not currently showing.
+ */
 function barFill(x: number): string {
-  const base = mix(SULCUS, GYRUS, 0.5);
-  const m = Math.abs(x);
-  if (m < 0.06) return css(base);
-  const hot = x < 0 ? mix(DMN_LOW, DMN_HIGH, m) : mix(TASK_LOW, TASK_HIGH, m);
-  return css(mix(base, hot, 0.25 + 0.75 * m));
+  return cssRamp((x + 1) / 2);
 }
 
 /** The room's voice reading the scan — banded on the real stop ratio + the live response. */

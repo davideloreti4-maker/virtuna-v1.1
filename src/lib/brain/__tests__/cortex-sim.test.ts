@@ -141,7 +141,19 @@ describe('cortex-sim — determinism + parcel heterogeneity', () => {
       parcelValue(0.6, parcelTexture(i, 12345, (i * 17) % 300, (i * 29) % 200), 2),
     );
     expect(Math.max(...vals) - Math.min(...vals)).toBeGreaterThan(0.15);
-    expect(vals.every((v) => v >= 0 && v <= 1)).toBe(true);
+
+    // ⚠️ THE RANGE IS [−1, 1], NOT [0, 1]. `parcelValue` used to clamp01, which was correct while the
+    // contrast was an unsigned magnitude — and became a silent value-eater the moment it went signed:
+    // every suppressed parcel would have been flattened to zero on its way to the shader, and the
+    // diverging map could never have reached its cold half. Nothing would have thrown; the brain would
+    // simply have come back warm, again.
+    expect(vals.every((v) => v >= -1 && v <= 1)).toBe(true);
+
+    // And a suppressed network must survive the trip. This is the assertion that pins the fix.
+    const suppressed = Array.from({ length: 60 }, (_, i) =>
+      parcelValue(-0.6, parcelTexture(i, 12345, (i * 17) % 300, (i * 29) % 200), 2),
+    );
+    expect(suppressed.filter((v) => v < -0.1).length).toBeGreaterThan(40);
   });
 
   it('makes the map CONTIGUOUS, not salt-and-pepper — neighbours run hot together', () => {

@@ -12,6 +12,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { valueToRamp } from '@/lib/brain/cortex-colormap';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
 import { resolve } from 'node:path';
@@ -20,12 +21,10 @@ import {
   BLEND_K_MAX,
   buildField,
   fieldDiagnostics,
-  NETWORK_POLARITY,
   parcelTextures,
   surfaceValues,
 } from '../cortex-field';
 import {
-  ACTIVATION_THRESHOLD,
   contrastBold,
   NETWORK_IDS,
   predictedBold,
@@ -204,7 +203,16 @@ describe('THE GRADIENT PROBE — the field is smooth, and not a smear', () => {
     // The field is allowed to swing its whole range over a parcel spacing (that IS the signal); it
     // must not swing more, and a hard border would blow far past this.
     expect(d.maxSlopePerSpacing).toBeLessThan(1.0);
-    expect(d.meanStep).toBeLessThan(0.02);
+
+    // ⚠️ RELATIVE TO THE FIELD'S OWN RANGE, not an absolute step. `meanStep` is in VALUE units, so it
+    // scales with the amplitude of the map — and when the contrast became signed (2026-07-14) the
+    // range roughly doubled (it gained its entire negative half), which pushed the mean step from
+    // 0.019 to 0.023 and failed this line. Nothing had become less smooth: `maxSlopePerSpacing`, the
+    // assertion that actually catches a mosaic, never moved. A smoothness test that trips on
+    // amplitude is measuring the wrong quantity, and would have to be re-tuned by hand every time the
+    // model's scale changed — which is how a guard rots into a nuisance and gets deleted.
+    const range = Math.max(...values(ENGAGED)) - Math.min(...values(ENGAGED));
+    expect(d.meanStep / range).toBeLessThan(0.03);
   });
 
   it('still has RANGE — smoothness must not be bought by averaging the brain flat', () => {
@@ -215,35 +223,65 @@ describe('THE GRADIENT PROBE — the field is smooth, and not a smear', () => {
   });
 });
 
-describe('the four invariants (§8.5) — pinned', () => {
-  it('is DIVERGING: task-positive goes sage (+), the default-mode system goes coral (−)', () => {
-    const v = values(DRIFTING);
-    let neg = 0;
-    for (let i = 0; i < v.length; i++) if (v[i]! < -ACTIVATION_THRESHOLD) neg++;
-    // When the room drifts, the default network must drive real cortex NEGATIVE — that is the only
-    // thing that keeps the LOCKED accent-dosage rule legal (coral = "you are losing them").
-    expect(neg / v.length).toBeGreaterThan(0.015);
-    expect(NETWORK_POLARITY.default).toBe(-1);
-    for (const id of NETWORK_IDS) if (id !== 'default') expect(NETWORK_POLARITY[id]).toBe(1);
+/**
+ * THE MAP IS A CONTINUOUS DIVERGING SURFACE (rebuilt 2026-07-14) — pinned.
+ *
+ * It used to be THRESHOLDED: a cream anatomical base, with colour composited in only where |value|
+ * cleared ACTIVATION_THRESHOLD. The theory was that painting every vertex "makes a generated map look
+ * like stained glass instead of an fMRI", and the test here asserted the lit fraction stayed under
+ * 30%.
+ *
+ * ⚠️ THAT TEST PASSED FOR SEVEN ROUNDS WHILE THE OWNER REJECTED THE CARD ON LOOK FOUR TIMES. It could
+ * not fail: it constrained how much cortex was painted, and never once asked WHAT COLOUR THE SURFACE
+ * ACTUALLY CAME OUT. Measured on the shipped render, the answer was a cream-white brain with a single
+ * orange smudge — "color mesh doesnt look good at all and is only one color?" — and the suite was
+ * green the whole time. The reference (thesapientcompany.com/intelligence) paints its entire cortex,
+ * continuously, and reads as a scan.
+ *
+ * So these tests pin the DISTRIBUTION OF COLOUR, which is the thing a human is actually looking at.
+ */
+describe('the map is a continuous diverging surface — pinned', () => {
+  it('USES THE RAMP — the map must never come back one colour', () => {
+    const s = values(ENGAGED)
+      .map((v) => valueToRamp(v))
+      .sort((a, b) => a - b);
+    const at = (p: number) => s[Math.floor((s.length - 1) * p)]!;
+
+    // The middle 90% of the surface must cover a real span of the ramp. This is the assertion whose
+    // absence let a one-colour specimen ship four times. Measured after the rebuild: ~0.70.
+    expect(at(0.95) - at(0.05)).toBeGreaterThan(0.35);
+
+    // ...and no single tenth of the ramp may swallow the specimen. The other way to be "one colour"
+    // is to span the ramp on paper while 80% of the vertices sit in one bucket, which is exactly what
+    // a too-wide span did: 61% of the render's pixels landed in a single hue.
+    const deciles = new Array(10).fill(0);
+    for (const x of s) deciles[Math.min(9, Math.floor(x * 10))]! += 1;
+    expect(Math.max(...deciles) / s.length).toBeLessThan(0.55);
   });
 
-  it('is THRESHOLDED: most of the cortex stays at rest', () => {
+  it('is DIVERGING — an ENGAGED brain must paint real cortex COLD', () => {
     const v = values(ENGAGED);
-    let lit = 0;
-    for (let i = 0; i < v.length; i++) if (Math.abs(v[i]!) > ACTIVATION_THRESHOLD) lit++;
-    const frac = lit / v.length;
-    // Painting every vertex is what makes a generated map look like stained glass. A real
-    // thresholded map lights a minority of the surface.
+    let neg = 0;
+    for (let i = 0; i < v.length; i++) if (v[i]! < -0.05) neg++;
+
+    // A diverging colormap with only one sign is a sequential colormap wearing a costume, and that is
+    // what we shipped: `contrastBold` clamped below-rest values to ZERO, so the cold half of the ramp
+    // was mathematically unreachable and the render came back 100% warm (the reference: 74/26).
     //
-    // ⚠️ THE UPPER BOUND IS THE POINT, and it used to be 0.6 — which the map passed while lighting
-    // 57% of the cortex. "A minority" is not a defence of 57%: TRIBE's map is sparse hot patches on a
-    // mostly-grey brain, and ours was continents.
-    //
-    // This fixture is the PEAK of the strongest hook the model can produce (stopRatio 0.9, at the
-    // moment of its biggest response), so it is the hottest the map ever gets. Measured: 26% — down
-    // from 40% for the same drive before. A typical mid-encounter moment sits around 8%.
-    expect(frac).toBeGreaterThan(0.05);
-    expect(frac).toBeLessThan(0.30);
+    // The cold cortex on an engaged brain is DEFAULT-MODE SUPPRESSION — the most reliable effect in
+    // the task-vs-rest literature, and the single thing that makes a brain map look like a brain map.
+    // If this drops to zero, the clamp is back.
+    expect(neg / v.length).toBeGreaterThan(0.08);
+  });
+
+  it('paints NOTHING at rest — a contrast of a state against itself is zero', () => {
+    const v = values(RESTING_BOLD);
+    let peak = 0;
+    for (let i = 0; i < v.length; i++) peak = Math.max(peak, Math.abs(v[i]!));
+    // Feed the map its own baseline and the surface must sit at the ramp's midpoint everywhere. (Not
+    // exactly zero: parcelValue carries a ±0.05 slow wobble so a resting cortex breathes rather than
+    // freezing solid.)
+    expect(peak).toBeLessThan(0.12);
   });
 });
 
@@ -260,42 +298,46 @@ describe('the four invariants (§8.5) — pinned', () => {
  * session doing the cheap thing.
  */
 describe('the map is a contrast against rest', () => {
-  it('paints NOTHING at rest — a contrast of a state against itself is zero', () => {
-    const v = values(RESTING_BOLD);
-    let lit = 0;
-    for (let i = 0; i < v.length; i++) if (Math.abs(v[i]!) > ACTIVATION_THRESHOLD) lit++;
-    // The single sharpest statement of what "contrast" means: feed the map the baseline itself and
-    // the brain must go completely dark. Raw-BOLD painting could never do this — at rest the DMN idles
-    // at 0.42 and would have lit the default-mode system permanently.
-    expect(lit).toBe(0);
-  });
-
-  it('normalises per network — the DMN idles loud, and that is not a response', () => {
+  it('is SIGNED — a network below its own rest must come back NEGATIVE', () => {
     // The default-mode system rests at 0.42 while attention rests at 0.08. A raw subtraction would
     // make the DMN look permanently suppressed and attention permanently dramatic, for reasons that
-    // have nothing to do with the stimulus. So each network is scaled by its OWN headroom.
+    // have nothing to do with the stimulus. So each network is scaled by its OWN headroom — and, since
+    // 2026-07-14, by its own headroom ON THE SIDE IT IS MOVING (SUPPRESSION_P95 for the way down).
     const c = contrastBold(RESTING_BOLD);
     for (const id of NETWORK_IDS) expect(c[id]).toBeCloseTo(0, 5);
 
     const engaged = contrastBold(ENGAGED);
-    // Attention is up on rest and the DMN is DOWN on it (the room is locked in) — so the DMN
-    // contributes zero, not a negative that would paint suppression in the coral reserved for drift.
     expect(engaged.dorsal_attention).toBeGreaterThan(0.5);
-    expect(engaged.default).toBe(0);
-    // And when the room HAS gone, the DMN is the loudest thing on the map. This is the assertion the
-    // old made-up fixtures could not make honestly, because they never came from the model.
-    const drifting = contrastBold(DRIFTING);
-    expect(drifting.default).toBeGreaterThan(drifting.dorsal_attention);
+
+    // ⚠️ THIS LINE USED TO READ `expect(engaged.default).toBe(0)`, and it was the bug, pinned as a
+    // contract. `contrastBold` clamped everything below rest to zero — deliberately, to protect the
+    // accent-dosage rule ("coral means you are losing them, full stop") — which threw away DEFAULT-MODE
+    // SUPPRESSION, the one effect that can paint an engaged cortex blue. The map could not diverge, the
+    // render came back 100% warm, and this test called that correct.
+    expect(engaged.default).toBeLessThan(-0.1);
+
+    // And it must still not saturate: pegged at −1 on every frame, the DMN has no dynamic range left
+    // and reports nothing. (It did peg, at exactly −1.000, until the negative tail got its own scale.)
+    expect(engaged.default).toBeGreaterThan(-0.99);
   });
 
-  it('still turns CORAL when the room drifts — sparsity must not cost the card its meaning', () => {
+  it('keeps the finding: when the room drifts, the DMN is the loudest thing on the map', () => {
+    // The card exists to say "you are losing them", and that claim lives in the MODEL, not the palette.
+    // It survived the map being rebuilt underneath it, and this is the assertion that proves it — the
+    // one the old hand-written fixtures (default: 0.83, hotter than the model can actually go) could
+    // never make honestly.
+    const drifting = contrastBold(DRIFTING);
+    expect(drifting.default).toBeGreaterThan(0);
+    expect(drifting.default).toBeGreaterThan(drifting.dorsal_attention);
+
+    // ⚠️ AND IT IS NOW WARM, NOT CORAL — the semantics of the COLOUR changed even though the finding
+    // did not. The surface paints the signed contrast directly (no polarity flip), so "above this
+    // system's own resting level" is warm wherever it happens, and a drifting room's default-mode
+    // cortex runs hot. The colorbar says `below rest / above rest` for exactly this reason, and the
+    // verdict line — not the colour — is what tells the creator the room walked out.
     const v = values(DRIFTING);
-    let coral = 0;
-    for (let i = 0; i < v.length; i++) if (v[i]! < -ACTIVATION_THRESHOLD) coral++;
-    // The whole point of the diverging axis is that "you are losing them" is VISIBLE. Tuning the map
-    // sparse is worthless if it tunes the finding away with it — and that is EXACTLY what happened
-    // once: the first sparse map painted 0.0% coral on this very drive, and the old hand-written
-    // fixture (default: 0.83, hotter than the model can go) sailed through anyway.
-    expect(coral / v.length).toBeGreaterThan(0.015);
+    let warmDefault = 0;
+    for (let i = 0; i < v.length; i++) if (v[i]! > 0.15) warmDefault++;
+    expect(warmDefault / v.length).toBeGreaterThan(0.015);
   });
 });
