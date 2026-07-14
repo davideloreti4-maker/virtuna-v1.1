@@ -24,13 +24,11 @@ import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 import { stripWrappingQuotes } from '@/lib/utils';
-
-// Sanctioned band tones (data colors, NOT the terracotta accent) — reuse the band-block map.
-const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
-  Strong: 'var(--color-success)',
-  Mixed: 'var(--color-warning)',
-  Weak: 'var(--color-error)',
-};
+// Sanctioned band tones (data colors, NOT the terracotta accent). band-block.tsx exports this map
+// FOR reuse and every other card imports it; this file used to re-declare a byte-identical local
+// copy under a comment that said "reuse the band-block map". Two maps, one meaning — they only ever
+// drift apart silently.
+import { BAND_COLOR } from './band-block';
 
 export interface ReactionDistributionBlockRendererProps {
   block: ReactionDistributionBlock;
@@ -93,7 +91,7 @@ export function ReactionDistributionBlockRenderer({
       <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
         {/* Provenance header (shared) */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
             {audienceName}
           </span>
           <div className="flex shrink-0 items-center gap-2">
