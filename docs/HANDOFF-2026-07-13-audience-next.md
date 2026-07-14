@@ -199,12 +199,8 @@ and the data already has a case.
 2. ~~**Sanity-check that divergence is INTERESTING**~~ — ✅ **ANSWERED, and it is** (§4): 8/10 Reads
    diverge persona-wise, 80% reproducible, against a 0.2 flips/Read noise floor. **Calibration moves
    the verdict — but it moves it under the band, which is why the band never saw it.**
-3. **🔴 The question this raises, and I'd chase it next: does the calibrated audience steer anything
-   OTHER than the Read?** #281 fixed the steering seam *for the Read only*. Hooks / ideas / script
-   have **never been checked** — and the measurement above gives you the tool to check them cheaply:
-   run the same concept through each skill with the calibrated audience vs General and see whether
-   the output actually changes. If it doesn't, the moat is one surface deep. **This is the highest-
-   value unknown in the subsystem.**
+3. ~~**Does the calibrated audience steer anything OTHER than the Read?**~~ — ✅ **MEASURED. See §4c.
+   The answer is NO for GENERATION, YES for RANKING.** The obvious fix was tried and it FAILED.
 4. **P4, reframed** (§4) — and only after the owner answers the N:1 question.
 5. **Keep live-firing.** The paths that have *never* been run for real are the ones with bugs in them.
    Known-unrun: the **audience-drift cron** (it calls `calibrateFromScrape`; prod crons are dead for a
@@ -212,6 +208,50 @@ and the data already has a case.
    **hooks/ideas/script** the way #281 fixed for the Read.
 
 ---
+
+## 4c · 🔴 THE AUDIENCE DOES NOT STEER *GENERATION* — only the RANKING (measured 2026-07-14)
+
+**The moat on hooks / ideas / script is SELECTION, not WRITING. And the obvious fix is a proven dead
+end — do not retry it blind.**
+
+**Setup:** 20 runs through the REAL route (10 pinned to calibrated *Zach King*, 10 to General), the ask
+held constant, compared two independent ways — hook-line embeddings + permutation test, and a **blind
+LLM judge** *told exactly who Zach's audience is* and asked to classify each hook set.
+
+| | embeddings (within-arm − cross-arm) | blind judge (chance = 50%) |
+|---|---|---|
+| **BEFORE** — repaints reach only the SIM | +0.0007, **p = 0.27** | 11/20 = **55%**, p = 0.41 |
+| **AFTER** — all 10 repaints fed to the WRITER | +0.0003, **p = 0.43** | 9/20 = **45%**, p = 0.75 |
+
+Both methods, both arms: **indistinguishable from chance.** The fix (fold the persona repaints into
+`overrides`) was **REVERTED** — ~900 tokens on every calibrated run for a measured effect of zero.
+
+⚠️ **THE STEP THAT MAKES THIS A FINDING AND NOT A GUESS: I dumped the real prompt before believing the
+null.** All 10 personas + repaints **were present**; General stayed byte-identical (307 chars, no leak).
+The data reaches the writer — **the writer ignores it.** Note the calibrated prompt ALREADY carried the
+creator's writing voice + niche: **2,267 chars vs General's 307.** A 7× richer, deeply creator-specific
+prompt still produced hooks nobody can tell apart.
+
+**What IS steered (proven):** the RANKING + the SIM verdicts — the same Flash path measured at 8/10
+persona divergence (§4). So the honest description of these surfaces is *"generate generic candidates →
+rank them for your people."* A legitimate architecture — but **not** "we write bespoke content for your
+audience." Don't let the copy imply the latter.
+
+**⛔ DEAD END:** *"just put more audience text in the generation prompt."* Measured. Null. Reverted.
+**▶ THE DIRECTION THE EVIDENCE SUPPORTS: make the audience EXPLICIT IN THE OUTPUT** — generate
+per-persona ("the hook for your skeptics" / "for your frame-by-frame savers") instead of hoping an
+implicit steer leaks through a prompt. It *structurally guarantees* the differentiation, and it SHOWS the
+user the audience model is doing something. Untried; the harness to test it already exists.
+
+**Caveats, honestly:** one topic, n=10 per arm, the judge's CI is wide. But two differently-shaped
+methods agree and the prompt was verified to contain the data.
+
+⚠️ **METHOD LESSON — it cost me a wrong conclusion twice in one day.** I first called this null from the
+embedding metric alone. That metric was **topic-dominated**: two runs of the SAME condition scored only
+0.91 similar, because every hook about one topic lands in the same corner of the vector space. **A null
+from ONE blunt metric is not a finding.** It became one only when a second, differently-shaped method
+agreed *and* the prompt dump proved the input had arrived. (Same shape as the divergence noise floor in
+§4: a 3-concept control arm gave a 6× wrong answer. **Measure your instrument before you trust it.**)
 
 ## 4b · State I left behind (so you don't chase ghosts)
 
