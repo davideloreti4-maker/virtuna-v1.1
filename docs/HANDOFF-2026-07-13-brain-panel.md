@@ -603,3 +603,67 @@ sage/coral axis, §8.5), their font, and the two-brain true-vs-predicted compari
 5. **Judge at real scale at `/dev/cards#room`, beside the other cards.** Never in an isolated screenshot.
 SURVIVES UNTOUCHED: the well, colorbar + live marker, HRF trace, `cortex-sim.ts`, the shader + 3-pt rig,
 the honesty spine, `cortex-sim.test.ts`, `brain-view.test.tsx`.
+
+---
+
+# 13. ✅ SHIPPED — THE BRAIN IS REAL (2026-07-14)
+
+The specimen is now a **real FreeSurfer cortical surface from a T1-weighted MRI** (`public/brain/cortex.glb`,
+CC-BY dgallichan). Verified in the app at `/dev/cards`, at real scale, beside the other cards — in both
+`simulated` and `grounded` modes. `cortex-mesh.ts` (688 lines, the ellipsoid + Perlin noise) is DELETED,
+along with its ~500ms per-open build.
+
+## 13.1 What is on disk
+| | |
+|---|---|
+| `public/brain/cortex.glb` | 1.84MB · 64,397 verts / 92,127 tris · 16-bit indices · curvature baked as `_CURV` |
+| `public/brain/LICENSE.txt` | the CC-BY credit, shipped next to the asset |
+| `scripts/build-cortex-mesh.mjs` | the pipeline (weld → simplify → curvature → LEVEL → strip → quantize) |
+| `src/lib/brain/cortex-field.ts` | parcels → networks → self-tuning blend → signed per-vertex field |
+| `src/lib/brain/__tests__/cortex-field.test.ts` | 12 tests incl. the gradient probes + the four invariants |
+| Settings → Account | the CC-BY credit line (the licence's price; it is not optional) |
+
+## 13.2 ⚠️ THE BUGS THAT RENDER SOMETHING PLAUSIBLE AND THROW NOTHING
+Every one of these produced a *believable wrong picture*. If you touch this code, these are the traps.
+
+1. **`pos.array` on a quantized mesh is INTERLEAVED** — position+normal+curvature woven together. Fed to
+   `buildField` it gives a garbage bbox, every anchor misses its hemisphere, and the field comes back with
+   zero networks. **Always read via `getX/getY/getZ`.**
+2. **`geometry.clone()` does not survive interleaved buffers** → the mesh drew as a *shattered cube*.
+   Rebuild from the accessors.
+3. **The node matrix IS the dequantizer.** Lift the geometry out without it and the brain is thousands of
+   units wide with the camera inside it — **the well renders EMPTY and nothing throws.**
+4. **three colour-manages `THREE.Color` uniforms into LINEAR space**, but a custom ShaderMaterial writes
+   `gl_FragColor` raw → we dumped linear values at an sRGB display and **the specimen rendered BLACK.**
+   Two rounds were lost blaming the lighting. Bisecting the shader term-by-term found it: the light term
+   looked fine (Vector3 uniforms are *not* colour-managed), the BASE term was near-zero.
+   Fix: **`#include <colorspace_fragment>`**.
+5. **The mesh was TILTED** (native scanner space, nose-down). A tilt shears the normalised anatomical frame
+   the anchors live in, so "visual cortex at the occipital pole" quietly stops being true. Levelled by PCA.
+6. **Sketchfab's root node carries its own rotation.** Rotating vertex data without clearing it is a LIE:
+   three re-applies the rotation at load (file said 140×133×188, three saw 140×188×133 — Y/Z swapped).
+
+## 13.3 The axis signs — MEASURED ON THE OUTPUT, never predicted
+An earlier version predicted the signs from the input cloud and came out **inverted**. A wrong sign mirrors
+the brain and *nothing on screen looks like an error*. The discriminators that actually separate:
+- **LEFT-RIGHT** — mirror symmetry across the sagittal plane (92.7% vs 79.0%). A brain mirrors side-to-side; it does not mirror top-to-bottom. ⚠️ PCA *variance* cannot tell L-R (140mm) from S-I (133mm) apart, and the **bbox does not catch the mistake** because a swapped pair looks equally plausible.
+- **UP** — the broad dome vs the narrow brainstem cap (2267 vs 601).
+- **POSTERIOR** — the cerebellar **VERMIS** at the midline (2683 vs 1357). ⚠️ Rejected as coin flips: *"the inferior mass leans posterior"* (it leans ANTERIOR — the temporal lobes dominate the bottom of a brain) and *"the posterior end hangs lower"* (a tie: 48.6 vs 48.5).
+- Flips negate **TWO** axes, never one — a single flip would mirror a left hemisphere into a right one.
+
+## 13.4 The §5 landmine, defused
+The blend bandwidth was a CONSTANT tuned to the old mesh's unit scale. It is now **self-tuned**, and the real
+constraint turned out to be the **STRIDE**, not the radius. Both walls measured: a wide radius truncates the
+K-nearest set (mosaic, maxStep 0.279); a narrow radius lets the nearest parcel dominate (worse, 0.555). The
+stride is now sized to the measured worst-case crowding, with headroom.
+⚠️ **The gradient probe measures the SLOPE, not the per-edge step.** Decimation leaves long triangles, so a
+raw `|Δv|` per edge conflates "the field jumped" with "that edge was long" — it failed a *perfectly smooth
+field* for exactly that reason.
+
+## 13.5 Still open
+- **`Normal | Inflated`** (TRIBE's toggle, and their best idea) needs a SECOND geometry — an inflated surface
+  with matching vertex order, lerped as a morph target. A Blender/build-script step; not faked.
+- The **map lights ~50% of cortex in the engaged state**. Honest to the model (six of seven networks run
+  task-positive), but TRIBE's map is sparser. If the owner wants sparsity, the lever is a contrast against a
+  resting baseline — a change to `cortex-sim`, i.e. a change to what the card CLAIMS. Owner call.
+- Camera could sit slightly more lateral; the specimen could grow a little more in frame.
