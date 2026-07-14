@@ -482,6 +482,9 @@ export function AmbientRoom({
                 videoSrc={brainSource?.videoSrc}
                 retentionAt={brainSource?.retentionAt}
                 durationS={brainSource?.durationS}
+                // The room's REAL votes. Without a video the brain has no honest timeline, so THESE
+                // become the card's instrument (BrainView's INSTANT mode + ./room-readout).
+                personas={nodes}
               />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />

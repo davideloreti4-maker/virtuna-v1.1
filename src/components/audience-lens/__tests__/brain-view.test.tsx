@@ -54,21 +54,42 @@ describe('AmbientRoom — the brain scale', () => {
     expect(screen.getByRole('button', { name: 'The brain' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('ships the honesty label — a simulation, never a claimed measurement', () => {
+  it('ships the honesty label — the figure is anatomy, the numbers are real votes', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
     expect(brain.dataset.mode).toBe('simulated');
-    expect(within(brain).getByText(/predicted cortical response · simulated/i)).toBeInTheDocument();
-    expect(within(brain).getByText(/a sketch, not a measurement/i)).toBeInTheDocument();
+    // The specimen is AT REST here and says so. It used to say "predicted cortical response ·
+    // simulated" — honest about being a simulation, but still claiming a per-region prediction it
+    // does not have (the drive is seeded off the card's id hash).
+    expect(within(brain).getByText(/cortical anatomy · at rest/i)).toBeInTheDocument();
+    expect(within(brain).getByText(/the numbers are your room’s real votes/i)).toBeInTheDocument();
   });
 
-  it('plays the concept as the stimulus beside the brain (no video in the dock)', () => {
+  it('INSTANT: no invented encounter — no clock, no lag claim, no trace, no colorbar', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
-    // The text stimulus stands in for the video: the concept's own words, on the scan clock.
-    expect(within(brain).getByTestId('brain-stimulus-text')).toBeInTheDocument();
+    // A hook has no seconds. The card used to run a TR clock, a 15s "encounter" and a haemodynamic
+    // trace over one — honestly labelled, and still answering a question the stimulus never posed.
+    expect(within(brain).queryByTestId('brain-stimulus-text')).toBeNull();
     expect(within(brain).queryByTestId('brain-stimulus-video')).toBeNull();
-    expect(within(brain).getByText(/haemodynamic lag/i)).toBeInTheDocument();
+    expect(within(brain).queryByText(/haemodynamic lag/i)).toBeNull();
+    expect(within(brain).queryByText(/TR 1\.49s/)).toBeNull();
+    // A legend for a map that is not painted is furniture.
+    expect(within(brain).queryByTestId('brain-colorbar-marker')).toBeNull();
+  });
+
+  it('INSTANT: the instrument is the room’s REAL votes, split by who they were', () => {
+    render(room());
+    const brain = screen.getByTestId('brain-view');
+    const readout = within(brain).getByTestId('brain-readout');
+    // A count of real votes — no score, no invented benchmark, no threshold we cannot ground.
+    // It reports the FOCUS's own "6/10 stop" aggregate, not the node count: the card must never
+    // disagree with the Room it is sitting inside (the header and the other two scales show 6/10).
+    // Twice, deliberately: the visible line and its screen-reader twin.
+    expect(within(readout).getAllByText(/6 of 10/).length).toBeGreaterThanOrEqual(1);
+    expect(within(readout).getByTestId('brain-readout-segments')).toBeInTheDocument();
+    // The receipt is VERBATIM and attributed — the tough_crowd persona actually scrolled.
+    expect(within(readout).getByText(/too preachy/)).toBeInTheDocument();
   });
 
   it('mounts the 3D cortical surface as the hero, seeded off the focus', async () => {
@@ -142,10 +163,13 @@ describe('AmbientRoom — the brain scale', () => {
     expect(c.querySelector('[data-testid="brain-view"]')!.innerHTML).not.toBe(first);
   });
 
-  it('reads the room honestly: a weak concept blames the drift, a strong one does not', () => {
+  it('reads the room honestly: the verdict follows the real vote, not the seeded cortex', () => {
+    // INSTANT's verdict is now read off the personas' actual votes. It used to be read off the
+    // simulated network response — which is a function of (stopRatio, hash(seedKey)), so the card
+    // could narrate a "drift" that no one in the room had reported.
     const { rerender } = render(room({ fraction: '2/10 stop' }));
-    expect(screen.getByText(/default network is winning|attention collapses/i)).toBeInTheDocument();
+    expect(screen.getByText(/the room walks, and it walks together/i)).toBeInTheDocument();
     rerender(room({ fraction: '9/10 stop' }));
-    expect(screen.getByText(/the room keeps watching/i)).toBeInTheDocument();
+    expect(screen.getByText(/the room stops, and it stops together/i)).toBeInTheDocument();
   });
 });

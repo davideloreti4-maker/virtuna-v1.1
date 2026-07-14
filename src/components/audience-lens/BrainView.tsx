@@ -78,6 +78,7 @@ import {
   ACTIVATION_SPAN,
   ACTIVATION_THRESHOLD,
   NETWORK_IDS,
+  RESTING_BOLD,
   SPOKEN_NETWORKS,
   TR_S,
   HRF_PEAK_S,
@@ -89,6 +90,8 @@ import {
   type NetworkId,
   type SimMode,
 } from '@/lib/brain/cortex-sim';
+import type { PersonaNode } from '@/components/board/_kit';
+import { buildRoomReadout, type RoomReadout } from './room-readout';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -140,6 +143,12 @@ export interface BrainViewProps {
   retentionAt?: (u: number) => number;
   /** The stimulus length. Defaults to the simulated encounter; a video overrides from metadata. */
   durationS?: number;
+  /**
+   * The room's REAL persona votes. In INSTANT mode these are the only true thing the card has, and
+   * they become its instrument (see `./room-readout`). Absent → the card falls back to the figure
+   * and the verdict alone; it never fabricates a room.
+   */
+  personas?: PersonaNode[];
 }
 
 export function BrainView({
@@ -151,9 +160,37 @@ export function BrainView({
   videoSrc,
   retentionAt,
   durationS,
+  personas,
 }: BrainViewProps) {
   const mode: SimMode = videoSrc && retentionAt ? 'grounded' : 'simulated';
+  /**
+   * ── INSTANT vs GROUNDED — the card is polymorphic on its STIMULUS, not on the skill name.
+   *
+   * A real video (the Read) has an encounter: real seconds, and a measured retention curve to drive
+   * the response. Everything else — a hook, an idea, a raw thought — has NO encounter. It is one
+   * moment.
+   *
+   * The card used to pretend otherwise. In simulated mode `cortex-sim` invents "a seeded encounter
+   * envelope": a 15-second timeline, a TR clock ticking over it, and a haemodynamic trace — for a
+   * hook that has no 15 seconds. It was honestly LABELLED, and it was still answering a "when"
+   * question the stimulus never posed, which is most of why this card read as a debug panel on six
+   * of the eight skills.
+   *
+   * So in INSTANT mode the timeline, the clock, the trace and the colorbar are GONE, and the
+   * specimen renders AT REST — because its per-region activation here is a seeded function of
+   * (stopRatio, hash(seedKey)), which means two different hooks with the same stop-count would get
+   * different "activation" from the id hash alone. Painting that would be the same lie in a
+   * prettier costume. The figure is anatomy; the truth lives in the readout below it, which is
+   * built from the ten personas' REAL votes.
+   */
+  const instant = mode !== 'grounded';
   const stopRatio = total > 0 ? Math.min(1, Math.max(0, stopCount / total)) : 0.6;
+
+  /** The room's real votes → the instrument. Null when there is no room (never a fabricated one). */
+  const readout = useMemo(
+    () => buildRoomReadout(personas ?? [], { stopCount, total }),
+    [personas, stopCount, total],
+  );
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoDur, setVideoDur] = useState<number | null>(null);
@@ -272,7 +309,7 @@ export function BrainView({
              size, and no amount of geometry was ever going to fix a frame too small to show it. ── */}
       <div
         className="relative w-full overflow-hidden rounded-[12px] border border-[var(--color-border)]"
-        style={{ aspectRatio: WELL_ASPECT, background: WELL_BG }}
+        style={{ aspectRatio: instant ? WELL_ASPECT_INSTANT : WELL_ASPECT, background: WELL_BG }}
         data-testid="brain-surface"
       >
         {/* The head, ghosted. It is barely there (4% cream) and it does a lot: it gives the
@@ -301,10 +338,13 @@ export function BrainView({
         >
           <CortexCanvas
             seed={seed}
-            bold={bold}
+            // AT REST in instant mode — and by CONSTRUCTION, not by a magic zero: `contrastBold`
+            // subtracts RESTING_BOLD, so feeding it back gives a contrast of exactly 0 on every
+            // network, which is below threshold everywhere. The specimen is anatomy, unpainted.
+            bold={instant ? RESTING_BOLD : bold}
             t={t}
             reducedMotion={reducedMotion}
-            onHover={setHovered}
+            onHover={instant ? undefined : setHovered}
             onReady={onReady}
           />
         </div>
@@ -333,22 +373,27 @@ export function BrainView({
             </>
           ) : (
             <span className="text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
-              Predicted cortical response · {mode === 'grounded' ? 'modeled' : 'simulated'}
+              {instant ? 'Cortical anatomy · at rest' : 'Predicted cortical response · modeled'}
             </span>
           )}
         </div>
 
-        {/* Top-right — the scan clock. */}
-        <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          t {t.toFixed(1)}s · TR {TR_S}s
-        </p>
+        {/* Top-right — the scan clock. GROUNDED ONLY: a clock counting seconds over a hook that has
+            no seconds was the card's most confident lie. */}
+        {!instant && (
+          <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+            t {t.toFixed(1)}s · TR {TR_S}s
+          </p>
+        )}
 
-        {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
-            trails the stimulus because of it, and the figure says so out loud. It may move. It may not
-            be deleted. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
-          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-        </p>
+        {/* Bottom — the lag claim, inside the frame. Load-bearing where it is TRUE: the HRF is real
+            and the brain visibly trails a real stimulus because of it. There is no lag to claim when
+            there is no encounter, so it is grounded-only. */}
+        {!instant && (
+          <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+            trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+          </p>
+        )}
       </div>
 
       {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
@@ -367,6 +412,11 @@ export function BrainView({
              the shape held) and was obviously broken the moment it was on screen.
              The real fix is upstream: FreeSurfer EMITS an inflated surface (lh/rh.inflated) next to the
              one this mesh came from. Source that, and the toggle is trivial and correct. ── */}
+      {/* A legend for a map that is not painted is furniture. INSTANT rests the specimen, so the
+          colorbar goes with it — REMOVED from the DOM, not `hidden`. A hidden legend still ships its
+          live marker to assistive tech, still animates, and still reports a reading for a map that
+          is not there. (The test caught this: "no colorbar" was false while the class said so.) */}
+      {!instant && (
       <div className="mt-2 flex items-center gap-3">
         {/* The colorbar: poles, TICKS, the UNIT — and a LIVE MARKER, which TRIBE's does not have.
             A legend tells you how to read the map; this one also tells you the reading. */}
@@ -410,13 +460,14 @@ export function BrainView({
           </div>
         </div>
       </div>
+      )}
 
       {/* ── The stimulus, in its own pane. It is the thing the cortex is responding to; it does not
              belong dumped on top of the cortex, dimming the object it explains. ── */}
-      {/* A FIXED height, in both modes. Left to size itself, the video thumb's intrinsic aspect drove
-          the flex row and the grounded pane came out ~2× the text one — which put the grounded card
-          back over its container (measured: 530px of content in a 516px box) while the simulated one
-          fit. The card has to fit in BOTH modes, and the two should not be different shapes. */}
+      {/* GROUNDED ONLY. The transport, the word-by-word "playback" and the trace all exist to let you
+          watch an encounter unfold — and a hook has no encounter to unfold. In INSTANT mode this whole
+          pane is replaced by the readout, which reports the one thing that is actually true there. */}
+      {!instant && (
       <div className="mt-2 flex h-[60px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
@@ -504,19 +555,27 @@ export function BrainView({
           <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
         </div>
       </div>
+      )}
+
+      {/* ══ THE READOUT (INSTANT) ═══════════════════════════════════════════════════════════════
+             The instrument, on the only substrate that is real here: the ten personas actually voted.
+             Counts of real votes — no score, no invented benchmark, no threshold we cannot ground. ── */}
+      {instant && readout && <RoomReadoutPanel readout={readout} />}
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
           It leads on size and weight because it is the answer; everything above it is the working. */}
       <p className="mt-2.5 font-serif text-[15.5px] leading-[1.35] tracking-[-0.01em] text-foreground">
-        {verdictFor(stopRatio, response, mode)}
+        {instant ? instantVerdict(readout, stopRatio) : verdictFor(stopRatio, response, mode)}
       </p>
 
       {/* Foot — the honesty line. It must survive every redesign. */}
       <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
-          : 'a modeled response · a sketch, not a measurement'}
+          : readout
+            ? 'the figure is anatomy · the numbers are your room’s real votes'
+            : 'a modeled response · a sketch, not a measurement'}
       </p>
 
       <p className="sr-only">
@@ -525,6 +584,108 @@ export function BrainView({
       </p>
     </div>
   );
+}
+
+/**
+ * ── THE READOUT ───────────────────────────────────────────────────────────────────────────────────
+ * The structure is Sapient's (a productised TRIBE): a named line, a real number, and a chip that
+ * says what it MEANS — because a number with no sense of "good" is not useful, which is exactly what
+ * a cortex map is. What is NOT theirs is the substrate. They score modeled cortical networks against
+ * a benchmark; we count actual votes, so there is no benchmark to fabricate and no threshold to
+ * defend. "3 of 3 core fans stopped, 0 of 3 new viewers did" is a finding no brain map can give you,
+ * and it says what to DO.
+ *
+ * Every row here is a count. Nothing is scored, nothing is seeded, nothing is scaled.
+ */
+function RoomReadoutPanel({ readout }: { readout: RoomReadout }) {
+  const { hold, segments, objection, divergence } = readout;
+  return (
+    <div
+      className="mt-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-2"
+      data-testid="brain-readout"
+    >
+      {/* The headline: how much of the room stopped. A COUNT — it needs no benchmark to be read. */}
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-[11px] text-[var(--color-foreground-secondary)]">They stopped</span>
+        <span className="text-[11px] tabular-nums text-[var(--cream-primary)]">
+          {hold.stopped} of {hold.total}
+        </span>
+      </div>
+
+      {/* WHO stopped. The useful line, and the one a single percentage hides: a concept that holds
+          the core and loses everyone new is a different problem from one that loses everybody. */}
+      {segments.length > 0 && (
+        <div className="mt-1.5 flex flex-col gap-1" data-testid="brain-readout-segments">
+          {segments.map((s) => {
+            const held = s.stopped / s.total;
+            return (
+              <div key={s.label} className="flex items-center gap-2">
+                <span className="w-[86px] shrink-0 truncate text-[10.5px] text-[var(--color-foreground-muted)]">
+                  {s.label}
+                </span>
+                {/* The bar is the FRACTION of that segment, drawn at its real width. Sage where they
+                    held, coral where they walked — the app's one accent, meaning what it always
+                    means: the audience you are losing. */}
+                <span className="flex h-[3px] min-w-0 flex-1 overflow-hidden rounded-full bg-[rgba(255,255,255,0.06)]">
+                  <span
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.round(held * 100)}%`,
+                      background: held >= 0.5 ? 'var(--sage, #7f9c7a)' : 'var(--color-accent)',
+                    }}
+                  />
+                </span>
+                <span className="shrink-0 text-[10.5px] tabular-nums text-[var(--color-foreground-secondary)]">
+                  {s.stopped}/{s.total}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* The receipt. A real scroller, verbatim — never a paraphrase, and absent when nobody spoke. */}
+      {objection && (
+        <p className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
+          <span className="text-[var(--color-foreground-secondary)]">{objection.who}</span> scrolled:
+          “{objection.quote}”
+        </p>
+      )}
+
+      <p className="sr-only">
+        {hold.stopped} of {hold.total} stopped.
+        {divergence
+          ? ` ${divergence.held.label} held; ${divergence.lost.label} walked.`
+          : ''}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The verdict, INSTANT. It reads the room's real split — and it is deliberately allowed to say
+ * nothing interesting. The divergence line only fires when a segment genuinely held AND another
+ * genuinely walked; a lukewarm room gets a lukewarm sentence, because the alternative is the failure
+ * this card keeps repeating: a confident story told over a flat signal.
+ */
+function instantVerdict(readout: RoomReadout | null, stopRatio: number): string {
+  if (!readout) {
+    return stopRatio >= 0.6
+      ? 'Most of the room stopped.'
+      : 'Most of the room kept scrolling.';
+  }
+  const { hold, divergence } = readout;
+  if (divergence) {
+    // Say ONLY what the counts say. This sentence used to end "— you are writing for the people you
+    // already have", which reads beautifully and was hardcoded to a core-held/new-lost story: on the
+    // first real render it fired while holding NEW viewers and losing cross-niche, and cheerfully
+    // told the creator the exact opposite of what their room had just done.
+    const { held, lost } = divergence;
+    return `It holds ${held.label.toLowerCase()} (${held.stopped}/${held.total}) and loses ${lost.label.toLowerCase()} (${lost.stopped}/${lost.total}).`;
+  }
+  if (hold.pct >= 70) return 'The room stops, and it stops together.';
+  if (hold.pct <= 30) return 'The room walks, and it walks together.';
+  return 'The room splits, and no one segment carries it.';
 }
 
 /** How many points the trace is sampled at. Enough to draw the HRF's shape, cheap enough to build
@@ -797,7 +958,20 @@ const WELL_BG = '#131210';
  * (see the fit check in the verification script) — if you change anything above it, re-measure, and do
  * not let it steal from the verdict.
  */
+/**
+ * The well's aspect, PER MODE — and the budget is real, not stylistic.
+ *
+ * GROUNDED: the specimen IS the instrument (the map is painted, it moves, you scrub it), so it keeps
+ * the near-square well and the frame.
+ *
+ * INSTANT: the specimen is at rest — it is the credibility object, and the READOUT is the instrument.
+ * So the figure yields. Measured: with the readout added, instant came to 569px of content in the
+ * 516px box and clipped the verdict clean off the bottom (which is how the last redesign died too).
+ * A 4:3 well is 273px instead of 346px, which brings the card to ~496 with real headroom — no
+ * truncation, no silent cap on the segment rows, nothing hidden.
+ */
 const WELL_ASPECT = '20 / 19';
+const WELL_ASPECT_INSTANT = '4 / 3';
 
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [
