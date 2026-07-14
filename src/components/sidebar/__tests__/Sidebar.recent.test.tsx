@@ -2,6 +2,28 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+/**
+ * Timeout raised for MODULE WARM-UP, not for slow assertions (2026-07-14).
+ *
+ * This file intermittently timed out under full-suite parallel load. It is not a slow component
+ * and not a slow test — a --reporter=verbose run shows the cost is paid entirely by whichever
+ * test happens to run FIRST:
+ *
+ *     first test   1437 ms      <- imports + first mount of Sidebar's module graph
+ *     other seven  7–27 ms each <- the component itself renders fine
+ *
+ * Sidebar pulls a barrel import of @phosphor-icons/react plus the supabase client and two
+ * stores; evaluating that graph once costs well over a second, and on a contended CPU it can
+ * cross the 5s default before the first assertion ever runs. The default is a per-test budget,
+ * so a one-time startup cost lands entirely on test #1 and looks like a failure of whatever
+ * that test happens to be asserting.
+ *
+ * Raised only on THIS file, and only enough to absorb the warm-up — deliberately not a global
+ * bump, which would mask a genuine render regression here or anywhere else. If the seven fast
+ * tests ever start costing seconds, that IS a real regression and this timeout will not hide it.
+ */
+vi.setConfig({ testTimeout: 20_000 });
+
 vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({
     auth: {
