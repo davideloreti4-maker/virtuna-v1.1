@@ -78,7 +78,6 @@ import {
   ACTIVATION_SPAN,
   ACTIVATION_THRESHOLD,
   NETWORK_IDS,
-  RESTING_BOLD,
   SPOKEN_NETWORKS,
   TR_S,
   HRF_PEAK_S,
@@ -383,13 +382,16 @@ export function BrainView({
         >
           <CortexCanvas
             seed={seed}
-            // AT REST in instant mode — and by CONSTRUCTION, not by a magic zero: `contrastBold`
-            // subtracts RESTING_BOLD, so feeding it back gives a contrast of exactly 0 on every
-            // network, which is below threshold everywhere. The specimen is anatomy, unpainted.
-            bold={instant ? RESTING_BOLD : bold}
+            // THE SPECIMEN PAINTS IN BOTH MODES AGAIN. It was benched at RESTING_BOLD because the
+            // simulated drive was seeded off hash(seedKey) — so its regional pattern was arbitrary,
+            // and painting it was a lie. The fix was to delete the hash (cortex-sim), NOT to delete
+            // the map: the response is now a pure function of the room's REAL stop-ratio, convolved
+            // with the canonical HRF. Same room → same brain. A hook IS a single event, and the
+            // haemodynamic response to one event is physiology, not an invention.
+            bold={bold}
             t={t}
             reducedMotion={reducedMotion}
-            onHover={instant ? undefined : setHovered}
+            onHover={setHovered}
             onReady={onReady}
           />
         </div>
@@ -418,27 +420,21 @@ export function BrainView({
             </>
           ) : (
             <span className="text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
-              {instant ? 'Cortical anatomy · at rest' : 'Predicted cortical response · modeled'}
+              Predicted cortical response · modeled
             </span>
           )}
         </div>
 
-        {/* Top-right — the scan clock. GROUNDED ONLY: a clock counting seconds over a hook that has
-            no seconds was the card's most confident lie. */}
-        {!instant && (
-          <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-            t {t.toFixed(1)}s · TR {TR_S}s
-          </p>
-        )}
+        {/* Top-right — the scan clock. */}
+        <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+          t {t.toFixed(1)}s · TR {TR_S}s
+        </p>
 
-        {/* Bottom — the lag claim, inside the frame. Load-bearing where it is TRUE: the HRF is real
-            and the brain visibly trails a real stimulus because of it. There is no lag to claim when
-            there is no encounter, so it is grounded-only. */}
-        {!instant && (
-          <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
-            trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-          </p>
-        )}
+        {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
+            trails the stimulus because of it, and the figure says so out loud. */}
+        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+        </p>
       </div>
 
       {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
@@ -457,11 +453,6 @@ export function BrainView({
              the shape held) and was obviously broken the moment it was on screen.
              The real fix is upstream: FreeSurfer EMITS an inflated surface (lh/rh.inflated) next to the
              one this mesh came from. Source that, and the toggle is trivial and correct. ── */}
-      {/* A legend for a map that is not painted is furniture. INSTANT rests the specimen, so the
-          colorbar goes with it — REMOVED from the DOM, not `hidden`. A hidden legend still ships its
-          live marker to assistive tech, still animates, and still reports a reading for a map that
-          is not there. (The test caught this: "no colorbar" was false while the class said so.) */}
-      {!instant && (
       <div className="mt-2 flex items-center gap-3">
         {/* The colorbar: poles, TICKS, the UNIT — and a LIVE MARKER, which TRIBE's does not have.
             A legend tells you how to read the map; this one also tells you the reading.
@@ -512,14 +503,9 @@ export function BrainView({
           predicted BOLD · vs rest
         </span>
       </div>
-      )}
 
       {/* ── The stimulus, in its own pane. It is the thing the cortex is responding to; it does not
              belong dumped on top of the cortex, dimming the object it explains. ── */}
-      {/* GROUNDED ONLY. The transport, the word-by-word "playback" and the trace all exist to let you
-          watch an encounter unfold — and a hook has no encounter to unfold. In INSTANT mode this whole
-          pane is replaced by the readout, which reports the one thing that is actually true there. */}
-      {!instant && (
       <div className="mt-2 flex h-[60px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
@@ -607,12 +593,11 @@ export function BrainView({
           <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
         </div>
       </div>
-      )}
 
       {/* ══ THE READOUT (INSTANT) ═══════════════════════════════════════════════════════════════
              The instrument, on the only substrate that is real here: the ten personas actually voted.
              Counts of real votes — no score, no invented benchmark, no threshold we cannot ground. ── */}
-      {instant && readout && (
+      {readout && (
         <RoomReadoutPanel
           readout={readout}
           kindLabel={kindLabel}
@@ -636,9 +621,7 @@ export function BrainView({
       <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
-          : readout
-            ? 'the figure is anatomy · the numbers are your room’s real votes'
-            : 'a modeled response · a sketch, not a measurement'}
+          : 'a modeled response from your room’s real votes · not a brain measurement'}
       </p>
 
       <p className="sr-only">
@@ -976,8 +959,10 @@ function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reduce
           </clipPath>
         </defs>
 
-        <path d={area} clipPath="url(#trace-up)" fill={SAGE} fillOpacity="0.30" />
-        <path d={area} clipPath="url(#trace-down)" fill="var(--color-accent)" fillOpacity="0.32" />
+        {/* The trace rides the SAME hot/cold axis the map and the colorbar do. It was sage/coral
+            while the specimen went red/yellow — an instrument disagreeing with its own map. */}
+        <path d={area} clipPath="url(#trace-up)" fill={css(TASK_HIGH)} fillOpacity="0.13" />
+        <path d={area} clipPath="url(#trace-down)" fill={css(DMN_HIGH)} fillOpacity="0.13" />
 
         {/* Zero — the line the room is either above or below. */}
         <line
@@ -1071,27 +1056,29 @@ function HeadGhost() {
             COHERENT, defined shape held at ~7% luminance. The quietness must come from the VALUE,
             not from destroying the edge. */}
         <filter id="head-soft" x="-8%" y="-8%" width="116%" height="116%">
-          <feGaussianBlur stdDeviation="2.4" />
+          <feGaussianBlur stdDeviation="1.6" />
         </filter>
       </defs>
-      {/* A left-facing profile — crown, forehead, brow, nose, lips, chin, jaw, ear, neck — sized so
-          the cranial VAULT encloses the specimen's measured bbox (x 88..313, y 104..275 in these
-          viewBox units, with the canvas centring the brain at 200,190). The neck and shoulder run off
-          the bottom edge, the way an anatomical plate crops. */}
+      {/* A left-facing profile at REAL head proportions — crown, frontal eminence, brow, nasion, a
+          nose that actually projects, lips, chin, jawline, throat. The previous two attempts read as
+          "a potato" (owner, twice) for one reason: the landmarks were mushy. TRIBE's head is quiet by
+          VALUE (~7% luminance — measured, same as ours) but its FEATURES are crisp. So the blur comes
+          down and the path gets its anatomy. */}
       <path
-        d="M206 62
-           C 140 62, 92 96, 78 148
-           C 70 178, 66 196, 58 212
-           C 44 236, 30 248, 32 258
-           C 34 266, 52 264, 60 268
-           C 54 280, 56 292, 66 300
-           C 74 308, 78 316, 92 322
-           C 118 336, 152 344, 186 346
-           C 200 356, 208 366, 210 380
+        d="M 200 40
+           C 150 40, 105 70, 82 128
+           C 70 155, 62 178, 58 196
+           C 56 206, 60 214, 58 222
+           C 50 234, 32 244, 28 252
+           C 26 258, 50 262, 60 266
+           C 66 274, 62 282, 66 290
+           C 70 298, 74 308, 86 318
+           C 100 330, 130 338, 165 342
+           C 190 346, 205 352, 212 380
            L 400 380
-           C 400 300, 400 200, 396 168
-           C 386 104, 300 62, 206 62 Z"
-        fill="rgba(236, 231, 222, 0.07)"
+           C 400 318, 382 240, 352 180
+           C 336 100, 288 40, 200 40 Z"
+        fill="rgba(236, 231, 222, 0.085)"
         filter="url(#head-soft)"
       />
     </svg>
@@ -1104,13 +1091,14 @@ function HeadGhost() {
 const GYRUS: RGB = [88, 87, 84];
 const SULCUS: RGB = [58, 57, 55];
 // The two poles of the diverging map, at threshold → at full activation.
-const TASK_LOW: RGB = [169, 198, 160];
-const TASK_HIGH: RGB = [63, 122, 74]; // pale sage → deep, saturated sage
-const DMN_LOW: RGB = [230, 169, 157];
-const DMN_HIGH: RGB = [196, 66, 54]; // pale coral → deep coral-red
+// The colorbar's ramp MUST be the shader's ramp — a legend that disagrees with its map is a lie.
+// Canonical fMRI hot/cold (see CortexCanvas's uniforms for why this replaced sage/coral).
+const TASK_LOW: RGB = [140, 29, 14];
+const TASK_HIGH: RGB = [255, 224, 102]; // deep red → orange → yellow (engaged)
+const DMN_LOW: RGB = [13, 59, 102];
+const DMN_HIGH: RGB = [83, 215, 245]; // deep blue → cyan (drifting)
 
 /** The sage the strip's task-positive bars take — the same pole the map uses. */
-const SAGE = 'rgb(169, 198, 160)';
 
 /**
  * THE WELL. A near-black, faintly warm sky for the specimen.
@@ -1151,12 +1139,13 @@ const WELL_BG = '#131210';
  * truncation, no silent cap on the segment rows, nothing hidden.
  */
 const WELL_ASPECT = '20 / 19';
-// 16:9. The specimen has now yielded three times (20/19 → 4:3 → 3:2 → 16:9), and each time for the
-// same honest reason: in INSTANT it is the CREDIBILITY OBJECT, and the things the creator READS and
-// ACTS ON are the metric, the scale and the button. The reference agrees — Sapient's brain is a
-// small hero tile and the numbers dominate the layout. Measured: the readout + scale + CTA took the
-// card to 523px, clipping the verdict AND the honesty line clean off the bottom.
-const WELL_ASPECT_INSTANT = '16 / 9';
+// ONE WELL, ONE SIZE — and it is BIG. The specimen yielded three times (20/19 → 4:3 → 3:2 → 16:9)
+// to make room for the readout, and by 16:9 the brain was a grey thumbnail floating in an empty box:
+// the exact "doesn't look real" the owner called out, side by side with the grounded card where the
+// same specimen at 20/19 reads fine. The brain is the HERO of this card. The card is allowed to be
+// tall instead — the Room's body scrolls in the drawer and renders at natural height in the Read
+// (AmbientRoom), so the 516px "budget" was a self-imposed dev-page box, never a real constraint.
+const WELL_ASPECT_INSTANT = WELL_ASPECT;
 
 type RGB = [number, number, number];
 const mix = (a: RGB, b: RGB, t: number): RGB => [

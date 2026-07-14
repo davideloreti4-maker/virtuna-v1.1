@@ -119,9 +119,20 @@ describe('cortex-sim — grounded mode tracks the REAL retention curve', () => {
 });
 
 describe('cortex-sim — determinism + parcel heterogeneity', () => {
-  it('is a pure function of (input, t) — same seed, same value', () => {
+  it('SAME ROOM → SAME BRAIN. The response must not depend on the card’s id.', () => {
     expect(predictedBold(base, 3.7)).toEqual(predictedBold(base, 3.7));
-    expect(predictedBold({ ...base, seedKey: 'other' }, 3.7)).not.toEqual(predictedBold(base, 3.7));
+    // This assertion used to be `.not.toEqual` — it REQUIRED two cards with an identical room
+    // response to produce DIFFERENT brains, because the drive was wobbled by hashSeed(seedKey)
+    // "so that two concepts never look identical". That one cosmetic line was the card's whole
+    // integrity problem: a map you can change by RENAMING the card is not a measurement of
+    // anything, and it is why the specimen had to be benched at rest. The hash is gone. Two
+    // hooks that land identically SHOULD look identical — that is the model being honest about
+    // how much it actually knows.
+    expect(predictedBold({ ...base, seedKey: 'other' }, 3.7)).toEqual(predictedBold(base, 3.7));
+    // ...and a DIFFERENT ROOM still moves it. The response tracks the real signal, not the id.
+    expect(predictedBold({ ...base, stopRatio: 0.2 }, 3.7)).not.toEqual(
+      predictedBold({ ...base, stopRatio: 0.9 }, 3.7),
+    );
   });
 
   it('spreads parcels WITHIN a network — a flat fill is the tell of a fake map', () => {

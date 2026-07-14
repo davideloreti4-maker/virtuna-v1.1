@@ -54,28 +54,25 @@ describe('AmbientRoom — the brain scale', () => {
     expect(screen.getByRole('button', { name: 'The brain' })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('ships the honesty label — the figure is anatomy, the numbers are real votes', () => {
+  it('ships the honesty label — modeled from real votes, never a claimed measurement', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
     expect(brain.dataset.mode).toBe('simulated');
-    // The specimen is AT REST here and says so. It used to say "predicted cortical response ·
-    // simulated" — honest about being a simulation, but still claiming a per-region prediction it
-    // does not have (the drive is seeded off the card's id hash).
-    expect(within(brain).getByText(/cortical anatomy · at rest/i)).toBeInTheDocument();
-    expect(within(brain).getByText(/the numbers are your room’s real votes/i)).toBeInTheDocument();
+    expect(within(brain).getByText(/predicted cortical response · modeled/i)).toBeInTheDocument();
+    expect(within(brain).getByText(/not a brain measurement/i)).toBeInTheDocument();
   });
 
-  it('INSTANT: no invented encounter — no clock, no lag claim, no trace, no colorbar', () => {
+  it('the response is driven by the ROOM, and the specimen paints in both modes', () => {
+    // The specimen was briefly benched at RESTING_BOLD in the text mode, because the simulated
+    // drive was wobbled by hash(seedKey) — so its regional pattern was arbitrary and painting it
+    // was a lie. The fix was to delete the HASH (cortex-sim), not the MAP: the response is now a
+    // pure function of the room's real stop-ratio, so the figure can honestly paint again. The
+    // instrument that reports it comes back with it.
     render(room());
     const brain = screen.getByTestId('brain-view');
-    // A hook has no seconds. The card used to run a TR clock, a 15s "encounter" and a haemodynamic
-    // trace over one — honestly labelled, and still answering a question the stimulus never posed.
-    expect(within(brain).queryByTestId('brain-stimulus-text')).toBeNull();
-    expect(within(brain).queryByTestId('brain-stimulus-video')).toBeNull();
-    expect(within(brain).queryByText(/haemodynamic lag/i)).toBeNull();
-    expect(within(brain).queryByText(/TR 1\.49s/)).toBeNull();
-    // A legend for a map that is not painted is furniture.
-    expect(within(brain).queryByTestId('brain-colorbar-marker')).toBeNull();
+    expect(within(brain).queryByText(/at rest/i)).toBeNull();
+    expect(within(brain).getByText(/haemodynamic lag/i)).toBeInTheDocument();
+    expect(within(brain).getByTestId('brain-colorbar-marker')).toBeInTheDocument();
   });
 
   it('INSTANT: the instrument is a NAMED METRIC on real votes, not a contingency table', () => {

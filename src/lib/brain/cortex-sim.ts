@@ -144,10 +144,23 @@ const HRF_KERNEL: { tau: number; w: number }[] = (() => {
 /** The instantaneous NEURAL drive per network at stimulus-time `t` seconds (pre-HRF). */
 export function neuralDrive(input: DriveInput, t: number): Record<NetworkId, number> {
   const { mode, stopRatio: sR, durationS } = input;
-  const rng = mulberry32(hashSeed(input.seedKey));
-  // A stable per-network texture (phase + rate), so two concepts never look identical.
-  const tex = NETWORK_IDS.map(() => ({ p: rng() * Math.PI * 2, w: 0.7 + rng() * 0.8 }));
-  const wob = (i: number) => 0.04 * Math.sin(t * tex[i]!.w + tex[i]!.p);
+  /**
+   * ⚠️ THERE IS NO HASH IN THE RESPONSE, AND THERE MUST NEVER BE ONE AGAIN.
+   *
+   * This used to seed a per-network "texture" off hashSeed(seedKey) — a phase and rate per network,
+   * wobbling the drive — so that "two concepts never look identical". The cost of that one cosmetic
+   * line was the card's integrity: two hooks with the SAME room response produced DIFFERENT brains,
+   * because the difference came from the card's id hash. A map you can change by renaming the card
+   * is not a measurement of anything, and it is the reason the specimen had to be benched at rest.
+   *
+   * The response is now a pure function of the REAL signal (the stop-ratio, and in grounded mode the
+   * audience's measured retention curve). Same room → same brain. Two hooks that land identically
+   * SHOULD look identical: that is the model being honest about how much it actually knows.
+   *
+   * The `seed` prop on CortexCanvas survives and is fine — it drifts the parcel BOUNDARIES (spatial
+   * texture, so the same map does not tile identically). It does not touch a single network value.
+   */
+  const wob = (_i: number) => 0;
 
   const dur = durationS > 0 ? durationS : 1;
   // Where we are in the stimulus, normalized.
@@ -383,7 +396,11 @@ const BIAS_MAX = 1.30;
  * baseline gray and only the parcels that clear the threshold are painted. Colouring every parcel
  * is what makes a generated map look like stained glass instead of an fMRI.
  */
-export const ACTIVATION_THRESHOLD = 0.45;
+// 0.45 → 0.30. At 0.45 a typical hook cleared threshold on a single speck of cortex, which is the
+// "no regions getting activated" the owner saw. TRIBE's clusters are LARGE and unmistakable; a
+// statistical map is mostly grey, but where it fires it FIRES. Re-measure the lit-area % after any
+// change to this (the map must not creep back toward painting the whole cortex — that was §9's bug).
+export const ACTIVATION_THRESHOLD = 0.42;
 
 /**
  * How far above the threshold a parcel must run to be painted at FULL colour.

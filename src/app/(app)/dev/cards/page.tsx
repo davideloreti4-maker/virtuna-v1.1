@@ -310,7 +310,7 @@ export default function DevCardsPage() {
               note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ Population · 1,000. Fed a fixture focus; the box stands in for the panel."
             />
             <div className="grid gap-4 lg:grid-cols-2">
-              <div className="h-[620px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
                 <AmbientRoom
                   flatPersonas={ROOM_FOCUS.personas}
                   conceptText={ROOM_FOCUS.conceptText}
@@ -339,7 +339,7 @@ export default function DevCardsPage() {
               {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the
                   drive. Here the curve is a fixture (holds, then breaks at 45%); in the Read it is
                   the audience's measured curve. */}
-              <div className="h-[620px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
                 <AmbientRoom
                   flatPersonas={ROOM_FOCUS.personas}
                   conceptText={ROOM_FOCUS.conceptText}

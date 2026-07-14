@@ -342,10 +342,21 @@ function Cortex({
       // the map unreadable was the SULCUS, not the activation. The reference's field is 93%
       // achromatic: a neutral specimen is what gives a hot patch something to stand out FROM.
       uSulcus: { value: rgb(0x7a7671) },
-      uTaskLow: { value: rgb(0xa9c6a0) },
-      uTaskHigh: { value: rgb(0x3f7a4a) },
-      uDmnLow: { value: rgb(0xe6a99d) },
-      uDmnHigh: { value: rgb(0xc44236) },
+      // ── THE COLORMAP — the canonical fMRI hot/cold ramp, and the single biggest reason TRIBE's
+      //    specimen reads as a real scan and ours read as a tinted sculpture.
+      //
+      //    We deliberately did NOT take this for five rounds, on the LOCKED near-zero accent-dosage
+      //    rule (docs/DESIGN-SYSTEM.md), and substituted a muted sage/coral axis. That was the design
+      //    system talking over the reference. OWNER OVERRIDE (2026-07-14): "just copy them."
+      //
+      //    Red→orange→yellow for engaged cortex, blue→cyan for the default-mode system (the audience
+      //    drifting away). That is not merely TRIBE's look — hot/cold IS the standard neuroimaging
+      //    diverging map, so it buys the reference's realism AND keeps our own semantics: coral no
+      //    longer means "drift" here, blue does, and the accent is off the specimen entirely.
+      uTaskLow: { value: rgb(0x8c1d0e) },
+      uTaskHigh: { value: rgb(0xffe066) },
+      uDmnLow: { value: rgb(0x0d3b66) },
+      uDmnHigh: { value: rgb(0x53d7f5) },
       uLight: { value: new THREE.Vector3(-0.45, 0.72, 0.85) },
       uRim: { value: rgb(0x8fa7bd) },
       // Warm key + cool fill is the oldest trick in specimen photography, and the reason a lit form
