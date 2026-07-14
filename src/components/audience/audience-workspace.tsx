@@ -35,6 +35,7 @@ import {
   getPlatformLabel,
   getRung,
   isCustomAudience,
+  isPersonaGrounded,
   type SourceRung,
 } from "./audience-display";
 import { Button } from "@/components/ui/button";
@@ -172,6 +173,25 @@ export function AudienceWorkspace({
   const rung = getRung(audience);
   const personas = audience.personas;
   const count = getPersonaCount(audience);
+
+  /**
+   * archetype → the engagement receipt behind that persona (TRUST: the honesty spine).
+   *
+   * The editable `personas` column carries no `evidence` — only the FROZEN `signature` reactors
+   * do, and only when the audience was built from a real scrape. So a receipt appears iff the
+   * scrape actually produced one; a described/authored audience shows none and claims none.
+   * (`isPersonaGrounded` was written for exactly this and had zero callers until 2026-07-14 —
+   * because until the first real calibration ran, no audience in prod had any evidence to show.)
+   */
+  const receipts = useMemo(() => {
+    const reactors = audience.signature?.audience.personas;
+    if (!reactors?.length) return null;
+    const byArchetype = new Map<string, string>();
+    for (const r of reactors) {
+      if (isPersonaGrounded(r)) byArchetype.set(r.archetype, r.evidence.trim());
+    }
+    return byArchetype.size > 0 ? byArchetype : null;
+  }, [audience.signature]);
   const isDefault = audience.is_general
     ? defaultAudienceId === null
     : defaultAudienceId === audience.id;
@@ -413,6 +433,14 @@ export function AudienceWorkspace({
                           {p.repaint}
                         </p>
                       )}
+                      {/* The receipt — the engagement pattern in the scrape that put this persona
+                          in the room. Absent (and never faked) for a described audience. */}
+                      {receipts?.get(p.archetype) && (
+                        <p className="mt-1.5 border-l-2 border-white/[0.10] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
+                          <span className="text-foreground-secondary">Evidence · </span>
+                          {receipts.get(p.archetype)}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2.5">
@@ -445,6 +473,14 @@ export function AudienceWorkspace({
               <p className="mt-2.5 text-[11.5px] text-foreground-muted">
                 <span className="text-foreground-secondary">Naming only:</span> a persona&apos;s
                 display name never reaches the model — the description does.
+              </p>
+            )}
+
+            {receipts && (
+              <p className="mt-1.5 text-[11.5px] text-foreground-muted">
+                <span className="text-foreground-secondary">Evidence</span> is the engagement
+                pattern in your account that put this persona in the room. Only an audience read
+                from a real handle has it.
               </p>
             )}
           </section>

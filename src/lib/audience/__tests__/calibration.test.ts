@@ -200,3 +200,45 @@ describe("calibrateFromScrape — target path", () => {
     expect(result).toHaveProperty("audience");
   });
 });
+
+// ─── Progress staging (2026-07-14) ──────────────────────────────────────────────
+//
+// calibrateFromScrape is the ONLY thing that can see the scrape→enrich boundary; the SSE route
+// awaits it as one opaque promise. Before this, the route guessed — and guessed wrong (see
+// CalibrationStage's docblock). These tests pin the announcement to the work.
+
+describe("calibrateFromScrape — onStage", () => {
+  it("announces 'scraping' BEFORE it hits Apify", async () => {
+    const timeline: string[] = [];
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => {
+        timeline.push("work:scrape");
+        return makeBundle(50_000, 15);
+      }),
+      onStage: (stage: string) => timeline.push(`stage:${stage}`),
+    });
+
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(timeline[0]).toBe("stage:scraping");
+    expect(timeline.indexOf("stage:scraping")).toBeLessThan(timeline.indexOf("work:scrape"));
+  });
+
+  it("THREADS onStage into enrichment — the arg that was never passed at all", async () => {
+    // The bug in miniature: `enrich(...)` was called with NO deps, so the watch/synthesize
+    // phases had no way to report themselves even once a reporter existed.
+    const onStage = vi.fn();
+    const enrich = vi.fn(async () => makeSignature());
+    await calibrateFromScrape(BASE_INPUT, makeDeps({ enrich, onStage }));
+
+    expect(enrich).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ onStage }),
+    );
+  });
+
+  it("is optional — omitting onStage does not throw (back-compat for every caller)", async () => {
+    const result = await calibrateFromScrape(BASE_INPUT, makeDeps());
+    expect("audience" in result).toBe(true);
+  });
+});
