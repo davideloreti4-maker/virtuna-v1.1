@@ -9,11 +9,15 @@
  * persisted block bodies, the SkillRunError block + onRetry).
  *
  * ⚠️ This view NO LONGER owns an idle state. It used to render its own heading + three
- * quick-action cards, in its own bespoke card (icon ABOVE the text, no fill, p-5,
- * 16/14px) — an anatomy nothing else in the app used, and the single worst offender in
- * the four-different-empty-states drift. The three starting points now live in the ONE
- * starter (`home-starter.tsx` — THE STARTER CONTRACT) with their copy and their
- * tap-only guarantee intact; the composer renders it. Do NOT re-add an idle branch here.
+ * quick-action cards in a bespoke card (icon ABOVE the text, no fill, p-5, 16/14px) — an
+ * anatomy nothing else in the app used, and the worst offender in the four-empty-states
+ * drift. Do NOT re-add an idle branch here.
+ *
+ * Where Explore's entry points went (2026-07-14): the starter grid is the SAME SIX cards
+ * under every skill now, so the three presets did not survive as cards. They were not lost
+ * — the richer entry is the params popover (`onRunExplore` / the magnifier beside the skill
+ * chip), which already expresses niche · accounts · time-window · serendipity, i.e. every
+ * preset and then some. A bare send with an empty field runs the un-niched pull.
  *
  * Two sources of content:
  *  1. STREAMING: ProgressChecklist + the loading lead line + the in-flight grid block.
@@ -52,25 +56,6 @@ import type { StageState } from '@/components/thread/progress-checklist';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 import type { OutlierTileData } from '@/components/discover/outlier-tile';
-
-// ── Quick-action params ─────────────────────────────────────────────────────────
-
-/**
- * Params a quick-action card passes up to onQuickAction (forwarded to
- * useExploreStream.start by the composer). Mirrors ExploreStartParams' shape — kept
- * structural so the composer can pass it straight through.
- */
-export interface ExploreQuickActionParams {
-  niche?: string;
-  accounts?: string;
-  timeWindow?: string;
-  serendipity?: number;
-  /**
-   * CR-02 — the competitors card sets this so the route pulls from the session user's
-   * tracked accounts (resolved server-side; the client never sends handles).
-   */
-  tracked?: boolean;
-}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 

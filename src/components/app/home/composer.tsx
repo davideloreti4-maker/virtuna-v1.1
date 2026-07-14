@@ -558,7 +558,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const fieldRef = useRef<HTMLTextAreaElement | null>(null);
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
   // covers the gap where the upload path returns before stream.start (was a silent no-op).
@@ -2366,7 +2365,6 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             {/* Row 1 — the field. textarea (auto-multiline); Enter submits, Shift+Enter
                 newlines (onFieldKeyDown). Test/Remix carry a URL; `/` opens the skill menu. */}
             <textarea
-              ref={fieldRef}
               rows={1}
               value={url}
               onChange={(e) => setUrl(e.target.value)}

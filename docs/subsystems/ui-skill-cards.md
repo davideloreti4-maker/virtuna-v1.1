@@ -1,5 +1,11 @@
 # UI Surface: Skill output cards — refined design spec
 
+> **Sibling doc — read it if you are touching `/home`:** `docs/subsystems/ui-home-composer.md`
+> covers THE STARTER CONTRACT (the constant six), the skill chip, the placeholder-as-instruction
+> rule, and the audience "NOT CALIBRATED" tag — i.e. everything the creator sees *before* a
+> result card exists. Same root cause as the drift this doc fixes (surfaces built alone with
+> no contract), same cure.
+
 > Lane: `lane/polish`. Component owner: the cards live in `src/components/thread/**` (GSI HOLD list),
 > BUT the existing skill cards (hook/idea/script/remix/Read/account/etc.) are **NOT** what GSI rebuilds —
 > GSI *adds* new Profile/Simulate/Predict card types. Owner call (2026-06-26): refining the existing

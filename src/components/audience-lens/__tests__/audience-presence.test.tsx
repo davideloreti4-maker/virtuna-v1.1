@@ -261,6 +261,31 @@ describe('AudiencePresence — General / null audience (no crash)', () => {
     // A null audience presents as General — the name shows in the switcher chip.
     expect(screen.getByRole('button', { name: /audience: general\. switch audience/i })).toBeInTheDocument();
   });
+
+  /**
+   * "General" is a REAL audience — the default socials baseline — so this is not an error
+   * state and must never look like one. But it is the UNCALIBRATED one, and it is named
+   * innocuously enough that a creator can spend a week of Readings against a generic crowd
+   * while believing they are testing against their own people. The tag is the difference
+   * between a default and an accident.
+   */
+  it('tags General as NOT CALIBRATED — a default the creator can actually notice', () => {
+    setup({ audience: general(), focus: null });
+    const chip = screen.getByRole('button', { name: /audience: general\. switch audience/i });
+    expect(chip.textContent).toMatch(/not calibrated/i);
+  });
+
+  it('tags a null audience too (it presents as General, so it is just as uncalibrated)', () => {
+    setup({ audience: null, focus: null });
+    const chip = screen.getByRole('button', { name: /audience: general\. switch audience/i });
+    expect(chip.textContent).toMatch(/not calibrated/i);
+  });
+
+  it('does NOT tag a calibrated audience — the tag would be a lie, and noise', () => {
+    setup({ focus: null }); // setup's default audience is a real, calibrated one
+    const chip = screen.getByRole('button', { name: /switch audience/i });
+    expect(chip.textContent).not.toMatch(/not calibrated/i);
+  });
 });
 
 // ── Switching — the PRESENCE owns it ──
