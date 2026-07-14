@@ -20,17 +20,21 @@
  * So the idle state is now ONE shape, and skills only choose WHAT fills it:
  *
  *     greeting          ← HomePageLayout (unchanged, centered, serif)
- *     lede?             ← optional single muted line. The grid usually says enough.
  *     starter grid      ← StarterCard × N. THE one card anatomy. 2-col ≥sm.
  *     composer          ← the field the grid ramps INTO
  *
  * RULES — a new skill adds a STARTERS entry. It does NOT invent a layout.
- *   1. One card anatomy: `StarterCard`. Icon left, filled sunken surface, r12,
- *      title 14px/medium, desc 12.5px/muted. Never a second card component.
- *   2. Cards NEVER auto-fire (D-05/D-07). onSelect runs on tap, only on tap.
- *   3. Matte, NO accent (dosage rule) — the presence's liveness dot is the only
+ *   1. One card anatomy: `StarterCard`. Icon left, filled sunken surface, r12, title
+ *      14px/medium — and NOTHING ELSE. Never a second card component.
+ *   2. NO PROSE. No lede above the grid, no sub-line under a title. Both existed and both
+ *      were cut: the titles are already verbs, so the sub-lines only made the grid chatty,
+ *      and the lede was the last surviving fragment of the four-prose-blocks era. The one
+ *      exception is `disabledReason`, which renders ONLY on a dead card — a card that
+ *      cannot fire and does not say why reads as broken instead of honest (D-02).
+ *   3. Cards NEVER auto-fire (D-05/D-07). onSelect runs on tap, only on tap.
+ *   4. Matte, NO accent (dosage rule) — the presence's liveness dot is the only
  *      sanctioned accent on this surface.
- *   4. A skill with nothing to offer gets the DEFAULT set — never a bare screen.
+ *   5. A skill with nothing to offer gets the DEFAULT set — never a bare screen.
  *
  * HomeFirstRunDemo (below) is unrelated to the contract: a show-once footer, gated
  * on HORIZONTAL_ENABLED by its caller.
@@ -53,8 +57,16 @@ interface StarterCardModel {
   icon: string;
   /** Action-phrased — what the creator GETS, never the internal skill name. */
   title: string;
-  /** One line of proof / honest degrade. */
-  desc: string;
+  /**
+   * The reason this card CANNOT fire. Rendered ONLY when the card is disabled.
+   *
+   * The card is a title and nothing else when it works — the titles are already verbs and
+   * a sub-line under each one just made the grid chatty. But a dead card that does not say
+   * why it is dead is a bug, not a minimalism: it reads as broken instead of as honest
+   * (D-02 — the competitors card degrades, it never fabricates a feed). So the sub-line
+   * survives in exactly the one place it carries weight.
+   */
+  disabledReason?: string;
   onSelect?: () => void;
   disabled?: boolean;
   wide?: boolean;
@@ -95,14 +107,13 @@ function StarterCard({ card }: { card: StarterCardModel }) {
         <span className="text-[14px] font-medium leading-snug text-foreground">
           {card.title}
         </span>
-        {/* Wraps, never truncates. The desc used to be `truncate`, which was invisible
-            while the only set was the 6 short default lines — then Explore's "Widen beyond
-            your niche — something unexpected" landed alone on a half-width row and clipped
-            to "something unexp…". A card that eats its own sentence is worse than a card
-            two lines tall; grid rows stretch together, so heights still line up. */}
-        <span className="text-[12.5px] leading-snug text-foreground-muted">
-          {card.desc}
-        </span>
+        {/* Only on a dead card, and it wraps rather than truncating — a card that eats its
+            own sentence is worse than a card two lines tall. */}
+        {disabled && card.disabledReason && (
+          <span className="text-[12.5px] leading-snug text-foreground-muted">
+            {card.disabledReason}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -116,13 +127,13 @@ function StarterCard({ card }: { card: StarterCardModel }) {
  * Shown for every skill that has no idle offer of its own (idea/hooks/script/remix/test),
  * so it doubles as the skill switcher on a fresh home.
  */
-const DEFAULT_CARDS: { tool: ToolId; icon: string; title: string; desc: string }[] = [
-  { tool: "idea",    icon: "bulb",      title: "Get content ideas",           desc: "Fresh angles for your niche" },
-  { tool: "hooks",   icon: "anchor",    title: "Write scroll-stopping hooks", desc: "Ranked strongest-first" },
-  { tool: "script",  icon: "doc",       title: "Script a video",              desc: "Beats + retention markers" },
-  { tool: "remix",   icon: "shuffle",   title: "Remix a viral video",         desc: "Decode a winner → your version" },
-  { tool: "test",    icon: "crosshair", title: "Test a video",                desc: "Watch-through + full audience Read" },
-  { tool: "account", icon: "search",    title: "Read my recent posts",        desc: "See what's landing, and why" },
+const DEFAULT_CARDS: { tool: ToolId; icon: string; title: string }[] = [
+  { tool: "idea",    icon: "bulb",      title: "Get content ideas" },
+  { tool: "hooks",   icon: "anchor",    title: "Write scroll-stopping hooks" },
+  { tool: "script",  icon: "doc",       title: "Script a video" },
+  { tool: "remix",   icon: "shuffle",   title: "Remix a viral video" },
+  { tool: "test",    icon: "crosshair", title: "Test a video" },
+  { tool: "account", icon: "search",    title: "Read my recent posts" },
 ];
 
 /**
@@ -134,11 +145,11 @@ const DEFAULT_CARDS: { tool: ToolId; icon: string; title: string; desc: string }
  * promises account analytics; that's the Account read's job, and claiming it here would
  * be the same dishonesty the card contract exists to prevent.
  */
-const ASK_PROMPTS: { icon: string; title: string; desc: string }[] = [
-  { icon: "target", title: "What should I post this week?",     desc: "Angles your audience is primed for" },
-  { icon: "people", title: "What is my audience tired of?",     desc: "Saturation, from their side" },
-  { icon: "chat",   title: "Pressure-test an idea for me",      desc: "Before you spend a shoot on it" },
-  { icon: "bulb",   title: "What makes a hook land in my niche?", desc: "The mechanics, not the platitudes" },
+const ASK_PROMPTS: { icon: string; title: string }[] = [
+  { icon: "target", title: "What should I post this week?" },
+  { icon: "people", title: "What is my audience tired of?" },
+  { icon: "chat",   title: "Pressure-test an idea for me" },
+  { icon: "bulb",   title: "What makes a hook land in my niche?" },
 ];
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -177,38 +188,30 @@ export function HomeStarter({
 }: HomeStarterProps) {
   const niche = (audienceNiche || "").trim() || undefined;
 
-  let lede: string | null = null;
   let cards: StarterCardModel[];
 
   if (tool === "chat") {
-    lede =
-      "Grounded on your niche and your audience — not a generic chatbot.";
     cards = ASK_PROMPTS.map((p) => ({
       id: p.title,
       icon: p.icon,
       title: p.title,
-      desc: p.desc,
       onSelect: () => onPrefill(p.title),
     }));
   } else if (tool === "explore") {
-    lede =
-      "Outliers from your niche and your competitors, scored for your people — not borrowed view counts.";
     cards = [
       {
         id: "explore-top",
         icon: "compass",
         title: "Top performers in my niche today",
-        desc: "Fresh outliers, scored for your audience",
         onSelect: () => onExplore({ niche, timeWindow: "today" }),
       },
       {
         id: "explore-competitors",
         icon: "people",
         title: "What competitors shipped",
-        // The degrade SAYS what's missing, so the disabled card still teaches.
-        desc: hasTrackedAccounts
-          ? "Recent posts from accounts you track"
-          : "Track an account first",
+        // The ONE surviving sub-line: a dead card must say why it is dead, or it reads as
+        // broken rather than honest (D-02 — degrade, never a fabricated feed).
+        disabledReason: "Track an account first",
         disabled: !hasTrackedAccounts,
         onSelect: hasTrackedAccounts
           ? () => onExplore({ tracked: true, timeWindow: "week" })
@@ -218,23 +221,18 @@ export function HomeStarter({
         id: "explore-surprise",
         icon: "spark",
         title: "Surprise me",
-        desc: "Widen beyond your niche — something unexpected",
         onSelect: () => onExplore({ niche, serendipity: 1 }),
         // Three cards in a 2-col grid leaves the third orphaned at half width on its own
-        // row, where its longer desc wraps and it stands 16px taller than its siblings for
-        // no reason a reader can see. Spanning the row makes the 2+1 read as composed.
+        // row. Spanning the row makes the 2+1 read as composed rather than left over.
         wide: true,
       },
     ];
   } else if (tool === "account") {
-    lede =
-      "Maven reads your latest posts and maps what is working, what is falling flat, and where to double down — grounded in your real account.";
     cards = [
       {
         id: "account-run",
         icon: "search",
         title: "Read my recent posts",
-        desc: "One tap — no input needed, it resolves your handle",
         onSelect: onAccountRun,
         wide: true,
       },
@@ -244,18 +242,12 @@ export function HomeStarter({
       id: c.tool,
       icon: c.icon,
       title: c.title,
-      desc: c.desc,
       onSelect: () => onSelectTool(c.tool),
     }));
   }
 
   return (
     <div className={cn("flex w-full flex-col gap-4", className)}>
-      {lede && (
-        <p className="mx-auto max-w-[520px] text-center text-[13px] leading-normal text-foreground-muted">
-          {lede}
-        </p>
-      )}
       <div className="grid w-full grid-cols-1 gap-2.5 sm:grid-cols-2">
         {cards.map((card) => (
           <StarterCard key={card.id} card={card} />

@@ -119,23 +119,22 @@ describe('HomeStarter — Explore (EXPLORE-04 / D-07, ported)', () => {
     expect(screen.getByRole('button', { name: 'Surprise me' })).toBeInTheDocument();
   });
 
-  it('degrades the competitors card to the disabled "Track an account first" sub-state (honesty, D-02)', () => {
+  it('degrades the competitors card to the disabled "Track an account first" state (honesty, D-02)', () => {
     render(<HomeStarter {...props({ tool: 'explore', hasTrackedAccounts: false })} />);
 
     const card = screen.getByRole('button', { name: 'What competitors shipped' });
     expect(card).toBeDisabled();
+    // The dead card SAYS why it is dead. Cards carry no sub-line otherwise (the starter
+    // is prose-free) — but a card that cannot fire and cannot explain itself reads as
+    // broken rather than honest, so this one line survives exactly here.
     expect(screen.getByText('Track an account first')).toBeInTheDocument();
-    // Never the fabricated "feed" sub-copy when there are no tracked accounts.
-    expect(
-      screen.queryByText('Recent posts from accounts you track'),
-    ).not.toBeInTheDocument();
   });
 
-  it('enables the competitors card with its real sub-line when tracked accounts exist', () => {
+  it('enables the competitors card — and drops the reason line, which only a dead card carries', () => {
     render(<HomeStarter {...props({ tool: 'explore', hasTrackedAccounts: true })} />);
 
     expect(screen.getByRole('button', { name: 'What competitors shipped' })).toBeEnabled();
-    expect(screen.getByText('Recent posts from accounts you track')).toBeInTheDocument();
+    expect(screen.queryByText('Track an account first')).not.toBeInTheDocument();
   });
 
   it('fires tracked:true on tap — the client NEVER sends handles (CR-01/CR-02)', () => {
@@ -229,6 +228,37 @@ describe('HomeStarter — Account (its ONLY entry)', () => {
 });
 
 // ── The contract itself ───────────────────────────────────────────────────────
+
+describe('HomeStarter — NO PROSE (rule 2)', () => {
+  /**
+   * The starter carries no lede above the grid and no sub-line under a title. Both existed
+   * and both were cut. This is the guard against them creeping back one skill at a time —
+   * which is exactly how the four-empty-states drift happened the first time.
+   */
+  it.each(['idea', 'chat', 'explore', 'account'] as const)(
+    'the %s set renders cards only — no lede paragraph',
+    (tool) => {
+      const { container } = render(
+        <HomeStarter {...props({ tool: tool as ToolId, hasTrackedAccounts: true })} />,
+      );
+      expect(container.querySelector('p')).toBeNull();
+    },
+  );
+
+  it('an ENABLED card renders its title and nothing else', () => {
+    render(<HomeStarter {...props({ tool: 'idea' })} />);
+
+    const card = screen.getByRole('button', { name: 'Get content ideas' });
+    expect(card.textContent).toBe('Get content ideas');
+  });
+
+  it('a DISABLED card is the one exception — title + why it cannot fire', () => {
+    render(<HomeStarter {...props({ tool: 'explore', hasTrackedAccounts: false })} />);
+
+    const card = screen.getByRole('button', { name: 'What competitors shipped' });
+    expect(card.textContent).toBe('What competitors shippedTrack an account first');
+  });
+});
 
 describe('HomeStarter — ONE card anatomy across every set', () => {
   /**
