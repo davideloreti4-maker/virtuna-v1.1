@@ -17,6 +17,7 @@ import { useState } from 'react';
 import type { PersonasBlock } from '@/lib/tools/blocks';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import { CaretToggle } from './caret-toggle';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface PersonasBlockProps {
   block: PersonasBlock;
@@ -117,7 +118,7 @@ export function PersonasBlockRenderer({ block, conceptText }: PersonasBlockProps
                 </span>
               </div>
               <p className="text-sm italic leading-snug text-foreground-muted">
-                &ldquo;{persona.quote}&rdquo;
+                &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
               </p>
             </li>
           ))}

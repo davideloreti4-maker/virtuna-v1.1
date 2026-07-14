@@ -23,6 +23,7 @@ import type { Audience, CalibratedPersona } from '@/lib/audience/audience-types'
 import { ARCHETYPES } from '@/lib/engine/wave3/persona-registry';
 import { AudiencePresence } from '../audience-presence';
 import type { AmbientFocus } from '../ambient-presence-types';
+import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
 
 afterEach(() => {
   cleanup();
@@ -260,6 +261,31 @@ describe('AudiencePresence — General / null audience (no crash)', () => {
     // A null audience presents as General — the name shows in the switcher chip.
     expect(screen.getByRole('button', { name: /audience: general\. switch audience/i })).toBeInTheDocument();
   });
+
+  /**
+   * "General" is a REAL audience — the default socials baseline — so this is not an error
+   * state and must never look like one. But it is the UNCALIBRATED one, and it is named
+   * innocuously enough that a creator can spend a week of Readings against a generic crowd
+   * while believing they are testing against their own people. The tag is the difference
+   * between a default and an accident.
+   */
+  it('tags General as NOT CALIBRATED — a default the creator can actually notice', () => {
+    setup({ audience: general(), focus: null });
+    const chip = screen.getByRole('button', { name: /audience: general\. switch audience/i });
+    expect(chip.textContent).toMatch(/not calibrated/i);
+  });
+
+  it('tags a null audience too (it presents as General, so it is just as uncalibrated)', () => {
+    setup({ audience: null, focus: null });
+    const chip = screen.getByRole('button', { name: /audience: general\. switch audience/i });
+    expect(chip.textContent).toMatch(/not calibrated/i);
+  });
+
+  it('does NOT tag a calibrated audience — the tag would be a lie, and noise', () => {
+    setup({ focus: null }); // setup's default audience is a real, calibrated one
+    const chip = screen.getByRole('button', { name: /switch audience/i });
+    expect(chip.textContent).not.toMatch(/not calibrated/i);
+  });
 });
 
 // ── Switching — the PRESENCE owns it ──
@@ -290,32 +316,62 @@ describe('AudiencePresence — Mode-sectioned switcher', () => {
     expect(within(menu).queryByText('General')).toBeNull();
   });
 
-  it('renders both Socials and General sections when a General audience is owned', () => {
-    setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
-    openSwitcher();
-    const menu = screen.getByRole('menu', { name: /your audiences/i });
-    expect(within(menu).getByText('Socials')).toBeInTheDocument();
-    // The "General" section header (no audience is named "General" in this fixture).
-    expect(within(menu).getByText('General')).toBeInTheDocument();
-    // The General SIM appears as a selectable row.
-    expect(within(menu).getByRole('menuitemradio', { name: /analyst panel/i })).toBeInTheDocument();
-  });
-
-  it('shows a neutral trust badge on each row (Directional for General, Validated for Socials)', () => {
-    setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
+  it('shows a neutral trust badge on a Socials row', () => {
+    setup({ audience: calibrated10(), audiences: [calibrated10()] });
     openSwitcher();
     const menu = screen.getByRole('menu', { name: /your audiences/i });
     expect(within(menu).getByText('Validated')).toBeInTheDocument();
-    expect(within(menu).getByText('Directional')).toBeInTheDocument();
   });
 
-  it('renders a "+ Build an audience" row that fires onBuildAudience', () => {
+  // ── The horizontal (mode:'general') audiences + the Build chooser that mints them.
+  //    HIDDEN behind HORIZONTAL_ENABLED (owner call 2026-07-13). Not deleted — these specs
+  //    describe real behavior and run again the day the flag flips back on.
+  describe.skipIf(!HORIZONTAL_ENABLED)('the General section — while the horizontal is ON', () => {
+    it('renders both Socials and General sections when a General audience is owned', () => {
+      setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
+      openSwitcher();
+      const menu = screen.getByRole('menu', { name: /your audiences/i });
+      expect(within(menu).getByText('Socials')).toBeInTheDocument();
+      // The "General" section header (no audience is named "General" in this fixture).
+      expect(within(menu).getByText('General')).toBeInTheDocument();
+      expect(within(menu).getByRole('menuitemradio', { name: /analyst panel/i })).toBeInTheDocument();
+    });
+
+    it('shows the Directional badge on a General row', () => {
+      setup({ audience: calibrated10(), audiences: [calibrated10(), generalPanel()] });
+      openSwitcher();
+      const menu = screen.getByRole('menu', { name: /your audiences/i });
+      expect(within(menu).getByText('Directional')).toBeInTheDocument();
+    });
+
+    it('renders a "+ Build an audience" row that fires onBuildAudience', () => {
+      const onBuildAudience = vi.fn();
+      setup({ audiences: [calibrated10()], onBuildAudience });
+      openSwitcher();
+      const menu = screen.getByRole('menu', { name: /your audiences/i });
+      fireEvent.click(within(menu).getByRole('button', { name: /build an audience/i }));
+      expect(onBuildAudience).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── …and the gate. A horizontal audience the user ALREADY owns must not be offered while
+  //    the verbs that run on it are gone — that would be a dead end. The row is hidden, never
+  //    deleted. The baseline creator audience (is_general, mode:'socials') MUST still show.
+  it.skipIf(HORIZONTAL_ENABLED)('hides General audiences and the Build chooser while the horizontal is off', () => {
     const onBuildAudience = vi.fn();
-    setup({ audiences: [calibrated10()], onBuildAudience });
+    setup({
+      audience: calibrated10(),
+      audiences: [calibrated10(), generalPanel()],
+      onBuildAudience,
+    });
     openSwitcher();
     const menu = screen.getByRole('menu', { name: /your audiences/i });
-    fireEvent.click(within(menu).getByRole('button', { name: /build an audience/i }));
-    expect(onBuildAudience).toHaveBeenCalledTimes(1);
+    // The creator vertical is untouched…
+    expect(within(menu).getByText('Socials')).toBeInTheDocument();
+    // …and the horizontal is gone: no section, no row, no factory.
+    expect(within(menu).queryByText('General')).toBeNull();
+    expect(within(menu).queryByRole('menuitemradio', { name: /analyst panel/i })).toBeNull();
+    expect(within(menu).queryByRole('button', { name: /build an audience/i })).toBeNull();
   });
 });
 

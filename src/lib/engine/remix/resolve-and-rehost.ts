@@ -38,6 +38,16 @@ export interface ResolveAndRehostResult {
    */
   coverUrl?: string;
   /**
+   * Who made the source post and how it did (resolveVideoUrl → clockworks `authorMeta.name`,
+   * `playCount`, `webVideoUrl`). Display-only attribution for the Remix card's receipt — the
+   * cover alone showed the post without ever naming its creator. Undefined when the actor
+   * item carried no author block; the card then renders with no receipt at all rather than an
+   * unattributed one.
+   */
+  handle?: string;
+  views?: number;
+  sourceUrl?: string;
+  /**
    * Unconditionally deletes the temp mp4 object from the videos bucket.
    * MUST be called in a finally block (derive-and-drop, T-03-02 / pitfall C4).
    * Failure to call this leaves a temp object in the bucket — treat as a bug.
@@ -139,5 +149,12 @@ export async function resolveAndRehost(
       });
   };
 
-  return { signedUrl, cleanup, coverUrl: resolved.coverUrl };
+  return {
+    signedUrl,
+    cleanup,
+    coverUrl: resolved.coverUrl,
+    handle: resolved.handle,
+    views: resolved.views,
+    sourceUrl: resolved.videoUrl,
+  };
 }

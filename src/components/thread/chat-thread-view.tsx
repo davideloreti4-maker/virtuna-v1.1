@@ -89,7 +89,6 @@ export function ChatThreadView({
 }: ChatThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
-  const isEmpty = !isStreaming && !hasStreamingContent && !hasPersistedContent;
 
   // Suggested chain-step CTAs (D-05 / STUDIO-03): show after a chat turn completes.
   // Sourced from chain-handoff.ts (handoffsFor "chat" — but chat is not a SkillId,
@@ -120,22 +119,11 @@ export function ChatThreadView({
   }));
 
   return (
-    <ThreadShell
-      userTurn={userTurn}
-      before={
-        isEmpty ? (
-          <div className="flex flex-col gap-3 py-4">
-            <h2 className="text-base font-semibold text-foreground leading-snug">
-              Ask anything about your content.
-            </h2>
-            <p className="text-sm text-foreground-secondary leading-normal">
-              Maven grounds every answer on your niche and your audience — not a generic chatbot.
-              Try &ldquo;what should I post this week?&rdquo; or send an idea to test it.
-            </p>
-          </div>
-        ) : undefined
-      }
-    >
+    // Idle is NOT this view's business any more. Chat's empty state was a left-aligned
+    // prose block that matched nothing else in the app; it now comes from the ONE starter
+    // (home-starter.tsx — THE STARTER CONTRACT), rendered by the composer alongside every
+    // other skill's. This view owns only what it produces: turns, nudge, error.
+    <ThreadShell userTurn={userTurn}>
       {nudgeShown && (
         <p
           className="text-xs text-foreground-muted leading-normal py-1"

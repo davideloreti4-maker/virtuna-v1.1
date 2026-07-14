@@ -4,18 +4,25 @@
  * ProfileReadBlockRenderer — the forensic behavioral READ hero card (PROF-02).
  *
  * Renders the validated ProfileReadBlock props ONLY (D-14 — no model-generated UI; this
- * component owns layout). Section order mirrors 05-UI-SPEC Surface 1:
- *   1. identity header (subjectName · subjectKind chip · SIM-1 model tag + Directional badge)
- *   2. behavioral tells, each with its verbatim `evidence` quote bound beneath (TRUST-02)
- *   3. how they'll react, under a neutral goalScope line (NEUTRAL panel — F-03, never coral)
- *   4. deeper forensic read — rendered ONLY when `forensic` is present (max/video tier, D-03);
- *      omitted entirely on flash (no teaser, F-01)
- *   5. honesty caveat — always visible (F-04)
- *   6. footer: SaveAffordance + the "Simulate a message to {name} →" forward-chain CTA
+ * component owns layout).
  *
- * Visual polish (final flat-warm token pass, spacing, disclosures) is a separate
- * `/gsd-ui-phase` task — this renderer ships functional-but-plain. It introduces NO coral
- * literal (reskin-matte guard stays green): band tones come from the sanctioned BAND_COLOR map.
+ * Speaks the hook-card language (2026-07-13). It shipped "functional-but-plain" with the
+ * visual pass deferred to a `/gsd-ui-phase` that never ran, and the plainness had a specific
+ * shape: FIVE uppercase section labels stacked at identical weight, so nothing led and the
+ * card read as a spec sheet. The order now carries hierarchy:
+ *   1. eyebrow (what kind of read) + Directional tier — model tag demoted to the disclosure
+ *   2. identity: name + the one-line communication style, then trait chips
+ *   3. HOW THEY'LL REACT — promoted to the top, in the neutral panel (F-03, never accent).
+ *      This is the sentence the read exists to produce; it used to sit third at equal weight
+ *   4. behavioral tells, each bound to its verbatim (TRUST-02) — the evidence spine, on the
+ *      face, because a read you cannot check is only an assertion
+ *   5. ONE disclosure — drivers + the forensic read (max/video tier, D-03; still a deliberate
+ *      open per F-01, absent entirely on flash)
+ *   6. the honesty caveat — ALWAYS visible (F-04), never behind the disclosure
+ *   7. one action bar: cream primary (profile→simulate) + icon Save, like every other card
+ *
+ * NO coral literal (reskin-matte guard stays green); deception tones come from the sanctioned
+ * success/warning/error data tokens.
  *
  * The forward-chain CTA reads `handoffsFor("profile")` (the chain-handoff SSOT) and POSTs
  * `buildSimulateRequest(block.props, draftedMessage)` to the handoff endpoint — the body's
@@ -30,6 +37,7 @@ import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 // Sanctioned deception-likelihood tones (band WORD only, never a number) — reuse the
 // success/warning/error data tokens, NEVER the terracotta accent (F-01 / DESIGN-SYSTEM dosage).
@@ -115,112 +123,123 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
 
   return (
     <div
-      className="rounded-xl border border-white/[0.06] bg-transparent overflow-hidden"
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
       aria-label={`A read on ${subjectName}`}
     >
-      {/* 1. Identity header */}
-      <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-col gap-1">
-            <h3 className="text-[15px] font-semibold text-foreground leading-snug">
-              {subjectName}
-            </h3>
-            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-              {isPanel ? 'A read on this group' : 'A read on this person'}
-            </span>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded-full"
-              style={{
-                color: 'var(--color-foreground-secondary)',
-                backgroundColor: 'var(--color-surface-elevated)',
-              }}
-            >
-              {subjectKind}
-            </span>
-            <span className="text-xs text-foreground-muted">{modelLabel}</span>
-            <TrustBadge tier="Directional" />
-          </div>
+      {/* FACE — who they are, and the one thing you came for. */}
+      <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
+        {/* Eyebrow — what kind of read this is. The tier badge is the only thing that earns
+            the right rail; the model tag moves down to the disclosure line (hook-card rule:
+            provenance is a footnote, not a headline). */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+            <span className="h-[6px] w-[6px] rounded-full bg-foreground-muted/60" aria-hidden="true" />
+            {isPanel ? 'A read on this group' : 'A read on this person'}
+          </span>
+          <TrustBadge tier="Directional" />
         </div>
 
-        {/* Traits + comms style + drivers */}
-        <div className="flex flex-wrap gap-1.5">
-          {identity.traits.map((trait, i) => (
-            <span
-              key={i}
-              className="text-xs px-2 py-0.5 rounded-full text-foreground-secondary bg-white/[0.04]"
-            >
-              {trait}
-            </span>
-          ))}
-        </div>
-        {identity.commStyle && (
-          <p className="text-sm text-foreground-secondary leading-relaxed">{identity.commStyle}</p>
-        )}
-        {identity.drivers.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-              What drives them
+        {/* Identity — the name leads, the communication style reads directly beneath it as the
+            one-line characterisation. Together they answer "who am I dealing with". */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
+            {subjectName}
+          </p>
+          {identity.commStyle && (
+            <p className="text-[13px] leading-relaxed text-foreground-secondary">
+              {identity.commStyle}
             </p>
-            <ul className="flex flex-col gap-1">
-              {identity.drivers.map((driver, i) => (
-                <li key={i} className="text-sm text-foreground-secondary leading-relaxed">
-                  {driver}
-                </li>
-              ))}
-            </ul>
+          )}
+        </div>
+
+        {identity.traits.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {identity.traits.map((trait, i) => (
+              <span
+                key={i}
+                className="rounded-full border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-[11px] text-foreground-secondary"
+              >
+                {trait}
+              </span>
+            ))}
           </div>
         )}
-      </div>
 
-      {/* 2. Behavioral tells — each evidence-quoted (TRUST-02) */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-          What gives them away
-        </p>
-        <ul className="flex flex-col gap-3">
-          {tells.map((t, i) => (
-            <li key={i} className="flex flex-col gap-1">
-              <p className="text-sm text-foreground-secondary leading-relaxed">{t.tell}</p>
-              <blockquote className="border-l-2 border-white/[0.12] pl-3 text-sm italic text-foreground/70 leading-relaxed">
-                &ldquo;{t.evidence}&rdquo;
-              </blockquote>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* 3. How they'll react (goal-scoped) — NEUTRAL panel (F-03, never coral) */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-2">
-        <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-          How they&rsquo;ll react
-        </p>
-        {goalScope && (
-          <p className="text-xs text-foreground-muted">On your goal: {goalScope}</p>
-        )}
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-2">
-          <p className="text-sm font-semibold text-foreground leading-relaxed">{howTheyReact}</p>
+        {/* THE PAYOFF — promoted to sit directly under the identity. This is the actionable
+            sentence the whole read exists to produce ("how will this land on them"), and it
+            used to sit third, below two label-stacked sections, at the same visual weight as
+            everything else. Neutral panel (F-03 — never accent). */}
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+          <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+            How they&rsquo;ll react
+          </p>
+          {goalScope && (
+            <p className="mb-1.5 text-[12px] leading-snug text-foreground-muted">
+              On your goal: {goalScope}
+            </p>
+          )}
+          <p className="text-[14px] font-semibold leading-relaxed text-foreground">{howTheyReact}</p>
         </div>
+
+        {/* Behavioral tells, each bound to its verbatim (TRUST-02) — the evidence spine. Stays
+            on the face: a read you cannot check is just an assertion. */}
+        <div className="flex flex-col gap-2.5">
+          <p className="text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+            What gives them away
+          </p>
+          <ul className="flex flex-col gap-2.5">
+            {tells.map((t, i) => (
+              <li key={i} className="flex flex-col gap-1">
+                <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{t.tell}</p>
+                <blockquote className="border-l-2 border-white/[0.12] pl-3 text-[13.5px] italic leading-relaxed text-foreground/70">
+                  &ldquo;{stripWrappingQuotes(t.evidence)}&rdquo;
+                </blockquote>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* ONE disclosure — drivers + the forensic read behind a single deliberate open, with
+            the model tag demoted onto the line. Replaces two separate caps-labelled sections
+            and their hairlines: the card had five equal-weight labels and therefore no
+            hierarchy at all. The forensic claims still require an explicit open (F-01). */}
+        <button
+          type="button"
+          onClick={() => setForensicOpen((v) => !v)}
+          className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
+          aria-expanded={forensicOpen}
+          aria-label={forensicOpen ? 'Collapse read details' : 'Expand read details'}
+        >
+          <CaretToggle open={forensicOpen} />
+          {forensicOpen ? 'Hide details' : 'Why & details'}
+          <span className="text-foreground-muted/70">· {modelLabel}</span>
+        </button>
       </div>
 
-      {/* 4. Deeper forensic read — max/video tier ONLY (D-03); omitted on flash */}
-      {forensic && (
-        <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setForensicOpen((v) => !v)}
-            className="flex items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-            aria-expanded={forensicOpen}
-          >
-            <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
-              Deeper read (from the video)
-            </span>
-            <CaretToggle open={forensicOpen} className="text-foreground-muted" />
-          </button>
-          {forensicOpen && (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-foreground-secondary">
+      {/* EXPAND — what drives them + the forensic read (max/video tier only, D-03). */}
+      {forensicOpen && (identity.drivers.length > 0 || forensic) && (
+        <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
+          {identity.drivers.length > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+                What drives them
+              </p>
+              <ul className="flex flex-col gap-1">
+                {identity.drivers.map((driver, i) => (
+                  <li key={i} className="text-[13.5px] leading-relaxed text-foreground-secondary">
+                    {driver}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {forensic && (
+            <div>
+              <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+                Deeper read (from the video)
+              </p>
+              <p className="mb-1.5 text-[13.5px] leading-relaxed text-foreground-secondary">
                 Deception likelihood:{' '}
                 <span
                   className="font-semibold"
@@ -231,7 +250,7 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
               </p>
               <ul className="flex flex-col gap-2">
                 {forensic.cues.map((cue, i) => (
-                  <li key={i} className="text-sm text-foreground-secondary leading-relaxed">
+                  <li key={i} className="text-[13.5px] leading-relaxed text-foreground-secondary">
                     <span className="tabular-nums text-foreground-muted">{cue.timestamp}</span>
                     {' · '}
                     {cue.observation} → {cue.inference}
@@ -243,52 +262,62 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
         </div>
       )}
 
-      {/* 5. Honesty caveat — always visible (F-04) */}
-      <div className="px-4 py-3">
-        <p className="text-xs text-foreground-muted leading-relaxed">{caveat}</p>
+      {/* Honesty caveat — ALWAYS visible (F-04). It never goes behind the disclosure: a read
+          on limited signal has to say so on the face, where it cannot be missed. */}
+      <div className="border-t border-white/[0.06] px-4 py-2.5">
+        <p className="text-[12px] leading-relaxed text-foreground-muted">{caveat}</p>
       </div>
 
-      {/* 6. Footer — Save + forward-chain Simulate CTA */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-3">
-        <div className="flex items-center gap-4">
-          <SaveAffordance item_type="read" title={subjectName} snapshot={block.props} />
-        </div>
+      {/* ACTIONS — one cream primary (the forward chain: profile→simulate) + icon Save, the
+          same action bar every other card ends on. Save used to sit alone in its own row above
+          a raw textarea, which read as an afterthought rather than an affordance. */}
+      <div className="flex flex-col gap-2.5 border-t border-white/[0.06] px-4 py-3">
         {!simulated ? (
-          <div className="flex flex-col gap-2">
+          <>
             <textarea
               value={draftedMessage}
               onChange={(e) => setDraftedMessage(e.target.value)}
               placeholder={`Draft a message to ${subjectName}…`}
               rows={2}
-              className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+              className="w-full resize-none rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[13.5px] leading-relaxed text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
               aria-label="Drafted message to simulate"
             />
-            <button
-              type="button"
-              onClick={() => void handleSimulate()}
-              disabled={simulating || draftedMessage.trim().length === 0}
-              className="self-start text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-              style={{
-                color:
-                  simulating || draftedMessage.trim().length === 0
-                    ? 'rgba(236,231,222,0.5)'
-                    : 'var(--color-foreground-secondary)',
-                cursor: simulating ? 'wait' : 'pointer',
-              }}
-              aria-label={ctaLabel}
-            >
-              {simulating ? 'Simulating…' : ctaLabel}
-            </button>
+            <div className="flex items-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => void handleSimulate()}
+                disabled={simulating || draftedMessage.trim().length === 0}
+                className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
+                aria-label={ctaLabel}
+                title={ctaLabel}
+              >
+                {simulating ? 'Simulating…' : 'Test this message →'}
+              </button>
+              <SaveAffordance
+                className="ml-auto"
+                item_type="read"
+                title={subjectName}
+                snapshot={block.props}
+              />
+            </div>
             {simulateError && (
-              <p className="text-xs text-red-400" role="alert">
+              <p className="text-[12px] text-[var(--color-error)]" role="alert">
                 {simulateError}
               </p>
             )}
-          </div>
+          </>
         ) : (
-          <p className="text-sm text-foreground-muted">
-            Reaction queued — check the thread below.
-          </p>
+          <div className="flex items-center gap-3.5">
+            <p className="text-[13px] text-foreground-muted">
+              Reaction queued — check the thread below.
+            </p>
+            <SaveAffordance
+              className="ml-auto"
+              item_type="read"
+              title={subjectName}
+              snapshot={block.props}
+            />
+          </div>
         )}
       </div>
     </div>

@@ -23,6 +23,7 @@ import { Scales } from "@phosphor-icons/react";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
 import type { Pillar } from "@/lib/room-contract/mock-room";
 import { AnalyticsView } from "@/components/analytics/analytics-view";
+import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
 
 type AudienceTab = "audiences" | "account";
 
@@ -201,9 +202,26 @@ export function AudienceManager({
     }
   }
 
+  // MERGE (2026-07-14, lane/explore-a × main): main's /audience redesign (#280) replaced the
+  // old grouped AudienceCard sections with <AudienceIndex>, and that version wins — the
+  // redesign is the newer surface and this lane never had an opinion about it.
+  //
+  // But the redesign was written on a main that has never seen HORIZONTAL_ENABLED (this lane
+  // introduced the flag; there are zero refs to it on main). AudienceIndex renders a
+  // Social/CUSTOM track switch, and "custom" IS `mode: 'general'` — the horizontal. Handing
+  // it the raw list would have quietly re-opened the exact door the flag exists to close,
+  // through a component neither side thought to check. Nothing would have failed; the
+  // Analyst/Hiring panels would simply have reappeared under a new name.
+  //
+  // So the redesign gets the filtered list. `filterHorizontalAudiences` is a no-op when the
+  // flag is on, so flipping the boolean still restores the horizontal in one move — including
+  // here. It keys on `mode`, never `is_general` (see THE TRAP in lib/flags/horizontal.ts:
+  // the Baseline creator audience carries `is_general: true` and must stay visible).
+  const visibleAudiences = filterHorizontalAudiences(audiences);
+
   const renderIndex = () => (
     <AudienceIndex
-      audiences={audiences}
+      audiences={visibleAudiences}
       defaultAudienceId={defaultAudienceId}
       onSetDefault={(a) => void handleSetDefault(a)}
       onOpen={(a) => router.push(`/audience/${a.id}`)}

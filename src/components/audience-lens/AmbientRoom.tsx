@@ -42,6 +42,7 @@ import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry'
 import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import type { AmbientFocusSibling } from './ambient-presence-types';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface AmbientRoomProps {
   /** The focused concept's REAL per-persona reactions (from the ambient focus — PR-B1).
@@ -555,7 +556,7 @@ function PeopleView({
                   </span>
                   {n.quote ? (
                     <span className="mt-1.5 block font-serif text-[15px] leading-[1.4] tracking-[-0.005em] text-foreground">
-                      &ldquo;{n.quote}&rdquo;
+                      &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                     </span>
                   ) : (
                     <span className="mt-1.5 block text-[12px] italic text-[var(--color-foreground-muted)]">
@@ -744,7 +745,7 @@ function PopulationView({
                   {n.name ?? n.label}
                 </span>
                 <span className="font-serif text-[13.5px] leading-[1.32] text-[var(--color-foreground-secondary)]">
-                  &ldquo;{n.quote}&rdquo;
+                  &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                 </span>
               </li>
             ))}

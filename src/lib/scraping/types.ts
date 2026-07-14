@@ -80,10 +80,24 @@ export interface ResolvedVideo {
   durationSeconds: number;
   /**
    * Static cover-image URL for the resolved post (clockworks `videoMeta.coverUrl`). An
-   * ephemeral TikTok-CDN image — display-only (the Remix card's "Remixing this post"
-   * thumbnail). Optional — absent when the rehost item carried no cover.
+   * ephemeral TikTok-CDN image — display-only (the Remix card's source thumbnail).
+   * Optional — absent when the rehost item carried no cover.
    */
   coverUrl?: string;
+  /**
+   * Who made the post, and how it did. The actor already returns both on the SAME item we
+   * parse for `mediaUrls` (`authorMeta.name`, `playCount`) — they were simply dropped, so a
+   * Remix card could show the video's picture but not its author. Attribution is what makes
+   * a source citable, so they come through now.
+   *
+   * Optional and honest: absent when the item carried no author block. NOTE these are the
+   * only two facts we hold about a remix source — there is no follower baseline and so no
+   * outlier multiplier, unlike a grounding `RetrievedExample`. Do not synthesize one.
+   */
+  handle?: string;
+  views?: number;
+  /** Canonical post permalink (`webVideoUrl`) — makes the receipt clickable back to source. */
+  videoUrl?: string;
 }
 
 /**

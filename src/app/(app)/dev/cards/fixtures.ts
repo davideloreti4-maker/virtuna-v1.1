@@ -21,6 +21,8 @@ import type {
   MultiAudienceReadBlock,
   AccountReadBlock,
   MarkdownBlock,
+  PersonasBlock,
+  PersonaChatTurnBlock,
   ReactionPersona,
 } from "@/lib/tools/blocks";
 import type {
@@ -219,6 +221,22 @@ export const REMIX_BLOCKS: RemixCardBlock[] = [
       whoItsFor: "Solo founders drowning in growth busywork.",
       formatBorrowed: "Talking-head confession + receipts overlay",
       coverUrl: IMG("remixsrc", 300, 400),
+      // The attributed source post. Deliberately shows the HONEST remix shape: a handle, a
+      // view count and a link back — with multiplier/baseline/fit null, because a video you
+      // pasted has no follower baseline and was never scored for audience fit. The receipt
+      // renders exactly the facts we hold, under its own eyebrow ("The post you're remixing"),
+      // never the grounded cards' "Proven structure" claim.
+      proof: {
+        handle: "danielle.builds",
+        videoUrl: "https://www.tiktok.com/@danielle.builds/video/7301",
+        coverUrl: IMG("remixsrc", 300, 400),
+        views: 2_100_000,
+        hookTemplate: null,
+        archetype: null,
+        multiplier: null,
+        baselineLabel: null,
+        fitLabel: null,
+      },
       sourceDecode: {
         hookPattern: "Opens on an irreversible, taboo decision ('I fired…') to trigger loss-aversion attention.",
         structure: "Confession → escalating proof → reframe → generalizable takeaway. Tight 4-beat spine.",
@@ -454,6 +472,74 @@ const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   },
 };
 
+// ── The ambient audience (the two surfaces the gallery was blind to until 2026-07-13) ──
+//
+// `personas` renders the room that reacted to a concept, and it is the ONLY visible entry
+// into the AudienceLens ("See the room →"). That entry is CONDITIONAL: PersonasBlockRenderer
+// mounts the LensTrigger only when it receives a `conceptText`, and MessageBlocks derives that
+// from a co-located `markdown` block in the SAME body (see inBandConceptText). So the fixture
+// body is [markdown, personas] — the exact shape a test turn persists. A bare `personas` block
+// would render the degraded, un-clickable variant and the flagship interaction would still be
+// invisible here, which is the hole this fixture exists to close.
+//
+// The concept is the same stimulus the remix / simulate / predict fixtures react to, so the
+// gallery reads as one coherent run rather than five unrelated demos.
+const AMBIENT_CONCEPT_BLOCK: MarkdownBlock = {
+  type: "markdown",
+  props: {
+    text: "I fired my whole marketing team and replaced them with 3 prompts.",
+  },
+};
+
+const PERSONAS_BLOCK: PersonasBlock = {
+  type: "personas",
+  props: { personas: PERSONAS },
+};
+
+// `persona-chat-turn` is the "Ask them why →" sub-thread: ONE block per turn, persisted as
+// ordinary messages in the Read's thread (no parent_message_id). The sub-thread IS the subset
+// of turns sharing an `archetype` — so the fixture is a run of turns, not a single block, and
+// the archetype repeats on every row exactly as it does in production.
+//
+// Honesty spine (blocks.ts): a persona-chat turn is in-voice SIM-1 text — NO band, NO score,
+// NO fabricated crowd. The Skeptic is the natural drill-in: he is the one who scrolls in
+// PERSONAS above ("The hook overpromises, I can smell the letdown"), and this is the creator
+// interrogating exactly that verdict.
+const PERSONA_CHAT_BLOCKS: PersonaChatTurnBlock[] = [
+  {
+    type: "persona-chat-turn",
+    props: {
+      archetype: "The Skeptic",
+      role: "user",
+      text: "You said the hook overpromises. What would you need to hear instead?",
+    },
+  },
+  {
+    type: "persona-chat-turn",
+    props: {
+      archetype: "The Skeptic",
+      role: "assistant",
+      text: "The number, in the first breath. Not \"I fired my team\" — \"I cut a $12k retainer down to $40 of API calls.\" Right now you're asking me to take the shocking part on faith and wait for the receipt. I don't wait.",
+    },
+  },
+  {
+    type: "persona-chat-turn",
+    props: {
+      archetype: "The Skeptic",
+      role: "user",
+      text: "And if the number is real — do you watch to the end?",
+    },
+  },
+  {
+    type: "persona-chat-turn",
+    props: {
+      archetype: "The Skeptic",
+      role: "assistant",
+      text: "I watch until you tell me what broke. Every one of these videos ends at the win. Show me the thing the prompts couldn't do and I'll believe the rest of it.",
+    },
+  },
+];
+
 export interface BlockSection {
   type: string;
   label: string;
@@ -486,6 +572,18 @@ export const BLOCK_SECTIONS: BlockSection[] = [
     label: "Text Read (multi-audience)",
     note: "The moat payoff — per-audience band + interpretation + Lever + who-not-for + persona drill.",
     body: [MULTI_AUDIENCE_READ_BLOCK],
+  },
+  {
+    type: "personas",
+    label: "The room (personas)",
+    note: "The ambient audience — 10 reactors + stop/scroll + verbatim, and the ONLY visible door into the AudienceLens. Body is [markdown concept, personas]: the concept is what arms 'See the room →' (without it the header renders un-clickable).",
+    body: [AMBIENT_CONCEPT_BLOCK, PERSONAS_BLOCK],
+  },
+  {
+    type: "persona-chat-turn",
+    label: "Ask them why (persona chat)",
+    note: "The 'Ask them why →' sub-thread — one block per turn, all sharing an archetype. In-voice SIM-1 text only: no band, no score, no crowd.",
+    body: PERSONA_CHAT_BLOCKS,
   },
   {
     type: "band",

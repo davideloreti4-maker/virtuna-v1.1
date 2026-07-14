@@ -23,35 +23,58 @@
  */
 
 import type { MultiAudienceReadBlock } from '@/lib/tools/blocks';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 type Audiences = MultiAudienceReadBlock['props']['audiences'];
 
-/** One quote, flattened out of its audience for the focus-group wall. */
+/** One quote, flattened out of its audience(s) for the focus-group wall. */
 interface WallQuote {
   quote: string;
   archetype: string;
-  audienceName: string;
+  /** Every audience whose same archetype gave this same line — usually one. */
+  audienceNames: string[];
   verdict: 'stop' | 'scroll';
 }
 
-/** Flatten every audience's personas into audience-tagged quotes for one verdict group. */
-function collectQuotes(audiences: Audiences, verdict: 'stop' | 'scroll'): WallQuote[] {
-  const quotes: WallQuote[] = [];
+/**
+ * Flatten every audience's personas into audience-tagged quotes for one verdict group.
+ *
+ * Quotes are MERGED on (quote, archetype). Run two audiences over one concept and the same
+ * archetype can land on the same line in both — and the wall then printed that line twice,
+ * one row under "Bootstrapped Founders · The Busy Pro" and an identical one under "General ·
+ * The Busy Pro". A focus group that says the same sentence twice does not read as two people
+ * agreeing; it reads as fabricated, which is precisely the credibility this surface exists to
+ * establish.
+ *
+ * Merging, not dropping: that both audiences produced the line is real information, so the
+ * surviving row is tagged with BOTH. Two DIFFERENT archetypes who happen to say the same thing
+ * stay separate — those are genuinely two people, and collapsing them would erase one.
+ */
+export function collectQuotes(audiences: Audiences, verdict: 'stop' | 'scroll'): WallQuote[] {
+  const byQuote = new Map<string, WallQuote>();
   for (const audience of audiences) {
     for (const persona of audience.personas) {
-      if (persona.verdict === verdict) {
-        quotes.push({
-          quote: persona.quote,
-          archetype: persona.archetype,
-          audienceName: audience.name,
-          verdict,
-        });
+      if (persona.verdict !== verdict) continue;
+      // Normalized only for the KEY — the displayed text stays exactly as emitted.
+      const key = `${persona.quote.trim().toLowerCase()}|${persona.archetype}`;
+      const existing = byQuote.get(key);
+      if (existing) {
+        if (!existing.audienceNames.includes(audience.name)) {
+          existing.audienceNames.push(audience.name);
+        }
+        continue;
       }
+      byQuote.set(key, {
+        quote: persona.quote,
+        archetype: persona.archetype,
+        audienceNames: [audience.name],
+        verdict,
+      });
     }
   }
   // Sharpest first: the longest (most substantive) quote leads the group. Stable sort
   // so equal-length quotes preserve their audience order — deterministic, no model call.
-  return quotes.sort((a, b) => b.quote.length - a.quote.length);
+  return [...byQuote.values()].sort((a, b) => b.quote.length - a.quote.length);
 }
 
 /** One quote row — reuses the remix-card italic blockquote (2px left border) verbatim. */
@@ -65,11 +88,13 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
             : 'border-l-2 border-white/[0.12] pl-3 text-sm text-foreground/80 italic leading-snug'
         }
       >
-        &ldquo;{q.quote}&rdquo;
+        &ldquo;{stripWrappingQuotes(q.quote)}&rdquo;
       </blockquote>
-      {/* Audience + archetype tag — small, muted, never coral. */}
+      {/* Audience + archetype tag — small, muted, never coral. Multiple audiences when the
+          same archetype landed on this exact line in more than one of them (see collectQuotes:
+          merged into ONE row rather than printed twice). */}
       <p className="pl-3 text-[10px] uppercase tracking-wide text-muted/60">
-        {q.audienceName} · {q.archetype.replace(/_/g, ' ')}
+        {q.audienceNames.join(' + ')} · {q.archetype.replace(/_/g, ' ')}
       </p>
     </div>
   );
@@ -94,7 +119,7 @@ function VerdictGroup({
       </p>
       <div className="flex flex-col gap-3">
         {quotes.map((q, i) => (
-          <QuoteRow key={`${q.audienceName}-${q.archetype}-${i}`} q={q} isLead={i === 0} />
+          <QuoteRow key={`${q.audienceNames.join('+')}-${q.archetype}-${i}`} q={q} isLead={i === 0} />
         ))}
       </div>
     </div>

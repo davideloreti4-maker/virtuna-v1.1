@@ -28,6 +28,7 @@ import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
 import { useOpenRoomForCard } from '@/lib/hook-test-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BAND_COLOR } from './band-block';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 type Band = 'Strong' | 'Mixed' | 'Weak';
 
@@ -105,7 +106,7 @@ export function ProofUnit({
 
   // Same matte proof-box chrome for both entries so the card looks identical either way.
   const proofBoxClass =
-    'flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
+    'flex flex-col gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
 
   const proofBody = (
     <>
@@ -158,7 +159,7 @@ export function ProofUnit({
       {quote && (
         <div className="flex w-full items-center justify-between gap-2.5">
           <blockquote className="border-l-2 border-white/[0.10] pl-3 text-[13px] italic leading-snug text-foreground/80">
-            &ldquo;{quote}&rdquo;
+            &ldquo;{stripWrappingQuotes(quote)}&rdquo;
           </blockquote>
           <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
             <RoomAvatars />

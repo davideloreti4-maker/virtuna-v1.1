@@ -306,7 +306,7 @@ export function RetentionScrubber({ data }: { data: PredictionResult }) {
           )}
           {/* timestamp */}
           <span
-            className="absolute right-1.5 top-1.5 rounded-[5px] px-1.5 py-px text-[10px] tabular-nums text-foreground-secondary"
+            className="absolute right-1.5 top-1.5 rounded-xs px-1.5 py-px text-[10px] tabular-nums text-foreground-secondary"
             style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}
           >
             {formatTime(displayTime)}

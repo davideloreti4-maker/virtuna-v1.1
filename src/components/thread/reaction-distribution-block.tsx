@@ -23,6 +23,7 @@ import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 // Sanctioned band tones (data colors, NOT the terracotta accent) — reuse the band-block map.
 const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
@@ -109,7 +110,7 @@ export function ReactionDistributionBlockRenderer({
             </h3>
             <p className="text-sm text-foreground-secondary leading-relaxed">{read.reasoning}</p>
             <blockquote className="border-l-2 border-white/[0.12] pl-3 text-sm italic text-foreground/70 leading-relaxed">
-              &ldquo;{read.quote}&rdquo;
+              &ldquo;{stripWrappingQuotes(read.quote)}&rdquo;
             </blockquote>
           </div>
         )}
@@ -134,7 +135,7 @@ export function ReactionDistributionBlockRenderer({
                   <li key={i} className="flex flex-col gap-1">
                     <p className="text-sm font-semibold text-foreground">{theme.label}</p>
                     <blockquote className="border-l-2 border-white/[0.12] pl-3 text-sm italic text-foreground/70 leading-relaxed">
-                      &ldquo;{theme.quote}&rdquo;
+                      &ldquo;{stripWrappingQuotes(theme.quote)}&rdquo;
                     </blockquote>
                   </li>
                 ))}
@@ -180,7 +181,7 @@ export function ReactionDistributionBlockRenderer({
                           </span>
                         </div>
                         <blockquote className="text-sm italic text-foreground/70 leading-relaxed">
-                          &ldquo;{r.quote}&rdquo;
+                          &ldquo;{stripWrappingQuotes(r.quote)}&rdquo;
                         </blockquote>
                       </li>
                     ))}
