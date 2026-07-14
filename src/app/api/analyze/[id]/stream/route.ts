@@ -113,17 +113,22 @@ async function resolveRunRoster(
   return GENERAL_ROSTER.map((archetype) => ({ archetype, label: null }));
 }
 
-// Extract partial personas array from the DB row's JSONB column.
-// Returns null when not yet written (pre-Pass-1 state).
-function extractPartialPersonas(row: Record<string, unknown>): unknown[] | null {
-  try {
-    const ar = row.analysis_results as { partial?: { personas?: unknown[] } } | null;
-    const personas = ar?.partial?.personas;
-    return Array.isArray(personas) ? personas : null;
-  } catch {
-    return null;
-  }
-}
+// REMOVED — the `partial` persona event, which never fired once.
+//
+// It read `row.analysis_results.partial.personas`. `analysis_results` is a separate TABLE, not a
+// column on the row this route polls (the poller runs `.select("*")` on the analysis row, whose
+// fields are top-level: personas, variants, …). So the lookup was `undefined` on every poll of
+// every run, `extractPartialPersonas` returned null forever, and the event was never sent — a
+// progressive-reveal hook silently doing nothing, with a listener in use-reading-reveal waiting
+// for it and a test that emitted a FAKE frame to prove the handler worked.
+//
+// It cannot be repaired by pointing it at the right column, because there is no partial persona
+// state anywhere to point it at: the fold produces all 10 personas in ONE call, at the END. The
+// 10-pass loop that streamed them one at a time was deleted in Phase 4 Plan 05.
+//
+// If progressive persona reveal is ever wanted, the ENGINE must emit it first. Do not re-add a
+// reader for a state nothing writes. (That exact shape — reading a column nothing writes — is
+// also what killed the roster event: it read `society_id`, and nothing writes that either.)
 
 /**
  * Phase 1 (D-04) — GET /api/analyze/[id]/stream.
@@ -240,7 +245,6 @@ export async function GET(
           // Emit the audience roster once (it is fixed for the run).
           let rosterSent = false;
           // Track last personas array reference for change detection.
-          let lastPersonasJson = "";
 
           while (Date.now() < deadline) {
             if (aborted.value) break;
@@ -291,16 +295,8 @@ export async function GET(
                 }
               }
 
-              // Phase 3 (Plan 08) — partial persona state emission (D-15).
-              // Emit a `partial` event when personas array changes (new pass2 state added).
-              const personas = extractPartialPersonas(freshRow);
-              if (personas) {
-                const personasJson = JSON.stringify(personas);
-                if (personasJson !== lastPersonasJson) {
-                  lastPersonasJson = personasJson;
-                  send("partial", { personas });
-                }
-              }
+              // (The `partial` persona emission stood here and could never fire — see the note at
+              // the top of this file. The engine has no partial persona state to stream.)
 
               // Phase 3 (Plan 08) — filmstrip segment ready polling.
               // Emit filmstrip_segment_ready for each newly populated keyframe_uri.
