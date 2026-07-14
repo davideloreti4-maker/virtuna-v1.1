@@ -93,7 +93,7 @@ function QuoteRow({ q, isLead }: { q: WallQuote; isLead: boolean }) {
       {/* Audience + archetype tag — small, muted, never coral. Multiple audiences when the
           same archetype landed on this exact line in more than one of them (see collectQuotes:
           merged into ONE row rather than printed twice). */}
-      <p className="pl-3 text-[10px] uppercase tracking-wide text-muted/60">
+      <p className="pl-3 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
         {q.audienceNames.join(' + ')} · {q.archetype.replace(/_/g, ' ')}
       </p>
     </div>
@@ -145,7 +145,7 @@ export function VerbatimWall({ audiences }: VerbatimWallProps) {
 
   return (
     <div className="flex flex-col gap-5 rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted/60">
+      <p className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
         The room
       </p>
       <VerdictGroup label="Stopped the scroll" labelClass="text-success" quotes={stopped} />
