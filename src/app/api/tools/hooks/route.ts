@@ -229,6 +229,9 @@ export async function POST(request: Request): Promise<Response> {
               channel: b.props.channel,
               personas: b.props.personas,                   // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,                         // §11f: receipt streams WITH the face (was dropped → receipts only appeared after reload)
+              grounded: b.props.grounded,                   // §11f: the RUN had sources even if this card cited none. Gates NoSourceNote —
+                                                            // dropped here, the note could only ever appear after a reload (see `proof` above:
+                                                            // same bug, same line, fixed once and immediately reintroduced one field later).
               // band/fraction deferred to score events
             },
           })),
