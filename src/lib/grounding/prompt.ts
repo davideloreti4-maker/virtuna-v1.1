@@ -125,7 +125,7 @@ function fmtMultiplier(m: number | null): string {
 }
 
 /** Trim to a hard length without leaving a dangling half-word. */
-function clip(text: string, max: number): string {
+export function clip(text: string, max: number): string {
   const t = text.trim();
   if (t.length <= max) return t;
   const cut = t.slice(0, max);
@@ -162,7 +162,7 @@ function clip(text: string, max: number): string {
  * is named for what it is ("outlier score", the source's own metric) rather than dressed up as a
  * follower ratio we never measured.
  */
-function receipt(ex: RetrievedExample): string {
+export function receipt(ex: RetrievedExample): string {
   // A baseline label survives retrieval only when the row can actually back it (hasFollowerBaseline),
   // so its presence IS the signal that the number means something. No baseline → NO NUMBER: a bare
   // "20154×" in the prompt is not a neutral fact, it is a boast with nothing behind it, and it is
@@ -206,7 +206,7 @@ function fmtBeat(b: TeardownBeat): string {
  * chars of header is one proven source the model never sees. Keep the two LOCKED rules (an exemplar
  * is never "proven"; a multiplier never travels without its basis) and cut everything else.
  */
-const WARRANT_NOTE =
+export const WARRANT_NOTE =
   'Tagged "proven by" (beat a named baseline by ≥3× — number AND basis are both shown, e.g. ' +
   '"44× vs their usual views") or "curated exemplar" (hand-picked for craft; never measured, so it ' +
   "carries no number). Learn craft from both. NEVER call an exemplar proven, viral, or " +
