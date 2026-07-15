@@ -27,7 +27,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookCardBlock, HookCardTarget, HookProof, ReactionPersona } from '@/lib/tools/blocks';
+import type { HookCardBlock, CardTarget, HookProof, ReactionPersona } from '@/lib/tools/blocks';
 import { parseProofProp, parseGroundedProp, parseTargetProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
@@ -63,7 +63,7 @@ export interface PartialHookCard {
   // reaction. undefined on General/uncalibrated runs, and on a calibrated run whose writer named
   // nobody we assigned. This is THE field that shows the user the audience model did work, so it
   // is exactly the one whose silent loss would be invisible — five touchpoints, all of them.
-  target?: HookCardTarget;
+  target?: CardTarget;
 }
 
 export interface UseHooksStreamReturn {
