@@ -10,6 +10,7 @@ import type {
   SignaturePersona,
   Temperature,
 } from "@/lib/audience/audience-types";
+import { archetypeDisplayName } from "@/lib/audience/archetype-names";
 
 export type CalibrationStatus =
   | "baseline"
@@ -90,8 +91,17 @@ export function getPlatformLabel(audience: Audience): string {
   return PLATFORM_LABELS[audience.platform] ?? audience.platform;
 }
 
+/**
+ * The user-facing name for a persona archetype. Delegates to the SSOT map
+ * (`@/lib/audience/archetype-names`) so the workspace and the hook cards call the same person the
+ * same thing — before this, both title-cased the raw slug and the app said "Cross Niche Curiosity"
+ * at the user. An unknown slug still title-cases (those rows exist — #282).
+ *
+ * ⚠️ Display only. The engine binds on `archetype`; the model is briefed with `repaint`. This
+ * string must never reach a prompt (F7).
+ */
 export function formatArchetype(archetype: string): string {
-  return archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return archetypeDisplayName(archetype);
 }
 
 /** Top-N personas by share for card preview lines. */
@@ -152,6 +162,121 @@ export function groupAudiences(audiences: Audience[]): {
 export function getTemplateProvenanceLabel(audience: Audience): string | null {
   if (audience.mode !== "general") return null;
   return "Authored template — Directional";
+}
+
+// ─── The honesty column (SPEC-2026-07-13 §4) ─────────────────────────────────
+
+/**
+ * Where this audience came from — the one fact that replaces the retired six-term
+ * badge vocabulary (Validated/Directional/Calibrated/Baseline/Template/Limited data).
+ *
+ * It states the provenance in plain words instead of encoding it: a scraped audience
+ * says which handle and how many videos; a described one says nobody read an account;
+ * an empty one says so and asks to be filled. Never claims data we don't hold.
+ */
+export interface BuiltFrom {
+  label: string;
+  sub: string | null;
+  /** True when the honest answer is "nothing yet" — the only state that earns colour. */
+  needsAction: boolean;
+}
+
+export function getBuiltFrom(audience: Audience): BuiltFrom {
+  if (audience.is_general) {
+    return {
+      label: "Maven's baseline",
+      sub: "Same for every user",
+      needsAction: false,
+    };
+  }
+  if (audience.is_preset) {
+    return { label: "Ready-made mix", sub: "Authored by Maven", needsAction: false };
+  }
+
+  // A signature alone does NOT prove a scrape: the authored custom audiences (Marcus, Maya)
+  // carry one with an EMPTY provenance handle, which rendered as "Read from @" — a claim to
+  // account data that does not exist. The handle is the evidence; without it, we don't claim.
+  const prov = audience.signature?.provenance;
+  if (prov?.handle) {
+    const videos =
+      prov.videos_analyzed > 0 ? `${prov.videos_analyzed} videos` : "your account";
+    return { label: `Read from @${prov.handle}`, sub: videos, needsAction: false };
+  }
+
+  // A scrape without a signature still knows its handle (legacy calibration rows).
+  if (audience.calibration?.source === "scrape" && audience.calibration.handle) {
+    return {
+      label: `Read from @${audience.calibration.handle}`,
+      sub: null,
+      needsAction: false,
+    };
+  }
+
+  if (getPersonaRoster(audience).length > 0) {
+    return {
+      label: "A description you wrote",
+      sub: "No account data behind it",
+      needsAction: false,
+    };
+  }
+
+  return {
+    label: "Nothing yet",
+    sub: "Read your @handle to fill it",
+    needsAction: true,
+  };
+}
+
+/**
+ * The single honest axis, replacing the two-badge muddle: how real is this audience?
+ * `described` — personas inferred from text. `read` — built from a real scrape.
+ * `proven` is the unreached rung (the outcome loop can't be queried yet — SPEC §9).
+ */
+export type SourceRung = "described" | "read" | "proven";
+
+export function getRung(audience: Audience): SourceRung {
+  // Same rule as getBuiltFrom: the handle is what makes a signature a *reading* of a real
+  // account. A signature with no handle is authored, not read.
+  if (audience.signature?.provenance.handle) return "read";
+  if (audience.calibration?.source === "scrape") return "read";
+  return "described";
+}
+
+/** `mode: 'general'` audiences are the horizontal track — no social account behind them. */
+export function isCustomAudience(audience: Audience): boolean {
+  return audience.mode === "general";
+}
+
+/**
+ * The composition mark: one segment per persona, width = share, tone = temperature.
+ * Replaces the dot-scatter thumb, which encoded nothing on the rows that had no
+ * personas (they all rendered the same static placeholder).
+ *
+ * General carries no persona rows but is a real 10-persona baseline, so it renders an
+ * even 10-segment bar. An audience with nothing behind it returns [] — the caller
+ * shows an explicitly empty bar rather than decorating a void.
+ */
+export interface CompositionSegment {
+  share: number;
+  temperature: Temperature;
+}
+
+const GENERAL_SEGMENT_TEMPS: Temperature[] = [
+  "cold", "warm", "warm", "cold", "warm", "hot", "cold", "warm", "hot", "warm",
+];
+
+export function getCompositionSegments(audience: Audience): CompositionSegment[] {
+  const roster = getPersonaRoster(audience);
+  if (roster.length > 0) {
+    return roster.map((p) => ({ share: p.share, temperature: p.temperature }));
+  }
+  if (audience.is_general) {
+    return GENERAL_SEGMENT_TEMPS.map((temperature) => ({
+      share: 1 / GENERAL_PERSONA_COUNT,
+      temperature,
+    }));
+  }
+  return [];
 }
 
 /** Card subline under the audience name. */

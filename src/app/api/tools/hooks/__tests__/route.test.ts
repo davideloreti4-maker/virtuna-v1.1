@@ -209,6 +209,88 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     expect((kcGenVersion as string)).toMatch(/^gen\./);
   });
 
+  /**
+   * The `content` SSE payload is hand-built field-by-field in the route — a card prop that
+   * exists on the block, in the schema, in the stream parser AND in the card still renders
+   * NOTHING live if this one map forgets it. `grounded` was forgotten exactly that way: the
+   * runner set it, the schema allowed it, `toBlocks()` copied it, the card gated NoSourceNote
+   * on it — and the route never sent it, so the note could only ever appear after a reload.
+   *
+   * The pre-existing coverage was `expect(rawOutput).toContain("event: content")` — a PRESENCE
+   * assertion, which passes happily with every single prop dropped. This asserts the payload.
+   */
+  it("streams the full card face — a prop dropped from the content map renders nothing live", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    // A grounded run whose card cited NO source — the exact case NoSourceNote exists for.
+    const groundedCard = makeHookCard(1);
+    groundedCard.props.grounded = true;
+
+    const mockSvcClient = {
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    };
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(mockSvcClient);
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-grounded",
+      user_id: "user-123",
+    });
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: [groundedCard],
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-grounded" });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", platform: "tiktok" }));
+
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let rawOutput = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      rawOutput += decoder.decode(value, { stream: true });
+    }
+
+    // Parse the ACTUAL content frame the browser receives — not just its presence.
+    const contentFrame = rawOutput
+      .split("\n\n")
+      .find((frame) => frame.startsWith("event: content"));
+    expect(contentFrame).toBeDefined();
+    const payload = JSON.parse(contentFrame!.slice(contentFrame!.indexOf("data: ") + 6)) as {
+      blocks: Array<{ props: Record<string, unknown> }>;
+    };
+    const streamedProps = payload.blocks[0]!.props;
+
+    // THE ASSERTION: the live stream carries `grounded`. Delete the line from the route's
+    // content map and this goes red — while every other test in the repo stays green.
+    expect(streamedProps.grounded).toBe(true);
+
+    // And the rest of the face the card actually reads, so the next dropped prop is caught too.
+    expect(streamedProps.hookLine).toBe(groundedCard.props.hookLine);
+    expect(streamedProps.audienceArchetype).toBe(groundedCard.props.audienceArchetype);
+    expect(streamedProps.mechanism).toBe(groundedCard.props.mechanism);
+    expect(streamedProps.seedHook).toBe(groundedCard.props.seedHook);
+    expect(streamedProps.rank).toBe(groundedCard.props.rank);
+    expect(streamedProps.scrollQuote).toBe(groundedCard.props.scrollQuote);
+    expect(streamedProps.model).toBe("sim1-flash");
+  });
+
   it("S2: emits `done` BEFORE the follow-up chat turn (chat off the critical path)", async () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createServiceClient } = await import("@/lib/supabase/service");

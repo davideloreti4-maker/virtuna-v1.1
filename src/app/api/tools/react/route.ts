@@ -28,6 +28,7 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
@@ -74,6 +75,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — skip (no fixture stream yet), no engine call ──
+  const mock = await maybeMockSkillRun("react", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
   const guard = csrfGuard(request);

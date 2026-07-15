@@ -48,7 +48,7 @@ import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
-import type { RemixCardBlock } from "@/lib/tools/blocks";
+import type { RemixCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 
@@ -170,6 +170,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   // Source video cover (display-only thumbnail for the card) — captured from the resolve
   // step, NOT a media reference. Undefined when the rehost item carried no cover.
   let sourceCoverUrl: string | undefined;
+  // Who made the post we are remixing, and how it did (resolve step). The card's receipt.
+  let sourceHandle: string | undefined;
+  let sourceViews: number | undefined;
+  let sourcePostUrl: string | undefined;
 
   // ── STAGE: Resolving (real boundary — pull + rehost the source video) ──
   input.onStage?.("Resolving", "active");
@@ -178,6 +182,9 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     signedUrl = resolved.signedUrl;
     cleanup = resolved.cleanup;
     sourceCoverUrl = resolved.coverUrl;
+    sourceHandle = resolved.handle;
+    sourceViews = resolved.views;
+    sourcePostUrl = resolved.sourceUrl;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Resolve failed: ${msg}`);
@@ -324,6 +331,29 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       emotionalBeat: beatBody("emotional_beat"),
     };
 
+    // The source receipt (§11f) — the SAME anatomy the grounded cards carry, so a remix names
+    // the video it adapted instead of showing an anonymous thumbnail. Requires a handle: an
+    // unnamed source is not attributable, and a receipt that cannot say WHOSE video it was is
+    // not a receipt (mirrors buildProofFromSource's honesty gate).
+    //
+    // Everything we cannot honestly know about a pasted video stays null — there is no
+    // follower baseline here, hence no multiplier and no basis label; nothing scored this
+    // video against the audience, hence no fit. The receipt shows the creator, the reach, and
+    // a link back. Nothing else.
+    const sourceProof: HookProof | null = sourceHandle
+      ? {
+          handle: sourceHandle,
+          videoUrl: sourcePostUrl ?? url,
+          coverUrl: sourceCoverUrl ?? null,
+          views: sourceViews ?? null,
+          hookTemplate: null,
+          archetype: null,
+          multiplier: null,
+          baselineLabel: null,
+          fitLabel: null,
+        }
+      : null;
+
     const blocks: RemixCardBlock[] = [];
     for (const r of rated) {
       const blockData = {
@@ -339,8 +369,12 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
           sourceDecode,
 
           // Source video cover thumbnail (display-only) — omitted when the resolve step
-          // surfaced none (additive / back-compat).
+          // surfaced none (additive / back-compat). Still emitted for blocks stored before
+          // `proof` existed; the renderer now prefers the receipt when present.
           ...(sourceCoverUrl ? { coverUrl: sourceCoverUrl } : {}),
+
+          // The attributed source post — null when the actor named no author.
+          ...(sourceProof ? { proof: sourceProof } : {}),
 
           // Opener-scoped band signal (Pitfall 5 — adapted hook scroll-stop ONLY)
           band: r.band,

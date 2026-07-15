@@ -9,11 +9,19 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { getPlan, TRIAL, type PaidPlanId } from "@/lib/pricing";
 
 interface CheckoutModalProps {
   open: boolean;
   onClose: () => void;
-  planId: "starter" | "pro";
+  /** Persisted tier id. The dialog shows the plan's PUBLIC name (`starter` → "Creator"). */
+  planId: PaidPlanId;
+  /**
+   * Buy the $1 / 3-day trial SKU instead of the full-price plan. The API resolves this to
+   * a different Whop plan; if that plan isn't configured it falls back to full price, so
+   * a buyer is never charged less than what the button promised.
+   */
+  trial?: boolean;
   onComplete?: () => void;
 }
 
@@ -21,8 +29,10 @@ export function CheckoutModal({
   open,
   onClose,
   planId,
+  trial = false,
   onComplete,
 }: CheckoutModalProps) {
+  const plan = getPlan(planId);
   const [checkoutConfigId, setCheckoutConfigId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +50,7 @@ export function CheckoutModal({
         const res = await fetch("/api/whop/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ planId }),
+          body: JSON.stringify({ planId, trial }),
         });
 
         if (!res.ok) {
@@ -57,7 +67,7 @@ export function CheckoutModal({
     };
 
     fetchCheckoutConfig();
-  }, [open, planId]);
+  }, [open, planId, trial]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -84,10 +94,12 @@ export function CheckoutModal({
       <DialogContent size="lg" className="p-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>
-            Upgrade to {planId === "pro" ? "Pro" : "Starter"}
+            {trial ? `Start ${plan.name} for ${TRIAL.price}` : `Upgrade to ${plan.name}`}
           </DialogTitle>
           <DialogDescription>
-            Complete your payment to unlock {planId === "pro" ? "Pro" : "Starter"} features.
+            {trial
+              ? `${TRIAL.price} for ${TRIAL.days} days, then ${plan.price}${plan.priceSuffix}. Cancel anytime.`
+              : `Complete your payment to unlock ${plan.name}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="px-6 pb-6">

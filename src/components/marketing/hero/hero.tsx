@@ -1,16 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SIGNUP_URL } from "@/lib/routes";
-
-import {
-  ScoreGaugeSkeleton,
-  AudienceCloudSkeleton,
-  DriverRowsSkeleton,
-  RetentionCurveSkeleton,
-  PhoneVideoSkeleton,
-} from "@/components/marketing/story/skeletons";
 
 interface HeroProps {
   className?: string;
@@ -32,10 +25,11 @@ interface HeroProps {
  *  4. the product-shot SHOWCASE (HERO-03/04): a flat-warm desktop browser
  *     window (the Maven Simulation = the OUTPUT) with a phone in front (the
  *     TikTok you paste = the INPUT), reading left→right as paste → prediction.
- *     Both screens stay swappable slots (FOUND-03) — the window body renders
- *     the skeleton dashboard and the phone renders PhoneVideoSkeleton until
- *     real captures replace them; the device chrome, layered shadows, and warm
- *     seat are permanent dressing.
+ *     Both screens are REAL captures of the running app (2× crops, animations
+ *     disabled) — the desktop window shows a reading (score → how far it gets
+ *     pushed → the levers) and the phone shows the same product on mobile. The
+ *     skeleton set-dressing they replaced could only ever look like a template.
+ *     The device chrome, layered shadows, and warm seat stay permanent dressing.
  *
  * NOTE: this replaced the original bespoke canvas "crowd → score" signature
  * moment (the 02-02/02-03 plans). That direction read as a tech-demo, not a
@@ -98,10 +92,9 @@ export function Hero({ className }: HeroProps) {
 
       {/* 4 — Hero showcase: the product, shown. desktop window = the Maven
           SIMULATION (output) · phone in front = the TikTok you paste (input).
-          Reads left→right as paste → prediction. The window body renders the
-          03-04 skeleton dashboard until a real screenshot exists; the phone
-          stays a swappable <Placeholder> slot (FOUND-03). Device chrome,
-          depth, and seating are permanent set-dressing. */}
+          Reads left→right as paste → prediction. Both screens are real app
+          captures. Device chrome, depth, and seating are permanent
+          set-dressing. */}
       <div className="relative mt-6 w-full max-w-5xl pb-6 sm:pb-10">
         {/* Soft warm seat — a faint matte pool that floats the composition off
             the flat page (cream at very low alpha; NOT a glow). */}
@@ -132,44 +125,42 @@ export function Hero({ className }: HeroProps) {
               {/* spacer keeps the address pill optically centered vs the dots */}
               <span className="w-[42px]" aria-hidden="true" />
             </div>
-            {/* window body — filled with the 03-04 product-skeleton primitives
-                so the FOLD shows the product's shape, not an empty 16/10 void
-                (same GAP-2 rationale as simulation-showcase.tsx, different
-                composition: a dashboard with a main chart column + a score/
-                audience side rail, so the hero and the showcase don't read as
-                the same frame twice). Height-capped + overflow-hidden so the
-                mobile stack crops instead of towering. Still swappable for a
-                real desktop screenshot later (FOUND-03) — this block is the
-                `src` slot. */}
-            <div className="flex max-h-[520px] flex-col gap-6 overflow-hidden bg-surface p-6 md:flex-row md:gap-8 md:p-8">
-              {/* side rail — the hero number + the crowd. First in DOM so the
-                  mobile crop keeps gauge + drivers visible; md pushes it right. */}
-              <div className="flex shrink-0 flex-col items-center gap-6 md:order-2 md:w-[220px]">
-                <ScoreGaugeSkeleton />
-                {/* cloud is md+ only: at full mobile width it grows ~270px tall
-                    and eats the whole capped window. */}
-                <AudienceCloudSkeleton className="hidden w-full md:flex" />
-              </div>
-              {/* main column — the three levers + where viewers drop. The curve
-                  hides its "drops at 0:07" caption: the Retention driver row
-                  states the same fact one row up (same-fact-twice nit). */}
-              <div className="flex min-w-0 flex-1 flex-col gap-6 md:order-1">
-                <DriverRowsSkeleton />
-                <RetentionCurveSkeleton showDropCaption={false} />
-              </div>
+            {/* window body — a REAL capture of the app: the left rail with the
+                creator's threads beside a reading (score 71 · watch-through ·
+                how far it gets pushed). `fill` inside an aspect-locked box so
+                the fold reserves its space before the image decodes (no CLS);
+                `priority` because this is the LCP element. The crop is 16:9 at
+                2× device pixels, so it stays crisp on retina. */}
+            <div className="relative aspect-[16/9] overflow-hidden bg-surface">
+              <Image
+                src="/images/landing/hero-read.png"
+                alt="A reading in Maven: a 71 virality score, 62% watch-through, the biggest drop at 0:08, and how far the video gets pushed"
+                fill
+                priority
+                sizes="(min-width: 1024px) 840px, 88vw"
+                className="object-cover object-top"
+              />
             </div>
           </div>
         </div>
 
-        {/* Phone — your TikTok (input), in front of the window's lower-right.
+        {/* Phone — Maven on mobile, in front of the window's lower-right.
             Sibling of the window (not a child) so it overflows cleanly; its own
             deeper shadow + a hairline ring read as "in front". Seated further
             left on sm+ so it convincingly overlaps the window corner instead of
-            floating beside it in the margin. The screen is the PhoneVideoSkeleton
-            faux vertical-video UI — still the swappable slot (FOUND-03). */}
+            floating beside it in the margin. The screen is a real capture of
+            the mobile thread — a hook card, scored, with the room's reaction. */}
         <div className="absolute bottom-0 right-0 w-[17.5%] min-w-[104px] sm:right-10">
           <div className="overflow-hidden rounded-[1.8rem] border-[5px] border-background-elevated bg-background-elevated shadow-[0_28px_52px_-14px_rgba(0,0,0,0.85)] ring-1 ring-border">
-            <PhoneVideoSkeleton className="rounded-[1.55rem]" />
+            <div className="relative aspect-[780/1688] overflow-hidden rounded-[1.55rem] bg-background">
+              <Image
+                src="/images/landing/phone-thread.png"
+                alt="Maven on a phone: a hook card scored Strong, 7 of 10 viewers stopped, with the room's reaction"
+                fill
+                sizes="(min-width: 640px) 200px, 30vw"
+                className="object-cover object-top"
+              />
+            </div>
           </div>
         </div>
       </div>

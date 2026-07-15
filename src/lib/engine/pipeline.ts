@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createLogger } from "@/lib/logger";
 import { createServiceClient } from "@/lib/supabase/service";
+import type { Json } from "@/types/database.types";
 import {
   AnalysisInputSchema,
   type AnalysisInput,
@@ -219,6 +220,48 @@ async function timed<T>(
     });
   }
 }
+
+// =====================================================
+// Source receipt — the scrape's own evidence, published for the in-flight Reading
+// =====================================================
+
+export interface SourceReceipt {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
+/**
+ * Write the resolved post's cover / author / views to `variants.source` so the loading Reading
+ * can show WHAT it is reading, seconds into a two-minute run.
+ *
+ * Graceful-degradation contract (mirrors triggerFilmstripGeneration): never throws, never
+ * awaited by the pipeline. A receipt that fails to publish costs the user a thumbnail during
+ * the wait — it must never cost them the run.
+ *
+ * The patch touches ONLY the `source` key, so it cannot clobber craft / apollo / remix /
+ * filmstrip_segments written concurrently (Bug #7 lost-update).
+ */
+async function publishSourceReceipt(
+  supabase: ReturnType<typeof createServiceClient>,
+  analysisId: string,
+  source: SourceReceipt,
+): Promise<void> {
+  // Nothing worth showing (no cover AND no author) → don't write an empty receipt.
+  if (!source.cover_url && !source.handle) return;
+
+  const { error } = await supabase.rpc("patch_analysis_variants", {
+    p_id: analysisId,
+    p_patch: { source } as unknown as Json,
+  });
+
+  if (error) {
+    sourceLog.error("source receipt publish failed", { analysisId, error: error.message });
+  }
+}
+
+const sourceLog = createLogger({ module: "engine.source-receipt" });
 
 // =====================================================
 // Default fallback values for non-critical stages
@@ -455,6 +498,24 @@ export async function runPredictionPipeline(
       // The returned mp4Url is an SSRF-validated https://api.apify.com/...  URL.
       const resolver = new ApifyScrapingProvider();
       const resolved = await resolver.resolveVideoUrl(validated.tiktok_url);
+
+      // Step 1b: publish the SOURCE RECEIPT — the first honest evidence of the run.
+      //
+      // The scrape lands within seconds and already holds the post's cover, author and view
+      // count; the pipeline used to keep `mp4Url` and drop all of it. That left the in-flight
+      // Reading with nothing to show for the first ~30s (keyframes only start after Wave 0), so
+      // the user's opening impression of a 2-minute wait was a grey shimmer.
+      //
+      // Fire-and-forget, exactly like the filmstrip trigger: this is a UX affordance, and it
+      // must never add latency to — or fail — the engine run.
+      if (opts?.analysisId) {
+        void publishSourceReceipt(supabase, opts.analysisId, {
+          cover_url: resolved.coverUrl ?? null,
+          handle: resolved.handle ?? null,
+          views: resolved.views ?? null,
+          video_url: resolved.videoUrl ?? validated.tiktok_url,
+        });
+      }
 
       // Step 2: Download mp4 bytes SERVER-SIDE with the Apify token.
       // Token is ONLY used for this server-side fetch — it is NEVER put in the URL
@@ -815,7 +876,23 @@ export async function runPredictionPipeline(
     } catch (error) {
       Sentry.captureException(error, { tags: { stage: "wave_3_fold", requestId } });
       warnings.push(`Fold unavailable: ${error instanceof Error ? error.message : String(error)}`);
-      // foldOutcome remains null — aggregator falls back to deepseek.behavioral_predictions
+      // AUD-FAIL-01 — a fold that dies by THROWING is still a fold that was attempted, and it
+      // must be scored exactly like one that dies by returning fold_success:false. Leaving
+      // foldOutcome null here made the two indistinguishable from text mode (where no fold was
+      // ever promised), so the aggregator took the apollo-vs-behavioral fallback and handed the
+      // run the same 0.4 self-agreement bonus this fix exists to remove — a dead audience back
+      // at HIGH confidence. Not a hypothetical branch: getQwenClient() and buildFoldUserContent()
+      // run OUTSIDE runFold's per-attempt try, so a missing/rotated API key throws right here.
+      // Record the attempt. Every other consumer of foldOutcome guards on fold_success, so a
+      // failed outcome is inert to them (pass2_timeline=false, no heatmap, 0 cost) — the only
+      // thing it changes is that the aggregator now knows the audience was supposed to exist.
+      foldOutcome = {
+        pass2Results: [],
+        personaSimResults: [],
+        warnings: [], // already pushed above — do not double-report
+        cost_cents: 0,
+        fold_success: false,
+      };
     }
   }
 

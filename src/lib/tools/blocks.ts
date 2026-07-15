@@ -115,7 +115,14 @@ export const HookProofSchema = z.object({
   multiplier: z.number().nullable(),                          // durable outlier basis (views ÷ followers, finding #2)
   views: z.number().nullable(),
   baselineLabel: z.string().nullable(),                      // honest basis, e.g. "vs followers"
-  fitLabel: z.enum(["in-audience", "adjacent", "structural"]),
+  /**
+   * The §11c per-request audience match — NULLABLE (2026-07-13). A fit label is a claim that
+   * a source was retrieved and scored against your audience, which is true of grounded
+   * hook/idea/script sources and NOT of a Remix source: you pasted that video yourself, so
+   * nothing measured its fit. Grounded runners still always set it; remix passes null and the
+   * renderer then omits the glyph rather than asserting a match nobody computed.
+   */
+  fitLabel: z.enum(["in-audience", "adjacent", "structural"]).nullable(),
 });
 export type HookProof = z.infer<typeof HookProofSchema>;
 
@@ -129,6 +136,28 @@ export function parseProofProp(value: unknown): HookProof | undefined {
   if (!value || typeof value !== "object") return undefined;
   const parsed = HookProofSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
+}
+
+/**
+ * `grounded` — did THIS RUN have retrieved sources at all? (2026-07-14)
+ *
+ * Distinct from `proof`, which answers "did the model attribute THIS CARD to one of them".
+ * The two together are what let the renderer tell apart two absences that look identical on
+ * the wire but mean opposite things:
+ *
+ *   grounded: false, no proof → retrieval found nothing (or is off). Nothing to say. Render clean.
+ *   grounded: true,  no proof → we HAD real sources and the model still wrote this one from
+ *                               scratch. That is a fact about the output, so the card states it
+ *                               (<NoSourceNote>) instead of leaving a receipt-shaped hole next to
+ *                               a sibling that has one. A half-attributed grid read as broken.
+ *
+ * OPTIONAL for back-compat: absent on persisted/pre-2026-07-14 blocks → falsy → the old
+ * render (silent omission) is preserved exactly. Never infer it from `proof` — a run where
+ * NO card attributed a source is still a grounded run, and that is precisely the case the
+ * note exists to explain.
+ */
+export function parseGroundedProp(value: unknown): boolean {
+  return value === true;
 }
 
 export const IdeaCardBlockSchema = z.object({
@@ -166,6 +195,9 @@ export const IdeaCardBlockSchema = z.object({
     // this idea to a real source (sourceIndex ≥ 1) carrying a handle. OPTIONAL + nullable →
     // ungrounded/unattributed ideas omit it entirely (byte-identical pre-grounding shape).
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Ideas
+    // fan out, so this is the card type where a half-attributed grid was visible.
+    grounded: z.boolean().optional(),
   }),
 });
 
@@ -189,6 +221,61 @@ export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 //
 // channel: multi-modal hint (spoken/visual/caption/edit/audio) per corpus/hooks.md.
 //   nullable — not every hook maps to a specific delivery channel.
+
+// ─── Hook target (per-persona generation) ─────────────────────────────────────
+//
+// WHO this hook was written for, and whether that person then bit.
+//
+// The audience was MEASURED not to steer generation (handoff §4c: 20 runs, embeddings p=0.43,
+// a blind judge told exactly who the audience is scored 45% — chance). The data reached the
+// writer and the writer ignored it. So the audience is made explicit in the OUTPUT instead:
+// each hook is assigned one named reader, and the model must say which.
+//
+// `verdict`/`quote` are that reader's OWN reaction from the SIM panel — the receipt that the
+// aim actually landed. Both nullable: the target archetype may not appear in the run's panel,
+// and we never fabricate a reaction (honesty spine — same rule as the band).
+//
+// `label` is display-only. It NEVER reaches the model (F7); `archetype` is the binding key and
+// `repaint` is what the writer is given. Snapshotting the label here is deliberate — it records
+// what the persona was CALLED when the hook was written, so a later rename cannot silently
+// rewrite history (the same reasoning that put `audienceId` on the Read block — never key on a
+// user-editable display string).
+// NOTE the name: `HookTarget` (select-hook-targets.ts) is the SELECTION-side shape — it carries
+// the `repaint`, which is prompt input and must never be persisted onto a card or shipped to the
+// client. This is the CARD-side shape: display + receipt, no prompt text. Keeping them distinct
+// types is what stops the repaint leaking into a block by an innocent-looking spread.
+export const HookCardTargetSchema = z.object({
+  archetype: z.string(),                       // binding key — one of the fixed 10. THE NAME IS DERIVED FROM THIS.
+  /**
+   * The CREATOR'S OWN name for this persona — present ONLY when they set one. Display only; it
+   * never reached the model (F7).
+   *
+   * ⚠️ OPTIONAL ON PURPOSE. When absent the renderer derives the name from `archetype` via
+   * `archetypeDisplayName`. The split is deliberate: a creator's name is HISTORY and is snapshotted
+   * (a later rename must not rewrite what a card said when it was written), while OUR name for an
+   * archetype is just our current vocabulary and is resolved at RENDER — so improving it improves
+   * every card ever generated instead of leaving old ones reading "NICHE DEEP BUYER" forever.
+   */
+  label: z.string().optional(),
+  share: z.number(),                           // 0..1 share of the audience
+  verdict: z.enum(["stop", "scroll"]).nullable(), // did the person we AIMED at bite?
+  quote: z.string().nullable(),                // that person's own words — never invented
+});
+
+export type HookCardTarget = z.infer<typeof HookCardTargetSchema>;
+
+/**
+ * `target` at the wire boundary — safeParse, not trust-the-wire (mirrors parseProofProp).
+ *
+ * A malformed target → undefined → the card renders with no target line, exactly like an
+ * uncalibrated one. The honesty spine again: a card must never name a reader off a payload we
+ * could not actually validate.
+ */
+export function parseTargetProp(value: unknown): HookCardTarget | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed = HookCardTargetSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
 
 export const HookCardBlockSchema = z.object({
   type: z.literal("hook-card"),
@@ -225,6 +312,15 @@ export const HookCardBlockSchema = z.object({
     // to the pre-grounding shape → regression gate) and the honesty spine holds: no receipt
     // without a real, above-baseline source.
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Hooks
+    // fan out like ideas, so the same half-attributed grid is reachable here.
+    grounded: z.boolean().optional(),
+    // PER-PERSONA GENERATION: the named reader this hook was WRITTEN FOR, and how that exact
+    // person then reacted to it in the SIM. Present ONLY on a calibrated run where the model
+    // echoed back a target we actually assigned (see hooks-runner) — a run whose writer ignored
+    // the assignment loses the line rather than mislabelling the hook. OPTIONAL → General and
+    // every persisted pre-target card stay byte-identical (regression gate).
+    target: HookCardTargetSchema.optional(),
   }),
 });
 
@@ -269,6 +365,10 @@ export const ScriptCardBlockSchema = z.object({
     // generation was ON AND the model attributed the script to a real source (sourceIndex ≥ 1)
     // carrying a handle. OPTIONAL + nullable → ungrounded scripts omit it (byte-identical shape).
     proof: HookProofSchema.nullable().optional(),
+    // Did the RUN have sources, even if the script cited none? See parseGroundedProp. A script
+    // has no sibling to look half-rendered against (one per run), but the statement is the same
+    // fact and the receipt primitive is shared — so it says it too, rather than drifting.
+    grounded: z.boolean().optional(),
   }),
 });
 
@@ -299,9 +399,24 @@ export const RemixCardBlockSchema = z.object({
     whoItsFor: z.string().min(1),      // target audience in niche (muted sub-row)
     formatBorrowed: z.string().min(1), // format pattern chip — prefixed "Borrowed:" in UI
     // Source video cover thumbnail (resolveVideoUrl → resolveAndRehost surfaces it) — an
-    // ephemeral CDN image, display-only ("Remixing this post" chip). OPTIONAL/additive
-    // (back-compat): absent → the card renders with no source thumbnail.
+    // ephemeral CDN image, display-only. OPTIONAL/additive (back-compat): absent → the card
+    // renders with no source thumbnail. SUPERSEDED for display by `proof` below, which carries
+    // the same cover plus the attribution; kept for back-compat with already-stored blocks.
     coverUrl: z.string().optional(),
+
+    /**
+     * The source post, attributed (2026-07-13). Remix is the most source-derived skill we
+     * ship — it adapts ONE specific real video — yet it used to render that video as an
+     * anonymous thumbnail: no creator, no reach, no way back to the original. It now carries
+     * the same receipt shape as the grounded cards.
+     *
+     * Honest by construction: only `handle`, `views`, `coverUrl` and `videoUrl` are ever
+     * populated here. `multiplier`/`baselineLabel` stay null (a remix source has no follower
+     * baseline, so it has no measured outlier basis) and `fitLabel` stays null (you chose this
+     * video; nothing scored it against your audience). The receipt renders exactly the facts
+     * we hold. Absent when the actor gave us no author to name.
+     */
+    proof: HookProofSchema.nullable().optional(),
 
     // Source decode anatomy — the REAL structural decode (D-05 moat, NOT a metadata guess)
     // Shown on expand: WHY the original video worked structurally
@@ -426,6 +541,18 @@ export const MultiAudienceReadBlockSchema = z.object({
         z
           .object({
             name: z.string().min(1),                      // audience display name
+            // ROLLUP-01 — the ATTRIBUTION key. `name` is a user-editable display string, so
+            // rolling a persisted Read up to /audience/[id] by name would re-attribute (or
+            // silently drop) every Read the moment an audience is renamed — and would attach
+            // one audience's history to a DIFFERENT audience later recreated under the same
+            // name. The id is the only stable handle. "general" is the GENERAL_AUDIENCE
+            // sentinel (audience-repo.ts:40), so the General side of a compare is attributable
+            // too. OPTIONAL because it is purely additive: the 7 blocks already persisted omit
+            // it, and `.strict()` re-validates on EVERY rehydration (loadMessages) — a required
+            // field here would turn every one of them into an `__unsupported__` placeholder in
+            // the thread UI. Un-attributed legacy blocks are EXCLUDED from the rollup, never
+            // guessed at by name.
+            audienceId: z.string().min(1).optional(),
             band: z.enum(["Strong", "Mixed", "Weak"]),    // aggregate band — NO score (Pitfall 5)
             fraction: z.string().min(1),                  // e.g. "8/10 stop"
             interpretation: z.string().min(1),            // the one-line Read interpretation
@@ -450,6 +577,16 @@ export const MultiAudienceReadBlockSchema = z.object({
     // `.strict()` entry: that entry forbids unknown keys (would reject this), and the
     // tier is RUN-level, not per-audience. Does NOT touch the bands-only honesty spine.
     tier: z.enum(["Validated", "Directional"]).optional(),
+    // ROLLUP-01 — WHAT was read. The Read route persists ONLY this assistant block; unlike
+    // /api/tools/chat it never writes a user turn, so before this field the concept text
+    // survived NOWHERE — not in the block, not in the thread. A divergence panel reports
+    // "the two verdicts per concept", which is unreadable without the concept.
+    //
+    // RUN-level (one concept per Read), so it sits beside `model`/`tier` and NOT inside the
+    // `.strict()` per-audience entry, which forbids unknown keys. Capped at the route's own
+    // MAX_CONCEPT_LENGTH so a payload the route accepts can never fail its own write
+    // boundary. Optional + additive: the already-persisted blocks omit it.
+    concept: z.string().min(1).max(2000).optional(),
   }),
 });
 

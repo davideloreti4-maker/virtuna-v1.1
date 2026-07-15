@@ -29,6 +29,7 @@ vi.mock("../calibration-flow", () => ({
 
 import { AudienceForm } from "../audience-form";
 import NewAudiencePage from "@/app/(app)/audience/new/page";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 function savedAudience(): Audience {
   return {
@@ -123,7 +124,7 @@ describe("/audience/new page wiring (non-conditional)", () => {
     return findForm((el.props as { children?: React.ReactNode }).children);
   }
 
-  it("?mode=general ⇒ initialMode='general' passed to AudienceForm", async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)("?mode=general ⇒ initialMode='general' passed to AudienceForm", async () => {
     const tree = await NewAudiencePage({ searchParams: Promise.resolve({ mode: "general" }) });
     const form = findForm(tree);
     expect(form).not.toBeNull();

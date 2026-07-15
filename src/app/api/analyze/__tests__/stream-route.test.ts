@@ -27,6 +27,21 @@ vi.mock("@/lib/logger", () => ({
   })),
 }));
 
+// The roster resolves the audience the way the ENGINE does: thread pin → getAudience →
+// General. Both are mocked per-test; the default (no thread pin) is the General path, which
+// is what a live uncalibrated run hits.
+const getOpenThreadMock = vi.fn(async () => null as unknown);
+const getAudienceMock = vi.fn(async () => null as unknown);
+
+vi.mock("@/lib/threads/threads", () => ({
+  getOpenThread: (...args: unknown[]) => getOpenThreadMock(...(args as [])),
+}));
+
+vi.mock("@/lib/audience/audience-repo", () => ({
+  getAudience: (...args: unknown[]) => getAudienceMock(...(args as [])),
+  GENERAL_AUDIENCE: { id: "general", is_general: true, personas: [] },
+}));
+
 function buildReq(id = "abc"): Request {
   return new Request(`http://localhost/api/analyze/${id}/stream`);
 }
@@ -46,6 +61,8 @@ async function readAll(res: Response): Promise<string> {
 beforeEach(() => {
   singleMock.mockReset();
   vi.clearAllMocks();
+  getOpenThreadMock.mockResolvedValue(null);
+  getAudienceMock.mockResolvedValue(null);
 });
 
 describe("GET /api/analyze/[id]/stream", () => {
@@ -127,6 +144,79 @@ describe("GET /api/analyze/[id]/stream", () => {
     expect(body).toContain('"overall_score":0.55');
 
     // restore
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = origST;
+  });
+
+  it("emits a roster on a society_id:null row — the shape of EVERY live row", async () => {
+    // THE REGRESSION THIS PINS: the roster used to be looked up from `row.society_id`, and
+    // nothing writes that column — the Read submit path sends only input_mode/content_type/
+    // tiktok_url. So it is null on every real row and the roster event NEVER fired outside a
+    // fixture. Caught by watching a live run (row iEbgUsLZRSFw, 2026-07-14): zero roster events.
+    // An uncalibrated user must still see the General cast — the 10 archetypes the fold runs.
+    const inFlight = {
+      id: "abc", user_id: "user-a", overall_score: null, confidence: null,
+      deleted_at: null, society_id: null,
+    };
+    const settled = { id: "abc", user_id: "user-a", overall_score: 0.55, confidence: 0.6, deleted_at: null };
+    singleMock
+      .mockResolvedValueOnce({ data: inFlight, error: null })
+      .mockResolvedValueOnce({ data: inFlight, error: null })
+      .mockResolvedValueOnce({ data: settled, error: null });
+
+    const origST = global.setTimeout;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = (cb: () => void) => origST(cb, 0);
+
+    const { GET } = await import("@/app/api/analyze/[id]/stream/route");
+    const res = await GET(buildReq("abc"), { params: Promise.resolve({ id: "abc" }) });
+    const body = await readAll(res);
+
+    expect(body).toContain("event: roster");
+    // The General cast the fold actually simulates — 10 archetypes, no invented names.
+    const rosterFrame = body.split("event: roster")[1]!.split("\n\n")[0]!;
+    const payload = JSON.parse(rosterFrame.replace(/^\ndata: /, ""));
+    expect(payload.personas).toHaveLength(10);
+    expect(payload.personas[0]).toEqual({ archetype: "high_engager", label: null });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = origST;
+  });
+
+  it("prefers the thread's calibrated audience — the same one the engine folds", async () => {
+    getOpenThreadMock.mockResolvedValue({ id: "t1", active_audience_id: "aud-1" });
+    getAudienceMock.mockResolvedValue({
+      id: "aud-1",
+      personas: [
+        { archetype: "high_engager", label: "Skincare Sam" },
+        { archetype: "lurker", label: null },
+      ],
+    });
+    const inFlight = {
+      id: "abc", user_id: "user-a", overall_score: null, confidence: null,
+      deleted_at: null, society_id: null,
+    };
+    const settled = { id: "abc", user_id: "user-a", overall_score: 0.55, confidence: 0.6, deleted_at: null };
+    singleMock
+      .mockResolvedValueOnce({ data: inFlight, error: null })
+      .mockResolvedValueOnce({ data: inFlight, error: null })
+      .mockResolvedValueOnce({ data: settled, error: null });
+
+    const origST = global.setTimeout;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (global as any).setTimeout = (cb: () => void) => origST(cb, 0);
+
+    const { GET } = await import("@/app/api/analyze/[id]/stream/route");
+    const res = await GET(buildReq("abc"), { params: Promise.resolve({ id: "abc" }) });
+    const body = await readAll(res);
+
+    const rosterFrame = body.split("event: roster")[1]!.split("\n\n")[0]!;
+    const payload = JSON.parse(rosterFrame.replace(/^\ndata: /, ""));
+    expect(payload.personas).toEqual([
+      { archetype: "high_engager", label: "Skincare Sam" },
+      { archetype: "lurker", label: null },
+    ]);
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (global as any).setTimeout = origST;
   });

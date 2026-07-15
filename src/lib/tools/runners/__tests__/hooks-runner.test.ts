@@ -736,3 +736,287 @@ describe("runHooksPipeline — FLYWHEEL-02 predicted pin", () => {
     expect(pinPredictedSignature).not.toHaveBeenCalled();
   });
 });
+
+// ─── PER-PERSONA GENERATION (target binding) ──────────────────────────────────
+//
+// The audience was MEASURED not to steer the WRITING (handoff §4c: 20 runs, two independent
+// methods, both at chance). So the persona stops being ambient CONTEXT and becomes an explicit
+// ASSIGNMENT the model must name back. These tests guard the binding — which is precisely the
+// part that broke on the first live run while every one of the 3,600 tests stayed green.
+
+const targetedAudience = {
+  ...(calibratedAudience as object),
+  id: "aud-targeted",
+  is_general: false,
+  personas: [
+    { archetype: "lurker", repaint: "Passively consumes the spectacle.", temperature: "cold", disposition: "scanner", share: 0.2 },
+    { archetype: "saver", repaint: "Saves to rewatch frame-by-frame.", temperature: "warm", disposition: "collector", share: 0.15 },
+    { archetype: "loyalist", repaint: "Defends the creator against critics.", temperature: "hot", disposition: "connector", share: 0.1 },
+    { archetype: "niche_deep_buyer", repaint: "Deeply invested; buys the course.", temperature: "hot", disposition: "converter", share: 0.05 },
+    { archetype: "cross_niche_curiosity", repaint: "Here for the trend, not the creator.", temperature: "cold", disposition: "scanner", share: 0.05 },
+  ],
+} as never;
+
+/** A SIM panel that contains the real archetypes, so a target can find its own reaction. */
+function makeTargetedPanel() {
+  return [
+    { archetype: "lurker", verdict: "stop", quote: "Had to check if that was real." },
+    { archetype: "saver", verdict: "stop", quote: "Pausing this frame by frame." },
+    { archetype: "loyalist", verdict: "stop", quote: "He always delivers." },
+    { archetype: "niche_deep_buyer", verdict: "scroll", quote: "Seen this technique already." },
+    { archetype: "cross_niche_curiosity", verdict: "stop", quote: "The trend brought me here." },
+    { archetype: "high_engager", verdict: "stop", quote: "Commenting now." },
+    { archetype: "sharer", verdict: "stop", quote: "Sending to my group chat." },
+    { archetype: "tough_crowd", verdict: "scroll", quote: "Seen better." },
+    { archetype: "purposeful_viewer", verdict: "stop", quote: "Useful." },
+    { archetype: "niche_deep_scout", verdict: "scroll", quote: "Not deep enough." },
+  ];
+}
+
+function mockQwenReturning(hooks: unknown[]) {
+  return {
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: JSON.stringify({ hooks }) } }],
+        }),
+      },
+    },
+  };
+}
+
+function targetedHooks(targetArchetypes: string[]) {
+  return targetArchetypes.map((targetArchetype, i) => ({
+    hookLine: `Hook line ${i + 1}`,
+    mechanism: `Mechanism ${i + 1}`,
+    seedHook: `Seed ${i + 1}`,
+    channel: null,
+    needsTake: false,
+    targetArchetype,
+  }));
+}
+
+describe("runHooksPipeline — per-persona generation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 🔴 THE LIVE BUG, PINNED. The assignment list renders each person as `1. [lurker] …` and the
+   * contract said "use the exact bracketed slug" — so the model returned `"[lurker]"`, brackets
+   * and all. The assignment map is keyed on the bare slug, every lookup missed, and EVERY card
+   * silently lost its target line. The writer had complied perfectly; the BINDING broke.
+   *
+   * tsc, eslint and 3,600 unit tests were green. One live run caught it in two minutes.
+   *
+   * Revert normalizeTargetArchetype and this test goes red — and the feature is dead again.
+   */
+  it("binds a BRACKETED slug — the model returns \"[lurker]\", not \"lurker\" (live-caught)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturning(
+        targetedHooks(["[lurker]", "[loyalist]", "[niche_deep_buyer]", "[cross_niche_curiosity]", "[saver]"]),
+      ),
+    );
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "a levitation illusion",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedAudience,
+    });
+
+    expect(blocks).toHaveLength(5);
+    // EVERY card names its reader. Before the fix: zero did.
+    for (const b of blocks) {
+      expect(b.props.target).toBeDefined();
+      expect(b.props.target!.archetype).not.toMatch(/[[\]]/); // brackets never reach the card
+    }
+    expect(new Set(blocks.map((b) => b.props.target!.archetype))).toEqual(
+      new Set(["lurker", "loyalist", "niche_deep_buyer", "cross_niche_curiosity", "saver"]),
+    );
+  });
+
+  it("tolerates the other decorations a model reasonably adds (quotes, case, spaces)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturning(
+        targetedHooks(['"lurker"', "  LOYALIST  ", "niche deep buyer", "`cross_niche_curiosity`", "Saver"]),
+      ),
+    );
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedAudience,
+    });
+
+    expect(blocks.every((b) => b.props.target !== undefined)).toBe(true);
+  });
+
+  /**
+   * THE HONEST FAILURE. A writer that ignores its assignment must produce a card with NO target
+   * line — never a generic hook wearing a personalised label. This is the runtime tripwire for
+   * the §4c failure mode, and it is the assertion that keeps the feature honest if a future model
+   * stops complying.
+   */
+  it("drops the target line — never mislabels — when the model names a slug we never assigned", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturning(targetedHooks(["tough_crowd", "", "not_a_real_slug", "lurker", "saver"])),
+    );
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks, warnings } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedAudience,
+    });
+
+    const targeted = blocks.filter((b) => b.props.target);
+    // `tough_crowd` is a REAL archetype but was never ASSIGNED (it is not on this audience) —
+    // so it must not bind. Only the two genuinely-assigned slugs survive.
+    expect(new Set(targeted.map((b) => b.props.target!.archetype))).toEqual(
+      new Set(["lurker", "saver"]),
+    );
+    expect(warnings.some((w) => /never assigned|named no target/.test(w))).toBe(true);
+  });
+
+  /** The receipt: the aimed-at reader's OWN verdict + OWN words, looked up — never invented. */
+  it("carries the TARGET's own SIM reaction, not the lead quote", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturning(targetedHooks(["niche_deep_buyer", "saver", "lurker", "loyalist", "cross_niche_curiosity"])),
+    );
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedAudience,
+    });
+
+    const buyer = blocks.find((b) => b.props.target?.archetype === "niche_deep_buyer");
+    // A MISS is reported as plainly as a hit — the buyer scrolled past the hook aimed at them,
+    // and that is the single most useful thing this card can say. Hiding it makes it decorative.
+    expect(buyer!.props.target!.verdict).toBe("scroll");
+    expect(buyer!.props.target!.quote).toBe("Seen this technique already.");
+
+    const saver = blocks.find((b) => b.props.target?.archetype === "saver");
+    expect(saver!.props.target!.verdict).toBe("stop");
+    expect(saver!.props.target!.quote).toBe("Pausing this frame by frame.");
+  });
+
+  /** THE REGRESSION GATE. General has no real people — it must be byte-identical to before. */
+  it("General: no assignment block in the prompt, and no target on any card", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const client = mockQwenReturning(targetedHooks(["lurker", "saver", "lurker", "saver", "lurker"]));
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: generalAudience,
+    });
+
+    // Even though the model volunteered targetArchetypes, an uncalibrated run names NOBODY.
+    expect(blocks.every((b) => b.props.target === undefined)).toBe(true);
+
+    // `assembleBundle` is mocked to a constant here, so the assignment block must be asserted on
+    // the OVERRIDES handed to it — asserting the returned user message would pass trivially and
+    // prove nothing (the mock could not contain the block either way).
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const overrides = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0].overrides;
+    expect(overrides ?? "").not.toContain("WRITE FOR ONE NAMED PERSON");
+
+    // The SYSTEM prompt is real (not mocked), so the output contract IS assertable there: an
+    // uncalibrated run must never even ask for a target.
+    const system = client.chat.completions.create.mock.calls[0]![0].messages[0].content;
+    expect(system).not.toContain("targetArchetype");
+  });
+
+  /** F7: the persona's display name must NEVER reach the model — only archetype + repaint. */
+  it("F7: the prompt carries archetype + repaint, and NEVER the persona's display label", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    const labelled = {
+      ...(targetedAudience as object),
+      personas: [
+        {
+          archetype: "saver",
+          repaint: "Saves to rewatch frame-by-frame.",
+          temperature: "warm",
+          disposition: "collector",
+          share: 0.6,
+          label: "The Frame Detectives",
+        },
+      ],
+    } as never;
+
+    const client = mockQwenReturning(targetedHooks(["saver", "saver", "saver", "saver", "saver"]));
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makeTargetedPanel())),
+    );
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: labelled,
+    });
+
+    // The assignment block travels as `overrides` into assembleBundle (mocked to a constant here),
+    // so THAT is where F7 is assertable — the mocked return value would prove nothing.
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+    const overrides: string =
+      (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0].overrides ?? "";
+
+    expect(overrides).toContain("Saves to rewatch frame-by-frame."); // the repaint DOES reach the model
+    expect(overrides).toContain("[saver]");                          // the binding key DOES
+    expect(overrides).not.toContain("The Frame Detectives");         // 🔴 the LABEL never does (F7)
+
+    // …and the label still reaches the CARD, where it is a display string, not prompt input.
+    expect(blocks[0]!.props.target!.label).toBe("The Frame Detectives");
+  });
+});

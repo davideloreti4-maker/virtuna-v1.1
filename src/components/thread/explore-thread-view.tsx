@@ -6,17 +6,22 @@
  *
  * Clones the HooksThreadView column (the `max-w-[760px] mx-auto gap-6 px-4 py-6`
  * thread column, ProgressChecklist while streaming, the grid via the streaming +
- * persisted block bodies, the SkillRunError block + onRetry) AND adds the
- * ChatThreadView-style idle ownership: Explore OWNS its idle/empty state and shows
- * three audience-derived quick-action cards (D-06/D-07 / EXPLORE-04) so a blank
- * thread is never intimidating. Unlike HooksThreadView (which returns null when
- * idle), this view renders idle content like ChatThreadView (STATE 05-03 precedent).
+ * persisted block bodies, the SkillRunError block + onRetry).
  *
- * Three sources of content:
- *  1. IDLE: no content + not streaming + no error → heading + body + 3 quick-action
- *     cards. The cards run a preset pull ONLY on tap (never auto-fire on render).
- *  2. STREAMING: ProgressChecklist + the loading lead line + the in-flight grid block.
- *  3. PERSISTED: the grid block(s) rehydrated from the open thread on reload.
+ * ⚠️ This view NO LONGER owns an idle state. It used to render its own heading + three
+ * quick-action cards in a bespoke card (icon ABOVE the text, no fill, p-5, 16/14px) — an
+ * anatomy nothing else in the app used, and the worst offender in the four-empty-states
+ * drift. Do NOT re-add an idle branch here.
+ *
+ * Where Explore's entry points went (2026-07-14): the starter grid is the SAME SIX cards
+ * under every skill now, so the three presets did not survive as cards. They were not lost
+ * — the richer entry is the params popover (`onRunExplore` / the magnifier beside the skill
+ * chip), which already expresses niche · accounts · time-window · serendipity, i.e. every
+ * preset and then some. A bare send with an empty field runs the un-niched pull.
+ *
+ * Two sources of content:
+ *  1. STREAMING: ProgressChecklist + the loading lead line + the in-flight grid block.
+ *  2. PERSISTED: the grid block(s) rehydrated from the open thread on reload.
  *
  * The grid is rendered via OutlierGridBlockRenderer DIRECTLY (not through
  * MessageBlocks) because MessageBlocks does not forward the onRemix / onTrack
@@ -34,17 +39,15 @@
  *  - handleTrack(tile): POST /api/tracked-accounts (EXPLORE-05 / D-08), marks the
  *    tile tracked.
  *
- * Honesty spine (D-02): no fabricated competitor feed (card 2 degrades to a quiet
- * "Track an account first" disabled sub-state when no tracked accounts exist), and
- * NO fabricated reaction / persona quote on the grid (the real reaction is lazy).
+ * Honesty spine (D-02): NO fabricated reaction / persona quote on the grid (the real
+ * reaction is lazy, earned on tap). The competitor-feed degrade ("Track an account
+ * first") moved with the cards into the starter, and is still honest there.
  *
  * Column width + THEME-06 flat-warm, coral only on the tile CTA (per CLAUDE.md
- * Raycast rules + UI-SPEC §Color). The quick-action active state uses terracotta
- * border+tint (UI-SPEC §Surface 3); the cards themselves are non-accent.
+ * Raycast rules + UI-SPEC §Color).
  */
 
 import { useCallback, useState } from 'react';
-import { Compass, UsersThree, Sparkle } from '@phosphor-icons/react';
 import { OutlierGridBlockRenderer } from '@/components/thread/outlier-grid-block';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
@@ -53,26 +56,6 @@ import type { StageState } from '@/components/thread/progress-checklist';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 import type { OutlierTileData } from '@/components/discover/outlier-tile';
-import type { Audience } from '@/lib/audience/audience-types';
-
-// ── Quick-action params ─────────────────────────────────────────────────────────
-
-/**
- * Params a quick-action card passes up to onQuickAction (forwarded to
- * useExploreStream.start by the composer). Mirrors ExploreStartParams' shape — kept
- * structural so the composer can pass it straight through.
- */
-export interface ExploreQuickActionParams {
-  niche?: string;
-  accounts?: string;
-  timeWindow?: string;
-  serendipity?: number;
-  /**
-   * CR-02 — the competitors card sets this so the route pulls from the session user's
-   * tracked accounts (resolved server-side; the client never sends handles).
-   */
-  tracked?: boolean;
-}
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -89,21 +72,6 @@ export interface ExploreThreadViewProps {
   error: string | null;
   /** Current platform selection (the remix handoff + track write carry this). */
   platform: string;
-  /**
-   * The active audience — drives quick-action copy + the card-2 degrade. null =
-   * General / no calibrated audience (the niche derivation falls back to "").
-   */
-  audience: Audience | null;
-  /**
-   * Whether the creator has any tracked accounts. Gates card 2: false → the quiet
-   * "Track an account first" disabled sub-state (honesty — never a fabricated feed).
-   */
-  hasTrackedAccounts: boolean;
-  /**
-   * Run a preset Explore pull. Wired by the composer to useExploreStream.start.
-   * CRITICAL: fired ONLY on an explicit quick-action tap — never on render (D-07).
-   */
-  onQuickAction: (params: ExploreQuickActionParams) => void;
   /**
    * Retry callback — re-invokes the last pull (SkillRunError tap-to-retry).
    * Called ONLY on explicit tap. Never fires on render.
@@ -129,9 +97,6 @@ export function ExploreThreadView({
   isStreaming,
   error,
   platform,
-  audience,
-  hasTrackedAccounts,
-  onQuickAction,
   onRetry,
   onThreadReload,
   userTurn,
@@ -145,12 +110,6 @@ export function ExploreThreadView({
 
   const hasStreamingContent = streamingBlocks.length > 0;
   const hasPersistedContent = persistedBlocks.length > 0;
-  const isIdle =
-    !isStreaming && !hasStreamingContent && !hasPersistedContent && !error;
-
-  // Niche derived from the active audience for the quick-action presets (honest
-  // fallback "" when no audience — the route then runs an un-niched pull).
-  const audienceNiche = (audience?.goal_label || audience?.name || '').trim();
 
   // ── handleRemix (D-04/D-05, RESEARCH Q2) ──────────────────────────────────────
   // VERBATIM discover→remix chain launch (the DiscoverClient pattern), EXCEPT it
@@ -220,61 +179,12 @@ export function ExploreThreadView({
   );
 
   return (
-    <ThreadShell
-      userTurn={userTurn}
-      before={
-        isIdle ? (
-          <div className="flex flex-col gap-6 pt-2">
-            <div className="flex flex-col gap-3">
-              <h2 className="text-base font-semibold text-foreground leading-snug">
-                Find what your audience would actually bite on.
-              </h2>
-              <p className="text-sm text-foreground-secondary leading-normal">
-                Maven pulls outliers from your niche and competitors, then scores each
-                for <em>your</em> people — not borrowed view counts. Pick a starting
-                point, or set your own search.
-              </p>
-            </div>
-
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(220px,1fr))]">
-              <QuickActionCard
-                icon={<Compass size={20} weight="regular" aria-hidden="true" />}
-                title="Top performers in my niche today"
-                sub="Fresh outliers, scored for your audience"
-                onClick={() =>
-                  onQuickAction({ niche: audienceNiche, timeWindow: 'today' })
-                }
-              />
-
-              <QuickActionCard
-                icon={<UsersThree size={20} weight="regular" aria-hidden="true" />}
-                title="What competitors shipped"
-                sub={
-                  hasTrackedAccounts
-                    ? 'Recent posts from accounts you track'
-                    : 'Track an account first'
-                }
-                disabled={!hasTrackedAccounts}
-                onClick={
-                  hasTrackedAccounts
-                    ? () => onQuickAction({ tracked: true, timeWindow: 'week' })
-                    : undefined
-                }
-              />
-
-              <QuickActionCard
-                icon={<Sparkle size={20} weight="regular" aria-hidden="true" />}
-                title="Surprise me"
-                sub="Widen beyond your niche — something unexpected"
-                onClick={() =>
-                  onQuickAction({ niche: audienceNiche, serendipity: 1 })
-                }
-              />
-            </div>
-          </div>
-        ) : undefined
-      }
-    >
+    // Idle is NOT this view's business any more. Explore owned the worst of the drift —
+    // its own QuickActionCard (icon ABOVE the text, no fill, p-5, 16/14px) sitting under a
+    // left-aligned prose lede, a card that looked nothing like the home grid it was meant
+    // to echo. The three starting points now live in the ONE starter (home-starter.tsx —
+    // THE STARTER CONTRACT) with their copy intact and their tap-only guarantee intact.
+    <ThreadShell userTurn={userTurn}>
       {/* Premium spine (parity with the generative skills): full pipeline seeded up front while
           streaming, collapsing to a receipt line on completion. */}
       <SkillProgress
@@ -331,57 +241,6 @@ export function ExploreThreadView({
         </ThreadAssistantTurn>
       )}
     </ThreadShell>
-  );
-}
-
-// ── QuickActionCard ─────────────────────────────────────────────────────────────
-
-/**
- * One audience-derived quick-action card (UI-SPEC §Surface 3).
- *  - transparent bg, 6% border, 12px radius, 20px padding (p-5)
- *  - phosphor line-icon + title (16px/600) + muted sub (14px/400)
- *  - hover bg-white/[0.02] only (no lift)
- *  - active/pressed = terracotta border+tint (the active-state accent, UI-SPEC §Color)
- *  - disabled = the quiet degrade sub-state (no pull fired)
- *
- * CRITICAL: onClick fires ONLY on user tap (D-07) — the card NEVER auto-fires.
- */
-interface QuickActionCardProps {
-  icon: React.ReactNode;
-  title: string;
-  sub: string;
-  onClick?: () => void;
-  disabled?: boolean;
-}
-
-function QuickActionCard({ icon, title, sub, onClick, disabled = false }: QuickActionCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled || !onClick}
-      aria-label={title}
-      className={[
-        'group flex flex-col items-start gap-2 text-left',
-        'rounded-xl border p-5 transition-colors',
-        'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10',
-        disabled
-          ? 'border-white/[0.06] opacity-60 cursor-default'
-          : [
-              'border-white/[0.06] cursor-pointer',
-              'hover:bg-white/[0.02]',
-              'active:border-white/10 active:bg-white/[0.04]',
-            ].join(' '),
-      ].join(' ')}
-    >
-      <span className="text-foreground-muted" aria-hidden="true">
-        {icon}
-      </span>
-      <span className="text-base font-semibold text-foreground leading-snug">
-        {title}
-      </span>
-      <span className="text-sm text-foreground-muted leading-normal">{sub}</span>
-    </button>
   );
 }
 

@@ -21,7 +21,10 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { calibrateFromScrape } from "@/lib/audience/calibration";
+import {
+  calibrateFromScrape,
+  type CalibrationStage,
+} from "@/lib/audience/calibration";
 import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import {
@@ -38,6 +41,18 @@ function sanitizeText(s: string): string {
   // eslint-disable-next-line no-control-regex
   return s.replace(/[\x00-\x1F\x7F]/g, "").trim();
 }
+
+/**
+ * Stage → user-facing copy. Each fires as its phase BEGINS, so the message on screen is the
+ * work actually happening. Measured live (@zachking): scrape ~126s, watch+synthesize ~2s of
+ * wall clock after it — previously ALL of that sat under "Reading your followers…", and
+ * "Building your audience profile…" appeared only once the profile was already built.
+ */
+const STAGE_COPY: Record<CalibrationStage, string> = {
+  scraping: "Reading your followers…",
+  watching: "Watching your top videos…",
+  synthesizing: "Building your audience profile…",
+};
 
 const CalibrateSchema = z.object({
   // A7: the draft audience the form already created. When present, calibration
@@ -106,24 +121,35 @@ export async function POST(request: Request): Promise<Response> {
       };
 
       try {
-        // ── Staged status: stage 1 (UI-SPEC exact copy) ───────────────────
-        send("status", { message: "Reading your followers…" });
-
-        const calibrationResult = await calibrateFromScrape({
-          handle,
-          type,
-          platform,
-          goalIntent,
-          name,
-          description,
-        });
-
-        // ── Staged status: stage 2 ────────────────────────────────────────
-        send("status", { message: "Building your audience profile…" });
+        // ── Staged status, driven by the pipeline itself (not guessed) ────
+        // The stages are emitted by calibrateFromScrape/enrichSignature as each phase BEGINS —
+        // the route awaits one opaque promise and cannot see those boundaries from out here.
+        const calibrationResult = await calibrateFromScrape(
+          { handle, type, platform, goalIntent, name, description },
+          {
+            onStage: (stage) => send("status", { message: STAGE_COPY[stage] }),
+            // The account + the posts we're about to watch, the moment the scrape returns —
+            // ~2 minutes before the audience they produce. A status line claims we are working;
+            // the creator's own face and covers prove it.
+            onEvidence: (evidence) => send("evidence", evidence),
+          },
+        );
 
         // ── Handle calibration outcomes ───────────────────────────────────
 
         if ("error" in calibrationResult) {
+          // `platform_unsupported` is NOT a failed scrape — nothing was scraped, and the handle
+          // is fine. Telling the user to "check the handle and try again" would send them round a
+          // loop that can never succeed. Carry the domain's own message and do NOT offer retry.
+          if (calibrationResult.error === "platform_unsupported") {
+            send("error", {
+              message:
+                calibrationResult.message ??
+                "Maven can only build an audience from a TikTok account right now.",
+              retry: false,
+            });
+            return;
+          }
           // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
           send("error", {
             message: "Calibration failed. Check the handle and try again.",

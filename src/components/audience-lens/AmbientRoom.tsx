@@ -46,6 +46,7 @@ import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import { BrainView } from './BrainView';
 import type { AmbientFocusSibling } from './ambient-presence-types';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface AmbientRoomProps {
   /** The focused concept's REAL per-persona reactions (from the ambient focus — PR-B1).
@@ -138,17 +139,17 @@ function parseStop(fraction: string): { stop: number; total: number } | null {
 /** The replay stream reveals one voice per this many ms (calm, deterministic). */
 const REPLAY_STEP_MS = 240;
 /** The population swarm reveals this many dots per tick on Play. */
-const SWARM_REVEAL_STEP = 6;
+const SWARM_REVEAL_STEP = 14;
 const SWARM_TICK_MS = 22;
-/** Sample dots in the swarm viz (a honest presentation of 1,000-from-N, not 1,000 calls). */
-const SWARM_DOTS = 90;
+/** Sample dots in the swarm viz (a honest presentation of 1,000-from-N, not 1,000 calls).
+ *  200 in a fixed 25-column block so the crowd reads as a dense field, not a dotted line. */
+const SWARM_DOTS = 200;
+const SWARM_COLS = 25;
 
 const isGroundable = (n: PersonaNode): boolean =>
   n.archetype != null && ARCHETYPES.includes(n.archetype as Archetype);
 
 const verdictOf = (n: PersonaNode): 'stop' | 'scroll' => (n.watchThrough >= 0.5 ? 'stop' : 'scroll');
-
-const initialOf = (label: string): string => (label.trim()[0] ?? '·').toUpperCase();
 
 /** The compare-row meter tone — sage ≥60% stop, coral ≤40%, else neutral (prototype `toneOf`).
  *  Dosage LOCKED: coral is the bounce SIGNAL, sage the loved one; neither paints en masse. */
@@ -311,25 +312,22 @@ export function AmbientRoom({
   };
 
   return (
-    <div className={embedded ? 'flex flex-col' : 'flex h-full min-h-0 flex-col'}>
+    <div className={embedded ? 'flex flex-col' : 'flex min-h-0 flex-1 flex-col'}>
       {inCompare ? (
         /* ── `⤺ all N` view-all — the ranked list "How the room ranked your N" (PR-2).
               Tap a row to re-focus the Room on that sibling → back to the drill view. ── */
         <>
           <div className="shrink-0 px-5 pb-1 pt-1">
             <div className="flex min-h-[24px] items-center gap-2">
-              <span className="whitespace-nowrap font-mono text-[10.5px] tracking-[0.02em] text-[var(--color-foreground-muted)]">
+              <span className="whitespace-nowrap text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
                 {kindLabel}s · ranked
               </span>
             </div>
-            <p className="mt-2 font-serif text-[18px] leading-tight tracking-[-0.01em] text-foreground">
+            <p className="mt-2 font-serif text-[21px] leading-tight tracking-[-0.01em] text-foreground">
               How the room ranked your {rankedSiblings.length} {kindLabel.toLowerCase()}s
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">
-            <p className="px-1.5 pb-2 pt-1 text-[11px] text-[var(--color-foreground-muted)]">
-              Tap any one to open the room on it.
-            </p>
             <ul className="flex flex-col">
               {rankedSiblings.map((s, i) => {
                 const scoreLabel = s.total > 0 ? `${s.stop}/${s.total}` : '—';
@@ -353,7 +351,7 @@ export function AmbientRoom({
                         <span className="line-clamp-2 text-[11.5px] leading-[1.35] text-foreground">
                           {s.conceptText}
                         </span>
-                        <span className="mt-1.5 block h-[6px] overflow-hidden rounded-[4px] bg-white/[0.08]">
+                        <span className="mt-2 block h-[4px] overflow-hidden rounded-[4px] bg-white/[0.06]">
                           <span
                             className="block h-full rounded-[4px]"
                             style={{ width, background: meterTone(s.stop, s.total) }}
@@ -389,7 +387,7 @@ export function AmbientRoom({
                       disabled={focusIdx <= 0}
                       onClick={() => stepTo(focusIdx - 1)}
                       aria-label={`Previous ${kindLabel.toLowerCase()}`}
-                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] text-[14px] leading-none text-[var(--color-foreground-muted)] transition-colors hover:bg-white/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
                     >
                       ‹
                     </button>
@@ -402,7 +400,7 @@ export function AmbientRoom({
                       disabled={focusIdx >= rankedSiblings.length - 1}
                       onClick={() => stepTo(focusIdx + 1)}
                       aria-label={`Next ${kindLabel.toLowerCase()}`}
-                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] border border-[var(--color-border)] bg-transparent text-[12px] leading-none text-[var(--color-foreground-secondary)] transition-colors hover:border-[var(--color-border-hover)] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
+                      className="grid h-[23px] w-[23px] shrink-0 place-items-center rounded-[7px] text-[14px] leading-none text-[var(--color-foreground-muted)] transition-colors hover:bg-white/[0.04] hover:text-foreground disabled:pointer-events-none disabled:opacity-25"
                     >
                       ›
                     </button>
@@ -414,19 +412,19 @@ export function AmbientRoom({
                     type="button"
                     onClick={() => setCompareOpen(true)}
                     aria-label={`View all ${rankedSiblings.length} ${kindLabel.toLowerCase()}s ranked`}
-                    className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] border border-[var(--color-border)] px-[9px] py-1 font-mono text-[10px] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground-secondary)]"
+                    className="ml-auto shrink-0 whitespace-nowrap rounded-[7px] px-[9px] py-1 font-mono text-[10.5px] text-[var(--color-foreground-muted)] transition-colors hover:bg-white/[0.04] hover:text-[var(--color-foreground-secondary)]"
                   >
                     ⤺ all {rankedSiblings.length}
                   </button>
                 )}
               </div>
             )}
-            <p className="font-serif text-[22px] leading-tight tracking-[-0.01em] text-foreground">
+            <p className="font-serif text-[30px] leading-[1.12] tracking-[-0.015em] text-foreground">
               {stopCount} of {total}{' '}
               <span className="text-[var(--color-foreground-muted)]">would stop</span>
             </p>
             <p
-              className="mt-1.5 truncate text-[12px] leading-snug text-[var(--color-foreground-muted)]"
+              className="mt-2 truncate text-[12.5px] leading-snug text-[var(--color-foreground-muted)]"
               title={conceptText}
             >
               {conceptText}
@@ -434,14 +432,14 @@ export function AmbientRoom({
           </div>
           )}
 
-          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — swaps the view (each its own
-                motion). The brain segment is dock-only: the embedded Read/drawer keeps the
-                two-segment toggle it shipped with. ── */}
+          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — quiet text tabs (underline = the
+                active view). The brain segment is dock-only (filtered out when !hasBrain); the
+                embedded Read/drawer keeps the two-segment toggle it shipped with. ── */}
           <div className="shrink-0 px-5 pt-3">
             <div
               role="group"
               aria-label="Audience scale"
-              className="flex w-full gap-1 rounded-[10px] border border-[var(--color-border)] bg-[rgba(255,255,255,0.02)] p-[3px]"
+              className="flex w-full items-center gap-5 border-b border-[var(--color-border)]"
             >
               {SCALES.filter((opt) => opt.value !== 'brain' || hasBrain).map((opt) => {
                 const active = opt.value === scale;
@@ -452,10 +450,10 @@ export function AmbientRoom({
                     aria-pressed={active}
                     onClick={() => setScale(opt.value)}
                     className={
-                      'flex-1 whitespace-nowrap rounded-[7px] px-2 py-1.5 text-center text-[11.5px] font-medium transition-colors ' +
+                      '-mb-px border-b pb-2 pt-1 text-[12.5px] font-medium transition-colors ' +
                       (active
-                        ? 'bg-[var(--color-active)] text-foreground'
-                        : 'text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
+                        ? 'border-[var(--color-foreground-secondary)] text-foreground'
+                        : 'border-transparent text-[var(--color-foreground-muted)] hover:text-[var(--color-foreground-secondary)]')
                     }
                   >
                     {opt.label}
@@ -594,18 +592,15 @@ function PeopleView({
                   (canAsk ? 'hover:bg-white/[0.02]' : 'cursor-default')
                 }
               >
-                {/* Tonal avatar — dosage LOCKED: coral only marks the bounce (the signal). */}
+                {/* Tonal verdict dot — the constellation's own language (a person = a dot), not a
+                    letter-circle. Dosage LOCKED: coral only marks the bounce (the signal). */}
                 <span
                   aria-hidden
                   className={
-                    'mt-0.5 grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-[12px] font-semibold ' +
-                    (bounced
-                      ? 'bg-[var(--color-accent-soft)] text-[var(--color-accent-text)]'
-                      : 'bg-[rgba(142,166,138,0.16)] text-[#a6bfa1]')
+                    'mt-[5px] h-[9px] w-[9px] shrink-0 rounded-full ' +
+                    (bounced ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-positive)] opacity-70')
                   }
-                >
-                  {initialOf(name)}
-                </span>
+                />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="text-[12px] font-semibold tracking-[0.01em] text-foreground">
@@ -619,11 +614,25 @@ function PeopleView({
                   </span>
                   {n.quote ? (
                     <span className="mt-1.5 block font-serif text-[15px] leading-[1.4] tracking-[-0.005em] text-foreground">
-                      &ldquo;{n.quote}&rdquo;
+                      &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-[12px] italic text-[var(--color-foreground-muted)]">
-                      {bounced ? 'scrolled past' : 'stopped — no words this time'}
+                    /* An ABSENCE, styled as an absence.
+                     *
+                     * This slot used to render `italic` — and italic IS this app's verbatim idiom
+                     * (PopulationSwarm renders a real quote in italic; the thread's blockquotes are
+                     * italic). So the one thing standing where a quote goes, wearing a quote's
+                     * clothing, was the fact that the persona NEVER SPOKE. We are scrupulous about
+                     * never fabricating a quote, and then dressed the absence of one to look like a
+                     * quiet remark.
+                     *
+                     * Same defect class as the missing proof receipt (#287 → NoSourceNote) and the
+                     * dead audience that shipped as HIGH confidence: STATE THE ABSENCE, DON'T DRESS
+                     * IT UP. So this borrows NoSourceNote's exact spine — dashed hairline, muted,
+                     * NOT italic, a plain declarative sentence — because a slot that is empty
+                     * should LOOK empty. */
+                    <span className="mt-1.5 block rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-2 py-1 text-[12px] not-italic leading-snug text-[var(--color-foreground-muted)]">
+                      {bounced ? 'Scrolled past. No words recorded.' : 'Stopped. No words recorded.'}
                     </span>
                   )}
                 </span>
@@ -633,19 +642,21 @@ function PeopleView({
         })}
       </ul>
 
-      {!reducedMotion && (
-        <button
-          type="button"
-          onClick={() => setReveal(0)}
-          disabled={reveal !== null}
-          className="mt-3 inline-flex items-center gap-2 self-start rounded-[8px] border border-[var(--color-border)] bg-transparent px-3 py-[7px] text-[11px] text-[var(--color-foreground-muted)] transition-colors hover:border-[var(--color-border-hover)] hover:text-[var(--color-foreground-secondary)] disabled:opacity-50"
-        >
-          {reveal !== null ? 'Reading the room…' : '▶ Replay how the room reacted'}
-        </button>
-      )}
-      <p className="mt-3 text-center font-mono text-[10.5px] tracking-wide text-[var(--color-foreground-muted)]">
-        Your {ordered.length} people
-      </p>
+      <div className="mt-4 flex items-baseline justify-between">
+        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+          Your {ordered.length} people
+        </p>
+        {!reducedMotion && (
+          <button
+            type="button"
+            onClick={() => setReveal(0)}
+            disabled={reveal !== null}
+            className="text-[11px] text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)] disabled:opacity-50"
+          >
+            {reveal !== null ? 'Reading the room…' : '▶ Replay the room'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -742,21 +753,25 @@ function PopulationView({
         </div>
       </div>
 
-      {/* SWARM — a dense sample of the 1,000, colored by the real split. */}
-      <div className="mt-3 flex flex-wrap justify-center gap-[3px]">
+      {/* SWARM — a dense fixed-grid field of the 1,000, colored by the real split. The block
+          (25 columns, stops first, bounces pooling at the tail) reads as a crowd, not a line. */}
+      <div
+        aria-hidden
+        className="mt-4 grid justify-center gap-[2px]"
+        style={{ gridTemplateColumns: `repeat(${SWARM_COLS}, 6px)` }}
+      >
         {dots.map((d, i) => (
           <span
             key={i}
-            aria-hidden
             className={
               'h-[6px] w-[6px] rounded-full transition-opacity duration-200 ' +
               (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-positive)]')
             }
-            style={{ opacity: i < shownDots ? 0.95 : 0.16 }}
+            style={{ opacity: i < shownDots ? (d === 'bounce' ? 0.95 : 0.75) : 0.14 }}
           />
         ))}
       </div>
-      <p className="mt-2.5 text-center font-mono text-[10.5px] tracking-wide text-[var(--color-foreground-muted)]">
+      <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
         1,000 modeled from your {tot}
         {!reducedMotion && (
           <>
@@ -765,7 +780,7 @@ function PopulationView({
               type="button"
               onClick={() => setRevealed(0)}
               disabled={revealed !== null}
-              className="text-foreground transition-colors hover:text-[var(--color-accent-text)] disabled:opacity-50"
+              className="normal-case tracking-normal text-foreground transition-colors hover:text-[var(--color-accent-text)] disabled:opacity-50"
             >
               {revealed !== null ? 'reading…' : '▶ Play'}
             </button>
@@ -792,7 +807,7 @@ function PopulationView({
       {/* WEAK SPOT — who you're losing + their exact words (the diagnostic value). */}
       {weakVoices.length > 0 && (
         <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
-          <p className="mb-2 font-mono text-[9.5px] uppercase tracking-[0.11em] text-[var(--color-foreground-muted)]">
+          <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
             Where you&rsquo;re losing them · {bounceK} of 1,000
           </p>
           <ul className="flex flex-col">
@@ -802,7 +817,7 @@ function PopulationView({
                   {n.name ?? n.label}
                 </span>
                 <span className="font-serif text-[13.5px] leading-[1.32] text-[var(--color-foreground-secondary)]">
-                  &ldquo;{n.quote}&rdquo;
+                  &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                 </span>
               </li>
             ))}

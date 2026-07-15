@@ -256,10 +256,21 @@ describe("POST /api/tools/remix/run (SSE route)", () => {
       maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     });
     (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue(mockThread);
-    (runRemixPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
-      blocks: mockBlocks,
-      warnings: [],
-    });
+    // The route wires `onStage: (name, status) => send("stage", …)` (route.ts:195) and the REAL
+    // runner fires it at four boundaries (Resolving → Decoding → Adapting → Simulating). A plain
+    // mockResolvedValue never invokes the callback it is handed — so this test asserted
+    // `event: stage` while mocking away the only thing that emits it. It survived for months
+    // solely because it never ran (see src/test/setup.ts). The mock now behaves like the runner,
+    // so the assertion actually proves the route's onStage → SSE wiring.
+    (runRemixPipeline as ReturnType<typeof vi.fn>).mockImplementation(
+      async (input: { onStage?: (name: string, status: "active" | "done") => void }) => {
+        input.onStage?.("Resolving", "active");
+        input.onStage?.("Resolving", "done");
+        input.onStage?.("Simulating your audience", "active");
+        input.onStage?.("Simulating your audience", "done");
+        return { blocks: mockBlocks, warnings: [] };
+      },
+    );
     (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-2" });
 
     const { POST } = await import("@/app/api/tools/remix/run/route");

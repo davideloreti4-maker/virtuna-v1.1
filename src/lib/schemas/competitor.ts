@@ -92,6 +92,18 @@ export const apifyVideoSchema = z.object({
         .optional(),
     })
     .optional(),
+  /**
+   * Author of the post, nested on every clockworks VIDEO item (the profile scrape reads the
+   * same block — see remapClockworksProfile). Optional here so handle-based scrapeVideos
+   * calls, which never look at it, are unaffected. Read by resolveVideoUrl so a resolved
+   * video can name its creator: the Remix card's receipt attributes the source post to a
+   * real @handle instead of showing an anonymous thumbnail.
+   */
+  authorMeta: z
+    .object({
+      name: z.string().optional(),
+    })
+    .optional(),
   /** Pinned/ad flags — pinned skews engagement ratios (§P.10b excludePinnedPosts). */
   isPinned: z.boolean().optional(),
   isAd: z.boolean().optional(),

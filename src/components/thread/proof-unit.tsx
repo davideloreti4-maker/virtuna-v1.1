@@ -28,6 +28,7 @@ import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
 import { useOpenRoomForCard } from '@/lib/hook-test-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BAND_COLOR } from './band-block';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 type Band = 'Strong' | 'Mixed' | 'Weak';
 
@@ -39,6 +40,17 @@ export interface ProofUnitProps {
   quote?: string;
   /** Optional honesty qualifier shown after the count, e.g. "opener only" / "adapted hook". */
   suffix?: string;
+  /**
+   * The verb the count is stated in. Defaults to "stopped" — the FYP scroll-stop question every
+   * hook/idea/script/remix card asks.
+   *
+   * Simulate passes "react": its panel can run in `mode: 'general'`, which the runner is explicit
+   * must NOT be asked the TikTok stop-or-scroll question (MODE-01) — it judges a draft on its
+   * merits — and its engine emits the fraction as "N/10 react". Hardcoding "stopped" here would
+   * have silently RE-WORDED the engine's claim into a stronger, FYP-flavoured one the run never
+   * made. The number is not the only thing that has to be true.
+   */
+  verb?: string;
   /** Flat Shape-B reactions → the Lens (empty ⇒ no open affordance, honest degrade). */
   flatPersonas: FlatPersonaReaction[];
   /** The concept the room reacted to — grounds the "Ask them why →" chat. */
@@ -87,6 +99,7 @@ export function ProofUnit({
   fraction,
   quote,
   suffix,
+  verb = 'stopped',
   flatPersonas,
   conceptText,
   rewrite,
@@ -105,7 +118,7 @@ export function ProofUnit({
 
   // Same matte proof-box chrome for both entries so the card looks identical either way.
   const proofBoxClass =
-    'flex flex-col gap-2.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
+    'flex flex-col gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
 
   const proofBody = (
     <>
@@ -133,7 +146,7 @@ export function ProofUnit({
                 <span className="font-semibold tabular-nums text-foreground">
                   {parsed.stop}/{parsed.total}
                 </span>{' '}
-                stopped
+                {verb}
               </>
             ) : (
               fraction
@@ -158,7 +171,7 @@ export function ProofUnit({
       {quote && (
         <div className="flex w-full items-center justify-between gap-2.5">
           <blockquote className="border-l-2 border-white/[0.10] pl-3 text-[13px] italic leading-snug text-foreground/80">
-            &ldquo;{quote}&rdquo;
+            &ldquo;{stripWrappingQuotes(quote)}&rdquo;
           </blockquote>
           <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
             <RoomAvatars />

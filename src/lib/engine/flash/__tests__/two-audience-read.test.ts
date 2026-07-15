@@ -37,6 +37,14 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
+// ─── Spy aggregateFlash — assert the audience's WEIGHTS reach the band math (MODE-01) ──
+// Wraps the real implementation (band math must stay real — the honesty spine forbids
+// re-rolling it), and records the weighting argument the Read now passes.
+vi.mock("@/lib/engine/flash/flash-aggregate", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/engine/flash/flash-aggregate")>();
+  return { ...actual, aggregateFlash: vi.fn(actual.aggregateFlash) };
+});
+
 // ─── Spy resolveAudienceWeights — assert the SECOND resolve is real (per audience) ──
 vi.mock("@/lib/audience/resolve-audience-weights", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/audience/resolve-audience-weights")>();
@@ -59,6 +67,22 @@ function makePersonas(stops: number) {
     verdict: i < stops ? ("stop" as const) : ("scroll" as const),
     quote: `Quote ${i}`,
   }));
+}
+
+/** A `mode: 'general'` audience — an analyst panel. NOT a crowd on a feed (MODE-01). */
+function makeGeneralModeAudience(): Audience {
+  const personas: CalibratedPersona[] = [
+    { archetype: "tough_crowd", repaint: "The Skeptic — pressure-tests every claim.", temperature: "warm", disposition: "skeptic", share: 0.5 },
+    { archetype: "niche_deep_scout", repaint: "The Researcher — hunts the missing evidence.", temperature: "warm", disposition: "scanner", share: 0.5 },
+  ];
+  return {
+    ...makeCalibratedAudience(),
+    id: "template-analyst",
+    name: "Analyst Panel",
+    mode: "general",
+    platform: "custom",
+    personas,
+  };
 }
 
 /** A calibrated audience with cold scroll-prone dispositions (drives who-not-for). */
@@ -148,15 +172,123 @@ describe("runTwoAudienceRead (runner)", () => {
     expect(block.props.audiences[1]!.name).toBe("General");
   });
 
-  it("calls resolveAudienceWeights once PER audience (the second resolve is real)", async () => {
+  // ─── MODE-01: the audience must actually REACH the model ────────────────────────
+  // The bug these pin: readForAudience built the repaint map and passed `niche: null`,
+  // but the generic prompt path ignored the repaint — so every audience ran the identical
+  // General prompt and the "two-audience Read" compared General to General with one side
+  // relabelled (live-verified before the fix: 10/10 identical verdicts, calibrated vs General).
+  // The weights were computed and then discarded outright (`void resolved`).
+
+  it("passes the calibrated audience's REPAINT to Flash — the steer reaches the model", async () => {
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
-    const { resolveAudienceWeights } = await import("@/lib/audience/resolve-audience-weights");
     (runFlashTextMode as ReturnType<typeof vi.fn>)
       .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
 
     await runTwoAudienceRead("hook", [makeCalibratedAudience(), GENERAL_AUDIENCE]);
 
-    expect(resolveAudienceWeights).toHaveBeenCalledTimes(2);
+    const calls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+
+    // 4th arg = audienceRepaint. The calibrated audience's stored repaints must be there…
+    expect(calls[0]![3]).toEqual({
+      tough_crowd: "Hard sell crowd",
+      lurker: "Silent watchers",
+      saver: "Collectors",
+    });
+    // …and General must still steer NOTHING (the regression gate: byte-identical no-op).
+    expect(calls[1]![3]).toBeUndefined();
+  });
+
+  it("weights the BAND by the audience's persona_weights (the mix sliders move a Read)", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { aggregateFlash } = await import("@/lib/engine/flash/flash-aggregate");
+    (runFlashTextMode as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
+
+    const block = await runTwoAudienceRead("hook", [makeCalibratedAudience(), GENERAL_AUDIENCE]);
+
+    // 2nd arg = the FlashWeighting. It was never passed before MODE-01 (the weights were
+    // resolved and then dropped with `void resolved`), so the /audience mix sliders moved
+    // every other skill's band but were inert on the Read.
+    const aggCalls = (aggregateFlash as ReturnType<typeof vi.fn>).mock.calls;
+    expect(aggCalls).toHaveLength(2);
+    expect(aggCalls[0]![1]).toMatchObject({
+      weights: { fyp: expect.any(Number), niche: expect.any(Number) },
+    });
+    // General NEVER weights — that identity IS the regression gate (persona-weighting.ts:51).
+    expect(aggCalls[1]![1]).toBeUndefined();
+
+    // The fraction stays the honest raw count either way; weighting moves only the band.
+    expect(block.props.audiences[0]!.fraction).toBe("6/10 stop");
+  });
+
+  it("sends the SOCIALS frame for a socials audience and the GENERAL frame for a panel", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
+
+    await runTwoAudienceRead("hook", [makeCalibratedAudience(), GENERAL_AUDIENCE]);
+    const socialsCalls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+    // 6th arg = domain lens.
+    expect(socialsCalls[0]![5]).toBe("socials");
+    expect(socialsCalls[1]![5]).toBe("socials");
+
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockClear();
+    await runTwoAudienceRead("hook", [makeGeneralModeAudience(), GENERAL_AUDIENCE]);
+    const generalCalls = (runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls;
+    // A panel is NOT asked the FYP stop-or-scroll question.
+    expect(generalCalls[0]![5]).toBe("general");
+  });
+
+  // ─── MODE-01: the control rule ──────────────────────────────────────────────────
+
+  // The route ALWAYS hands the runner a 2-element [active, second] array — `second` defaults to
+  // GENERAL_AUDIENCE. So this is the shape that matters, and a `[general]`-only fixture would
+  // pass while the real path stayed broken. (It did: the first cut of this fix guarded the
+  // length-1 branch, the unit test went green, and the live Read still returned
+  // "Marcus Reyes … — General …". Test the shape the caller sends.)
+  it("NEVER pairs a mode:'general' audience against GENERAL_AUDIENCE (a TikTok crowd)", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
+
+    // EXACTLY what the route passes: the pinned panel + the defaulted General control.
+    const block = await runTwoAudienceRead("hook", [makeGeneralModeAudience(), GENERAL_AUDIENCE]);
+
+    // ONE entry — a single-audience Read. Not a pair, and above all not a pair against a
+    // TikTok crowd ("Both Marcus Reyes and General land the same" was the shipped bug).
+    expect(block.props.audiences).toHaveLength(1);
+    expect(block.props.audiences[0]!.name).toBe("Analyst Panel");
+    expect(block.props.audiences.some((a) => a.name === "General")).toBe(false);
+    // Exactly ONE Flash call — the phantom control is not run, so it is not billed either.
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+  });
+
+  it("still compares two SAME-MODE panels (the control rule drops the crowd, not the compare)", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
+
+    const hiring: Audience = { ...makeGeneralModeAudience(), id: "template-hiring", name: "Hiring Panel" };
+    const block = await runTwoAudienceRead("hook", [makeGeneralModeAudience(), hiring]);
+
+    // Panel-vs-panel is a real comparison — both sides answer the SAME question.
+    expect(block.props.audiences).toHaveLength(2);
+    expect(block.props.audiences.map((a) => a.name)).toEqual(["Analyst Panel", "Hiring Panel"]);
+  });
+
+  it("frames the single-audience panel Read in panel language, not feed language", async () => {
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    (runFlashTextMode as ReturnType<typeof vi.fn>)
+      .mockResolvedValue({ result: { personas: makePersonas(8) }, warnings: [] });
+
+    const block = await runTwoAudienceRead("hook", [makeGeneralModeAudience(), GENERAL_AUDIENCE]);
+    const entry = block.props.audiences[0]!;
+
+    // "wins/splits/bombs" and "sharpen the hook" are FYP copy — wrong for an analyst panel.
+    expect(entry.interpretation).toContain("is convinced");
+    expect(entry.interpretation).not.toContain("wins");
+    expect(entry.lever).not.toMatch(/hook|opener|scroll/i);
   });
 
   it("derives a per-audience who-not-for from cold scroll-prone dispositions (D-10)", async () => {

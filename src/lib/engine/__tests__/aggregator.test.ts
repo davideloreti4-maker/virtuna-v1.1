@@ -514,6 +514,62 @@ describe("Plan 01-04 — coupled aggregator closeout", () => {
     expect(textNoFold.confidence).toBeGreaterThanOrEqual(0.4);
   });
 
+  // ── AUD-FAIL-01 — a dead audience must not read as a confident Read ──────────────────────
+  // THE LIVE RUN THIS PINS (2026-07-14, row iEbgUsLZRSFw): the fold timed out on BOTH attempts,
+  // the Read landed with ZERO personas — and shipped as 78 / **HIGH** confidence. The run that
+  // actually simulated all 10 people (VdwSBcf0i3bO) reported LOW. Cause: a failed fold took the
+  // SAME branch as text mode, so the agreement term fell back to apollo-vs-behavioral — two
+  // numbers from the same Apollo call — and handed the broken run the 0.4 MAXIMUM agreement bonus.
+  const foldDead = { fold_success: false, personaSimResults: [], warnings: ["Request was aborted. (attempt 2/2)"], cost_cents: 0 } as never;
+
+  it("AUD-FAIL-01: a fold that RAN AND DIED never reads as HIGH confidence", async () => {
+    const died = await aggregateScores(
+      makePipelineResult({
+        payload: videoPayload(),
+        foldOutcome: foldDead,
+        personaBehavioralAggregate: null, // the audience produced nothing
+      }),
+    );
+    expect(died.confidence_label).not.toBe("HIGH");
+    expect(died.signal_availability.personas).toBe(false);
+  });
+
+  it("AUD-FAIL-01: a dead audience never out-confidences a REAL one that simply disagreed", async () => {
+    // This is the exact inversion that shipped, reproduced. The live pair:
+    //   VdwSBcf0i3bO — fold ran, 10 personas, the audience DISAGREED with Apollo → LOW
+    //   iEbgUsLZRSFw — fold died,  0 personas                                    → HIGH (!)
+    // A working audience that disagrees is the most informative run there is; a dead one is the
+    // least. Ranking the corpse above it is the bug — so the corpse must never score higher.
+    const base = { payload: videoPayload() };
+    // A real audience that disagrees with Apollo (65) — agreement term drops to 0.
+    const aliveButDisagreeing = await aggregateScores(
+      makePipelineResult({ ...base, foldOutcome: foldOk, personaBehavioralAggregate: mkAgg(5) }),
+    );
+    const died = await aggregateScores(
+      makePipelineResult({ ...base, foldOutcome: foldDead, personaBehavioralAggregate: null }),
+    );
+    expect(died.confidence).toBeLessThanOrEqual(aliveButDisagreeing.confidence);
+  });
+
+  it("AUD-FAIL-01: says out loud that the audience did not run", async () => {
+    const died = await aggregateScores(
+      makePipelineResult({
+        payload: videoPayload(),
+        foldOutcome: foldDead,
+        personaBehavioralAggregate: null,
+      }),
+    );
+    expect(died.warnings.some((w) => /audience simulation did not run/i.test(w))).toBe(true);
+  });
+
+  it("AUD-FAIL-01: text mode is untouched — it never promised an audience", async () => {
+    // Regression guard on the fix itself: the fold-less TEXT path must keep its
+    // apollo-vs-behavioral fallback. Only a fold that was ATTEMPTED and died is penalised.
+    const text = await aggregateScores(makePipelineResult()); // foldOutcome: null
+    expect(text.confidence).toBeGreaterThanOrEqual(0.4);
+    expect(text.warnings.some((w) => /audience simulation did not run/i.test(w))).toBe(false);
+  });
+
   it("F24: video-mode feature_vector drops the component scores (null); text mode keeps them", async () => {
     const video = await aggregateScores(makePipelineResult({ payload: videoPayload() }));
     expect(video.feature_vector.hookEffectiveness).toBeNull();
@@ -633,7 +689,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.20.0"); // S3′ — batched SIM + generate-rate-rank
+    expect(ENGINE_VERSION).toBe("3.21.0"); // S3′ — batched SIM + generate-rate-rank
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {

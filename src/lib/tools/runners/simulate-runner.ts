@@ -47,14 +47,16 @@ import { getQwenClient, QWEN_SEED, QWEN_REASONING_MODEL } from "@/lib/engine/qwe
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { BEHAVIORAL_SYSTEM_PROMPT_FLASH } from "@/lib/engine/behavioral-core";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
+import type { DomainLens } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
+import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import { buildAudienceRepaint } from "@/lib/engine/flash/build-reaction-panel";
 import { resolveTier } from "@/lib/audience/resolve-tier";
 import { ReactionDistributionBlockSchema } from "@/lib/tools/profile-blocks";
 import type { ReactionDistributionBlock } from "@/lib/tools/profile-blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { Stimulus } from "@/lib/engine/stimulus/types";
+import type { Stimulus, StimulusKind } from "@/lib/engine/stimulus/types";
 
 // ─── The reserved subjectKind marker (persisted by Profile, 05-04) ───────────────
 
@@ -65,6 +67,15 @@ type SubjectKind = "person" | "panel";
 
 /** Max quote length the reaction-distribution `read` accepts (block schema `.max(160)`). */
 const QUOTE_MAX = 160;
+
+/** Block cap for the carried stimulus (mirrors ReactionDistributionBlockSchema.props.stimulus). */
+const STIMULUS_MAX = 500;
+
+/**
+ * The stimulus kinds whose `content` is real, human-readable text. `image` / `video` carry a
+ * storage key or a base64 blob there, which is NOT a concept — see the schema note on `stimulus`.
+ */
+const STIMULUS_HAS_TEXT: ReadonlySet<StimulusKind> = new Set<StimulusKind>(["text", "file_text"]);
 
 // ─── IO contract + injectable deps ──────────────────────────────────────────────
 
@@ -307,12 +318,19 @@ export async function runSimulate(
   const flash = deps.flash ?? runFlashTextMode;
   const repaint = buildAudienceRepaint(audience);
 
+  // MODE-01 — the reaction FRAME. Simulate accepts BOTH modes, and a `mode: 'general'` panel
+  // must not be asked the TikTok FYP stop-or-scroll question: it judges the draft on its merits.
+  // (Until this seam landed, the repaint was also silently dropped here — the generic prompt
+  // ignored it whenever `niche` was null, which is always on this path.)
+  const domain: DomainLens = audience.mode === "general" ? "general" : "socials";
+
   // The drafted message is the CONTENT the personas react to (data, not steering — D-08).
   const panel = { niche: null, contentType: null } as const;
-  const { result } = await flash(stimulus.content, "idea", panel, repaint);
+  const { result } = await flash(stimulus.content, "idea", panel, repaint, undefined, domain);
 
-  // Band math reused verbatim — never re-rolled (honesty spine).
-  const { band, fraction } = aggregateFlash(result.personas);
+  // Band math reused verbatim — never re-rolled (honesty spine). The audience's weight mix
+  // weights the BAND (never the displayed fraction), as it does in every other runner.
+  const { band, fraction } = aggregateFlash(result.personas, buildFlashWeighting(audience));
 
   const block: ReactionDistributionBlock = {
     type: "reaction-distribution",
@@ -322,6 +340,14 @@ export async function runSimulate(
       subjectKind: "panel",
       band,
       fraction,
+      // The concept the room reacted to — carried so the card's Lens door ("See the room →")
+      // opens GROUNDED on the real stimulus instead of on nothing. Text-bearing kinds only:
+      // for an image/video stimulus `content` is a storage key or a base64 blob, and grounding
+      // "Ask them why" on a filename is worse than not offering the door at all (the renderer
+      // drops the Lens when this is absent — an honest degrade, not a broken affordance).
+      ...(STIMULUS_HAS_TEXT.has(stimulus.kind) && stimulus.content.trim()
+        ? { stimulus: stimulus.content.trim().slice(0, STIMULUS_MAX) }
+        : {}),
       themes: clusterThemes(result.personas),
       reactions: result.personas.map((p) => ({
         archetype: p.archetype,

@@ -243,7 +243,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
                   side="bottom"
                   align="start"
                   sideOffset={6}
-                  className="z-50 max-w-[240px] rounded-[10px] border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] px-3 py-2 text-[11.5px] leading-[1.5] text-foreground-secondary shadow-[0_10px_26px_rgba(0,0,0,0.45)]"
+                  className="z-50 max-w-[240px] rounded-md border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] px-3 py-2 text-[11.5px] leading-[1.5] text-foreground-secondary shadow-[0_10px_26px_rgba(0,0,0,0.45)]"
                 >
                   Each bar is the{' '}
                   <span className="font-semibold text-foreground">% who keep watching</span> as the
@@ -304,14 +304,21 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
                 {s.reach}
               </span>
               <div
-                className="relative w-full max-w-[62px] overflow-hidden rounded-[11px] border border-[var(--color-border)]"
+                className="relative w-full max-w-[62px] overflow-hidden rounded-lg border border-[var(--color-border)]"
                 style={{ height: s.height, background: '#211f1d' }}
               >
                 <div
                   className="absolute inset-x-0 bottom-0"
                   style={{
                     height: `${s.rate}%`,
-                    background: s.cleared ? 'rgba(95,191,115,0.26)' : 'rgba(217,119,87,0.28)',
+                    // Was two hardcoded rgba literals. The "not cleared" fill was
+                    // rgba(217,119,87,…) — #d97757, the RETIRED terracotta accent — rendering a
+                    // second, different red four hundred pixels from the live --color-accent
+                    // (#FF6363) dot in the same Reading. Neither literal tracked a token, so
+                    // the accent migration silently skipped the flagship surface.
+                    background: s.cleared
+                      ? 'color-mix(in srgb, var(--color-success) 26%, transparent)'
+                      : 'color-mix(in srgb, var(--color-accent) 28%, transparent)',
                   }}
                 />
                 <div

@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app";
 import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Providers } from "./providers";
+import { DevMockPanel } from "@/components/dev/dev-mock-panel";
 
 export const metadata: Metadata = {
   title: "Dashboard | Maven",
@@ -29,6 +30,8 @@ export default async function AppLayout({
           <AppShell>
             {children}
           </AppShell>
+          {/* Dev-only sandbox controls (self-gates on NODE_ENV; unmounted + tree-shaken in prod). */}
+          <DevMockPanel />
         </ToastProvider>
       </TooltipProvider>
     </Providers>

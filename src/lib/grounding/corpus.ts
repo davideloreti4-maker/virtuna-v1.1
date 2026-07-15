@@ -13,12 +13,11 @@
  * for personal. `findCachedTeardownIds` lets the retrieval pipeline skip re-extracting
  * a video we already tore down.
  *
- * Embedding note: the platform is Qwen/DashScope-only. The legacy gemini-named
- * embedder (engine/{retrieval,corpus}/embedder.ts) is DEFERRED/dead — its own note
- * targets a DashScope re-embed. So `embedding` is written NULL today; when vectors
- * are wanted the producer is DashScope `text-embedding-v3` (dims 768, via the
- * existing qwen client) — NOT gemini. The RPC wrappers (which need a query vector)
- * stay dark until that lands; facet/niche/recency retrieval needs no vector.
+ * Embedding note: the platform is Qwen/DashScope-only. The producer is
+ * grounding/embedder.ts (DashScope `text-embedding-v3`, dims 768, via the existing
+ * qwen client) — NOT gemini (the legacy gemini-named engine embedders are dead).
+ * The orchestrator embeds at cache-write; retrieve.ts feeds the RPC wrappers below
+ * with a query vector (the read-back path).
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -71,11 +70,16 @@ export interface OutlierTeardownInsert {
   signatureSeries?: string | null;
   // teardown
   spokenHook?: string | null;
+  /** First-class column (read-back maps it onto the card receipt). */
+  hookTemplate?: string | null;
   hookSource?: HookSource | null;
   idea?: IdeaFacet | null;
   template?: TeardownTemplate | null;
   whyItWorks?: string | null;
   teardown?: Record<string, unknown> | null;
+  /** Source caption/hashtags — stored so the row can re-embed itself (§13 formula). */
+  caption?: string | null;
+  hashtags?: string[] | null;
   // meta
   embedding?: number[] | null;
   extractionTier?: string | null;
@@ -109,11 +113,14 @@ function serializeOutlier(input: OutlierTeardownInsert): Record<string, unknown>
     editing_style: input.editingStyle ?? null,
     signature_series: input.signatureSeries ?? null,
     spoken_hook: input.spokenHook ?? null,
+    hook_template: input.hookTemplate ?? null,
     hook_source: input.hookSource ?? null,
     idea: input.idea ?? null,
     template: input.template ?? null,
     why_it_works: input.whyItWorks ?? null,
     teardown: input.teardown ?? null,
+    caption: input.caption ?? null,
+    hashtags: input.hashtags ?? null,
     embedding: toVectorLiteral(input.embedding),
     extraction_tier: input.extractionTier ?? null,
     extraction_version: input.extractionVersion ?? null,
@@ -177,11 +184,14 @@ function serializePersonal(input: PersonalTeardownInsert): Record<string, unknow
     editing_style: input.editingStyle ?? null,
     signature_series: input.signatureSeries ?? null,
     spoken_hook: input.spokenHook ?? null,
+    hook_template: input.hookTemplate ?? null,
     hook_source: input.hookSource ?? null,
     idea: input.idea ?? null,
     template: input.template ?? null,
     why_it_works: input.whyItWorks ?? null,
     teardown: input.teardown ?? null,
+    caption: input.caption ?? null,
+    hashtags: input.hashtags ?? null,
     predicted_band: input.predictedBand ?? null,
     actual_outcome: input.actualOutcome ?? null,
     embedding: toVectorLiteral(input.embedding),
@@ -227,7 +237,7 @@ export async function findCachedVideoIds(
   return new Set((data ?? []).map((r) => (r as { platform_video_id: string }).platform_video_id));
 }
 
-// ─── Read path — RPC wrappers (vector retrieval; dark until an embedder lands) ─
+// ─── Read path — RPC wrappers (vector retrieval; fed by retrieve.ts) ──────────
 
 /** A row from either match RPC (snake_case, per the migration RETURNS TABLE). */
 export interface SharedMatchRow {
@@ -246,13 +256,21 @@ export interface SharedMatchRow {
   baseline_label: string | null;
   engagement_rate: number | null;
   posted_at: string | null;
+  proof_captured_at: string | null;
   niche: string | null;
   hook_archetype: string | null;
   format: string | null;
   spoken_hook: string | null;
+  hook_template: string | null;
   hook_source: HookSource | null;
-  idea: IdeaFacet | null;
-  template: TeardownTemplate | null;
+  /**
+   * RAW JSONB — deliberately `unknown`, NOT IdeaFacet/TeardownTemplate. Typing these as
+   * the domain shape is a cast the compiler cannot verify, and it silently lied for the
+   * whole curated corpus (Sandcastles key names vs ours). Run them through
+   * parseIdeaFacet / parseTeardownTemplate at the boundary instead.
+   */
+  idea: unknown;
+  template: unknown;
   why_it_works: string | null;
 }
 

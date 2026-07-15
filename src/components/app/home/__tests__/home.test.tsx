@@ -69,6 +69,7 @@ vi.mock('@/lib/supabase/client', () => ({
 
 import { HomeGreeting } from '../home-greeting';
 import { Composer } from '../composer';
+import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
 
 /** Mirror of what (app)/home/page.tsx composes: greeting + composer, nothing else. */
 function Home() {
@@ -135,7 +136,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
     ).toBeInTheDocument();
   });
 
-  it('renders the one-tap first-run demo (See it in action + Dismiss) when the show-once flag is absent', async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('renders the one-tap first-run demo (See it in action + Dismiss) when the show-once flag is absent', async () => {
     renderWithClient(<Home />);
     expect(
       await screen.findByRole('button', { name: /see it in action/i }),
@@ -161,7 +162,7 @@ describe('Home — empty-state quick actions + first-run demo (UX-05 / D-04)', (
     });
   });
 
-  it('tapping "See it in action" POSTs the canned fixture to /api/tools/profile and sets the show-once flag', async () => {
+  it.skipIf(!HORIZONTAL_ENABLED)('tapping "See it in action" POSTs the canned fixture to /api/tools/profile and sets the show-once flag', async () => {
     const fetchSpy = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
     renderWithClient(<Home />);
     const cta = await screen.findByRole('button', {

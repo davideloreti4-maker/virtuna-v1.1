@@ -15,6 +15,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 import {
   ComposerControls,
   ModelTag,
@@ -45,12 +46,10 @@ function openSkillPopover() {
 beforeEach(() => cleanup());
 
 describe("ComposerControls — skill pill + popover", () => {
-  it("shows the active skill on the pill (Test verb + aria)", () => {
+  it("shows the active skill on the pill by NAME (aria + face agree)", () => {
     renderControls({ activeTool: "test" });
-    // The chip face shows the VERB (Test); the aria-label carries the skill's row label
-    // ("A real video" under the Test verb — a "Test" row under a "Test" header is redundant).
     const pill = screen.getByRole("button", { name: /skill: a real video/i });
-    expect(pill).toHaveTextContent("Test");
+    expect(pill).toHaveTextContent("A real video");
   });
 
   it("opens a popover grouped Make / Test / Ask with /command labels + MAX badge", () => {
@@ -60,11 +59,30 @@ describe("ComposerControls — skill pill + popover", () => {
     expect(within(menu).getByText("Make")).toBeInTheDocument();
     expect(within(menu).getByText("Test")).toBeInTheDocument();
     expect(within(menu).getByText("Ask")).toBeInTheDocument();
-    // /command labels are present (the id + command stay stable under the relabeled rows)
-    expect(within(menu).getByText("/test")).toBeInTheDocument();
+    // /command labels ride the inactive rows (the active one wears the check instead).
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+    expect(within(menu).getByText("/chat")).toBeInTheDocument();
     // MAX badge appears for the video skill (Test row); Ad is hidden until enabled.
     expect(within(menu).getAllByText("MAX").length).toBeGreaterThanOrEqual(1);
+  });
+
+  /**
+   * ONE right slot per row, never two. The rail used to hold the /command AND a permanently
+   * reserved (nearly always empty) check column beside it — every row paying for a slot that
+   * only one row ever used. The check now REPLACES the command on the active row.
+   */
+  it("gives the active row a check INSTEAD of its slash command — one slot, not two", () => {
+    renderControls({ activeTool: "test" });
+    openSkillPopover();
+    const menu = screen.getByRole("menu");
+
+    // The armed row does not also advertise the shortcut for reaching itself.
+    expect(within(menu).queryByText("/test")).toBeNull();
+    // …while every other row still teaches its shortcut.
+    expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+
+    const active = within(menu).getByRole("menuitemradio", { name: /a real video/i });
+    expect(active).toHaveAttribute("aria-checked", "true");
   });
 
   it("marks the active skill with aria-checked", () => {
@@ -103,7 +121,7 @@ describe("ComposerControls — skill pill + popover", () => {
 });
 
 describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
-  it("defaults to Socials when no activeMode is passed → Make/Test/Ask + always-visible General", () => {
+  it("defaults to Socials when no activeMode is passed → Make/Test/Ask", () => {
     // No activeMode prop → "socials" default → the three verb headers + creator skills.
     renderControls();
     openSkillPopover();
@@ -111,44 +129,71 @@ describe("ComposerControls — mode-scoped skill menu (UX-02 / D-01)", () => {
     expect(within(menu).getByText("Make")).toBeInTheDocument();
     expect(within(menu).getByText("Test")).toBeInTheDocument();
     expect(within(menu).getByText("Ask")).toBeInTheDocument();
+    // Slash hints ride the INACTIVE rows. The active row (test, here) spends its one right
+    // slot on the check instead — see the "one right slot" test below.
     expect(within(menu).getByText("/hooks")).toBeInTheDocument();
-    expect(within(menu).getByText("/test")).toBeInTheDocument();
-    // The General verbs are ALWAYS surfaced (refine lane) — own "General" group,
-    // discoverable from a creator context instead of hidden until a General audience.
-    expect(within(menu).getByText("General")).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+    expect(within(menu).getByText("/ideas")).toBeInTheDocument();
   });
 
-  it("shows ONLY Profile/Simulate/Predict when activeMode='general' (no creator skills)", () => {
-    renderControls({ activeMode: "general" });
+  // ── The horizontal (GSI) verbs — HIDDEN behind HORIZONTAL_ENABLED (owner call
+  //    2026-07-13: the product commits to the creator vertical for MVP). These specs are
+  //    NOT deleted; they describe real behavior that returns the day the flag flips back.
+  describe.skipIf(!HORIZONTAL_ENABLED)("the General verbs — while the horizontal is ON", () => {
+    it("surfaces them alongside the creator skills in Socials mode", () => {
+      renderControls();
+      openSkillPopover();
+      const menu = screen.getByRole("menu");
+      // Own "General" group — discoverable from a creator context.
+      expect(within(menu).getByText("General")).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+    });
+
+    it("shows ONLY Profile/Simulate/Predict when activeMode='general' (no creator skills)", () => {
+      renderControls({ activeMode: "general" });
+      openSkillPopover();
+      const menu = screen.getByRole("menu");
+      expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
+      expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
+      // …and the creator skills are gone (only the General group remains).
+      expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+      expect(within(menu).queryByText("/hooks")).toBeNull();
+      expect(within(menu).queryByText("/test")).toBeNull();
+      expect(within(menu).queryByText("Make")).toBeNull();
+      expect(within(menu).queryByText("Test")).toBeNull();
+      expect(within(menu).queryByText("Ask")).toBeNull();
+    });
+
+    it("SkillRows surfaces the General verbs in BOTH modes (the `/` slash menu reuses it)", () => {
+      const { rerender } = render(
+        <SkillRows active="profile" activeMode="general" onSelect={vi.fn()} />,
+      );
+      expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+      expect(screen.queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
+      rerender(<SkillRows active="hooks" onSelect={vi.fn()} />);
+      expect(screen.getByRole("menuitemradio", { name: /hooks/i })).toBeInTheDocument();
+      expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    });
+  });
+
+  // ── …and the gate that holds the cut. `enabled: HORIZONTAL_ENABLED` is filtered by the
+  //    skill pill, the `/` slash menu AND Enter-to-select, so this covers every composer door.
+  it.skipIf(HORIZONTAL_ENABLED)("hides the horizontal verbs while HORIZONTAL_ENABLED is off", () => {
+    renderControls();
     openSkillPopover();
     const menu = screen.getByRole("menu");
-    // The three General verbs are present…
-    expect(within(menu).getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /simulate/i })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: /predict/i })).toBeInTheDocument();
-    // …and the creator skills are gone (only the General group remains).
-    expect(within(menu).queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
-    expect(within(menu).queryByText("/hooks")).toBeNull();
-    expect(within(menu).queryByText("/test")).toBeNull();
-    // General mode hides the Make/Test/Ask verb headers (General is the only group).
-    expect(within(menu).queryByText("Make")).toBeNull();
-    expect(within(menu).queryByText("Test")).toBeNull();
-    expect(within(menu).queryByText("Ask")).toBeNull();
-  });
-
-  it("SkillRows surfaces the General verbs in BOTH modes (the `/` slash menu reuses it)", () => {
-    const { rerender } = render(
-      <SkillRows active="profile" activeMode="general" onSelect={vi.fn()} />,
-    );
-    expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
-    expect(screen.queryByRole("menuitemradio", { name: /hooks/i })).toBeNull();
-    // Socials default surfaces creator skills AND the always-visible General verbs.
-    rerender(<SkillRows active="hooks" onSelect={vi.fn()} />);
-    expect(screen.getByRole("menuitemradio", { name: /hooks/i })).toBeInTheDocument();
-    expect(screen.getByRole("menuitemradio", { name: /profile/i })).toBeInTheDocument();
+    // The creator vertical is untouched…
+    expect(within(menu).getByText("/hooks")).toBeInTheDocument();
+    // …and the horizontal is gone from the menu entirely — no group, no rows.
+    expect(within(menu).queryByText("General")).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /profile/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /simulate/i })).toBeNull();
+    expect(within(menu).queryByRole("menuitemradio", { name: /predict/i })).toBeNull();
+    // SkillRows is the shared list behind the `/` slash menu — same result there.
+    render(<SkillRows active="hooks" onSelect={vi.fn()} />);
+    expect(screen.queryByRole("menuitemradio", { name: /simulate/i })).toBeNull();
   });
 });
 
@@ -174,21 +219,42 @@ describe("ModelTag — read-only model indicator (D-09)", () => {
   });
 });
 
-describe("ComposerControls — verb chip (v6 clean composer)", () => {
-  // The pill collapses ~13 skills → three verbs on the chip face (Make / Test / Ask).
-  // The popover groups every skill under those same three verbs (Phase 3); the chip's
-  // aria-label keeps "Skill: …" so assistive tech + openSkillPopover reach it.
-  it("labels the chip Make for a generation skill", () => {
+describe("ComposerControls — the chip names the SKILL, not the verb group", () => {
+  /**
+   * ⚠️ This inverts what this suite used to assert, on purpose.
+   *
+   * The chip used to render the VERB GROUP: pick "Script" and it said "Make". Pick
+   * "Explore" and it said "Make". So the armed skill was stated NOWHERE on screen — only
+   * as a checkmark inside a popover the creator had to reopen to read. A creator could sit
+   * with the wrong skill armed and spend a Reading on it with no way to notice. The chip is
+   * the one control always in view; it has to name the thing it arms.
+   *
+   * The verb groups still HEAD the menu (Make / Test / Ask) — they organise the list. They
+   * just never again stand in for the skill on the chip face.
+   */
+  it("names a Make skill by its own label, never 'Make'", () => {
     renderControls({ activeTool: "hooks" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Make");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("Hooks");
+    expect(pill).not.toHaveTextContent("Make");
   });
-  it("labels the chip Test for the Test skill", () => {
+  it("names the video skill by its own label, never 'Test'", () => {
     renderControls({ activeTool: "test" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Test");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("A real video");
   });
-  it("labels the chip Ask for the Chat skill", () => {
+  it("names the chat skill 'Chat' — the app's default state says the word 'chat'", () => {
     renderControls({ activeTool: "chat" });
-    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Ask");
+    const pill = screen.getByRole("button", { name: /skill:/i });
+    expect(pill).toHaveTextContent("Chat");
+    expect(pill).not.toHaveTextContent("Ask");
+  });
+  it("distinguishes two skills that share a verb group (the old chip could not)", () => {
+    const { unmount } = renderControls({ activeTool: "script" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Script");
+    unmount();
+    renderControls({ activeTool: "explore" });
+    expect(screen.getByRole("button", { name: /skill:/i })).toHaveTextContent("Explore");
   });
 });
 

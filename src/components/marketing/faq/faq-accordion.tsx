@@ -62,9 +62,13 @@ const FAQ_ITEMS: readonly FaqItem[] = [
     a: "No. Maven analyzes your TikTok link — the video lives on TikTok's servers, not ours. We never upload or retain your content. Your analysis results are private to your account and are never shared or sold.",
   },
   {
+    // Owner-locked 2026-07-13: there is no free tier. Every plan opens with a $1 / 3-day
+    // trial that converts at the plan price — so this answer must say so plainly, including
+    // the card and the renewal. Promising "free, no credit card" here while the checkout
+    // charges a dollar is how you earn chargebacks.
     id: "faq-free-trial",
-    q: "Is it free to try?",
-    a: "Yes. You can run your first Simulation free — no credit card required. The free tier lets you experience the full prediction output so you can judge accuracy on your own content before deciding. Paid plans unlock higher usage, deeper breakdowns, and retention heatmaps.",
+    q: "Is there a free trial?",
+    a: "Not a free one — a $1 one. Any plan starts at $1 for 3 days and includes 5 Readings: enough to judge the predictions against your own videos. Every feature of the plan you picked is unlocked. On day 4 it renews at the plan price unless you cancel, and you can cancel any time from settings. We'd rather charge you a dollar and show you the real product than hand you a crippled free tier.",
   },
   {
     id: "faq-duration",

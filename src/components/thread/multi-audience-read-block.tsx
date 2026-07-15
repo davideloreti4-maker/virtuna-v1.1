@@ -27,6 +27,7 @@ import { VerbatimWall } from './verbatim-wall';
 import { SaveAffordance } from './save-affordance';
 import { CaretToggle } from './caret-toggle';
 import { TrustBadge } from '@/components/audience/trust-badge';
+import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface MultiAudienceReadBlockProps {
   block: MultiAudienceReadBlock;
@@ -88,7 +89,7 @@ function AudienceRead({
       )}
 
       {/* Per-audience reaction drill — collapsible. */}
-      <div className="overflow-hidden rounded-[10px] border border-white/[0.06]">
+      <div className="overflow-hidden rounded-lg border border-white/[0.06]">
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
@@ -120,7 +121,7 @@ function AudienceRead({
                   </span>
                 </div>
                 <p className="text-[12.5px] italic leading-snug text-foreground-muted">
-                  &ldquo;{persona.quote}&rdquo;
+                  &ldquo;{stripWrappingQuotes(persona.quote)}&rdquo;
                 </p>
               </li>
             ))}
@@ -141,7 +142,7 @@ function CompareVerdictRow({
   audiences: MultiAudienceReadBlock['props']['audiences'];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[10px] border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3.5 py-3">
       {audiences.map((a, i) => (
         <span key={`${a.name}-${i}`} className="inline-flex items-center gap-2 text-[13.5px]">
           {i > 0 && (
@@ -170,51 +171,56 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
   const saveTitle = lead ? `${lead.name} — ${lead.band} Read` : 'Read';
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Eyebrow — "The Read" kicker + provenance meta (static, P9 boundary). */}
-      <div className="flex items-center justify-between gap-3">
-        <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
-          <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
-          The Read
-        </span>
+    /* The Read is a CARD. It used to be a bare `flex flex-col` — the only skill output in the
+       thread with no container — so its sections floated loose on the thread background while
+       every neighbour sat in a bordered surface. That is most of why it read as unfinished. */
+    <div
+      className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface-sunken"
+      aria-label={saveTitle}
+    >
+      <div className="flex flex-col gap-4 px-4 pb-3 pt-4">
+        {/* Eyebrow — "The Read" kicker; the tier badge takes the right rail. The model tag is
+            NOT repeated here: it already rides the action bar below, and the card was stating
+            its own provenance twice. */}
+        <div className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+            <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
+            The Read
+          </span>
+          <TrustBadge tier={block.props.tier ?? 'Directional'} />
+        </div>
+
+        {/* 2-audience compare: the side-by-side verdict header (wins-for-X / bombs-for-Y). */}
+        {isCompare && <CompareVerdictRow audiences={audiences} />}
+
+        {/* Per-audience Read — interpretation + Lever + who-not-for + reaction drill. */}
+        <div className="flex flex-col gap-5">
+          {audiences.map((audience, i) => (
+            <div
+              key={`${audience.name}-${i}`}
+              className={i > 0 ? 'border-t border-white/[0.06] pt-5' : undefined}
+            >
+              <AudienceRead audience={audience} />
+            </div>
+          ))}
+        </div>
+
+        {/* Verbatim focus-group quote wall — presentation over already-emitted quotes (D-11). */}
+        <VerbatimWall audiences={audiences} />
+      </div>
+
+      {/* ACTIONS — the same bar every card ends on: provenance quiet on the left, Save as the
+          icon affordance on the right. The static Read's real action IS Save (P9 boundary), so
+          it holds the primary slot's position rather than sitting in a row of its own.
+          Tier falls back to "Directional" — the honest default, NEVER silently "Validated". */}
+      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
         <span className="text-[12px] text-foreground-muted">SIM-1 Flash · static</span>
-      </div>
-
-      {/* 2-audience compare: the side-by-side verdict header (wins-for-X / bombs-for-Y). */}
-      {isCompare && <CompareVerdictRow audiences={audiences} />}
-
-      {/* Per-audience Read — interpretation + Lever + who-not-for + reaction drill. */}
-      <div className="flex flex-col gap-5">
-        {audiences.map((audience, i) => (
-          <div
-            key={`${audience.name}-${i}`}
-            className={i > 0 ? 'border-t border-white/[0.06] pt-5' : undefined}
-          >
-            <AudienceRead audience={audience} />
-          </div>
-        ))}
-      </div>
-
-      {/* Verbatim focus-group quote wall — presentation over already-emitted quotes (D-11). */}
-      <VerbatimWall audiences={audiences} />
-
-      {/* Save (LIB-03) + provenance. The static Read's real action is Save (P9 boundary);
-          snapshot = the block's own props so the shelf re-renders the SAME typed renderer
-          without a re-fetch (mirrors account-read-block). Provenance carries SIM-1 Flash +
-          run-level trust tier (TRUST-01): the TrustBadge rides the run so the honesty
-          verdict survives scroll-away (mirrors the band model-tag idiom). Falls back to
-          "Directional" when the upstream emitter did not set tier — the honest default,
-          NEVER silently "Validated". No 0-100 number anywhere (honesty spine). */}
-      <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
         <SaveAffordance
+          className="ml-auto"
           item_type="read"
           title={saveTitle}
           snapshot={block.props as Record<string, unknown>}
         />
-        <div className="flex items-center gap-2">
-          <p className="text-[11px] text-foreground-muted">SIM-1 Flash</p>
-          <TrustBadge tier={block.props.tier ?? 'Directional'} />
-        </div>
       </div>
     </div>
   );

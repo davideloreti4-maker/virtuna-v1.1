@@ -32,6 +32,7 @@ import {
   enrichSignature,
   type EnrichInput,
   type EnrichDeps,
+  type EnrichStage,
 } from "./enrich-signature";
 import type {
   Audience,
@@ -96,11 +97,47 @@ export interface CalibrationInput {
   description?: string;
 }
 
+/**
+ * The phases of a calibration, announced as each one BEGINS.
+ *
+ * WHY: the caller (the SSE route) awaits ONE opaque promise covering scrape + omni-watch +
+ * synthesis, so it cannot see the boundaries from outside. It used to guess: it sent "Reading
+ * your followers…", awaited the whole pipeline, and only THEN sent "Building your audience
+ * profile…" — right before the DB write. Live (@zachking, 2026-07-14) that meant the user read
+ * "Reading your followers…" for 126 SECONDS while the app was actually watching videos and
+ * synthesizing, then "Building your audience profile…" flashed for 1s while a row was saved.
+ * The staged SSE exists precisely so a 1-3 min run is never opaque (Pitfall 4) — so the stages
+ * have to come from the code that can actually see them. This is that seam.
+ */
+export type CalibrationStage = "scraping" | EnrichStage;
+
 /** Injection points for tests — defaults wire to the real Apify + enrichment stack. */
 export interface CalibrationDeps {
   scrapeBundle?: (handle: string, limit?: number) => Promise<ProfileBundle>;
   scrapeNiche?: (query: string, limit?: number) => Promise<VideoData[]>;
   enrich?: (input: EnrichInput, deps?: EnrichDeps) => Promise<AudienceSignature>;
+  /** Progress reporter. Threaded into enrichment so its two phases report themselves. */
+  onStage?: (stage: CalibrationStage) => void;
+  /**
+   * Evidence reporter — fires the moment the scrape returns, with the account we actually pulled
+   * and the posts we are about to watch.
+   *
+   * Calibration takes ~2 minutes and used to show a single line of text for all of it, even
+   * though within seconds it is holding the creator's avatar, follower count and every video
+   * cover. Those are the strongest proof that the work is real, so they go to the client the
+   * instant they exist. Purely additive: an absent callback changes nothing.
+   */
+  onEvidence?: (evidence: CalibrationEvidence) => void;
+}
+
+/** What the scrape actually pulled — shown during the wait, not just used and hidden. */
+export interface CalibrationEvidence {
+  handle: string;
+  displayName: string;
+  avatarUrl: string;
+  followerCount: number;
+  /** The posts we are about to watch, newest-first as the scraper returned them. */
+  videos: { coverUrl: string | null; views: number }[];
 }
 
 export interface CalibrationFallback {
@@ -108,7 +145,13 @@ export interface CalibrationFallback {
   reason: "thin";
 }
 export interface CalibrationError {
-  error: "scrape_failed";
+  /**
+   * `scrape_failed`        — Apify/network failure. The handle may be wrong; retry is sensible.
+   * `platform_unsupported` — the requested platform CANNOT be calibrated (see PLATFORM guard in
+   *                          calibrateFromScrape). Retrying changes nothing; the copy must not
+   *                          tell the user to "check the handle" — the handle is fine.
+   */
+  error: "scrape_failed" | "platform_unsupported";
   message?: string;
 }
 /**
@@ -187,6 +230,42 @@ export async function calibrateFromScrape(
   const scrapeNiche =
     deps.scrapeNiche ?? ((q: string, limit?: number) => new ApifyScrapingProvider().scrapeVideos(q, limit ?? 20, "search"));
   const enrich = deps.enrich ?? enrichSignature;
+  const onStage = deps.onStage;
+  const onEvidence = deps.onEvidence;
+
+  // ── PLATFORM guard — the whole scrape stack below is TikTok-ONLY ──────────────────────
+  //
+  // `scrapeBundle` is `clockworks/tiktok-profile-scraper` and `scrapeNiche` is the TikTok
+  // discover actor. NEITHER takes a platform: look at the signature — `(handle, limit)`. So
+  // `platform` was destructured, written onto the audience row (and onto the connected account,
+  // and onto its snapshot), and NEVER passed to the thing that does the scraping.
+  //
+  // Live, before this guard (2026-07-14): calibrating @zachking with platform:"instagram"
+  // returned HTTP 200 in 75s with 10 personas, a connected_accounts row marked `instagram`, and
+  // an account_snapshot of 86.1M followers / 610 posts / 1.3B hearts — TikTok's numbers exactly
+  // (his real IG is nothing like that, and Instagram has no "hearts" at all). The audience was
+  // built from TikTok and labelled Instagram.
+  //
+  // And a handle is NOT one identity across platforms: @foo on Instagram and @foo on TikTok are
+  // usually different people. So the failure isn't "slightly stale numbers" — it is building a
+  // STRANGER'S audience and presenting it as the user's own, with provenance that says otherwise.
+  //
+  // Instagram/YouTube ARE genuinely supported for CONNECT → analytics (`/api/connected-accounts/
+  // connect` and the refresh cron both branch correctly onto scrapeInstagramProfile /
+  // scrapeYouTubeChannel). Those actors return a PROFILE ONLY — no videos — and enrichment needs
+  // videos, so real IG/YT calibration is a feature, not a guard. Until it exists, refuse:
+  // an honest "we can't do that yet" beats a confident fabrication.
+  //
+  // `custom` stays allowed: it is the DESCRIBED path, which claims no platform provenance.
+  if (platform !== "tiktok" && platform !== "custom") {
+    return {
+      error: "platform_unsupported",
+      message: `Maven can only build an audience from a TikTok account right now. ${platform === "instagram" ? "Instagram" : "YouTube"} is supported for connecting your account's analytics, but not yet for calibration.`,
+    };
+  }
+
+  // Every path below starts by hitting Apify — including the niche fallback's second call.
+  onStage?.("scraping");
 
   // Resolved by the path below into { profile, videos, subCoverage, source, scrapedHandle }.
   let profile: ProfileData;
@@ -218,6 +297,20 @@ export async function calibrateFromScrape(
         subCoverage = bundle.subCoverage;
         source = "scrape";
         scrapedHandle = bundle.profile.handle || handle;
+
+        // The account is real and in hand — show it, ~2 minutes before the audience it produces.
+        // Only on the real-scrape branch: the niche fallback builds a SYNTHETIC profile (no real
+        // account was found), and showing that as "the account we read" would be a lie.
+        onEvidence?.({
+          handle: scrapedHandle,
+          displayName: bundle.profile.displayName,
+          avatarUrl: bundle.profile.avatarUrl,
+          followerCount: bundle.profile.followerCount,
+          videos: bundle.videos.map((v) => ({
+            coverUrl: v.coverUrl ?? null,
+            views: v.views,
+          })),
+        });
       }
     } else {
       // ── Target with no reference handle → niche search from the description ──
@@ -246,13 +339,18 @@ export async function calibrateFromScrape(
   // ── Enrich → frozen signature (one-time, temp 0 + seed) ────────────────────────
   let signature: AudienceSignature;
   try {
-    signature = await enrich({
-      handle: scrapedHandle ?? normalizeHandle(name),
-      profile,
-      videos,
-      subCoverage,
-      goalIntent,
-    });
+    signature = await enrich(
+      {
+        handle: scrapedHandle ?? normalizeHandle(name),
+        profile,
+        videos,
+        subCoverage,
+        goalIntent,
+      },
+      // Thread the reporter in — enrichment owns the watch/synthesize boundary. This arg was
+      // simply never passed before, so those two phases could not report themselves at all.
+      { onStage },
+    );
   } catch (err) {
     return {
       error: "scrape_failed",

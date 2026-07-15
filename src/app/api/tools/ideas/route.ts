@@ -45,6 +45,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
@@ -54,6 +55,7 @@ import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
 import type { IdeaCardBlock } from "@/lib/tools/blocks";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -83,6 +85,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — replay fixtures, no engine call ──
+  const mock = await maybeMockSkillRun("ideas", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01 / E1) ────
   const guard = csrfGuard(request);
@@ -138,6 +144,16 @@ export async function POST(request: Request): Promise<Response> {
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Resolves to General on a missing id or a load failure (graceful degradation — never blocks).
   const activeAudience = await resolveThreadAudience(supabase, openThread);
+
+  // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
+  // ideas is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
+  // named person) is not a crowd on a feed — refuse it rather than write feed content for it.
+  // The composer already hides this skill for a general audience; this catches a stale
+  // client, a restored thread, and any direct API call.
+  {
+    const refusal = requireSocialsAudience(activeAudience, "ideas");
+    if (refusal) return refusal;
+  }
 
   // ── (5b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────
   // Explicit composer override wins; else default from the audience's goal_intent (4→2 lens).
@@ -205,6 +221,7 @@ export async function POST(request: Request): Promise<Response> {
               model: b.props.model,
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
+              grounded: b.props.grounded,       // §11f: the RUN had sources even if this card cited none — gates NoSourceNote
               // band/fraction deferred to score event
             },
           })),

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { WHOP_PRODUCT_IDS } from "@/lib/whop/config";
+import { resolveWhopPlanId } from "@/lib/whop/config";
+import { isPaidPlanId } from "@/lib/pricing";
 
 export async function POST(request: Request) {
   try {
@@ -17,17 +18,29 @@ export async function POST(request: Request) {
 
     // 2. Parse and validate request body
     const body = await request.json();
-    const { planId } = body;
+    const { planId, trial } = body;
 
-    if (!planId || !["starter", "pro"].includes(planId)) {
+    if (!isPaidPlanId(planId)) {
       return NextResponse.json(
-        { error: "Invalid planId. Must be 'starter' or 'pro'" },
+        { error: "Invalid planId. Must be 'starter', 'pro' or 'studio'" },
         { status: 400 }
       );
     }
 
-    // 3. Get Whop product ID
-    const whopProductId = WHOP_PRODUCT_IDS[planId as "starter" | "pro"];
+    // 3. Resolve the Whop plan. `trial: true` buys the $1 / 3-day SKU, which renews into
+    //    the plan at its monthly price. An unconfigured plan is a 503, NOT a silent grant:
+    //    better to tell the buyer checkout is down than to let them through unbilled.
+    const whopProductId = resolveWhopPlanId(planId, { trial: trial === true });
+
+    if (!whopProductId) {
+      console.error(
+        `Whop plan id missing for "${planId}"${trial === true ? " (trial)" : ""} — set the env var.`
+      );
+      return NextResponse.json(
+        { error: "Checkout is unavailable for this plan" },
+        { status: 503 }
+      );
+    }
 
     // 4. Create Whop checkout session
     const whopResponse = await fetch(

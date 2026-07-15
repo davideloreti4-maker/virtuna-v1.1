@@ -8,7 +8,7 @@
  * This is cheap insurance that the in-place pack-seam cut (D-01) did NOT break
  * Socials — that `pack.scoring.run` still COMPLETES and returns a STRUCTURALLY
  * valid PredictionResult (required keys present, `overall_score` finite ∈
- * [0,100], `engine_version === "3.20.0"`) — NOT exact values. Combined with git,
+ * [0,100], `engine_version === "3.21.0"`) — NOT exact values. Combined with git,
  * this smoke (not a parallel code path) is the D-01 rollback safety net.
  *
  * Four protected invariants:
@@ -16,8 +16,8 @@
  *    all 7 spec fields + `id`/`run`/`scoring` present.
  *  PACK-04 (D-03/D-04 lens): `pack.scoring.run(<fixture>)` completes for BOTH a
  *    text and a video fixture and returns a structurally valid, sane-band result.
- *  T-01-CP: `engine_version === "3.20.0"` on the result AND `ENGINE_VERSION ===
- *    "3.20.0"` — catches an accidental version bump (Pitfall 2).
+ *  T-01-CP: `engine_version === "3.21.0"` on the result AND `ENGINE_VERSION ===
+ *    "3.21.0"` — catches an accidental version bump (Pitfall 2).
  *  PACK-01: the core dispatch surface (`packs/index.ts`) holds ZERO scoring
  *    logic (static no-`aggregateScores` check, comments stripped first).
  *
@@ -116,7 +116,7 @@ function expectStructurallyValid(result: PredictionResult): void {
   expect(result.overall_score).toBeGreaterThanOrEqual(0);
   expect(result.overall_score).toBeLessThanOrEqual(100);
   // ENGINE_VERSION did not drift (T-01-CP / Pitfall 2).
-  expect(result.engine_version).toBe("3.20.0");
+  expect(result.engine_version).toBe("3.21.0");
 }
 
 describe("pack-seam smoke + structural gate (PACK-04, D-03/D-04) — BLOCKING", () => {
@@ -163,8 +163,8 @@ describe("pack-seam smoke + structural gate (PACK-04, D-03/D-04) — BLOCKING", 
     expect(result.input_mode).toBe("video_upload");
   });
 
-  it("ENGINE_VERSION is exactly '3.20.0' (T-01-CP — no accidental bump)", () => {
-    expect(ENGINE_VERSION).toBe("3.20.0");
+  it("ENGINE_VERSION is exactly '3.21.0' (T-01-CP — no accidental bump)", () => {
+    expect(ENGINE_VERSION).toBe("3.21.0");
   });
 
   it("the dispatch surface (packs/index.ts) holds ZERO scoring logic (PACK-01, static)", async () => {

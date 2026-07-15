@@ -33,6 +33,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runTwoAudienceRead } from "@/lib/engine/flash/two-audience-read";
@@ -54,6 +55,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — skip (no fixture stream yet), no engine call ──
+  const mock = await maybeMockSkillRun("read", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ────────────
   const guard = csrfGuard(request);
@@ -127,6 +132,22 @@ export async function POST(request: Request): Promise<Response> {
       // An explicitly-requested id did not resolve under the session → reject.
       // Do NOT silently fall back to General for an explicit pair (CR-01).
       return Response.json({ error: "audience_not_found" }, { status: 400 });
+    }
+
+    // MODE-01 — a cross-mode pair is not a comparison. A socials audience is asked whether it
+    // would stop scrolling; a general audience is asked whether it is convinced. The two answer
+    // DIFFERENT QUESTIONS, so a delta between their bands is not a fact about the concept — it's
+    // an artifact of the frame. Refuse rather than print a confident "X wins — Y bombs" on it.
+    // (Same-mode pairs are fine: panel-vs-panel and crowd-vs-crowd both compare like with like.)
+    if (firstAudience.mode !== secondPick.mode) {
+      return Response.json(
+        {
+          error: "audience_mode_mismatch",
+          message:
+            "These two audiences can't be compared — one is a social audience and the other is a custom one. They're asked different questions, so the result wouldn't mean anything.",
+        },
+        { status: 400 },
+      );
     }
     pair = [firstAudience, secondPick];
   } else {

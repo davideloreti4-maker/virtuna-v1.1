@@ -9,9 +9,39 @@
 
 import "@testing-library/jest-dom/vitest";
 import "vitest-axe/extend-expect";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
 import * as axeMatchers from "vitest-axe/matchers";
 expect.extend(axeMatchers);
+
+/**
+ * `next/headers` — a DISARMED default cookie store for every test.
+ *
+ * WHY: every `/api/tools/*` route begins with `maybeMockSkillRun(skill, userId)` (the mock-skill
+ * sandbox), whose first line is `await cookies()`. Outside a Next request scope that THROWS
+ * ("`cookies` was called outside a request scope"), and no test file anywhere mocked it — so the
+ * throw happened before any route body ran. The entire tools route-test surface was dead:
+ * **73 failed / 15 passed across `src/app/api/tools`** on `main`, in isolation, including the
+ * 7/8 explore failures previously logged as unexplained. They were all this one line.
+ *
+ * That dead layer is exactly why the route's hand-built SSE `content` map could silently drop a
+ * card prop (`grounded`) and stay green: nothing was guarding the routes at all.
+ *
+ * An empty store is the correct default — `isMockSkillsEnabled(undefined)` is false, so
+ * `maybeMockSkillRun` returns null and the real route body runs, which is what these tests mean
+ * to exercise. A test that needs an armed sandbox or a real cookie overrides this with its own
+ * `vi.mock("next/headers", …)`.
+ */
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: () => undefined,
+    getAll: () => [],
+    has: () => false,
+    set: () => {},
+    delete: () => {},
+  }),
+  headers: async () => new Headers(),
+  draftMode: async () => ({ isEnabled: false, enable: () => {}, disable: () => {} }),
+}));
 
 // Radix UI's Popover / Select / Dialog primitives use ResizeObserver and
 // matchMedia. happy-dom does not implement either. Stub both with no-op

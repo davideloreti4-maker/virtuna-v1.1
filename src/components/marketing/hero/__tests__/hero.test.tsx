@@ -9,10 +9,11 @@ import { SIGNUP_URL } from "@/lib/routes";
  * Phase 2 Nyquist gate — HERO-01..04 on the RSC <Hero>.
  *
  * HERO-01/02 = the headline/subcopy/CTA cluster. HERO-03/04 = the product-shot
- * showcase (desktop Simulation window filled with the 03-04 skeleton dashboard +
- * phone TikTok Placeholder slot) that REPLACED the retired canvas "crowd → score"
- * moment after live craft review. The old composed-still / signature-moment-client
- * / hero-constants suites were removed with their components.
+ * showcase (desktop Simulation window + the phone in front of it) that REPLACED
+ * the retired canvas "crowd → score" moment after live craft review. Both screens
+ * now hold REAL captures of the running app — the skeleton set-dressing they held
+ * before could only ever look like a template, which is exactly how it read in
+ * UAT. These tests therefore assert the captures by their accessible names.
  *
  * Resilience rule (02-00-PLAN <action>): the H1 is matched VERBATIM (D-09
  * LOCKED), but subcopy / scroll-cue / slot labels are matched by stable tokens
@@ -71,30 +72,35 @@ describe("<Hero />", () => {
   });
 
   describe("HERO-03/04 — product-shot showcase (output + input)", () => {
-    it("renders the desktop Simulation window filled with the product skeletons (the OUTPUT)", () => {
+    it("fills the desktop window with a real capture of a reading (the OUTPUT)", () => {
       render(<Hero />);
 
-      // The window body renders the 03-04 skeleton dashboard (gauge + driver
-      // rows + retention curve + audience cloud) until a real screenshot swaps
-      // in via the slot later (FOUND-03) — the fold shows the product's shape,
-      // never an empty 16/10 void.
-      expect(screen.getByRole("img", { name: /virality score/i })).toBeTruthy();
-      expect(
-        screen.getByRole("img", { name: /hook, retention and shareability/i })
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("img", { name: /retention curve/i })
-      ).toBeTruthy();
-      expect(
-        screen.getByRole("img", { name: /audience reaction/i })
-      ).toBeTruthy();
+      // The fold shows the product itself: a reading in the app (score +
+      // watch-through + where it drops). Matched on the score, the one fact the
+      // capture must always carry — copy around it can be re-tightened.
+      const shot = screen.getByRole("img", { name: /virality score/i });
+      expect(shot.getAttribute("src")).toBeTruthy();
     });
 
-    it("renders the phone TikTok slot (the INPUT)", () => {
+    it("fills the phone with a real capture of the app on mobile (the INPUT)", () => {
       render(<Hero />);
 
-      // The phone in front = the TikTok you paste. Swappable mobile slot.
-      expect(screen.getByText(/your tiktok/i)).toBeTruthy();
+      // The phone in front = Maven on a phone, not a faux video placeholder.
+      const phone = screen.getByRole("img", { name: /phone/i });
+      expect(phone.getAttribute("src")).toBeTruthy();
+    });
+
+    it("reserves an aspect-locked box for each capture (no-CLS)", () => {
+      const { container } = render(<Hero />);
+
+      // Both captures render with next/image `fill`, so their wrappers must
+      // reserve the box before the image decodes — otherwise the fold reflows.
+      const images = container.querySelectorAll("img");
+      expect(images.length).toBe(2);
+      images.forEach((img) => {
+        const box = img.parentElement as HTMLElement;
+        expect(/\baspect-\[/.test(box.className)).toBe(true);
+      });
     });
 
     it("frames the reading in a labelled browser window", () => {

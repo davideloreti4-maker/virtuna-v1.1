@@ -14,10 +14,93 @@ import { describe, it, expect } from "vitest";
 import {
   STABLE_FLASH_SYSTEM_PROMPT,
   buildNicheAwareSystemPrompt,
+  buildGenericSystemPrompt,
   buildFlashUserContent,
 } from "../flash-prompts";
 import { NICHE_INSTANTIATION } from "../../wave3/persona-registry";
 import type { ContentTypeSlug } from "../../types";
+
+// ─── MODE-01 — the mode seam ────────────────────────────────────────────────────
+// Two bugs are pinned here:
+//   1. The generic prompt IGNORED audienceRepaint. The Read passes `niche: null`, so it took
+//      that path and every audience got the byte-identical General prompt — the "two-audience
+//      Read" ran General twice and relabelled one side (live: 10/10 identical verdicts).
+//   2. A `mode: 'general'` audience (analyst panel, named person) was framed as a TikTok crowd
+//      answering "would you scroll past" — GENERAL_AUDIENCE is mode:'socials', platform:'tiktok'.
+
+describe("buildGenericSystemPrompt — the repaint must reach the model (MODE-01)", () => {
+  const REPAINT = { tough_crowd: "The Skeptic — pressure-tests every claim for its weakest link." };
+
+  it("returns the interned STABLE constant with no repaint (the General regression gate)", () => {
+    // Identity, not equality: General MUST produce the byte-identical cache prefix it always has.
+    expect(buildGenericSystemPrompt()).toBe(STABLE_FLASH_SYSTEM_PROMPT);
+    expect(buildGenericSystemPrompt({}, "socials")).toBe(STABLE_FLASH_SYSTEM_PROMPT);
+  });
+
+  it("substitutes a stored repaint for the generic archetype definition", () => {
+    const prompt = buildGenericSystemPrompt(REPAINT);
+    expect(prompt).toContain("The Skeptic — pressure-tests every claim");
+    // …and the repainted slot's stock TikTok definition is GONE (it was replaced, not appended).
+    expect(prompt).not.toContain("You scroll past in <3 seconds unless the hook lands hard");
+    expect(prompt).not.toBe(STABLE_FLASH_SYSTEM_PROMPT);
+  });
+
+  it("is deterministic — same audience, same prompt (D-17 cache discipline)", () => {
+    expect(buildGenericSystemPrompt(REPAINT)).toBe(buildGenericSystemPrompt(REPAINT));
+  });
+});
+
+describe("buildGenericSystemPrompt — the general frame is not a feed (MODE-01)", () => {
+  const generalPrompt = buildGenericSystemPrompt(undefined, "general");
+
+  it("never mentions TikTok, an FYP, or scrolling a feed", () => {
+    expect(generalPrompt).not.toMatch(/TikTok/i);
+    expect(generalPrompt).not.toMatch(/FYP/i);
+    expect(generalPrompt).not.toMatch(/Scrolls past when/);
+  });
+
+  it("frames the reactors as a panel judging on merit", () => {
+    expect(generalPrompt).toMatch(/REACTION PANEL/i);
+    expect(generalPrompt).toMatch(/LANDS/);
+  });
+
+  it("keeps the output contract byte-for-byte (the parser must not care about the frame)", () => {
+    // Same 10 slugs, same schema, same strict type rules — only the framing changes.
+    expect(generalPrompt).toContain('"personas"');
+    expect(generalPrompt).toContain("EXACTLY 10 persona entries");
+    expect(generalPrompt).toContain("tough_crowd");
+    expect(generalPrompt).toContain("cross_niche_curiosity");
+  });
+
+  it("still honours the audience's repaint in the general frame", () => {
+    const prompt = buildGenericSystemPrompt(
+      { tough_crowd: "The Bar-Raiser — probes for the biggest gap against the level." },
+      "general",
+    );
+    expect(prompt).toContain("The Bar-Raiser");
+    expect(prompt).not.toMatch(/TikTok/i);
+  });
+});
+
+describe("buildFlashUserContent — the general question (MODE-01)", () => {
+  it("asks a panel whether it is convinced, never whether it would scroll past", () => {
+    const msg = buildFlashUserContent("Replace annual reviews with peer feedback.", "idea", undefined, "general");
+    expect(msg).toMatch(/MERITS/);
+    expect(msg).not.toMatch(/FYP/i);
+    expect(msg).not.toMatch(/creator in your niche/i);
+  });
+
+  it("leaves the socials message byte-identical (the regression gate)", () => {
+    const withDomain = buildFlashUserContent("hook text", "idea", undefined, "socials");
+    const withoutDomain = buildFlashUserContent("hook text", "idea");
+    expect(withDomain).toBe(withoutDomain);
+  });
+
+  it("never stacks the sell lens onto the general frame (it is a socials lens)", () => {
+    const msg = buildFlashUserContent("A pitch.", "idea", "sell", "general");
+    expect(msg).not.toMatch(/Buying Lens/);
+  });
+});
 
 describe("STABLE_FLASH_SYSTEM_PROMPT — back-compat (D-05)", () => {
   it("is a non-empty string", () => {

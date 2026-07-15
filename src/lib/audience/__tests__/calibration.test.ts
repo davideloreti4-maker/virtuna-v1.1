@@ -200,3 +200,135 @@ describe("calibrateFromScrape — target path", () => {
     expect(result).toHaveProperty("audience");
   });
 });
+
+// ─── Progress staging (2026-07-14) ──────────────────────────────────────────────
+//
+// calibrateFromScrape is the ONLY thing that can see the scrape→enrich boundary; the SSE route
+// awaits it as one opaque promise. Before this, the route guessed — and guessed wrong (see
+// CalibrationStage's docblock). These tests pin the announcement to the work.
+
+describe("calibrateFromScrape — onStage", () => {
+  it("announces 'scraping' BEFORE it hits Apify", async () => {
+    const timeline: string[] = [];
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => {
+        timeline.push("work:scrape");
+        return makeBundle(50_000, 15);
+      }),
+      onStage: (stage: string) => timeline.push(`stage:${stage}`),
+    });
+
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(timeline[0]).toBe("stage:scraping");
+    expect(timeline.indexOf("stage:scraping")).toBeLessThan(timeline.indexOf("work:scrape"));
+  });
+
+  it("THREADS onStage into enrichment — the arg that was never passed at all", async () => {
+    // The bug in miniature: `enrich(...)` was called with NO deps, so the watch/synthesize
+    // phases had no way to report themselves even once a reporter existed.
+    const onStage = vi.fn();
+    const enrich = vi.fn(async () => makeSignature());
+    await calibrateFromScrape(BASE_INPUT, makeDeps({ enrich, onStage }));
+
+    expect(enrich).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ onStage }),
+    );
+  });
+
+  it("is optional — omitting onStage does not throw (back-compat for every caller)", async () => {
+    const result = await calibrateFromScrape(BASE_INPUT, makeDeps());
+    expect("audience" in result).toBe(true);
+  });
+});
+
+// ─── PLATFORM guard — the scrape stack is TikTok-only ──────────────────────────
+//
+// Live bug (2026-07-14): platform:"instagram" ran a TIKTOK scrape and returned HTTP 200 with a
+// full audience, a connected account marked `instagram`, and a snapshot carrying TikTok's
+// follower count. `platform` was written onto every row and passed to NOTHING. Because a handle
+// is not one identity across platforms, that builds a stranger's audience and calls it yours.
+//
+// The load-bearing assertion in each test below is `scrapeBundle` NOT being called: an error
+// return alone would still pass if we scraped first and threw the result away.
+describe("calibrateFromScrape — platform guard", () => {
+  for (const platform of ["instagram", "youtube"] as const) {
+    it(`refuses ${platform} WITHOUT scraping — no Apify spend, no TikTok data`, async () => {
+      const deps = makeDeps();
+
+      const result = await calibrateFromScrape({ ...BASE_INPUT, platform }, deps);
+
+      expect(result).toMatchObject({ error: "platform_unsupported" });
+      // THE assertion: the TikTok scraper never ran.
+      expect(deps.scrapeBundle).not.toHaveBeenCalled();
+      expect(deps.scrapeNiche).not.toHaveBeenCalled();
+      expect(deps.enrich).not.toHaveBeenCalled();
+    });
+
+    it(`tells the user the truth about ${platform} — never "check the handle"`, async () => {
+      const result = await calibrateFromScrape({ ...BASE_INPUT, platform }, makeDeps());
+      const { message } = result as { message: string };
+      expect(message).toMatch(/TikTok/);
+      expect(message).not.toMatch(/check the handle/i);
+    });
+  }
+
+  it("still calibrates TikTok — the guard does not break the path that works", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "tiktok" }, deps);
+    expect("audience" in result).toBe(true);
+    expect(deps.scrapeBundle).toHaveBeenCalledWith("testcreator");
+  });
+
+  it("still allows `custom` — the DESCRIBED path claims no platform provenance", async () => {
+    const deps = makeDeps();
+    const result = await calibrateFromScrape({ ...BASE_INPUT, platform: "custom" }, deps);
+    expect("error" in result).toBe(false);
+  });
+});
+
+describe("calibrateFromScrape — onEvidence (the ~2min wait shows the account it read)", () => {
+  it("reports the scraped account + its covers as soon as the scrape returns", async () => {
+    const onEvidence = vi.fn();
+    const deps = makeDeps({ onEvidence });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onEvidence).toHaveBeenCalledTimes(1);
+    const evidence = onEvidence.mock.calls[0]![0];
+    expect(evidence.handle).toBeTruthy();
+    expect(evidence.followerCount).toBe(50_000);
+    expect(evidence.videos).toHaveLength(15);
+  });
+
+  it("fires BEFORE enrichment — it is proof during the wait, not a result of it", async () => {
+    const order: string[] = [];
+    const deps = makeDeps({
+      onEvidence: vi.fn(() => order.push("evidence")),
+      enrich: vi.fn(async () => {
+        order.push("enrich");
+        return makeSignature();
+      }),
+    });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    // The whole point: the account is on screen while the ~2min enrichment is still running.
+    expect(order).toEqual(["evidence", "enrich"]);
+  });
+
+  it("reports NO evidence on the niche fallback — that profile is synthetic", async () => {
+    // A thin account falls back to a niche search and SYNTHESISES a profile. Showing that as
+    // "the account we read" would put a face on the screen that we never scraped.
+    const onEvidence = vi.fn();
+    const deps = makeDeps({
+      // Thin = NO follower tier AND too few videos (isThin) → the niche fallback path.
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(20)),
+      onEvidence,
+    });
+    const result = await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect("audience" in result || "fallback" in result).toBe(true);
+    expect(onEvidence).not.toHaveBeenCalled();
+  });
+});

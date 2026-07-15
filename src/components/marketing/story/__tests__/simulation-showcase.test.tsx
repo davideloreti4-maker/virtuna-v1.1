@@ -12,13 +12,11 @@ import { SimulationShowcase } from "../simulation-showcase";
  * `#the-simulation` anchor + page.tsx stub). The five required outputs are
  * matched by stable tokens (resilience rule), not full sentences.
  *
- * WR-04: after 03-05 fills the frame with the gauge/cloud/driver-rows skeleton,
- * several output tokens (watch-through / Hook / Retention / drop / Shareability)
- * now appear BOTH in the filled-frame skeleton AND in the named-output `<dl>`
- * chips. The output assertions are therefore scoped to the outputs `<dl>` via
- * `within(dl)` (and `simulat` stays a strict single-match — it appears only in
- * the locked `<h2>`), so a plausibly-multi-match token never trips a strict
- * `getByText`.
+ * WR-04: the output assertions are scoped to the outputs `<dl>` via `within(dl)`
+ * (and `simulat` stays a strict single-match — it appears only in the locked
+ * `<h2>`), so a plausibly-multi-match token never trips a strict `getByText`.
+ * The scoping predates the screenshot swap and is kept: the frame's alt text
+ * names the same levers, and an alt is a text node to some queries.
  */
 describe("<SimulationShowcase /> — STORY-02", () => {
   /** The named-output `<dl>` beneath the frame (the output chips). */
@@ -93,29 +91,23 @@ describe("<SimulationShowcase /> — STORY-02", () => {
     expect(within(dl).getAllByText(/shareab/i).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("fills the device frame with the gauge/cloud/driver-rows skeleton (GAP-2)", () => {
+  it("fills the device frame with a real capture of a reading (GAP-2 / FOUND-03)", () => {
     const { container } = render(<SimulationShowcase />);
 
-    // GAP-2: the frame is no longer an empty Placeholder void — it carries the
-    // assembled product-skeleton shape. Assert the structural fingerprint:
-    //   - >= 1 <svg> containing an arc element (the score gauge's stroked circle)
-    //   - >= 6 <circle> elements (the audience cloud dots)
-    //   - the three driver labels Hook / Retention / Shareability
-    const svgs = container.querySelectorAll("svg");
-    expect(svgs.length).toBeGreaterThanOrEqual(1);
+    // The frame used to hold the static-SVG skeleton shape of a reading; it now
+    // holds the reading itself, captured from the running app. Assert the
+    // capture is there, named, and sitting in an aspect-locked box (no-CLS) —
+    // NOT the old svg/circle fingerprint, which no longer exists.
+    const shot = screen.getByRole("img", { name: /score/i });
+    expect(shot.getAttribute("src")).toBeTruthy();
 
-    // The gauge arc is a stroked <circle> with a stroke-dasharray (the 270deg
-    // arc geometry). Assert at least one such arc circle exists.
-    const arcCircles = Array.from(container.querySelectorAll("circle")).filter(
-      (c) => c.getAttribute("stroke-dasharray") !== null
-    );
-    expect(arcCircles.length).toBeGreaterThanOrEqual(1);
+    const box = shot.parentElement as HTMLElement;
+    expect(/\baspect-\[/.test(box.className)).toBe(true);
 
-    // The audience cloud renders >= 6 dot circles.
-    const allCircles = container.querySelectorAll("circle");
-    expect(allCircles.length).toBeGreaterThanOrEqual(6);
+    // The frame is the ONLY image in the section (the skeletons are gone).
+    expect(container.querySelectorAll("img").length).toBe(1);
 
-    // The three driver labels appear (in the filled frame AND/OR the <dl>).
+    // The three levers stay named beneath the frame, in the outputs <dl>.
     expect(screen.getAllByText(/hook/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/retention/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/shareab/i).length).toBeGreaterThanOrEqual(1);

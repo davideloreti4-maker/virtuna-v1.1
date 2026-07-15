@@ -124,7 +124,7 @@ export function EmbeddedComposer({
           <div
             role="menu"
             aria-label="Verbs"
-            className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-[248px] rounded-2xl border border-white/[0.06] bg-[#211f1d] p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
+            className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-[248px] rounded-2xl border border-white/[0.06] bg-surface-elevated p-1.5 shadow-[0_20px_50px_rgba(0,0,0,0.5)]"
           >
             {VERB_MENU.map((m) => (
               <button
@@ -140,7 +140,7 @@ export function EmbeddedComposer({
                 className="flex w-full flex-col gap-px rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-[#2b2926]"
               >
                 <span className="flex items-center gap-1.5 text-[9.5px] font-medium uppercase tracking-[0.1em] text-foreground-muted">
-                  {m.verb === verb && <Spark className="text-accent-text" />}
+                  {m.verb === verb && <Spark className="text-foreground-muted" />}
                   {m.verb}
                 </span>
                 <b className="text-[12.5px] font-semibold text-foreground">{m.title}</b>
@@ -158,8 +158,8 @@ export function EmbeddedComposer({
           identically across surfaces. */}
       <div
         className={cn(
-          "flex flex-col gap-2.5 rounded-[22px] border bg-surface-elevated p-3.5 shadow-float transition-colors",
-          seeded ? "border-white/[0.14]" : "border-white/[0.08]",
+          "flex flex-col gap-3.5 rounded-[24px] border bg-surface-elevated p-4 shadow-float transition-colors",
+          seeded ? "border-white/[0.14]" : "border-white/[0.06]",
         )}
       >
         {/* Row 1 — the field. textarea (auto-multiline). Enter launches, Shift+Enter newlines
@@ -181,57 +181,59 @@ export function EmbeddedComposer({
           className={cn(
             "w-full min-w-0 resize-none bg-transparent px-1 pt-0.5 text-[15px] text-foreground",
             "placeholder:text-foreground-muted focus:outline-none",
-            "min-h-[46px] max-h-[200px] leading-[1.55]",
+            "min-h-[72px] max-h-[200px] leading-[1.55]",
           )}
         />
 
-        {/* Row 2 — controls. Verb chip left; attach + the cream send right (mirrors /home). */}
+        {/* Row 2 — controls, split like /home: LEFT = attach · verb pill; RIGHT = the cream send. */}
         <div className="flex items-center justify-between gap-2">
-          {/* Verb chip — the composer's ONE accented control (mirrors composer-controls' skill pill). */}
-          <button
-            type="button"
-            aria-label={`Verb: ${verb}`}
-            aria-haspopup="menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((v) => !v)}
-            className={cn(
-              "inline-flex h-[38px] shrink-0 items-center gap-1.5 rounded-lg border border-white/[0.06] bg-surface px-2.5",
-              "text-[13.5px] font-semibold text-foreground transition-colors hover:border-white/[0.1]",
-              "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
-            )}
-          >
-            <Spark className="text-accent-text" />
-            <span>{verb}</span>
-            <svg viewBox="0 0 16 16" width={13} height={13} className="shrink-0 text-foreground-muted" stroke="currentColor" strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M4 6.2l4 4 4-4" />
-            </svg>
-          </button>
-
-          <div className="flex items-center gap-1.5">
-            {/* Attach — a chat / screenshot / reference to steer (the host owns the picker). */}
+          <div className="flex min-w-0 items-center gap-1.5">
+            {/* Attach — a chat / screenshot / reference to steer (the host owns the picker).
+                Borderless quiet glyph, circular — byte-for-byte the /home composer's attach. */}
             <button
               type="button"
               onClick={onAttach}
               aria-label="Attach"
-              className="grid h-[40px] w-[40px] shrink-0 place-items-center rounded-xl text-foreground-secondary transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+              className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
             >
-              <Plus className="h-5 w-5" strokeWidth={2} />
+              <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
             </button>
 
-            {/* Launch — the clean cream disc (same Button + sizing as the /home send). */}
-            <Button
+            {/* Verb pill — mirrors /home's borderless FILLED skill pill (rounded-full bg-white/[0.05],
+                muted spark, no accent) so /start reads identically to the room. */}
+            <button
               type="button"
-              variant="primary"
-              size="sm"
-              aria-label="Launch"
-              disabled={disabled || value.trim().length === 0}
-              onClick={launch}
-              style={{ boxShadow: "none" }}
-              className="shrink-0 h-[40px] w-[40px] min-w-0 p-0 rounded-xl"
+              aria-label={`Verb: ${verb}`}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((v) => !v)}
+              className={cn(
+                "inline-flex h-[34px] shrink-0 items-center gap-1.5 rounded-full bg-white/[0.05] px-3",
+                "text-[13.5px] font-medium text-foreground transition-colors hover:bg-white/[0.08]",
+                "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
+              )}
             >
-              <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
-            </Button>
+              <Spark className="text-foreground-muted" />
+              <span>{verb}</span>
+              <svg viewBox="0 0 16 16" width={13} height={13} className="shrink-0 text-foreground-muted" stroke="currentColor" strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 6.2l4 4 4-4" />
+              </svg>
+            </button>
           </div>
+
+          {/* Launch — the clean cream disc (same Button + sizing as the /home send). */}
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            aria-label="Launch"
+            disabled={disabled || value.trim().length === 0}
+            onClick={launch}
+            style={{ boxShadow: "none" }}
+            className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
+          >
+            <ArrowUp className="h-[18px] w-[18px]" strokeWidth={2.25} />
+          </Button>
         </div>
       </div>
     </div>

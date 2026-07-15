@@ -34,12 +34,14 @@
 import * as Sentry from "@sentry/nextjs";
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runRemixPipeline } from "@/lib/tools/runners/remix-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { createLogger } from "@/lib/logger";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { z } from "zod";
@@ -90,6 +92,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — replay fixtures, no engine call ──
+  const mock = await maybeMockSkillRun("remix", user.id);
+  if (mock) return mock;
 
   // ── (2-3) CSRF guard — Content-Type 415 + cross-origin 403 (T-06-14, WR-01) ──
   // Shared helper (src/lib/http/csrf-guard.ts) — the SSOT for this guard pair across
@@ -142,6 +148,16 @@ export async function POST(request: Request): Promise<Response> {
     } catch {
       // Non-fatal: fall back to General if audience load fails (no regression, D-04)
     }
+  }
+
+  // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
+  // Remix decodes a TikTok winner into the creator's version — socials-shaped by construction.
+  // A `mode: 'general'` audience (a panel, a named person) is not a crowd on a feed; refuse it
+  // rather than remix a TikTok hook "for" an analyst panel. The composer already hides Remix for
+  // a general audience — this catches a stale client, a restored thread, and direct API calls.
+  {
+    const refusal = requireSocialsAudience(activeAudience, "remix");
+    if (refusal) return refusal;
   }
 
   // ── (7b) Resolve per-run intent (GAP-C2 / §P.10) ──────────────────────────────

@@ -11,11 +11,14 @@ import { useEffect, useRef, useState } from 'react';
  *
  * SOURCE: the reconnect SSE route GET /api/analyze/[id]/stream (the SAME route
  * useAnalysisStream's reconnect ladder uses). On an in-flight row it short-polls
- * the DB and emits `partial` (the accumulated Pass-2 persona array) and
- * `filmstrip_segment_ready` (per keyframe) deltas, then `complete`. The frozen
- * engine never emits per-stage `stage_start`/`stage_end` to a reconnecting client
- * (those live only on the POST body-reader the composer owns and aborts on nav),
- * so these two deltas + `complete` are the honest live signals available here.
+ * the DB and emits `source` (the scraped post), `roster` (who is about to watch),
+ * `filmstrip_plan` + `filmstrip_segment_ready` (the real keyframes), then `complete`.
+ * The frozen engine never emits per-stage `stage_start`/`stage_end` to a reconnecting
+ * client (those live only on the POST body-reader the composer owns and aborts on nav),
+ * so those deltas + `complete` are the honest live signals available here.
+ *
+ * There is NO `partial` persona event. This docblock used to name one, and the route used to
+ * try to emit one, and it never fired once — see the long note beside the listeners below.
  *
  * STORE-FREE (milestone invariant): the reading cluster never imports
  * useBoardStore. useAnalysisStream does (board-store coupled) — so this is a
@@ -26,9 +29,51 @@ import { useEffect, useRef, useState } from 'react';
  * reads as a calm "Reading your simulation…" until the real Reading swaps in.
  * No throw on a closed/absent EventSource (guarded for SSR + jsdom).
  */
+export interface RevealFrame {
+  idx: number;
+  /** 30-day signed URL minted by the extract route — renderable as-is. */
+  uri: string;
+}
+
+/**
+ * The scraped post: cover, author, views. Lands seconds into the run (the scrape is the first
+ * thing the pipeline does), so it is what the in-flight Reading can show while the engine is
+ * still working. null in video_upload mode — nothing was scraped, so there is no receipt, and
+ * we show none rather than inventing one.
+ */
+export interface RevealSource {
+  cover_url: string | null;
+  handle: string | null;
+  views: number | null;
+  video_url: string | null;
+}
+
+/** One of the user's calibrated reactors — the cast, not their reactions. */
+export interface RevealPersona {
+  archetype: string;
+  label: string | null;
+}
+
 export interface ReadingRevealState {
-  /** Count of personas seen streaming in (Pass-2 audience forming). */
-  personaCount: number;
+  /** The scraped post we are reading — the first evidence of the run. null until it lands. */
+  source: RevealSource | null;
+  /**
+   * WHO is about to watch this: the user's calibrated audience, known before the run starts.
+   * Their REACTIONS are what the Read produces — those are not here, and are never guessed.
+   */
+  roster: RevealPersona[];
+  /**
+   * The keyframes themselves, ascending by idx — REAL frames of the user's own video, which
+   * is the only honest proof-of-work available while the engine runs.
+   *
+   * These arrived on the wire all along: `filmstrip_segment_ready` has always carried
+   * `keyframe_uri` next to `segment_idx`, and this hook parsed the index, threw the picture
+   * away, and kept a count — so the wait rendered the text "7 frames read" instead of the seven
+   * frames. Keep the pictures.
+   */
+  frames: RevealFrame[];
+  /** How many frames are coming in total (`filmstrip_plan`); 0 until the grid is seeded. */
+  frameTotal: number;
   /** Count of distinct keyframes extracted (the filmstrip filling in). */
   keyframeCount: number;
   /** Live transport phase for the skeleton's copy. */
@@ -36,7 +81,10 @@ export interface ReadingRevealState {
 }
 
 const INITIAL: ReadingRevealState = {
-  personaCount: 0,
+  source: null,
+  roster: [],
+  frames: [],
+  frameTotal: 0,
   keyframeCount: 0,
   phase: 'idle',
 };
@@ -56,7 +104,7 @@ export function useReadingReveal(
     }
 
     keyframeIdx.current = new Set();
-    setState({ personaCount: 0, keyframeCount: 0, phase: 'connecting' });
+    setState({ ...INITIAL, phase: 'connecting' });
 
     let es: EventSource;
     try {
@@ -68,15 +116,54 @@ export function useReadingReveal(
       return;
     }
 
-    const onPartial = (e: MessageEvent) => {
+    // NOTE — there is no `partial` listener, deliberately.
+    //
+    // This hook used to listen for a `partial` event carrying a growing personas array, and grew a
+    // `personaCount` from it to drive a progressive "the audience is forming" reveal. It NEVER
+    // FIRED, not once. The emitter (/api/analyze/[id]/stream) read `row.analysis_results.partial
+    // .personas` — and `analysis_results` is a separate TABLE, not a column on the polled row, so
+    // the lookup was `undefined` on every poll of every run. `personaCount` had no consumers
+    // either: dead state, fed by a dead event, driving nothing.
+    //
+    // It cannot be "fixed" by pointing it at the right column, because there is no partial state
+    // to point it at: the fold produces all 10 personas in ONE call, at the END (the 10-pass loop
+    // that streamed them one by one was deleted in Phase 4 Plan 05). A progressive persona reveal
+    // is not a thing this engine can honestly emit today. If that changes, add the emitter FIRST
+    // and let a real event drive a real reveal — do not resurrect a listener for a promise the
+    // engine cannot keep.
+    //
+    // The wait is not left empty by this: `source`, `roster`, `filmstrip_plan` and
+    // `filmstrip_segment_ready` all fire for real, and all four already set phase 'live'.
+
+    const onSource = (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data) as { personas?: unknown[] };
-        const n = Array.isArray(data.personas) ? data.personas.length : 0;
-        setState((s) => ({
-          ...s,
-          phase: 'live',
-          personaCount: Math.max(s.personaCount, n),
-        }));
+        const data = JSON.parse(e.data) as RevealSource;
+        // Only take a receipt that actually carries something to show.
+        if (data && (data.cover_url || data.handle)) {
+          setState((s) => ({ ...s, phase: 'live', source: data }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onRoster = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { personas?: RevealPersona[] };
+        if (Array.isArray(data.personas) && data.personas.length > 0) {
+          setState((s) => ({ ...s, phase: 'live', roster: data.personas! }));
+        }
+      } catch {
+        /* malformed frame — ignore */
+      }
+    };
+
+    const onFilmstripPlan = (e: MessageEvent) => {
+      try {
+        const data = JSON.parse(e.data) as { total?: number };
+        if (typeof data.total === 'number' && data.total > 0) {
+          setState((s) => ({ ...s, phase: 'live', frameTotal: data.total! }));
+        }
       } catch {
         /* malformed frame — ignore */
       }
@@ -84,15 +171,33 @@ export function useReadingReveal(
 
     const onFilmstrip = (e: MessageEvent) => {
       try {
-        const data = JSON.parse(e.data) as { segment_idx?: number };
-        if (typeof data.segment_idx === 'number') {
-          keyframeIdx.current.add(data.segment_idx);
-        }
-        setState((s) => ({
-          ...s,
-          phase: 'live',
-          keyframeCount: keyframeIdx.current.size,
-        }));
+        const data = JSON.parse(e.data) as {
+          segment_idx?: number;
+          keyframe_uri?: string | null;
+        };
+        if (typeof data.segment_idx !== 'number') return;
+
+        const idx = data.segment_idx;
+        const uri = data.keyframe_uri;
+        keyframeIdx.current.add(idx);
+
+        setState((s) => {
+          // Keep the picture, not just the tally. A frame with no uri is a segment the extractor
+          // could not read — it still counts as read (the engine moved past it), but there is
+          // nothing to show for it, so it never enters `frames`.
+          const frames =
+            typeof uri === 'string' && uri.length > 0 && !s.frames.some((f) => f.idx === idx)
+              ? [...s.frames, { idx, uri }].sort((a, b) => a.idx - b.idx)
+              : s.frames;
+
+          return {
+            ...s,
+            phase: 'live',
+            frames,
+            frameTotal: Math.max(s.frameTotal, idx + 1),
+            keyframeCount: keyframeIdx.current.size,
+          };
+        });
       } catch {
         /* malformed frame — ignore */
       }
@@ -111,13 +216,17 @@ export function useReadingReveal(
       }
     };
 
-    es.addEventListener('partial', onPartial);
+    es.addEventListener('source', onSource);
+    es.addEventListener('roster', onRoster);
+    es.addEventListener('filmstrip_plan', onFilmstripPlan);
     es.addEventListener('filmstrip_segment_ready', onFilmstrip);
     es.addEventListener('complete', onComplete);
     es.addEventListener('error', onErr);
 
     return () => {
-      es.removeEventListener('partial', onPartial);
+      es.removeEventListener('source', onSource);
+      es.removeEventListener('roster', onRoster);
+      es.removeEventListener('filmstrip_plan', onFilmstripPlan);
       es.removeEventListener('filmstrip_segment_ready', onFilmstrip);
       es.removeEventListener('complete', onComplete);
       es.removeEventListener('error', onErr);

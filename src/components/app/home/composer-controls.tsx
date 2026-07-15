@@ -25,6 +25,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 // ─── Skill vocabulary (SSOT) ─────────────────────────────────────────────────
 // The skill id union, including the not-yet-shipped skills: "explore" (P11),
@@ -84,21 +85,27 @@ export const SKILLS: SkillMeta[] = [
   { id: "idea",    label: "Ideas",   desc: "Funnel-top idea cards",          command: "/ideas",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "script",  label: "Script",  desc: "Beats + retention markers",      command: "/script",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   { id: "remix",   label: "Remix",   desc: "Decode a winner → your version", command: "/remix",   group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
-  { id: "explore", label: "Explore", desc: "Audience-curated discovery",     command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  { id: "explore", label: "Explore", desc: "Find what's working",            command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Test — judge something real (a video · your own account). ──
   { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
   { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Ask — converse / probe. ──
-  { id: "chat",    label: "The room", desc: "Drop a raw thought",             command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
+  // Label is "Chat", not "The room". The Room is the ambient-audience surface and it has its
+  // own front door; using its name for the CHAT skill meant the app's default state — now
+  // chat — announced itself with a phrase that does not contain the word "chat". The skill
+  // id, the /command and the Room itself are all untouched; only what the creator reads.
+  { id: "chat",    label: "Chat",    desc: "Ask anything, in your context",  command: "/chat",    group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Marketing — hidden until enabled (enabled:false → SkillRows never renders them). ──
   { id: "offer",   label: "Offer Validation", desc: "Test a product, price, positioning",  command: "/offer",   group: "marketing", modes: ["socials"], model: "Flash", enabled: false },
   { id: "ad",      label: "Ad Creative",      desc: "Pre-flight an ad, ROAS-framed",       command: "/ad",      group: "marketing", modes: ["socials"], model: "Max",   enabled: false },
-  // ── General — the three verbs surfaced when a General audience is active. They keep
-  //    their own always-visible "General" group in the menu (not folded into Make/Test/
-  //    Ask); `group: "creator"` is inert here. NO accent — reuse the existing row visual. ──
-  { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
-  { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: true },
-  { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: true },
+  // ── The HORIZONTAL (GSI) verbs — HIDDEN behind HORIZONTAL_ENABLED (owner call 2026-07-13:
+  //    the product commits to the creator vertical for MVP). `enabled:false` is the same lever
+  //    the marketing rows above use: the pill menu, the `/` slash menu, and Enter-to-select all
+  //    filter on `s.enabled`, so a false here closes every composer door at once. The rows,
+  //    routes, runners and blocks all STAY — flip the flag to bring them back. ──
+  { id: "profile",  label: "Profile",  desc: "Build a SIM from a chat or screenshot", command: "/profile",  group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
+  { id: "simulate", label: "Simulate", desc: "Run a draft through your audience",      command: "/simulate", group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
+  { id: "predict",  label: "Predict",  desc: "Analyst-panel scenario read",            command: "/predict",  group: "creator", modes: ["general"], model: "Flash", enabled: HORIZONTAL_ENABLED },
 ];
 
 export const getSkill = (id: ToolId): SkillMeta =>
@@ -278,7 +285,7 @@ function Popover({
       className={cn(
         "fixed z-[60]",
         "min-w-[296px] max-w-[calc(100vw-28px)] max-h-[60vh] overflow-y-auto",
-        "rounded-xl border border-white/[0.06] bg-[#211f1d] p-1.5",
+        "rounded-xl border border-white/[0.06] bg-surface-elevated p-1.5",
         "shadow-[0_12px_40px_rgba(0,0,0,0.45)]",
         "origin-bottom-left animate-[composer-pop_.14s_ease-out]",
         className,
@@ -292,7 +299,7 @@ function Popover({
 
 function GroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 px-2.5 pb-1.5 pt-2.5 text-[10.5px] font-medium uppercase tracking-[0.08em] text-foreground-muted/70">
+    <div className="px-2.5 pb-1 pt-2.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-foreground-muted/60">
       {children}
     </div>
   );
@@ -312,6 +319,18 @@ export function SkillRows({
    *  partition (socials) vs the General group. Defaults to "socials". */
   activeMode?: SkillMode;
 }) {
+  // Scroll the ARMED row into view when the menu opens.
+  //
+  // The list is taller than the popover's max-h-[60vh] cap, so it scrolls — and the armed
+  // skill is often below the fold. Chat is the default and sits in the LAST group, so the
+  // app's own default state opened a menu that appeared to have nothing selected at all.
+  // A picker that hides your current choice is worse than one that never showed it: it
+  // actively tells you the wrong thing. `block: "nearest"` keeps rows already in view still.
+  const activeRowRef = useRef<HTMLButtonElement | null>(null);
+  useLayoutEffect(() => {
+    activeRowRef.current?.scrollIntoView({ block: "nearest" });
+  }, []);
+
   const q = (filter ?? "").trim().toLowerCase();
   const match = (s: SkillMeta) =>
     !q || s.label.toLowerCase().includes(q) || s.command.includes(q);
@@ -333,65 +352,77 @@ export function SkillRows({
   );
   const hasSocials = make.length + test.length + ask.length > 0;
 
-  const Row = (s: SkillMeta) => (
-    <button
-      key={s.id}
-      type="button"
-      role="menuitemradio"
-      aria-checked={s.id === active}
-      aria-disabled={!s.enabled || undefined}
-      disabled={!s.enabled}
-      data-skill={s.id}
-      onClick={() => {
-        if (s.enabled) onSelect(s.id);
-      }}
-      className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
-        s.enabled
-          ? "cursor-pointer hover:bg-[#2b2926]"
-          : "cursor-not-allowed opacity-45",
-      )}
-    >
-      <Ico name={SKILL_ICON[s.id]} className="text-foreground-secondary" />
-      <span className="min-w-0 flex-1">
-        <span
+  const Row = (s: SkillMeta) => {
+    const isActive = s.id === active;
+    return (
+      <button
+        key={s.id}
+        ref={isActive ? activeRowRef : undefined}
+        type="button"
+        role="menuitemradio"
+        aria-checked={isActive}
+        aria-disabled={!s.enabled || undefined}
+        disabled={!s.enabled}
+        data-skill={s.id}
+        onClick={() => {
+          if (s.enabled) onSelect(s.id);
+        }}
+        className={cn(
+          // Full-row surface. The active fill used to be white/[0.06] — one notch above the
+          // hover tint, which meant "selected" and "the row my mouse happens to be over"
+          // looked nearly the same. Selection now reads harder than hover, because a creator
+          // running the wrong skill is a wasted Reading, not a cosmetic slip.
+          "group/row relative flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition-colors duration-100",
+          !s.enabled && "cursor-not-allowed opacity-45",
+          s.enabled && !isActive && "cursor-pointer hover:bg-white/[0.035]",
+          s.enabled &&
+            isActive &&
+            "cursor-pointer bg-white/[0.10] ring-1 ring-inset ring-white/[0.10]",
+        )}
+      >
+        <Ico
+          name={SKILL_ICON[s.id]}
           className={cn(
-            "flex items-center gap-1.5 text-[13.5px] font-medium",
-            s.id === active ? "text-foreground bg-white/[0.06]" : "text-foreground",
+            "shrink-0 transition-colors",
+            isActive
+              ? "text-foreground"
+              : "text-foreground-secondary group-hover/row:text-foreground",
           )}
-        >
-          {s.label}
-          {s.model === "Max" && (
-            <span className="rounded bg-surface-elevated border border-border px-1.5 py-px text-[9px] font-semibold tracking-[0.03em] text-foreground-secondary">
-              MAX
-            </span>
-          )}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-[13.5px] font-medium leading-tight text-foreground">
+            {s.label}
+            {s.model === "Max" && (
+              <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[8.5px] font-semibold uppercase leading-none tracking-[0.06em] text-foreground-muted">
+                MAX
+              </span>
+            )}
+          </span>
+          <span className="mt-[3px] block truncate text-[11.5px] leading-tight text-foreground-muted">
+            {s.desc}
+          </span>
         </span>
-        <span className="mt-0.5 block text-[11.5px] text-foreground-muted">{s.desc}</span>
-      </span>
-      {s.enabled ? (
-        <span className="shrink-0 font-mono text-[11px] text-foreground-muted/55">
-          {s.command}
-        </span>
-      ) : (
-        <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
-          soon
-        </span>
-      )}
-      <Ico
-        name="check"
-        size={16}
-        className={cn("text-foreground-secondary", s.id === active ? "opacity-100" : "opacity-0")}
-      />
-    </button>
-  );
+        {/* ONE right slot, never two. It used to hold the /command AND a permanently
+            reserved (usually empty) check column beside it, so every row paid for a slot
+            only one row ever used. The check now REPLACES the command on the active row:
+            the selected skill is the one wearing a tick, and nothing else has to move. */}
+        {!s.enabled ? (
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-foreground-muted/45">
+            soon
+          </span>
+        ) : isActive ? (
+          <Ico name="check" size={15} className="shrink-0 text-foreground" />
+        ) : (
+          <span className="shrink-0 font-mono text-[11px] tracking-tight text-foreground-muted/40 transition-colors group-hover/row:text-foreground-muted/70">
+            {s.command}
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
-      <div className="flex items-center gap-1.5 px-2.5 pb-1 pt-1.5 text-[11px] text-foreground-muted/45">
-        <Ico name="search" size={14} />
-        type to filter · ↵ to select
-      </div>
       {/* Make / Test / Ask — the three intent verbs (Socials mode). Section headers
           alone separate them (no dividers); each row is a skill under that verb. */}
       {make.length > 0 && <GroupLabel>Make</GroupLabel>}
@@ -405,7 +436,7 @@ export function SkillRows({
           (no Socials skills) they are the only group. */}
       {general.length > 0 && (
         <>
-          {hasSocials && <div className="mx-1 my-1.5 h-px bg-white/[0.06]" />}
+          {hasSocials && <div className="mx-1 my-1.5 h-px bg-white/[0.05]" />}
           <GroupLabel>General</GroupLabel>
         </>
       )}
@@ -540,10 +571,13 @@ export function ComposerControls({
 
   return (
     <div ref={rootRef} className={cn("flex items-center gap-1.5", className)}>
-      {/* Verb chip (v6) — Make / Test / Ask over the same SkillRows menu. The composer's
-          ONE accented control: a terracotta ✦ spark + the verb + a chevron. Opens the skill
-          popover, now grouped under the same three verbs (Phase 3). aria-label keeps
-          "Skill: …" so the picker stays discoverable to assistive tech + the tests reach it. */}
+      {/* SKILL chip — it names the SKILL, and it did not always.
+          It used to render VERB_BY_TOOL[activeTool], i.e. the GROUP: pick "Script" and the
+          chip said "Make". Pick "Explore" and it said "Make". So the only place the armed
+          skill was actually stated was a checkmark hidden inside a closed popover, and the
+          creator could sit there with the wrong skill armed and no way to notice. The chip
+          is the one control that is always on screen — it has to tell the truth.
+          The skill's own icon rides with it, so it echoes the row you picked. */}
       <div className="relative">
         <button
           ref={skillRef}
@@ -559,8 +593,8 @@ export function ComposerControls({
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20 pointer-coarse:h-11",
           )}
         >
-          <Ico name="spark" size={15} className="text-foreground-muted" />
-          <span>{VERB_BY_TOOL[activeTool]}</span>
+          <Ico name={SKILL_ICON[activeTool]} size={15} className="text-foreground-secondary" />
+          <span>{skill.label}</span>
           <Ico name="chev" size={13} className="text-foreground-muted" />
         </button>
         <Popover open={pop === "skill"} anchorRef={skillRef} menuRef={menuRef} labelledBy="composer-skill-pill">

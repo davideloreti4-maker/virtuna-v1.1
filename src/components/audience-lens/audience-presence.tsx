@@ -54,6 +54,8 @@ import {
   buildFieldDots,
   DEFAULT_ROSTER_DOTS,
 } from '@/components/brand/constellation';
+import { stripWrappingQuotes } from '@/lib/utils';
+import { HORIZONTAL_ENABLED } from '@/lib/flags/horizontal';
 
 // ── Copy ──────────────────────────────────────────────────────────────────────
 const TITLE = 'Your audience';
@@ -163,9 +165,11 @@ export function AudiencePresence({
   reducedMotion = false,
   open,
   onOpenChange,
-  // `asks`/`onReask` stay in the props contract (the composer wires them), but the v6 Bloom
-  // reflects the CURRENT focus rather than a stacked ask history — the room re-focuses on a
-  // typed ask via the composer's `focusByThought`, so no in-room history list is rendered.
+  // Ask history (A-lite): recent asks render as quiet re-askable rows in the IDLE panel and
+  // under a typed-thought read — the two states where the ask conversation actually lives.
+  // Card-focused states stay clean (they carry the stepper + ranked chrome already).
+  asks = [],
+  onReask,
   asking = false,
   docked = false,
   onBuildAudience,
@@ -370,7 +374,6 @@ export function AudiencePresence({
           name,
           trait,
           canMeet,
-          initial: (name.trim()[0] ?? '·').toUpperCase(),
         };
       });
     }
@@ -382,10 +385,56 @@ export function AudiencePresence({
         name,
         trait: ARCHETYPE_TRAIT[a],
         canMeet: true,
-        initial: name[0]!.toUpperCase(),
       };
     });
   }, [personas]);
+
+  // Ask history (A-lite): the re-askable trail — every non-errored ask except the one currently
+  // on screen as the focus (matched by thought text; a focus carries no ask id). Newest first,
+  // capped at 3. Rendered in the idle panel + under a typed-thought read; never on a card focus.
+  const earlierRows = useMemo(
+    () =>
+      asks
+        .filter((a) => !a.error && a.thought !== focus?.conceptText)
+        .slice(-3)
+        .reverse(),
+    [asks, focus?.conceptText],
+  );
+  const earlierAsks =
+    !isSurface && onReask && earlierRows.length > 0 ? (
+      <div className="w-full max-w-[540px]">
+        <p className="px-2 pb-1 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+          Earlier asks
+        </p>
+        <ul className="flex flex-col">
+          {earlierRows.map((a) => {
+            const p = parseStop(a.fraction);
+            return (
+              <li key={a.id}>
+                <button
+                  type="button"
+                  onClick={() => onReask(a)}
+                  aria-label={`Re-open the room on “${a.thought}”`}
+                  className="flex w-full items-baseline gap-3 rounded-[8px] px-2 py-2 text-left transition-colors hover:bg-white/[0.04]"
+                >
+                  <span className="min-w-0 flex-1 truncate text-[13px] text-[var(--color-foreground-secondary)]">
+                    &ldquo;{stripWrappingQuotes(a.thought)}&rdquo;
+                  </span>
+                  {p && (
+                    <span className="shrink-0 text-[12px] tabular-nums text-[var(--color-foreground-muted)]">
+                      {p.stop}/{p.total}
+                    </span>
+                  )}
+                  <span aria-hidden className="shrink-0 text-[12px] text-[var(--color-foreground-muted)]">
+                    ⤺
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    ) : null;
 
   // Esc closes the meet drawer first, then the switcher, then the panel — innermost out.
   useEffect(() => {
@@ -467,10 +516,14 @@ export function AudiencePresence({
     // mode (pre-backfill) still surface in the switcher rather than vanishing.
     ...yours.filter((a) => a.mode !== 'general'),
   ];
-  const generalRows = [
-    ...generalTemplates,
-    ...yours.filter((a) => a.mode === 'general'),
-  ];
+  // Horizontal (mode:'general') audiences are HIDDEN while HORIZONTAL_ENABLED is off — the
+  // verbs that run on them (Profile/Simulate/Predict) are gone, so offering the audience
+  // would be a dead end. Rows are not deleted, just not listed; flip the flag to restore.
+  // NOTE: GENERAL_AUDIENCE is mode:'socials' and stays in `socialsRows` — see THE TRAP in
+  // lib/flags/horizontal.ts. Do not "simplify" this to key on is_general.
+  const generalRows = HORIZONTAL_ENABLED
+    ? [...generalTemplates, ...yours.filter((a) => a.mode === 'general')]
+    : [];
 
   // One row renderer reused by both sections — existing markup verbatim + a neutral,
   // right-aligned trust badge (resolveTier → Directional/Validated, NO accent).
@@ -553,19 +606,26 @@ export function AudiencePresence({
           )}
 
           <div className="mx-1 my-1.5 h-px bg-[var(--color-border)]" />
-          {/* + Build an audience — opens the Build chooser (plain glyph, NO accent). */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onBuildAudience?.();
-              setSwitcherOpen(false);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
-          >
-            <Plus className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="flex-1">{BUILD_LABEL}</span>
-          </button>
+          {/* + Build an audience — opens the BuildChooser, whose three paths ALL mint a
+              mode:'general' SIM (description → /audience/new?mode=general · evidence →
+              the Profile runner · template → GENERAL_TEMPLATES). It is the horizontal
+              audience factory, so it goes with the horizontal. Creator-audience creation
+              is unaffected — the "/audience" link directly below still reaches
+              /audience/new, which defaults to mode:'socials'. */}
+          {HORIZONTAL_ENABLED && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBuildAudience?.();
+                setSwitcherOpen(false);
+              }}
+              className="flex w-full items-center gap-2.5 rounded-[8px] px-2 py-2 text-left text-[13px] text-[var(--color-foreground)] transition-colors hover:bg-[var(--color-hover)]"
+            >
+              <Plus className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="flex-1">{BUILD_LABEL}</span>
+            </button>
+          )}
           <Link
             href="/audience"
             onClick={() => setSwitcherOpen(false)}
@@ -594,8 +654,8 @@ export function AudiencePresence({
           setSwitcherOpen((v) => !v);
         }}
         className={
-          "flex min-w-0 items-center gap-2 rounded-[10px] border border-white/[0.06] bg-surface py-1 pl-1.5 pr-2 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 " +
-          (switcherOpen ? "border-white/[0.1]" : "hover:border-white/[0.1]")
+          "flex min-w-0 items-center gap-2 rounded-[8px] py-1 pl-1 pr-1.5 transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 " +
+          (switcherOpen ? "bg-white/[0.05]" : "hover:bg-white/[0.05]")
         }
       >
         <ConstellationMark width={40} reacting={reacting} />
@@ -608,6 +668,17 @@ export function AudiencePresence({
             />
           )}
         </span>
+        {/* "General" is a REAL audience — the default socials baseline — so the creator is
+            never running on nothing, and this is not an error state. But it is the
+            UNCALIBRATED one, and it is named so innocuously that a creator can spend Readings
+            against a generic crowd for a week while believing they are testing against their
+            own. The tag is the difference between a default and an accident. It is a quiet
+            muted tag, not a warning: correct, just not yours yet. */}
+        {isGeneral && (
+          <span className="shrink-0 rounded-[4px] border border-white/[0.09] bg-white/[0.03] px-[5px] py-px text-[9px] font-semibold uppercase leading-[1.5] tracking-[0.06em] text-[var(--color-foreground-muted)]">
+            not calibrated
+          </span>
+        )}
         <ChevronDown
           className={
             "h-3.5 w-3.5 shrink-0 transition-transform text-[var(--color-foreground-muted)] " +
@@ -631,7 +702,7 @@ export function AudiencePresence({
           role="dialog"
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex h-[70vh] max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+            'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
             (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
             (reducedMotion
               ? ''
@@ -675,25 +746,42 @@ export function AudiencePresence({
           )}
 
           {focus ? (
-            <div className="min-h-0 flex-1">
-              <AmbientRoom
-                flatPersonas={flatPersonas}
-                conceptText={focus.conceptText}
-                fraction={focus.fraction}
-                reducedMotion={reducedMotion}
-                personaNameOverrides={personaNameOverrides}
-                focusId={focus.id}
-                siblings={focusList}
-                onStep={onStep}
-                kindLabel={kindLabel}
-                canRewrite={effectiveCanRewrite}
-                onRewrite={onRewrite}
-                rewriteNonce={rewriteNonce}
-                initialCompareOpen={!drillIntoFocus}
-              />
+            <div className="flex min-h-0 flex-1 flex-col">
+              {/* flex (not block) so the Room root sizes by flex-stretch — with the panel now
+                  content-hugged (auto height up to the clamp) a percentage h-full chain no
+                  longer resolves; overflow-hidden keeps a clamped Room from painting over the
+                  ask-trail footer below. */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <AmbientRoom
+                  flatPersonas={flatPersonas}
+                  conceptText={focus.conceptText}
+                  fraction={focus.fraction}
+                  reducedMotion={reducedMotion}
+                  personaNameOverrides={personaNameOverrides}
+                  focusId={focus.id}
+                  siblings={focusList}
+                  onStep={onStep}
+                  kindLabel={kindLabel}
+                  canRewrite={effectiveCanRewrite}
+                  onRewrite={onRewrite}
+                  rewriteNonce={rewriteNonce}
+                  initialCompareOpen={!drillIntoFocus}
+                />
+              </div>
+              {/* The ask trail under a typed-thought read (no card id) — the conversation state.
+                  A card focus keeps its chrome (stepper + ranked) and stays history-free. */}
+              {focus.id == null && earlierAsks ? (
+                <div className="flex shrink-0 justify-center border-t border-[var(--color-border)] px-5 pb-4 pt-3">
+                  {earlierAsks}
+                </div>
+              ) : null}
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-6 overflow-y-auto px-6 py-10">
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-8">
+              {/* my-auto (not justify-center) centers short content AND keeps the top reachable
+                  when the centered-home clamp forces a scroll — justify-center on a scroll
+                  container cuts the overflowing top off from scrolling entirely. */}
+              <div className="my-auto flex w-full flex-col items-center gap-6">
               {/* A small, living constellation crown — the room breathing; the named cast below
                    grounds those same dots as real people. */}
               <div className="flex flex-col items-center gap-3 text-center">
@@ -725,16 +813,16 @@ export function AudiencePresence({
                    persona chat (meet-mode PersonaChatDrawer: no concept yet, they speak from their
                    own tastes — "say hi →"). Non-registry rows stay plain: no dead affordance. */}
               {!isSurface && castMembers.length > 0 && (
-                <ul className="grid w-full max-w-[540px] grid-cols-1 gap-1 sm:grid-cols-2">
+                <ul className="grid w-full max-w-[540px] grid-cols-1 gap-x-4 sm:grid-cols-2">
                   {castMembers.map((m) => {
                     const body = (
                       <>
+                        {/* A person = a dot (the constellation's own language) — quiet cream
+                            at rest; verdict tones belong to the reacting Room, not the intro. */}
                         <span
-                          className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--color-border-hover)] bg-[var(--color-surface-elevated)] text-[12px] font-semibold text-[var(--color-foreground-secondary)]"
                           aria-hidden
-                        >
-                          {m.initial}
-                        </span>
+                          className="mt-[6px] h-[7px] w-[7px] shrink-0 rounded-full bg-[var(--color-foreground-muted)] opacity-70"
+                        />
                         <span className="flex min-w-0 flex-col text-left">
                           <span className="truncate text-[13px] font-medium leading-tight text-[var(--color-foreground)]">
                             {m.name}
@@ -752,21 +840,24 @@ export function AudiencePresence({
                             type="button"
                             aria-label={`Meet ${m.name}`}
                             onClick={() => setMeetTarget({ archetype: m.archetype, name: m.name })}
-                            className="flex w-full items-center gap-3 rounded-[8px] px-2.5 py-2 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
+                            className="flex w-full items-start gap-2.5 rounded-[8px] px-2 py-1.5 text-left transition-colors hover:bg-[var(--color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--color-border-hover)]"
                           >
                             {body}
-                            <span className="ml-auto shrink-0 pl-2 text-[12px] leading-tight text-[var(--color-foreground-muted)]">
+                            <span className="ml-auto shrink-0 pl-2 pt-px text-[12px] leading-tight text-[var(--color-foreground-muted)]">
                               say hi →
                             </span>
                           </button>
                         ) : (
-                          <div className="flex items-center gap-3 px-2.5 py-2">{body}</div>
+                          <div className="flex items-start gap-2.5 px-2 py-1.5">{body}</div>
                         )}
                       </li>
                     );
                   })}
                 </ul>
               )}
+
+              {earlierAsks}
+              </div>
             </div>
           )}
         </div>
@@ -807,7 +898,7 @@ export function AudiencePresence({
                   moment a different card is on screen. Muted, truncates with the band. */}
               {!reacting && stopRead && focus?.conceptText ? (
                 <span className="text-[var(--color-foreground-muted)]">
-                  {' · '}&ldquo;{focus.conceptText}&rdquo;
+                  {' · '}&ldquo;{stripWrappingQuotes(focus.conceptText)}&rdquo;
                 </span>
               ) : null}
             </span>

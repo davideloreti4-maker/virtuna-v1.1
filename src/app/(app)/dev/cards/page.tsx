@@ -24,8 +24,20 @@ import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
+import { useState } from "react";
 import { Reading } from "@/components/reading/reading";
-import { makeReadingResult } from "@/components/reading/__tests__/fixtures/reading-fixture";
+import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
+import {
+  makeReadingResult,
+  makeUnavailableResult,
+  makePartialResult,
+  makeApolloNullResult,
+  makeEmptyHeatmapResult,
+  makeEmptyPersonasResult,
+  makeSilentPersonasResult,
+  makeEmptySegmentsResult,
+  makeNoBehavioralResult,
+} from "@/components/reading/__tests__/fixtures/reading-fixture";
 import {
   IDEA_BLOCKS,
   HOOK_BLOCKS,
@@ -159,9 +171,6 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         isStreaming={false}
         error={null}
         platform="tiktok"
-        audience={null}
-        hasTrackedAccounts
-        onQuickAction={noop}
         userTurn={USER_TURNS.explore}
         audienceLabel={AUDIENCE}
       />
@@ -184,7 +193,173 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
 ];
 
-const READING_RESULT = makeReadingResult();
+/**
+ * The Reading's STATES — every one of them, not just the happy path (2026-07-14).
+ *
+ * The 07-14 audit found /analyze had drifted badly (seven label stacks, a retired accent still
+ * being painted) for one reason: it is the only surface with no cheap way to LOOK at it. It was
+ * previewable here, but ONLY complete-and-healthy. Its degraded states were reachable solely by
+ * getting a real, paid analysis to fail in exactly the right way — so `makeUnavailableResult`,
+ * `makePartialResult`, `makeApolloNullResult`, the three empty-panel cases and
+ * `makeNoBehavioralResult` had sat in the repo as fixtures that **no human had ever seen render**.
+ *
+ * A `/dev/reading` route was considered and rejected: <Reading> already mounts here through the
+ * real component, so a second route would duplicate the surface and give it a second place to
+ * drift. The gap was never the route — it was the states. This is the whole value at a fraction
+ * of the cost.
+ *
+ * `loading` is NOT a fixture: `overrideData` hard-sets isLoading=false (it is a preview seam, not
+ * a fetch mock), so the skeleton is unreachable through it and <ReadingSkeleton> is mounted
+ * directly instead. It is first in the list on purpose — it is the state every user sees on every
+ * single Read, and it has had the least scrutiny of any of them.
+ */
+/**
+ * Stand-in keyframes for the `loading-frames` preview. In a live run these are signed URLs to
+ * real JPEGs cut from the user's video; here they are app screenshots that already ship in
+ * /public, so the strip renders REAL images (correct crop, aspect, load behaviour) with no
+ * network fixture. Five of eight — so the preview shows a strip mid-fill, not a full one.
+ */
+/** The user's calibrated reactors — the cast, known before the run starts. */
+const PREVIEW_ROSTER = [
+  { archetype: 'skeptic', label: 'Maya — the skeptic' },
+  { archetype: 'scanner', label: 'Sam — the scanner' },
+  { archetype: 'collector', label: 'Priya — the collector' },
+  { archetype: 'connector', label: 'Leo — the connector' },
+  { archetype: 'lurker', label: 'Dana — the lurker' },
+  { archetype: 'converter', label: 'Alex — the converter' },
+];
+
+/** The scrape receipt, as it arrives seconds into a real tiktok_url run. */
+const PREVIEW_SOURCE = {
+  cover_url: '/images/landing/hero-read.png',
+  handle: 'zachking',
+  views: 12_400_000,
+  video_url: 'https://www.tiktok.com/@zachking/video/1234567890123',
+};
+
+const PREVIEW_FRAMES = [
+  { idx: 0, uri: '/images/landing/hero-read.png' },
+  { idx: 1, uri: '/images/landing/feature-audience.png' },
+  { idx: 2, uri: '/images/landing/feature-drivers.png' },
+  { idx: 3, uri: '/images/landing/hero-read.png' },
+  { idx: 4, uri: '/images/landing/feature-audience.png' },
+];
+
+/** All 8 frames in — the footage has been fully read. */
+const PREVIEW_FRAMES_FULL = [
+  ...PREVIEW_FRAMES,
+  { idx: 5, uri: '/images/landing/feature-drivers.png' },
+  { idx: 6, uri: '/images/landing/hero-read.png' },
+  { idx: 7, uri: '/images/landing/feature-audience.png' },
+];
+
+const READING_STATES: { id: string; label: string; note: string; node: React.ReactNode }[] = [
+  {
+    id: 'loading',
+    label: 'Loading · waiting',
+    note: 'The in-flight skeleton in its FIRST seconds — before the extractor has cut a single frame. Mounted directly: overrideData forces isLoading=false, so this state is unreachable via the fixture seam.',
+    node: <ReadingSkeleton id="preview" />,
+  },
+  {
+    id: 'loading-source',
+    label: 'Loading · source landed',
+    note: 'Seconds into the run: the scrape has resolved, so the wait can show the post it went and fetched (cover + author + views) long before any frame is cut. In video_upload mode nothing is scraped, so no receipt renders — we never dress an absence up as a source.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{ source: PREVIEW_SOURCE }}
+      />
+    ),
+  },
+  {
+    id: 'loading-frames',
+    label: 'Loading · frames landing',
+    note: 'The SAME skeleton mid-run: real keyframes of the user\'s own video appearing as the engine reads them (5 of 8 here). This is what the 2-minute wait actually looks like once the footage starts landing — and it was invisible to everyone until this preview existed, because it only occurs during a live run.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{
+          source: PREVIEW_SOURCE,
+          roster: PREVIEW_ROSTER,
+          frameTotal: 8,
+          frames: PREVIEW_FRAMES,
+          keyframeCount: 5,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'loading-audience',
+    label: 'Loading · audience watching',
+    note: 'The back half of the wait: the footage has been read (all 8 frames in) and the audience sim is running — the ~60s stretch that used to be completely empty. Their REACTIONS are what the Read produces and are never guessed here; only the cast is shown.',
+    node: (
+      <ReadingSkeleton
+        id="preview"
+        preview={{
+          source: PREVIEW_SOURCE,
+          roster: PREVIEW_ROSTER,
+          frameTotal: 8,
+          frames: PREVIEW_FRAMES_FULL,
+          keyframeCount: 8,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'complete',
+    label: 'Complete',
+    note: 'The healthy Read — score hero + drivers + audience + Fix First + Deeper read + follow-up chat. Until 2026-07-14 this was the ONLY state anyone could see.',
+    node: <Reading overrideData={makeReadingResult()} />,
+  },
+  {
+    id: 'partial',
+    label: 'Partial',
+    note: 'Some panels resolved, others did not. Watch for panels that render an ABSENCE as though it were a finding.',
+    node: <Reading overrideData={makePartialResult()} />,
+  },
+  {
+    id: 'apollo-null',
+    label: 'Apollo null',
+    note: 'The interpreter returned nothing. The engine numbers survive; the prose does not.',
+    node: <Reading overrideData={makeApolloNullResult()} />,
+  },
+  {
+    id: 'empty-personas',
+    label: 'Empty personas',
+    note: 'NO personas at all — the roster degrades to PanelEmpty. (This state used to claim it produced the "no words" line. It cannot: with zero personas there are no rows, so there are no quote slots. See "Silent personas" for that.)',
+    node: <Reading overrideData={makeEmptyPersonasResult()} />,
+  },
+  {
+    id: 'silent-personas',
+    label: 'Silent personas',
+    note: 'The room is FULL and nobody said a word — every persona present, not one verbatim. The ONLY state that renders the "No words recorded." line. It is stated as an absence (dashed, muted, NOT italic), because italic is this app\'s verbatim idiom and an absence must never wear a quote\'s clothing.',
+    node: <Reading overrideData={makeSilentPersonasResult()} />,
+  },
+  {
+    id: 'empty-heatmap',
+    label: 'Empty heatmap',
+    note: 'No retention curve — the scrubber has nothing to draw.',
+    node: <Reading overrideData={makeEmptyHeatmapResult()} />,
+  },
+  {
+    id: 'empty-segments',
+    label: 'Empty segments',
+    note: 'No audience segments resolved.',
+    node: <Reading overrideData={makeEmptySegmentsResult()} />,
+  },
+  {
+    id: 'no-behavioral',
+    label: 'No behavioral',
+    note: 'Behavioral signals absent — the drivers lose their evidence.',
+    node: <Reading overrideData={makeNoBehavioralResult()} />,
+  },
+  {
+    id: 'unavailable',
+    label: 'Unavailable',
+    note: 'The Read could not be produced at all. The terminal failure a user actually hits.',
+    node: <Reading overrideData={makeUnavailableResult()} />,
+  },
+];
 
 // The GROUNDED brain's dev stand-in: a real video + a real-shaped retention curve (holds through
 // the hook, breaks at ~45%, bleeds out). In production both come from the Read — the audience's
@@ -231,6 +406,9 @@ const ROOM_FOCUS = {
 };
 
 export default function DevCardsPage() {
+  const [readingState, setReadingState] = useState('complete');
+  const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
+
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
@@ -286,16 +464,45 @@ export default function DevCardsPage() {
             <SectionHead
               label="Test / Reading"
               code="reading.tsx"
-              note="Real-video Read: score hero + drivers + audience + Fix First + Deeper read + follow-up chat. Rendered via the real <Reading> with a fixture result (overrideData seam)."
+              note={active.note}
             />
+
+            {/* State switcher — the flagship has NINE states and only one of them was ever
+                visible. Every option below mounts the REAL component, so this cannot drift from
+                production the way a static mock would. */}
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {READING_STATES.map((s) => {
+                const on = s.id === readingState;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setReadingState(s.id)}
+                    aria-pressed={on}
+                    className={`rounded-full border px-2.5 py-1 text-[11px] transition-colors ${
+                      on
+                        ? 'border-white/[0.10] bg-surface-elevated text-foreground'
+                        : 'border-white/[0.06] text-foreground-muted hover:border-white/[0.10] hover:text-foreground-secondary'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* `transform` makes this the containing block for Reading's position:fixed
                 ReadingChat composer, so it docks inside the section instead of floating
-                over the whole gallery. overflow-hidden clips it to the card. */}
+                over the whole gallery. overflow-hidden clips it to the card.
+                `key` forces a real remount per state — Reading holds reveal/cascade refs
+                (sawSkeleton) that would otherwise carry across a state switch and show you a
+                transition that no real user ever gets. */}
             <div
+              key={active.id}
               className="relative overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-background py-2"
               style={{ transform: "translateZ(0)" }}
             >
-              <Reading overrideData={READING_RESULT} />
+              {active.node}
             </div>
           </section>
         </div>

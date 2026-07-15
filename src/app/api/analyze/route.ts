@@ -5,12 +5,15 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
+import { getReadingQuotaVerdict } from "@/lib/billing/quota";
+import { recordReading } from "@/lib/billing/record-reading";
 import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
 // skills use) so the Read fold simulates the REAL audience, not generic archetypes.
 import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import type { Audience } from "@/lib/audience/audience-types";
 // stage11-counterfactuals import removed (Plan 02, R9): deferred re-run block deleted below.
 import { AnalysisInputSchema } from "@/lib/engine/types";
@@ -388,6 +391,42 @@ export async function POST(request: Request) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // BILLING — a Reading is the metered unit (Creator 50/mo · Pro 150/mo · Studio
+    // unlimited), so the meter is checked HERE, before any engine spend. Inert until
+    // BILLING_ENFORCE_QUOTA=true: the verdict is computed and logged either way, so the
+    // real usage can be watched before the gate ever closes on a customer. Quota failures
+    // fail OPEN (see lib/billing/quota.ts) — a flaky count must not cost a paid Reading.
+    const quota = await getReadingQuotaVerdict(supabase, user.id);
+    if (quota.enforced && !quota.allowed) {
+      log.info("quota exceeded", {
+        tier: quota.tier,
+        used: quota.used,
+        limit: quota.limit,
+        inTrial: quota.inTrial,
+      });
+
+      // Three different dead-ends, three different things to say. A trialling customer has
+      // NOT hit their plan's limit — they've spent the trial pool, and the honest next step
+      // is "your plan starts on day 4", not "upgrade".
+      const message = quota.inTrial
+        ? `Your $1 trial includes ${quota.limit} Readings. Your full plan allowance starts when the trial converts.`
+        : quota.limit === 0
+          ? "Start a plan to run a Reading."
+          : `You've used all ${quota.limit} Readings on your plan this month.`;
+
+      return Response.json(
+        {
+          error: "reading_quota_exceeded",
+          message,
+          tier: quota.tier,
+          used: quota.used,
+          limit: quota.limit,
+          inTrial: quota.inTrial,
+        },
+        { status: 402 } // Payment Required — the client turns this into the upgrade prompt.
+      );
+    }
+
     // D-19 (Phase 13 Plan 03): Fail fast before buffer load for oversized requests.
     // Defense-in-depth: even if header is missing/spoofed, pipeline.ts:VIDEO_MAX_SIZE_BYTES
     // check catches it after buffer load. T-13-14 mitigation.
@@ -518,6 +557,36 @@ export async function POST(request: Request) {
         },
         { status: 429 }
       );
+    }
+
+    // -------------------------------------------------------
+    // MODE-01 — the socials-skill guard. Runs AFTER the quota + daily-limit gates (so a
+    // request that is about to be 429'd never pays for these two reads) and BEFORE any
+    // engine spend.
+    //
+    // `test` (a real video) scores against a TikTok FYP; a `mode: 'general'` audience is a
+    // panel, not a crowd on a feed. The audience is resolved again far below (R1′b) to steer
+    // the fold — but that happens AFTER the pipeline has run and persisted, far too late to
+    // refuse. So resolve the pin here and reject up front.
+    //
+    // Fails OPEN (a resolve error → fall through → General): a flaky lookup must never cost
+    // a customer a paid Reading.
+    // -------------------------------------------------------
+    try {
+      const pinnedThread = await createOpenThreadLazy(user.id);
+      const pinnedId =
+        (pinnedThread as typeof pinnedThread & { active_audience_id?: string | null })
+          .active_audience_id ?? null;
+      if (pinnedId) {
+        const pinned = await getAudience(supabase, pinnedId);
+        const refusal = requireSocialsAudience(pinned, "test");
+        if (refusal) {
+          cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
+          return refusal;
+        }
+      }
+    } catch {
+      // Non-fatal — fall through and run against General (D-04).
     }
 
     // -------------------------------------------------------
@@ -812,6 +881,14 @@ export async function POST(request: Request) {
         // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
         await persistApolloToVariants(service, jsonInsertId, user.id, finalResult, log);
         // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
+
+        // BILL THE READING — inside the success branch, on purpose. This is the moment the
+        // Reading exists; a pipeline that had failed never reaches here, so it never charges.
+        await recordReading(
+          service,
+          { userId: user.id, analysisId: jsonInsertId, mode: validated.mode, tier: quota.tier },
+          log
+        );
       }
 
       // Track usage
@@ -916,6 +993,16 @@ export async function POST(request: Request) {
               userId: user.id,
               log,
             });
+
+            // A decode is engine spend and has always billed like any other Reading (it writes
+            // an analysis_results row, which is what the old meter counted) — so it keeps
+            // billing, and the ledger does not quietly change what a customer is charged for.
+            // Only on success: a throw below means nothing was delivered.
+            await recordReading(
+              service,
+              { userId: user.id, analysisId, mode: "remix", tier: quota.tier },
+              log
+            );
           } catch (err) {
             const message = err instanceof Error ? err.message : "Decode failed";
             log.error("decode_stream_error", { error: message, analysisId });
@@ -1053,6 +1140,16 @@ export async function POST(request: Request) {
             // Non-fatal: failure only blanks Apollo frame, never the row itself (T-03-09, T-03-10).
             await persistApolloToVariants(service, analysisId, user.id, finalResult, log);
             // stage11 deferred backfill removed (Plan 02, R9); counterfactuals stays null.
+
+            // BILL THE READING — here, and not at the placeholder INSERT above. The placeholder
+            // is written BEFORE the engine runs (Pitfall #6) purely so the reconnect stream has
+            // a row to read; a run that dies mid-pipeline leaves it behind. Billing on the
+            // placeholder is what made a failed engine run cost the customer a Reading.
+            await recordReading(
+              service,
+              { userId: user.id, analysisId, mode: validated.mode, tier: quota.tier },
+              log
+            );
           }
 
           // Track usage (increments AFTER successful analysis)

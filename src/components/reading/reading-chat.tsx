@@ -1,5 +1,6 @@
 'use client';
 
+import { READING_LABEL } from './reading-section';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -126,7 +127,7 @@ export function ReadingChat({ analysisId }: ReadingChatProps) {
       {/* section eyebrow — same quiet-uppercase spec as ReadingSection's label
           (10px/0.14em); the hairline is dropped so every section label on the
           surface carries one grammar. */}
-      <p className="ml-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+      <p className={`ml-0.5 ${READING_LABEL}`}>
         Ask anything
       </p>
 
@@ -256,34 +257,17 @@ function ChatBubble({
   const content = stripChatArtifacts(message.content);
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+      <span className={READING_LABEL}>
         Maven
       </span>
-      <div className="reading-chat-prose max-w-[68ch] text-[15px] leading-relaxed text-foreground-secondary">
-        <ReactMarkdown
-          rehypePlugins={[rehypeSanitize]}
-          components={{
-            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-            strong: ({ children }) => (
-              <strong className="font-semibold text-foreground">{children}</strong>
-            ),
-            ul: ({ children }) => <ul className="mb-2 flex list-none flex-col gap-1 pl-0">{children}</ul>,
-            ol: ({ children }) => <ol className="mb-2 flex list-none flex-col gap-1 pl-0">{children}</ol>,
-            li: ({ children }) => (
-              <li className="flex gap-2">
-                <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground-muted/70" />
-                <span className="min-w-0">{children}</span>
-              </li>
-            ),
-            code: ({ children }) => (
-              <code className="rounded bg-white/[0.06] px-1 py-0.5 text-[13px] text-foreground">
-                {children}
-              </code>
-            ),
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+      {/* `.md` (globals.css) owns the markdown structure. It replaces both the dead
+          `reading-chat-prose` class (never defined anywhere) and the hand-rolled element
+          overrides that used to live here — those forced EVERY list item to a dot span,
+          so an ordered list rendered as identical bullets and "1. 2. 3." lost its numbers
+          on the surface that most needs to enumerate steps. The host keeps the type scale
+          (15px / secondary / 68ch); the layer restores what Preflight strips. */}
+      <div className="md max-w-[68ch] text-[15px] leading-relaxed text-foreground-secondary">
+        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{content}</ReactMarkdown>
         {streaming && (
           <span className="ml-0.5 inline-block h-3.5 w-0.5 animate-pulse rounded-full bg-foreground-muted/60 align-middle" aria-hidden />
         )}

@@ -357,6 +357,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   //    `groundingExamples` maps each idea's sourceIndex back to its outlier (the receipt).
   const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
+    skill: "ideas", // → the belief↔reality slice: the tension that made the video travel
     platform,
     queryCandidates: [ask, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,
@@ -514,6 +515,11 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas: candidate.personas, // S3′: per-card reaction for the ambient modal (PR-2)
         ...(proof ? { proof } : {}),  // §11f — only when a real source was attributed
+        // Did the RUN retrieve anything, regardless of what THIS card cited? Set from the
+        // examples, NOT from `proof` — a grounded run where the model attributed nothing is
+        // still grounded, and that is exactly the case the card's note explains. Omitted on
+        // ungrounded runs so the pre-grounding block shape stays byte-identical.
+        ...(groundingExamples.length > 0 ? { grounded: true } : {}),
       },
     };
 

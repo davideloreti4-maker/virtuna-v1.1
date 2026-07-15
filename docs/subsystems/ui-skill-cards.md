@@ -1,5 +1,11 @@
 # UI Surface: Skill output cards — refined design spec
 
+> **Sibling doc — read it if you are touching `/home`:** `docs/subsystems/ui-home-composer.md`
+> covers THE STARTER CONTRACT (the constant six), the skill chip, the placeholder-as-instruction
+> rule, and the audience "NOT CALIBRATED" tag — i.e. everything the creator sees *before* a
+> result card exists. Same root cause as the drift this doc fixes (surfaces built alone with
+> no contract), same cure.
+
 > Lane: `lane/polish`. Component owner: the cards live in `src/components/thread/**` (GSI HOLD list),
 > BUT the existing skill cards (hook/idea/script/remix/Read/account/etc.) are **NOT** what GSI rebuilds —
 > GSI *adds* new Profile/Simulate/Predict card types. Owner call (2026-06-26): refining the existing
@@ -19,6 +25,146 @@ flagship **video Read** (`/analyze`). The thread block types they render (SSOT `
 `hook-card`, `idea-card`, `script-card`, `remix-card`, `multi-audience-read` (in-thread Read),
 `account-read`, `outlier-grid` (Discover/Explore), `band` + `personas` (test output), `persona-chat-turn`,
 `markdown`. The video Read is a separate renderer system (`src/components/reading/**`), NOT a thread block.
+
+## 0.5 THE CARD CONTRACT (canon — 2026-07-13, `lane/explore-a`)
+
+> **Read this before touching any card.** §1 below is the design *language* (tone, color, matte).
+> This is the *structure* every card must satisfy. It is not new taste — it is the hook card
+> (`hook-card-block.tsx`) written down, because that card is the bar and the others drifted from it.
+> Cards drifted precisely because each was built alone with nothing to conform to. Conform to this.
+
+**The spine, in order.** A card may omit a row it has no data for; it may not reorder them.
+
+1. **Eyebrow** — quiet uppercase kicker + a 6px dot, left. One meta item right (rank, or the trust
+   tier). Provenance does NOT go here.
+2. **Hero** — the deliverable, `text-[17px] font-semibold`. The thing the user came for reads FIRST.
+   If your card's payoff is a sentence, that sentence is the hero — not a label, not a name, not a
+   score. (Profile Read had its payoff sitting third at body weight. That was the whole bug.)
+3. **Receipt** (`<ProofReceipt>`) — when the output derives from a real video. See §0.5b.
+4. **Why-teaser** — one clamped line of the mechanism.
+5. **Proof unit** (`<ProofUnit>`) — band + fraction + lead quote + the visible "See the room →".
+6. **ONE disclosure** — `<CaretToggle>` + "Why & details", with the model tag demoted onto that
+   line (`· SIM-1 Flash`). Provenance is a footnote, never a headline. If you find yourself adding a
+   second labelled section, put it in here instead.
+7. **ONE action bar** — cream primary (`--color-action`, the forward chain step) + `<SaveAffordance
+   className="ml-auto">`. Save is an icon in the bar, never a naked row of its own.
+
+**Type + geometry.** Section labels are `text-[11px] uppercase tracking-[0.05em] text-foreground-muted`
+— NOT `10px`/`0.14em` (that was the old stack). Radius comes from the **token scale
+4/6/8/12/16/20/24** (`rounded-md` = 8, `rounded-lg` = 12, `rounded-xl` = 16). **Never write
+`rounded-[Npx]`.** Every arbitrary radius in the thread (`10px`, `7px`, `5px`, `11px`, `18px`) was
+drift, and the same element — a source thumbnail — ended up with three different corners.
+
+> **ENFORCED (2026-07-13):** `src/components/thread/__tests__/radius-scale.test.ts` fails the build
+> on an off-scale radius anywhere in `thread/**` or `reading/**`. It walks the tree, so a new card is
+> guarded the day it lands. The tokens live in `globals.css` `@theme`, so `rounded-md` really is 8px —
+> NOT Tailwind's 6px default. A redesign is exactly where a stray `rounded-[10px]` gets typed and
+> never seen; this is the gate that catches it.
+
+**A stacked ladder of equal-weight ALL-CAPS labels is the failure mode.** If a card has four or five
+of them, it has no hierarchy and reads as a spec sheet. Promote one thing; collapse the rest into §6.
+
+### 0.5b The honesty spine (do NOT paper over this to make cards match)
+
+The receipt is shared, but **what it claims is not**. Fields we cannot know stay `null`, and the
+renderer omits them rather than inventing them:
+
+- **"Proven structure" + the fit glyph (● ◐ ○) are claims RETRIEVAL earns** — an outlier verified
+  against a follower baseline, scored against your audience. Grounded hook/idea/script sources have
+  this. **A Remix source does not**: the user pasted that video, nothing measured it. So remix passes
+  its own eyebrow, and `multiplier` / `baselineLabel` / `fitLabel` are null (`fitLabel` is nullable
+  for exactly this reason). It shows the creator, the reach, a link back — and stops.
+- **No handle → no receipt.** An unattributable source is not a receipt (`buildProofFromSource`'s gate).
+- **Quotes**: components own the typographic marks; model text goes through `stripWrappingQuotes()`
+  (`@/lib/utils`) or you get `""doubled quotes""`. Eleven sites do this.
+- **Verbatims must not repeat.** Two audiences × one archetype can yield the identical line; the wall
+  merges on `(quote, archetype)` and tags BOTH audiences. A focus group that repeats itself
+  word-for-word reads as fabricated — see `collectQuotes` in `verbatim-wall.tsx`.
+- Bands only (Strong/Mixed/Weak) + fraction. **Never a 0–100 score** — except the video Read's engine
+  score, the one place a number is honest.
+
+### 0.6 Compliance status (2026-07-13)
+
+| Card | Block | Status |
+|---|---|---|
+| Hook | `hook-card` | ✅ **THE BAR.** Copy this. |
+| Idea | `idea-card` | ✅ conforms |
+| Script | `script-card` | ✅ conforms (has receipt; not re-audited visually) |
+| Remix | `remix-card` | ✅ **FIXED 2026-07-13** — was an anonymous thumbnail; now an attributed receipt |
+| Profile Read | `profile-read` | ✅ **FIXED 2026-07-13** — was 5 stacked labels + doubled quotes |
+| The Read | `multi-audience-read` | ✅ **FIXED 2026-07-13** — had NO card container; wall repeated itself |
+| Test / Reading | `reading/**` | 🟠 **AUDITED VISUALLY 2026-07-14 (first time ever — see §0.7).** Type + accent FIXED and now guarded (`reading-labels.test.ts`). The 07-13 note below UNDERSTATED it: `reading-section.tsx` was **one of ELEVEN** label declarations in **SEVEN** stacks, and the surface also painted the **retired terracotta** in two places. Both closed. 🔴 **REMAINING = information design, not drift** (§0.7): provenance in the hero eyebrow · an empty state rendered as a verbatim · personas and segments stacked in one undifferentiated list · a duplicated replay action. Those need an owner call. |
+| Simulate | `reaction-distribution` | 🔴 **STRUCTURAL.** Fraction stated TWICE from two sources that can disagree (`fraction` vs client-recomputed `stopCount/total`) · provenance in the eyebrow · band-word-as-hero · no ProofUnit / no "See the room →" on the room card · 2-row action bar, no cream primary · `text-red-400`. |
+| Predict | `prediction-gauge` | 🔴 **STRUCTURAL + OWNER CALL** — renders `~35–60%`, which §0.5b forbids and its own 06-UI-SPEC requires. Also: `band` = Unlikely/Toss-up/Lean/Likely here vs Strong/Mixed/Weak everywhere else. |
+| Account Read | `account-read` | 🔴 **STRUCTURAL.** **SIX** stacked equal-weight ALL-CAPS labels (Profile Read was rebuilt at five) · no hero — opens on the creator's *name* · no disclosure · forward action is a text link, not the cream primary. |
+| Explore | `outlier-grid` | 🔴 **STRUCTURAL.** The tile has **no card surface** — the only border belongs to the nested `VideoCard`, so multiplier/fit/CTA float on the thread background. Hero = a number. Save sits above the primary. Honest where it counts ✅. |
+| Ask | (`SkillResultCard`) | 🟡 **SMALL FIX.** Header is `text-xs`, not the contract eyebrow. Load-bearing (chat + explore thread views). Inherits the markdown bug below. |
+| **Markdown** | primitive | ✅ **FIXED 2026-07-13** — was BROKEN, not merely drifted (and rated "low risk"). `prose prose-invert prose-sm` generated **ZERO CSS** (no `@tailwindcss/typography`, no `@plugin`), so Preflight's resets stood: headings computed identical to body, paragraphs lost their gaps, ordered-list **numbers disappeared**. Now rendered by the **`.md` layer in `globals.css`** — our own ~40 lines on the cream tokens, NOT the plugin (`prose-invert` = cold grey, §1.2 forbids). `reading-chat`'s hand-rolled overrides (which forced ordered lists to dots by a second mechanism) are gone too. `ExpertChatThread` left alone — dead code (`CommandBar` is unmounted). |
+| **Band** | primitive | 🟡 **SMALL FIX — but it is the SOURCE of the drift.** Band color applied **twice** (word *and* fraction — §1.3 says once) · no dot · its `text-2xl` colored band word is the hero pattern Simulate + Predict both copied. |
+| **Personas** | `personas` | 🟡 **SMALL FIX.** Real Lens entry ✅, honest ✅ — but `RoomAvatars` is **hand-copied** from `proof-unit.tsx` (two copies of the flagship cue) · quote styling diverges from `ProofUnit` · Lens target and Show/Hide button share a row (hit-area hazard). |
+| **Persona chat** | `persona-chat-turn` | ✅ **CONFORMANT** — contract eyebrow, no fabricated band/score, minimal. ONE question: §2 says the chat language is "no bubble"; this gives the persona a bordered bubble. One of the two is stale (owner call). |
+
+## 0.7 The Reading cluster (`/analyze`) — the first visual audit, 2026-07-14
+
+> The flagship — the surface the whole engine exists to produce — had **never been looked at at 1:1**.
+> Not for lack of care: it has **no dev route of its own**. The only ways to see it are to run a real,
+> paid analysis on a video, or to find it downscaled inside `/dev/cards`, where it renders in an
+> 860px gallery column. So it drifted in the one place nobody could see, and the 07-13 pass — which
+> read the source but never rendered it — undercounted the damage by an order of magnitude.
+>
+> **The lesson is the gate, not the fixes.** A surface with no cheap way to look at it will drift,
+> and the drift will be invisible to source-reading review. `/dev/cards` is why the thread cards
+> stayed honest. Reading has no equivalent.
+
+**FIXED + GUARDED (`reading/__tests__/reading-labels.test.ts`, mutation-tested):**
+
+1. **The label ladder — 11 declarations, 7 stacks, 0 conformant.** The contract says one stack:
+   `text-[11px] uppercase tracking-[0.05em]`. The rendered surface ran `10px/0.14em` (×4),
+   `12px/0.08em`, `10px/0.1em`, `11px/0.08em`, `9.5px/0.11em` **in a mono face**, and two SVG
+   `<text>` stacks at `9.5px/0.1em` and `10px/0.06em`. `fix-first-list.tsx` alone used **three
+   different sizes for its own three labels.** §0.5's "stacked ladder of equal-weight ALL-CAPS
+   labels" failure mode, in full. All now route through `READING_LABEL` / `SVG_LABEL`.
+   *The 07-13 entry named only `reading-section.tsx` — fixing that alone would have corrected
+   1 of 11 and left the ladder standing.*
+2. **The retired terracotta was still being painted — twice.** `audience-breakout.tsx` (stage-bar
+   fill) and `audience-orbit.tsx` (the "bad" archetype node, at 0.95 alpha) hardcoded
+   `rgba(217,119,87,…)` = `#d97757`. Because they were raw literals tracking no token, the accent
+   migration to `--color-accent` (#FF6363) **silently skipped the flagship** — so the orbit marked
+   its negative node in the dead terracotta while the persona list twenty pixels above marked *its*
+   negative person in the live accent. Same meaning, two different reds, one screen.
+
+**OPEN — information design, needs an owner call (NOT silently restyled):**
+
+3. **Provenance sits in the hero eyebrow.** `TEST · [POWERED BY SIM-1 MAX]`, as a bordered pill,
+   top-left, first thing you read. §0.5 is explicit — *"Provenance does NOT go here… Provenance is
+   a footnote, never a headline"* — and §0.6 already flags exactly this on Simulate. But Reading is
+   a **page**, not a card, and has no disclosure row to demote it onto, so the fix is a hero
+   restructure, not a class swap. Allowlisted in the guard until decided.
+4. **An empty state is wearing a verbatim's clothing.** When a persona didn't speak, the quote slot
+   renders *"stopped — no words this time"* in the same italic as a real quote — on 2 of the 4
+   people in the default fixture. It reads as something the persona said. Adjacent to the §0.5b
+   honesty spine: we are careful never to fabricate a quote, then style the *absence* of one to look
+   like a quiet one.
+5. **Two entity types, one undifferentiated list.** Segments (Loyal fans, New viewers) and named
+   personas (Maya, Sam) share identical anatomy — dot, name, quote — but only the personas are
+   askable, and the sole cue is an `ask →` link on two of the four rows. Nothing tells you why.
+6. **The replay action is duplicated** — a `▶ Replay the room` link and a `Replay reactions` button,
+   both in the audience block, ~300px apart.
+
+**ALSO NOTED:** `Your N people` (`10px/1.2px`) is the last off-contract label on the surface, but it
+belongs to `audience-lens/AmbientRoom.tsx`, which Reading *embeds* — a shared component the ambient
+room also uses (elevated in #257). Out of `reading/**` scope; do not reach across that boundary
+without checking the Room. And the seven degraded fixtures (`makeUnavailableResult`,
+`makePartialResult`, `makeApolloNullResult`, empty heatmap/personas/segments, `makeNoBehavioralResult`)
+are **all invisible** — no route renders them, so every degraded state of the flagship is unreviewed.
+
+> **Full audit + ranked worklist: `docs/AUDIT-2026-07-13-cards-remaining-nine.md`** (2026-07-13,
+> read-only pass). Headline: the primitive rated "low risk" is the only one actually **broken**.
+> The other eight drifted; `markdown` never rendered. The honesty spine, notably, is in **better**
+> shape than the visual spine — no doubled quotes, no fabricated claims, no off-scale radii found.
+
+⚠️ **§2 below is now partly STALE** — it still describes The Read as painting a legacy coral panel
+(stripped) and Remix's real source video as a TODO (shipped). Trust §0.5 + the code.
 
 ## 1. The shared refined design language (applies to every card)
 

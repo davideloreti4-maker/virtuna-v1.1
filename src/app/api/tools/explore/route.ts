@@ -47,8 +47,10 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
+import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
+import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { classifyDiscoverInput, UNSUPPORTED_INPUT_REASON } from "@/lib/discover/classify-input";
 import { type RankedOutlier } from "@/lib/discover/outlier-compute";
 import { rankWithAudienceFit } from "@/lib/discover/explore-rank";
@@ -163,6 +165,10 @@ export async function POST(request: Request): Promise<Response> {
   if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // ── Layer 2 mock short-circuit (dev only) — replay fixtures, no engine call ──
+  const mock = await maybeMockSkillRun("explore", user.id);
+  if (mock) return mock;
 
   // ── (1b) CSRF guard — Content-Type 415 + cross-origin 403 (WR-01) ─────────
   const guard = csrfGuard(request);
@@ -284,6 +290,16 @@ export async function POST(request: Request): Promise<Response> {
   // ── (3) Open thread + active audience (CR-01 — id NEVER from body) ─────────
   const openThread = await createOpenThreadLazy(user.id);
   const activeAudience = await resolveThreadAudience(supabase, openThread);
+
+  // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
+  // explore is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
+  // named person) is not a crowd on a feed — refuse it rather than write feed content for it.
+  // The composer already hides this skill for a general audience; this catches a stale
+  // client, a restored thread, and any direct API call.
+  {
+    const refusal = requireSocialsAudience(activeAudience, "explore");
+    if (refusal) return refusal;
+  }
 
   // ── (4) Per-user daily cap (read-only check; consume only on a real scrape) ──
   const cap = checkUserCap(user.id);

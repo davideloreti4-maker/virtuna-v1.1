@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import { READING_LABEL } from './reading-section';
 import type { PredictionResult } from '@/lib/engine/types';
 import type { PersonaNode } from '@/components/board/_kit/PersonaGraph';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -101,7 +102,7 @@ export function ReadingRoom({
       {/* The video-only timeline Replay — voices light up as the video plays (D-06). */}
       {hasAttentionTimeline(data) && (
         <div className="border-t border-[var(--color-border)] px-5 pb-5 pt-4">
-          <p className="mb-3 font-mono text-[9.5px] uppercase tracking-[0.11em] text-foreground-muted">
+          <p className={`mb-3 ${READING_LABEL}`}>
             Replay in timeline — the room reacts as the video plays
           </p>
           <ReplayController nodes={nodes} heatmap={data.heatmap ?? null} reducedMotion={reducedMotion} />

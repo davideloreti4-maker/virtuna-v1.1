@@ -99,7 +99,17 @@ export function WatchlistPanel({
                     {c.displayName ?? `@${c.handle}`}
                   </p>
                   <p className="truncate text-xs tabular-nums text-foreground-muted">
-                    {formatCount(c.followerCount)} followers · {formatCount(c.totalViews)} views
+                    {/* followerCount is null until the first snapshot lands — say that
+                        instead of rendering "-- followers · 0 views" dashes. */}
+                    {c.followerCount != null ? (
+                      <>
+                        {formatCount(c.followerCount)} followers · {formatCount(c.totalViews)} views
+                      </>
+                    ) : c.totalViews > 0 ? (
+                      <>{formatCount(c.totalViews)} views</>
+                    ) : (
+                      <>first snapshot pending</>
+                    )}
                   </p>
                 </div>
                 <button

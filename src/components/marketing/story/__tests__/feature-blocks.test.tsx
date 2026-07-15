@@ -5,14 +5,14 @@ import { render, screen } from "@testing-library/react";
 import { FeatureBlocks } from "../feature-blocks";
 
 /**
- * STORY-03 Nyquist gate on <FeatureBlocks>, updated in 03-05 for the
- * intentional-skeleton feature visuals (GAP-1/GAP-3 component-level).
+ * STORY-03 Nyquist gate on <FeatureBlocks>.
  *
  * STORY-03 contract: 3–4 alternating feature blocks, each pairing a benefit
- * headline (level-3 heading) with exactly one framed product skeleton; alternate
- * rows flip column order via the `md:order-*` utility. After 03-05 the visuals
- * are 03-04 skeletons framed in BrowserChrome (no `data-variant`), counted via
- * the stable `data-feature-visual` hook.
+ * headline (level-3 heading) with exactly one framed product visual; alternate
+ * rows flip column order via the `md:order-*` utility. The visuals are now REAL
+ * captures of the running app (they were static skeletons — which is why the
+ * page read as a template), framed in BrowserChrome and counted via the stable
+ * `data-feature-visual` hook.
  */
 describe("<FeatureBlocks /> — STORY-03", () => {
   it("renders 3 to 4 feature blocks (one framed visual per block)", () => {
@@ -23,6 +23,20 @@ describe("<FeatureBlocks /> — STORY-03", () => {
     const slots = container.querySelectorAll("[data-feature-visual]");
     expect(slots.length).toBeGreaterThanOrEqual(3);
     expect(slots.length).toBeLessThanOrEqual(4);
+  });
+
+  it("shows a real app capture — named — inside every frame", () => {
+    const { container } = render(<FeatureBlocks />);
+
+    // Each frame holds one screenshot of the product, and every screenshot is
+    // described (an unnamed frame is a decorative void to a screen reader).
+    const slots = container.querySelectorAll("[data-feature-visual]");
+    slots.forEach((slot) => {
+      const img = slot.querySelector("img");
+      expect(img).not.toBeNull();
+      expect(img?.getAttribute("src")).toBeTruthy();
+      expect((img?.getAttribute("alt") ?? "").length).toBeGreaterThan(10);
+    });
   });
 
   it("pairs each block's benefit headline (level-3) with its visual", () => {

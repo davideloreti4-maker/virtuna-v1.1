@@ -1,9 +1,6 @@
+import Image from "next/image";
+
 import { FadeInUp } from "@/components/motion";
-import {
-  ScoreGaugeSkeleton,
-  AudienceCloudSkeleton,
-  DriverRowsSkeleton,
-} from "@/components/marketing/story/skeletons";
 import { SectionHeading } from "@/components/marketing/section-heading";
 import { cn } from "@/lib/utils";
 
@@ -21,16 +18,14 @@ import { cn } from "@/lib/utils";
  *   1. Sans `<h2>` reading EXACTLY "The Simulation" (LOCKED — matches the
  *      `#the-simulation` anchor; the Newsreader serif stays precious to the
  *      hero, D-C) + a one-line cream-secondary subhead.
- *   2. ONE prominent flat-warm device-framed product visual depicting the SHAPE
- *      of a Maven Simulation — the browser-window chrome reused from the hero
- *      (overflow-hidden window + slim bar with 3 dots + a maven.app pill + the
- *      layered DARK drop shadow + the faint warm "seat"). The window body is
- *      filled with the 03-04 product-skeleton primitives, top-to-bottom:
- *      ScoreGaugeSkeleton (the hero number) → AudienceCloudSkeleton (with its
- *      "watch-through" caption) beside DriverRowsSkeleton (Hook · Retention ·
- *      Shareability). The body is height-capped so the frame reads as a compact
- *      product window, not a ~640px empty void (GAP-2). The skeletons are static
- *      SVG set-dressing, swappable for a real desktop screenshot later (FOUND-03).
+ *   2. ONE prominent flat-warm device-framed product visual — the browser-window
+ *      chrome reused from the hero (overflow-hidden window + slim bar with 3
+ *      dots + a maven.app pill + the layered DARK drop shadow + the faint warm
+ *      "seat") — whose body is a REAL capture of a reading in the running app:
+ *      the score, how far the video gets pushed, and the levers beneath. It
+ *      replaced the static-SVG skeleton fill (FOUND-03 landed): the skeletons
+ *      showed the SHAPE of a reading and read as a template; this shows the
+ *      reading itself.
  *   3. The THREE named outputs surfaced as labelled text chips beneath:
  *      Audience reaction · Watch-through % · Hook · Retention (where viewers
  *      drop) · Shareability.
@@ -118,28 +113,20 @@ export function SimulationShowcase({ className }: { className?: string }) {
             {/* spacer keeps the address pill optically centered vs the dots */}
             <span className="w-[42px]" aria-hidden="true" />
           </div>
-          {/* window body — filled with the 03-04 product-skeleton primitives so
-              it reads as the SHAPE of a Maven Simulation, not an empty void.
-              HEIGHT-CAPPED (max-h, GAP-2) so the frame is a compact product
-              window, not a ~640px empty rectangle. Composition: a flanked
-              instrument row on md+ (cloud | gauge | drivers) so the frame's
-              corners aren't dead space around a lone centered gauge — and a
-              deliberately different arrangement from the hero's main-column +
-              side-rail dashboard. On mobile the cloud steps out (same GAP-2
-              rationale as the hero: at full width the 100×90 viewBox towers and
-              the capped window would crop the drivers instead). The skeletons
-              carry no "Simulat*" text — the LOCKED <h2>"The Simulation" stays
-              the single /simulat/i text node the 03-00 test resolves. */}
-          <div className="flex max-h-[460px] flex-col gap-6 overflow-hidden bg-surface p-6 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1.15fr)] md:items-center md:gap-10 md:p-8">
-            {/* the hero number — first on mobile, center column on md */}
-            <div className="flex justify-center md:order-2">
-              <ScoreGaugeSkeleton />
-            </div>
-            {/* the crowd — left flank on md; hidden on mobile (crop keeps
-                gauge + drivers legible inside the capped window) */}
-            <AudienceCloudSkeleton className="hidden md:order-1 md:flex" />
-            {/* the levers — below the gauge on mobile, right flank on md */}
-            <DriverRowsSkeleton className="md:order-3" />
+          {/* window body — a real reading, captured from the app at 2× with
+              animations disabled. Aspect-locked (16/10, the capture's own
+              ratio) so the frame reserves its box before the image decodes (no
+              CLS). The capture carries no "Simulat*" text, so the LOCKED
+              <h2>"The Simulation" stays the single /simulat/i text node the
+              03-00 test resolves. */}
+          <div className="relative aspect-[16/10] overflow-hidden bg-surface">
+            <Image
+              src="/images/landing/showcase-read.png"
+              alt="A reading: the score, how far the video gets pushed stage by stage, and the Hook, Retention and Shareability levers beneath"
+              fill
+              sizes="(min-width: 1024px) 1024px, 92vw"
+              className="object-cover object-top"
+            />
           </div>
         </div>
       </FadeInUp>

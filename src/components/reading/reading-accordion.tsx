@@ -190,11 +190,36 @@ export function AudienceContextSection({ data, dims, id, nicheRank }: ReadingAcc
   // "Niche rank" context row stays below it (where the score sits in your niche);
   // nothing is removed. Honest empty (no personas) → a calm note, never an empty Room.
   const nodes = buildAudienceNodes(data);
+
+  // AUD-FAIL-01 (2026-07-14) — an audience that FAILED is not an audience that shrugged.
+  // "No audience reaction landed for this video" reads as a verdict — as if the room watched it
+  // and felt nothing. In the live run that exposed this, the room never watched at all: the fold
+  // timed out twice, produced zero personas, and the Read still showed a score under a HIGH
+  // confidence badge. Say which of the two actually happened.
+  //
+  // Derived from PERSISTED fields (signal_availability JSONB + input_mode), not an engine-only
+  // flag, so it survives the row → PredictionResult cast on a permalink reload.
+  const audienceDidNotRun =
+    data.input_mode !== 'text' && data.signal_availability?.personas === false;
+
   return (
     <ReadingSection label="The audience">
       <div data-testid="reading-audience-context">
         {nodes.length > 0 ? (
           <ReadingRoom data={data} nodes={nodes} />
+        ) : audienceDidNotRun ? (
+          <div
+            data-testid="reading-audience-did-not-run"
+            className="px-5 py-8 text-center"
+          >
+            <p className="text-[13px] text-foreground">
+              Your audience didn&rsquo;t get to watch this one.
+            </p>
+            <p className="mt-1.5 text-[13px] text-foreground-muted">
+              The simulation failed, so nobody reacted — the score above is an expert read only,
+              with no audience behind it. Running it again usually works.
+            </p>
+          </div>
         ) : (
           <p className="px-5 py-8 text-center text-[13px] text-foreground-muted">
             No audience reaction landed for this video.

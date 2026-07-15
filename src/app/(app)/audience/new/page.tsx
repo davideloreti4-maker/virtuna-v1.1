@@ -12,6 +12,7 @@ import {
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import type { AccountOption } from "@/components/audience/audience-manager";
+import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 export const metadata = {
   title: "Create audience | Maven",
@@ -32,7 +33,13 @@ export default async function NewAudiencePage({
   const sp = await searchParams;
   // D-08 — the description Build path lands a General SIM; any other/absent value
   // keeps the byte-identical Socials default.
-  const initialMode = sp.mode === "general" ? "general" : undefined;
+  //
+  // While HORIZONTAL_ENABLED is off, `?mode=general` is IGNORED and the page falls back to
+  // the Socials default — a hand-typed or bookmarked URL must not be a back door into the
+  // horizontal after its UI entry points are closed. The page itself is unchanged for the
+  // creator (socials) path, which is how every creator audience is still created.
+  const initialMode =
+    HORIZONTAL_ENABLED && sp.mode === "general" ? "general" : undefined;
 
   // Connected accounts power the "Calibrate from" source picker. The connect flow deep-links
   // here (?source=account&accountId&platform&handle) to preselect the account it just connected.
