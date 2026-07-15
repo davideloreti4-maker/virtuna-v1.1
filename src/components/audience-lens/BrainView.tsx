@@ -100,8 +100,10 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
 import { modeledSignals, type BrainSignal } from '@/lib/brain/brain-signals';
 import { networkSigmas, whyThisSecond } from '@/lib/brain/network-sigma';
+import { signalTimeline } from '@/lib/brain/signal-timeline';
 import { SignalGrid } from './SignalGrid';
 import { SigmaBars } from './SigmaBars';
+import { SignalHeatmap } from './SignalHeatmap';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -363,6 +365,9 @@ export function BrainView({
     () => whyThisSecond(sigmas, tSec, mode === 'grounded' ? conceptText : undefined),
     [sigmas, tSec, conceptText, mode],
   );
+
+  /** Sapient's per-second heatmap — the nine signals over the clip. Grounded-only (see signal-timeline). */
+  const timeline = useMemo(() => signalTimeline(drive, duration), [drive, duration]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -643,6 +648,10 @@ export function BrainView({
              Sapient's σ bars — the seven networks vs the clip's own baseline at the playhead. Renders
              only in grounded mode, and only when the clip actually moves (see network-sigma.ts). ── */}
       <SigmaBars sigmas={sigmas} tSec={tSec} why={whyNow} />
+
+      {/* ══ ACTIVATION PER SECOND ═══════════════════════════════════════════════════════════════
+             Sapient's KPI heatmap — the nine signals per second across the clip. Grounded-only. ── */}
+      <SignalHeatmap timeline={timeline} tSec={tSec} />
 
       {/* ══ THE ROOM (our real votes) ═══════════════════════════════════════════════════════════
              Not in Sapient's panel — our differentiator kept at the bottom: the ten personas actually

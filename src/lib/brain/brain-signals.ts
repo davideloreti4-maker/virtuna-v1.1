@@ -62,14 +62,18 @@ function gradeDirectional(score: number, dir: SignalDirection): { word: string; 
  * signal's 0..1 level (a raw network, or a disclosed composite). `basis` is the derivation line shown
  * in WHY THIS SCORE. `proxy` cells additionally say they are not the real thing.
  */
-const SIGNALS: {
+export interface SignalDef {
   key: string;
   label: string;
   dir: SignalDirection;
+  /** the signal's 0..1 level from a BOLD record — a raw network, or a disclosed composite */
   from: (p: Record<NetworkId, number>) => number;
   notMeasured: string;
   basis: string;
-}[] = [
+}
+
+/** The nine signal definitions — shared by the grid (peak) and the per-second heatmap (timeline). */
+export const SIGNAL_DEFS: SignalDef[] = [
   { key: 'visual', label: 'Visual Pull', dir: 'higher', from: (p) => p.visual, basis: 'peak visual-cortex activation', notMeasured: 'Modeled visual-cortex drive — not eye-tracking.' },
   { key: 'voice', label: 'Voice Impact', dir: 'higher', from: (p) => p.somatomotor, basis: 'peak somatomotor (auditory-motor) activation, read as a voice-impact proxy', notMeasured: 'A somatomotor/auditory proxy — not audio analysis.' },
   { key: 'grip', label: 'Cognitive Grip', dir: 'higher', from: (p) => p.control, basis: 'peak frontoparietal (control-network) engagement', notMeasured: 'Modeled control-network engagement — not a comprehension test.' },
@@ -106,7 +110,7 @@ export function modeledSignals(drive: DriveInput, durationS: number, samples = 4
     const b = predictedBold(drive, t);
     for (const n of NETWORK_IDS) if (b[n] > peak[n]!) peak[n] = b[n];
   }
-  return SIGNALS.map((s) => {
+  return SIGNAL_DEFS.map((s) => {
     const score = Math.round(clamp01(s.from(peak)) * 100);
     const g = gradeDirectional(score, s.dir);
     return {
