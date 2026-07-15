@@ -421,28 +421,28 @@ export function BrainView({
                 className="h-[6px] w-[6px] shrink-0 rounded-full"
                 style={{ background: netFill(hovered, Math.max(0.6, response[hovered])) }}
               />
-              <span className="text-[11px] font-medium leading-none text-[var(--color-cream-primary)]">
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.08em] leading-none text-[var(--color-cream-primary)]">
                 {NETWORK_META[hovered].label}
               </span>
-              <span className="text-[11px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+              <span className="font-mono text-[10px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
                 Δ{response[hovered].toFixed(2)}
               </span>
             </>
           ) : (
-            <span className="text-[10.5px] leading-none text-[var(--color-foreground-muted)]">
-              Predicted cortical response · modeled
+            <span className="font-mono text-[9.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+              Predicted cortex
             </span>
           )}
         </div>
 
         {/* Top-right — the scan clock. */}
-        <p className="pointer-events-none absolute right-3 top-3 text-[10.5px] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+        <p className="pointer-events-none absolute right-3 top-3 font-mono text-[9.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
           t {t.toFixed(1)}s · TR {TR_S}s
         </p>
 
         {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
             trails the stimulus because of it, and the figure says so out loud. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 text-[9px] leading-none text-[var(--color-foreground-muted)]">
+        <p className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
           trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
         </p>
       </div>
@@ -509,13 +509,13 @@ export function BrainView({
               what the DMN does. Labelling that patch "drifting" would be precisely backwards.
               The engaged/drifting reading is the VERDICT's job, and it still says it, in words. */}
           <div className="mt-[5px] flex items-baseline justify-between">
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">below rest</span>
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">above rest</span>
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">below rest</span>
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">above rest</span>
           </div>
         </div>
         {/* The unit, and the CLAIM — BESIDE the legend, not crushed under it. The map is a contrast
             now, not raw activity, and this is the one place that has to say which. */}
-        <span className="truncate text-[9px] leading-none text-[var(--color-foreground-muted)]">
+        <span className="truncate font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
           predicted BOLD · vs rest
         </span>
       </div>
@@ -633,8 +633,10 @@ export function BrainView({
         {instant ? instantVerdict(readout, stopRatio) : verdictFor(stopRatio, response, mode)}
       </p>
 
-      {/* Foot — the honesty line. It must survive every redesign. */}
-      <p className="mt-2 text-[9.5px] leading-none text-[var(--color-foreground-muted)]">
+      {/* Foot — the honesty line. It must survive every redesign. Mono caps, like the reference's
+          "NOT MEASURED WATCH-TIME" clarifier under every claim (GAP-4): the disclaimer earns its
+          credibility by being as prominent as the claim, not by hiding in lower-case fine print. */}
+      <p className="mt-2 font-mono text-[8.5px] uppercase tracking-[0.09em] leading-[1.4] text-[var(--color-foreground-muted)]">
         {mode === 'grounded'
           ? 'modeled from your audience’s real retention · not a brain measurement'
           : 'a modeled response from your room’s real votes · not a brain measurement'}
@@ -667,7 +669,7 @@ export function BrainView({
 function Chip({ chip, weak, small = false }: { chip: string; weak: boolean; small?: boolean }) {
   return (
     <span
-      className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] ${small ? 'text-[8.5px]' : 'text-[9.5px]'} leading-none`}
+      className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] font-mono uppercase tracking-[0.06em] ${small ? 'text-[8px]' : 'text-[9px]'} leading-none`}
       style={{
         color: weak ? 'var(--color-accent)' : 'var(--sage, #8aa383)',
         background: weak ? 'rgba(217,119,87,0.10)' : 'rgba(138,163,131,0.10)',
@@ -725,7 +727,7 @@ function RoomReadoutPanel({
              reads as a product and the segment table this replaced read as a debug dump. Same move:
              a named metric, a figure you can read across the room, and a word for what it means. ── */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[11px] text-[var(--color-foreground-secondary)]">
+        <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--color-foreground-secondary)]">
           Attention hold{scoped ? ' · opening beat' : ''}
         </span>
         <Chip {...holdChip(hold.pct)} />
@@ -735,7 +737,7 @@ function RoomReadoutPanel({
           {hold.pct}
           <span className="text-[16px] text-[var(--color-foreground-muted)]">%</span>
         </span>
-        <span className="text-[10.5px] text-[var(--color-foreground-muted)]">
+        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--color-foreground-muted)] tabular-nums">
           {hold.stopped} of {hold.total} stopped
         </span>
       </div>
@@ -753,13 +755,13 @@ function RoomReadoutPanel({
             />
           </div>
           <div className="mt-[5px] flex items-baseline justify-between">
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
               worst of {scale.of}
             </span>
-            <span className="text-[9px] leading-none text-[var(--color-foreground-secondary)]">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-secondary)]">
               #{scale.rank} of your {scale.of}
             </span>
-            <span className="text-[9px] leading-none text-[var(--color-foreground-muted)]">
+            <span className="font-mono text-[8.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)]">
               best of {scale.of}
             </span>
           </div>
@@ -774,7 +776,7 @@ function RoomReadoutPanel({
           {[metrics.core, metrics.reach].filter(Boolean).map((m) => (
             <div key={m!.label} className="rounded-[8px] bg-[rgba(255,255,255,0.03)] px-2 py-1">
               <div className="flex items-baseline justify-between gap-1">
-                <span className="truncate text-[10px] text-[var(--color-foreground-muted)]">{m!.label}</span>
+                <span className="truncate font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--color-foreground-muted)]">{m!.label}</span>
                 <Chip {...m!} small />
               </div>
               <span className="mt-0.5 block font-serif text-[19px] leading-[1.15] tabular-nums text-foreground">

@@ -58,7 +58,7 @@ describe('AmbientRoom — the brain scale', () => {
     render(room());
     const brain = screen.getByTestId('brain-view');
     expect(brain.dataset.mode).toBe('simulated');
-    expect(within(brain).getByText(/predicted cortical response · modeled/i)).toBeInTheDocument();
+    expect(within(brain).getByText(/predicted cortex/i)).toBeInTheDocument();
     expect(within(brain).getByText(/not a brain measurement/i)).toBeInTheDocument();
   });
 
