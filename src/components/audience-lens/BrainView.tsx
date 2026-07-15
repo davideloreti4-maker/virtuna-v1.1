@@ -98,6 +98,8 @@ import {
 } from '@/lib/brain/cortex-sim';
 import type { PersonaNode } from '@/components/board/_kit';
 import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
+import { modeledSignals, voteSignal, type BrainSignal } from '@/lib/brain/brain-signals';
+import { SignalGrid } from './SignalGrid';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -338,6 +340,21 @@ export function BrainView({
   // Where the room sits on the diverging axis right now: task-positive attention MINUS the
   // default-mode system. This is the same anticorrelation the map is painted on, read as one number.
   const axisPct = useMemo(() => ((axisOf(response) + 1) / 2) * 100, [response]);
+
+  /**
+   * Sapient's "nine breakdown signals" grid, filled honestly (GAP-3.4). The seven MODELED network
+   * signals (peak activation over the encounter, DESCRIPTIVE level words) + the real-vote cells (core
+   * hold, reach — which earn a verdict because a count needs no benchmark). `hold` stays the hero
+   * headline above, so it is not repeated here. See `brain-signals.ts` / `room-readout.ts` §5.
+   */
+  const signals = useMemo<BrainSignal[]>(() => {
+    const cells = modeledSignals(drive, duration);
+    const core = readout?.metrics.core;
+    const reach = readout?.metrics.reach;
+    if (core) cells.push(voteSignal('core', 'Core hold', core.pct, { word: core.chip, weak: core.weak, notMeasured: "Your core fans' real stop-count — not per-viewer tracking." }));
+    if (reach) cells.push(voteSignal('reach', 'Reach', reach.pct, { word: reach.chip, weak: reach.weak, notMeasured: "New viewers' real stop-count — not per-viewer tracking." }));
+    return cells;
+  }, [drive, duration, readout]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -623,6 +640,7 @@ export function BrainView({
           rewriteBusy={rewriteBusy}
           rewriteError={rewriteError}
           rewriteDelta={rewriteDelta}
+          signals={signals}
         />
       )}
 
@@ -689,6 +707,7 @@ function RoomReadoutPanel({
   rewriteBusy = false,
   rewriteError,
   rewriteDelta,
+  signals = [],
 }: {
   readout: RoomReadout;
   kindLabel?: string;
@@ -698,6 +717,7 @@ function RoomReadoutPanel({
   rewriteBusy?: boolean;
   rewriteError?: string | null;
   rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
+  signals?: BrainSignal[];
 }) {
   const { hold, metrics, objection, divergence } = readout;
   /**
@@ -768,25 +788,15 @@ function RoomReadoutPanel({
         </div>
       )}
 
-      {/* ── THE TWO AUDIENCES. The single headline hides the only thing a creator needs to decide:
-             is this a retention play or a growth play? Core hold and Reach are different numbers and
-             they always were. Absent (not zeroed) when the audience has too few of that slot. ── */}
-      {(metrics.core || metrics.reach) && (
-        <div className="mt-2 grid grid-cols-2 gap-2" data-testid="brain-readout-metrics">
-          {[metrics.core, metrics.reach].filter(Boolean).map((m) => (
-            <div key={m!.label} className="rounded-[8px] bg-[rgba(255,255,255,0.03)] px-2 py-1">
-              <div className="flex items-baseline justify-between gap-1">
-                <span className="truncate font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--color-foreground-muted)]">{m!.label}</span>
-                <Chip {...m!} small />
-              </div>
-              <span className="mt-0.5 block font-serif text-[19px] leading-[1.15] tabular-nums text-foreground">
-                {m!.pct}
-                <span className="text-[11px] text-[var(--color-foreground-muted)]">%</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* ── THE NINE BREAKDOWN SIGNALS (GAP-3.4). Sapient's centre block, filled honestly: seven
+             MODELED network signals + the real-vote cells (Core hold, Reach — the two audiences, which
+             carry the only thing a creator needs to decide, a retention vs a growth play). Core/Reach
+             are absent, not zeroed, when the audience has too few of that slot. ── */}
+      <SignalGrid signals={signals} title="The breakdown signals" />
+      <p className="sr-only" data-testid="brain-readout-metrics">
+        {metrics.core ? `Core hold ${metrics.core.pct}%. ` : ''}
+        {metrics.reach ? `Reach ${metrics.reach.pct}%.` : ''}
+      </p>
 
       {/* The receipt. A real scroller, verbatim — never a paraphrase, and absent when nobody spoke. */}
       {objection && (
