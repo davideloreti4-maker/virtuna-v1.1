@@ -1,0 +1,469 @@
+<title>Grounding readout — does the reference library make better hooks?</title>
+<style>
+  :root {
+    --paper:#EEF1EF; --card:#FBFCFB; --card-2:#F4F6F4;
+    --ink:#15191C; --ink-soft:#49525A; --ink-faint:#7B848B;
+    --line:#D8DDDA; --line-soft:#E4E8E5;
+    --accent:#245C86;
+    --good:#137457; --good-bg:rgba(19,116,87,.08); --good-line:rgba(19,116,87,.32);
+    --warn:#8E611A; --warn-bg:rgba(142,97,26,.09); --warn-line:rgba(142,97,26,.30);
+    --crit:#A2372A; --crit-bg:rgba(162,55,42,.08); --crit-line:rgba(162,55,42,.30);
+    --shadow:0 1px 2px rgba(20,30,25,.04), 0 8px 24px -12px rgba(20,30,25,.10);
+
+    --serif:"Charter","Iowan Old Style","Palatino Linotype",Georgia,"Times New Roman",serif;
+    --mono:"SF Mono","JetBrains Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+
+    --maxw:920px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --paper:#0D1216; --card:#141A1F; --card-2:#101519;
+      --ink:#E8EDEA; --ink-soft:#A3ACB1; --ink-faint:#6C757B;
+      --line:#243039; --line-soft:#1B242B;
+      --accent:#6FB2E0;
+      --good:#43C199; --good-bg:rgba(67,193,153,.11); --good-line:rgba(67,193,153,.34);
+      --warn:#D6A24E; --warn-bg:rgba(214,162,78,.11); --warn-line:rgba(214,162,78,.32);
+      --crit:#E27567; --crit-bg:rgba(226,117,103,.11); --crit-line:rgba(226,117,103,.34);
+      --shadow:0 1px 2px rgba(0,0,0,.30), 0 10px 30px -14px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#EEF1EF; --card:#FBFCFB; --card-2:#F4F6F4;
+    --ink:#15191C; --ink-soft:#49525A; --ink-faint:#7B848B;
+    --line:#D8DDDA; --line-soft:#E4E8E5; --accent:#245C86;
+    --good:#137457; --good-bg:rgba(19,116,87,.08); --good-line:rgba(19,116,87,.32);
+    --warn:#8E611A; --warn-bg:rgba(142,97,26,.09); --warn-line:rgba(142,97,26,.30);
+    --crit:#A2372A; --crit-bg:rgba(162,55,42,.08); --crit-line:rgba(162,55,42,.30);
+    --shadow:0 1px 2px rgba(20,30,25,.04), 0 8px 24px -12px rgba(20,30,25,.10);
+  }
+  :root[data-theme="dark"]{
+    --paper:#0D1216; --card:#141A1F; --card-2:#101519;
+    --ink:#E8EDEA; --ink-soft:#A3ACB1; --ink-faint:#6C757B;
+    --line:#243039; --line-soft:#1B242B; --accent:#6FB2E0;
+    --good:#43C199; --good-bg:rgba(67,193,153,.11); --good-line:rgba(67,193,153,.34);
+    --warn:#D6A24E; --warn-bg:rgba(214,162,78,.11); --warn-line:rgba(214,162,78,.32);
+    --crit:#E27567; --crit-bg:rgba(226,117,103,.11); --crit-line:rgba(226,117,103,.34);
+    --shadow:0 1px 2px rgba(0,0,0,.30), 0 10px 30px -14px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--serif); font-size:18px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:clamp(28px,5vw,72px) clamp(18px,4vw,40px) 96px;}
+
+  .eyebrow{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint); display:flex; gap:.6em; flex-wrap:wrap; align-items:center;
+  }
+  .eyebrow .dot{width:5px;height:5px;border-radius:50%;background:var(--good);display:inline-block;}
+
+  h1{
+    font-family:var(--serif); font-weight:600; letter-spacing:-.018em; text-wrap:balance;
+    font-size:clamp(2rem,5.4vw,3.15rem); line-height:1.06; margin:.5em 0 .35em;
+  }
+  .dek{font-size:clamp(1.05rem,2.3vw,1.28rem); color:var(--ink-soft); max-width:34em; margin:0;}
+  .dek b{color:var(--ink); font-weight:600;}
+
+  .meta-row{
+    display:flex; gap:1.4em; flex-wrap:wrap; margin-top:1.6em;
+    font-family:var(--mono); font-size:.78rem; color:var(--ink-faint); letter-spacing:.02em;
+  }
+  .meta-row span b{color:var(--ink-soft); font-weight:600;}
+
+  section{margin-top:clamp(48px,7vw,80px);}
+  .kicker{
+    font-family:var(--mono); font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--accent); margin:0 0 1.1em; display:flex; align-items:center; gap:.7em;
+  }
+  .kicker::after{content:"";flex:1;height:1px;background:var(--line);}
+  h2{
+    font-family:var(--serif); font-weight:600; letter-spacing:-.012em; text-wrap:balance;
+    font-size:clamp(1.5rem,3.4vw,2.05rem); line-height:1.14; margin:0 0 .5em;
+  }
+  p.lead{color:var(--ink-soft); font-size:1.08rem; margin:.2em 0 0; max-width:36em;}
+  p.lead b{color:var(--ink);}
+
+  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:8px;}
+  @media(max-width:640px){.tiles{grid-template-columns:1fr;}}
+  .tile{
+    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:22px 20px;
+    box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .tile .stat{font-family:var(--mono); font-weight:600; font-size:clamp(1.9rem,4.4vw,2.5rem);
+    letter-spacing:-.02em; line-height:1; font-variant-numeric:tabular-nums;}
+  .tile .lab{font-family:var(--sans); font-size:.86rem; color:var(--ink-soft); margin-top:.7em; line-height:1.35;}
+  .tile.good .stat{color:var(--good);} .tile.good{border-color:var(--good-line);}
+  .tile.warn .stat{color:var(--warn);} .tile.warn{border-color:var(--warn-line);}
+  .tile.crit .stat{color:var(--crit);} .tile.crit{border-color:var(--crit-line);}
+  .tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-faint); margin-top:.55em;}
+
+  .arms{display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:6px;}
+  @media(max-width:680px){.arms{grid-template-columns:1fr;}}
+  .arm{border:1px solid var(--line); border-radius:12px; padding:15px 16px; background:var(--card-2);}
+  .arm .tag{font-family:var(--mono); font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+    display:inline-flex; align-items:center; gap:.5em; font-weight:600;}
+  .arm .tag .sw{width:9px;height:9px;border-radius:3px;display:inline-block;}
+  .arm p{margin:.6em 0 0; font-family:var(--sans); font-size:.86rem; color:var(--ink-soft); line-height:1.45;}
+  .arm.control .tag{color:var(--good);} .arm.control .sw{background:var(--good);}
+  .arm.t1 .tag{color:var(--warn);} .arm.t1 .sw{background:var(--warn);}
+  .arm.t2 .tag{color:var(--warn);} .arm.t2 .sw{background:var(--warn);opacity:.55;}
+
+  .trace{
+    background:var(--card); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow); overflow:hidden; margin-top:14px;
+  }
+  .trace + .trace{margin-top:16px;}
+  .trace .ref{padding:16px 18px; background:var(--card-2); border-bottom:1px dashed var(--line);}
+  .trace .ref .rlab{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-faint); display:flex; align-items:center; gap:.6em; margin-bottom:.7em; flex-wrap:wrap;}
+  .badge{font-family:var(--mono); font-size:.66rem; padding:.2em .5em; border-radius:5px;
+    border:1px solid var(--line); color:var(--ink-soft); letter-spacing:.04em;}
+  .badge.proof{color:var(--good); border-color:var(--good-line); background:var(--good-bg);}
+  .madlib{font-family:var(--mono); font-size:.86rem; line-height:1.5; color:var(--ink);
+    overflow-x:auto; white-space:pre-wrap; word-break:break-word;}
+  .madlib .slot{color:var(--accent); font-weight:600;}
+  .ranas{font-family:var(--mono); font-size:.78rem; color:var(--ink-faint); margin-top:.6em; line-height:1.45;}
+  .ranas b{color:var(--ink-soft); font-weight:600;}
+  .trace .became{
+    display:flex; align-items:center; gap:.7em; padding:11px 18px 0;
+    font-family:var(--mono); font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; color:var(--crit);
+  }
+  .trace .became .arw{font-size:1rem;line-height:1;}
+  .trace .out{padding:6px 18px 18px;}
+  .trace .out .hook{font-family:var(--serif); font-size:1.12rem; line-height:1.4; color:var(--ink);}
+  .trace .out .note{font-family:var(--sans); font-size:.8rem; color:var(--crit); margin-top:.5em;}
+
+  .case{margin-top:22px;}
+  .case-head{display:flex; align-items:baseline; gap:.8em; flex-wrap:wrap; margin-bottom:.4em;}
+  .case-head .n{font-family:var(--mono); font-size:.78rem; color:var(--ink-faint);}
+  .case-head h3{font-family:var(--serif); font-weight:600; font-size:1.2rem; margin:0; letter-spacing:-.01em;}
+  .case-head .ask{font-family:var(--sans); font-size:.85rem; color:var(--ink-soft); font-style:italic;}
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:680px){.cols{grid-template-columns:1fr;}}
+  .col{border:1px solid var(--line); border-radius:13px; overflow:hidden; background:var(--card); box-shadow:var(--shadow);}
+  .col header{
+    padding:11px 15px; font-family:var(--mono); font-size:.72rem; letter-spacing:.06em; text-transform:uppercase;
+    font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:.5em;
+    border-bottom:1px solid var(--line-soft);
+  }
+  .col.control header{color:var(--good); background:var(--good-bg);}
+  .col.ground header{color:var(--warn); background:var(--warn-bg);}
+  .col header .win{font-size:.64rem; letter-spacing:.04em; padding:.15em .5em; border-radius:5px; text-transform:none;}
+  .col.control header .win{background:var(--good); color:var(--card);}
+  ul.hooks{list-style:none; margin:0; padding:8px 15px 14px;}
+  ul.hooks li{
+    font-family:var(--serif); font-size:1.02rem; line-height:1.38; color:var(--ink);
+    padding:9px 0; border-bottom:1px solid var(--line-soft); display:flex; gap:.6em;
+  }
+  ul.hooks li:last-child{border-bottom:none;}
+  ul.hooks li .mk{font-family:var(--mono); font-size:.7rem; margin-top:.35em; flex:none; width:1.1em; color:var(--ink-faint);}
+  li.flag-crit{color:var(--crit);} li.flag-crit .mk{color:var(--crit);}
+  li.flag-warn .mk{color:var(--warn);}
+  .flagkey{font-family:var(--sans); font-size:.78rem; color:var(--ink-faint); margin-top:1em; display:flex; gap:1.4em; flex-wrap:wrap;}
+  .flagkey span{display:inline-flex; align-items:center; gap:.45em;}
+  .flagkey .mk{font-family:var(--mono);}
+  .flagkey .mk.c{color:var(--crit);} .flagkey .mk.w{color:var(--warn);}
+
+  .callout{
+    border:1px solid var(--accent); border-radius:16px; padding:clamp(22px,4vw,32px);
+    background:linear-gradient(180deg,var(--card),var(--card-2)); box-shadow:var(--shadow); position:relative;
+  }
+  .callout .q{font-family:var(--serif); font-weight:600; font-size:clamp(1.25rem,3vw,1.6rem);
+    letter-spacing:-.01em; margin:0 0 .5em; text-wrap:balance;}
+  .callout p{margin:.5em 0 0; color:var(--ink-soft); font-size:1.05rem;}
+  .callout p b{color:var(--ink);}
+  .swap{display:flex; align-items:center; gap:.7em; flex-wrap:wrap; margin-top:1.2em; font-family:var(--mono); font-size:.9rem;}
+  .swap .chip{padding:.4em .8em; border-radius:8px; border:1px solid var(--line); background:var(--card);}
+  .swap .from{color:var(--crit); border-color:var(--crit-line); text-decoration:line-through; text-decoration-thickness:1px;}
+  .swap .to{color:var(--good); border-color:var(--good-line);}
+  .swap .arw{color:var(--ink-faint);}
+
+  ol.rec{list-style:none; counter-reset:r; margin:8px 0 0; padding:0;}
+  ol.rec li{
+    counter-increment:r; position:relative; padding:16px 18px 16px 58px; margin-top:12px;
+    border:1px solid var(--line); border-radius:12px; background:var(--card); box-shadow:var(--shadow);
+  }
+  ol.rec li::before{
+    content:counter(r); position:absolute; left:16px; top:16px;
+    font-family:var(--mono); font-weight:600; font-size:.9rem; color:var(--accent);
+    width:28px; height:28px; border-radius:8px; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; background:var(--card-2);
+  }
+  ol.rec li b{font-weight:600;}
+  ol.rec li .d{display:block; color:var(--ink-soft); font-size:.95rem; margin-top:.3em; font-family:var(--sans);}
+
+  .method{border-top:1px solid var(--line); margin-top:64px; padding-top:26px;}
+  .method h4{font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint); margin:0 0 1em;}
+  .method ul{margin:0; padding-left:1.1em; color:var(--ink-soft); font-family:var(--sans); font-size:.9rem; line-height:1.55;}
+  .method ul li{margin:.5em 0;}
+  .method code{font-family:var(--mono); font-size:.82em; background:var(--card-2); padding:.12em .4em; border-radius:5px; color:var(--ink);}
+</style>
+
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow"><span class="dot"></span> Experiment readout &middot; hooks &middot; 2026-07-15</div>
+    <h1>Grounding didn't fail. We fed it 1% of the data and told it to copy.</h1>
+    <p class="dek">The moat rests on one bet: show the writer proven examples and it writes better. A first test made grounding look <em>worse</em> than writing cold &mdash; but that test handed the writer a clipped one-liner and let it transplant blindly. The failure was the <b>transplant, not the grounding</b>. The fix is to feed the full anatomy through a remix stage.</p>
+    <div class="meta-row">
+      <span><b>8</b> creators &middot; 8 niches</span>
+      <span><b>3</b> arms each &middot; 24 real generations</span>
+      <span>one variable: <b>what the writer sees first</b></span>
+    </div>
+  </header>
+
+  <section>
+    <div class="kicker">The verdict &mdash; corrected</div>
+    <div class="tiles">
+      <div class="tile crit">
+        <div class="stat">~1%</div>
+        <div class="lab">Of what we store per proven video, the hook writer actually <b>saw</b>. A 130-char madlib; the beats, the fit-signal, and the reasoning were withheld.</div>
+        <div class="sub">diagnosis, not verdict</div>
+      </div>
+      <div class="tile warn">
+        <div class="stat">transplant</div>
+        <div class="lab">Why grounded looked worse: handed a skeleton and no way to judge fit, it <b>filled in the blanks</b> instead of adapting.</div>
+        <div class="sub">a pipeline defect, not the thesis</div>
+      </div>
+      <div class="tile good">
+        <div class="stat">remix</div>
+        <div class="lab">The fix: full anatomy through an adapt stage that decides <b>how hard to borrow</b>, per hook, and drops structures that don't fit.</div>
+        <div class="sub">prototype running</div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:22px;">A first read called this "cold writing won." It didn't &mdash; <b>craft is not virality, and we have no view data.</b> What the run really exposed is that grounding was starved and told to copy. Below is that evidence; the corrected conclusion is at the end.</p>
+  </section>
+
+  <section>
+    <div class="kicker">The three writers we compared</div>
+    <div class="arms">
+      <div class="arm control">
+        <div class="tag"><span class="sw"></span> Ungrounded</div>
+        <p>Writes cold. Sees the creator's request and nothing else. The baseline.</p>
+      </div>
+      <div class="arm t1">
+        <div class="tag"><span class="sw"></span> Grounded &mdash; as it ships today</div>
+        <p>Shown the reference cards <b>including the exact line</b> the original creator said.</p>
+      </div>
+      <div class="arm t2">
+        <div class="tag"><span class="sw"></span> Grounded &mdash; structure-only</div>
+        <p>My fix: same cards, but the exact line <b>hidden</b>. Meant to test your "structure, not words" rule.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">How it was executed &middot; the smoking gun</div>
+    <h2>It didn't learn from the library. It filled in the blanks.</h2>
+    <p class="lead">Here is the <b>actual</b> reference block the grounded writer was handed before the pasta ask &mdash; real cards, real proof numbers &mdash; next to what it then wrote. The header of that block literally says <em>"borrow the structure, never the source's words."</em> Watch it ignore that.</p>
+
+    <div class="trace">
+      <div class="ref">
+        <div class="rlab">Reference card #2 shown to the writer <span class="badge proof">proven &middot; 17.6&times; their usual views</span></div>
+        <div class="madlib">MADLIB: My <span class="slot">[subjective standard]</span> is <span class="slot">[comparative]</span> than my <span class="slot">[current reality]</span> and <span class="slot">[personal reaction]</span>.</div>
+        <div class="ranas"><b>ran as:</b> "My taste is a lot better than my skill and that kind of sucks."</div>
+      </div>
+      <div class="became"><span class="arw">&#8627;</span> the writer produced</div>
+      <div class="out">
+        <div class="hook">"My taste is way better than my stove and that's why your pasta sucks."</div>
+        <div class="note">Near word-for-word. It swapped "skill &rarr; stove" and bolted on a non-sequitur. Not a pasta hook &mdash; a filled-in template.</div>
+      </div>
+    </div>
+
+    <div class="trace">
+      <div class="ref">
+        <div class="rlab">Reference card #5 shown to the writer <span class="badge proof">proven &middot; 20.8&times; their usual views</span></div>
+        <div class="madlib">MADLIB: <span class="slot">[Number]</span> levels of <span class="slot">[Topic]</span>. Level one <span class="slot">[Topic]</span>, <span class="slot">[Basic Version]</span>.</div>
+        <div class="ranas"><b>ran as:</b> "Three levels of popcorn. Level one popcorn, microwave popcorn."</div>
+      </div>
+      <div class="became"><span class="arw">&#8627;</span> the writer produced</div>
+      <div class="out">
+        <div class="hook">"3 levels of weeknight pasta. Level one: boiling water wrong."</div>
+        <div class="note">The "N levels of X" format, copied whole &mdash; even in the structure-only arm where the words were hidden. The shape itself carries the cadence.</div>
+      </div>
+    </div>
+
+    <div class="trace">
+      <div class="ref">
+        <div class="rlab">Reference card #4 shown to the writer <span class="badge proof">proven &middot; 80&times; their usual views</span></div>
+        <div class="madlib">MADLIB: I don't get how <span class="slot">[simple subject]</span> can <span class="slot">[negative outcome]</span> y'all up so much. It's literally so <span class="slot">[positive adjective]</span>.</div>
+        <div class="ranas"><b>ran as:</b> "I don't get how one vegetable can mess y'all up so much. It's literally so easy."</div>
+      </div>
+      <div class="became"><span class="arw">&#8627;</span> the writer produced</div>
+      <div class="out">
+        <div class="hook">"I don't get how home cooks think salt is the secret. It's literally just heat."</div>
+        <div class="note">Same skeleton, same smug register &mdash; a voice borrowed from a stranger, not the creator's.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">See it yourself &middot; same ask, both writers</div>
+    <h2>Watch the transplant happen &mdash; a proven skeleton, stuffed in without a fit-check.</h2>
+
+    <div class="case">
+      <div class="case-head">
+        <span class="n">Case 5</span>
+        <h3>Cooking</h3>
+        <span class="ask">"why restaurant pasta tastes better than yours and it is not the recipe"</span>
+      </div>
+      <div class="cols">
+        <div class="col control">
+          <header><span>Ungrounded &mdash; no library</span><span class="win">on-voice</span></header>
+          <ul class="hooks">
+            <li><span class="mk">&middot;</span>Stop blaming your grocery store. The reason your weeknight pasta fails has nothing to do with the brand of tomatoes you bought.</li>
+            <li><span class="mk">&middot;</span>Your pasta tastes like cardboard because you're boiling it wrong, not because you bought the wrong sauce.</li>
+            <li><span class="mk">&middot;</span>I spent three nights timing every second of my boil so you don't have to guess why your texture is always mushy.</li>
+            <li><span class="mk">&middot;</span>Last Tuesday I threw out my third batch of dinner because it tasted exactly like the box said it would &mdash; and that was the problem.</li>
+          </ul>
+        </div>
+        <div class="col ground">
+          <header><span>Grounded &mdash; from the library</span></header>
+          <ul class="hooks">
+            <li class="flag-crit"><span class="mk">&#10005;</span>My taste is way better than my stove and that's why your pasta sucks.</li>
+            <li class="flag-warn"><span class="mk">&#9650;</span>3 levels of weeknight pasta. Level one: boiling water wrong.</li>
+            <li class="flag-warn"><span class="mk">&#9650;</span>I don't get how home cooks think salt is the secret. It's literally just heat.</li>
+            <li><span class="mk">&middot;</span>You have been lied to about restaurant pasta.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="case">
+      <div class="case-head">
+        <span class="n">Case 2</span>
+        <h3>Strength training</h3>
+        <span class="ask">"why lifting heavy 3x a week beats an hour on the treadmill"</span>
+      </div>
+      <div class="cols">
+        <div class="col control">
+          <header><span>Ungrounded &mdash; no library</span><span class="win">on-voice</span></header>
+          <ul class="hooks">
+            <li><span class="mk">&middot;</span>Everyone tells you to 'move more' to lose weight. That advice is keeping you soft.</li>
+            <li><span class="mk">&middot;</span>Last Tuesday a client quit her hour-long walks. Three weeks later her strength was up and her waist was down. Here's why.</li>
+            <li><span class="mk">&middot;</span>Stop treating the treadmill like penance for eating. It's not burning fat; it's burning your recovery.</li>
+            <li><span class="mk">&middot;</span>I spent six months watching beginners spin their wheels on cardio. Here's the one variable they ignored.</li>
+          </ul>
+        </div>
+        <div class="col ground">
+          <header><span>Grounded &mdash; from the library</span></header>
+          <ul class="hooks">
+            <li class="flag-warn"><span class="mk">&#9650;</span>Here's the #1 rule I'd use if I had to get strong but only had three hours a week.</li>
+            <li class="flag-warn"><span class="mk">&#9650;</span>Did you know if you swap one treadmill session for heavy squats, your metabolism stays elevated for 48 hours?</li>
+            <li><span class="mk">&middot;</span>Please don't spend an hour on the treadmill! You are killing your gains.</li>
+            <li><span class="mk">&middot;</span>I spent six months chasing cardio gains and got weaker. Here's the one variable I ignored.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="case">
+      <div class="case-head">
+        <span class="n">Case 4</span>
+        <h3>Freelance design</h3>
+        <span class="ask">"how to raise your design retainer without losing the client"</span>
+      </div>
+      <p class="lead" style="margin:0 0 12px;">The <b>fairest</b> case for the library &mdash; here grounding was genuinely competitive. Even so, the shipping version leaked a stranger's phrasing.</p>
+      <div class="cols">
+        <div class="col control">
+          <header><span>Ungrounded &mdash; no library</span><span class="win">on-voice</span></header>
+          <ul class="hooks">
+            <li><span class="mk">&middot;</span>Stop asking for permission to raise your rates.</li>
+            <li><span class="mk">&middot;</span>I raised my fee by 40% and the client thanked me. Here is the exact email.</li>
+            <li><span class="mk">&middot;</span>I analyzed twelve renewal contracts. The ones that churned all made this one linguistic error.</li>
+            <li><span class="mk">&middot;</span>Your retainer isn't a price. It's a boundary.</li>
+          </ul>
+        </div>
+        <div class="col ground">
+          <header><span>Grounded &mdash; from the library</span></header>
+          <ul class="hooks">
+            <li class="flag-crit"><span class="mk">&#10005;</span>The three-tier scope lock. The secret to raising retainers without raising rates.</li>
+            <li><span class="mk">&middot;</span>I moved a client from $2k to $5k in one email. Here is the exact structure.</li>
+            <li><span class="mk">&middot;</span>Raising your retainer isn't a negotiation. It's a filter.</li>
+            <li><span class="mk">&middot;</span>Your client doesn't care about your hours. They care about their risk.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="flagkey">
+      <span><span class="mk c">&#10005;</span> copied a reference line &mdash; reads as nonsense for this creator</span>
+      <span><span class="mk w">&#9650;</span> generic viral cadence borrowed from the library's shapes</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">Your question, answered</div>
+    <div class="callout">
+      <p class="q">"So does this mean we stop relying on the reference library?"</p>
+      <p><b>No &mdash; you stop <em>transplanting</em> from it and start <em>remixing</em> it.</b> The 532 videos and the retrieval that finds them are good. The failure was that the writer got a bare skeleton and no way to judge whether it fit &mdash; so it filled in the blank. Give it the full anatomy (the beats, the "when to use this", the tension, the real reasoning) and let it decide, per hook, <b>how hard to borrow</b>: clone a line that already fits, swap the subject, take only the angle, or drop a structure that doesn't belong. That is exactly how the <b>remix skill</b> already treats a video a creator hands it.</p>
+      <p>And it lives in its own <b>adapt stage</b>, not the writer's prompt &mdash; so the full data never competes with, and never evicts, the creator's own voice.</p>
+      <div class="swap">
+        <span class="chip from">transplant a clipped madlib</span>
+        <span class="arw">&rarr;</span>
+        <span class="chip to">remix the full anatomy, dosed to fit</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">The fix, in action</div>
+    <h2>Remix keeps the proven format and drops the nonsense.</h2>
+    <p class="lead">Same pasta ask. Left is grounding as it ships (transplant). Right is the remix prototype &mdash; fed the full anatomy, choosing a borrow-dosage per hook. The broken line is gone; the proven "you've been lied to" energy stays, in the creator's voice.</p>
+    <div class="case" style="margin-top:16px;">
+      <div class="cols">
+        <div class="col ground">
+          <header><span>Transplant &mdash; ships today</span></header>
+          <ul class="hooks">
+            <li><span class="mk">&middot;</span>Two levels of pasta water. Level one: your pot. Level two: the ocean.</li>
+            <li><span class="mk">&middot;</span>I don't get how home cooks think salt is the secret. It's literally just heat.</li>
+            <li><span class="mk">&middot;</span>You have been lied to about restaurant pasta.</li>
+            <li class="flag-crit"><span class="mk">&#10005;</span>My taste is way better than my stove and that's why your pasta sucks.</li>
+          </ul>
+        </div>
+        <div class="col control">
+          <header><span>Remix &mdash; full anatomy + dosage</span><span class="win">re-voiced, capped</span></header>
+          <ul class="hooks">
+            <li><span class="mk">&#8635;</span>I don't get how salted water messes y'all up so much. <em style="color:var(--ink-faint);font-size:.8em;">(swap)</em></li>
+            <li><span class="mk">&#8635;</span>Your pasta tastes worse than the restaurant's. It's not the recipe. <em style="color:var(--ink-faint);font-size:.8em;">(angle)</em></li>
+            <li><span class="mk">&#8635;</span>The blandest restaurant pasta won a Michelin star. <em style="color:var(--ink-faint);font-size:.8em;">(swap)</em></li>
+            <li><span class="mk">&#8226;</span>You have been lied to about al dente. <em style="color:var(--ink-faint);font-size:.8em;">(none &mdash; wrote original)</em></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="lead" style="margin-top:20px;">And it genuinely <b>used the dial</b> rather than cloning everything &mdash; across all 40 hooks, every one <b>&le; 15 words</b> (the transplant cloned 5-of-5 and ran long):</p>
+    <div class="tiles" style="margin-top:14px;">
+      <div class="tile good"><div class="stat">21</div><div class="lab"><b>swap</b> &mdash; kept the proven structure, wrote a fresh line in the creator's voice.</div></div>
+      <div class="tile good"><div class="stat">12</div><div class="lab"><b>angle</b> &mdash; took only the idea, fully re-voiced.</div></div>
+      <div class="tile warn"><div class="stat">7</div><div class="lab"><b>none</b> &mdash; nothing fit the ask, so it wrote an original.</div></div>
+      <div class="tile good"><div class="stat">0</div><div class="lab"><b>clone</b> &mdash; no blind copies survived. The length cap pushed borderline borrows into a real rewrite.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="kicker">What's next</div>
+    <ol class="rec">
+      <li><b>Land the remix adapt stage behind a flag; read the labelled A/B together.</b><span class="d">Built and run: <code>docs/AB-GROUNDING-REMIX-2026-07-15.md</code>. It combines cold's on-voice quality with the library's proven structures &mdash; the thing neither earlier arm did.</span></li>
+      <li><b>Then make it the shared grounding service &mdash; one decode&rarr;adapt layer for every skill.</b><span class="d">Hooks, Ideas, Script and any other source feed the same adapt stage with their intent, instead of each guessing which few fields to show. That per-skill guess is what starved hooks in the first place.</span></li>
+      <li><b>Wire a real outcome signal before declaring victory.</b><span class="d">Which hooks users pick, post, and perform. Craft is not virality, and our own simulator can't score our own work &mdash; this is the only thing that truly settles it.</span></li>
+    </ol>
+  </section>
+
+  <div class="method">
+    <h4>How this was run &mdash; and where to be skeptical</h4>
+    <ul>
+      <li>Same ask, same creator profile, same model in every arm. The only thing that changed was what the writer saw first. Ungrounded always ran first so a warm cache couldn't flatter the library.</li>
+      <li>Before each run we probed the retrieval directly: all 8 asks pulled <b>6 real examples across 6 distinct hook shapes</b> &mdash; the library genuinely engaged, this isn't a dead-pipeline artifact.</li>
+      <li><b>One sample per arm per case.</b> A narrow gap would be noise; a clean sweep plus a machine-countable copy-tell (0 vs 14 vs 12) is not. Winners above are a considered read, not a blind panel &mdash; worth your own eyes.</li>
+      <li>The "structure-only" arm is a one-line switch (<code>GROUNDING_HOOKS_SURFACE=structure</code>), off by default. Nothing is committed; all 88 grounding tests still pass; prod is untouched.</li>
+    </ul>
+  </div>
+
+</div>
