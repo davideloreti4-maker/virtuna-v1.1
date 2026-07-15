@@ -27,6 +27,8 @@ import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { TargetReaction } from './target-reaction';
+import { archetypeDisplayName } from '@/lib/audience/archetype-names';
 
 export interface IdeaCardRendererProps {
   block: IdeaCardBlock;
@@ -49,6 +51,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     scrollQuote,
     proof,
     grounded,
+    target,
   } = block.props;
 
   const platform = usePlatform();
@@ -92,11 +95,16 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     >
       {/* FACE — always visible */}
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
-        {/* Eyebrow — "Made for your audience" kicker + amber "your take" badge. */}
+        {/* Eyebrow — audience kicker (band-colored dot) + amber "your take" badge.
+            On a targeted (calibrated) run the kicker NAMES the person this idea was written for.
+            "Made for your audience" is what we can honestly say when we wrote it for nobody in
+            particular — the moment we can name the reader, saying the vaguer thing is a downgrade. */}
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            Made for your audience
+            {target
+              ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}`
+              : 'Made for your audience'}
           </span>
           {needsTake && (
             <span
@@ -116,6 +124,11 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
         <p className="text-[13px] leading-relaxed text-foreground-secondary">
           {angle} <span className="text-foreground-muted">— {whyItFits}</span>
         </p>
+
+        {/* Per-persona generation: the aim + the aimed-at reader's own verdict (the receipt).
+            Absent on General/uncalibrated runs, and on a calibrated run whose writer named nobody
+            we assigned — an honest silence, never a personalised label over a generic idea. */}
+        {target && <TargetReaction target={target} />}
 
         {/* Proof receipt (§11f fan-out) — the real outlier this idea's structure was drawn from.
             Only present on grounded runs where a real source was attributed (honesty spine).

@@ -564,3 +564,291 @@ describe("runIdeasPipeline — FLYWHEEL-02 predicted pin", () => {
     expect(pinPredictedSignature).not.toHaveBeenCalled();
   });
 });
+
+// ─── PER-PERSONA GENERATION (fan-out from hooks #299) ─────────────────────────
+//
+// MEASURED BEFORE IT SHIPPED (scripts/measure-targeting.ts, 2026-07-14): a blind judge told
+// nothing matched each idea to the persona it was written for 75% of the time (18/24), against a
+// 20.8% CONTROL — ideas written for nobody, paired with the same personas by position. Chance is
+// 25%. The control landing AT chance is what makes 75% mean anything: the judge is not inventing
+// structure, it is reading structure we put there.
+//
+// The tests below guard the BINDING, not the writing. The writing is what the harness measures;
+// the binding is what silently breaks — and when it breaks, every card loses its line while the
+// whole suite stays green. That is not hypothetical: it is exactly what shipped on hooks.
+
+const targetedIdeasAudience = {
+  ...(calibratedAudience as object),
+  id: "aud-targeted-ideas",
+  is_general: false,
+  personas: [
+    { archetype: "lurker", repaint: "Passively consumes the spectacle.", temperature: "cold", disposition: "scanner", share: 0.2 },
+    { archetype: "saver", repaint: "Saves to rewatch frame-by-frame.", temperature: "warm", disposition: "collector", share: 0.15 },
+    { archetype: "loyalist", repaint: "Defends the creator against critics.", temperature: "hot", disposition: "connector", share: 0.1 },
+    { archetype: "niche_deep_buyer", repaint: "Deeply invested; buys the course.", temperature: "hot", disposition: "converter", share: 0.05 },
+  ],
+} as never;
+
+/** A SIM panel carrying the real archetypes, so a target can find its OWN reaction. */
+function makeIdeaTargetPanel() {
+  return [
+    { archetype: "lurker", verdict: "stop", quote: "Had to check if that was real." },
+    { archetype: "saver", verdict: "stop", quote: "Pausing this frame by frame." },
+    { archetype: "loyalist", verdict: "scroll", quote: "Not his best." },
+    { archetype: "niche_deep_buyer", verdict: "stop", quote: "Take my money." },
+    { archetype: "cross_niche_curiosity", verdict: "stop", quote: "The trend brought me here." },
+    { archetype: "high_engager", verdict: "stop", quote: "Commenting now." },
+    { archetype: "sharer", verdict: "stop", quote: "Sending to my group chat." },
+    { archetype: "tough_crowd", verdict: "scroll", quote: "Seen better." },
+    { archetype: "purposeful_viewer", verdict: "stop", quote: "Useful." },
+    { archetype: "niche_deep_scout", verdict: "scroll", quote: "Not deep enough." },
+  ];
+}
+
+function mockQwenReturningIdeas(ideas: unknown[]) {
+  return {
+    chat: {
+      completions: {
+        create: vi.fn().mockResolvedValue({
+          choices: [{ message: { content: JSON.stringify({ ideas }) } }],
+        }),
+      },
+    },
+  };
+}
+
+function targetedIdeas(targetArchetypes: string[]) {
+  return targetArchetypes.map((targetArchetype, i) => ({
+    title: `Idea ${i + 1}`,
+    angle: `Angle ${i + 1}`,
+    mechanism: `Mechanism ${i + 1}`,
+    seedHook: `Seed ${i + 1}`,
+    needsTake: false,
+    topic: `Topic ${i + 1}`,
+    take: `Take ${i + 1}`,
+    format: null,
+    targetArchetype,
+  }));
+}
+
+/** Every idea rated identically, so RANK never reorders and positional checks stay meaningful. */
+function mockFlatPanel(runFlashTextModeBatch: ReturnType<typeof vi.fn>) {
+  runFlashTextModeBatch.mockImplementation((candidates: { id: string }[]) =>
+    Promise.resolve({
+      results: new Map(candidates.map((c) => [c.id, { personas: makeIdeaTargetPanel() }])),
+      warnings: [],
+    }),
+  );
+}
+
+describe("runIdeasPipeline — per-persona generation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * 🔴 THE LIVE BUG, PINNED — the one that shipped on hooks and would have shipped here.
+   *
+   * The assignment list renders each person as `1. [lurker] …`, so a model told to "use the exact
+   * bracketed slug" returns `"[lurker]"`, brackets and all. The assignment map is keyed on the BARE
+   * slug → every lookup misses → EVERY card silently loses its target line, with tsc, eslint and
+   * 3,600 tests green. The writer had complied perfectly; the BINDING broke.
+   *
+   * Revert normalizeTargetArchetype and this test goes red — and the feature is dead again.
+   */
+  it('binds a BRACKETED slug — the model returns "[lurker]", not "lurker" (live-caught on hooks)', async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturningIdeas(
+        targetedIdeas(["[lurker]", "[saver]", "[loyalist]", "[niche_deep_buyer]"]),
+      ),
+    );
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks } = await runIdeasPipeline({
+      ask: "a levitation illusion",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedIdeasAudience,
+    });
+
+    expect(blocks).toHaveLength(4);
+    for (const b of blocks) {
+      expect(b.props.target).toBeDefined();
+      expect(b.props.target!.archetype).not.toMatch(/[[\]]/); // brackets never reach the card
+    }
+    expect(new Set(blocks.map((b) => b.props.target!.archetype))).toEqual(
+      new Set(["lurker", "saver", "loyalist", "niche_deep_buyer"]),
+    );
+  });
+
+  it("tolerates the other decorations a model reasonably adds (quotes, case, spaces)", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturningIdeas(
+        targetedIdeas(['"lurker"', "  SAVER  ", "`loyalist`", "niche deep buyer"]),
+      ),
+    );
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks } = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedIdeasAudience,
+    });
+
+    expect(blocks.every((b) => b.props.target !== undefined)).toBe(true);
+  });
+
+  /**
+   * THE HONEST FAILURE. A writer that ignores its assignment must produce a card with NO target
+   * line — never a generic idea wearing a personalised label. This is the runtime tripwire for the
+   * §4c failure mode ("the writer ignores the audience"): it surfaces as an ABSENCE the user can
+   * see, not as a confident lie.
+   */
+  it("drops the target line — never mislabels — when the model names a slug we never assigned", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturningIdeas(targetedIdeas(["lurker", "nobody_we_cast", "", "loyalist"])),
+    );
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks, warnings } = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedIdeasAudience,
+    });
+
+    const bound = blocks.filter((b) => b.props.target).map((b) => b.props.target!.archetype);
+    expect(new Set(bound)).toEqual(new Set(["lurker", "loyalist"]));
+    // The two that named nobody we assigned carry NO line at all — they are not mislabelled.
+    expect(blocks.filter((b) => !b.props.target)).toHaveLength(2);
+    expect(warnings.some((w) => w.includes("target line dropped"))).toBe(true);
+  });
+
+  /**
+   * The card's reaction must be the TARGET'S OWN, not the lead scroll-quote. `loyalist` scrolled
+   * past in the panel above while others stopped — so the loyalist card must say so. A card that
+   * borrowed the lead quote would report a stop for a person who scrolled: a fabricated receipt.
+   */
+  it("carries the TARGET's own SIM reaction, not the lead quote", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturningIdeas(targetedIdeas(["lurker", "saver", "loyalist", "niche_deep_buyer"])),
+    );
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks } = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+      audience: targetedIdeasAudience,
+    });
+
+    const loyalist = blocks.find((b) => b.props.target?.archetype === "loyalist");
+    expect(loyalist!.props.target!.verdict).toBe("scroll");
+    expect(loyalist!.props.target!.quote).toBe("Not his best.");
+
+    const buyer = blocks.find((b) => b.props.target?.archetype === "niche_deep_buyer");
+    expect(buyer!.props.target!.verdict).toBe("stop");
+    expect(buyer!.props.target!.quote).toBe("Take my money.");
+  });
+
+  /**
+   * THE REGRESSION GATE. General has no real people behind it, so we name none — and the run must
+   * stay byte-identical to the pre-targeting one: no assignment block in the prompt, no target on
+   * any card. (An "assignment" over invented personas would be the most confident lie the product
+   * could tell.)
+   */
+  it("General: no assignment block in the prompt, and no target on any card", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+
+    const client = mockQwenReturningIdeas(targetedIdeas(["lurker", "saver", "loyalist", "niche_deep_buyer"]));
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(client);
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks } = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+      audience: generalAudience,
+    });
+
+    // Even though the (mocked) model volunteered target slugs, an uncalibrated run names NOBODY.
+    expect(blocks.every((b) => b.props.target === undefined)).toBe(true);
+
+    // And the writer was never briefed on a cast.
+    const bundleArgs = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      overrides?: string;
+    };
+    expect(bundleArgs.overrides ?? "").not.toContain("WRITE FOR ONE NAMED PERSON");
+
+    // The output contract must not request the field either (warm-cache prefix preserved).
+    const sent = client.chat.completions.create.mock.calls[0]![0] as {
+      messages: { content: string }[];
+    };
+    expect(sent.messages[0]!.content).not.toContain("targetArchetype");
+  });
+
+  /**
+   * F7 — a persona's `label` must NEVER reach the model. The engine binds on `archetype` and the
+   * writer is briefed with `repaint`; the workspace tells users in as many words that a persona's
+   * display name stays out of the prompt. Print a label into the assignment block and the UI
+   * becomes a lie.
+   */
+  it("F7: the persona's display label never reaches the model", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { assembleBundle } = await import("@/lib/kc/assembler");
+
+    const labelled = {
+      ...(targetedIdeasAudience as object),
+      personas: [
+        { archetype: "lurker", label: "MY SECRET NICKNAME", repaint: "Passively consumes.", temperature: "cold", disposition: "scanner", share: 0.4 },
+        { archetype: "saver", repaint: "Saves to rewatch.", temperature: "warm", disposition: "collector", share: 0.3 },
+        { archetype: "loyalist", repaint: "Defends the creator.", temperature: "hot", disposition: "connector", share: 0.2 },
+        { archetype: "niche_deep_buyer", repaint: "Buys the course.", temperature: "hot", disposition: "converter", share: 0.1 },
+      ],
+    } as never;
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue(
+      mockQwenReturningIdeas(targetedIdeas(["lurker", "saver", "loyalist", "niche_deep_buyer"])),
+    );
+    mockFlatPanel(runFlashTextModeBatch as ReturnType<typeof vi.fn>);
+
+    const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+    const { blocks } = await runIdeasPipeline({
+      ask: "Ideas",
+      platform: "tiktok",
+      profileRow: null,
+      audience: labelled,
+    });
+
+    const bundleArgs = (assembleBundle as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      overrides?: string;
+    };
+    expect(bundleArgs.overrides ?? "").toContain("[lurker]");          // the slug is briefed
+    expect(bundleArgs.overrides ?? "").not.toContain("MY SECRET NICKNAME"); // the name is NOT
+
+    // …but it IS snapshotted onto the card, because that is what the user is shown.
+    const lurker = blocks.find((b) => b.props.target?.archetype === "lurker");
+    expect(lurker!.props.target!.label).toBe("MY SECRET NICKNAME");
+  });
+});

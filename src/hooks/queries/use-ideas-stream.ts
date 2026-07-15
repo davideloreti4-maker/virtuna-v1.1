@@ -29,8 +29,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookProof, IdeaCardBlock, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp, parseGroundedProp } from '@/lib/tools/blocks';
+import type { HookProof, IdeaCardBlock, ReactionPersona, CardTarget } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp, parseTargetProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -62,6 +62,11 @@ export interface PartialIdeaCard {
   // Must be declared here, not merely passed: the live stream is the ONLY path on which the
   // half-attributed grid is visible, so a type that omits it would let the boundary drop it.
   grounded?: boolean;
+  // PER-PERSONA GENERATION: WHO this idea was written for + how that person reacted. Same rule as
+  // `grounded` above, and it is not a hypothetical — the identical prop was being dropped by the
+  // hooks SSE emit (#298), so the target line could only ever appear AFTER a reload, never on the
+  // live stream, which is the only path a user actually watches.
+  target?: CardTarget;
 }
 
 export interface UseIdeasStreamReturn {
@@ -271,6 +276,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -449,6 +455,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                 };
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
@@ -533,6 +540,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         // parsed off the wire but not copied HERE is silently dropped on the streaming path —
         // and the streaming path is the only one where the half-attributed grid is ever seen.
         ...(c.grounded ? { grounded: true } : {}),
+        // Same trap, same line: the target must be copied here or it renders only after a reload.
+        ...(c.target ? { target: c.target } : {}),
       },
     }));
   }, [streamingCards]);
