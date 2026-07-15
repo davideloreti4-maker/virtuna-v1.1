@@ -112,7 +112,35 @@ their layout, fill with OUR real metrics, mark modeled clearly. Never fabricate 
 
 ---
 
-## §4 — 🎯 WHY THE GRID IS "NOT ACCURATE TO SAPIENT" (start here next session)
+## §4 — ✅ RESOLVED (`7cb37106`, local, not pushed) — the grid now grades 1:1 with Sapient
+
+**Owner's §4.3 call: TRUE SAPIENT GRADE** (WEAKNESS/OKAY/STRONG), accepting a disclosed heuristic
+benchmark. Shipped honestly: the grade is a fixed band (`<40 · 40–69 · ≥70`) of the peak modeled
+activation, and every cell states behind **WHY THIS SCORE** that the band is a cutoff on the modeled
+signal, **NOT a benchmark against real outcomes**. The room-readout §5 hash objection is now STALE —
+`cortex-sim` deleted the hash (`neuralDrive` L148), so the number is a deterministic function of the
+real stop-ratio and grading a disclosed band of it is honest. All §4.1–4.6 done + LOOKED
+(`grid-dump.mjs`, 9 cells, monotonic). tsc clean, 162 tests green.
+
+What landed:
+- **Airy cells** — numeral 26→36px thin; the `notMeasured` disclaimer moved behind a per-cell WHY
+  THIS SCORE affordance (verified it reveals the banding + "not a benchmark" line).
+- **Graded coloured verdict** in Sapient's slot; an always-visible **MODELED / REAL** tag so the
+  grade never reads as a measurement.
+- **Immersion** — the default-mode network is presented positively (`100 − peak`) so all nine read
+  higher = better; no confusing back-to-front grade.
+- **Stable 3×3** — 7 modeled + Core hold + Reach; an absent vote segment renders an explicit
+  "too few of this segment" cell (D-13, never a fabricated zero).
+- **Monotonic grid (a judgment call — flag for owner):** vote cells grade on the SAME flat band as
+  modeled cells, so a 67 never reads worse than a 57. room-readout's asymmetric verdict ("Wavering"
+  for a core below 70, "Mixed" for a middling reach) is RICHER but non-monotonic; it is preserved in
+  WHY and still surfaced by the SPLITS chip / segments / divergence. If the owner would rather the
+  grid carry the asymmetric core-expectation on its face, restore the `weak` override in `voteSignal`.
+- **Header** reconciled to `THE NINE BREAKDOWN SIGNALS`.
+
+▶ NEXT is unchanged: (b) the synced hero (§3.1, the biggest structural miss), then (c) σ bars (§3.5).
+
+<details><summary>Original §4 deltas (kept for provenance)</summary>
 
 Measured deltas, ours (`0b5b1546`) vs `sapient-03-result.png` / `sapient-10-expanded.png`:
 
@@ -135,6 +163,8 @@ Measured deltas, ours (`0b5b1546`) vs `sapient-03-result.png` / `sapient-10-expa
 
 **Recommended next-session order:** (a) fix the grid per §4.1–4.3 and LOOK; (b) build the synced hero
 (§3.1) — the biggest structural win; (c) σ bars (§3.5 + GAP-6). Ask the owner about §4.3 first.
+
+</details>
 
 ---
 
