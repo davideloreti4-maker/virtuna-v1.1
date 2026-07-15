@@ -8,12 +8,9 @@ import { getPrimaryAccount } from "@/lib/connected-accounts/connected-accounts-r
 import { buildAccountStats } from "@/lib/account-metrics/account-metrics";
 import type { StatCard } from "@/lib/room-contract/mock-room";
 import { getFreshSurfaceCards, audienceKeyOf } from "@/lib/surfaces/surface-reactions-repo";
-import type { LiveOutlierCard, LiveIdeaCard } from "@/lib/surfaces/live-cards";
+import type { LiveIdeaCard } from "@/lib/surfaces/live-cards";
 import { listRecentReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { buildLoopReceipts, buildLoopAccuracy, nowMs, type LoopReceipt, type LoopAccuracy } from "@/lib/flywheel/loop-summary";
-import { currentMonth } from "@/lib/calendar/current-month";
-import { listPlannedPosts, type PlannedPostRow } from "@/lib/planned-posts/planned-posts-repo";
-import { toISODate } from "@/lib/calendar/planned-plan";
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
@@ -36,9 +33,9 @@ export const metadata: Metadata = {
  * `signature` (present only for scrape-calibrated rows — null for General/presets/uncalibrated).
  * Review overrides: `?first=1` forces first-run, `?first=0` forces the briefing.
  *
- * The briefing still stubs the Room ⇄ Surfaces contract with mock data (see mock-room.ts) —
- * swap stub → real when The Room ships (a graft, not a rebuild). Does NOT touch the /home
- * composer/thread (The Room's).
+ * MVP launch cut (lane/launch-prep, 2026-07-15): the hero is REAL (name+time greeting, live loop
+ * rings, static quick-action copy); the Outliers/Calendar/Today's-plan sections were removed with
+ * Discover/Calendar. Does NOT touch the /home composer/thread (The Room's).
  */
 export default async function StartRoute({
   searchParams,
@@ -96,26 +93,9 @@ export default async function StartRoute({
   // renders instantly. A miss (or a stale/first-of-the-day cache) leaves these null → StartPage
   // warms each lazily via POST /api/surfaces/{outliers,ideas}. Skipped for first-run (no audience).
   const audienceKey = audienceKeyOf(activeAudience);
-  let initialOutliers: LiveOutlierCard[] | null = null;
   let initialIdeas: LiveIdeaCard[] | null = null;
   if (!initialFirstRun) {
-    [initialOutliers, initialIdeas] = await Promise.all([
-      getFreshSurfaceCards<LiveOutlierCard>(supabase, user.id, audienceKey, "outlier"),
-      getFreshSurfaceCards<LiveIdeaCard>(supabase, user.id, audienceKey, "idea"),
-    ]);
-  }
-
-  // The REAL plan (planned_posts): the SAME persisted content calendar the /calendar workspace
-  // writes — the month widget + today's-plan read it so /start and /calendar agree (they diverged
-  // while /start ran on the old ideas-projection). Current month onward; skipped for first-run.
-  const cm = currentMonth();
-  let initialPlanned: PlannedPostRow[] = [];
-  if (!initialFirstRun) {
-    try {
-      initialPlanned = await listPlannedPosts(supabase, user.id, toISODate(cm.year, cm.monthIndex, 1));
-    } catch {
-      initialPlanned = [];
-    }
+    initialIdeas = await getFreshSurfaceCards<LiveIdeaCard>(supabase, user.id, audienceKey, "idea");
   }
 
   // Real "the loop" (FLYWHEEL): the user's recent reconciliations → honest predicted-vs-actual
@@ -137,12 +117,7 @@ export default async function StartRoute({
       accountStats={accountStats}
       audiences={audiences}
       initialSelectedAudienceId={initialSelectedAudienceId}
-      initialOutliers={initialOutliers}
       initialIdeas={initialIdeas}
-      initialPlanned={initialPlanned}
-      // Server-resolved "today" month (SSR-safe) — the month widget + today's-plan read the real
-      // planned_posts for these days. Never read the clock client-side (hydration mismatch).
-      calendarMonth={cm}
     />
   );
 }
