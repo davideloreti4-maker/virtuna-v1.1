@@ -2,8 +2,8 @@
  * Middleware landing-redirect behavior (SHELL-06 / D-23).
  *
  * The authed landing lives in `updateSession` (src/lib/supabase/middleware.ts).
- * This suite asserts the load-bearing facts of the authed-landing repoint:
- *   1. An authed user hitting /login or /signup is redirected to /start (the briefing home).
+ * This suite asserts the three load-bearing facts of the /home repoint:
+ *   1. An authed user hitting /login or /signup is redirected to /home (NOT /analyze).
  *   2. An unauthenticated user hitting /home is redirected to /login
  *      (/home is a PROTECTED_PREFIX — defense-in-depth on top of the (app) layout gate).
  *   3. Every redirect Location is same-origin (same host as the request) — no open redirect (V5).
@@ -13,8 +13,8 @@
  * the authed onboarding lookup never throws. next/server is real — a genuine
  * NextRequest is constructed and the NextResponse redirect Location is asserted.
  *
- * The authed landing is the briefing at /start (MVP launch cut, 2026-07-15); the
- * middleware redirect + auth callback repoint here. /home stays a protected composer route.
+ * Written first (Task 1) — RED against the current /analyze landing until Task 2
+ * repoints the redirect + auth callback to /home.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -71,19 +71,19 @@ beforeEach(() => {
 });
 
 describe("middleware authed landing (D-23 / SHELL-06)", () => {
-  it("redirects an authed user off /login to /start (the briefing home)", async () => {
+  it("redirects an authed user off /login to /home (not /analyze)", async () => {
     mockUser = { id: "user-1" };
     const res = await updateSession(requestFor("/login"));
     const url = redirectUrl(res);
-    expect(url.pathname).toBe("/start");
+    expect(url.pathname).toBe("/home");
     expect(url.pathname).not.toBe("/analyze");
   });
 
-  it("redirects an authed user off /signup to /start (the briefing home)", async () => {
+  it("redirects an authed user off /signup to /home (not /analyze)", async () => {
     mockUser = { id: "user-1" };
     const res = await updateSession(requestFor("/signup"));
     const url = redirectUrl(res);
-    expect(url.pathname).toBe("/start");
+    expect(url.pathname).toBe("/home");
     expect(url.pathname).not.toBe("/analyze");
   });
 
@@ -97,7 +97,7 @@ describe("middleware authed landing (D-23 / SHELL-06)", () => {
   });
 
   it("keeps every landing redirect same-origin (no open redirect — V5)", async () => {
-    // authed -> /start redirect host
+    // authed -> /home redirect host
     mockUser = { id: "user-1" };
     const authed = redirectUrl(await updateSession(requestFor("/login")));
     expect(authed.host).toBe(new URL(ORIGIN).host);

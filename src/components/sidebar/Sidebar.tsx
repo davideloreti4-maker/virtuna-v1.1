@@ -4,15 +4,15 @@
  * Sidebar — lean flat-warm shell (Maven Rework P1, D-10..D-16)
  *
  * Sections (top → bottom):
- *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
- *  Home             — the briefing landing (your day, pre-tested) → /start
+ *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut; opens the /home composer (which IS the home)
  *  Audience         — the calibrated-audience moat (D-04)
  *  Thread           — chronological chat history; rows re-open in place
  *  👤 Account        — bottom-anchored, user avatar + settings/logout
  *
- * MVP launch cut (lane/launch-prep, 2026-07-15): Calendar · Discover · Library nav
- * items are hidden and their routes redirect to /home. Restore the NavItems here +
- * revert the page.tsx redirects (git) to bring them back feature-by-feature post-launch.
+ * MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after preview
+ * (New Thread / the /home composer IS the home). Calendar · Discover · Library · Start nav items
+ * are hidden and their routes redirect to /home. Restore the NavItems + revert the page.tsx
+ * redirects (git) to bring them back post-launch.
  *
  * Flat-warm matte: no Raycast glass, no blur, no inset shine (THEME-02 Layer B).
  * Desktop: persistent + collapsible to an icon rail via ⌘\ (D-14), choice
@@ -31,7 +31,6 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
-  House,
   UsersThree,
   Trash,
   Check,
@@ -365,7 +364,6 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-  const isOnStart = pathname.startsWith("/start");
   // Analytics folded into /audience (/analytics + /grow redirect there), so those light Audience.
   const isOnAudience =
     pathname.startsWith("/audience") ||
@@ -463,21 +461,10 @@ export function Sidebar() {
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Destinations — the MVP launch loop. Calendar · Discover · Library are
-              hidden for launch (route-guarded → /home); the nav is the two surfaces the
-              core loop needs: Start (briefing + outcome capture) and Audience (the calibrated
-              moat). Flat list — with two items the Create/Analyze/Assets group labels were
-              just echoing their single child. ── */}
+          {/* ── Destinations — post-briefing cut (2026-07-15): the standalone briefing was removed
+              (New Thread / the /home composer IS the home). Audience — the calibrated moat — is the
+              one persistent destination. Calendar · Discover · Library stay hidden (→ /home). ── */}
           <div className="pt-3 flex flex-col gap-0.5">
-            {/* Start — the flagship briefing landing: your day, pre-tested on your people.
-                /home stays the thread/composer surface, so this never steals the thread flow. */}
-            <NavItem
-              icon={House}
-              label="Home"
-              isActive={isOnStart}
-              isCollapsed={effectiveCollapsed}
-              onClick={() => router.push("/start")}
-            />
             {/* Audience Manager — the calibrated-audience moat; D-04 per-thread pin entry point. */}
             <NavItem
               icon={UsersThree}

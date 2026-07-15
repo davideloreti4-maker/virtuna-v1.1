@@ -45,18 +45,19 @@ describe('Sidebar a11y', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('exposes the launch-cut top-level nav items: New Thread, Home, Audience', () => {
+  it('exposes the launch-cut top-level nav items: New Thread, Audience', () => {
     render(<Sidebar />);
-    // MVP launch cut (lane/launch-prep, 2026-07-15): the nav is New Thread (CTA) + Home +
-    // Audience. "Home" is the briefing landing (→ /start); "New Thread" opens the clean
-    // composer (→ /home). Calendar · Discover · Library are hidden (route-guarded → /home);
-    // Grow/Analytics/Referrals/Feed/Competitors were already folded into hubs.
+    // MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after
+    // preview — New Thread (→ /home composer) IS the home, and Audience (the calibrated moat) is
+    // the one persistent destination. Calendar · Discover · Library · Start are hidden
+    // (route-guarded → /home); Grow/Analytics/Referrals/Feed/Competitors folded into hubs.
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
     // Hidden for the MVP launch cut → no longer standalone nav items.
+    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Home' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Calendar' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Discover' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Library' })).not.toBeInTheDocument();
