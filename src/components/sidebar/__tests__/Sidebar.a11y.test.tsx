@@ -45,20 +45,21 @@ describe('Sidebar a11y', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('exposes top-level nav items: New Thread, Audience, Library, Discover (IA-01)', () => {
+  it('exposes the launch-cut top-level nav items: New Thread, Start, Audience', () => {
     render(<Sidebar />);
-    // Top-level nav nouns: New Thread (CTA) + Start · Calendar · Discover · Audience ·
-    // Library. The Grow hub is dissolved (2026-07-07): Analytics folded into /audience,
-    // Referrals into /settings; Feed + Competitors fold into the Discover hub — none are
-    // standalone nav items anymore.
+    // MVP launch cut (lane/launch-prep, 2026-07-15): the nav is New Thread (CTA) + Start +
+    // Audience — the two surfaces the core prediction loop needs. Calendar · Discover ·
+    // Library are hidden (route-guarded → /home); Grow/Analytics/Referrals/Feed/Competitors
+    // were already folded into hubs.
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Calendar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Library' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Discover' })).toBeInTheDocument();
+    // Hidden for the MVP launch cut → no longer standalone nav items.
+    expect(screen.queryByRole('button', { name: 'Calendar' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Discover' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Library' })).not.toBeInTheDocument();
     // Dissolved / collapsed into hubs → no longer standalone nav items.
     expect(screen.queryByRole('button', { name: 'Grow' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Analytics' })).not.toBeInTheDocument();
@@ -66,17 +67,16 @@ describe('Sidebar a11y', () => {
     expect(screen.queryByRole('button', { name: 'Feed' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Competitors' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Settings' })).not.toBeInTheDocument();
-    // The relabeled history section header reads "Thread" (the old "Simulations"
-    // copy is gone — the positive New Thread / Thread assertions above prove it).
+    // The chat-history section header.
     expect(screen.getByText('Threads')).toBeInTheDocument();
   });
 
-  it('groups destinations under Create / Analyze / Assets section labels (Surfaces IA P1)', () => {
+  it('drops the Create / Analyze / Assets group labels after the launch cut', () => {
     render(<Sidebar />);
-    // The 9→5 IA collapse is made visible: destinations grouped under three umbrella
-    // section labels (uppercased via CSS; DOM text stays title-case).
-    expect(screen.getByText('Create')).toBeInTheDocument();
-    expect(screen.getByText('Analyze')).toBeInTheDocument();
-    expect(screen.getByText('Assets')).toBeInTheDocument();
+    // With Calendar/Discover/Library hidden, each umbrella group had a single child, so the
+    // labels were removed — the nav is now a flat Start · Audience list.
+    expect(screen.queryByText('Create')).not.toBeInTheDocument();
+    expect(screen.queryByText('Analyze')).not.toBeInTheDocument();
+    expect(screen.queryByText('Assets')).not.toBeInTheDocument();
   });
 });
