@@ -264,8 +264,14 @@ const TemplateSlotSchema = z.object({
 const TeardownBeatSchema = z.object({
   name: z.string(),
   description: z.string(),
-  startSec: z.number().nullable(),
-  endSec: z.number().nullable(),
+  // Timings are OPTIONAL, not merely nullable. A watched extraction measures them; a cheap
+  // metadata/caption extraction produces beats with only name+description and no timing keys at
+  // all. `.nullable()` alone rejected a MISSING key, so 14/300 rows silently dropped their whole
+  // template — beats, slots, guidance and all — over an absent nice-to-have. The beat's structural
+  // content (name + description) is the payload; the seconds are garnish. Match the "every field
+  // optional so cheap and deep extractions share one shape" contract the Teardown interface states.
+  startSec: z.number().nullable().optional(),
+  endSec: z.number().nullable().optional(),
 });
 
 export const IdeaFacetSchema = z.object({
@@ -306,10 +312,15 @@ export function parseTeardownTemplate(value: unknown): TeardownTemplate | null {
   if (value === null || value === undefined) return null;
   const parsed = TeardownTemplateSchema.safeParse(value);
   if (!parsed.success) {
+    // Print the FAILING PATHS, not the top-level keys. The old log listed
+    // `name,beats,slots,flavor,guidance,skeleton` — all valid — which said "checked" while hiding
+    // that the real fault was `beats.0.startSec`. A log that names the wrong thing is worse than
+    // none: it cost a session to rediscover a cause the parser already knew. Surface it.
     console.warn(
-      `[grounding] template JSONB failed its schema — dropping (keys: ${
-        value && typeof value === "object" ? Object.keys(value).join(",") : typeof value
-      })`,
+      `[grounding] template JSONB failed its schema — dropping (issues: ${parsed.error.issues
+        .slice(0, 4)
+        .map((i) => `${i.path.join(".")}:${i.code}`)
+        .join(", ")})`,
     );
     return null;
   }
