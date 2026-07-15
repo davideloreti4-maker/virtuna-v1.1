@@ -45,16 +45,16 @@ describe('Sidebar a11y', () => {
     expect(results).toHaveNoViolations();
   });
 
-  it('exposes the launch-cut top-level nav items: New Thread, Start, Audience', () => {
+  it('exposes the launch-cut top-level nav items: New Thread, Home, Audience', () => {
     render(<Sidebar />);
-    // MVP launch cut (lane/launch-prep, 2026-07-15): the nav is New Thread (CTA) + Start +
-    // Audience — the two surfaces the core prediction loop needs. Calendar · Discover ·
-    // Library are hidden (route-guarded → /home); Grow/Analytics/Referrals/Feed/Competitors
-    // were already folded into hubs.
+    // MVP launch cut (lane/launch-prep, 2026-07-15): the nav is New Thread (CTA) + Home +
+    // Audience. "Home" is the briefing landing (→ /start); "New Thread" opens the clean
+    // composer (→ /home). Calendar · Discover · Library are hidden (route-guarded → /home);
+    // Grow/Analytics/Referrals/Feed/Competitors were already folded into hubs.
     // The CTA's accessible name includes its ⌘N badge ("New Thread ⌘N"), so
     // anchor on the noun rather than an exact string.
     expect(screen.getByRole('button', { name: /^New Thread\b/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Home' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Audience' })).toBeInTheDocument();
     // Hidden for the MVP launch cut → no longer standalone nav items.
     expect(screen.queryByRole('button', { name: 'Calendar' })).not.toBeInTheDocument();

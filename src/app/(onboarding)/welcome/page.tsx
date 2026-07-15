@@ -57,7 +57,7 @@ export default function WelcomePage() {
       if (unmounted) return;
 
       if (profile?.onboarding_completed_at) {
-        router.replace("/dashboard");
+        router.replace("/start");
         return;
       }
 
@@ -97,10 +97,10 @@ export default function WelcomePage() {
     };
   }, [_isHydrated]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Redirect to dashboard when onboarding completes
+  // Redirect to the briefing (home) when onboarding completes
   useEffect(() => {
     if (_isHydrated && step === "completed") {
-      router.replace("/dashboard");
+      router.replace("/start");
     }
   }, [step, _isHydrated, router]);
 

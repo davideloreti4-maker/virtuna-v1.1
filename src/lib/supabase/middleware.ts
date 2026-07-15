@@ -55,13 +55,13 @@ function isProtectedPath(pathname: string): boolean {
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // D-25 — /dashboard is sunset. Redirect to the new authed landing /home (D-23).
+  // D-25 — /dashboard is sunset. Redirect to the authed landing (the briefing at /start).
   // Must run BEFORE Supabase client creation so the redirect fires regardless of auth state.
   // Subpaths drop (no /dashboard/* surfaces survive; Workspace milestone hasn't shipped).
   // Use same-origin clone to prevent open redirect (V5 input validation — RESEARCH §Security).
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/home";
+    url.pathname = "/start";
     return NextResponse.redirect(url, 308); // Permanent redirect — /dashboard is sunset
   }
 
@@ -124,11 +124,11 @@ export async function updateSession(request: NextRequest) {
     });
   }
 
-  // Redirect authenticated users away from auth pages to the default landing /home (D-23).
+  // Redirect authenticated users away from auth pages to the authed landing (briefing at /start).
   // Runs BEFORE the public-path skip so it is reachable for /login & /signup (which are
   // public for signed-out users). same-origin new URL(path, request.url) — no open redirect (V5).
   if (user && isAuthPage) {
-    return NextResponse.redirect(new URL("/home", request.url));
+    return NextResponse.redirect(new URL("/start", request.url));
   }
 
   // Skip auth checks for public paths (incl. an unauthenticated visitor to an auth page).

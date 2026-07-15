@@ -7,9 +7,9 @@
  * arbitrary origin (post-login open redirect — phishing / token capture).
  *
  * `safeNext()` is the guard: it accepts ONLY a same-origin root-relative path
- * and falls back to /home for everything else. These cases lock that behavior
+ * and falls back to /start for everything else. These cases lock that behavior
  * so the redirect can never again leak off-origin (e.g. `next=//evil.com`
- * must resolve to /home, never evil.com).
+ * must resolve to /start, never evil.com).
  */
 import { describe, it, expect } from "vitest";
 import { safeNext } from "../callback/route";
@@ -17,7 +17,7 @@ import { safeNext } from "../callback/route";
 const ORIGIN = "https://app.numen.test";
 
 describe("safeNext — open-redirect guard (CR-01)", () => {
-  describe("blocks off-origin escapes (falls back to /home)", () => {
+  describe("blocks off-origin escapes (falls back to /start)", () => {
     const malicious: [string, string][] = [
       ["protocol-relative //host", "//evil.com"],
       ["backslash /\\host", "/\\evil.com"],
@@ -31,19 +31,19 @@ describe("safeNext — open-redirect guard (CR-01)", () => {
       ["non-leading-slash relative", "evil.com"],
     ];
 
-    it.each(malicious)("blocks %s -> /home", (_label, value) => {
+    it.each(malicious)("blocks %s -> /start", (_label, value) => {
       const result = safeNext(value, ORIGIN);
-      expect(result).toBe("/home");
+      expect(result).toBe("/start");
       // And, critically, the resolved redirect never lands on evil.com.
       expect(new URL(result, ORIGIN).origin).toBe(ORIGIN);
       expect(result).not.toContain("evil.com");
     });
 
-    it("the canonical exploit `next=//evil.com` resolves to /home, NOT evil.com", () => {
+    it("the canonical exploit `next=//evil.com` resolves to /start, NOT evil.com", () => {
       // Documents the exact CVE-class: new URL('//evil.com', origin) === evil.com,
       // but safeNext must neutralize it.
       expect(new URL("//evil.com", ORIGIN).origin).toBe("https://evil.com");
-      expect(safeNext("//evil.com", ORIGIN)).toBe("/home");
+      expect(safeNext("//evil.com", ORIGIN)).toBe("/start");
     });
   });
 
@@ -58,12 +58,12 @@ describe("safeNext — open-redirect guard (CR-01)", () => {
       );
     });
 
-    it("defaults to /home for a null/absent next", () => {
-      expect(safeNext(null, ORIGIN)).toBe("/home");
+    it("defaults to /start for a null/absent next", () => {
+      expect(safeNext(null, ORIGIN)).toBe("/start");
     });
 
-    it("defaults to /home for an empty string", () => {
-      expect(safeNext("", ORIGIN)).toBe("/home");
+    it("defaults to /start for an empty string", () => {
+      expect(safeNext("", ORIGIN)).toBe("/start");
     });
   });
 });

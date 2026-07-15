@@ -14,9 +14,9 @@ import { buildLoopReceipts, buildLoopAccuracy, nowMs, type LoopReceipt, type Loo
 import { StartPage } from "@/components/surfaces/start-page";
 
 export const metadata: Metadata = {
-  title: "Start | Maven",
+  title: "Home | Maven",
   description:
-    "Your day, pre-tested on your people — daily ideas, outliers to remix, the plan, and what actually happened.",
+    "Your day, pre-tested on your people — daily ideas, outcome capture, and how your last calls actually landed.",
 };
 
 /**

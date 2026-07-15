@@ -5,7 +5,7 @@
  *
  * Sections (top → bottom):
  *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
- *  Start            — briefing landing + outcome capture
+ *  Home             — the briefing landing (your day, pre-tested) → /start
  *  Audience         — the calibrated-audience moat (D-04)
  *  Thread           — chronological chat history; rows re-open in place
  *  👤 Account        — bottom-anchored, user avatar + settings/logout
@@ -473,7 +473,7 @@ export function Sidebar() {
                 /home stays the thread/composer surface, so this never steals the thread flow. */}
             <NavItem
               icon={House}
-              label="Start"
+              label="Home"
               isActive={isOnStart}
               isCollapsed={effectiveCollapsed}
               onClick={() => router.push("/start")}
