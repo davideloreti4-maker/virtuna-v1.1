@@ -112,7 +112,39 @@ their layout, fill with OUR real metrics, mark modeled clearly. Never fabricate 
 
 ---
 
-## §4 — ✅ RESOLVED (`7cb37106`, local, not pushed) — the grid now grades 1:1 with Sapient
+## §4 — ✅ RESOLVED (`639c69cc`, local, not pushed) — grid is now Sapient's ACTUAL nine
+
+> ⚠️ **Superseded twice.** `7cb37106`/`fa1f183a` graded OUR signals monotonically with vote cells —
+> then we **logged into the live Sapient panel** and measured the real grid. Owner: "copy their nine."
+> `639c69cc` is the truth. The rest of this §4 (below the fold) is the earlier monotonic reasoning,
+> kept only for provenance — do not act on it.
+
+### §4-LIVE — what the real Sapient panel is (measured 2026-07-15 via a11y snapshot, logged in)
+
+**The nine, exact:** `38 Visual Pull WEAKNESS · 61 Voice Impact OKAY · 47 Cognitive Grip OKAY ·
+65 Emotional Hit STRONG · 49 Memorability OKAY · 38 Attention WEAKNESS · 47 Buy Signal OKAY ·
+28 Hesitation/Risk STRONG · 53 Mental Effort OKAY`. Grade is **per-signal DIRECTIONAL** (28→STRONG
+because low hesitation is good). Band ≈ `weakness <40 · okay 40–64 · strong ≥65`.
+
+**Our mapping (shipped):** nine ← our 7 Yeo networks (same 7 Sapient's σ bars name). Seven are direct
+(Visual←visual, Voice←somatomotor, Grip←control, Emotion←limbic, Attention←dorsal, Risk←salience
+INVERTED, …); two are disclosed COMPOSITES (Buy Signal = limbic×salience, Memorability = limbic×attention).
+**We do NOT map Memorability←Default Mode** like Sapient — our default drive rises with DISENGAGEMENT,
+so their "memory, high=good" framing is backwards for our model. Raw Default Mode belongs in the σ bars.
+
+**Everything below the grid we have NOT built (this is the "not accurate a lot"):**
+1. **Synced hero (§3.1)** — `THE CLIP | LIVE CORTEX`, one playhead, `7 networks · lit at t = 00:00`,
+   transcript in quotes at the playhead. `How to read these numbers` is a button ABOVE the grid.
+2. **σ bars (§3.5)** — header `Raw network activation · 7 networks, z-scored · at t = 00:00`, the
+   line *"Sigma (σ) is how far this second sits from the clip's own baseline…"*, then 7 rows
+   `Visual −0.43σ · slightly below`, `Dorsal Attention −1.14σ · clearly below`, `Default Mode +0.68σ
+   · slightly above`, etc. (plain-language band per row), then a **Why this second** prose paragraph.
+   ⚠️ GROUNDED-ONLY (simulated BOLD barely moves → z-scoring manufactures signal, `buildTrace §890`).
+3. **KPI heatmap (§3.6)** — per-signal × per-second 0–100 (`Visual signal · 0:00 · 45 … 0:25 · 100`).
+
+---
+
+<details><summary>Original §4 (monotonic pass — superseded, provenance only)</summary>
 
 **Owner's §4.3 call: TRUE SAPIENT GRADE** (WEAKNESS/OKAY/STRONG), accepting a disclosed heuristic
 benchmark. Shipped honestly: the grade is a fixed band (`<40 · 40–69 · ≥70`) of the peak modeled
@@ -164,6 +196,7 @@ Measured deltas, ours (`0b5b1546`) vs `sapient-03-result.png` / `sapient-10-expa
 **Recommended next-session order:** (a) fix the grid per §4.1–4.3 and LOOK; (b) build the synced hero
 (§3.1) — the biggest structural win; (c) σ bars (§3.5 + GAP-6). Ask the owner about §4.3 first.
 
+</details>
 </details>
 
 ---
