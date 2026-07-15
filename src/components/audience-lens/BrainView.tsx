@@ -99,7 +99,9 @@ import {
 import type { PersonaNode } from '@/components/board/_kit';
 import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
 import { modeledSignals, type BrainSignal } from '@/lib/brain/brain-signals';
+import { networkSigmas, whyThisSecond } from '@/lib/brain/network-sigma';
 import { SignalGrid } from './SignalGrid';
+import { SigmaBars } from './SigmaBars';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -348,6 +350,19 @@ export function BrainView({
    * own weight elsewhere on the card (the SPLITS chip, the segment splits, the divergence line).
    */
   const signals = useMemo<BrainSignal[]>(() => modeledSignals(drive, duration), [drive, duration]);
+
+  /**
+   * Sapient's "RAW NETWORK ACTIVATION · z-scored" section — the seven networks at the playhead second,
+   * each vs the clip's own baseline. GROUNDED ONLY (networkSigmas returns [] otherwise, and again when
+   * the clip is too flat to z-score honestly). Keyed on the WHOLE second so it recomputes 1×/s, not
+   * every animation tick — Sapient's is per-second too.
+   */
+  const tSec = Math.round(t);
+  const sigmas = useMemo(() => networkSigmas(drive, duration, tSec), [drive, duration, tSec]);
+  const whyNow = useMemo(
+    () => whyThisSecond(sigmas, tSec, mode === 'grounded' ? conceptText : undefined),
+    [sigmas, tSec, conceptText, mode],
+  );
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -620,9 +635,18 @@ export function BrainView({
         </div>
       </div>
 
-      {/* ══ THE READOUT (INSTANT) ═══════════════════════════════════════════════════════════════
-             The instrument, on the only substrate that is real here: the ten personas actually voted.
-             Counts of real votes — no score, no invented benchmark, no threshold we cannot ground. ── */}
+      {/* ══ THE NINE BREAKDOWN SIGNALS ══════════════════════════════════════════════════════════
+             Sapient's centre block — nine MODELED brain signals mapped from our seven networks. ── */}
+      <SignalGrid signals={signals} title="The nine breakdown signals" />
+
+      {/* ══ RAW NETWORK ACTIVATION · z-scored ═══════════════════════════════════════════════════
+             Sapient's σ bars — the seven networks vs the clip's own baseline at the playhead. Renders
+             only in grounded mode, and only when the clip actually moves (see network-sigma.ts). ── */}
+      <SigmaBars sigmas={sigmas} tSec={tSec} why={whyNow} />
+
+      {/* ══ THE ROOM (our real votes) ═══════════════════════════════════════════════════════════
+             Not in Sapient's panel — our differentiator kept at the bottom: the ten personas actually
+             voted. Counts of real votes — no score, no invented benchmark, no threshold to ground. ── */}
       {readout && (
         <RoomReadoutPanel
           readout={readout}
@@ -633,7 +657,6 @@ export function BrainView({
           rewriteBusy={rewriteBusy}
           rewriteError={rewriteError}
           rewriteDelta={rewriteDelta}
-          signals={signals}
         />
       )}
 
@@ -700,7 +723,6 @@ function RoomReadoutPanel({
   rewriteBusy = false,
   rewriteError,
   rewriteDelta,
-  signals = [],
 }: {
   readout: RoomReadout;
   kindLabel?: string;
@@ -710,7 +732,6 @@ function RoomReadoutPanel({
   rewriteBusy?: boolean;
   rewriteError?: string | null;
   rewriteDelta?: { prior: { stop: number; total: number }; next: { stop: number; total: number } } | null;
-  signals?: BrainSignal[];
 }) {
   const { hold, metrics, objection, divergence } = readout;
   /**
@@ -736,6 +757,9 @@ function RoomReadoutPanel({
       className="mt-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-2"
       data-testid="brain-readout"
     >
+      <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--color-foreground-muted)]">
+        The room · your 10 real votes
+      </p>
       {/* ── THE HERO METRIC. The reference leads with a DISPLAY NUMBER, and it is why their readout
              reads as a product and the segment table this replaced read as a debug dump. Same move:
              a named metric, a figure you can read across the room, and a word for what it means. ── */}
@@ -781,11 +805,6 @@ function RoomReadoutPanel({
         </div>
       )}
 
-      {/* ── THE NINE BREAKDOWN SIGNALS (GAP-3.4). Sapient's centre block, filled honestly: seven
-             MODELED network signals + the real-vote cells (Core hold, Reach — the two audiences, which
-             carry the only thing a creator needs to decide, a retention vs a growth play). Core/Reach
-             are absent, not zeroed, when the audience has too few of that slot. ── */}
-      <SignalGrid signals={signals} title="The nine breakdown signals" />
       <p className="sr-only" data-testid="brain-readout-metrics">
         {metrics.core ? `Core hold ${metrics.core.pct}%. ` : ''}
         {metrics.reach ? `Reach ${metrics.reach.pct}%.` : ''}
