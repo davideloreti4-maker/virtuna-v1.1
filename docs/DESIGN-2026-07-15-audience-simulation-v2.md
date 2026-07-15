@@ -244,6 +244,29 @@ assumptions by LOOKING at output:
 feature-scoring yields a believable, *differentiated* distribution across content. If yes → design the
 engine integration. If no → we learned it for the cost of one script.
 
+### 8.1 · RESULT — ran 2026-07-15, `npx tsx scripts/spike-persona-population.ts`. BOTH PASS.
+
+- **Q1 PASS.** From one sentence ("new magic creator, no scrape") → 8 segments spread across every
+  axis (Dopamine Scroller hookDemand 0.95/attn 0.10 ↔ Psychology Nerd 0.20/0.90). The RICH context
+  produced a *different, more on-target* audience (Family Co-Viewers, Trend-Jackers, "Skeptical
+  Realists" who comment 'CGI' but watch every one). More context → richer audience, SAME path. ✅
+- **Q2 PASS (the money result).** Different hooks light up different segments. Rich-context "How'd
+  they do that?" Detective across 3 hooks: spectacle **7%** → craft/slow-mo **89%** → comedy **0%**.
+  Aesthetic Mood-boarders: **60% → 7% → 20%.** Produced by pure arithmetic, no LLM in the scoring loop. ✅
+
+**Two problems it exposed — BOTH calibration, NOT architecture:**
+1. **Stop-rates too low / too binary** (overall 7–31%, many segments at exactly 0%). The scorer is
+   over-gated on interest (3.2× coefficient): a segment with no topical affinity never stops, even a
+   scroller who'd realistically stop for pure spectacle. Fix = rebalance the formula so a strong hook
+   can carry a stop on its own.
+2. **Out-of-vocabulary content.** The sparse magic-performer vocab (`sleight_of_hand`…) didn't
+   anticipate a VFX "zip open the wall" hook → 14.7%. The content-characterization axes and the
+   persona axes must be co-designed, and topic vocab must be broad enough to catch off-niche content.
+
+You cannot hand-tune these constants to *truth* — you fit them to real outcomes. So the spike also
+confirms WHY the feedback loop (§7) is the eventual unlock. **Conclusion: the pivot is real; the
+`.length(10)` engine can be replaced by this with confidence.**
+
 ## 9 · Relationship to the in-flight branch
 
 `feat/per-persona-ideas-script` (3 commits, NOT pushed): the shipped **ideas targeting** is
