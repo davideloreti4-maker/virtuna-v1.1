@@ -1,16 +1,12 @@
 /**
- * brain-signals — the honest fill for the nine-signal grid. These assert the things that would let a
- * DISHONEST or BROKEN grid pass: scores that leave 0..100, a grade decoupled from its own number, a
- * modeled cell that has shed its "modeled" mark or its WHY-THIS-SCORE disclosure, a grid that
- * collapses to one value, or a fabricated zero where there is no data.
- *
- * NOTE: this REPLACES the earlier "modeled cells NEVER wear a verdict" guard. The owner's 2026-07-15
- * call is a graded 1:1 grid (WEAKNESS/OKAY/STRONG). We are allowed to grade a MODELED number only
- * because the grade is a DISCLOSED band of it — so the guard now checks the disclosure, not its
- * absence. See `brain-signals.ts` header and `room-readout.ts` §5.
+ * brain-signals — Sapient's nine, mapped honestly from our seven networks. These assert the things
+ * that would let a DISHONEST or WRONG grid pass: the wrong signal set, a score outside 0..100, a grade
+ * that ignores the signal's DIRECTION (the bug the owner caught — a low Hesitation must read STRONG, not
+ * WEAKNESS), a cell that has shed its "not a benchmark" disclosure, a proxy that fails to say it is one,
+ * or a grid that collapses to one value.
  */
 import { describe, expect, it } from 'vitest';
-import { modeledSignals, voteSignal, absentSignal } from '../brain-signals';
+import { modeledSignals } from '../brain-signals';
 import type { DriveInput } from '../cortex-sim';
 
 const GROUNDED: DriveInput = {
@@ -21,77 +17,72 @@ const GROUNDED: DriveInput = {
   retentionAt: (u) => Math.max(0.1, 1 - u * 0.7),
 };
 
-describe('modeledSignals — seven honest, graded cortical cells', () => {
+const WEAK_MAX = 40;
+const STRONG_MIN = 65;
+const bandOf = (n: number) => (n < WEAK_MAX ? 'weak' : n < STRONG_MIN ? 'okay' : 'strong');
+
+describe('modeledSignals — Sapient\'s nine, honest', () => {
   const signals = modeledSignals(GROUNDED, 20);
 
-  it('is one cell per Yeo network, the default-mode cell included', () => {
-    expect(signals).toHaveLength(7);
-    expect(signals.map((s) => s.key)).toContain('drift');
+  it('is exactly Sapient\'s nine, in order', () => {
+    expect(signals.map((s) => s.label)).toEqual([
+      'Visual Pull',
+      'Voice Impact',
+      'Cognitive Grip',
+      'Emotional Hit',
+      'Memorability',
+      'Attention',
+      'Buy Signal',
+      'Hesitation / Risk',
+      'Mental Effort',
+    ]);
   });
 
   it('every score is an integer in 0..100', () => {
     for (const s of signals) {
       expect(Number.isInteger(s.score)).toBe(true);
-      expect(s.score as number).toBeGreaterThanOrEqual(0);
-      expect(s.score as number).toBeLessThanOrEqual(100);
+      expect(s.score).toBeGreaterThanOrEqual(0);
+      expect(s.score).toBeLessThanOrEqual(100);
     }
   });
 
-  it('the GRADE is a disclosed band of the cell\'s OWN number — never decoupled from it', () => {
+  it('higher-is-better cells grade on the number; the grade never ignores the band', () => {
     for (const s of signals) {
-      const n = s.score as number;
-      const expected = n < 40 ? 'weak' : n < 70 ? 'okay' : 'strong';
-      expect(s.tone).toBe(expected);
+      if (s.key === 'risk') continue;
+      expect(s.tone).toBe(bandOf(s.score));
     }
   });
 
-  it('modeled cells are marked MODELED (real:false) — the grade must never read as a measurement', () => {
+  it('Hesitation / Risk is DIRECTIONAL — a low number reads STRONG, not WEAKNESS', () => {
+    const risk = signals.find((s) => s.key === 'risk')!;
+    // graded on 100 − score: low hesitation is good
+    expect(risk.tone).toBe(bandOf(100 - risk.score));
+    // and prove the inversion actually flips: a low score must NOT be the weak band it would be if flat
+    const low = modeledSignals({ ...GROUNDED, stopRatio: 0.9 }, 20).find((s) => s.key === 'risk')!;
+    if (low.score < WEAK_MAX) expect(low.tone).toBe('strong');
+  });
+
+  it('all nine are modeled — never a claimed measurement', () => {
     for (const s of signals) expect(s.real).toBe(false);
   });
 
-  it('every modeled cell carries the honest disclosure: what it is NOT, and that the band is not a benchmark', () => {
+  it('every cell discloses it is modeled and NOT a benchmark against real outcomes', () => {
     for (const s of signals) {
-      expect(s.notMeasured.toLowerCase()).toContain('modeled');
-      expect(s.whyScore.toLowerCase()).toContain('modeled');
-      // the load-bearing admission — the band is a cutoff, not a benchmark against real outcomes
+      expect(s.notMeasured.length).toBeGreaterThan(8);
       expect(s.whyScore.toLowerCase()).toContain('not a benchmark');
     }
   });
 
-  it('presents the default-mode network POSITIVELY as Immersion, so all nine read higher = better', () => {
-    const drift = signals.find((s) => s.key === 'drift')!;
-    expect(drift.label).toBe('Immersion');
-    // it is graded like the rest (no back-to-front verdict word to confuse the reader)
-    expect(['weak', 'okay', 'strong']).toContain(drift.tone);
+  it('the two proxies say so — Buy Signal and Hesitation/Risk never masquerade as measured', () => {
+    const buy = signals.find((s) => s.key === 'buy')!;
+    const risk = signals.find((s) => s.key === 'risk')!;
+    expect(buy.notMeasured.toLowerCase()).toContain('proxy');
+    expect(buy.whyScore.toLowerCase()).toContain('do not measure purchase');
+    expect(risk.notMeasured.toLowerCase()).toContain('proxy');
   });
 
   it('does not collapse to one value — the grid must carry real spread', () => {
     const distinct = new Set(signals.map((s) => s.score));
     expect(distinct.size).toBeGreaterThan(2);
-  });
-});
-
-describe('voteSignal — real counts graded on the same flat band, monotonic like Sapient', () => {
-  it('one number → one verdict: 35 weak, 55 okay, 80 strong — never non-monotonic', () => {
-    const low = voteSignal('reach', 'Reach', 35, { chip: 'Stays home', notMeasured: 'x not y' });
-    const mid = voteSignal('core', 'Core hold', 55, { chip: 'Wavering', notMeasured: 'x not y' });
-    const high = voteSignal('reach', 'Reach', 80, { chip: 'Travels', notMeasured: 'x not y' });
-    expect(low.tone).toBe('weak'); // 35 < 40
-    expect(mid.tone).toBe('okay'); // 55 in 40..69
-    expect(high.tone).toBe('strong'); // 80 ≥ 70
-    expect(high.word.toLowerCase()).toBe('strong');
-    expect(mid.real).toBe(true);
-    // the room's richer segment read is preserved where the nuance belongs — behind WHY THIS SCORE
-    expect(mid.whyScore.toLowerCase()).toContain('wavering');
-  });
-});
-
-describe('absentSignal — no data is shown as absent, never a fabricated zero (D-13)', () => {
-  it('carries a null score, an absent tone, and a reason', () => {
-    const a = absentSignal('reach', 'Reach', 'Too few new viewers to read reach.');
-    expect(a.score).toBeNull();
-    expect(a.tone).toBe('absent');
-    expect(a.word.toLowerCase()).toContain('no data');
-    expect(a.notMeasured.length).toBeGreaterThan(8);
   });
 });

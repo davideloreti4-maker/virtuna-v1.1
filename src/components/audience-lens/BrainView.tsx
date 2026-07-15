@@ -98,7 +98,7 @@ import {
 } from '@/lib/brain/cortex-sim';
 import type { PersonaNode } from '@/components/board/_kit';
 import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
-import { modeledSignals, voteSignal, absentSignal, type BrainSignal } from '@/lib/brain/brain-signals';
+import { modeledSignals, type BrainSignal } from '@/lib/brain/brain-signals';
 import { SignalGrid } from './SignalGrid';
 
 /**
@@ -342,30 +342,12 @@ export function BrainView({
   const axisPct = useMemo(() => ((axisOf(response) + 1) / 2) * 100, [response]);
 
   /**
-   * Sapient's "nine breakdown signals" grid, filled honestly (GAP-3.4). The seven MODELED network
-   * signals (peak activation over the encounter, DESCRIPTIVE level words) + the real-vote cells (core
-   * hold, reach — which earn a verdict because a count needs no benchmark). `hold` stays the hero
-   * headline above, so it is not repeated here. See `brain-signals.ts` / `room-readout.ts` §5.
+   * Sapient's "nine breakdown signals" grid — nine MODELED brain signals mapped 1:1 from our seven
+   * networks, each graded in its own direction (see `brain-signals.ts`). The room's REAL-vote findings
+   * (Core hold, Reach) are NOT in this grid — Sapient's is all brain signals, and the votes carry their
+   * own weight elsewhere on the card (the SPLITS chip, the segment splits, the divergence line).
    */
-  const signals = useMemo<BrainSignal[]>(() => {
-    const cells = modeledSignals(drive, duration);
-    const core = readout?.metrics.core;
-    const reach = readout?.metrics.reach;
-    // Sapient's block is a clean 3×3 of nine. Ours is 7 modeled networks + the two REAL-vote cells.
-    // A vote cell with too few of its segment to read is shown ABSENT ("—"), never a fabricated zero
-    // (D-13) — that keeps the nine intact and the honesty intact at the same time.
-    cells.push(
-      core
-        ? voteSignal('core', 'Core hold', core.pct, { chip: core.chip, notMeasured: "Your core fans' real stop-count — not per-viewer tracking." })
-        : absentSignal('core', 'Core hold', 'Too few of your core fans in this room to read a hold.'),
-    );
-    cells.push(
-      reach
-        ? voteSignal('reach', 'Reach', reach.pct, { chip: reach.chip, notMeasured: "New viewers' real stop-count — not per-viewer tracking." })
-        : absentSignal('reach', 'Reach', 'Too few new viewers in this room to read reach.'),
-    );
-    return cells;
-  }, [drive, duration, readout]);
+  const signals = useMemo<BrainSignal[]>(() => modeledSignals(drive, duration), [drive, duration]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
