@@ -98,7 +98,7 @@ import {
 } from '@/lib/brain/cortex-sim';
 import type { PersonaNode } from '@/components/board/_kit';
 import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from './room-readout';
-import { modeledSignals, voteSignal, type BrainSignal } from '@/lib/brain/brain-signals';
+import { modeledSignals, voteSignal, absentSignal, type BrainSignal } from '@/lib/brain/brain-signals';
 import { SignalGrid } from './SignalGrid';
 
 /**
@@ -351,8 +351,19 @@ export function BrainView({
     const cells = modeledSignals(drive, duration);
     const core = readout?.metrics.core;
     const reach = readout?.metrics.reach;
-    if (core) cells.push(voteSignal('core', 'Core hold', core.pct, { word: core.chip, weak: core.weak, notMeasured: "Your core fans' real stop-count — not per-viewer tracking." }));
-    if (reach) cells.push(voteSignal('reach', 'Reach', reach.pct, { word: reach.chip, weak: reach.weak, notMeasured: "New viewers' real stop-count — not per-viewer tracking." }));
+    // Sapient's block is a clean 3×3 of nine. Ours is 7 modeled networks + the two REAL-vote cells.
+    // A vote cell with too few of its segment to read is shown ABSENT ("—"), never a fabricated zero
+    // (D-13) — that keeps the nine intact and the honesty intact at the same time.
+    cells.push(
+      core
+        ? voteSignal('core', 'Core hold', core.pct, { chip: core.chip, notMeasured: "Your core fans' real stop-count — not per-viewer tracking." })
+        : absentSignal('core', 'Core hold', 'Too few of your core fans in this room to read a hold.'),
+    );
+    cells.push(
+      reach
+        ? voteSignal('reach', 'Reach', reach.pct, { chip: reach.chip, notMeasured: "New viewers' real stop-count — not per-viewer tracking." })
+        : absentSignal('reach', 'Reach', 'Too few new viewers in this room to read reach.'),
+    );
     return cells;
   }, [drive, duration, readout]);
 
@@ -792,7 +803,7 @@ function RoomReadoutPanel({
              MODELED network signals + the real-vote cells (Core hold, Reach — the two audiences, which
              carry the only thing a creator needs to decide, a retention vs a growth play). Core/Reach
              are absent, not zeroed, when the audience has too few of that slot. ── */}
-      <SignalGrid signals={signals} title="The breakdown signals" />
+      <SignalGrid signals={signals} title="The nine breakdown signals" />
       <p className="sr-only" data-testid="brain-readout-metrics">
         {metrics.core ? `Core hold ${metrics.core.pct}%. ` : ''}
         {metrics.reach ? `Reach ${metrics.reach.pct}%.` : ''}
