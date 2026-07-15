@@ -101,9 +101,11 @@ import { buildBatchScale, buildRoomReadout, holdChip, type RoomReadout } from '.
 import { modeledSignals, type BrainSignal } from '@/lib/brain/brain-signals';
 import { networkSigmas, whyThisSecond } from '@/lib/brain/network-sigma';
 import { signalTimeline } from '@/lib/brain/signal-timeline';
+import { attentionCurve } from '@/lib/brain/attention-curve';
 import { SignalGrid } from './SignalGrid';
 import { SigmaBars } from './SigmaBars';
 import { SignalHeatmap } from './SignalHeatmap';
+import { AttentionCurve } from './AttentionCurve';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -368,6 +370,9 @@ export function BrainView({
 
   /** Sapient's per-second heatmap — the nine signals over the clip. Grounded-only (see signal-timeline). */
   const timeline = useMemo(() => signalTimeline(drive, duration), [drive, duration]);
+
+  /** Sapient's predicted-attention curve — dorsal-attention over the clip. Grounded-only. */
+  const attention = useMemo(() => attentionCurve(drive, duration), [drive, duration]);
 
   const u = duration > 0 ? Math.min(1, t / duration) : 0;
   const words = useMemo(() => conceptText.trim().split(/\s+/).filter(Boolean), [conceptText]);
@@ -652,6 +657,10 @@ export function BrainView({
       {/* ══ ACTIVATION PER SECOND ═══════════════════════════════════════════════════════════════
              Sapient's KPI heatmap — the nine signals per second across the clip. Grounded-only. ── */}
       <SignalHeatmap timeline={timeline} tSec={tSec} />
+
+      {/* ══ PREDICTED ATTENTION ═════════════════════════════════════════════════════════════════
+             Sapient's smoothed attention curve — dorsal-attention over the clip, peak dots. Grounded. ── */}
+      <AttentionCurve curve={attention} tSec={tSec} durationS={duration} />
 
       {/* ══ THE ROOM (our real votes) ═══════════════════════════════════════════════════════════
              Not in Sapient's panel — our differentiator kept at the bottom: the ten personas actually
