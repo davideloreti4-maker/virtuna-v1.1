@@ -106,6 +106,7 @@ import { SignalGrid } from './SignalGrid';
 import { SigmaBars } from './SigmaBars';
 import { SignalHeatmap } from './SignalHeatmap';
 import { AttentionCurve } from './AttentionCurve';
+import { HowToRead } from './HowToRead';
 
 /**
  * The cortex is WebGL and builds a 40k-vertex mesh on mount — neither belongs on the server, and
@@ -480,6 +481,10 @@ export function BrainView({
         <p className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
           trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
         </p>
+        {/* Sapient's cortex caption — how many networks are lit, and at what scan time. */}
+        <p className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+          7 networks · lit at t = {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
+        </p>
       </div>
 
       {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
@@ -644,6 +649,11 @@ export function BrainView({
           <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
         </div>
       </div>
+
+      {/* ══ HOW TO READ THESE NUMBERS ═══════════════════════════════════════════════════════════
+             Sapient's expander above the grid — the one place the panel says, plainly, that every
+             number is modeled and none is benchmarked. ── */}
+      <HowToRead />
 
       {/* ══ THE NINE BREAKDOWN SIGNALS ══════════════════════════════════════════════════════════
              Sapient's centre block — nine MODELED brain signals mapped from our seven networks. ── */}
