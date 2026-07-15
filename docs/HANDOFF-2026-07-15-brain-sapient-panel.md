@@ -132,15 +132,26 @@ INVERTED, …); two are disclosed COMPOSITES (Buy Signal = limbic×salience, Mem
 **We do NOT map Memorability←Default Mode** like Sapient — our default drive rises with DISENGAGEMENT,
 so their "memory, high=good" framing is backwards for our model. Raw Default Mode belongs in the σ bars.
 
-**Everything below the grid we have NOT built (this is the "not accurate a lot"):**
-1. **Synced hero (§3.1)** — `THE CLIP | LIVE CORTEX`, one playhead, `7 networks · lit at t = 00:00`,
-   transcript in quotes at the playhead. `How to read these numbers` is a button ABOVE the grid.
-2. **σ bars (§3.5)** — header `Raw network activation · 7 networks, z-scored · at t = 00:00`, the
-   line *"Sigma (σ) is how far this second sits from the clip's own baseline…"*, then 7 rows
-   `Visual −0.43σ · slightly below`, `Dorsal Attention −1.14σ · clearly below`, `Default Mode +0.68σ
-   · slightly above`, etc. (plain-language band per row), then a **Why this second** prose paragraph.
-   ⚠️ GROUNDED-ONLY (simulated BOLD barely moves → z-scoring manufactures signal, `buildTrace §890`).
-3. **KPI heatmap (§3.6)** — per-signal × per-second 0–100 (`Visual signal · 0:00 · 45 … 0:25 · 100`).
+**The full panel below the grid — ✅ BUILT 2026-07-15** (`1402d9a5`→`4002ea27`, local). Verified
+section order: `cortex → how-to-read → nine signals → σ bars → heatmap → attention curve → THE ROOM`.
+Each is a pure lib + a component, tested, and LOOKED at:
+1. **HOW TO READ THESE NUMBERS** expander (`HowToRead.tsx`) — the one place the panel says all numbers
+   are modeled, none benchmarked, and THE ROOM is the only real (voted) thing.
+2. **σ bars** (`network-sigma.ts` + `SigmaBars.tsx`) — 7 networks z-scored vs the clip's OWN baseline,
+   diverging bars, plain-language band, **WHY THIS SECOND** prose. ⚠️ GROUNDED-ONLY (returns [] in
+   simulated, and again when the clip is too flat — the `buildTrace §890` trap).
+3. **KPI heatmap** (`signal-timeline.ts` + `SignalHeatmap.tsx`) — our NINE signals per second (NOT
+   Sapient's ten decoded systems; we don't model those), dark→sage ramp, playhead column. Grounded-only.
+4. **Predicted attention curve** (`attention-curve.ts` + `AttentionCurve.tsx`) — dorsal-attention over
+   the clip, peak dots, `MODELED HOLD` number (labelled modeled so it never collides with the room's
+   real vote). Grounded-only.
+5. **Cortex caption** `7 networks · lit at t = M:SS` (kept our honest "Predicted cortex", not "Live cortex").
+6. **THE ROOM** — our real votes, retitled + kept at the bottom (owner: "keep it, at the bottom").
+
+⚠️ **STILL DEFERRED — the SYNCED HERO (§3.1):** `THE CLIP | LIVE CORTEX` SIDE-BY-SIDE under ONE
+playhead. Ours still STACKS cortex over the clip. A 2-col hero at our narrow card width shrinks the
+WebGL badly — whether to build it depends on the panel's REAL width in the app (not the /dev/cards
+preview). **Needs an owner call before building.**
 
 ---
 
