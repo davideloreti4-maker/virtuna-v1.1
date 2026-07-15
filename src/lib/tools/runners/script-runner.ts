@@ -54,6 +54,13 @@ import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { resolveSingleTarget, type PersonaTarget } from "@/lib/audience/select-persona-targets";
+import {
+  buildTargetAssignments,
+  normalizeTargetArchetype,
+  bindTarget,
+  type TargetUnitCopy,
+} from "./target-assignment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -103,6 +110,59 @@ OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences
 Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string, "sourceIndex": number }
 Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this script adapts, or 0 if it adapts no specific example — never cite a source you did not actually use (honesty).`;
 
+/**
+ * PER-PERSONA GENERATION (fan-out from hooks #299) — the craft half of the assignment.
+ *
+ * ⚠️ A SCRIPT IS NOT A HOOK, AND THIS IS WHERE THAT BITES. A hook is one atomic line: a person's
+ * whole psychology can fit in eight words, and the assignment has nowhere to hide. A script is five
+ * beats — the per-person difference has to survive an arc, and it may simply WASH OUT. Worse, aiming
+ * five beats at a 5%-share segment could make the script worse for everyone else.
+ *
+ * 🔴 MEASURED 2026-07-15 — IT DOES NOT TRANSFER, AND SO IT IS NOT SHIPPED. `scripts/measure-targeting.ts
+ * script` ran the real pipeline: a blind judge scored the targeted arm 6.7% (1/15) — BELOW the 20%
+ * chance floor and IDENTICAL to the written-for-nobody control (6.7%). The binding itself worked (5/5
+ * named a target every trial): the model wrote for the assigned person and named them back. The
+ * DIFFERENTIATION is what failed — five beats wash the per-persona signal out exactly as feared. This
+ * is a FINDING, not a failure, and "it doesn't transfer" was always an allowed answer.
+ *
+ * So this capability is DORMANT: no route passes `targetArchetype` to `runScriptPipeline`, an
+ * untargeted call is byte-identical to before, and no script card ever renders a target line. It is
+ * kept — not reverted — so the harness stays runnable for a future re-measure (a different-family
+ * judge, off-niche asks, or per-beat granularity) without rebuilding the plumbing. DO NOT wire it to
+ * a route or the UI until a measurement clears it. Ideas, by contrast, DID transfer (75% vs a 21%
+ * control) and shipped.
+ */
+const SCRIPT_UNIT: TargetUnitCopy = {
+  noun: "Script",
+  craft: `Write every beat for THIS person — the setup they need (and the setup they do not), the turn they
+would not see coming, the payoff they actually came for, and a CTA they would plausibly do. A script
+that would hold any segment of the audience equally well has failed its assignment. Do not hedge
+toward the middle.`,
+};
+
+/**
+ * Output contract for a targeted (calibrated) run — adds the one field that carries the binding.
+ *
+ * The echo-back is kept even though WE choose the person here (unlike hooks/ideas, where the model
+ * picks from a cast). It is not redundant: it is the tripwire. A writer that ignored the brief hands
+ * back a slug we never assigned — or nothing — and the card then carries NO target line instead of a
+ * generic script wearing somebody's name.
+ */
+function targetedOutputContract(grounded: boolean): string {
+  const groundedField = grounded ? `, "sourceIndex": number` : "";
+  const groundedRule = grounded
+    ? ` "sourceIndex" is the 1-based number of the GROUNDING example whose proven STRUCTURE this script adapts, or 0 if none — never cite a source you did not actually use (honesty).`
+    : "";
+
+  return `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "beats": [ { "label": string, "content": string, "timing": string, "retentionMarker": string } ], "openingBeatSeed": string, "targetArchetype": string${groundedField} }
+Return exactly ONE script object. "beats" is an ordered array (Hook → Setup → Turn → Payoff → CTA). Each beat field is required and non-empty. "timing" is the time window (e.g. "0–3s", "3–15s"). "retentionMarker" is plain-prose craft reasoning explaining WHY this beat holds attention — NEVER a numeric score. "openingBeatSeed" is the verbatim first-2s opening line fed to audience simulation — must equal the "content" of the first beat. "targetArchetype" is the bare slug of the person this script was written for.${groundedRule}`;
+}
+
 // ─── Input type ───────────────────────────────────────────────────────────────
 
 export interface ScriptPipelineInput {
@@ -111,6 +171,16 @@ export interface ScriptPipelineInput {
   profileRow: ProfileRow | null;
   /** Upstream hook anchor — the chosen hookLine carried from Hooks→Script (optional). */
   anchor?: string;
+  /**
+   * PER-PERSONA GENERATION: the reader this script is written for — normally INHERITED from the
+   * hook the creator picked (that hook's `target.archetype`), so the script develops the chosen
+   * hook for the same person instead of quietly re-aiming at someone else.
+   *
+   * Absent on a standalone /script run → the biggest eligible segment (resolveSingleTarget).
+   * Names a persona this audience cannot bind → NO target, and the card simply carries no line
+   * (we never substitute a different person behind the caller's back).
+   */
+  targetArchetype?: string;
   /**
    * Active audience for this run (08-04 — steer closure, AUD-STEER; mirrors 07-04 ideas-runner).
    * null or is_general → profile-based grounding + DEFAULT weights (byte-identical no-op).
@@ -161,6 +231,13 @@ interface StructuredScript {
    * the on-card receipt via buildProofFromSource (§11f).
    */
   sourceIndex: number;
+  /**
+   * PER-PERSONA GENERATION: the archetype slug of the person this script was written for, as
+   * reported BY THE MODEL. Empty string = the model named nobody (or an unassigned slug) — the
+   * card then carries no target line at all. A writer that ignored its brief must show up as a
+   * MISSING claim, never as a generic script wearing a personalised label.
+   */
+  targetArchetype: string;
 }
 
 // ─── Qwen generation call ─────────────────────────────────────────────────────
@@ -173,15 +250,22 @@ interface StructuredScript {
 async function generateScriptStructured(
   userMessage: string,
   grounded: boolean,
+  targeted: boolean,
 ): Promise<StructuredScript | null> {
   const ai = getQwenClient();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
-  // Grounded runs use the sourceIndex-carrying contract so the script can be attributed to the
-  // real outlier it adapted; ungrounded runs keep the byte-identical original (warm-cache prefix).
-  const outputContract = grounded ? SCRIPT_OUTPUT_CONTRACT_GROUNDED : SCRIPT_OUTPUT_CONTRACT;
+  // Targeted (calibrated) runs swap in the contract that carries `targetArchetype` — the field that
+  // makes the persona binding STRUCTURAL rather than ambient (see SCRIPT_UNIT). General and
+  // uncalibrated keep the byte-identical original (warm-cache prefix + regression gate).
+  // Grounded runs carry sourceIndex so the script can be attributed to the outlier it adapted.
+  const outputContract = targeted
+    ? targetedOutputContract(grounded)
+    : grounded
+      ? SCRIPT_OUTPUT_CONTRACT_GROUNDED
+      : SCRIPT_OUTPUT_CONTRACT;
 
   let raw: string;
   try {
@@ -258,7 +342,14 @@ async function generateScriptStructured(
 
   // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
   // ungrounded or sloppy response never fabricates one (§11f honesty spine).
-  return { beats, openingBeatSeed, sourceIndex: coerceSourceIndex(obj.sourceIndex) };
+  return {
+    beats,
+    openingBeatSeed,
+    sourceIndex: coerceSourceIndex(obj.sourceIndex),
+    // Whom the model SAYS it wrote this for. Not trusted yet — validated against the assignment
+    // below, because a slug we never assigned is not a person we can name.
+    targetArchetype: normalizeTargetArchetype(obj.targetArchetype),
+  };
 }
 
 // ─── Lead scroll-quote selector (mirrors hooks-runner) ────────────────────────
@@ -291,7 +382,7 @@ function selectLeadScrollQuote(
  * @param input.anchor      Upstream hook anchor — the chosen hookLine from Hooks→Script.
  */
 export async function runScriptPipeline(input: ScriptPipelineInput): Promise<ScriptPipelineResult> {
-  const { ask, platform, profileRow, anchor, audience = null, intent } = input;
+  const { ask, platform, profileRow, anchor, audience = null, intent, targetArchetype } = input;
   // GAP-C2: sell lens applies only for a calibrated audience (General → undefined no-op).
   const simIntent: IntentLens | undefined =
     audience && !audience.is_general ? intent : undefined;
@@ -308,7 +399,26 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // genProfileRow may carry a voice backfilled from creator_persona.writing_style_sample;
   // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
-  const overrides = [audienceOverride, creatorSteer].filter(Boolean).join("\n") || undefined;
+
+  // ── TARGET (per-persona generation, fan-out from hooks #299): WHO this script is for ──────
+  // ONE card ⇒ ONE reader (D-02). Normally the person the CHOSEN HOOK was written for, carried in
+  // by the route; standalone → the biggest eligible segment. null for General/uncalibrated, and
+  // null when the caller named somebody this audience cannot bind — we never silently retarget.
+  const target: PersonaTarget | null = resolveSingleTarget(
+    audience,
+    targetArchetype ? normalizeTargetArchetype(targetArchetype) : undefined,
+  );
+  if (targetArchetype && !target) {
+    allWarnings.push(
+      `Script was asked to target "${targetArchetype}", which this audience cannot bind — no target line`,
+    );
+  }
+  const targetAssignments = target ? buildTargetAssignments([target], SCRIPT_UNIT) : undefined;
+  // The one slug we are willing to have named back at us (bindTarget rejects anything else).
+  const assignments = new Map<string, PersonaTarget>(target ? [[target.archetype, target]] : []);
+
+  const overrides =
+    [audienceOverride, creatorSteer, targetAssignments].filter(Boolean).join("\n") || undefined;
 
   // ── GROUND (§11f fan-out, gated): pull LIVE outlier teardowns for the topic → the one
   //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
@@ -341,7 +451,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // ── STAGE: Generating (real boundary — the big LLM call) ──
   input.onStage?.("Generating", "active");
   try {
-    script = await generateScriptStructured(userMessage, Boolean(corpus));
+    script = await generateScriptStructured(userMessage, Boolean(corpus), Boolean(target));
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Script generation failed: ${msg}`);
@@ -402,6 +512,19 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // byte-identical to the pre-grounding card (regression gate + honesty spine).
   const proof = buildProofFromSource(script.sourceIndex, groundingExamples);
 
+  // WHO this script was written for + how that exact person reacted to its OPENER (the only beat
+  // the SIM ever scores — D-01/Pitfall 5; the verdict is honest about the hook, not the full watch).
+  // null on an uncalibrated run, and null on a calibrated run whose writer named nobody we assigned.
+  const cardTarget = bindTarget({
+    claimedArchetype: script.targetArchetype,
+    positionalTarget: target ?? undefined,
+    assignments,
+    personas,
+    warnings: allWarnings,
+    unitNoun: "Script",
+    subject: script.openingBeatSeed,
+  });
+
   const blockData = {
     type: "script-card" as const,
     props: {
@@ -418,6 +541,9 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       // still grounded, and that is exactly the case the card's note explains. Omitted on
       // ungrounded runs so the pre-grounding block shape stays byte-identical.
       ...(groundingExamples.length > 0 ? { grounded: true } : {}),
+      // Per-persona generation — omitted entirely when there is no named reader, so General and
+      // every pre-target persisted card keep their exact shape (regression gate).
+      ...(cardTarget ? { target: cardTarget } : {}),
     },
   };
 
