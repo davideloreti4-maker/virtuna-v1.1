@@ -86,8 +86,16 @@ export function rampAt(s: number): RGB {
  *
  * These are DOWNSTREAM OF THE MODEL and go stale silently — by making the map flat, never by
  * throwing. Re-measure (scratchpad value-probe) if the drive model changes.
+ *
+ * ⚠️ SPAN_WARM TIGHTENED 0.4 → 0.33 (2026-07-15) to match the reference's contrast on the finer
+ * parcellation. At 0.4 the warm tail (p95 ≈ +0.31) topped out at ORANGE and never reached red, and
+ * too many weak-warm parcels piled at the pale chartreuse midpoint (hue-probe: 55% of pixels in
+ * 45–60° vs the reference's 42%, and 0% at true red vs their 2.1%). Tightening the warm normaliser
+ * lets the hot tail clip into red and spreads the bulk down into gold/amber — measured back toward
+ * the reference (hue-probe against sapient-09-cortex-canvas.png). It does NOT touch the SIGN: warm is
+ * still "above this system's resting level", it just saturates a little sooner.
  */
-export const SPAN_WARM = 0.4;
+export const SPAN_WARM = 0.33;
 export const SPAN_COLD = 0.6;
 
 export const valueToRamp = (v: number, _span?: number): number => {

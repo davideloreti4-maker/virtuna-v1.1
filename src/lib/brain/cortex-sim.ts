@@ -401,12 +401,32 @@ export function parcelTexture(parcelIndex: number, seed: number, cx = 0, cy = 0)
   const p1 = prng() * Math.PI * 2;
   const p2 = prng() * Math.PI * 2;
   const p3 = prng() * Math.PI * 2;
-  // Three octaves of smooth spatial noise → coherent hot/cold territories across the surface.
+  const p4 = prng() * Math.PI * 2;
+  const p5 = prng() * Math.PI * 2;
+  // ── FIVE OCTAVES of smooth spatial noise → coherent hot/cold territories (the 2026-07-15 rebuild).
+  //
+  // Three octaves painted CONTINENTS — broad, low-frequency blobs. The reference
+  // (thesapientcompany.com/intelligence) is fine-grained and mottled: small hot specks inside a warm
+  // field, cool threads running through it. That grain is HIGH SPATIAL FREQUENCY, and the earlier
+  // "smooth = real, everything else is fake" rule threw it away — which is the whole reason theirs
+  // reads as a scan and ours read as gouache.
+  //
+  // ⚠️ THE FIX IS FREQUENCY, NOT RANDOMNESS. Per-parcel white noise (an independent draw per parcel)
+  // hits the SAME grain but with hard borders — adjacent parcels jump, `maxSlopePerSpacing` blows past
+  // the mosaic guard (measured 2.85 vs 1.0), and a mosaic is a different fake, not the reference. The
+  // reference is high-frequency AND smooth: many small features, each transition gradual. So the two
+  // added octaves (`× PARCEL_MOTTLE`) are FINER sinusoids over the parcel centroid — coherent, so a
+  // speck is a real cluster, and low-slope, so no border hardens. They only resolve because
+  // PARCEL_COUNT is high enough to sample them (at 400 they aliased into the very salt-and-pepper
+  // this avoids); the blend radius stays SMOOTH (cortex-field `BLEND_R_IN_SPACINGS`), grain comes
+  // from the parcel count, not from squeezing the kernel.
   const n =
     (Math.sin(cx * 0.042 + cy * 0.019 + p1) +
       0.8 * Math.sin(cx * -0.021 + cy * 0.048 + p2) +
-      0.5 * Math.sin(cx * 0.075 + cy * 0.066 + p3)) /
-    2.3; // → about −1..1
+      0.5 * Math.sin(cx * 0.075 + cy * 0.066 + p3) +
+      PARCEL_MOTTLE * Math.sin(cx * 0.168 + cy * 0.142 + p4) +
+      PARCEL_MOTTLE * 0.7 * Math.sin(cx * -0.246 + cy * 0.205 + p5)) /
+    2.6; // → about −1..1
   return {
     // ── TUNING, and why it is a POWER curve rather than a flat band.
     //
@@ -437,6 +457,19 @@ export function parcelTexture(parcelIndex: number, seed: number, cx = 0, cy = 0)
  */
 const SELECTIVITY = 1.8;
 const BIAS_MAX = 1.30;
+
+/**
+ * Amplitude of the two FINER octaves in `parcelTexture` — the map's fine grain. 0 = three-octave
+ * continents; higher = more high-frequency territory, closer to the reference's mottled scan texture.
+ *
+ * ⚠️ THESE ARE SINUSOIDS, NOT RANDOM. Independent per-parcel draws hit the same grain but with hard
+ * borders (`maxSlopePerSpacing` blew to 2.85 vs the 1.0 guard) — a mosaic, a different fake. Smooth
+ * higher-frequency octaves add the frequency while keeping every transition gradual, so a speck is a
+ * real cluster and no border hardens. They are only well-sampled because PARCEL_COUNT is high enough;
+ * at 400 they aliased. Re-measure the render (dev-shot-brain) and the guard (cortex-field.test) after
+ * any change to this or to the octave frequencies in `parcelTexture`.
+ */
+const PARCEL_MOTTLE = 0.5;
 
 /**
  * The activation THRESHOLD. A real statistical map is thresholded — most of the cortex sits at

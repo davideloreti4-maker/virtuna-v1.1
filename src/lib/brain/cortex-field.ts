@@ -28,10 +28,21 @@ import {
 } from './cortex-sim';
 
 /**
- * Schaefer-scale, bilateral. The old mesh showed one hemisphere and used 340; this surface is a whole
- * brain (both hemispheres + cerebellum), so it carries more area and takes the standard 400.
+ * ⚠️ RAISED 400 → 1200 TO MATCH THE REFERENCE'S GRAIN (the 2026-07-15 rebuild). 400 parcels painted
+ * broad CONTINENTS; the reference (thesapientcompany.com/intelligence) is fine-grained and mottled,
+ * and that grain is the single biggest reason theirs reads as a scan and ours read as gouache.
+ *
+ * More parcels = smaller spacing = finer features at a SAFE blend multiple. The key measurement:
+ * `maxSlopePerSpacing` (the mosaic guard in cortex-field.test) is scale-invariant at a fixed
+ * `BLEND_R_IN_SPACINGS` — ~0.79 whether 800 or 1600 parcels — so the map gets finer WITHOUT hardening
+ * into a mosaic, as long as the radius-in-spacings stays put. 1200 is the sweet spot: 31% finer
+ * absolute spacing than the old 400, comfortable slope margin, blendK 53 (< the 64 cap).
+ *
+ * The build is one-time and memoized (`CortexCanvas` FIELD cache); `surfaceValues` runs at the ~372ms
+ * scan tick, not per frame, so the larger blend stride costs nothing that matters. Whole brain (both
+ * hemispheres + cerebellum), FreeSurfer surface — so parcels are bilateral by construction.
  */
-const PARCEL_COUNT = 400;
+const PARCEL_COUNT = 1200;
 
 /**
  * The HARD CAP on the blend stride. The stride itself (`field.blendK`) is chosen at build time to fit
@@ -41,27 +52,26 @@ const PARCEL_COUNT = 400;
 export const BLEND_K_MAX = 64;
 
 /**
- * ⚠️ THE BANDWIDTH, AND WHY K — NOT THE RADIUS — IS THE THING THAT HAS TO GIVE.
+ * ⚠️ THE BANDWIDTH — HOW SMOOTH, IN UNITS OF PARCEL SPACING. Grain comes from PARCEL_COUNT (finer
+ * parcels), NOT from tightening this — tighten it and the map hardens into a mosaic.
  *
- * The kernel is squeezed from both sides, and the gradient probe measured both walls on this mesh:
+ * The kernel is `(1 − u)²`, so the nearest parcel always weighs most. Squeeze the radius and it
+ * dominates outright — each vertex effectively TAKES its parcel's value and the borders go hard.
+ * Measured on THIS mesh, mottle off, the mosaic guard `maxSlopePerSpacing` (< 1.0):
  *
- *  - radius too WIDE (2.4x spacing, the old mesh's value) → more parcels land inside it than the
- *    stride can hold, so the K-nearest cut DROPS contributors. Which ones get dropped flips between
- *    adjacent vertices, so the field jumps at the seam. Measured maxStep: 0.279. A mosaic.
- *  - radius too NARROW (backing off to make it fit) → the nearest parcel dominates outright and each
- *    vertex effectively TAKES its parcel's value. Measured maxStep: 0.555. A worse mosaic.
+ *  - radius 1.3× spacing → 2.84.  A hard mosaic. This is the wall, and it is why finer grain does NOT
+ *    come from a tighter radius (three rounds burned learning that the hard way — see git log).
+ *  - radius 2.0× spacing → 1.13.  Still over the guard on the finer parcellation.
+ *  - radius 2.4× spacing → 0.79.  Smooth, with margin — and scale-invariant, so it holds as parcels
+ *    rise. THIS is the value: keep the radius SMOOTH and buy grain by adding parcels instead.
  *
- * Both walls are the same bug: the stride was a hardcoded 24. A whole brain in 3D simply has more
- * parcel neighbours inside a Euclidean ball than the old single hemisphere did, so the honest fix is
- * to keep the wide, smooth bandwidth and SIZE THE STRIDE TO FIT IT — measured on the actual surface,
- * with headroom, so no vertex anywhere truncates.
- *
- * (The deeper reason the ball is crowded: Euclidean distance on a folded surface pulls in parcels
- * that sit across a sulcus — physically near, geodesically far. A geodesic kernel would be the
- * textbook answer; it is not worth its cost here, and a stride that fits makes the field smooth
- * regardless.)
+ * Both walls are ultimately the stride: a whole brain in 3D has many parcel neighbours inside a
+ * Euclidean ball, so the stride (`blendK`) is SIZED TO FIT the radius — measured on the actual
+ * surface, with headroom, so no vertex truncates. (Euclidean distance on a folded surface pulls in
+ * parcels across a sulcus — physically near, geodesically far; a geodesic kernel would be the textbook
+ * answer, not worth its cost here, and a stride that fits makes the field smooth regardless.)
  */
-const BLEND_R_IN_SPACINGS = 2.2;
+const BLEND_R_IN_SPACINGS = 2.4;
 /** Headroom over the measured worst case, so no vertex on the surface truncates. */
 const K_HEADROOM = 6;
 
