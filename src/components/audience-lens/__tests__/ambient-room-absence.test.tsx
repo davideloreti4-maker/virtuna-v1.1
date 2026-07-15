@@ -12,7 +12,7 @@
  * dead audience that shipped as HIGH confidence: state the absence, don't dress it up.
  */
 import { describe, it, expect, afterEach } from 'vitest';
-import { render, cleanup, screen } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent } from '@testing-library/react';
 import { AmbientRoom } from '../AmbientRoom';
 
 afterEach(cleanup);
@@ -25,7 +25,7 @@ const MIXED = [
 ];
 
 function renderRoom() {
-  return render(
+  const result = render(
     <AmbientRoom
       reducedMotion
       conceptText="Hook one"
@@ -33,6 +33,11 @@ function renderRoom() {
       flatPersonas={MIXED}
     />,
   );
+  // The standalone room now LANDS on the brain (its landing view, added on feat/audience-brain-panel).
+  // The per-persona voices — where an absence is rendered — live under "The people"; switch to it
+  // before asserting. The feature is unchanged; only the default view moved.
+  fireEvent.click(screen.getByRole('button', { name: 'The people' }));
+  return result;
 }
 
 describe('AmbientRoom — an absence is stated, never dressed as speech', () => {

@@ -30,7 +30,7 @@ export const SLOT_GROUPS: ReadonlyArray<{ key: SlotKey; label: string }> = [
 ] as const;
 
 /** Short slot label for the persona-graph hover card segment line. */
-const SLOT_LABEL: Record<SlotKey, string> = {
+export const SLOT_LABEL: Record<SlotKey, string> = {
   fyp: 'New viewers',
   niche: 'Your niche',
   loyalist: 'Loyal fans',

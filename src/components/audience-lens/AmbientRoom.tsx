@@ -14,7 +14,10 @@
  *     re-focuses the Room on the prev/next sibling in place; `⤺ all N` opens the ranked
  *     "How the room ranked your N" list → tap a row to re-focus. Ranked by the real stop-count;
  *     an ad-hoc typed thought (no `focusId`) shows no stepper (the honest state).
- *   • The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the view.
+ *   • The brain ⇄ The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the
+ *     view. The brain is FIRST and the dock's landing view (owner call, 2026-07-12); it is an
+ *     explicitly-labeled simulated neural read (see BrainView's own honesty spine) gated OFF
+ *     the embedded (video-Read / room-drawer) variant, which keeps its two-segment layout.
  *   • The people = pure voices: each real persona is a named row — a TONAL avatar (calm
  *     cream for a stop; accent-soft for a bounce, the signal), the name, `ask →` (opens the
  *     in-voice PersonaChatDrawer), and its OWN verbatim serif quote as the hero. "▶ Replay"
@@ -41,6 +44,7 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
+import { BrainView } from './BrainView';
 import type { AmbientFocusSibling } from './ambient-presence-types';
 import { stripWrappingQuotes } from '@/lib/utils';
 
@@ -98,9 +102,29 @@ export interface AmbientRoomProps {
    *  ranked your N" first). A targeted entry — a card's "See the room →" that pre-focuses ONE
    *  card — passes false so the Room drills straight into that card's people (prototype parity). */
   initialCompareOpen?: boolean;
+  /** A REAL video + the audience's REAL retention curve → the brain scale runs GROUNDED: the
+   *  video plays as the stimulus and the predicted response is modeled from measured retention
+   *  (see BrainView). Supplied only by the video Read, and only when both actually exist — with
+   *  no video the dock's brain stays an explicitly-labeled simulation over the concept text. */
+  brainSource?: BrainSource | null;
 }
 
-type Scale = 'people' | 'population';
+/** The grounded brain's inputs — a real video and the audience's real retention over it. */
+export interface BrainSource {
+  videoSrc: string;
+  /** Retention at normalized stimulus time u∈[0,1] → 0..1 (the measured curve). */
+  retentionAt: (u: number) => number;
+  durationS: number;
+}
+
+type Scale = 'brain' | 'people' | 'population';
+
+/** The scale toggle, in view order — the brain first (the dock's landing view). */
+const SCALES: { value: Scale; label: string }[] = [
+  { value: 'brain', label: 'The brain' },
+  { value: 'people', label: 'The people' },
+  { value: 'population', label: 'Population · 1,000' },
+];
 
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape. */
 function parseStop(fraction: string): { stop: number; total: number } | null {
@@ -152,8 +176,16 @@ export function AmbientRoom({
   onRewrite,
   rewriteNonce = 0,
   initialCompareOpen = true,
+  brainSource,
 }: AmbientRoomProps) {
-  const [scale, setScale] = useState<Scale>('people');
+  // The brain scale exists wherever it can be honest: always in the dock (a labeled simulation
+  // over the concept text), and in the EMBEDDED Read only when a real video + a real retention
+  // curve are supplied (`brainSource`) — there it runs grounded, with the video playing as the
+  // stimulus. An embedded Room without that source (the room drawer) keeps its two segments.
+  const hasBrain = !embedded || brainSource != null;
+  // It is the LANDING view wherever it exists (owner call): open the room, see the head it landed
+  // in first, then step out to the voices and the 1,000.
+  const [scale, setScale] = useState<Scale>(hasBrain ? 'brain' : 'people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
   // The `⤺ all N` ranked view-all (prototype code name: compare). Opens on the OVERVIEW (the ranked
   // list) so the bloom always lands on "how the room ranked your N" first, not a single card's
@@ -400,19 +432,16 @@ export function AmbientRoom({
           </div>
           )}
 
-          {/* ── The people ⇄ Population · 1,000 — quiet text tabs (underline = the active view) ── */}
+          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — quiet text tabs (underline = the
+                active view). The brain segment is dock-only (filtered out when !hasBrain); the
+                embedded Read/drawer keeps the two-segment toggle it shipped with. ── */}
           <div className="shrink-0 px-5 pt-3">
             <div
               role="group"
               aria-label="Audience scale"
               className="flex w-full items-center gap-5 border-b border-[var(--color-border)]"
             >
-              {(
-                [
-                  { value: 'people', label: 'The people' },
-                  { value: 'population', label: 'Population · 1,000' },
-                ] as const
-              ).map((opt) => {
+              {SCALES.filter((opt) => opt.value !== 'brain' || hasBrain).map((opt) => {
                 const active = opt.value === scale;
                 return (
                   <button
@@ -441,6 +470,35 @@ export function AmbientRoom({
               <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
                 No reaction yet — test a concept to hear the room.
               </p>
+            ) : scale === 'brain' ? (
+              <BrainView
+                stopCount={stopCount}
+                total={total}
+                conceptText={conceptText}
+                seedKey={focusId ?? conceptText}
+                reducedMotion={reducedMotion}
+                videoSrc={brainSource?.videoSrc}
+                retentionAt={brainSource?.retentionAt}
+                durationS={brainSource?.durationS}
+                // The room's REAL votes. Without a video the brain has no honest timeline, so THESE
+                // become the card's instrument (BrainView's INSTANT mode + ./room-readout).
+                personas={nodes}
+                // Scopes the readout's claim: on a SCRIPT the room only ever voted on the opener.
+                kindLabel={kindLabel}
+                // The counterfactual — the SAME lever the Population weak-spot pulls, on the same
+                // state, so the two can never disagree about what the room said or what to do.
+                canRewrite={canRewrite}
+                onRewrite={handleRewriteTap}
+                rewriteBusy={rewriteBusy}
+                rewriteError={rewriteError}
+                rewriteDelta={rewriteDelta}
+                // The readout's SCALE — the batch this card came from, each sibling's REAL
+                // stop-ratio. Not an invented benchmark: "where this lands against your other four".
+                // A sibling with an unparseable fraction carries stop:-1 → dropped, never zeroed.
+                batchRatios={rankedSiblings
+                  .filter((s) => s.stop >= 0 && s.total > 0)
+                  .map((s) => s.stop / s.total)}
+              />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
             ) : (

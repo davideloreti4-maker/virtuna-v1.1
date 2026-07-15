@@ -23,6 +23,7 @@ import { ChatThreadView } from "@/components/thread/chat-thread-view";
 import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { MessageBlocks } from "@/components/thread/message-blocks";
+import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
 import { useState } from "react";
 import { Reading } from "@/components/reading/reading";
 import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
@@ -360,6 +361,50 @@ const READING_STATES: { id: string; label: string; note: string; node: React.Rea
   },
 ];
 
+// The GROUNDED brain's dev stand-in: a real video + a real-shaped retention curve (holds through
+// the hook, breaks at ~45%, bleeds out). In production both come from the Read — the audience's
+// MEASURED curve and the analyzed video. The mp4 is a local dev asset (public/dev/ is gitignored),
+// so this preview is blank on a fresh clone; that is fine, it is a workbench.
+const DEV_RETENTION: [number, number][] = [
+  [0, 1], [0.1, 0.94], [0.2, 0.9], [0.3, 0.86], [0.42, 0.82],
+  [0.5, 0.55], [0.6, 0.47], [0.75, 0.4], [0.9, 0.34], [1, 0.3],
+];
+const DEV_BRAIN_SOURCE = {
+  videoSrc: "/dev/sample-video.mp4",
+  durationS: 28,
+  retentionAt: (u: number) => {
+    const x = Math.min(1, Math.max(0, u));
+    for (let i = 1; i < DEV_RETENTION.length; i++) {
+      const [x1, y1] = DEV_RETENTION[i]!;
+      const [x0, y0] = DEV_RETENTION[i - 1]!;
+      if (x <= x1) return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0 || 1);
+    }
+    return DEV_RETENTION[DEV_RETENTION.length - 1]![1];
+  },
+};
+
+// ── The Room — the ambient audience panel body (The brain ⇄ The people ⇄ Population). ──
+// The same <AmbientRoom> the dock blooms open, fed a fixture focus so the three scales are
+// previewable without running a skill. Non-embedded (h-full) → it lives in a fixed-height box
+// that stands in for the panel.
+const ROOM_FOCUS = {
+  conceptText: "Stop editing your videos. Do this instead.",
+  fraction: "6/10 stop",
+  // The GENERAL_ROSTER ten (real registry enums) → the named cast + `ask →` chat are live here.
+  personas: [
+    { archetype: "high_engager", verdict: "stop" as const, quote: "Wait — do WHAT instead? I need the answer." },
+    { archetype: "tough_crowd", verdict: "scroll" as const, quote: "Every editor says this. Prove it in 3 seconds." },
+    { archetype: "saver", verdict: "stop" as const, quote: "Saving this before I forget it." },
+    { archetype: "lurker", verdict: "stop" as const, quote: "" },
+    { archetype: "sharer", verdict: "stop" as const, quote: "Sending this to my editor right now." },
+    { archetype: "purposeful_viewer", verdict: "scroll" as const, quote: "The hook promises more than the caption delivers." },
+    { archetype: "loyalist", verdict: "stop" as const, quote: "You never post filler — I'm staying." },
+    { archetype: "niche_deep_buyer", verdict: "scroll" as const, quote: "Nothing here tells me what it costs me." },
+    { archetype: "niche_deep_scout", verdict: "stop" as const, quote: "That's my exact problem, honestly." },
+    { archetype: "cross_niche_curiosity", verdict: "scroll" as const, quote: "Feels like last month's advice." },
+  ],
+};
+
 export default function DevCardsPage() {
   const [readingState, setReadingState] = useState('complete');
   const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
@@ -367,6 +412,7 @@ export default function DevCardsPage() {
   const sections = [
     ...THREAD_VIEWS.map((v) => ({ id: v.id, label: v.label })),
     { id: "reading", label: "Test / Reading" },
+    { id: "room", label: "The Room" },
     ...BLOCK_SECTIONS.map((s) => ({ id: s.type, label: s.label })),
   ];
 
@@ -457,6 +503,59 @@ export default function DevCardsPage() {
               style={{ transform: "translateZ(0)" }}
             >
               {active.node}
+            </div>
+          </section>
+        </div>
+
+        {/* Group D — the ambient Room panel body (the dock's bloom) */}
+        <div className="flex flex-col gap-4 pt-14">
+          <SectionKicker>The Room · the ambient audience panel body</SectionKicker>
+          <section id="room" className="scroll-mt-6">
+            <SectionHead
+              label="The Room"
+              code="AmbientRoom.tsx"
+              note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ Population · 1,000. Fed a fixture focus; the box stands in for the panel."
+            />
+            <div className="grid gap-4 lg:grid-cols-2">
+              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                <AmbientRoom
+                  flatPersonas={ROOM_FOCUS.personas}
+                  conceptText={ROOM_FOCUS.conceptText}
+                  fraction={ROOM_FOCUS.fraction}
+                  kindLabel="Hook"
+                  // ON here so the gallery actually PREVIEWS the counterfactual — the brain card's
+                  // rewrite CTA is a real state, and a state you cannot cheaply look at is one that
+                  // drifts. The handler is a no-op: the dev page has no composer to re-run a skill.
+                  canRewrite
+                  onRewrite={async () => {}}
+                  // A real batch, so the readout's SCALE ("#3 of your 5") previews too. Same reason.
+                  // `initialCompareOpen={false}` because a batch otherwise lands the Room on its
+                  // ranked-compare overview — correct in the product, but it would hide the brain
+                  // in the gallery, which exists precisely to LOOK at the brain.
+                  focusId="h3"
+                  initialCompareOpen={false}
+                  siblings={[
+                    { id: "h1", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop" },
+                    { id: "h2", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop" },
+                    { id: "h3", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop" },
+                    { id: "h4", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop" },
+                    { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
+                  ]}
+                />
+              </div>
+              {/* The GROUNDED brain — a real video as the stimulus + a real retention curve as the
+                  drive. Here the curve is a fixture (holds, then breaks at 45%); in the Read it is
+                  the audience's measured curve. */}
+              <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
+                <AmbientRoom
+                  flatPersonas={ROOM_FOCUS.personas}
+                  conceptText={ROOM_FOCUS.conceptText}
+                  fraction={ROOM_FOCUS.fraction}
+                  kindLabel="Hook"
+                  canRewrite={false}
+                  brainSource={DEV_BRAIN_SOURCE}
+                />
+              </div>
             </div>
           </section>
         </div>
