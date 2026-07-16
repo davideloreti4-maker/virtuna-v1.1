@@ -110,9 +110,41 @@ export interface CreatorPersona {
 }
 
 /**
+ * Named, scored REACTION axes (Audience Sim v2). Auditable (not an opaque embedding);
+ * content is characterized into the SAME axes so a cheap fn(persona, content) can react
+ * every sampled individual with no per-persona LLM call (feeds the population math). All 0..1.
+ */
+export interface PersonaReactionAxes {
+  /** topicVocab tag → affinity (sparse — only topics this segment cares about). */
+  interests: Record<string, number>;
+  /** How strong an opening they DEMAND before they stay. */
+  hookSensitivity: number;
+  /** Comfort-watcher(0) ↔ trend-chaser(1). */
+  noveltyBias: number;
+  /** Distrust of hype / big claims. */
+  skepticism: number;
+  /** Patience for a slow build. */
+  attentionSpan: number;
+}
+
+/** Named BEHAVIOUR axes (Audience Sim v2) — feed the TikTok-algorithm virality layer. All 0..1. */
+export interface PersonaBehaviorAxes {
+  watchThrough: number;
+  sharePropensity: number;
+  commentPropensity: number;
+  savePropensity: number;
+}
+
+/**
  * One of the 10 fixed-archetype REACTORS in the signature (§P.6 behavioural 3).
  * No voice/bio — reactors judge content, they don't speak as the creator.
  * `archetype` is the immutable engine slug; engine reads archetype + reaction_frame.
+ *
+ * Audience Sim v2 (custom-per-creator, additive): the 10 slugs stay as the fixed structural
+ * layer (aggregation/weighting/display keep working), but each slot now ALSO carries a
+ * creator-specific identity (`display_name`, `blurb`) + scored `reaction`/`behavior` axes.
+ * All v2 fields are OPTIONAL — old signatures, General, and preset personas simply omit them
+ * and fall back to the archetype label.
  */
 export interface SignaturePersona {
   archetype: Archetype;
@@ -124,6 +156,14 @@ export interface SignaturePersona {
   reaction_frame: string;
   /** Engagement-ratio proof (e.g. "saves 2.1× category") — the data receipt. */
   evidence: string;
+  /** v2: creator-specific label for display (falls back to `archetypeDisplayName(archetype)`). */
+  display_name?: string;
+  /** v2: one-line personality the creator reads (richer than the generic archetype blurb). */
+  blurb?: string;
+  /** v2: scored reaction axes → population-math scoring. Absent on legacy/General personas. */
+  reaction?: PersonaReactionAxes;
+  /** v2: scored behaviour axes → virality layer. Absent on legacy/General personas. */
+  behavior?: PersonaBehaviorAxes;
 }
 
 /**
@@ -143,6 +183,12 @@ export interface SignatureAudience {
   persona_weights: PersonaWeights;
   /** Exactly 10 reactors, fixed archetype slugs, shares Σ=1. */
   personas: SignaturePersona[];
+  /**
+   * v2: canonical topic tags this creator's niche spans (mix of niche subjects + cross-cutting
+   * appeal registers). The keys `SignaturePersona.reaction.interests` uses, and the vocabulary
+   * content is characterized into at test-time. Optional — absent on legacy/General signatures.
+   */
+  topic_vocab?: string[];
 }
 
 /**
