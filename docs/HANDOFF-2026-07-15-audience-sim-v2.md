@@ -1,11 +1,13 @@
 # HANDOFF — Audience Simulation v2 (fresh-session starter)
 
-**Paste this to start:** *"Read `docs/HANDOFF-2026-07-15-audience-sim-v2.md`, then
-`docs/DESIGN-2026-07-15-audience-simulation-v2.md`. We're mid-pivot on the audience simulation. Phase 1
-(scorer tuning) is DONE — pick up at Phase 2 (promote the strawman schema to real types). Do NOT touch
-the feedback loop yet — it's last."*
+**Paste this to start:** *"Read `docs/HANDOFF-2026-07-15-audience-sim-v2.md` §0 (STAGED PLAN), then
+`docs/DESIGN-2026-07-15-audience-simulation-v2.md`. Audience Sim v2 is now a STAGED, ship-fast plan
+(owner-approved): keep the 10 fixed slots, make each CUSTOM per creator, then layer population math.
+Stage 1 (custom personas — generation + ambient display) is DONE + committed. Pick up at Stage 1's
+remaining display sites / profile-bake mirror, or start Stage 2 (population math). Do NOT touch the
+feedback loop — it's last."*
 
-**Worktree:** `~/virtuna-audience-sim-v2` · **Branch:** `feat/audience-sim-v2` · **Written:** 2026-07-15 · **Updated:** 2026-07-16
+**Worktree:** `~/virtuna-audience-sim-v2` · **Branch:** `feat/audience-sim-v2` · **Written:** 2026-07-15 · **Updated:** 2026-07-16 (Stage 1)
 **SSOT design doc:** `docs/DESIGN-2026-07-15-audience-simulation-v2.md` (read it — it has the schema, the
 locked decisions, the current-engine map with file:line, and the spike result **incl. §8.2 Phase 1**).
 
@@ -15,6 +17,49 @@ locked decisions, the current-engine map with file:line, and the spike result **
 > `./node_modules/.bin/tsx scripts/spike-persona-population.ts` (NOT bare `npx tsx` — it re-installs).
 
 ---
+
+## 0 · THE STAGED PLAN (owner-approved 2026-07-16 — supersedes the P2–P5 roadmap in §4 for now)
+
+The original P2→P3 (firm schema → break `.length(10)`) was reframed with the owner into a **ship-fast
+staged plan**. Driving insight (verified against the code): **the "10" is NOT a display count — it is
+load-bearing in the SCORING math** (each archetype → a slot_type → `persona-weighting.ts` weights every
+reactor's verdict by its slot share; also `flash-schema.ts` `.length(10)`, `selectPersonaSlots` throws
+≠10, the fold's D-01, and ~15 display/runner/flywheel files key on the fixed slugs). So **do NOT relax
+the count** — it's a big, risky change with no user payoff right now. Instead:
+
+- **Stage 1 — custom-fill the 10 (DONE this session, 2 commits).** Keep the 10 as fixed STRUCTURAL slots
+  (aggregation/chat/fold untouched, `archetype` stays as the bridge slug), but make each slot
+  **custom-generated per creator** + carry scored axes.
+  - **Generation** (`75cf76d8`): `enrich-signature.ts` SYNTH_SYSTEM now writes per persona a custom
+    `display_name` + `blurb` + `reaction`/`behavior` axes, and a `topic_vocab`. New OPTIONAL fields on
+    `SignaturePersona` (`display_name`, `blurb`, `reaction`, `behavior`) + `SignatureAudience.topic_vocab`
+    (`audience-types.ts`) — legacy/General/preset safe, no DB migration (signature is a JSON blob).
+    VERIFIED live: `./node_modules/.bin/tsx scripts/verify-custom-personas.ts` → 10/10 custom names
+    (0 echoed the slug), 10/10 axes, invariants held.
+  - **Display** (`0690090c`): the ambient audience renders `audience.personas` (the projected roster),
+    NOT `signature.audience.personas`. Bridge = `calibration.ts personasFromSignature` — it now seeds
+    each row's `label` from `display_name`. One seam lights BOTH name paths in `audience-presence.tsx`
+    (`personaNameMap` override @243 + per-row `resolvePersonaName(p.archetype, p.label)` @366). So a
+    calibrated creator now sees "The Archive Builder", not "Saver". Presentation-only (engine never
+    reads `label`); manual rename (AUD-EDIT-01) still wins.
+  - **Stage 1 REMAINING (small):** (a) sweep the other persona surfaces to confirm they read
+    `audience.personas[].label` (chat drawer, workspace, reads, reveal — many likely already do since
+    they share the roster; verify + a render check). (b) Mirror the generation change into
+    `profile-bake.ts` (the person/manual calibration path — parallel SYNTH + schema + mapping). Lower
+    priority: it's the secondary path, not the critical scrape flow.
+
+- **Stage 2 — population math (NEXT big piece).** The scored axes are now STORED on every signature
+  persona (`reaction`/`behavior`) + `topic_vocab`. Expand the 10 rich groups → ~1000 sampled individuals
+  (the spike's `expand()` = centroid + jitter) and score with the tuned `pStop()` (spike Phase 1) to
+  produce the honest aggregate ("847 of 1,000 would keep watching"). Add ONE `characterize(content)` LLM
+  call → cheap O(N) score → aggregate, ALONGSIDE the existing LLM group-reaction (keep chat/quotes).
+  Honesty: label it a projection of the groups, not 1,000 independent minds (`provenance`).
+  Reference impl for the whole shape: `scripts/spike-persona-population.ts` (already tuned + passing).
+
+- **Feedback loop = still LAST + unsolved.** Do not start.
+
+**Also this session (branch hygiene):** the ideas-targeting work shipped separately as **PR #312**
+(rebased clean onto main, 619 green) — it is NOT on this branch.
 
 ## 1 · What this is (the pivot, in 5 lines)
 
