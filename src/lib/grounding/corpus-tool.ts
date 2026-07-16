@@ -15,7 +15,7 @@
  * "proven". Same discipline as the push renderer.
  */
 
-import { retrieveCachedExamples } from "./retrieve";
+import { retrieveCachedExamples, resolveRetrieveConfig, type RetrieveConfig } from "./retrieve";
 import { receipt, clip } from "./prompt";
 import type { RetrievedExample } from "./types";
 
@@ -56,6 +56,28 @@ export const SEARCH_CORPUS_TOOL = {
 /** axis → the retrieval RANKING skill. structural ranks on hook SHAPE across niches; topical on subject. */
 function axisToSkill(axis: unknown): "hooks" | "ideas" {
   return axis === "structural" ? "hooks" : "ideas";
+}
+
+/**
+ * Reference-mode retrieval config — favors RECALL, because reference/inspire is MODEL-FILTERED: the
+ * model reads the returned rows and decides. It does NOT reuse the generate-path's per-skill config:
+ *
+ *  • structural → the hooks config as-is (floor 0, cross-platform, archetype spread) — already right.
+ *  • topical    → the ideas subject-cosine ordering, but with the generate-path guards RELAXED:
+ *     - `filterPlatform: false` — a proven example transfers across platforms; and per retrieve.ts the
+ *       platform filter is exactly what pushes present subjects UNDER the floor (peaks 0.629 across all
+ *       532 rows vs 0.576 across the 177 TikTok-only). This is the measured lever, and structural
+ *       already reads cross-platform safely.
+ *     - a LOW floor (default 0.4, env `GROUNDING_REF_MIN_SIMILARITY`) — the 0.58 generate floor exists
+ *       to keep off-topic rows out of GENERATION; here the model is the filter, so false-positives are
+ *       cheap (the model ignores them) while a whiff costs a whole reference. Kept > 0 so a genuinely
+ *       absent subject still whiffs and the model diversifies (axis/rephrase), as the spike showed.
+ */
+function referenceConfig(axis: "topical" | "structural"): RetrieveConfig {
+  if (axis === "structural") return resolveRetrieveConfig("hooks");
+  const envFloor = Number(process.env.GROUNDING_REF_MIN_SIMILARITY);
+  const floor = Number.isFinite(envFloor) && envFloor >= 0 && envFloor < 1 ? envFloor : 0.4;
+  return { ...resolveRetrieveConfig("ideas"), filterPlatform: false, minSimilarity: floor };
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -145,7 +167,11 @@ export async function executeCorpusSearch(
     return { content: JSON.stringify({ error: "query is required" }), examples: [], record };
   }
   try {
-    const res = await retrieve({ query, platform, skill: axisToSkill(axis) });
+    // Reference-mode config (recall-favoring, model-filtered) — NOT the generate-path per-skill config.
+    const res = await retrieve(
+      { query, platform, skill: axisToSkill(axis) },
+      { config: referenceConfig(axis) },
+    );
     const examples = (res.examples ?? []).slice(0, ROWS_PER_CALL);
     record.rows = examples.length;
     const results = examples.map((e) => ({

@@ -164,10 +164,18 @@ describe("executeCorpusSearch [grounding]", () => {
     const retrieve = vi.fn(async () => ({ examples: [mkExample()], enough: false, stats: {} })) as never;
 
     await executeCorpusSearch({ query: "x", axis: "structural" }, "tiktok", 1, retrieve);
-    expect(retrieve).toHaveBeenCalledWith(expect.objectContaining({ skill: "hooks" }));
+    // structural → hooks ranking, and the reference config reads cross-platform (recall-favoring).
+    expect(retrieve).toHaveBeenCalledWith(
+      expect.objectContaining({ skill: "hooks" }),
+      expect.objectContaining({ config: expect.objectContaining({ filterPlatform: false }) }),
+    );
 
     await executeCorpusSearch({ query: "x", axis: "topical" }, "tiktok", 1, retrieve);
-    expect(retrieve).toHaveBeenLastCalledWith(expect.objectContaining({ skill: "ideas" }));
+    // topical → ideas ordering, but the reference config relaxes the generate-path guards.
+    expect(retrieve).toHaveBeenLastCalledWith(
+      expect.objectContaining({ skill: "ideas" }),
+      expect.objectContaining({ config: expect.objectContaining({ filterPlatform: false, rank: "topical" }) }),
+    );
 
     const empty = await executeCorpusSearch({ query: "   " }, "tiktok", 1, retrieve);
     expect(empty.record.error).toBe("empty query");

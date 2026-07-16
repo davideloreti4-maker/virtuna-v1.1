@@ -122,10 +122,15 @@ today's chat.
    axes, pulled 6 quality references (@madisonknowsbest 458× etc.), and the streamed answer was
    visibly shaped by the proven structures (its "In-Progress hook" = @madisonknowsbest's serialized
    anti-pattern; "no authority to teach growth at 400 followers" = the pulled tension).
-2. **🔴 Topical floor is a real blocker (confirms §5).** A breakfast ask whiffed topical **4×** (0/0/0/1
-   rows) and the model never diversified to structural that run — ending on one weak off-topic row.
-   Corpus-covered topics are fine; thin/edge topics starve. **Fix the topical `minSimilarity` floor
-   and/or push the scout to diversify axes earlier.**
+2. **✅ Topical floor — FIXED (was §5/§8.2 blocker).** A breakfast ask whiffed topical **4×** (0/0/0/1
+   rows) → 1 weak reference. Root cause: the generate-path topical config runs `filterPlatform: true` +
+   a `0.58` floor that `retrieve.ts` itself documents as mis-calibrated (peaks 0.629 all-corpus vs 0.576
+   TikTok-only). Fix: the corpus-tool now uses a dedicated **reference-mode config** (`referenceConfig`
+   in corpus-tool.ts) — cross-platform (`filterPlatform: false`, the measured lever) + a low
+   model-filtered floor (default 0.4, env `GROUNDING_REF_MIN_SIMILARITY`). Rationale: reference mode is
+   MODEL-filtered, so it favors recall; the 0.58 floor exists to protect GENERATION, not this path.
+   **Verified by outcome:** the same breakfast ask now returns **5 rows on the first topical call** and
+   pulls **6 distinct on-topic references**. The shared generate-path floor is untouched.
 3. **🟡 No attribution by default.** The answer *absorbs* the proven structures but does **not name the
    creators** — great for answer quality, but it surfaces no verifiable receipt. Chat's system prompt
    is a strategic advisor and doesn't instruct citation. **Owner call:** is reference mode's job to
