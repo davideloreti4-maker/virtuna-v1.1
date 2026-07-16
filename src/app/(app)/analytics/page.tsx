@@ -3,9 +3,10 @@ import { redirect } from "next/navigation";
 /**
  * /analytics — deep-link preservation redirect.
  *
- * Account analytics (followers/likes/posts/views over time + content mix) now lives as the
- * "Your account" tab on /audience — your numbers sit with your people. This route is retained
- * ONLY as a redirect so existing bookmarks / deep links keep resolving (→ the account tab).
+ * Account analytics (figures + posts + content mix) live in the SOURCE zone of the
+ * account's audience detail page (rebuild P2). This route is retained ONLY as a
+ * redirect so existing bookmarks keep resolving — /audience resolves ?tab=account
+ * to the primary account's detail page.
  */
 export default function AnalyticsPage() {
   redirect("/audience?tab=account");

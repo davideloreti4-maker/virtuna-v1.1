@@ -20,15 +20,10 @@ import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Scales } from "@phosphor-icons/react";
-import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
-import type { Pillar } from "@/lib/room-contract/mock-room";
-import { AnalyticsView } from "@/components/analytics/analytics-view";
 import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
 
-type AudienceTab = "audiences" | "account";
-
-/** Slim, client-serializable view of a connected account — the switcher AND the
- *  roster's ACCOUNTS zone read it. */
+/** Slim, client-serializable view of a connected account — the roster's ACCOUNTS
+ *  zone reads it (and /audience/new's source picker imports the type). */
 export interface AccountOption {
   id: string;
   handle: string;
@@ -39,17 +34,8 @@ export interface AccountOption {
 
 interface AudienceManagerProps {
   className?: string;
-  /** Real account metrics for the "Your account" analytics tab. */
-  snapshots?: AccountSnapshot[];
-  /** Real content pillars for the analytics tab's content-mix zone. */
-  pillars?: Pillar[];
-  /** The user's connected accounts — powers the switcher on the "Your account" tab. */
+  /** The user's connected accounts — each renders in the ACCOUNTS zone. */
   accounts?: AccountOption[];
-  /** Which connected account's series the snapshots/pillars belong to (switcher selection). */
-  selectedAccountId?: string;
-  /** Which tab to open on mount — `account` deep-links the analytics tab (the
-   *  /analytics + /grow redirects land here via ?tab=account). */
-  initialTab?: AudienceTab;
 }
 
 
@@ -70,16 +56,8 @@ function AudienceListSkeleton() {
   );
 }
 
-export function AudienceManager({
-  className,
-  snapshots = [],
-  pillars = [],
-  accounts = [],
-  selectedAccountId,
-  initialTab = "audiences",
-}: AudienceManagerProps) {
+export function AudienceManager({ className, accounts = [] }: AudienceManagerProps) {
   const router = useRouter();
-  const [tab, setTab] = useState<AudienceTab>(initialTab);
   const [audiences, setAudiences] = useState<Audience[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -101,17 +79,6 @@ export function AudienceManager({
     setCompareConcept("");
     setCompareBlock(null);
     setCompareNote(null);
-  }
-
-  // Switch tabs; keep the URL shareable/deep-linkable without a navigation (no server
-  // refetch — the snapshots/pillars are already hydrated). Leaving the roster drops
-  // compare mode so returning to it is a clean state.
-  function selectTab(next: AudienceTab) {
-    setTab(next);
-    if (next === "account") exitSelectionMode();
-    if (typeof window !== "undefined") {
-      window.history.replaceState(null, "", next === "account" ? "/audience?tab=account" : "/audience");
-    }
   }
 
   function toggleSelection(id: string) {
@@ -228,7 +195,7 @@ export function AudienceManager({
       defaultAudienceId={defaultAudienceId}
       onSetDefault={(a) => void handleSetDefault(a)}
       onOpen={(a) => router.push(`/audience/${a.id}`)}
-      onOpenAccount={(a) => router.push(`/audience?tab=account&account=${a.id}`)}
+      onOpenAccount={(a) => router.push(`/audience/${a.id}`)}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onToggleSelect={toggleSelection}
@@ -241,46 +208,17 @@ export function AudienceManager({
         <header className="mb-5 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
-              {tab === "account" ? "Your account" : "Audiences"}
+              Audiences
             </h1>
             {selectionMode && (
               <p className="mt-1 text-sm text-foreground-secondary">
                 Pick two audiences to compare.
               </p>
             )}
-
-            {/* Section tabs — the roster (the moat) vs your account analytics (folded in
-                from the retired /grow "Numbers" tab). */}
-            <div
-              className="mt-3 inline-flex rounded-lg border border-border bg-surface-elevated p-0.5"
-              role="tablist"
-              aria-label="Audience sections"
-            >
-              {([
-                { id: "audiences", label: "Audiences" },
-                { id: "account", label: "Your account" },
-              ] as const).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === t.id}
-                  onClick={() => selectTab(t.id)}
-                  className={cn(
-                    "rounded-md px-3 py-1.5 text-[12px] font-medium transition-colors",
-                    tab === t.id
-                      ? "bg-[color:var(--color-action)] text-[color:var(--color-action-foreground)]"
-                      : "text-foreground-secondary hover:text-foreground",
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
           </div>
           {/* The two actions the index owns. The retired rail cards said the same thing in
               marketing voice ("the moat that makes a prediction yours") — deleted. */}
-          {tab === "audiences" && !selectionMode && !loading && !error && audiences.length > 0 && (
+          {!selectionMode && !loading && !error && audiences.length > 0 && (
             <div className="flex shrink-0 items-center gap-2">
               <Button
                 variant="ghost"
@@ -302,13 +240,11 @@ export function AudienceManager({
           )}
         </header>
 
-        {tab === "audiences" && (
-          <>
-            {loading && <AudienceListSkeleton />}
+        {loading && <AudienceListSkeleton />}
 
-            {!loading && error && (
-              <p className="py-8 text-center text-sm text-error">{error}</p>
-            )}
+        {!loading && error && (
+          <p className="py-8 text-center text-sm text-error">{error}</p>
+        )}
 
         {!loading && !error && audiences.length === 0 && (
           <SurfaceEmptyState
@@ -395,23 +331,6 @@ export function AudienceManager({
             {renderIndex()}
           </div>
         )}
-          </>
-        )}
-
-        {/* Your account — the real analytics tab (folded in from the retired /grow "Numbers"
-            tab): account_snapshots metrics + recommendations + content mix. Deep-linked via
-            /audience?tab=account (the /analytics + /grow redirects land here). */}
-        {tab === "account" && (
-          <div key="account" className="rv-in">
-            <AnalyticsView
-              snapshots={snapshots}
-              pillars={pillars}
-              accounts={accounts}
-              selectedAccountId={selectedAccountId}
-            />
-          </div>
-        )}
-
       </div>
     </div>
   );

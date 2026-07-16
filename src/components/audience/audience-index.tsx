@@ -24,7 +24,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import type { Audience } from "@/lib/audience/audience-types";
 import { AudienceCompositionBar } from "./audience-composition-bar";
-import { getBuiltFrom, getPersonaCount } from "./audience-display";
+import { audienceForAccount, getBuiltFrom, getPersonaCount } from "./audience-display";
 import { cn } from "@/lib/utils";
 import { CaretRight, Check } from "@phosphor-icons/react";
 
@@ -76,25 +76,6 @@ export function timeAgo(iso: string | null): string | null {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
-}
-
-/**
- * The audience a connected account manifests as. Matches by `source_account_id` OR by
- * scrape handle+platform (audiences calibrated before connected_accounts existed carry
- * no FK). Among candidates the CALIBRATED one wins — the connect deep-link can leave an
- * empty shell with the FK set, and it must not shadow the audience that actually
- * carries the account's reading (live-caught 2026-07-16).
- */
-function audienceForAccount(account: AccountRow, owned: Audience[]): Audience | undefined {
-  const candidates = owned.filter(
-    (a) =>
-      a.source_account_id === account.id ||
-      (a.platform === account.platform &&
-        a.calibration?.source === "scrape" &&
-        a.calibration.handle?.toLowerCase() === account.handle.toLowerCase()),
-  );
-  if (candidates.length <= 1) return candidates[0];
-  return [...candidates].sort((x, y) => getPersonaCount(y) - getPersonaCount(x))[0];
 }
 
 function Zone({ label, children }: { label: string; children: React.ReactNode }) {
