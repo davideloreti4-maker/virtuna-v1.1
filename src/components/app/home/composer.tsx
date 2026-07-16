@@ -78,6 +78,7 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { isChatAgentThread, orderedAssistantBlocks } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
 import { ScriptThreadView } from "@/components/thread/script-thread-view";
 import { useRemixStream } from "@/hooks/queries/use-remix-stream";
@@ -408,6 +409,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
+  // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): the FULL ordered assistant block stream for a
+  // thread stamped chat-agent (rehydrate-thread.ts). Non-empty ONLY for such threads → the chat view
+  // renders the whole thread as one ordered stream instead of segregating cards into per-tool views.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [persistedChatStream, setPersistedChatStream] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -743,9 +749,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         if (userTurns.length > 0) setLastUserTurn(userTurns[userTurns.length - 1] ?? null);
         // Flatten ASSISTANT/tool blocks across messages, split by type (user turns
         // are surfaced via lastUserTurn above, never as assistant cards/bubbles).
-        const allBlocks = messages
-          .filter((m) => m.role !== 'user')
-          .flatMap((m) => m.blocks ?? []);
+        const allBlocks = orderedAssistantBlocks(messages);
+        // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): a thread stamped chat-agent renders as ONE
+        // ordered stream in the chat view rather than split by tool. Reads the server-set marker
+        // (rehydrate-thread.ts); absent (every existing/flag-off thread) → false → reload is unchanged.
+        const chatAgentThread = isChatAgentThread(messages);
         const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
         const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
         const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
@@ -767,6 +775,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setPersistedRemixBlocks(remixBlocks);
         setPersistedExploreBlocks(outlierGridBlocks);
         setPersistedProfileBlocks(profileBlocks);
+        // The ordered stream powers the unified chat-view render; empty for non-chat-agent threads so
+        // the per-tool buckets above stay the sole source (byte-identical reload for those).
+        setPersistedChatStream(chatAgentThread ? allBlocks : []);
 
         // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
         // activeTool defaults to "test", but every thread-view gate (showHooksView,
@@ -792,6 +803,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
             }
           }
+          // A chat-agent thread lands back in the unified chat view regardless of its last card type —
+          // that view renders the whole ordered stream (persistedChatStream), so the cards show there.
+          if (chatAgentThread) restored = 'chat';
           // A thread with cards restores ITS tool. A thread with none — a brand-new thread —
           // resets to the DEFAULT. Without the else, "New Thread" silently inherited the last
           // thread's skill: open a hooks thread, hit New Thread, and you got a blank page
@@ -2163,6 +2177,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {showChatView && (
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
+          persistedStream={persistedChatStream}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
           isStreaming={chat.isStreaming}

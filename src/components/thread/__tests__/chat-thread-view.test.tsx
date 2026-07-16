@@ -78,4 +78,33 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     // No idea-card leaked into a plain turn.
     expect(screen.queryByText('The 5am myth')).toBeNull();
   });
+
+  it('unified reload: persistedStream renders the ordered mixed thread (cards + co-pilot line)', () => {
+    // On reload of a chat-agent thread the composer passes the FULL ordered stream here; MessageBlocks
+    // renders each block by type, so a chat-run ideas set shows IN the chat view (not the ideas view).
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedStream={[
+          IDEA_CARD,
+          { type: 'markdown', props: { text: "I've generated 3 angles — want hooks?", origin: 'chat-agent' } },
+        ]}
+      />,
+    );
+    expect(screen.getByText('The 5am myth')).toBeTruthy(); // the card
+    expect(screen.getByText(/want hooks/i)).toBeTruthy(); // the co-pilot line, same thread
+  });
+
+  it('persistedStream takes precedence over markdown-only persistedBlocks when both are present', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedBlocks={[{ type: 'markdown', props: { text: 'markdown-bucket-only' } }] as MarkdownBlock[]}
+        persistedStream={[IDEA_CARD]}
+      />,
+    );
+    // The ordered stream wins: the card shows, the markdown-only bucket is not double-rendered.
+    expect(screen.getByText('The 5am myth')).toBeTruthy();
+    expect(screen.queryByText('markdown-bucket-only')).toBeNull();
+  });
 });

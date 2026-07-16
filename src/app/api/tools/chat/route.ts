@@ -400,7 +400,10 @@ export async function POST(request: Request): Promise<Response> {
                 await insertMessage(
                   openThread.id,
                   "assistant",
-                  [{ type: "markdown", props: { text: closing } }],
+                  // origin marker → on reload the composer renders this thread as ONE ordered stream
+                  // in the chat view (rehydrate-thread.ts). Written ONLY here (flag-on) → the marker
+                  // is the flag's shadow: no marker on selector threads or flag-off writes.
+                  [{ type: "markdown", props: { text: closing, origin: "chat-agent" } }],
                   kcStamp().kcGenVersion,
                 );
               }

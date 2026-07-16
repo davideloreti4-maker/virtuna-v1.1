@@ -39,6 +39,26 @@ function validSingleAudiencePayload() {
   };
 }
 
+describe("markdown block origin marker (chat-as-agent reload)", () => {
+  it("validates a plain markdown block (no origin) — existing threads unchanged", () => {
+    const result = BlockUnionSchema.safeParse({ type: "markdown", props: { text: "hello" } });
+    expect(result.success).toBe(true);
+  });
+
+  it("preserves origin='chat-agent' through validation (survives rehydration, not stripped)", () => {
+    const result = BlockUnionSchema.safeParse({
+      type: "markdown",
+      props: { text: "I've generated 3 ideas.", origin: "chat-agent" },
+    });
+    expect(result.success).toBe(true);
+    // The marker MUST survive: a non-strict schema silently strips unknown props, which would drop the
+    // reload signal. This asserts origin is a real, retained field.
+    if (result.success) {
+      expect((result.data.props as { origin?: string }).origin).toBe("chat-agent");
+    }
+  });
+});
+
 describe("multi-audience-read block schema (Plan 08-05)", () => {
   it("validates a single-audience payload", () => {
     const result = BlockUnionSchema.safeParse(validSingleAudiencePayload());

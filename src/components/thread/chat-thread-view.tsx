@@ -38,6 +38,14 @@ import { handoffsFor } from '@/lib/tools/chain-handoff';
 export interface ChatThreadViewProps {
   /** Validated markdown blocks from the persisted open thread (rehydration). */
   persistedBlocks: MarkdownBlock[];
+  /**
+   * Chat-as-agent reload (CHAT_AGENT_DISPATCH): the FULL ordered assistant block stream for a thread
+   * produced by chat-as-agent — cards + co-pilot lines interleaved in message order. When non-empty it
+   * REPLACES the markdown-only `persistedBlocks` as the persisted body, so a reloaded chat-run ideas
+   * set renders as one thread here (not split into the ideas view). Empty for a normal chat thread →
+   * the markdown-only path is unchanged. Raw blocks (MessageBlocks re-validates each) → loosely typed.
+   */
+  persistedStream?: unknown[];
   /** In-flight streamed turn (single MarkdownBlock or [] when idle). */
   streamingBlocks: MarkdownBlock[];
   /**
@@ -84,6 +92,7 @@ export interface ChatThreadViewProps {
 
 export function ChatThreadView({
   persistedBlocks,
+  persistedStream = [],
   streamingBlocks,
   streamingCardBlocks = [],
   isStreaming,
@@ -96,7 +105,10 @@ export function ChatThreadView({
   skillLabel = 'Chat',
   audienceLabel = 'General',
 }: ChatThreadViewProps) {
-  const hasPersistedContent = persistedBlocks.length > 0;
+  // Unified chat-agent reload: the ordered stream (cards + co-pilot lines) REPLACES the markdown-only
+  // persisted body when present. A normal chat thread has an empty stream → markdown-only, unchanged.
+  const hasPersistedStream = persistedStream.length > 0;
+  const hasPersistedContent = hasPersistedStream || persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
   // Chat-as-agent skill cards streamed this turn (CHAT_AGENT_DISPATCH). Drive the result-card
   // gate too, so a dispatched run that produced ONLY cards (co-pilot line still streaming) shows.
@@ -119,11 +131,12 @@ export function ChatThreadView({
   const nicheLabel = niche && niche.trim() ? niche.trim() : 'your niche';
   const platformLabel = platform && platform.trim() ? platform.trim() : 'your platform';
 
-  // Build raw body arrays for MessageBlocks (it expects unknown[])
-  const persistedBody: unknown[] = persistedBlocks.map((b) => ({
-    type: b.type,
-    props: b.props,
-  }));
+  // Build raw body arrays for MessageBlocks (it expects unknown[]). A unified chat-agent reload passes
+  // the ordered stream verbatim; a normal chat thread maps its markdown blocks. MessageBlocks
+  // re-validates every block either way (D-14).
+  const persistedBody: unknown[] = hasPersistedStream
+    ? persistedStream
+    : persistedBlocks.map((b) => ({ type: b.type, props: b.props }));
 
   const streamingBody: unknown[] = streamingBlocks.map((b) => ({
     type: b.type,

@@ -5,20 +5,19 @@
 the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 `docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function calling proven with qwen3.7-plus).
 
-> **▶ START HERE (next session).** Route integration is DONE at three layers and proven by tests (§4a);
-> what's left is the REACH work (§4b): (1) **reload fidelity** — live streaming shows dispatched cards
-> in the chat view, but on reload the composer segregates persisted blocks by type + restores
-> `activeTool`, so a chat-run ideas set reappears in the IDEAS view, not chat. True "one thread on
-> reload" needs a unified persisted-block render (stop segregating by tool). (2) ✅ **DONE (session 3)
-> for simulate/predict** — the SECOND adapter shape (`draft`, not `topic`) is in `SKILL_TOOLS`
-> (`simulate_reaction` + `predict_outcome`); real-model routing is **7/7** (§4c). **Still open:**
-> read/profile (needs `supabase` on `SkillRunContext` + a product call on profile's save side-effect).
-> (3) **Light
-> attribution** in general chat (owner decision, still unwired). Then the product call: retire the skill
-> selector (keep it until the flag-on path is proven in prod). **Not yet run:** a full flag-on browser
-> session against live DashScope+Supabase (owner-auth-gated; the dispatcher itself is already
-> live-proven, and the new plumbing is deterministic + test-covered). Live scripts: **sandbox-OFF,
-> foreground** (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`).
+> **▶ START HERE (next session).** Route integration is DONE at three layers and proven by tests (§4a).
+> **Session 3 shipped BOTH ranked reach items:** (1) ✅ **reload fidelity DONE (§4d)** — a thread
+> stamped chat-agent now reloads as ONE ordered stream in the chat view (marker-shadowed, regression-
+> safe: no marker → byte-identical old reload). (2) ✅ **generalize beyond generators DONE for
+> simulate/predict (§4c)** — the SECOND adapter shape (`draft`, not `topic`) is in `SKILL_TOOLS`
+> (`simulate_reaction` + `predict_outcome`); real-model routing **7/7**. **Still open (ranked):**
+> **(a) read/profile dispatch** — needs `supabase` on `SkillRunContext` + a product call on profile's
+> save side-effect (profile WRITES an audience). **(b) light attribution** in general chat (owner
+> decision, still unwired). **(c) selector retirement** — keep it until the flag-on path is proven in
+> prod. **Not yet run:** a full flag-on browser session against live DashScope+Supabase (owner-auth-
+> gated; the dispatcher is already live-proven, and all new plumbing is deterministic + test-covered).
+> Live scripts: **sandbox-OFF, foreground** (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs
+> run …` (NOT `npm test`).
 
 ---
 
@@ -112,11 +111,8 @@ Design notes:
 
 ## 4b. What's left (the reach)
 
-1. **Reload fidelity.** Live streaming shows the dispatched cards in the CHAT view, but the composer's
-   rehydration (`loadPersistedBlocks`) splits persisted blocks by TYPE into per-tool buckets and
-   restores `activeTool` to the last card type — so on reload a chat-run ideas set reappears in the
-   IDEAS view, not chat. Full "one thread on reload" = a unified persisted-block render that stops
-   segregating by tool (bigger composer refactor). **← now the top open item.**
+1. ✅ **Reload fidelity — DONE (session 3, §4d).** A thread stamped chat-agent reloads as one ordered
+   stream in the chat view. Regression-safe by construction (marker-shadowed).
 2. ✅ **Generalize beyond generators — DONE for simulate/predict (session 3, §4c).** read/profile still
    open: they need `supabase` on `SkillRunContext`, and profile SAVES an audience (a heavier side-effect
    → an owner product call), so they were deliberately left out of this pass.
@@ -157,6 +153,50 @@ the dispatcher is just a new caller with the same `{audience, stimulus}` args.
 (new field), handles a video/max tier the chat can't supply, and — unlike the pure-read
 simulate/predict — SAVES a General-mode audience as a side-effect. Dispatching an implicit audience
 *write* from a chat turn is an owner product call, so it's a documented follow-up, not this pass.
+
+## 4d. Session 3 — reload fidelity (one thread on reload)
+
+**Problem.** Live streaming already shows a dispatched skill's cards in the chat view, but on reload
+the composer's `loadPersistedBlocks` split persisted blocks by TYPE into per-tool buckets and restored
+`activeTool` to the most-recent card type — so a chat-run ideas set reappeared in the IDEAS view, its
+cross-skill ordering (cards + co-pilot line) lost. **There is no structural difference** between "ideas
+dispatched from chat" and "ideas run from the selector" — identical `user → cards → co-pilot markdown`.
+So reload can't tell a chat thread apart without a marker.
+
+**Approach — marker-shadowed, regression-safe by construction.** Only a thread PRODUCED by chat-agent
+dispatch reloads as one unified stream; every existing / selector / flag-off thread is byte-identical.
+
+- **The marker.** The chat route stamps the co-pilot closing markdown with `props.origin="chat-agent"`
+  — written ONLY in the flag-on dispatch branch, so the marker is the flag's shadow on the client (no
+  client-side flag read needed). `MarkdownBlockSchema` gained an optional `origin` field: a non-strict
+  Zod object silently STRIPS unknown props, so without the schema field the marker would vanish on
+  rehydration. Optional → every existing block still validates.
+- **Pure helpers** (`src/components/app/home/rehydrate-thread.ts`, unit-tested): `isChatAgentThread`
+  (any assistant markdown carries the marker) + `orderedAssistantBlocks` (the full non-user block stream
+  in message order). Extracted so the decision is a tested pure function, not more logic inlined into
+  the 2600-line composer.
+- **Composer** (`loadPersistedBlocks`): if `isChatAgentThread`, set `persistedChatStream` = the ordered
+  stream and force `restored = "chat"` (overriding the card-type restore, still behind the
+  `hasUserSelectedToolRef` guard). Absent marker → `persistedChatStream` stays `[]` and the per-tool
+  buckets remain the sole source. **One new state + three small edits; no `hasThread` change** (a
+  chat-agent thread always has its marked markdown in the existing markdown bucket, which already flips
+  `hasThread`).
+- **ChatThreadView**: new optional `persistedStream` prop; when non-empty it REPLACES the markdown-only
+  persisted body (rendered via the existing `MessageBlocks`, one renderer per card type). Normal chat
+  thread → empty stream → unchanged.
+
+**Proof.** blocks (origin survives validation), rehydrate-thread (6 — marker detection + ordering),
+chat-thread-view (persistedStream renders the mixed stream + takes precedence), and a **discriminating
+composer reload pair**: a STAMPED thread renders the card AND the co-pilot line (only the chat view
+shows markdown → proves `activeTool` flipped to chat), while an UNSTAMPED selector thread renders only
+the card (ideas view, no markdown) — the second test FAILS if all threads were unified, so it locks the
+no-regression guarantee. 108 green across the touched areas; tsc clean (4 grounding errors pre-existing).
+
+**Honest gaps.** (1) The unified reload wraps the whole stream in one `SkillResultCard` (label "Chat")
+— acceptable one-turn presentation, not per-message chrome. (2) A chat-agent turn that returns NO
+closing text persists no marker → that thread reloads via the old per-tool path (cards still present,
+just in the tool view). Rare (the prompt always asks for a closing line) and a graceful degrade. (3) Not
+live-run in a browser (owner-auth-gated) — same gate as the rest of the feature.
 
 ## 5. Guardrails (hold these)
 
