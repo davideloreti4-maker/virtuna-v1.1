@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { runSkillDispatch, type SkillTool, type ChatComplete } from "@/lib/tools/skill-dispatch";
+import { runSkillDispatch, SKILL_TOOLS, type SkillTool, type ChatComplete } from "@/lib/tools/skill-dispatch";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -21,9 +21,27 @@ function mkSkill(name: string, opts: { paid?: boolean; run?: SkillTool["run"] } 
   };
 }
 
+// An ANALYSIS skill (the second adapter shape): primaryArg "draft", not "topic".
+function mkAnalysisSkill(name: string, opts: { run?: SkillTool["run"] } = {}): SkillTool {
+  return {
+    name,
+    paid: true,
+    primaryArg: "draft",
+    schema: { type: "function", function: { name, parameters: { type: "object", properties: {} } } },
+    run:
+      opts.run ??
+      vi.fn(async (args) => ({ blocks: [{ type: "reaction-distribution", props: { draft: args.draft } }], warnings: [] })),
+  };
+}
+
 const call = (name: string, topic: unknown, id: string) => ({
   id,
   function: { name, arguments: JSON.stringify(topic === undefined ? {} : { topic }) },
+});
+
+const draftCall = (name: string, draft: unknown, id: string) => ({
+  id,
+  function: { name, arguments: JSON.stringify(draft === undefined ? {} : { draft }) },
 });
 const toolResp = (...calls: unknown[]) => ({ choices: [{ message: { content: null, tool_calls: calls } }] });
 const stop = (content = "done") => ({ choices: [{ message: { content, tool_calls: [] } }] });
@@ -111,5 +129,61 @@ describe("runSkillDispatch [tools]", () => {
     expect(res.skillRuns).toHaveLength(0);
     expect(res.toolCalls[0]!.ran).toBe(false);
     expect(res.toolCalls[0]!.note).toBe("error");
+  });
+
+  // ── The SECOND adapter shape — analysis skills read a `draft`, not a `topic` ──
+
+  it("routes a draft-shape ask to an analysis skill and passes the draft (not a topic)", async () => {
+    const simulate = mkAnalysisSkill("simulate_reaction");
+    const complete = scripted([
+      toolResp(draftCall("simulate_reaction", "here's my hook: stop scrolling if you're broke", "c1")),
+      stop("here's how the room reacts"),
+    ]);
+
+    const res = await runSkillDispatch(
+      { ask: "how would my audience react to this hook?", context: CTX },
+      DEPS(complete, [simulate]),
+    );
+
+    expect(res.skillRuns).toHaveLength(1);
+    expect(res.skillRuns[0]!.name).toBe("simulate_reaction");
+    expect(res.skillRuns[0]!.blocks).toHaveLength(1);
+    expect(simulate.run).toHaveBeenCalledWith(
+      { topic: undefined, anchor: undefined, draft: "here's my hook: stop scrolling if you're broke" },
+      CTX,
+    );
+  });
+
+  it("refuses an analysis tool call with no draft (its own required arg, not 'topic')", async () => {
+    const complete = scripted([toolResp(draftCall("simulate_reaction", undefined, "c1")), stop()]);
+
+    const res = await runSkillDispatch(
+      { ask: "x", context: CTX },
+      DEPS(complete, [mkAnalysisSkill("simulate_reaction")]),
+    );
+
+    expect(res.skillRuns).toHaveLength(0);
+    expect(res.toolCalls[0]!.note).toBe("no draft");
+  });
+
+  it("registry wires both shapes: generators require `topic`, analysis skills require `draft`", () => {
+    const byName = new Map(SKILL_TOOLS.map((s) => [s.name, s]));
+
+    for (const gen of ["generate_ideas", "generate_hooks", "write_script"]) {
+      const s = byName.get(gen)!;
+      expect(s).toBeDefined();
+      expect(s.primaryArg ?? "topic").toBe("topic");
+    }
+
+    for (const ana of ["simulate_reaction", "predict_outcome"]) {
+      const s = byName.get(ana)!;
+      expect(s).toBeDefined();
+      expect(s.primaryArg).toBe("draft");
+      // The model sees a `draft` param that is required (the second adapter's tool schema).
+      const params = (s.schema as { function: { parameters: { properties: Record<string, unknown>; required: string[] } } })
+        .function.parameters;
+      expect(params.properties.draft).toBeDefined();
+      expect(params.required).toContain("draft");
+    }
   });
 });

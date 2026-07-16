@@ -28,15 +28,24 @@ const { runSkillDispatch, SKILL_TOOLS } = require("@/lib/tools/skill-dispatch");
 const CONTEXT = { platform: "tiktok", profileRow: null, audience: null };
 
 // Mock registry: real schemas (so the model routes on the real descriptions), fake runners (free).
+// Echoes both shapes' primary args so the log shows what the model extracted (topic vs draft).
 const MOCK_SKILLS = SKILL_TOOLS.map((s: any) => ({
   ...s,
-  run: async (args: any) => ({ blocks: [{ type: "mock-card", props: { skill: s.name, topic: args.topic } }], warnings: [] }),
+  run: async (args: any) => ({
+    blocks: [{ type: "mock-card", props: { skill: s.name, topic: args.topic, draft: args.draft } }],
+    warnings: [],
+  }),
 }));
 
 const ROUTING_CASES = [
+  // Generators (topic shape)
   { ask: "Give me 3 ideas for a video about morning routines", expect: "generate_ideas" },
   { ask: "Write me some hooks for a video on meal prep for beginners", expect: "generate_hooks" },
   { ask: "Write a full script for a video about budgeting tips", expect: "write_script" },
+  // Analysis (draft shape) — the second adapter: they read a SPECIFIC message, not a subject
+  { ask: "How would my audience react to this hook: 'Nobody tells you this about saving money'", expect: "simulate_reaction" },
+  { ask: "If I post a daily budgeting series for 30 days, what's the likely outcome for my channel?", expect: "predict_outcome" },
+  // Pure chat (no tool)
   { ask: "What do you think actually makes a good hook these days?", expect: "(none — chat)" },
   { ask: "I'm stuck at 400 followers, what should I focus on?", expect: "(none — chat)" },
 ];
@@ -55,7 +64,7 @@ async function main(): Promise<void> {
     if (ok) correct++;
     console.log(`\n  ask: "${c.ask}"`);
     console.log(`  expected: ${c.expect}   got: ${got}   ${ok ? "✅" : "❌"}`);
-    if (res.toolCalls.length) console.log(`  toolCalls: ${JSON.stringify(res.toolCalls.map((t: any) => ({ name: t.name, ran: t.ran, topic: t.args?.topic, note: t.note })))}`);
+    if (res.toolCalls.length) console.log(`  toolCalls: ${JSON.stringify(res.toolCalls.map((t: any) => ({ name: t.name, ran: t.ran, topic: t.args?.topic, draft: t.args?.draft, note: t.note })))}`);
     console.log(`  closing text: ${res.text ? `"${res.text.slice(0, 160)}"` : "(none)"}`);
   }
   console.log(`\n  routing correct: ${correct}/${ROUTING_CASES.length}`);

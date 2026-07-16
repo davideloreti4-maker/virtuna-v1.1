@@ -9,9 +9,11 @@ the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 > what's left is the REACH work (§4b): (1) **reload fidelity** — live streaming shows dispatched cards
 > in the chat view, but on reload the composer segregates persisted blocks by type + restores
 > `activeTool`, so a chat-run ideas set reappears in the IDEAS view, not chat. True "one thread on
-> reload" needs a unified persisted-block render (stop segregating by tool). (2) **Generalize beyond
-> generators** — simulate/predict/read/profile need a concept/analysis context, not just a topic; add a
-> SECOND adapter shape to `SKILL_TOOLS` (do NOT force them through the generator adapter). (3) **Light
+> reload" needs a unified persisted-block render (stop segregating by tool). (2) ✅ **DONE (session 3)
+> for simulate/predict** — the SECOND adapter shape (`draft`, not `topic`) is in `SKILL_TOOLS`
+> (`simulate_reaction` + `predict_outcome`); real-model routing is **7/7** (§4c). **Still open:**
+> read/profile (needs `supabase` on `SkillRunContext` + a product call on profile's save side-effect).
+> (3) **Light
 > attribution** in general chat (owner decision, still unwired). Then the product call: retire the skill
 > selector (keep it until the flag-on path is proven in prod). **Not yet run:** a full flag-on browser
 > session against live DashScope+Supabase (owner-auth-gated; the dispatcher itself is already
@@ -114,14 +116,47 @@ Design notes:
    rehydration (`loadPersistedBlocks`) splits persisted blocks by TYPE into per-tool buckets and
    restores `activeTool` to the last card type — so on reload a chat-run ideas set reappears in the
    IDEAS view, not chat. Full "one thread on reload" = a unified persisted-block render that stops
-   segregating by tool (bigger composer refactor).
-2. **Generalize beyond generators.** simulate/predict/read/profile need a concept/analysis context, not
-   just a topic — a SECOND adapter shape in `SKILL_TOOLS`. Do NOT force them through the generator
-   adapter. The `event: block` transport already generalizes; only the tool schema + adapter are new.
+   segregating by tool (bigger composer refactor). **← now the top open item.**
+2. ✅ **Generalize beyond generators — DONE for simulate/predict (session 3, §4c).** read/profile still
+   open: they need `supabase` on `SkillRunContext`, and profile SAVES an audience (a heavier side-effect
+   → an owner product call), so they were deliberately left out of this pass.
 3. **Wire light attribution** in general chat (owner decision — §6 of the handoff).
 4. **Product call:** retire the skill selector, or keep it as a shortcut. **Keep it until the flag-on
    path is proven in prod** — don't rip it out on faith.
 5. **Live proof:** run the flag-on flow in a real browser session (DashScope+Supabase). Owner-auth-gated.
+
+## 4c. Session 3 — analysis skills dispatch (simulate + predict)
+
+The dispatcher was hardwired to the generator shape (`topic` required; adapter → `runXPipeline({ask})`).
+Session 3 added the **SECOND adapter shape** for analysis skills, which read a SPECIFIC drafted
+message/scenario, not a subject. **One file changed: `src/lib/tools/skill-dispatch.ts`** — the route's
+dispatch branch, the `event: block` transport, and `MessageBlocks` were already block-type-agnostic, so
+`reaction-distribution` + `prediction-gauge` ride the existing path untouched.
+
+- **Args generalized.** `SkillToolArgs` now carries `topic?` / `anchor?` (generators) OR `draft?`
+  (analysis). Each `SkillTool` names its own `primaryArg` (`"topic"` default, `"draft"` for analysis);
+  the dispatcher validates the right required field instead of hardcoding `topic`. Missing primary arg →
+  the same absorb-don't-throw tool result ("no draft provided") the model relays.
+- **Two registry entries** via a new `analysisSchema` builder: `simulate_reaction` → `runSimulate`,
+  `predict_outcome` → `runPredict`. Each adapter: `normalizeStimulus({kind:"text", text: draft})` →
+  runner → one block. Eligibility guard `requireDirectionalAudience(ctx.audience)` throws a
+  creator-facing message (absorbed as a tool result) when there's no General (Directional) audience —
+  the SAME rule the simulate/predict routes enforce with a 400. `ctx.audience` is already populated by
+  the chat route (`activeAudience`).
+- **System prompt** now distinguishes generators (pass `topic`) from analysis (pass the `draft`).
+
+**Proof.** `skill-dispatch.test.ts` → 9 green (added: analysis routing, no-draft refusal, a registry
+structural test locking both shapes). tsc clean (the 4 `src/lib/grounding/` errors are pre-existing).
+Route/transport/render suites still green (25 across the four areas). **Live routing 7/7** (real
+qwen3.7-plus, mock runners → free, `scripts/spike-skill-dispatch.ts`): the model routes both analysis
+asks correctly AND extracts `draft` (the actual hook / scenario), never `topic`. NOT live-run through
+the real adapter (runners mocked) — but that path is identical to the shipping simulate/predict routes;
+the dispatcher is just a new caller with the same `{audience, stimulus}` args.
+
+**Deliberately deferred: read/profile.** `runProfile` needs a `supabase` client on `SkillRunContext`
+(new field), handles a video/max tier the chat can't supply, and — unlike the pure-read
+simulate/predict — SAVES a General-mode audience as a side-effect. Dispatching an implicit audience
+*write* from a chat turn is an owner product call, so it's a documented follow-up, not this pass.
 
 ## 5. Guardrails (hold these)
 
