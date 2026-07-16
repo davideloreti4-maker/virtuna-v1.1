@@ -4,6 +4,15 @@
 **Branch:** `spike/corpus-fn-tool`. **Builds on:** `docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function
 calling proven with qwen3.7-plus).
 
+> **▶ START HERE (next session).** The chat-as-agent vision is PROVEN and committed — don't re-prove it.
+> The remaining work is ROUTE INTEGRATION (§4). First step is a **client-side scout**: how the chat
+> thread client consumes the SSE + renders streamed blocks, and how the skill routes' clients do it —
+> that sizes the build (same discipline that turned "scary UI build" into "80% already there"). Then
+> wire `runSkillDispatch` into `/api/tools/chat/route.ts` behind a **default-off flag**, reusing the
+> skill routes' `stage`/`content`/`score` emit + `insertMessage` code verbatim; closing text → a
+> markdown message. Keep the skill selector until proven. Live scripts: **sandbox-OFF, foreground**
+> (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`).
+
 ---
 
 ## 0. The vision (owner)
