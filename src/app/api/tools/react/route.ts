@@ -38,6 +38,13 @@ import type { IntentLens } from "@/lib/audience/intent-lens";
 import { runFlashTextMode } from "@/lib/engine/flash/run-flash-text-mode";
 import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+import { characterizeContent } from "@/lib/audience/characterize-content";
+import {
+  reactPopulation,
+  signatureHasPopulationAxes,
+  type ContentVector,
+  type PopulationAggregate,
+} from "@/lib/audience/population";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 
@@ -132,10 +139,21 @@ export async function POST(request: Request): Promise<Response> {
       ? bodyIntent ?? goalIntentToLens(audience.goal_intent)
       : undefined;
 
-  // ── (6) Fire ONE Flash text-mode reaction (whole, no streaming) ────────────
+  // ── (6) Fire the Flash reaction AND characterize the content CONCURRENTLY ──
+  // The population aggregate (Audience Sim v2 Stage 2) needs the content scored into the
+  // signature's named axes — one extra LLM call. It does NOT depend on the flash result,
+  // so it runs in PARALLEL (no serial latency added). A calibrated signature with v2 axes
+  // is the gate; General / legacy / preset signatures skip it (byte-identical old behaviour).
+  const wantPopulation =
+    !!audience?.signature && signatureHasPopulationAxes(audience.signature);
+  const contentVectorPromise: Promise<ContentVector | null> = wantPopulation
+    ? characterizeContent(text, audience!.signature!.audience.topic_vocab ?? []).catch(() => null)
+    : Promise.resolve(null);
+
   // default framing "hook" (first-2s "do you stop?" — RESEARCH A1). The client shows
   // "Reading the room…" for the one ~8-17s call. On failure → honest 502 (the client
-  // renders the retry copy, never error-red).
+  // renders the retry copy, never error-red). The concurrent characterize already has a
+  // .catch, so a flash short-circuit here leaves no unhandled rejection.
   let personas: FlashPersona[];
   try {
     const { result } = await runFlashTextMode(text, framing ?? "hook", panel, audienceRepaint, simIntent);
@@ -149,10 +167,25 @@ export async function POST(request: Request): Promise<Response> {
   const { fraction } = aggregateFlash(personas);
   const scrollQuote = selectLeadScrollQuote(personas);
 
+  // ── (7b) Population aggregate — the honest N-individual projection (Stage 2) ─
+  // A REAL O(N) score of ~1,000 individuals sampled off the signature's 10 segments, not
+  // the 10's rollup at higher resolution. Pure math once characterize() lands; a null
+  // vector (skip / failure) → no population, and the client falls back to the rollup swarm.
+  const contentVector = await contentVectorPromise;
+  let population: PopulationAggregate | null = null;
+  if (contentVector && audience?.signature) {
+    try {
+      population = reactPopulation(audience.signature, contentVector);
+    } catch {
+      population = null; // never let the projection break the reaction
+    }
+  }
+
   // ── (8) Return the reaction (NO persistence — type-to-room is ephemeral) ───
   // Also return the full per-persona reactions (real registry-enum archetypes) so the
   // ambient Room shows the NAMED People cast + the "Ask them why →" chat for a typed
   // thought — same as a generated card's own S3′ personas (The Room, Task B). Shape is
   // { archetype, verdict, quote } (FlashPersona) — the exact AmbientPersonaReaction shape.
-  return Response.json({ fraction, scrollQuote, personas });
+  // `population` is the Stage 2 projection (null when the audience lacks v2 axes).
+  return Response.json({ fraction, scrollQuote, personas, population });
 }
