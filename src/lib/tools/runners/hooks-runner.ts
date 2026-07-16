@@ -59,6 +59,13 @@ import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock, HookCardTarget, HookProof } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+import { characterizeContent } from "@/lib/audience/characterize-content";
+import {
+  reactPopulation,
+  signatureHasPopulationAxes,
+  type ContentVector,
+  type PopulationAggregate,
+} from "@/lib/audience/population";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
@@ -616,8 +623,17 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     audienceArchetype: string;
     predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
     personas: FlashPersona[];             // for the FLYWHEEL-02 pin + per-card modal feed (S3′)
+    population?: PopulationAggregate;      // Audience Sim v2 Stage 2 — the N-individual projection
     generationIndex: number;              // preserves generation order for tie-break
   }
+
+  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
+  // A calibrated signature carrying the v2 axes (topic_vocab + scored persona.reaction) is the
+  // gate — General / legacy / preset audiences skip it (population stays undefined → the card
+  // omits the field, byte-identical to the pre-v2 shape). Resolved ONCE per run.
+  const populationSignature = audience?.signature ?? null;
+  const wantPopulation = signatureHasPopulationAxes(populationSignature);
+  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
 
   /**
    * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
@@ -633,6 +649,19 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       text: hook.seedHook ?? hook.hookLine,
     }));
 
+    // ── Audience Sim v2 (Stage 2): characterize each hook CONCURRENTLY with the SIM ──
+    // Fire the per-candidate content-characterization calls BEFORE awaiting the batched Flash
+    // reaction so they run in parallel (no serial latency added — mirrors /api/tools/react).
+    // Each resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call failure
+    // degrades to null (that card just omits the population field). Gated off entirely for
+    // audiences without the v2 axes → all null, no LLM calls, byte-identical old behaviour.
+    // Scored on the SAME `text` the SIM reacts to, so the projection and the panel agree.
+    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
+      wantPopulation
+        ? characterizeContent(c.text, populationVocab).catch(() => null)
+        : Promise.resolve(null),
+    );
+
     const batch = await runFlashTextModeBatch(
       candidates,
       "hook",
@@ -646,6 +675,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     });
     if (!batch) return [];
     allWarnings.push(...batch.warnings);
+
+    // Collect the (already in-flight) content vectors — indexed to match `hookBatch`/candidates.
+    const vectors = await Promise.all(vectorPromises);
 
     const out: RatedCandidate[] = [];
 
@@ -677,6 +709,20 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         })),
       );
 
+      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
+      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
+      // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
+      // signal, the population is additive texture.
+      let population: PopulationAggregate | undefined;
+      const vector = vectors[i];
+      if (populationSignature && vector) {
+        try {
+          population = reactPopulation(populationSignature, vector);
+        } catch {
+          population = undefined;
+        }
+      }
+
       out.push({
         hook,
         band,
@@ -685,6 +731,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         audienceArchetype,
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas,
+        population,
         generationIndex: i,
       });
     });
@@ -776,6 +823,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         // Per-persona generation — omitted entirely when there is no named reader, so General
         // and every pre-target persisted card keep their exact shape (regression gate).
         ...(target ? { target } : {}),
+        // Audience Sim v2 (Stage 2) — the N-individual population projection. Omitted when the
+        // audience lacks the v2 axes or characterization failed → byte-identical pre-v2 shape.
+        ...(candidate.population ? { population: candidate.population } : {}),
       },
     };
 

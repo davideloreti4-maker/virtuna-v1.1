@@ -15,6 +15,7 @@
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { AudienceLens, type LensRewrite } from './AudienceLens';
 
 export interface LensTriggerProps {
@@ -22,6 +23,11 @@ export interface LensTriggerProps {
   flatPersonas: FlatPersonaReaction[];
   /** The concept text the room reacted to — grounds the "Ask them why →" chat (D-03). */
   conceptText: string;
+  /**
+   * Audience Sim v2 (Stage 2): the REAL N-individual projection for this card → the Population·
+   * 1,000 view. Optional/additive — absent ⇒ the honest-lean rollup swarm (unchanged Sheet).
+   */
+  population?: PopulationAggregate;
   /** Platform for chat grounding + the Rewrite re-POST (defaults tiktok). */
   platform?: 'tiktok' | 'instagram' | 'youtube';
   /** The Rewrite-for-audience loop for this skill (omitted ⇒ no sticky CTA, D-05). */
@@ -42,6 +48,7 @@ export interface LensTriggerProps {
 export function LensTrigger({
   flatPersonas,
   conceptText,
+  population,
   platform = 'tiktok',
   rewrite,
   reducedMotion = false,
@@ -83,6 +90,7 @@ export function LensTrigger({
         simResults={undefined}
         flatPersonas={flatPersonas}
         conceptText={conceptText}
+        population={population}
         platform={platform}
         rewrite={rewrite}
         reducedMotion={reducedMotion}

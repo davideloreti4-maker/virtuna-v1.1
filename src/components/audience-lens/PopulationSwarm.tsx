@@ -31,6 +31,7 @@
 
 import { useMemo } from 'react';
 import type { PersonaNode } from '@/components/board/_kit';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import {
   instantiatePopulation,
   weightedRollup,
@@ -40,6 +41,14 @@ import {
 export interface PopulationSwarmProps {
   /** The 10 calibrated archetypes — the single source of truth (same nodes Panel uses). */
   nodes: PersonaNode[];
+  /**
+   * Audience Sim v2 (Stage 2): the REAL N-individual projection for this concept. When present
+   * (and `total > 0`), the live counters, the honesty label, and the per-segment breakdown come
+   * from this genuine distribution (the honest-lean `weightedRollup` of the 10 CANNOT produce a
+   * per-segment stop split). Absent ⇒ byte-identical fallback to the rollup. The dot scatter is
+   * ambient sentiment texture either way — a different axis, so no count/dot mismatch is implied.
+   */
+  population?: PopulationAggregate;
   /** Deterministic seed — same nodes+seed ⇒ byte-identical swarm (D-02). */
   seed?: number;
   /** Total dots to instantiate (default 1,000 — the Population·1,000 scale). */
@@ -87,11 +96,15 @@ interface PlacedDot {
 
 export function PopulationSwarm({
   nodes,
+  population,
   seed = 1337,
   total = DEFAULT_TOTAL,
   reducedMotion = false,
   cascadeProgress,
 }: PopulationSwarmProps) {
+  // The REAL projection when it rode in (and actually scored someone), else the honest-lean
+  // rollup. Mirrors AmbientRoom.PopulationView's `real` guard so the two renderers agree.
+  const real = population && population.total > 0 ? population : null;
   // The deterministic dots from the pure math core (09-01). Verdict + sentiment come
   // from the REAL archetypes; this component only adds x/y geometry. No re-derivation.
   const dots = useMemo<PopulationDot[]>(
@@ -163,21 +176,32 @@ export function PopulationSwarm({
   // per-dot SMIL (Pitfall 2). Reduced-motion / no-progress ⇒ all present (static).
   const cascadeOn = !reducedMotion && typeof cascadeProgress === 'number' && cascadeProgress < 1;
 
-  // Archetype breakdown rows (the v1 drill path — D-01; per-dot drill deferred). Stop
-  // contribution + representative verbatim per archetype, ordered weightiest first.
+  // Archetype breakdown rows (the v1 drill path — D-01; per-dot drill deferred). When the REAL
+  // projection is present it drives the rows — genuine per-segment stop % across the named
+  // segments (the rollup can only weight the 10's single verdict). Else the honest-lean rollup.
+  // Quotes still come from the nodes (the aggregate carries counts, never verbatims); a segment
+  // with no matching node quote simply shows no quote — never a fabricated one.
   const breakdown = useMemo(() => {
     const quoteById = new Map(nodes.map((nd) => [nd.id, nd.quote ?? '']));
     const labelById = new Map(nodes.map((nd) => [nd.id, nd.label]));
+    if (real) {
+      return real.segments.map((s) => ({
+        id: s.archetype,
+        label: s.displayName,
+        valueLabel: `${s.stopPct}% stopped`,
+        quote: quoteById.get(s.archetype) ?? '',
+      }));
+    }
     return roll.byArchetype
       .slice()
       .sort((a, b) => b.weight - a.weight)
       .map((row) => ({
         id: row.archetype,
         label: labelById.get(row.archetype) ?? row.archetype,
-        stop: row.stop,
+        valueLabel: `${row.stop} stop`,
         quote: quoteById.get(row.archetype) ?? '',
       }));
-  }, [roll, nodes]);
+  }, [roll, nodes, real]);
 
   if (nodes.length === 0) {
     return (
@@ -187,18 +211,27 @@ export function PopulationSwarm({
     );
   }
 
-  const stopPct = roll.total > 0 ? Math.round((roll.stop / roll.total) * 100) : 0;
+  // Headline counts — from the REAL projection when present, else the honest-lean rollup.
+  const stopCount = real ? real.stop : roll.stop;
+  const scrollCount = real ? real.scroll : roll.scroll;
+  const totalCount = real ? real.total : roll.total;
+  const stopPct = real ? real.stopPct : roll.total > 0 ? Math.round((roll.stop / roll.total) * 100) : 0;
+  // Honesty label — the "a projection" framing when the real aggregate is present (mirrors
+  // AmbientRoom.PopulationView copy), else the rollup's "instantiated from your 10" line.
+  const honestyLabel = real
+    ? `${totalCount.toLocaleString()} sampled from your audience · a projection`
+    : HONESTY_LABEL;
 
   return (
     <div className="flex flex-col gap-3" data-testid="population-swarm">
-      {/* Live counters — Display 30px; literally weightedRollup(nodes) (D-02). */}
+      {/* Live counters — Display 30px; the real projection's stop/scroll split, else the rollup. */}
       <div className="flex items-baseline gap-6">
         <div className="flex flex-col">
           <span
             data-testid="population-stop-count"
             className="text-[30px] font-semibold leading-tight tabular-nums text-foreground"
           >
-            {roll.stop}
+            {stopCount}
           </span>
           <span className="text-[12px] text-foreground-muted">stopped</span>
         </div>
@@ -207,7 +240,7 @@ export function PopulationSwarm({
             data-testid="population-scroll-count"
             className="text-[30px] font-semibold leading-tight tabular-nums text-[var(--color-cream-muted)]"
           >
-            {roll.scroll}
+            {scrollCount}
           </span>
           <span className="text-[12px] text-foreground-muted">scrolled</span>
         </div>
@@ -221,7 +254,11 @@ export function PopulationSwarm({
           preserveAspectRatio="xMidYMid meet"
           className="h-[200px] w-full"
           role="img"
-          aria-label={`${roll.total} viewers instantiated from ${nodes.length} calibrated archetypes; ${roll.stop} stopped`}
+          aria-label={
+            real
+              ? `${totalCount} individuals sampled from your audience (a projection); ${stopCount} stopped`
+              : `${roll.total} viewers instantiated from ${nodes.length} calibrated archetypes; ${roll.stop} stopped`
+          }
         >
           {placed.map((d, i) => (
             <circle
@@ -240,8 +277,9 @@ export function PopulationSwarm({
         </svg>
       </div>
 
-      {/* Honesty label — always visible, --color-cream-muted (never coral). */}
-      <p className="text-[11px] text-[var(--color-cream-muted)]">{HONESTY_LABEL}</p>
+      {/* Honesty label — always visible, --color-cream-muted (never coral). "a projection"
+          framing when the real aggregate is present; the rollup line otherwise. */}
+      <p className="text-[11px] text-[var(--color-cream-muted)]">{honestyLabel}</p>
 
       {/* Archetype breakdown — the v1 drill path (D-01; per-dot drill deferred). Rows
           per archetype with a representative verbatim. */}
@@ -253,7 +291,7 @@ export function PopulationSwarm({
           >
             <div className="flex items-center justify-between">
               <span>{row.label}</span>
-              <span className="tabular-nums text-foreground-muted">{row.stop} stop</span>
+              <span className="tabular-nums text-foreground-muted">{row.valueLabel}</span>
             </div>
             {row.quote && (
               <p className="mt-0.5 text-[11px] italic leading-snug text-foreground-secondary">
@@ -267,12 +305,13 @@ export function PopulationSwarm({
       {/* sr-only aggregate + archetype-breakdown mirror — ALWAYS present, independent of
           motion state (UI-SPEC reduced-motion mirror copy). */}
       <div data-testid="population-sr-mirror" className="sr-only" role="status">
-        Population reaction summary: {roll.stop} of {roll.total} viewers stopped ({stopPct}%),
-        instantiated from {nodes.length} calibrated archetypes.
+        {real
+          ? `Population reaction projection: ${stopCount} of ${totalCount} sampled individuals stopped (${stopPct}%).`
+          : `Population reaction summary: ${stopCount} of ${totalCount} viewers stopped (${stopPct}%), instantiated from ${nodes.length} calibrated archetypes.`}
         <ul>
           {breakdown.map((row) => (
             <li key={row.id}>
-              {row.label}: {row.stop} stop{row.quote ? ` — “${row.quote}”` : ''}
+              {row.label}: {row.valueLabel}{row.quote ? ` — “${row.quote}”` : ''}
             </li>
           ))}
         </ul>
