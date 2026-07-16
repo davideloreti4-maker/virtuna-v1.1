@@ -297,6 +297,53 @@ craft hook). ▶ **Phase 1 complete. Next: Phase 2 — promote the strawman sche
 keep hand-tuning constants (over-fits to 3 test hooks + characterization noise) — that's the feedback
 loop's job.
 
+### 8.3 · STAGE 2 SHIPPED — the population math is wired into the product (2026-07-16, worktree `~/virtuna-audience-sim-v2`)
+
+The spike proved the math on spike-shaped segments; Stage 2 promotes it to real types and wires it into
+the Population·1,000 surface, verified at every layer. Built:
+
+- **`src/lib/audience/population.ts`** — pure, deterministic core (ported from the tuned spike):
+  `expandSignature(signature, {N,seed})` samples ~1,000 individuals off the 10 signature slots
+  (centroid + seeded jitter; a legacy slot without `reaction` axes is skipped), `pStop(individual,
+  vector)` is the tuned two-driver logit (verbatim §8.2 constants) + auditable `why`, and
+  `reactPopulation(...)` rolls up a binary-verdict distribution (overall + per-segment, share-sorted +
+  `reasons`). `signatureHasPopulationAxes()` is the guard. No LLM, O(N), unit-tested (16). Jitter σ is a
+  fixed constant (the signature stores no per-segment `spread` yet — honest v1 limit, a future field
+  restores it).
+- **`src/lib/audience/characterize-content.ts`** — the ONE test-time LLM call: content → `ContentVector`
+  in the signature's `topic_vocab` (Qwen, temp 0 + seed + json_object, Zod at the boundary). Server-only
+  (imports the Qwen client) — imported ONLY by the route, never a client bundle.
+- **`/api/tools/react`** — computes the aggregate ALONGSIDE the 10-persona reaction: characterize runs
+  **concurrently** with the flash call (no serial latency), guarded to calibrated audiences with v2 axes
+  (General/legacy → byte-identical old path), and a characterize failure degrades to `population: null`
+  (never breaks the reaction). Returns `population` in the JSON. Integration-tested (9).
+- **The Population·1,000 view (`AmbientRoom` → `PopulationView`)** — upgraded: when a `population`
+  aggregate rides in on the ambient focus, the stay/bounce headline + stats bar + a NEW per-segment
+  "Who it lands with" split come from the REAL score (a distribution the 10's rollup cannot produce);
+  the honesty label reads "**N sampled from your audience · a projection**". The 10 real personas still
+  supply the bounce VOICES — the projection never fabricates quotes. Absent aggregate ⇒ byte-identical
+  fallback to the prior honest-lean rollup. Threaded composer → focus/ask → `AmbientRoom` (all client
+  refs to the aggregate are `import type`, so no server code leaks into the client bundle).
+
+**Verified for real (not just green tests):**
+- **`scripts/verify-population.ts`** bakes a REAL signature (real synth) → characterizes 3 niche hooks →
+  scores 1,000. The distribution is DIFFERENTIATED and ROTATES (index-card hook → Efficiency Tourists
+  75%/Viral Amplifiers 63%; ADHD-2am hook → Community Validators 99%/Method Critics 84%/Silent Scrollers
+  47%), 0%-segments rotate, `why` flips strong-hook↔interest. Caveat: absolute stop-levels run
+  conservative on hooks the characterizer rates high-hype (11–14% vs 35%) — **left to the feedback loop
+  (§7), NOT hand-tuned** (the locked discipline).
+- **Real browser look** (throwaway route → real `<AmbientRoom>` in the Next webpack bundle, DOM read):
+  the Population·1,000 view renders 346 stay / 654 bounce, "1,000 sampled from your audience · a
+  projection", "35% loved / 65% bounced", and all sampled segments with their real stop % (Community
+  Validators 99%, Method Critics 84%, System Architects 0%) — **0 console errors**.
+
+**Not done (next):** only the **type-to-room (`/api/tools/react`)** producer computes the aggregate — the
+6 card RUNNERS (hooks/ideas/script/remix/simulate/predicted-pin) do not yet, and the separate
+`PopulationSwarm.tsx` (the AudienceLens *Sheet* path, opened by `LensTrigger` on cards/Reading) still
+runs the honest-lean rollup. Wiring those is additive (same `reactPopulation` + a thread of the optional
+prop). A full **authenticated** live session (real DB audience with v2 axes) was not run — the real-signature
+script + the real-component browser render cover the pipeline; the authed path is a follow-up.
+
 ## 9 · Relationship to the in-flight branch
 
 `feat/per-persona-ideas-script` (3 commits, NOT pushed): the shipped **ideas targeting** is
