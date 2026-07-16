@@ -67,9 +67,32 @@ calibrated candidate (most personas). A fixture could not have seen this.
 **Deliberately kept until P2:** the "Audiences / Your account" tabs — killing the tab before
 analytics has its new home would orphan the surface.
 
-## P2 — Detail page (NEXT)
+## P2 — DONE (2026-07-16, session 2)
 
-Per sketch section 3. `/audience/[id]` for a synced audience:
+Shipped per sketch §3; live-verified on :3001 as the E2E user (28/28 checks, 0 console
+errors — screenshots in `.planning/sketches/p2-live/`). What landed:
+- `audience-detail.tsx` + `population-field.tsx` replace `audience-workspace.tsx` (deleted —
+  mix sliders die with it). `[id]/page.tsx` is now a SERVER component that assembles all facts
+  (audience, account, SOURCE data, pinned-thread count, default) — client only acts.
+- SOURCE zone renders REAL post tiles (caption + views from `account_posts` — the table holds
+  NO thumbnails; TikTok cover URLs are ephemeral and deliberately unpersisted), honest
+  per-platform figures via `buildRangeMetrics`, and real pillar bars.
+- Tab is dead: `?tab=account` (and /analytics, /grow) server-redirect → the account's audience
+  detail; `/audience/[id]` canonicalizes an ACCOUNT id → its audience's URL, and renders an
+  account-only variant (Analytics only · SOURCE · Sync/Danger) for audience-less accounts.
+  `AnalyticsView` + `lib/analytics/recommendations` deleted.
+- Personas list uses the recurring-cast naming SSOT (`resolvePersonaName` — label wins, else
+  Maya/Dev/…): the manager now calls people what the room calls them. Receipts (signature
+  evidence) kept, asymmetry locked in tests. Persona editing reachable (Edit per row → dialog).
+- Re-calibrate = CalibrationFlow in a dialog with `audienceId` (updates the row in place);
+  TikTok-only. Danger for synced = disconnect semantics (audience + account both removed).
+- `audienceForAccount` moved to `audience-display.ts` (shared client/server) + inverse
+  `accountForAudience`.
+- ⚠️ :3000 was serving ANOTHER worktree (`~/virtuna-explore-c`) — this session verified on a
+  fresh detached server at **:3001** instead. Check `lsof -a -p <pid> -d cwd` before trusting
+  a port.
+
+Original spec (for reference). `/audience/[id]` for a synced audience:
 - Header: `@handle` + mono meta `TIKTOK · PRIMARY · SYNCED 2H AGO` + the liveness dot.
 - **Population hero** (tone-zone): reuse/adapt `src/components/audience-lens/PopulationSwarm.tsx`;
   dots clustered by persona (spatial clusters, not a fading grid), caption
