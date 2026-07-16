@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Audience rebuild — refined sketch</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root{
+    --bg:#262624; --sidebar:#1a1a18; --composer:#1e1d1b; --chip:#2f2e2b;
+    --zone:#2a2927; --surface:#232322;
+    --cream:#ece7de; --cream-2:#c2bdb4; --muted:#8a857c;
+    --border:rgba(255,255,255,.06); --border-hover:rgba(255,255,255,.10);
+    --accent:#d97757; --error:#e0796b;
+    --action:#ece7de; --action-fg:#1c1b19;
+    --shadow-rest:0 1px 2px rgba(0,0,0,.28);
+    --shadow-lift:0 10px 26px -8px rgba(0,0,0,.5);
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--sidebar);color:var(--cream);
+    font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;line-height:1.45;padding:64px 32px 160px}
+  .wrap{max-width:960px;margin:0 auto}
+
+  .sk-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;color:var(--muted);
+    text-transform:uppercase;margin:88px 0 14px}
+  .sk-label:first-of-type{margin-top:24px}
+
+  .frame{background:var(--bg);border:1px solid var(--border);border-radius:16px;
+    padding:56px 64px;box-shadow:var(--shadow-rest)}
+
+  h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .num{font-variant-numeric:tabular-nums}
+
+  .btn{background:var(--action);color:var(--action-fg);border:none;border-radius:8px;
+    padding:8px 15px;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+  .btn-text{background:none;border:none;color:var(--cream-2);font:inherit;font-size:13px;cursor:pointer;padding:8px 4px}
+  .btn-text:hover{color:var(--cream)}
+
+  .zone{background:var(--zone);border-radius:16px;padding:18px;margin-top:14px}
+  .zone-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin:0 2px 12px}
+
+  .acard{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    box-shadow:var(--shadow-rest);padding:16px 18px;display:flex;align-items:center;gap:16px;
+    cursor:pointer;transition:border-color .15s,background .15s,transform .15s,box-shadow .15s}
+  .acard:hover{border-color:var(--border-hover);background:#252524;transform:translateY(-1px);box-shadow:var(--shadow-lift)}
+  .acard + .acard{margin-top:10px}
+  .a-id{flex:1;min-width:0}
+  .a-name{font-size:15px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+  .a-plat{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase}
+  .a-meta{font-size:13px;color:var(--muted);margin-top:4px}
+  .live{width:6px;height:6px;border-radius:99px;background:var(--accent);flex:none;
+    animation:breathe 3.2s ease-in-out infinite}
+  @keyframes breathe{0%,100%{opacity:.55}50%{opacity:1}}
+
+  .comp{display:flex;gap:2px;width:132px;flex:none}
+  .comp i{height:14px;border-radius:2px;background:var(--cream);display:block}
+  .chev{color:var(--muted);font-size:15px;flex:none}
+
+  .quietrow{margin-top:12px;padding:0 4px}
+  .quietrow a{font-size:13px;color:var(--muted);text-decoration:none}
+  .quietrow a:hover{color:var(--cream-2)}
+
+  /* create */
+  .doors{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:32px}
+  .door{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+    box-shadow:var(--shadow-rest);padding:20px;cursor:pointer;
+    transition:border-color .15s,background .15s,transform .15s,box-shadow .15s}
+  .door:hover{border-color:var(--border-hover);transform:translateY(-1px);box-shadow:var(--shadow-lift)}
+  .door.on{border-color:var(--border-hover);background:#252524}
+  .door h3{font-size:14px;font-weight:600;letter-spacing:-.005em}
+  .door p{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+  .step{margin-top:12px;display:flex;align-items:center;gap:12px;padding:18px}
+  .input{background:var(--composer);border:1px solid var(--border);border-radius:8px;color:var(--cream);
+    padding:11px 14px;font:inherit;font-size:14.5px;width:300px}
+  .input:focus{outline:none;border-color:var(--border-hover)}
+  .input.err{border-color:rgba(224,121,107,.5)}
+  .errline{font-size:12.5px;color:var(--error);margin-top:8px;padding:0 20px 14px}
+  .sel{font-size:13px;color:var(--cream-2);background:var(--chip);border-radius:8px;padding:10px 14px}
+  .ta{background:var(--composer);border:1px solid var(--border);border-radius:8px;color:var(--cream);
+    padding:12px 14px;font:inherit;font-size:14px;width:100%;min-height:64px;resize:none}
+  .tmpl{display:flex;gap:8px;margin-top:10px}
+  .tmpl span{font-size:12.5px;color:var(--cream-2);background:var(--chip);border-radius:99px;padding:5px 12px;cursor:pointer}
+  .tmpl span:hover{color:var(--cream)}
+
+  .reveal{margin-top:12px;padding:26px 24px 24px}
+  .r-handle{font-size:16px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:baseline;gap:10px}
+  .figures{display:flex;align-items:baseline;gap:36px;margin-top:22px}
+  .fig .n{font-size:25px;font-weight:600;letter-spacing:-.02em}
+  .fig .l{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-top:3px}
+  .strip{display:flex;gap:8px;margin-top:22px}
+  .ph{width:58px;height:96px;border-radius:6px;border:1px solid var(--border);
+    background:linear-gradient(165deg,#33322f 0%,#2a2927 60%,#262523 100%)}
+  .building{display:flex;align-items:center;gap:9px;margin-top:22px;font-size:13px;color:var(--cream-2)}
+
+  /* detail */
+  .d-head{display:flex;align-items:baseline;gap:14px}
+  .d-head h1{font-size:22px}
+  .d-meta{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+  .cols{display:grid;grid-template-columns:1fr 264px;gap:40px;margin-top:34px}
+
+  /* population field — the resting-state hero */
+  .pop{padding:26px 24px 22px;position:relative}
+  .pop-field{display:flex;flex-wrap:wrap;gap:5px;align-content:flex-start}
+  .pop-field b{width:4px;height:4px;border-radius:99px;background:var(--cream);display:block}
+  .pop-cap{display:flex;justify-content:space-between;align-items:baseline;margin-top:18px}
+  .pop-cap .l{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+
+  .prow{padding:15px 2px;display:flex;gap:14px;align-items:baseline}
+  .prow + .prow{border-top:1px solid rgba(255,255,255,.05)}
+  .p-main{flex:1;min-width:0}
+  .p-name{font-size:14px;font-weight:600;letter-spacing:-.005em}
+  .p-desc{font-size:13px;color:var(--muted);margin-top:3px;line-height:1.5}
+  .p-share{font-size:13px;color:var(--cream-2);flex:none;width:88px;text-align:right}
+  .p-share span{color:var(--muted);font-size:12px;display:block;margin-top:1px}
+
+  .figures.small .fig .n{font-size:21px}
+  .pill{margin-top:12px}
+  .pill .pl{display:flex;justify-content:space-between;font-size:12.5px;color:var(--cream-2);margin-bottom:5px}
+  .pill .pl span:last-child{color:var(--muted)}
+  .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.07)}
+  .bar i{display:block;height:100%;border-radius:2px;background:var(--cream-2);opacity:.65}
+
+  .side .card{background:var(--zone);border-radius:12px;padding:15px 17px;margin-bottom:12px}
+  .side h4{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:10px}
+  .kv{display:flex;justify-content:space-between;font-size:13px;padding:3.5px 0}
+  .kv span:first-child{color:var(--muted)}
+  .kv span:last-child{color:var(--cream-2)}
+  .kv a{color:var(--cream-2);text-decoration:none;border-bottom:1px solid var(--border-hover)}
+  .danger{font-size:13px;color:var(--error);cursor:pointer}
+
+  /* composer chip */
+  .composer{background:var(--composer);border:1px solid var(--border);border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);padding:16px 18px;max-width:640px}
+  .c-input{color:var(--muted);font-size:14.5px;padding:4px 2px 26px}
+  .c-row{display:flex;align-items:center;gap:8px}
+  .c-chip{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--cream-2);
+    background:var(--chip);border-radius:99px;padding:6px 12px;cursor:pointer}
+  .c-chip:hover{color:var(--cream)}
+  .c-send{margin-left:auto;width:30px;height:30px;border-radius:8px;background:var(--action);border:none;
+    color:var(--action-fg);font-size:14px;font-weight:600;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ 1 · LIST ============ -->
+  <div class="sk-label">1 · /audience</div>
+  <div class="frame">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <h1>Audiences</h1>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn-text">Compare</button>
+        <button class="btn">New audience</button>
+      </div>
+    </div>
+
+    <div class="zone" style="margin-top:32px">
+      <div class="zone-label">Accounts</div>
+
+      <div class="acard">
+        <span class="live"></span>
+        <div class="a-id">
+          <div class="a-name">@zachking <span class="a-plat">TikTok</span></div>
+          <div class="a-meta">Primary · Synced 2h ago</div>
+        </div>
+        <div class="comp">
+          <i style="width:20%;opacity:.85"></i><i style="width:14%;opacity:.6"></i><i style="width:12%;opacity:.5"></i><i style="width:11%;opacity:.42"></i><i style="width:10%;opacity:.36"></i><i style="width:9%;opacity:.3"></i><i style="width:8%;opacity:.26"></i><i style="width:6%;opacity:.22"></i><i style="width:5%;opacity:.18"></i><i style="width:5%;opacity:.14"></i>
+        </div>
+        <span class="chev">›</span>
+      </div>
+
+      <div class="acard">
+        <div class="a-id">
+          <div class="a-name">@zachking <span class="a-plat">Instagram</span></div>
+          <div class="a-meta">Analytics only · Synced 2h ago</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+
+      <div class="quietrow"><a href="#">+ Connect account</a></div>
+    </div>
+
+    <div class="zone">
+      <div class="zone-label">Simulated</div>
+
+      <div class="acard">
+        <div class="a-id">
+          <div class="a-name">Fitness Creators</div>
+          <div class="a-meta">From description · 2 threads</div>
+        </div>
+        <div class="comp" style="opacity:.55">
+          <i style="width:24%;opacity:.5"></i><i style="width:18%;opacity:.4"></i><i style="width:16%;opacity:.32"></i><i style="width:14%;opacity:.26"></i><i style="width:14%;opacity:.2"></i><i style="width:14%;opacity:.15"></i>
+        </div>
+        <span class="chev">›</span>
+      </div>
+
+      <div class="acard">
+        <div class="a-id">
+          <div class="a-name">@mrbeast</div>
+          <div class="a-meta">From handle · 12 videos</div>
+        </div>
+        <div class="comp" style="opacity:.55">
+          <i style="width:22%;opacity:.5"></i><i style="width:17%;opacity:.4"></i><i style="width:15%;opacity:.32"></i><i style="width:14%;opacity:.26"></i><i style="width:12%;opacity:.2"></i><i style="width:20%;opacity:.15"></i>
+        </div>
+        <span class="chev">›</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2 · CREATE ============ -->
+  <div class="sk-label">2 · New audience — door A · connect</div>
+  <div class="frame">
+    <h1>New audience</h1>
+
+    <div class="doors">
+      <div class="door on">
+        <h3>Connect account</h3>
+        <p>Built from your own content.</p>
+      </div>
+      <div class="door">
+        <h3>From a handle</h3>
+        <p>Any public creator.</p>
+      </div>
+      <div class="door">
+        <h3>From a description</h3>
+        <p>Define a target audience.</p>
+      </div>
+    </div>
+
+    <div class="zone step">
+      <input class="input" value="@zachking" />
+      <span class="sel">TikTok ▾</span>
+      <button class="btn" style="margin-left:auto">Continue</button>
+    </div>
+
+    <div class="zone reveal">
+      <div class="r-handle">@zachking <span class="a-plat">TikTok</span></div>
+      <div class="figures">
+        <div class="fig"><div class="n num">12</div><div class="l">Videos</div></div>
+        <div class="fig"><div class="n num">86.1M</div><div class="l">Followers</div></div>
+        <div class="fig"><div class="n num">1.3B</div><div class="l">Likes</div></div>
+        <div class="fig"><div class="n num">5</div><div class="l">Pillars</div></div>
+      </div>
+      <div class="strip">
+        <div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div><div class="ph"></div>
+      </div>
+      <div class="building"><span class="live"></span> Building audience</div>
+    </div>
+  </div>
+
+  <div class="sk-label">2b · door C · describe — and the error state</div>
+  <div class="frame" style="padding-top:44px;padding-bottom:44px">
+    <div class="zone" style="margin-top:0;padding:18px 18px 16px">
+      <textarea class="ta">Women 25–40 into home strength training. Skeptical of fitness influencers, respond to form breakdowns and progress proof.</textarea>
+      <div style="display:flex;align-items:center;margin-top:12px">
+        <div class="tmpl"><span>Growth</span><span>Conversion</span></div>
+        <button class="btn" style="margin-left:auto">Continue</button>
+      </div>
+    </div>
+
+    <div class="zone" style="padding:18px 0 0">
+      <div style="display:flex;align-items:center;gap:12px;padding:0 18px 0">
+        <input class="input err" value="@zachkingg" />
+        <span class="sel">TikTok ▾</span>
+        <button class="btn" style="margin-left:auto;opacity:.5">Continue</button>
+      </div>
+      <div class="errline">Account not found. Check the handle — private accounts can't be read.</div>
+    </div>
+  </div>
+
+  <!-- ============ 3 · DETAIL ============ -->
+  <div class="sk-label">3 · /audience/[id] — who's in the room (no brain at rest)</div>
+  <div class="frame">
+    <div class="d-head">
+      <span class="live" style="align-self:center"></span>
+      <h1>@zachking</h1>
+      <span class="d-meta">TikTok · Primary · Synced 2h ago</span>
+    </div>
+
+    <div class="cols">
+      <div>
+        <div class="zone pop" style="margin-top:0">
+          <div class="pop-field" id="pop"></div>
+          <div class="pop-cap">
+            <span class="l">1,000 viewers · 10 personas</span>
+            <span class="l" style="opacity:.6">Generated from account data</span>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="prow">
+            <div class="p-main">
+              <div class="p-name">The Glitch Hunter</div>
+              <div class="p-desc">Frame-steps every trick looking for the cut. Leans in when you dare them to find it.</div>
+            </div>
+            <div class="p-share num">5%<span>skeptic</span></div>
+          </div>
+          <div class="prow">
+            <div class="p-main">
+              <div class="p-name">The Silent Scroller</div>
+              <div class="p-desc">Watches the spectacle, never comments. 8M–45M of your views — hooks are all they feel.</div>
+            </div>
+            <div class="p-share num">20%<span>lurker</span></div>
+          </div>
+          <div class="prow">
+            <div class="p-main">
+              <div class="p-name">The Tag-a-Friend</div>
+              <div class="p-desc">Comments to guess the trick, tags friends for the reveal. Your share engine.</div>
+            </div>
+            <div class="p-share num">10%<span>connector</span></div>
+          </div>
+          <div class="prow" style="opacity:.4">
+            <div class="p-main"><div class="p-name" style="font-weight:400;color:var(--cream-2)">Seven more…</div></div>
+          </div>
+        </div>
+
+        <div class="zone" style="margin-top:26px;padding:22px 22px 20px">
+          <div class="zone-label" style="margin-bottom:16px">Source</div>
+          <div class="strip" style="margin-top:0">
+            <div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div><div class="ph" style="width:46px;height:76px"></div>
+          </div>
+          <div class="figures small" style="margin-top:22px">
+            <div class="fig"><div class="n num">86.1M</div><div class="l">Followers</div></div>
+            <div class="fig"><div class="n num">1.3B</div><div class="l">Likes</div></div>
+            <div class="fig"><div class="n num">610</div><div class="l">Posts</div></div>
+          </div>
+          <div style="margin-top:20px">
+            <div class="pill"><div class="pl"><span>Visual Illusions &amp; Magic</span><span class="num">30%</span></div><div class="bar"><i style="width:30%"></i></div></div>
+            <div class="pill"><div class="pl"><span>Sponsored Brand Integrations</span><span class="num">23%</span></div><div class="bar"><i style="width:23%"></i></div></div>
+            <div class="pill"><div class="pl"><span>Narrative Heist Series</span><span class="num">17%</span></div><div class="bar"><i style="width:17%"></i></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <div class="card">
+          <h4>Usage</h4>
+          <div class="kv"><span>New threads</span><span>Default</span></div>
+          <div class="kv"><span>Pinned</span><span class="num">3 threads</span></div>
+        </div>
+        <div class="card">
+          <h4>Sync</h4>
+          <div class="kv"><span>Refresh</span><span>Daily</span></div>
+          <div class="kv"><span>Last</span><span>2h ago</span></div>
+          <div class="kv"><span></span><span><a href="#">Re-calibrate</a></span></div>
+        </div>
+        <div class="card">
+          <h4>Danger</h4>
+          <div class="danger">Delete audience</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+  // population field: 10 personas → dot clusters by share, cream alphas only
+  const shares = [
+    {n: 50,  a: .85}, {n: 200, a: .38}, {n: 100, a: .55}, {n: 110, a: .30},
+    {n: 100, a: .48}, {n: 90,  a: .26}, {n: 80,  a: .42}, {n: 60,  a: .22},
+    {n: 55,  a: .34}, {n: 155, a: .16},
+  ];
+  const field = document.getElementById('pop');
+  const frag = document.createDocumentFragment();
+  shares.forEach(({n, a}) => {
+    for (let i = 0; i < Math.round(n / 2.2); i++) {
+      const b = document.createElement('b');
+      const j = (Math.sin(i * 12.9898 + n) * .5 + .5) * .12;
+      b.style.opacity = (a + j).toFixed(2);
+      frag.appendChild(b);
+    }
+  });
+  field.appendChild(frag);
+</script>
+</body>
+</html>
