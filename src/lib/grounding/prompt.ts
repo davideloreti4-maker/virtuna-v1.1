@@ -188,7 +188,7 @@ function receipt(ex: RetrievedExample): string {
 /** "Topic Introduction (0–4s) state the comparison" — a proven beat, timed. */
 function fmtBeat(b: TeardownBeat): string {
   const timing =
-    b.startSec !== null && b.endSec !== null ? ` (${b.startSec}–${b.endSec}s)` : "";
+    b.startSec != null && b.endSec != null ? ` (${b.startSec}–${b.endSec}s)` : "";
   const desc = b.description ? ` ${clip(b.description, MAX_BEAT_DESC)}` : "";
   return `${b.name}${timing}${desc}`;
 }
