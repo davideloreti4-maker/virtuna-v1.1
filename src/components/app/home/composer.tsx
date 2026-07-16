@@ -516,6 +516,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
+    chat.streamingBlocks.length > 0 || // chat-as-agent dispatched skill cards (CHAT_AGENT_DISPATCH)
     scriptBlocks.length > 0 ||
     remixBlocks.length > 0 ||
     exploreBlocks.length > 0 ||
@@ -589,6 +590,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
+    chat.streamingBlocks.length > 0 || // chat-as-agent dispatched skill cards (CHAT_AGENT_DISPATCH)
     scriptBlocks.length > 0 ||
     remixBlocks.length > 0 ||
     exploreBlocks.length > 0 ||
@@ -2162,6 +2164,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
           streamingBlocks={chatBlocks}
+          streamingCardBlocks={chat.streamingBlocks}
           isStreaming={chat.isStreaming}
           coldStart={chat.coldStart}
           nudgeShown={chat.nudgeShown}

@@ -1,17 +1,22 @@
 # Chat as a skill-orchestrating agent — the "one thread, all skills" vision (2026-07-16)
 
-**Status:** dispatcher spike PASSED (routing 5/5 + a real ideas run), route integration NOT yet wired.
-**Branch:** `spike/corpus-fn-tool`. **Builds on:** `docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function
-calling proven with qwen3.7-plus).
+**Status:** dispatcher spike PASSED (routing 5/5 + a real ideas run) **AND route integration WIRED**
+(flag `CHAT_AGENT_DISPATCH`, default OFF) — a chat turn now runs a skill and its real cards render in
+the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
+`docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function calling proven with qwen3.7-plus).
 
-> **▶ START HERE (next session).** The chat-as-agent vision is PROVEN and committed — don't re-prove it.
-> The remaining work is ROUTE INTEGRATION (§4). First step is a **client-side scout**: how the chat
-> thread client consumes the SSE + renders streamed blocks, and how the skill routes' clients do it —
-> that sizes the build (same discipline that turned "scary UI build" into "80% already there"). Then
-> wire `runSkillDispatch` into `/api/tools/chat/route.ts` behind a **default-off flag**, reusing the
-> skill routes' `stage`/`content`/`score` emit + `insertMessage` code verbatim; closing text → a
-> markdown message. Keep the skill selector until proven. Live scripts: **sandbox-OFF, foreground**
-> (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`).
+> **▶ START HERE (next session).** Route integration is DONE at three layers and proven by tests (§4a);
+> what's left is the REACH work (§4b): (1) **reload fidelity** — live streaming shows dispatched cards
+> in the chat view, but on reload the composer segregates persisted blocks by type + restores
+> `activeTool`, so a chat-run ideas set reappears in the IDEAS view, not chat. True "one thread on
+> reload" needs a unified persisted-block render (stop segregating by tool). (2) **Generalize beyond
+> generators** — simulate/predict/read/profile need a concept/analysis context, not just a topic; add a
+> SECOND adapter shape to `SKILL_TOOLS` (do NOT force them through the generator adapter). (3) **Light
+> attribution** in general chat (owner decision, still unwired). Then the product call: retire the skill
+> selector (keep it until the flag-on path is proven in prod). **Not yet run:** a full flag-on browser
+> session against live DashScope+Supabase (owner-auth-gated; the dispatcher itself is already
+> live-proven, and the new plumbing is deterministic + test-covered). Live scripts: **sandbox-OFF,
+> foreground** (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`).
 
 ---
 
@@ -75,18 +80,48 @@ script for one of them?"*
 **Tests:** `src/lib/tools/__tests__/skill-dispatch.test.ts` — 6 hermetic (routing, abstain, leash,
 unknown, no-topic, error). Green, tsc clean. Harness: `scripts/spike-skill-dispatch.ts`.
 
-## 4. What's left (route integration — the productization)
+## 4a. Route integration — DONE (flag `CHAT_AGENT_DISPATCH`, default OFF)
 
-1. **Wire `runSkillDispatch` into `/api/tools/chat/route.ts`** behind a default-off flag. When the model
-   runs a skill, stream its `stage`/`content`/`score` events and `insertMessage` its blocks into the
-   open thread — **reuse the existing skill-route emit/persist code verbatim** (it already does exactly
-   this). The closing text persists as a markdown message (the follow-up pattern, already there).
-2. **Confirm the render layer** — `message-blocks.tsx` shows these blocks in the chat thread view (very
-   likely, since skills already post there; verify when wiring).
-3. **Generalize beyond generators.** simulate/predict/read/profile need a concept/analysis context, not
-   just a topic — a second adapter shape. Do NOT force them through the generator adapter.
-4. **Product call:** retire the skill selector, or keep it as a shortcut. **Keep it until the chat path
-   is proven end-to-end** — don't rip it out on faith.
+Wired across three layers; 320 lines, +5 route tests + 2 new test files; 423 tests green in the touched
+areas; tsc clean.
+
+- **Server** (`src/app/api/tools/chat/route.ts`): open chat only (persona/meet EXCLUDED — a viewer
+  reacts in-voice, it doesn't orchestrate skills; mirrors the corpus-tool exclusion). When the flag is
+  on, the turn goes through `runSkillDispatch`. If a skill ran: each card streams as `event: block` +
+  is `insertMessage`d into THIS thread; the co-pilot closing line streams as a `token` + persists as a
+  markdown message; `stage` events ride the skill's real `onStage` boundaries. If NO skill ran (pure
+  chat / strategy talk) → `dispatched` stays false and control falls through to the **existing grounded
+  `runChatPipeline`**, so plain-chat quality is never degraded. Flag OFF → byte-identical.
+- **Transport** (`src/hooks/queries/use-chat-stream.ts`): consumes `block` + `stage` into an ordered
+  `streamingBlocks` / `stages`, alongside the existing token/meta/done/error handling.
+- **Render** (`src/components/thread/chat-thread-view.tsx` + composer prop): the streamed cards render
+  through the EXISTING `MessageBlocks` (a renderer per card type). New prop `streamingCardBlocks`.
+
+Design notes:
+- **Separate flag** `CHAT_AGENT_DISPATCH` (independent of `GROUNDING_CHAT_TOOL` — they're different
+  levers). Read via `isChatAgentDispatchEnabled()`.
+- I streamed a general **`event: block`** (the full validated card) rather than reusing the ideas
+  route's `content`+`score` two-phase emit verbatim — that two-phase shape is generator-specific; a
+  single block event is the GENERAL fit (band/fraction already on the block; honest one-shot render) and
+  is the natural home for §4b's non-generator skills.
+- **Pure-chat cost:** flag-on plain-chat turns make one thin dispatch-detection call before the grounded
+  answer. Deliberate tradeoff (don't degrade grounded chat); optimizable later.
+- The **paid-engine leash** stays (`runSkillDispatch`'s `maxSkillRuns`, default 2).
+
+## 4b. What's left (the reach)
+
+1. **Reload fidelity.** Live streaming shows the dispatched cards in the CHAT view, but the composer's
+   rehydration (`loadPersistedBlocks`) splits persisted blocks by TYPE into per-tool buckets and
+   restores `activeTool` to the last card type — so on reload a chat-run ideas set reappears in the
+   IDEAS view, not chat. Full "one thread on reload" = a unified persisted-block render that stops
+   segregating by tool (bigger composer refactor).
+2. **Generalize beyond generators.** simulate/predict/read/profile need a concept/analysis context, not
+   just a topic — a SECOND adapter shape in `SKILL_TOOLS`. Do NOT force them through the generator
+   adapter. The `event: block` transport already generalizes; only the tool schema + adapter are new.
+3. **Wire light attribution** in general chat (owner decision — §6 of the handoff).
+4. **Product call:** retire the skill selector, or keep it as a shortcut. **Keep it until the flag-on
+   path is proven in prod** — don't rip it out on faith.
+5. **Live proof:** run the flag-on flow in a real browser session (DashScope+Supabase). Owner-auth-gated.
 
 ## 5. Guardrails (hold these)
 

@@ -40,6 +40,14 @@ export interface ChatThreadViewProps {
   persistedBlocks: MarkdownBlock[];
   /** In-flight streamed turn (single MarkdownBlock or [] when idle). */
   streamingBlocks: MarkdownBlock[];
+  /**
+   * Chat-as-agent (CHAT_AGENT_DISPATCH) — card-blocks a dispatched skill produced this turn, in
+   * arrival order. Rendered via MessageBlocks (every card type has a renderer) ABOVE the closing
+   * co-pilot line, so a chat-run ideas/hooks/script shows its real cards in this same thread. Empty
+   * on a plain chat turn → this view is byte-identical to the shipped markdown-only chat. Raw
+   * blocks (MessageBlocks re-validates each), so the type is intentionally loose.
+   */
+  streamingCardBlocks?: unknown[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /**
@@ -77,6 +85,7 @@ export interface ChatThreadViewProps {
 export function ChatThreadView({
   persistedBlocks,
   streamingBlocks,
+  streamingCardBlocks = [],
   isStreaming,
   nudgeShown,
   error,
@@ -89,13 +98,16 @@ export function ChatThreadView({
 }: ChatThreadViewProps) {
   const hasPersistedContent = persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
+  // Chat-as-agent skill cards streamed this turn (CHAT_AGENT_DISPATCH). Drive the result-card
+  // gate too, so a dispatched run that produced ONLY cards (co-pilot line still streaming) shows.
+  const hasStreamingCards = streamingCardBlocks.length > 0;
 
   // Suggested chain-step CTAs (D-05 / STUDIO-03): show after a chat turn completes.
   // Sourced from chain-handoff.ts (handoffsFor "chat" — but chat is not a SkillId,
   // so we use idea → hooks handoff as the canonical "next step" from a chat answer).
   // Only show when there is content (a completed chat turn) and not currently streaming.
   // CRITICAL: CTAs are NEVER auto-fired — they only render as tappable buttons.
-  const hasCompletedTurn = !isStreaming && (hasStreamingContent || hasPersistedContent);
+  const hasCompletedTurn = !isStreaming && (hasStreamingContent || hasStreamingCards || hasPersistedContent);
   // Get CTAs from the chain-handoff registry for the "idea" skill (idea → hooks is the
   // most relevant next step for a chat answer about content). Filter out placeholder
   // entries (endpoint: null + not the test/hooks chain steps that are actually wired).
@@ -134,11 +146,18 @@ export function ChatThreadView({
         </p>
       )}
 
-      {isStreaming && !hasStreamingContent && <ThreadLoadingSkeleton variant="chat" />}
+      {isStreaming && !hasStreamingContent && !hasStreamingCards && <ThreadLoadingSkeleton variant="chat" />}
 
-      {(hasStreamingContent || hasPersistedContent) && (
+      {(hasStreamingContent || hasStreamingCards || hasPersistedContent) && (
         <ThreadAssistantTurn>
           <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+            {hasStreamingCards && (
+              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in
+              // this thread, ABOVE the co-pilot line. MessageBlocks re-validates every block.
+              <div aria-live="polite" aria-atomic="false">
+                <MessageBlocks body={streamingCardBlocks} />
+              </div>
+            )}
             {hasStreamingContent && (
               <div aria-live="polite" aria-atomic="false">
                 <MessageBlocks body={streamingBody} />
