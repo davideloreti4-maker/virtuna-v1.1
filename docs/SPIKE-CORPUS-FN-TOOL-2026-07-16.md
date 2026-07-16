@@ -96,3 +96,42 @@ sandbox-off in the foreground. Needs `.env.local`: `DASHSCOPE_API_KEY` + `SUPABA
 3. Later: the same tool serves the **generate** skills (hooks/ideas/script) — but that path stays
    behind the view-outcome gate. Do **not** route predict/simulate through it (§4d: they consume the
    corpus as a benchmark distribution, not via the tool).
+
+---
+
+## 8. Option A BUILT — chat reference-mode pull (2026-07-16, same session)
+
+Productized the pull as **Option A (pull-then-stream)** behind a default-off flag. Open chat runs a
+pre-flight tool loop (the model searches on demand), then the streamed answer is grounded on what it
+pulled. Persona/meet-mode chat is excluded. Degrade-safe: any failure or zero rows → byte-identical to
+today's chat.
+
+- **`src/lib/grounding/corpus-tool.ts` (new)** — `SEARCH_CORPUS_TOOL`, `gatherReferencesViaTool` (the
+  reusable pull loop, injectable `complete`/`retrieve`), `executeCorpusSearch`, `buildReferenceBlock`
+  (honesty spine via `receipt()`). Dedupes + caps to 6 references.
+- **`src/lib/tools/runners/chat-runner.ts`** — flag `GROUNDING_CHAT_TOOL` (default off, INDEPENDENT of
+  the generate-path flags). Pre-flight pull for OPEN chat only; `ChatPipelineDeps.gatherReferences`
+  injectable for tests.
+- **Tests:** `corpus-tool.test.ts` (9, hermetic) + `chat-runner.test.ts` +4 (no-op / inject / persona-
+  excluded / degrade). Full grounding+runners suites **238 green**, tsc clean on the new files.
+- **Harness:** `scripts/smoke-chat-corpus-pull.ts` (live end-to-end).
+
+### Live smoke findings (2 runs)
+
+1. **✅ End-to-end works.** On a corpus-covered ask ("first 1000 followers") the model diversified
+   axes, pulled 6 quality references (@madisonknowsbest 458× etc.), and the streamed answer was
+   visibly shaped by the proven structures (its "In-Progress hook" = @madisonknowsbest's serialized
+   anti-pattern; "no authority to teach growth at 400 followers" = the pulled tension).
+2. **🔴 Topical floor is a real blocker (confirms §5).** A breakfast ask whiffed topical **4×** (0/0/0/1
+   rows) and the model never diversified to structural that run — ending on one weak off-topic row.
+   Corpus-covered topics are fine; thin/edge topics starve. **Fix the topical `minSimilarity` floor
+   and/or push the scout to diversify axes earlier.**
+3. **🟡 No attribution by default.** The answer *absorbs* the proven structures but does **not name the
+   creators** — great for answer quality, but it surfaces no verifiable receipt. Chat's system prompt
+   is a strategic advisor and doesn't instruct citation. **Owner call:** is reference mode's job to
+   silently improve the answer, or to cite real proven examples the user can trust/verify? If the
+   latter, add a citation instruction (the receipts are already in the block).
+4. **⚠️ "Give me hooks" is deflected.** `KC_CHAT_SYSTEM_PROMPT` redirects hook-generation to the HOOKS
+   tool, so a hooks-flavored ask won't use hook references in chat. Reference mode fits chat's
+   *strategic* questions, not generation asks — another reason the generate skills are the eventual
+   home for the hook/idea/script references (behind the view gate).

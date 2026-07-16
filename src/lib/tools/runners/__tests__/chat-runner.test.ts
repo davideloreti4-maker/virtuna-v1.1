@@ -16,12 +16,13 @@
  * (the fenced overrides) without exercising the full grounding assembler in this unit.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   ARCHETYPE_DEFINITIONS,
   ARCHETYPE_TRIGGERS,
 } from "@/lib/engine/wave3/persona-registry";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Mock Qwen client — capture the create() args + emit two tokens ────────────
 
@@ -184,5 +185,89 @@ describe("runChatPipeline personaGrounding [runner]", () => {
 
     expect(ARCHETYPE_DEFINITIONS).toEqual(snapshot);
     expect(ARCHETYPE_TRIGGERS).toEqual(triggersSnapshot);
+  });
+});
+
+// ─── Reference-mode corpus PULL (GROUNDING_CHAT_TOOL) ──────────────────────────
+
+/**
+ * The flag-gated pre-flight pull: OPEN chat lets the model search the corpus and grounds the streamed
+ * answer on what it pulls. Locks the no-op guarantee (flag off OR persona chat → byte-identical), the
+ * block injection (flag on), and degrade-safety (a failing pull streams ungrounded, never throws).
+ * `gatherReferences` is INJECTED so these stay network-free; buildReferenceBlock runs for real.
+ */
+describe("runChatPipeline corpus PULL [runner]", () => {
+  const pulled: RetrievedExample = {
+    teardownId: "pull1",
+    handle: "pulledcreator",
+    videoUrl: null,
+    coverUrl: null,
+    platform: "tiktok",
+    multiplier: 44,
+    views: 2_000_000,
+    baselineLabel: "vs followers",
+    fitLabel: "structural",
+    hookArchetype: "contrarian",
+    format: "breakdowns-explainers",
+    spokenHook: "You've been lied to about protein.",
+    hookTemplate: "You've been lied to about [X].",
+    template: null,
+    idea: null,
+    whyItWorks: null,
+    sourcePool: "curated",
+    trustWeight: 1,
+    fromPersonal: false,
+  };
+  const gatherSpy = vi.fn(async () => ({ references: [pulled], toolCalls: [] }));
+
+  beforeEach(() => gatherSpy.mockClear());
+  afterEach(() => {
+    delete process.env.GROUNDING_CHAT_TOOL;
+  });
+
+  const systemOf = () => {
+    const args = createMock.mock.calls[0]![0] as { messages: Array<{ role: string; content: string }> };
+    return args.messages.find((m) => m.role === "system")!.content;
+  };
+
+  it("flag OFF (default): the pull never runs — system prompt byte-identical", async () => {
+    await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: gatherSpy as never });
+    expect(gatherSpy).not.toHaveBeenCalled();
+    expect(systemOf()).toBe(KC_CHAT_SYSTEM_PROMPT);
+  });
+
+  it("flag ON + open chat: the model's pulled reference is injected AFTER the chat prompt", async () => {
+    process.env.GROUNDING_CHAT_TOOL = "true";
+    await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: gatherSpy as never });
+
+    expect(gatherSpy).toHaveBeenCalledTimes(1);
+    const system = systemOf();
+    expect(system).toContain(KC_CHAT_SYSTEM_PROMPT);
+    expect(system).toContain("PROVEN REFERENCE MATERIAL");
+    expect(system).toContain("proven by @pulledcreator");
+    // The block is appended — the chat prompt stays primary.
+    expect(system.indexOf(KC_CHAT_SYSTEM_PROMPT)).toBeLessThan(system.indexOf("PROVEN REFERENCE MATERIAL"));
+  });
+
+  it("flag ON + PERSONA chat: the pull is excluded (a viewer reacts in-voice, not from a strategy corpus)", async () => {
+    process.env.GROUNDING_CHAT_TOOL = "true";
+    await runChatPipeline(
+      { ...BASE_INPUT, personaGrounding: { archetype: "tough_crowd", personaName: "Maya" } },
+      () => {},
+      { gatherReferences: gatherSpy as never },
+    );
+    expect(gatherSpy).not.toHaveBeenCalled();
+    expect(systemOf()).not.toContain("PROVEN REFERENCE MATERIAL");
+  });
+
+  it("flag ON but the pull THROWS: degrades to ungrounded — no block, stream still completes", async () => {
+    process.env.GROUNDING_CHAT_TOOL = "true";
+    const throwing = vi.fn(async () => {
+      throw new Error("corpus down");
+    });
+    const result = await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: throwing as never });
+
+    expect(result.fullContent).toBe("Hello world");
+    expect(systemOf()).toBe(KC_CHAT_SYSTEM_PROMPT); // no block — byte-identical fallback
   });
 });
