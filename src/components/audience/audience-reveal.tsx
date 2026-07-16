@@ -14,6 +14,7 @@ import { SealCheck } from "@phosphor-icons/react";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { RevealData } from "@/lib/audience/calibration";
 import { READING_CARD } from "@/components/reading/reading-section";
+import { getPersonaDisplayName } from "@/components/audience/audience-display";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -127,7 +128,7 @@ export function AudienceReveal({ audience, reveal, onUse, className }: AudienceR
                 title={p.reaction_frame}
                 className="rounded-md border border-white/[0.06] bg-white/[0.02] px-2 py-0.5 text-xs text-foreground-secondary"
               >
-                {p.archetype.replace(/_/g, " ")} · {Math.round(p.share * 100)}%
+                {getPersonaDisplayName(p)} · {Math.round(p.share * 100)}%
               </span>
             ))}
           </div>
