@@ -220,7 +220,19 @@ yours") + a one-click path to calibrate. (Alternative considered + rejected for 
 ## 7 · Open / deferred
 
 - **The feedback loop** (predicted vs. actual after posting) — the only thing that earns "accurate."
-  Not designed yet; highest future leverage.
+  **DEFERRED OUT OF PRODUCTION SCOPE (owner, 2026-07-16): a later-stage concern, not production-readiness.**
+  Reliability finding behind the deferral: the naive per-user/online loop (continuously scrape the user's
+  account, or have them upload the posted video) is NOT dependable — (1) SIGNAL MISMATCH: we predict
+  stop/retention, but the public scrape yields only view/like/comment/share/save COUNTS; real retention
+  lives behind the creator's own analytics (OAuth IG/YT expose some; TikTok gates it hard); (2) ATTRIBUTION:
+  matching the posted video back to the in-app prediction is lossy (creators edit/deviate); (3) COMPLIANCE +
+  one post = a noisy sample. The realistic form is OFFLINE + GLOBAL: bake a signature from a creator's
+  PUBLIC scrape, predict, and correlate predicted-stop against that video's over/under-performance vs the
+  creator's own baseline (the `[[fabricated-proof-baseline]]` infra we already have) — no auth, no upload,
+  at scale. Honest ceiling: overperformance is a CORRELATE of stop-rate, not ground truth → earns
+  "validated," not "accurate." Until then the product ships as an HONESTLY-LABELED generated simulation
+  (the "a projection" framing is what carries production — not an accuracy claim). The Stage-2 conservative
+  absolute stop-level therefore does NOT get auto-fixed soon; it is a known, accepted, honestly-framed limit.
 - **Real-data scrape (Track A)** — comment/commenter scraping to enrich the generator's input. Deferred;
   becomes richer *input*, not a new path. (Honest ceiling: commenters = the engaged slice, misses lurkers.)
 - **Virality layer** (§4.5) design.
