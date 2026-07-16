@@ -229,7 +229,7 @@ describe("Built from states the real provenance (SPEC §4)", () => {
     expect(screen.getByRole("button", { name: "Build" })).toBeInTheDocument();
   });
 
-  it("General is named as Maven's baseline, not as the user's own", () => {
+  it("General is not a managed row — the fallback is stated as a fact line instead", () => {
     const a = baseAudience({ id: "general", name: "General", is_general: true });
     expect(getBuiltFrom(a)).toMatchObject({
       label: "Maven's baseline",
@@ -238,36 +238,44 @@ describe("Built from states the real provenance (SPEC §4)", () => {
     });
 
     renderIndex([a]);
-    expect(screen.getByText("The control every Read is compared against")).toBeInTheDocument();
+    // No General row, no preset rows — the list only manages what the user owns.
+    expect(screen.queryByText("General")).toBeNull();
+    expect(screen.queryByText("The control every Read is compared against")).toBeNull();
+    // The fallback fact-line renders when nothing is pinned (defaultAudienceId null).
+    expect(screen.getByText(/New threads use General/)).toBeInTheDocument();
+  });
+
+  it("preset rows never render", () => {
+    renderIndex([
+      baseAudience({ id: "p1", name: "Growth Audience", is_preset: true }),
+      baseAudience({ id: "mine", name: "Mine", personas: [calibratedPersona()] }),
+    ]);
+    expect(screen.queryByText("Growth Audience")).toBeNull();
+    expect(screen.getByText("Mine")).toBeInTheDocument();
   });
 });
 
-describe("the default radio renders the audience that seeds new threads", () => {
-  it("marks General as default when no audience is pinned (lastAudienceId === null)", () => {
+describe("the default marker renders the audience that seeds new threads", () => {
+  it("states the General fallback when no audience is pinned (lastAudienceId === null)", () => {
     render(
       <AudienceIndex
-        audiences={[
-          baseAudience({ id: "general", name: "General", is_general: true }),
-          baseAudience({ id: "mine", name: "Mine", personas: [calibratedPersona()] }),
-        ]}
+        audiences={[baseAudience({ id: "mine", name: "Mine", personas: [calibratedPersona()] })]}
         defaultAudienceId={null}
         onSetDefault={() => {}}
         onOpen={() => {}}
       />,
     );
 
-    expect(screen.getByRole("radio", { name: "General seeds new threads" })).toBeChecked();
-    expect(
-      screen.getByRole("radio", { name: "Make Mine seed new threads" }),
-    ).not.toBeChecked();
+    expect(screen.getByText(/New threads use General/)).toBeInTheDocument();
+    expect(screen.queryByText("Default")).toBeNull();
   });
 
-  it("marks the pinned audience as default when one is set", () => {
+  it("marks the pinned audience as Default and offers Set default on the others", () => {
     render(
       <AudienceIndex
         audiences={[
-          baseAudience({ id: "general", name: "General", is_general: true }),
           baseAudience({ id: "mine", name: "Mine", personas: [calibratedPersona()] }),
+          baseAudience({ id: "other", name: "Other", personas: [calibratedPersona()] }),
         ]}
         defaultAudienceId="mine"
         onSetDefault={() => {}}
@@ -275,6 +283,11 @@ describe("the default radio renders the audience that seeds new threads", () => 
       />,
     );
 
-    expect(screen.getByRole("radio", { name: "Mine seeds new threads" })).toBeChecked();
+    expect(screen.getByText("Default")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Make Other the default" }),
+    ).toBeInTheDocument();
+    // The fallback fact-line only appears when General is actually the fallback.
+    expect(screen.queryByText(/New threads use General/)).toBeNull();
   });
 });

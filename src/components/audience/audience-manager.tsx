@@ -27,12 +27,14 @@ import { filterHorizontalAudiences } from "@/lib/flags/horizontal";
 
 type AudienceTab = "audiences" | "account";
 
-/** Slim, client-serializable view of a connected account for the "Your account" switcher. */
+/** Slim, client-serializable view of a connected account — the switcher AND the
+ *  roster's ACCOUNTS zone read it. */
 export interface AccountOption {
   id: string;
   handle: string;
   platform: "tiktok" | "instagram" | "youtube";
   is_primary: boolean;
+  last_synced_at: string | null;
 }
 
 interface AudienceManagerProps {
@@ -222,9 +224,11 @@ export function AudienceManager({
   const renderIndex = () => (
     <AudienceIndex
       audiences={visibleAudiences}
+      accounts={accounts}
       defaultAudienceId={defaultAudienceId}
       onSetDefault={(a) => void handleSetDefault(a)}
       onOpen={(a) => router.push(`/audience/${a.id}`)}
+      onOpenAccount={(a) => router.push(`/audience?tab=account&account=${a.id}`)}
       selectionMode={selectionMode}
       selectedIds={selectedIds}
       onToggleSelect={toggleSelection}
@@ -239,12 +243,6 @@ export function AudienceManager({
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
               {tab === "account" ? "Your account" : "Audiences"}
             </h1>
-            {tab === "audiences" && !selectionMode && (
-              <p className="mt-1 max-w-2xl text-[13px] text-foreground-secondary">
-                The panel your work gets tested against. Every Read is scored twice — once by
-                the audience you pick, once by General.
-              </p>
-            )}
             {selectionMode && (
               <p className="mt-1 text-sm text-foreground-secondary">
                 Pick two audiences to compare.
@@ -285,13 +283,12 @@ export function AudienceManager({
           {tab === "audiences" && !selectionMode && !loading && !error && audiences.length > 0 && (
             <div className="flex shrink-0 items-center gap-2">
               <Button
-                variant="secondary"
+                variant="ghost"
                 size="sm"
                 onClick={() => setSelectionMode(true)}
-                className="pointer-coarse:h-11"
+                className="pointer-coarse:h-11 text-foreground-secondary hover:text-foreground"
               >
-                <Scales weight="bold" className="mr-1.5 h-4 w-4" />
-                Compare two
+                Compare
               </Button>
               <Button
                 variant="primary"

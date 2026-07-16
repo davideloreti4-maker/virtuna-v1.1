@@ -57,6 +57,7 @@ export default async function NewAudiencePage({
         handle: a.handle,
         platform: a.platform,
         is_primary: a.is_primary,
+        last_synced_at: a.last_synced_at,
       }));
     }
   } catch {

@@ -28,7 +28,13 @@ export const metadata = {
 
 /** Slim the repo row to what the switcher needs (client-serializable). */
 function toOption(a: ConnectedAccount): AccountOption {
-  return { id: a.id, handle: a.handle, platform: a.platform, is_primary: a.is_primary };
+  return {
+    id: a.id,
+    handle: a.handle,
+    platform: a.platform,
+    is_primary: a.is_primary,
+    last_synced_at: a.last_synced_at,
+  };
 }
 
 export default async function AudiencePage({
