@@ -1896,14 +1896,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           fraction?: string;
           scrollQuote?: string;
           personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
+          population?: import("@/lib/audience/population").PopulationAggregate | null;
         } = await res.json();
         if (controller.signal.aborted) return;
         const fraction = data.fraction ?? "";
         const scrollQuote = data.scrollQuote ?? "";
         const personas = Array.isArray(data.personas) ? data.personas : undefined;
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas }]);
+        // Stage 2 population projection — present only for a calibrated audience with v2 axes.
+        const population = data.population ?? undefined;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas, population }]);
         // Lens shows this read — with the real named cast (react route returns registry-enum personas).
-        focusByThought({ conceptText: text, fraction, scrollQuote, personas });
+        focusByThought({ conceptText: text, fraction, scrollQuote, personas, population });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
@@ -1964,6 +1967,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         fraction: a.fraction,
         scrollQuote: a.scrollQuote,
         personas: a.personas,
+        population: a.population,
       }),
     onBuildAudience: () => setBuildOpen(true),
     focusList: ambientDescriptors,

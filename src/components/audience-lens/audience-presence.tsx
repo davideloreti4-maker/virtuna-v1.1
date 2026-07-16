@@ -47,6 +47,7 @@ import { cardScrollQuoteReactions } from './flat-card-reactions';
 import { AmbientRoom } from './AmbientRoom';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import type { AmbientFocus, AmbientFocusSibling, AmbientPersonaReaction } from './ambient-presence-types';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { ConstellationMark } from '@/components/brand/constellation-mark';
 import {
   Constellation,
@@ -79,6 +80,9 @@ export interface AudienceAsk {
   /** The react route's real per-persona reactions (registry-enum archetypes) for this ask —
    *  re-focusing on it keeps the named People cast intact. Absent on errored/legacy asks. */
   personas?: AmbientPersonaReaction[];
+  /** The Stage 2 population projection for this ask — re-focusing restores the real 1,000-view
+   *  numbers. Absent when the audience lacked v2 axes (or on errored/legacy asks). */
+  population?: PopulationAggregate;
   error?: boolean;
 }
 
@@ -754,6 +758,7 @@ export function AudiencePresence({
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 <AmbientRoom
                   flatPersonas={flatPersonas}
+                  population={focus.population}
                   conceptText={focus.conceptText}
                   fraction={focus.fraction}
                   reducedMotion={reducedMotion}
