@@ -5,19 +5,20 @@
 the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 `docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function calling proven with qwen3.7-plus).
 
-> **▶ START HERE (next session).** Route integration is DONE at three layers and proven by tests (§4a).
-> **Session 3 shipped BOTH ranked reach items:** (1) ✅ **reload fidelity DONE (§4d)** — a thread
-> stamped chat-agent now reloads as ONE ordered stream in the chat view (marker-shadowed, regression-
-> safe: no marker → byte-identical old reload). (2) ✅ **generalize beyond generators DONE for
-> simulate/predict (§4c)** — the SECOND adapter shape (`draft`, not `topic`) is in `SKILL_TOOLS`
-> (`simulate_reaction` + `predict_outcome`); real-model routing **7/7**. **Still open (ranked):**
-> **(a) read/profile dispatch** — needs `supabase` on `SkillRunContext` + a product call on profile's
-> save side-effect (profile WRITES an audience). **(b) light attribution** in general chat (owner
-> decision, still unwired). **(c) selector retirement** — keep it until the flag-on path is proven in
-> prod. **Not yet run:** a full flag-on browser session against live DashScope+Supabase (owner-auth-
-> gated; the dispatcher is already live-proven, and all new plumbing is deterministic + test-covered).
-> Live scripts: **sandbox-OFF, foreground** (`npx tsx …`). Tests: `node ./node_modules/vitest/vitest.mjs
-> run …` (NOT `npm test`).
+> **▶ START HERE (next session).** The chat path is now a **single STREAMING agent loop (§4e)** — the
+> ChatGPT/Claude-native shape the owner asked for. Flag-on open chat runs ONE streaming completion:
+> the model streams its answer directly and only pauses to call a tool (a skill → cards, or
+> `search_corpus` → grounding). The old 2-to-3-call path (discarded dispatch pre-flight → runChatPipeline
+> → its own corpus scout) is GONE for flag-on open chat. Proven live (Part 2 of
+> `scripts/spike-stream-tools.ts`) + unit-tested; DashScope streams `delta.tool_calls` in fragments
+> (step-0 spike). Earlier session-3 work still stands: reload fidelity (§4d), analysis-skill dispatch
+> (§4c). **Still open (ranked):** **(a) OWNER LIVE PASS** — flag-on browser session vs live
+> DashScope+Supabase (owner-auth-gated); the gate before retiring the selector / defaulting the flag on.
+> **(b) selector retirement** (keep until prod-proven). **(c) read/profile as tools** (needs `supabase`
+> on the context + profile WRITES an audience — product call). **(d) light attribution / cite corpus
+> creators.** Live scripts: **sandbox-OFF, foreground** (`npx tsx …`). Tests:
+> `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`). Enable: `CHAT_AGENT_DISPATCH=true`
+> (+ optional `GROUNDING_CHAT_TOOL=true` to bind the corpus tool).
 
 ---
 
@@ -197,6 +198,53 @@ no-regression guarantee. 108 green across the touched areas; tsc clean (4 ground
 closing text persists no marker → that thread reloads via the old per-tool path (cards still present,
 just in the tool view). Rare (the prompt always asks for a closing line) and a graceful degrade. (3) Not
 live-run in a browser (owner-auth-gated) — same gate as the rest of the feature.
+
+## 4e. Session 4 — the single STREAMING agent loop (ChatGPT/Claude-native chat)
+
+**Problem.** Flag-on open chat was slow because it made 2–3 sequential model calls: `runSkillDispatch`
+(a NON-streaming tool decision whose abstain-answer was THROWN AWAY) → `runChatPipeline` (a second call
+for the grounded answer) → and if `GROUNDING_CHAT_TOOL` was on, that pipeline ran its OWN non-streaming
+corpus scout before its streamed answer. First token was slow on the most common case (just talking) —
+the opposite of the instant ChatGPT feel.
+
+**What shipped.** A single streaming agent loop replaces all of that for flag-on open chat.
+
+- **Step 0 de-risk (`scripts/spike-stream-tools.ts`):** no streaming-with-tools call existed anywhere
+  in the repo, and DashScope streaming `delta.tool_calls` was unproven. The spike proved it: tool calls
+  stream in fragments (7 fragments → reassembled to `generate_ideas({"topic":"morning routines"})`),
+  text streams token-by-token (102 deltas), and the two never co-occur in one delta. No hybrid fallback
+  needed.
+- **`src/lib/tools/chat-agent-loop.ts` — `runChatAgentStream`.** ONE streaming completion with the
+  skills + (when grounding on) `search_corpus` bound as tools. It accumulates `delta.content → onToken`
+  and `delta.tool_calls` by index; at round end, if the model called tools it executes each (a skill
+  adapter → `onBlock` each card; or `executeCorpusSearch` → rows fed back as a `role:"tool"` message)
+  and loops so the model continues streaming with the results. No pre-flight, no discarded answer.
+  Reuses `SKILL_TOOLS` + adapters + the paid-engine leash, and `SEARCH_CORPUS_TOOL` +
+  `executeCorpusSearch`. The streaming completion is an injectable seam (`deps.streamComplete`) so the
+  whole loop is unit-tested with a mock chunk stream. The loop OWNS a **tool-use directive** appended to
+  the caller's system prompt (KC_CHAT_SYSTEM_PROMPT grounds voice but never mentions the tools — without
+  the directive the model wrote ideas inline instead of calling the skill; caught in the live Part-2
+  run, then fixed).
+- **Route (`src/app/api/tools/chat/route.ts`).** The flag-on open-chat branch now calls
+  `runChatAgentStream` (grounding via `assembleBundle` into the fenced user message + `KC_CHAT_SYSTEM_
+  PROMPT` as system; prior turns as real role messages). `onToken → token`, `onBlock → block`,
+  `onStage → stage`. Persists skill cards + the streamed text as markdown — MARKED `origin:"chat-agent"`
+  only when a skill ran (reuses the §4d reload marker); pure chat persists plain markdown (byte-identical
+  reload). Persona/meet-mode + flag-off still use `runChatPipeline`, unchanged.
+
+**Proof.** `chat-agent-loop.test.ts` (7: pure-chat streaming, fragmented-tool-call accumulation + skill
+run + continue, `search_corpus` feedback, grounding-off = corpus tool not bound, the leash, missing-arg
+refusal, error absorption). Route tests rewritten to the loop shape (11 green — including "pure chat →
+NO runChatPipeline fallback" and the origin-marker persistence). tsc clean (4 grounding errors pre-
+existing). **Live end-to-end** (Part 2 of the spike, real qwen3.7-plus, mock runners → free): an ideas
+ask calls `generate_ideas` (1 card via `onBlock`) then streams a closing line — one continuous turn; a
+pure-chat ask streams 1557 chars directly, no tool. The double-call is gone.
+
+**Honest gaps.** (1) NOT run flag-on in a real browser (owner-auth-gated) — the final latency proof.
+(2) Text/card persistence order: cards persist before the streamed text, so a rare model lead-in BEFORE
+a tool call would reload slightly out of order (the spike showed 0 lead-in text before a tool call).
+(3) `runSkillDispatch` + `runChatPipeline`'s corpus pre-flight are now dead for open chat (persona still
+uses `runChatPipeline`) — a later dead-code pass.
 
 ## 5. Guardrails (hold these)
 

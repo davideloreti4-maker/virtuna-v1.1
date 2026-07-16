@@ -41,8 +41,13 @@ vi.mock("@/lib/tools/runners/chat-runner", () => ({
   isColdStart: vi.fn(),
 }));
 
-vi.mock("@/lib/tools/skill-dispatch", () => ({
-  runSkillDispatch: vi.fn(),
+vi.mock("@/lib/tools/chat-agent-loop", () => ({
+  runChatAgentStream: vi.fn(),
+}));
+
+// assembleBundle is called by the route to build the loop's grounded user message — keep it inert.
+vi.mock("@/lib/kc/assembler", () => ({
+  assembleBundle: vi.fn((input: { ask?: string }) => input.ask ?? ""),
 }));
 
 vi.mock("@/lib/kc/kc-stamp", () => ({
@@ -483,17 +488,23 @@ describe("POST /api/tools/chat (SSE route)", () => {
     props: { title, angle: "a", whyItFits: "b", mechanism: "c", seedHook: `h-${title}`, needsTake: false, topic: "t", take: "", format: null, band: "Strong", fraction: "4/5", scored: true, scrollQuote: "q", model: "sim1-flash" },
   });
 
-  it("Test 6: dispatch ON + skill ran → streams block events + closing token; persists cards + markdown; runChatPipeline NOT called", async () => {
+  it("Test 6: agent loop ran a skill → streams block events + text; persists cards + marked markdown; runChatPipeline NOT called", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     const { threadId } = await primeDispatchHarness();
-    const { runSkillDispatch } = await import("@/lib/tools/skill-dispatch");
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
     const { insertMessage } = await import("@/lib/threads/messages");
     const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
 
-    (runSkillDispatch as ReturnType<typeof vi.fn>).mockResolvedValue({
-      text: "I made 2 angles — want hooks for one?",
-      skillRuns: [{ name: "generate_ideas", blocks: [IDEA_BLOCK("A"), IDEA_BLOCK("B")], warnings: [] }],
-      toolCalls: [{ name: "generate_ideas", args: { topic: "morning routines" }, ran: true }],
+    // The loop streams two cards (onBlock) then a closing line (onToken), and returns them for persistence.
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(async (input: { onBlock: (b: unknown) => void; onToken: (d: string) => void }) => {
+      input.onBlock(IDEA_BLOCK("A"));
+      input.onBlock(IDEA_BLOCK("B"));
+      input.onToken("I made 2 angles — want hooks for one?");
+      return {
+        text: "I made 2 angles — want hooks for one?",
+        skillRuns: [{ name: "generate_ideas", blocks: [IDEA_BLOCK("A"), IDEA_BLOCK("B")], warnings: [] }],
+        toolCalls: [{ name: "generate_ideas", ran: true }],
+      };
     });
 
     const { POST } = await import("@/app/api/tools/chat/route");
@@ -501,16 +512,16 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(res.status).toBe(200);
     const raw = await readSSE(res);
 
-    // Each card streamed as a block event; the co-pilot line as a token; then done.
+    // Each card streamed as a block event; the closing line as a token; then done.
     expect((raw.match(/event: block/g) ?? []).length).toBe(2);
     expect(raw).toContain('"idea-card"');
     expect(raw).toContain("event: token");
     expect(raw).toContain("event: done");
 
-    // The grounded pipeline is skipped when a skill ran (no double-answer).
+    // The old grounded pipeline is never called — the loop IS the answer (no double-call).
     expect(runChatPipeline).not.toHaveBeenCalled();
 
-    // Persistence: the card blocks (one assistant message) + the closing markdown (another).
+    // Persistence: the card blocks (one assistant message) + the closing markdown, MARKED origin:chat-agent.
     const calls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls as Array<[string, string, unknown[], string?]>;
     const assistantCalls = calls.filter(([tid, role]) => tid === threadId && role === "assistant");
     const cardCall = assistantCalls.find(([, , blocks]) => (blocks[0] as { type?: string })?.type === "idea-card");
@@ -518,19 +529,21 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect((cardCall![2] as unknown[]).length).toBe(2);
     const markdownCall = assistantCalls.find(([, , blocks]) => (blocks[0] as { type?: string })?.type === "markdown");
     expect(markdownCall).toBeDefined();
-    expect((markdownCall![2][0] as { props: { text: string } }).props.text).toBe("I made 2 angles — want hooks for one?");
+    expect((markdownCall![2][0] as { props: { text: string; origin?: string } }).props.text).toBe("I made 2 angles — want hooks for one?");
+    // A turn that ran a skill marks the text so the thread reloads unified in the chat view.
+    expect((markdownCall![2][0] as { props: { origin?: string } }).props.origin).toBe("chat-agent");
   });
 
-  it("Test 7: dispatch ON but NO skill ran → falls back to grounded runChatPipeline (pure chat not degraded)", async () => {
+  it("Test 7: agent loop pure chat (no skill) → streams the answer directly, NO runChatPipeline fallback, plain markdown", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
-    await primeDispatchHarness();
-    const { runSkillDispatch } = await import("@/lib/tools/skill-dispatch");
+    const { threadId } = await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
     const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
+    const { insertMessage } = await import("@/lib/threads/messages");
 
-    (runSkillDispatch as ReturnType<typeof vi.fn>).mockResolvedValue({ text: "", skillRuns: [], toolCalls: [] });
-    (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(async (_input: unknown, onToken: (d: string) => void) => {
-      onToken("grounded answer");
-      return { fullContent: "grounded answer", coldStart: false };
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(async (input: { onToken: (d: string) => void }) => {
+      input.onToken("grounded answer");
+      return { text: "grounded answer", skillRuns: [], toolCalls: [] };
     });
 
     const { POST } = await import("@/app/api/tools/chat/route");
@@ -538,16 +551,25 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(res.status).toBe(200);
     const raw = await readSSE(res);
 
-    expect(runSkillDispatch).toHaveBeenCalledTimes(1);
-    expect(runChatPipeline).toHaveBeenCalledTimes(1); // the fallback ran
+    // The loop handles pure chat too — the old runChatPipeline fallback is GONE (no double-answer).
+    expect(runChatAgentStream).toHaveBeenCalledTimes(1);
+    expect(runChatPipeline).not.toHaveBeenCalled();
     expect(raw).not.toContain("event: block");
     expect(raw).toContain("event: token");
     expect(raw).toContain("event: done");
+
+    // A pure-chat turn persists PLAIN markdown (no origin marker) → byte-identical reload to shipped chat.
+    const calls = (insertMessage as ReturnType<typeof vi.fn>).mock.calls as Array<[string, string, unknown[], string?]>;
+    const md = calls
+      .filter(([tid, role]) => tid === threadId && role === "assistant")
+      .find(([, , blocks]) => (blocks[0] as { type?: string })?.type === "markdown");
+    expect(md).toBeDefined();
+    expect((md![2][0] as { props: { origin?: string } }).props.origin).toBeUndefined();
   });
 
-  it("Test 8: dispatch flag OFF → runSkillDispatch never called (byte-identical to shipped chat)", async () => {
+  it("Test 8: dispatch flag OFF → the agent loop never runs (byte-identical to shipped chat)", async () => {
     await primeDispatchHarness();
-    const { runSkillDispatch } = await import("@/lib/tools/skill-dispatch");
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
     const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
     (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(async (_input: unknown, onToken: (d: string) => void) => {
       onToken("answer");
@@ -559,14 +581,14 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(res.status).toBe(200);
     await readSSE(res);
 
-    expect(runSkillDispatch).not.toHaveBeenCalled();
+    expect(runChatAgentStream).not.toHaveBeenCalled();
     expect(runChatPipeline).toHaveBeenCalledTimes(1);
   });
 
-  it("Test 9: dispatch ON but persona/meet mode → dispatch SKIPPED, persona answer path runs", async () => {
+  it("Test 9: dispatch ON but persona/meet mode → agent loop SKIPPED, persona answer path runs", async () => {
     process.env.CHAT_AGENT_DISPATCH = "true";
     await primeDispatchHarness();
-    const { runSkillDispatch } = await import("@/lib/tools/skill-dispatch");
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
     const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
     const { ARCHETYPES } = await import("@/lib/engine/wave3/persona-registry");
     (runChatPipeline as ReturnType<typeof vi.fn>).mockImplementation(async (_input: unknown, onToken: (d: string) => void) => {
@@ -589,8 +611,8 @@ describe("POST /api/tools/chat (SSE route)", () => {
     expect(res.status).toBe(200);
     await readSSE(res);
 
-    // Persona chat never orchestrates skills — dispatch is bypassed entirely.
-    expect(runSkillDispatch).not.toHaveBeenCalled();
+    // Persona chat never orchestrates skills — the agent loop is bypassed entirely.
+    expect(runChatAgentStream).not.toHaveBeenCalled();
     expect(runChatPipeline).toHaveBeenCalledTimes(1);
   });
 });

@@ -32,7 +32,9 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
-import { runSkillDispatch } from "@/lib/tools/skill-dispatch";
+import { runChatAgentStream } from "@/lib/tools/chat-agent-loop";
+import { assembleBundle } from "@/lib/kc/assembler";
+import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
@@ -111,6 +113,15 @@ const MAX_MESSAGE_LENGTH = 2000;
  */
 function isChatAgentDispatchEnabled(): boolean {
   return process.env.CHAT_AGENT_DISPATCH === "true";
+}
+
+/**
+ * Grounding-as-a-tool flag (default OFF, independent lever). When on, the streaming agent loop binds
+ * the corpus `search_corpus` tool so the model can pull real proven examples mid-answer. Mirrors the
+ * `GROUNDING_CHAT_TOOL` gate `runChatPipeline` used for its (now-replaced) corpus pre-flight.
+ */
+function isCorpusChatToolEnabled(): boolean {
+  return process.env.GROUNDING_CHAT_TOOL === "true";
 }
 
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
@@ -360,53 +371,49 @@ export async function POST(request: Request): Promise<Response> {
         // meta frame LEADS the stream — Plan 05-03 gates the one-time nudge on this (D-08)
         send("meta", { coldStart });
 
-        // ── (8a) Chat-as-agent dispatch (default-off flag) ──────────────────────
-        // Open chat only (persona/meet excluded). The model may run a content skill whose
-        // real card-blocks are streamed (event: block) + persisted into THIS thread, then a
-        // short co-pilot line closes the turn. If it runs NO skill, `dispatched` stays false
-        // and control falls through to the grounded runChatPipeline below (unchanged answer).
+        // ── (8a) Chat-as-agent — single STREAMING agent loop (default-off flag) ──
+        // Open chat only (persona/meet excluded — a viewer reacts in-voice, it does not orchestrate).
+        // ONE streaming completion: the model streams its answer directly (token frames) and pauses only
+        // to call a tool — a content skill (its cards stream as `block` events) or `search_corpus`
+        // (grounding). No pre-flight, no discarded answer (the old runSkillDispatch + runChatPipeline
+        // double-call). Flag OFF or persona → the unchanged runChatPipeline path below.
         let dispatched = false;
         if (isChatAgentDispatchEnabled() && personaGrounding == null) {
-          const dispatch = await runSkillDispatch({
-            ask: rawAsk,
+          dispatched = true;
+          // Grounding (niche/audience/platform) rides the fenced user message, exactly as
+          // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
+          // as real role messages (natural turn structure for the agent), not folded into the anchor.
+          const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
+          const agentResult = await runChatAgentStream({
+            ask: userMessage,
+            systemPrompt: KC_CHAT_SYSTEM_PROMPT,
+            priorTurns,
+            grounding: isCorpusChatToolEnabled(),
             context: {
               platform,
               profileRow,
               audience: activeAudience,
-              // Real pipeline phase boundaries → the client's progress spine (mirrors skill routes).
+              // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
               onStage: (name, status) => send("stage", { name, status }),
             },
-            priorTurns,
+            onToken: (delta) => send("token", { delta }),
+            onBlock: (block) => send("block", { block }),
           });
 
-          if (dispatch.skillRuns.length > 0) {
-            dispatched = true;
-            // Stream + persist each skill's card-blocks. `block` events render inline via the
-            // thread's MessageBlocks (every card type already has a renderer); insertMessage
-            // re-validates each block at the write boundary (D-14) so a reload rehydrates them.
-            for (const run of dispatch.skillRuns) {
-              for (const block of run.blocks) send("block", { block });
-              if (openThread && run.blocks.length > 0) {
+          // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
+          // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in
+          // the chat view (rehydrate-thread.ts); a pure-chat turn persists plain markdown → byte-identical
+          // to the old open-chat reload. insertMessage re-validates every block at the write boundary (D-14).
+          if (openThread) {
+            for (const run of agentResult.skillRuns) {
+              if (run.blocks.length > 0) {
                 await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
               }
             }
-            // Closing co-pilot line (points at the cards + a next step). We have it all at once,
-            // so it rides a single token frame (the client accumulates tokens into markdown) and
-            // persists as its own markdown message — the existing follow-up-turn shape.
-            const closing = dispatch.text.trim();
-            if (closing) {
-              send("token", { delta: closing });
-              if (openThread) {
-                await insertMessage(
-                  openThread.id,
-                  "assistant",
-                  // origin marker → on reload the composer renders this thread as ONE ordered stream
-                  // in the chat view (rehydrate-thread.ts). Written ONLY here (flag-on) → the marker
-                  // is the flag's shadow: no marker on selector threads or flag-off writes.
-                  [{ type: "markdown", props: { text: closing, origin: "chat-agent" } }],
-                  kcStamp().kcGenVersion,
-                );
-              }
+            const text = agentResult.text.trim();
+            if (text.length > 0) {
+              const props = agentResult.skillRuns.length > 0 ? { text, origin: "chat-agent" } : { text };
+              await insertMessage(openThread.id, "assistant", [{ type: "markdown", props }], kcStamp().kcGenVersion);
             }
           }
         }
