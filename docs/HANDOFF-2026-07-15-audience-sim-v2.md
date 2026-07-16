@@ -1,12 +1,18 @@
 # HANDOFF — Audience Simulation v2 (fresh-session starter)
 
 **Paste this to start:** *"Read `docs/HANDOFF-2026-07-15-audience-sim-v2.md`, then
-`docs/DESIGN-2026-07-15-audience-simulation-v2.md`. We're mid-pivot on the audience simulation. Pick up
-at Phase 1 (tighten the scorer + re-run the spike). Do NOT touch the feedback loop yet — it's last."*
+`docs/DESIGN-2026-07-15-audience-simulation-v2.md`. We're mid-pivot on the audience simulation. Phase 1
+(scorer tuning) is DONE — pick up at Phase 2 (promote the strawman schema to real types). Do NOT touch
+the feedback loop yet — it's last."*
 
-**Worktree:** `~/virtuna-explore-b` · **Branch:** `feat/per-persona-ideas-script` · **Written:** 2026-07-15
+**Worktree:** `~/virtuna-audience-sim-v2` · **Branch:** `feat/audience-sim-v2` · **Written:** 2026-07-15 · **Updated:** 2026-07-16
 **SSOT design doc:** `docs/DESIGN-2026-07-15-audience-simulation-v2.md` (read it — it has the schema, the
-locked decisions, the current-engine map with file:line, and the spike result).
+locked decisions, the current-engine map with file:line, and the spike result **incl. §8.2 Phase 1**).
+
+> ⚠️ **This is a fresh worktree.** `node_modules` is symlinked from `~/virtuna-explore-b` and `.env.local`
+> was copied in (both gitignored). If either is missing, redo: `ln -sfn ~/virtuna-explore-b/node_modules
+> ./node_modules && cp ~/virtuna-explore-b/.env.local ./.env.local`. Run the spike with
+> `./node_modules/.bin/tsx scripts/spike-persona-population.ts` (NOT bare `npx tsx` — it re-installs).
 
 ---
 
@@ -31,33 +37,39 @@ transparent scoring function reacts all of them per content test (~1 LLM call/te
   - Run it: `npx tsx scripts/spike-persona-population.ts` (2 generator + 6 characterization calls, ~cents, ~2min).
 - **Two calibration problems found** (both TUNING, not architecture) — see Phase 1.
 
-## 3 · The branch (READ THIS before committing/pushing)
+## 3 · The branch — RESOLVED 2026-07-16 (both owner decisions taken)
 
-`feat/per-persona-ideas-script`, **4 commits, NOT pushed**, tree clean:
-1. `refactor(audience)` — shared per-persona target machinery
-2. `feat(ideas)` — per-persona idea targeting, measured 75%, live-verified (SHIPS; independent of this pivot)
-3. `feat(script)` — script targeting built, measured 6.7% (fails), dormant/unwired
-4. `docs(audience)` — the v2 design doc
+The two decisions were made and executed:
+- **(a) Ideas work → SHIPPED as its own PR.** `feat/per-persona-ideas-script` was rebased onto current
+  `origin/main` (clean, 619 tests green) and opened as **PR #312** (refactor + ideas + script commits;
+  the dormant 6.7% script commit rides along with an honest "drop it if you don't want unwired code on
+  main" note for the owner).
+- **(b) v2 pivot → its OWN worktree/branch.** `~/virtuna-audience-sim-v2` on **`feat/audience-sim-v2`**
+  (off `origin/main`), carrying only the design doc + spike (cherry-picked) + Phase 1 tuning. This is
+  where all v2 work happens now. It does NOT ride the ideas branch.
 
-⚠️ Branch is **behind `origin/main`** (the explore-a CLOSEOUT PRs merged after it was cut) but touches
-DISJOINT files → clean rebase. The **ideas work (commits 1–3) is shippable on its own** and re-bases onto
-the new audience model (targeting is representation-agnostic). Two independent decisions:
-(a) rebase + PR the ideas work now? (b) does the v2 pivot get its own branch/worktree? — it's a new
-milestone-sized effort and arguably shouldn't ride the ideas branch. **Ask the owner.**
+So this handoff now lives on `feat/audience-sim-v2`. The ideas targeting is representation-agnostic and
+re-bases onto whatever audience model v2 produces.
 
 ## 4 · Roadmap (ORDERED — feedback loop is LAST and unsolved)
 
-**Phase 1 — Tighten the scorer + broaden vocab (cheap, no engine changes). ← START HERE.**
-In `scripts/spike-persona-population.ts`: (a) rebalance `pStop()` so a strong hook can carry a stop
-without topical interest (kill the "many segments at exactly 0%" collapse — the 3.2× interest coef
-dominates everything). (b) Make the generator's `topicVocab` broad enough to catch off-niche content
-(the sparse magic vocab missed a VFX hook → 14.7%). (c) Co-design the content-characterization axes ↔
-persona `ReactionProfile` axes so they line up. Re-run until the distribution *feels* right (a postable
-hook shouldn't have 90% scrolling). This is throwaway-tuning to build confidence — not production.
+**Phase 1 — Tighten the scorer + broaden vocab. ✅ DONE 2026-07-16 (see design-doc §8.2).**
+All three sub-tasks landed in `scripts/spike-persona-population.ts`: (a) `pStop()` rebalanced to two
+independent stop-drivers — a strong hook now carries a stop via `2.4·(hookStrength·hookAppetite)`,
+`hookAppetite = 1 − attentionSpan`, so scrollers stop on spectacle with zero topic interest while
+craft students don't; (b) `topicVocab` now carries cross-cutting APPEAL registers (spectacle/humor/
+relatable/…) so off-niche content finds purchase (the 14.7% VFX hook → 41–52%); (c) axes were already
+1:1 — completed by making hookStrength bidirectional + interest-gating the skepticism penalty
+(`skepticism·hype·(1−interestMatch)`) so engaged debunkers lean in instead of being repelled.
+**Result:** postable hooks stop 41–53% overall; each hook lights up a different segment set; 0%-segments
+rotate by hook. Confidence built — the pivot's cheap-scoring shape is sound. (Do NOT keep hand-tuning:
+it over-fits 3 hooks + LLM characterization noise; the constants get *fit* by the feedback loop, Phase 6.)
 
-**Phase 2 — Firm the schema.** Promote the design-doc strawman (`Segment`, `Persona`, `Provenance`,
-`ReactionProfile`, `BehaviorProfile`, `AudiencePopulation`) to real types. Decide storage: **persist
-segments, deterministically (seeded) sample individuals** at run time (locked decision #5).
+**Phase 2 — Firm the schema. ← START HERE.** Promote the design-doc strawman (`Segment`, `Persona`,
+`Provenance`, `ReactionProfile`, `BehaviorProfile`, `AudiencePopulation`) to real types. Decide storage:
+**persist segments, deterministically (seeded) sample individuals** at run time (locked decision #5).
+The spike's inline interfaces (top of `spike-persona-population.ts`) are the tested starting shape —
+note the spike added a `spread` field on `Segment` (drives per-individual jitter) not yet in the doc strawman.
 
 **Phase 3 — Engine integration (the big one).** Replace the frozen 10-archetype signature + the SIM.
 Must break: `flash-schema.ts` `.length(10)`; `persona-registry.ts:526` `selectPersonaSlots` (throws if

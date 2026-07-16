@@ -267,6 +267,36 @@ You cannot hand-tune these constants to *truth* — you fit them to real outcome
 confirms WHY the feedback loop (§7) is the eventual unlock. **Conclusion: the pivot is real; the
 `.length(10)` engine can be replaced by this with confidence.**
 
+### 8.2 · PHASE 1 DONE — scorer rebalanced, distribution now reads true (2026-07-16, worktree `~/virtuna-audience-sim-v2`)
+
+Both §8.1 problems fixed by tuning the spike (throwaway confidence-building, NOT production — the
+constants get *fit* later, not hand-set). Three changes to `scripts/spike-persona-population.ts`:
+
+1. **Two independent stop-drivers, not one interest-gate.** The old logit let ONLY interest carry a
+   stop (`3.2 × interestMatch`), so any segment the hook's topics missed flatlined at 0%. Added a
+   positive **hook-pull** term scaled by how hook-driven the persona is:
+   `hookAppetite = 1 − attentionSpan` (low-attention scrollers live on the hook ≈ 1; patient
+   substance-seekers ≈ 0). New logit: `-0.9 + 2.6·interestMatch + 2.4·(hookStrength·hookAppetite)
+   − 1.1·hookGap − 1.0·noveltyMismatch − 1.4·hypePenalty − 1.4·patiencePenalty`. A 0.95 spectacle
+   hook now stops a scroller with zero topic interest but barely moves a frame-by-frame craft student.
+2. **Broadened topic vocab** (generator prompt): every population now emits 3–5 cross-cutting APPEAL
+   registers (`spectacle, humor, relatable, transformation, satisfying, educational`) alongside niche
+   subjects, so off-niche-but-arresting content finds topical purchase. The out-of-vocab VFX hook that
+   scored 14.7% now lands 41–52%.
+3. **Interest-gated the skepticism penalty:** `hypePenalty = skepticism · hype · (1 − interestMatch)`.
+   A disengaged skeptic is repelled by hype; an *engaged* one leans in to scrutinize. This removed a
+   perverse case where a debunk-bait hook ("here's where the trick breaks") repelled the Skeptical
+   Debunker (0%) — it now stops them at **80%**, with `interest` correctly the dominant reason.
+
+**Confirmed distribution (both contexts, N=300):** postable hooks stop **41–53% overall** (was
+1.7–24%); each of the 3 hooks lights up a **different, sensible** segment set; the 0%-segments **rotate
+by hook** (the working-model signature — analytical cold on spectacle, scrollers cooler on the slow
+craft hook, everyone-but-analytical on comedy) rather than the baseline's fixed collapse; and the `why`
+attribution flips correctly (`strong-hook` leads on spectacle/comedy, `interest` leads on the niche
+craft hook). ▶ **Phase 1 complete. Next: Phase 2 — promote the strawman schema to real types.** Do NOT
+keep hand-tuning constants (over-fits to 3 test hooks + characterization noise) — that's the feedback
+loop's job.
+
 ## 9 · Relationship to the in-flight branch
 
 `feat/per-persona-ideas-script` (3 commits, NOT pushed): the shipped **ideas targeting** is

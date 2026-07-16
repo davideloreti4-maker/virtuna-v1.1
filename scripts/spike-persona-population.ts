@@ -122,7 +122,11 @@ audience regardless: real audiences are heterogeneous, so segments must genuinel
 
 Output STRICT JSON, no prose:
 {
-  "topicVocab": string[],   // 6-12 canonical topic tags this niche's content spans (lowercase_snake)
+  "topicVocab": string[],   // 8-14 tags (lowercase_snake). MIX niche subjects (e.g. sleight_of_hand,
+                            //   video_editing) WITH 3-5 cross-cutting APPEAL registers every short-form
+                            //   audience reacts to regardless of subject: spectacle, humor, relatable,
+                            //   transformation, satisfying, emotional, educational. The appeal tags are
+                            //   what let off-niche-but-arresting content still find topical purchase.
   "segments": [
     {
       "name": string,                 // human label, e.g. "Frame-by-frame craft students"
@@ -145,7 +149,9 @@ Output STRICT JSON, no prose:
   ]
 }
 Rules: 8-12 segments. Shares sum to 1.0. Every centroid number in [0,1]. Make segments SPREAD OUT across
-the axes — do not cluster them all in the middle. Interests should reference only topicVocab tags.`;
+the axes — do not cluster them all in the middle. Interests reference only topicVocab tags, and a segment
+MAY care about an appeal register (e.g. "spectacle") with little or no deep niche interest — that is how a
+casual scroller differs from a craft student.`;
 
 async function generatePopulation(label: string, contextBundle: string): Promise<{ segments: Segment[]; topicVocab: string[] }> {
   const out = (await qwenJSON(
@@ -233,27 +239,44 @@ function pStop(p: Persona, c: ContentVector): { p: number; why: string } {
   }
   const interestMatch = den > 0 ? num / den : 0;
 
-  const hookGap = Math.max(0, p.reaction.hookSensitivity - c.hookStrength); // hook too weak for them
+  // TWO INDEPENDENT stop-drivers — EITHER can carry a stop on its own (the baseline bug was that only
+  // interest could, so any segment the hook's topics missed flatlined at 0%):
+  //   1. TOPICAL PULL   — they care about the subject (interestMatch).
+  //   2. HOOK PULL      — the opening is arresting AND they're the kind of viewer who decides on the hook.
+  //      hookAppetite: low-attention scrollers live on the hook (~1); patient substance-seekers don't (~0).
+  //      So a 0.95 spectacle hook stops a scroller with zero topic interest, but barely moves a
+  //      frame-by-frame craft student — exactly the asymmetry the flat interest-gate erased.
+  const hookAppetite = clamp01(1 - p.reaction.attentionSpan);
+  const hookPull = c.hookStrength * hookAppetite;
+
+  // Frictions:
+  const hookGap = Math.max(0, p.reaction.hookSensitivity - c.hookStrength); // hook below their demand
   const noveltyMismatch = Math.abs(p.reaction.noveltyBias - c.novelty);
-  const hypePenalty = p.reaction.skepticism * c.hype;
+  // A skeptic is repelled by hype ONLY when the topic isn't theirs. An engaged skeptic leans IN to
+  // scrutinize a bold claim in their niche (a debunker stops for "here's where the trick breaks").
+  // Gate the penalty by how little they care — otherwise skepticism perversely repels the very
+  // segment a debunk-bait hook targets.
+  const hypePenalty = p.reaction.skepticism * c.hype * (1 - interestMatch);
   const patiencePenalty = (1 - p.reaction.attentionSpan) * c.slowness;
 
   const logit =
-    -0.4 + // TikTok default is to scroll
-    3.2 * interestMatch -
-    2.2 * hookGap -
-    1.4 * noveltyMismatch -
-    1.6 * hypePenalty -
-    1.6 * patiencePenalty;
+    -0.9 + // TikTok default is to scroll (most content is skipped — a strong negative prior)
+    2.6 * interestMatch + // topical pull
+    2.4 * hookPull - // hook pull — a strong hook carries the hook-driven with no topic needed
+    1.1 * hookGap - // a hook far below their bar still bounces the demanding
+    1.0 * noveltyMismatch -
+    1.4 * hypePenalty -
+    1.4 * patiencePenalty;
   const prob = 1 / (1 + Math.exp(-logit));
 
   // Dominant reason (largest-magnitude contributor) — the auditable "why".
   const terms: [string, number][] = [
-    ["interest", 3.2 * interestMatch],
-    ["weak-hook", -2.2 * hookGap],
-    ["novelty-mismatch", -1.4 * noveltyMismatch],
-    ["hype-vs-skeptic", -1.6 * hypePenalty],
-    ["too-slow", -1.6 * patiencePenalty],
+    ["interest", 2.6 * interestMatch],
+    ["strong-hook", 2.4 * hookPull],
+    ["weak-hook", -1.1 * hookGap],
+    ["novelty-mismatch", -1.0 * noveltyMismatch],
+    ["hype-vs-skeptic", -1.4 * hypePenalty],
+    ["too-slow", -1.4 * patiencePenalty],
   ];
   terms.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
   return { p: prob, why: terms[0][0] };
