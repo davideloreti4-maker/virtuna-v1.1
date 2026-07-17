@@ -56,7 +56,7 @@ const OMNI_TIMEOUT_MS = 60_000;
 // reliably timed out at ~60s with "Request was aborted"). 120s keeps ample headroom now that
 // thinking-mode is dropped (the call is strictly faster without the staging budget).
 const SYNTH_TIMEOUT_MS = 120_000;
-const SYNTH_MAX_TOKENS = 6000; // persona output (~2.5k) + headroom (thinking budget dropped per D-01)
+const SYNTH_MAX_TOKENS = 8000; // v2 personas add display_name/blurb/axes (~+1k) → persona output ~3.5k + headroom
 const SUBTITLE_FETCH_TIMEOUT_MS = 8_000;
 const SUBTITLE_MAX_CHARS = 2_000;
 
@@ -96,12 +96,34 @@ const SLOT_BY_ARCHETYPE: Record<string, "fyp" | "niche" | "loyalist" | "cross_ni
 
 const ARCHETYPE_SET = new Set<string>(ARCHETYPES);
 
+// v2 scored axes (tolerant defaults — a sloppy model must never fail calibration; the axes
+// are for the population math, the hard invariants below still gate the 10-slug contract).
+const ReactionAxesSchema = z.object({
+  interests: z.record(z.string(), z.number().min(0).max(1)).default({}),
+  hookSensitivity: z.number().min(0).max(1).default(0.5),
+  noveltyBias: z.number().min(0).max(1).default(0.5),
+  skepticism: z.number().min(0).max(1).default(0.5),
+  attentionSpan: z.number().min(0).max(1).default(0.5),
+});
+const BehaviorAxesSchema = z.object({
+  watchThrough: z.number().min(0).max(1).default(0.5),
+  sharePropensity: z.number().min(0).max(1).default(0.5),
+  commentPropensity: z.number().min(0).max(1).default(0.5),
+  savePropensity: z.number().min(0).max(1).default(0.5),
+});
+
 /** A reactor as the synthesis LLM returns it — engine fills temperature/disposition. */
 const RawPersonaSchema = z.object({
   archetype: z.string(),
   share: z.number().min(0).max(1),
   reaction_frame: z.string().min(1),
   evidence: z.string().default(""),
+  // v2: custom, creator-specific identity + scored axes (all optional — legacy-safe; undefined
+  // means "the model didn't supply it" → the mapping skips it → display falls back to archetype).
+  display_name: z.string().optional(),
+  blurb: z.string().optional(),
+  reaction: ReactionAxesSchema.optional(),
+  behavior: BehaviorAxesSchema.optional(),
 });
 
 const SynthSchema = z.object({
@@ -120,6 +142,8 @@ const SynthSchema = z.object({
       hot: z.number().min(0).max(1),
     }),
     interest_tags: z.array(z.string()).default([]),
+    // v2: canonical topic vocab for this niche (niche subjects + cross-cutting appeal registers).
+    topic_vocab: z.array(z.string()).default([]),
     what_resonates: z.string().default(""),
     what_falls_flat: z.string().default(""),
     persona_weights: z
@@ -148,8 +172,11 @@ const SynthSchema = z.object({
   summary: z.string().default(""),
 });
 
-// Call B system prompt — BYTE-STABLE (cache prefix, D-17). Mirrors §P.14 Call B.
-const SYNTH_SYSTEM = `You build a creator's AUDIENCE SIGNATURE from REAL scraped data. Reality first; goal_intent is only a tie-break lens, never the source. Map the audience onto the FIXED 10 archetypes (below) — fill ALL 10, shares sum to 1.0. Derive temperature_mix + dispositions + weights from the engagement RATIOS; never invent counts or demographics. creator_persona.voice comes from the transcript/caption + watchNotes. Return ONLY JSON matching this schema, no preamble:
+// Call B system prompt — cache prefix (D-17). v2: personas are now custom-per-creator (each fixed
+// slug also carries a creator-specific display_name/blurb + scored axes). Changing this string is a
+// deliberate cache-prefix bump; determinism per identical input still holds (temp:0 + seed).
+const SYNTH_SYSTEM = `You build a creator's AUDIENCE SIGNATURE from REAL scraped data. Reality first; goal_intent is only a tie-break lens, never the source. Map the audience onto the FIXED 10 archetypes (below) — fill ALL 10, shares sum to 1.0. Derive temperature_mix + dispositions + weights from the engagement RATIOS; never invent counts or demographics. creator_persona.voice comes from the transcript/caption + watchNotes.
+Each persona keeps its fixed archetype slug, but MAKE IT SPECIFIC TO THIS CREATOR — not a generic template: give it a display_name (a concrete human label for how THIS creator's audience actually shows up, e.g. "Frame-by-frame editors" — never the raw archetype word), a one-line blurb in that viewer's voice, and scored reaction+behavior axes (every value 0..1) that FOLLOW from the real engagement data. Also emit topic_vocab: 8-14 lowercase_snake tags mixing this niche's subjects WITH cross-cutting appeal registers (spectacle, humor, relatable, transformation, satisfying, educational). Each persona's reaction.interests references ONLY topic_vocab tags — only the ones that segment truly cares about. Spread the 10 across the axes (a lurker and a niche_deep_buyer are opposites, not neighbours), but keep them TRUE to this creator. Return ONLY JSON matching this schema, no preamble:
 {
   "creator_persona": { "content_description": "<niche, 1 line>", "context": "<audience · voice · formats · expertise · AVOID>", "writing_style_sample": "<verbatim transcript/caption of the top video>", "format_signature": "<video format/style from watchNotes>" },
   "audience": {
@@ -157,14 +184,15 @@ const SYNTH_SYSTEM = `You build a creator's AUDIENCE SIGNATURE from REAL scraped
     "maturity": "new|growing|established",
     "temperature_mix": { "cold": 0.0, "warm": 0.0, "hot": 0.0 },
     "interest_tags": ["..."],
+    "topic_vocab": ["<niche subject or appeal register, lowercase_snake>"],
     "what_resonates": "<from winners + watchNotes>",
     "what_falls_flat": "<from low-engagement videos>",
     "persona_weights": { "fyp":0.0,"niche":0.0,"loyalist":0.0,"cross_niche":0.0 },
-    "personas": [ { "archetype":"<slug>","share":0.0,"reaction_frame":"<how THIS audience's segment judges content>","evidence":"<engagement-ratio proof>" } ]
+    "personas": [ { "archetype":"<slug>","share":0.0,"display_name":"<creator-specific label>","blurb":"<one line in this viewer's voice>","reaction_frame":"<how THIS audience's segment judges content>","evidence":"<engagement-ratio proof>","reaction":{"interests":{"<topic_vocab tag>":0.0},"hookSensitivity":0.0,"noveltyBias":0.0,"skepticism":0.0,"attentionSpan":0.0},"behavior":{"watchThrough":0.0,"sharePropensity":0.0,"commentPropensity":0.0,"savePropensity":0.0} } ]
   },
   "summary": "<reveal-screen copy, 1-2 sentences>"
 }
-temperature_mix sums to 1.0. persona_weights sums to 1.0. EXACTLY 10 personas, shares sum to 1.0, one per slug.
+temperature_mix sums to 1.0. persona_weights sums to 1.0. EXACTLY 10 personas, shares sum to 1.0, one per slug. Every reaction/behavior axis in [0,1]; interests keys come only from topic_vocab.
 FIXED ARCHETYPES (archetype | temperature | disposition | weight-slot):
  tough_crowd|cold|skeptic|fyp · lurker|cold|lurker|fyp · high_engager|warm|connector|fyp · saver|warm|collector|fyp · sharer|warm|connector|fyp · purposeful_viewer|warm|scanner|niche · niche_deep_buyer|hot|converter|niche · niche_deep_scout|hot|skeptic|niche · loyalist|hot|connector|loyalist · cross_niche_curiosity|cold|scanner|cross_niche`;
 
@@ -359,7 +387,7 @@ async function defaultSynthesize(payload: SynthPayload): Promise<z.infer<typeof 
         response_format: { type: "json_object" },
         temperature: 0,
         seed: QWEN_SEED,
-        max_tokens: SYNTH_MAX_TOKENS, // 6000: persona output (~2.5k) + headroom (thinking budget dropped per D-01)
+        max_tokens: SYNTH_MAX_TOKENS, // 8000: v2 persona output (~3.5k) + headroom (thinking budget dropped per D-01)
         enable_thinking: false,       // D-01: greedy temp:0 is the determinism lever; thinking-mode staging was the Pitfall-3 residual-jitter source (spike 02-02 NON-DETERMINISTIC)
       } as never,
       { signal: controller.signal },
@@ -479,6 +507,12 @@ export async function enrichSignature(
       disposition: label.disposition,
       reaction_frame: p.reaction_frame,
       evidence: p.evidence,
+      // v2: carry the custom identity + scored axes when the model supplied them (legacy-safe:
+      // omit empties so old-shape consumers/tests see no change).
+      ...(p.display_name ? { display_name: p.display_name } : {}),
+      ...(p.blurb ? { blurb: p.blurb } : {}),
+      ...(p.reaction ? { reaction: p.reaction } : {}),
+      ...(p.behavior ? { behavior: p.behavior } : {}),
     };
   });
 
@@ -493,6 +527,7 @@ export async function enrichSignature(
       what_falls_flat: synth.audience.what_falls_flat,
       persona_weights: synth.audience.persona_weights,
       personas,
+      ...(synth.audience.topic_vocab?.length ? { topic_vocab: synth.audience.topic_vocab } : {}),
     },
     summary: synth.summary,
     provenance: {

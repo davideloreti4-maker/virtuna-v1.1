@@ -155,7 +155,7 @@ export async function POST(request: Request): Promise<Response> {
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
   // the request body — session/thread only (CR-01).
-  const activeAudience = await resolveThreadAudience(supabase, openThread);
+  const activeAudience = await resolveThreadAudience(supabase, openThread, user.id);
 
   // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
   // hooks is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
@@ -233,6 +233,8 @@ export async function POST(request: Request): Promise<Response> {
               grounded: b.props.grounded,                   // §11f: the RUN had sources even if this card cited none. Gates NoSourceNote —
                                                             // dropped here, the note could only ever appear after a reload (see `proof` above:
                                                             // same bug, same line, fixed once and immediately reintroduced one field later).
+              population: b.props.population,               // Audience Sim v2 Stage 2: the N-individual projection → Population·1,000 Sheet.
+                                                            // Same reload-only hazard as proof/target above — must ride the face, not just persist.
               // band/fraction deferred to score events
             },
           })),

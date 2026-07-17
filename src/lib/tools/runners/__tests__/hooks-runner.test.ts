@@ -40,6 +40,14 @@ vi.mock("@/lib/tools/runners/predicted-pin", () => ({
   pinPredictedSignature: vi.fn().mockResolvedValue(true),
 }));
 
+// ─── Mock characterizeContent (Audience Sim v2 Stage 2 — the ONE content LLM call) ──
+// The runner fires this per candidate when the signature carries v2 axes. Mocked so the
+// pure population math (population.ts, NOT mocked) runs on a deterministic ContentVector —
+// the wiring under test is "does the runner characterize + reactPopulation + attach it".
+vi.mock("@/lib/audience/characterize-content", () => ({
+  characterizeContent: vi.fn(),
+}));
+
 // ─── Mock assembleBundle ──────────────────────────────────────────────────────
 
 vi.mock("@/lib/kc/assembler", () => ({
@@ -1018,5 +1026,139 @@ describe("runHooksPipeline — per-persona generation", () => {
 
     // …and the label still reaches the CARD, where it is a display string, not prompt input.
     expect(blocks[0]!.props.target!.label).toBe("The Frame Detectives");
+  });
+});
+
+// ─── Audience Sim v2 (Stage 2): population projection on the hook card ─────────
+
+/**
+ * A calibrated signature carrying the v2 axes the population math needs: a non-empty
+ * `topic_vocab` and personas with scored `reaction` axes (mirrors population.test.ts). Two
+ * segments so the aggregate has a real per-segment split to assert on.
+ */
+function signatureWithAxes(): unknown {
+  return {
+    creator_persona: { content_description: "x", context: "x", writing_style_sample: "x", format_signature: "x" },
+    audience: {
+      follower_tier: "10k-100k",
+      maturity: "established",
+      temperature_mix: { cold: 0.4, warm: 0.4, hot: 0.2 },
+      interest_tags: ["craft"],
+      what_resonates: "x",
+      what_falls_flat: "x",
+      persona_weights: { fyp: 0.4, niche: 0.3, loyalist: 0.2, cross_niche: 0.1 },
+      topic_vocab: ["craft", "spectacle"],
+      personas: [
+        {
+          archetype: "lurker", share: 0.6, temperature: "cold", disposition: "scanner",
+          reaction_frame: "x", evidence: "x", display_name: "Dopamine Scrollers",
+          reaction: { interests: {}, hookSensitivity: 0.2, noveltyBias: 0.5, skepticism: 0.2, attentionSpan: 0.1 },
+        },
+        {
+          archetype: "niche_deep_buyer", share: 0.4, temperature: "hot", disposition: "collector",
+          reaction_frame: "x", evidence: "x", display_name: "Frame-by-frame editors",
+          reaction: { interests: { craft: 0.9 }, hookSensitivity: 0.8, noveltyBias: 0.3, skepticism: 0.5, attentionSpan: 0.9 },
+        },
+      ],
+    },
+    summary: "x",
+    provenance: { handle: "@x", scraped_at: "2026-07-16", videos_analyzed: 8, videos_watched: 4, sub_coverage: "6/8" },
+  };
+}
+
+/** An on-topic craft ContentVector — deterministic input for the (mocked) characterize call. */
+const CRAFT_VECTOR = { topics: { craft: 0.9 }, hookStrength: 0.5, novelty: 0.3, hype: 0.1, slowness: 0.2 };
+
+describe("runHooksPipeline — Audience Sim v2 population projection (Stage 2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("attaches props.population (real per-segment split) when the signature carries v2 axes", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
+          }),
+        },
+      },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
+    // The ONE content LLM call is mocked → the pure population math (population.ts) runs for real.
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue(CRAFT_VECTOR);
+
+    const audience = { ...(calibratedAudience as object), signature: signatureWithAxes() } as never;
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience,
+    });
+
+    // The characterize call fired once per generated candidate (concurrent with the SIM), keyed
+    // to the signature's topic_vocab — never against the flash result.
+    expect(characterizeContent).toHaveBeenCalledTimes(5);
+    expect((characterizeContent as ReturnType<typeof vi.fn>).mock.calls[0]![1]).toEqual(["craft", "spectacle"]);
+
+    // Every card carries the REAL projection: total ≈ N, a genuine stop/scroll split summing to
+    // total, and both named segments present (the rollup of the 10 could not produce this).
+    expect(blocks.length).toBeGreaterThanOrEqual(1);
+    for (const b of blocks) {
+      const pop = b.props.population;
+      expect(pop).toBeDefined();
+      expect(pop!.total).toBeGreaterThan(0);
+      expect(pop!.stop + pop!.scroll).toBe(pop!.total);
+      expect(pop!.segments.length).toBe(2);
+      const names = pop!.segments.map((s) => s.displayName).sort();
+      expect(names).toEqual(["Dopamine Scrollers", "Frame-by-frame editors"]);
+      // A real distribution, not a copy of the flat SIM fraction.
+      expect(pop!.segments.every((s) => typeof s.stopPct === "number")).toBe(true);
+    }
+  });
+
+  it("omits props.population (and makes NO characterize call) for an audience without v2 axes", async () => {
+    const { getQwenClient } = await import("@/lib/engine/qwen/client");
+    const { runFlashTextModeBatch } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [{ message: { content: JSON.stringify(makeStructuredHookResponse(5)) } }],
+          }),
+        },
+      },
+    });
+    (runFlashTextModeBatch as ReturnType<typeof vi.fn>).mockImplementation(
+      (candidates: { id: string; text: string }[]) =>
+        Promise.resolve(makeBatchResult(candidates, makePersonasMixed())),
+    );
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue(CRAFT_VECTOR);
+
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    // calibratedAudience has NO signature → the gate is closed → byte-identical pre-v2 shape.
+    const { blocks } = await runHooksPipeline({
+      ask: "Hooks",
+      platform: "tiktok",
+      profileRow: null,
+      audience: calibratedAudience,
+    });
+
+    expect(characterizeContent).not.toHaveBeenCalled();
+    expect(blocks.length).toBeGreaterThanOrEqual(1);
+    for (const b of blocks) {
+      expect(b.props.population).toBeUndefined();
+    }
   });
 });

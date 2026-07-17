@@ -35,7 +35,7 @@ export interface ScriptCardRendererProps {
 }
 
 export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRendererProps) {
-  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof, grounded } = block.props;
+  const { beats, openingBeatSeed, band, fraction, scrollQuote, proof, grounded, population } = block.props;
 
   // Read ScriptTestContext — enables ScriptThreadView to provide the handler without
   // prop-drilling through MessageBlocks (mirrors HookCardRenderer + HookTestContext).
@@ -95,6 +95,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
           suffix="opener only"
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
+          population={population}
           rewrite={buildCardRewrite({
             skill: 'script',
             fraction,

@@ -43,6 +43,7 @@ function makePersonSynth(): ProfileSynth {
       maturity: "growing",
       temperature_mix: { cold: 0.5, warm: 0.3, hot: 0.2 },
       interest_tags: ["trust", "reassurance"],
+      topic_vocab: ["trust", "reassurance", "relatable"],
       what_resonates: "concrete proof",
       what_falls_flat: "hype",
       persona_weights: { fyp: 1, niche: 0, loyalist: 0, cross_niche: 0 },
@@ -73,6 +74,7 @@ function makePanelSynth(): ProfileSynth {
       maturity: "established",
       temperature_mix: { cold: 0.34, warm: 0.33, hot: 0.33 },
       interest_tags: ["shipping", "risk"],
+      topic_vocab: ["shipping", "risk", "educational"],
       what_resonates: "evidence",
       what_falls_flat: "vibes",
       persona_weights: { fyp: 0.4, niche: 0.3, loyalist: 0.2, cross_niche: 0.1 },
@@ -184,6 +186,44 @@ describe("bakeProfileSignature", () => {
     expect(signature.audience.persona_weights).toEqual({ fyp: 1, niche: 0, loyalist: 0, cross_niche: 0 });
     expect(signature.provenance).toBeDefined();
     expect(typeof signature.summary).toBe("string");
+  });
+
+  // v2 (Stage 1 mirror of enrich-signature): the custom identity + scored axes the synth writes
+  // must survive onto the baked persona, and topic_vocab onto the audience — so the described
+  // (manual) calibration path yields custom names + Stage-2 scoring axes, not generic templates.
+  it("carries the synth's custom display_name/blurb + reaction/behavior axes + topic_vocab through", async () => {
+    const synth = makePersonSynth();
+    synth.audience.topic_vocab = ["trust", "spectacle"];
+    synth.audience.personas[0] = {
+      ...synth.audience.personas[0]!,
+      display_name: "The Wary Buyer",
+      blurb: "show me it works before I believe you",
+      reaction: { interests: { trust: 0.9 }, hookSensitivity: 0.3, noveltyBias: 0.2, skepticism: 0.9, attentionSpan: 0.8 },
+      behavior: { watchThrough: 0.7, sharePropensity: 0.1, commentPropensity: 0.4, savePropensity: 0.6 },
+    };
+    const synthesize = vi.fn(async () => synth);
+    const { signature } = await bakeProfileSignature({ evidence: "x", subjectKind: "person" }, { synthesize });
+
+    const baked = signature.audience.personas[0]!;
+    expect(baked.display_name).toBe("The Wary Buyer");
+    expect(baked.blurb).toBe("show me it works before I believe you");
+    expect(baked.reaction?.skepticism).toBe(0.9);
+    expect(baked.behavior?.savePropensity).toBe(0.6);
+    expect(signature.audience.topic_vocab).toEqual(["trust", "spectacle"]);
+  });
+
+  // Legacy-safe: a synth with no v2 fields bakes a persona with none (omit-empties), so old-shape
+  // consumers and General/preset signatures are unchanged.
+  it("omits v2 fields when the synth supplies none (legacy signatures unaffected)", async () => {
+    const synth = makePersonSynth();
+    synth.audience.topic_vocab = []; // empty → mapping omits it (omit-empties)
+    const synthesize = vi.fn(async () => synth);
+    const { signature } = await bakeProfileSignature({ evidence: "x", subjectKind: "person" }, { synthesize });
+    const baked = signature.audience.personas[0]!;
+    expect(baked.display_name).toBeUndefined();
+    expect(baked.reaction).toBeUndefined();
+    expect(baked.behavior).toBeUndefined();
+    expect(signature.audience.topic_vocab).toBeUndefined();
   });
 });
 

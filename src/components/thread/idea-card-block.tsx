@@ -49,6 +49,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
     scrollQuote,
     proof,
     grounded,
+    population,
   } = block.props;
 
   const platform = usePlatform();
@@ -131,6 +132,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={`${title}\n\n${angle}`}
+          population={population}
           platform={platform}
           rewrite={buildCardRewrite({
             skill: 'idea',

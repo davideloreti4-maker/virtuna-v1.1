@@ -61,6 +61,13 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextModeBatch: (...args: unknown[]) => mockRunFlashTextModeBatch(...args),
 }));
 
+// Audience Sim v2 Stage 2 — the ONE content LLM call. New dependency; inert for existing tests
+// (nothing else calls it). Mocked so the pure population math (population.ts) runs for real.
+const mockCharacterizeContent = vi.fn();
+vi.mock("@/lib/audience/characterize-content", () => ({
+  characterizeContent: (...args: unknown[]) => mockCharacterizeContent(...args),
+}));
+
 // ─── Mock pinPredictedSignature (FLYWHEEL-02) ─────────────────────────────────
 const mockPinPredictedSignature = vi.fn().mockResolvedValue(true);
 vi.mock("@/lib/tools/runners/predicted-pin", () => ({
@@ -771,5 +778,111 @@ describe("runRemixPipeline — source receipt (proof)", () => {
     expect(props.proof).toBeUndefined();
     // The legacy bare cover still renders, so the card is not left empty-handed.
     expect(props.coverUrl).toBe("https://p16.tiktokcdn.com/cover-abc.jpeg");
+  });
+});
+
+// ─── Audience Sim v2 (Stage 2): population projection on the remix card ────────
+
+/**
+ * A calibrated signature carrying the v2 axes (mirrors the hooks/ideas/script runner tests —
+ * same shape drives the SAME pure population.ts math). Two segments so the aggregate has a real
+ * per-segment split. Spread onto the gate-safe calibratedAudience (personas:[] + profile:null) so
+ * the real, unmocked buildReactionPanel / buildFlashWeighting / buildAudienceGroundingLine take
+ * their no-op paths — this isolates the population wiring, not the steer/panel path.
+ */
+function signatureWithAxes(): unknown {
+  return {
+    creator_persona: { content_description: "x", context: "x", writing_style_sample: "x", format_signature: "x" },
+    audience: {
+      follower_tier: "10k-100k",
+      maturity: "established",
+      temperature_mix: { cold: 0.4, warm: 0.4, hot: 0.2 },
+      interest_tags: ["craft"],
+      what_resonates: "x",
+      what_falls_flat: "x",
+      persona_weights: { fyp: 0.4, niche: 0.3, loyalist: 0.2, cross_niche: 0.1 },
+      topic_vocab: ["craft", "spectacle"],
+      personas: [
+        {
+          archetype: "lurker", share: 0.6, temperature: "cold", disposition: "scanner",
+          reaction_frame: "x", evidence: "x", display_name: "Dopamine Scrollers",
+          reaction: { interests: {}, hookSensitivity: 0.2, noveltyBias: 0.5, skepticism: 0.2, attentionSpan: 0.1 },
+        },
+        {
+          archetype: "niche_deep_buyer", share: 0.4, temperature: "hot", disposition: "collector",
+          reaction_frame: "x", evidence: "x", display_name: "Frame-by-frame editors",
+          reaction: { interests: { craft: 0.9 }, hookSensitivity: 0.8, noveltyBias: 0.3, skepticism: 0.5, attentionSpan: 0.9 },
+        },
+      ],
+    },
+    summary: "x",
+    provenance: { handle: "@x", scraped_at: "2026-07-16", videos_analyzed: 8, videos_watched: 4, sub_coverage: "6/8" },
+  };
+}
+
+/** An on-topic craft ContentVector — deterministic input for the (mocked) characterize call. */
+const CRAFT_VECTOR = { topics: { craft: 0.9 }, hookStrength: 0.5, novelty: 0.3, hype: 0.1, slowness: 0.2 };
+
+describe("runRemixPipeline — Audience Sim v2 population projection (Stage 2)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+  });
+
+  it("characterizes each ADAPTED hook and attaches props.population (real per-segment split) with v2 axes", async () => {
+    setupHappyPath();
+    mockCharacterizeContent.mockResolvedValue(CRAFT_VECTOR);
+
+    const audience = { ...(calibratedAudience as object), signature: signatureWithAxes() } as never;
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+      audience,
+    });
+
+    // Characterized once per adapted concept (3), on the SAME adapted hook the SIM reacts to
+    // (opener-scoped), keyed to the signature's topic_vocab.
+    expect(mockCharacterizeContent).toHaveBeenCalledTimes(3);
+    const adaptedHooks = makeAdaptConcepts().map((c) => c.hook);
+    const charTexts = mockCharacterizeContent.mock.calls.map((call) => call[0]);
+    expect(charTexts.sort()).toEqual([...adaptedHooks].sort());
+    expect(mockCharacterizeContent.mock.calls[0]![1]).toEqual(["craft", "spectacle"]);
+
+    // Every card carries the REAL projection with both named segments (the rollup can't produce this).
+    expect(result.blocks.length).toBeGreaterThanOrEqual(1);
+    for (const b of result.blocks as RemixCardBlock[]) {
+      const pop = b.props.population;
+      expect(pop).toBeDefined();
+      expect(pop!.total).toBeGreaterThan(0);
+      expect(pop!.stop + pop!.scroll).toBe(pop!.total);
+      expect(pop!.segments.length).toBe(2);
+      const names = pop!.segments.map((s) => s.displayName).sort();
+      expect(names).toEqual(["Dopamine Scrollers", "Frame-by-frame editors"]);
+    }
+  });
+
+  it("omits props.population (and makes NO characterize call) for an audience without v2 axes", async () => {
+    setupHappyPath();
+    mockCharacterizeContent.mockResolvedValue(CRAFT_VECTOR);
+
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    // calibratedAudience has NO signature → the gate is closed → byte-identical pre-v2 shape.
+    const result = await runRemixPipeline({
+      url: "https://www.tiktok.com/@creator/video/123456",
+      platform: "tiktok",
+      profileRow: makeProfileRow(),
+      requestId: "req-abc",
+      audience: calibratedAudience,
+    });
+
+    expect(mockCharacterizeContent).not.toHaveBeenCalled();
+    expect(result.blocks.length).toBeGreaterThanOrEqual(1);
+    for (const b of result.blocks as RemixCardBlock[]) {
+      expect(b.props.population).toBeUndefined();
+    }
   });
 });

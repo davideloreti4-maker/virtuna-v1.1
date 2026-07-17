@@ -26,8 +26,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookProof, ScriptCardBlock, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp, parseGroundedProp } from '@/lib/tools/blocks';
+import type { HookProof, ScriptCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -50,6 +50,10 @@ export interface PartialScriptCard {
   // Declared, not merely passed: the live stream is the ONLY path on which the half-attributed
   // grid is visible, so a type that omitted it would let the boundary drop it.
   grounded?: boolean;
+  // AUDIENCE SIM v2 (Stage 2): the opener's N-individual population projection → Population·1,000
+  // Sheet. undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as
+  // proof: declared + parsed + carried through toBlocks so it renders live, not only after reload.
+  population?: PopulationAggregateBlock;
 }
 
 export interface UseScriptStreamReturn {
@@ -233,6 +237,7 @@ export function useScriptStream(): UseScriptStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  population: parsePopulationProp(props.population), // Sim v2: opener projection → Population·1,000 Sheet
                 };
               })
               .filter((c: PartialScriptCard) => c.beats.length > 0);
@@ -296,6 +301,8 @@ export function useScriptStream(): UseScriptStreamReturn {
         // off the wire but not copied HERE is silently dropped on the streaming path — the only
         // path where a half-attributed run is ever seen.
         ...(c.grounded ? { grounded: true } : {}),
+        // Sim v2 Stage 2 — the opener projection renders live in the Sheet, not just after reload.
+        ...(c.population ? { population: c.population } : {}),
       },
     }));
   }, [streamingCards]);

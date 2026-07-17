@@ -23,6 +23,7 @@
  */
 
 import type { FlatPersonaReaction } from '@/components/board/audience/audience-derive';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
 import { useOpenRoomForCard } from '@/lib/hook-test-context';
@@ -55,6 +56,13 @@ export interface ProofUnitProps {
   flatPersonas: FlatPersonaReaction[];
   /** The concept the room reacted to — grounds the "Ask them why →" chat. */
   conceptText: string;
+  /**
+   * Audience Sim v2 (Stage 2): the REAL N-individual projection for this card → the standalone
+   * Lens's Population·1,000 view (off-composer path). Optional/additive — absent ⇒ the honest-lean
+   * rollup. NOTE: the on-composer path opens the DOCKED room via `openRoomForCard` (renderer B),
+   * which does not carry per-card population yet — a separate follow-up.
+   */
+  population?: PopulationAggregate;
   /** The Rewrite-for-audience loop (omitted ⇒ no sticky CTA in the Lens). */
   rewrite?: LensRewrite;
   platform?: 'tiktok' | 'instagram' | 'youtube';
@@ -102,6 +110,7 @@ export function ProofUnit({
   verb = 'stopped',
   flatPersonas,
   conceptText,
+  population,
   rewrite,
   platform = 'tiktok',
   label = 'See how the room reacted',
@@ -210,6 +219,7 @@ export function ProofUnit({
     <LensTrigger
       flatPersonas={flatPersonas}
       conceptText={conceptText}
+      population={population}
       rewrite={rewrite}
       platform={platform}
       label={label}

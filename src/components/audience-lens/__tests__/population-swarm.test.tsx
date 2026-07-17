@@ -4,6 +4,7 @@ import { render, cleanup } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PersonaNode } from '@/components/board/_kit';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { weightedRollup } from '../lens-derive';
 import { PopulationSwarm } from '../PopulationSwarm';
 
@@ -66,6 +67,57 @@ describe('PopulationSwarm', () => {
     expect(mirror.textContent).toMatch(/\d+ of \d+/);
     // Archetype breakdown drill always present (the v1 drill path — D-01).
     expect(queryByTestId('population-breakdown')).toBeTruthy();
+  });
+
+  it('Test 5 — real projection: a `population` aggregate drives counters + label + breakdown, NOT the rollup', () => {
+    const nodes = tenNodes();
+    const roll = weightedRollup(nodes);
+    // A REAL aggregate whose numbers cannot coincide with the rollup of these nodes: a
+    // deliberately different stop count + a per-segment split the 10's single verdict can't make.
+    const population: PopulationAggregate = {
+      total: 1000,
+      stop: 347,
+      scroll: 653,
+      stopPct: 35,
+      segments: [
+        { archetype: 'community_validator', displayName: 'Community Validators', share: 0.5, total: 500, stop: 495, stopPct: 99 },
+        { archetype: 'system_architect', displayName: 'System Architects', share: 0.5, total: 500, stop: 0, stopPct: 0 },
+      ],
+      reasons: [{ reason: 'interest', count: 347 }],
+    };
+    // Guard the fixture actually diverges from the rollup, else the test proves nothing.
+    expect(roll.stop).not.toBe(347);
+
+    const { getByTestId } = render(
+      <PopulationSwarm nodes={nodes} population={population} seed={SEED} reducedMotion />,
+    );
+    // Counters show the REAL projection, not weightedRollup(nodes).
+    expect(getByTestId('population-stop-count').textContent).toContain('347');
+    expect(getByTestId('population-scroll-count').textContent).toContain('653');
+    // The honesty label flips to the "a projection" framing.
+    const swarm = getByTestId('population-swarm');
+    expect(swarm.textContent).toContain('a projection');
+    expect(swarm.textContent).not.toContain('instantiated from your 10 calibrated archetypes');
+    // The per-segment split — the genuine distribution the rollup cannot produce — is rendered.
+    const breakdown = getByTestId('population-breakdown');
+    expect(breakdown.textContent).toContain('Community Validators');
+    expect(breakdown.textContent).toContain('99% stopped');
+    expect(breakdown.textContent).toContain('System Architects');
+    expect(breakdown.textContent).toContain('0% stopped');
+  });
+
+  it('Test 6 — degrade: population.total === 0 falls back to the honest-lean rollup', () => {
+    const nodes = tenNodes();
+    const roll = weightedRollup(nodes);
+    const empty: PopulationAggregate = {
+      total: 0, stop: 0, scroll: 0, stopPct: 0, segments: [], reasons: [],
+    };
+    const { getByTestId } = render(
+      <PopulationSwarm nodes={nodes} population={empty} seed={SEED} reducedMotion />,
+    );
+    // total 0 → `real` guard is null → rollup counters + the original label.
+    expect(getByTestId('population-stop-count').textContent).toContain(String(roll.stop));
+    expect(getByTestId('population-swarm').textContent).not.toContain('a projection');
   });
 
   it('Test 4 — no scoring-path touch: source imports nothing from the engine scoring path', () => {

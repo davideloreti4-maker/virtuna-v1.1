@@ -45,6 +45,13 @@ import { aggregateFlash } from "@/lib/engine/flash/flash-aggregate";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
+import { characterizeContent } from "@/lib/audience/characterize-content";
+import {
+  reactPopulation,
+  signatureHasPopulationAxes,
+  type ContentVector,
+  type PopulationAggregate,
+} from "@/lib/audience/population";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import { RemixCardBlockSchema } from "@/lib/tools/blocks";
@@ -159,6 +166,14 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
   // `panel` is also consumed at the Flash gate (STEP 5) below.
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
+  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
+  // A calibrated signature carrying the v2 axes is the gate — General / legacy / preset skip it
+  // (population stays undefined → byte-identical pre-v2 shape). Resolved ONCE per run (mirrors
+  // hooks/ideas). The RATE step characterizes each ADAPTED hook (opener-scoped, Pitfall 5) below.
+  const populationSignature = audience?.signature ?? null;
+  const wantPopulation = signatureHasPopulationAxes(populationSignature);
+  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
+
   // ── STEP 1: RESOLVE — resolveAndRehost wraps temp mp4 rehost ──────────────────
   // cleanup MUST run in finally (T-03-02 — derive-and-drop invariant).
   // resolve_failed is caught outside the try/finally so cleanup is still attempted below
@@ -246,6 +261,18 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     // cards. This rates the ADAPTED hook text only — never a full-video score (Pitfall 5).
     const candidates = concepts.map((c, i) => ({ id: String(i), text: c.hook }));
 
+    // ── Audience Sim v2 (Stage 2): characterize each adapted hook CONCURRENTLY with the SIM ──
+    // Fired BEFORE awaiting the batch so they run in parallel (no serial latency — mirrors
+    // hooks/ideas). Each resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call
+    // failure degrades to null (that card omits population). Gated off entirely for audiences
+    // without the v2 axes → all null, no LLM calls, byte-identical old behaviour. Characterized on
+    // the SAME adapted `hook` the SIM reacts to (opener-scoped, Pitfall 5), so they agree.
+    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
+      wantPopulation
+        ? characterizeContent(c.text, populationVocab).catch(() => null)
+        : Promise.resolve(null),
+    );
+
     // ── STAGE: Simulating your audience (real boundary — batched Flash on the adapted hooks) ──
     input.onStage?.("Simulating your audience", "active");
     const batch = await runFlashTextModeBatch(
@@ -265,6 +292,9 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
     allWarnings.push(...batch.warnings);
     input.onStage?.("Simulating your audience", "done");
 
+    // Collect the (already in-flight) content vectors — indexed to match `concepts`/candidates.
+    const vectors = await Promise.all(vectorPromises);
+
     // Rank helpers (S3′): band tier → stop-count.
     const bandOrdinal = (b: "Strong" | "Mixed" | "Weak") =>
       b === "Strong" ? 0 : b === "Mixed" ? 1 : 2;
@@ -279,6 +309,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       fraction: string;
       scrollQuote: string;
       personas: FlashPersona[];
+      population?: PopulationAggregate; // Audience Sim v2 Stage 2 — the N-individual projection
       generationIndex: number;
     }
 
@@ -294,7 +325,21 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       const personas = sim.personas;
       const { band, fraction } = aggregateFlash(personas, flashWeighting);
       const scrollQuote = selectLeadScrollQuote(personas);
-      rated.push({ concept, band, fraction, scrollQuote, personas, generationIndex: i });
+
+      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
+      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
+      // field). Never let the projection break a card: the SIM band/fraction stays load-bearing.
+      let population: PopulationAggregate | undefined;
+      const vector = vectors[i];
+      if (populationSignature && vector) {
+        try {
+          population = reactPopulation(populationSignature, vector);
+        } catch {
+          population = undefined;
+        }
+      }
+
+      rated.push({ concept, band, fraction, scrollQuote, personas, population, generationIndex: i });
     });
 
     if (rated.length === 0) {
@@ -387,6 +432,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
 
           // S3′: per-card reaction for the ambient modal (PR-2)
           personas: r.personas,
+
+          // Audience Sim v2 (Stage 2) — the N-individual population projection (adapted-hook).
+          // Omitted when the audience lacks the v2 axes or characterization failed → pre-v2 shape.
+          ...(r.population ? { population: r.population } : {}),
         },
       };
 

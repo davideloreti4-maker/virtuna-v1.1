@@ -264,7 +264,7 @@ export async function POST(request: Request): Promise<Response> {
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
   // the request body — session/thread only (CR-01). No thread (meet-ephemeral) → General.
-  const activeAudience = openThread ? await resolveThreadAudience(supabase, openThread) : null;
+  const activeAudience = openThread ? await resolveThreadAudience(supabase, openThread, user.id) : null;
 
   // ── (6) Load prior turns for context anchor (D-01 full running context, D-01a soft cap) ──
   // Open chat → prior `markdown` turns. Persona-grounded chat (P9 / D-03) → prior
