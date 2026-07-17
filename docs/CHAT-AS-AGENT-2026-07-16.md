@@ -14,11 +14,20 @@ the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 > (step-0 spike). Earlier session-3 work still stands: reload fidelity (§4d), analysis-skill dispatch
 > (§4c). **Session 5 (§4f):** multi-turn reload FIXED (per-turn rehydration — §4d gap #1 closed) +
 > grounding arm LIVE-VERIFIED headless (search_corpus fires, answer grounds on real corpus creators).
-> **Still open (ranked):** **(a) OWNER LIVE PASS** — flag-on browser session vs live
-> DashScope+Supabase (owner-auth-gated); the gate before retiring the selector / defaulting the flag on.
-> **(b) selector retirement** (keep until prod-proven). **(c) read/profile as tools** (needs `supabase`
-> on the context + profile WRITES an audience — product call). **(d) light attribution / cite corpus
-> creators.** Live scripts: **sandbox-OFF, foreground** (`npx tsx …`). Tests:
+> **Session 6 (§4g):** live turn persistence (scroll/disappear bug) + premium frameless chat chrome +
+> typing indicator — all owner-hands-on + browser-verified. **Still open (ranked):** **(a) FINISH the
+> OWNER LIVE PASS** — walk EVERY skill via chat (ideas/hooks/script/simulate/predict) with mock OFF,
+> checking latency + correctness; owner did a partial pass (found+fixed the 3 §4g issues). This is the
+> gate before (b). Belt-and-suspenders: re-run the scroll fix with a real hooks dispatch (verified with
+> plain chat; identical code path). **(b) DEFAULT the flag on + retire the selector** (product call,
+> keep until prod-proven). **(c) read/profile as tools** (needs `supabase` on the context + profile
+> WRITES an audience — product call). **(d) light attribution / cite corpus creators** as a formal card
+> (model already cites in prose). **(e) skill-dispatch loading** — show the progress spine (chat.stages
+> already emitted) during the ~1min run instead of only typing dots. **(f) DEV papercut:** mock-mode +
+> unmocked chat = a misleading "rephrase" error (dev-only, prod hard-gates mock off) — clearer message
+> OR add a chat fixture. **(g) branch hygiene:** `spike/corpus-fn-tool` has grown past a spike — merge
+> to main via a clean PR after (a)/(b); clean up the throwaway test account + seeded mock threads.
+> Live scripts: **sandbox-OFF, foreground** (`npx tsx …`). Tests:
 > `node ./node_modules/vitest/vitest.mjs run …` (NOT `npm test`). Enable: `CHAT_AGENT_DISPATCH=true`
 > (+ optional `GROUNDING_CHAT_TOOL=true` to bind the corpus tool).
 
@@ -288,6 +297,40 @@ grounded on real creators quoted **verbatim** (`cassie.schoonover` 421k/5.2×, `
 not hallucinated. So on the streaming loop the tool binds, the model chooses it for strategy asks, and
 rows feed the grounded answer. (Gap (d) "cite corpus creators" — the model already does this in prose;
 a formal citation card is still optional.)
+
+## 4g. Session 6 — live turn persistence + premium chat chrome (owner hands-on pass)
+
+Owner ran the flag-on chat hands-on and surfaced three issues; all fixed + browser-verified (real
+DashScope, the throwaway account, a live multi-turn thread).
+
+1. **Scroll/disappear (functional).** After a skill dispatch the earlier turns vanished (owner: "couldn't
+   scroll up"; a reload brought them back). Root cause: `useChatStream` holds only the CURRENT turn
+   (reset per send) and `persistedChatTurns` loaded only on mount, so live multi-turn dropped prior
+   turns. Fix (`composer.tsx`): on `chat.isDone`, re-read the open thread into `persistedChatTurns` THEN
+   `chat.reset()` in ONE commit — each finished turn swaps live→persisted, nothing disappears, region
+   stays scrollable. Live now renders identically to a reload. Also made the mount populate of
+   `persistedChatTurns` UNCONDITIONAL (only rendered in the chat view, so selector threads are
+   unaffected — DEFAULT_TOOL is "chat", so a pure plain-chat thread now rehydrates per-turn too).
+   Verified live: 4-turn thread, all turns persist, scroll works both ways, 0 console errors.
+
+2. **Frameless premium chrome (visual).** Every turn was wrapped in a bordered "Chat · General"
+   `SkillResultCard` (the §4f per-turn fix multiplied it). Owner wants a Claude/Perplexity feel. Fix
+   (`chat-thread-view.tsx`): assistant answers render as clean prose under a quiet "Maven" label — NO
+   frame, NO header; skill cards self-frame so they lost the redundant wrapper too. `SkillResultCard`
+   import dropped from the chat view (still used by other surfaces).
+
+3. **Typing indicator (visual).** Replaced the heavy centered constellation skeleton (chat variant) with
+   `ChatTypingIndicator` (`thread-loading.tsx`) — three soft pulsing dots under the label, reduced-motion
+   aware. Old skeleton still used for the "Opening thread…" rehydrate state + other views.
+
+**Proof.** `chat-thread-view` +2 tests (typing indicator present + no result-card header; old
+`thread-loading-skeleton` gone); 236 green across thread/home/chat-route; tsc clean. Browser: frames
+gone (computed-style, no border), typing indicator (component test), scroll/persistence (4-turn live).
+
+**Gotcha surfaced (NOT a bug).** Flag-on chat 503s with a misleading "That answer didn't come through —
+rephrase" when **mock mode is armed** (`numen_mock` cookie / ⚙ DevMockPanel "Mock skills" toggle),
+because the chat skill has no mock fixture. Dev-only (prod hard-gates mock off). Fix while testing:
+toggle Mock OFF. Candidate polish = (f) in START HERE.
 
 ## 5. Guardrails (hold these)
 
