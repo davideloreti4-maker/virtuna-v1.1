@@ -46,6 +46,7 @@ import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
 import { BrainView } from './BrainView';
 import type { AmbientFocusSibling } from './ambient-presence-types';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface AmbientRoomProps {
@@ -53,6 +54,11 @@ export interface AmbientRoomProps {
    *  The flat text-skill shape (binary verdict + quote); rebuilt into nodes here. Optional
    *  when `personaNodes` is supplied instead (the rich video-Read path). */
   flatPersonas?: FlatPersonaReaction[];
+  /** The Audience Sim v2 population projection (Stage 2) — a REAL O(N) score of ~1,000
+   *  sampled individuals. When present it drives the Population·1,000 view's NUMBERS + the
+   *  per-segment split (the 10 personas above still supply the VOICES); absent ⇒ that view
+   *  falls back to the honest-lean rollup of the 10. */
+  population?: PopulationAggregate;
   /** Pre-built rich PersonaNodes (the video Read's `buildAudienceNodes` — real names,
    *  quotes, archetypes, continuous watch-through). When present it is used DIRECTLY,
    *  bypassing the flat rebuild, so the video's richer signal is not binarised away. The
@@ -161,6 +167,7 @@ const meterTone = (stop: number, total: number): string => {
 
 export function AmbientRoom({
   flatPersonas,
+  population,
   personaNodes,
   embedded = false,
   conceptText,
@@ -504,6 +511,7 @@ export function AmbientRoom({
             ) : (
               <PopulationView
                 nodes={nodes}
+                population={population}
                 total={total}
                 stopCount={stopCount}
                 reducedMotion={reducedMotion}
@@ -662,14 +670,20 @@ function PeopleView({
 }
 
 /**
- * Population · 1,000 — the v6 hero. Everything is computed PURELY from the real 10's verdicts
- * (never a fabricated crowd): the stay/bounce headline + the stats bar + the weak spot are the
- * same signal at a denser resolution (1,000 modeled from your N — NOT 1,000 model calls). The
- * WEAK SPOT (who bounced + their exact words) is the diagnostic value. Coral marks only the
- * bounce (dosage LOCKED). Play reveals the swarm by stable index order (deterministic).
+ * Population · 1,000 — the v6 hero. Two data modes:
+ *   - REAL (Audience Sim v2 Stage 2): when a `population` aggregate is supplied, the stay/bounce
+ *     headline + stats bar + per-segment split are a genuine O(N) score of ~1,000 individuals
+ *     SAMPLED off the audience's segments (a projection, not 1,000 replies) — a distribution the
+ *     10's rollup cannot produce (different hooks light different segments).
+ *   - ROLLUP (fallback): with no aggregate, everything is the real 10's verdicts at a denser
+ *     resolution (1,000 modeled from your N — NOT 1,000 model calls), the prior honest-lean v1.
+ * In BOTH modes the WEAK SPOT (who bounced + their exact words) is sourced from the real 10 —
+ * the projection supplies NUMBERS, never fabricated quotes. Coral marks only the bounce (dosage
+ * LOCKED). Play reveals the swarm by stable index order (deterministic).
  */
 function PopulationView({
   nodes,
+  population,
   total,
   stopCount,
   reducedMotion,
@@ -680,6 +694,7 @@ function PopulationView({
   rewriteDelta,
 }: {
   nodes: PersonaNode[];
+  population?: PopulationAggregate;
   total: number;
   stopCount: number;
   reducedMotion: boolean;
@@ -692,16 +707,23 @@ function PopulationView({
   const stops = nodes.filter((n) => verdictOf(n) === 'stop');
   const bounces = nodes.filter((n) => verdictOf(n) === 'scroll');
   const tot = nodes.length || total || 1;
-  const stayK = Math.round((stops.length / tot) * 1000);
-  const bounceK = Math.round((bounces.length / tot) * 1000);
-  const pct = (x: number) => Math.round((x / tot) * 100);
 
-  // The swarm dot mix — a sample presentation of the 1,000, colored by the REAL stop/bounce
-  // split. Cream-alpha for a stop; accent for a bounce (dosage LOCKED). Deterministic order.
+  // Headline numbers — from the REAL population aggregate when present (a genuine 1,000-individual
+  // projection), else the 10's verdicts scaled to 1,000 (honest-lean rollup). Both are 1,000-scale.
+  const real = population && population.total > 0 ? population : null;
+  const stayK = real ? real.stop : Math.round((stops.length / tot) * 1000);
+  const bounceK = real ? real.scroll : Math.round((bounces.length / tot) * 1000);
+  const roomSize = real ? real.total : 1000;
+  const stopFrac = real ? real.stop / real.total : stops.length / tot;
+  const stopPctInt = real ? real.stopPct : Math.round((stops.length / tot) * 100);
+  const bouncePctInt = 100 - stopPctInt;
+
+  // The swarm dot mix — a sample presentation of the room, colored by the REAL stop/bounce split.
+  // Cream-alpha for a stop; accent for a bounce (dosage LOCKED). Deterministic order.
   const dots = useMemo(() => {
-    const gd = Math.round((stops.length / tot) * SWARM_DOTS);
+    const gd = Math.round(stopFrac * SWARM_DOTS);
     return Array.from({ length: SWARM_DOTS }, (_, i): 'stop' | 'bounce' => (i < gd ? 'stop' : 'bounce'));
-  }, [stops.length, tot]);
+  }, [stopFrac]);
 
   // Reveal-on-Play: null = all shown (static); a number = the count revealed so far.
   const [revealed, setRevealed] = useState<number | null>(null);
@@ -772,7 +794,7 @@ function PopulationView({
         ))}
       </div>
       <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-        1,000 modeled from your {tot}
+        {real ? `${roomSize.toLocaleString()} sampled from your audience · a projection` : `1,000 modeled from your ${tot}`}
         {!reducedMotion && (
           <>
             {' · '}
@@ -791,24 +813,50 @@ function PopulationView({
       {/* STATS BAR — the exact split (loved / mixed / bounced). */}
       <div className="mt-4 border-t border-[var(--color-border)] pt-3.5">
         <div className="flex h-[6px] overflow-hidden rounded-[4px] bg-white/[0.05]">
-          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${pct(stops.length)}%` }} />
-          <span className="h-full bg-[var(--color-accent)]" style={{ width: `${pct(bounces.length)}%` }} />
+          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${stopPctInt}%` }} />
+          <span className="h-full bg-[var(--color-accent)]" style={{ width: `${bouncePctInt}%` }} />
         </div>
         <div className="mt-2 flex justify-between text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
           <span>
-            <b className="font-semibold text-[var(--color-positive)]">{pct(stops.length)}%</b> loved
+            <b className="font-semibold text-[var(--color-positive)]">{stopPctInt}%</b> loved
           </span>
           <span>
-            <b className="font-semibold text-[var(--color-accent-text)]">{pct(bounces.length)}%</b> bounced
+            <b className="font-semibold text-[var(--color-accent-text)]">{bouncePctInt}%</b> bounced
           </span>
         </div>
       </div>
+
+      {/* PER-SEGMENT SPLIT — real mode only (Stage 2). WHICH of your people this lands with,
+          share-sorted. This is the projection's genuine signal: different hooks light different
+          segments (the 10's rollup cannot show this). Meter = each segment's real stop rate. */}
+      {real && real.segments.length > 0 && (
+        <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
+          <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+            Who it lands with
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {real.segments.map((s) => (
+              <li key={s.archetype} className="flex items-center gap-3">
+                <span className="w-[116px] shrink-0 truncate text-[12px] text-foreground" title={s.displayName}>
+                  {s.displayName}
+                </span>
+                <span className="flex h-[5px] flex-1 overflow-hidden rounded-[3px] bg-white/[0.05]">
+                  <span className="h-full bg-[var(--color-positive)]" style={{ width: `${s.stopPct}%` }} />
+                </span>
+                <span className="w-[32px] shrink-0 text-right text-[11px] tabular-nums text-[var(--color-foreground-muted)]">
+                  {s.stopPct}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* WEAK SPOT — who you're losing + their exact words (the diagnostic value). */}
       {weakVoices.length > 0 && (
         <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-            Where you&rsquo;re losing them · {bounceK} of 1,000
+            Where you&rsquo;re losing them · {bounceK} of {roomSize.toLocaleString()}
           </p>
           <ul className="flex flex-col">
             {weakVoices.map((n) => (
@@ -868,7 +916,7 @@ function PopulationView({
             >
               {rewriteBusy
                 ? 'Rewriting for the room…'
-                : `Rewrite to win back the ${pct(bounces.length)}% who bounced →`}
+                : `Rewrite to win back the ${bouncePctInt}% who bounced →`}
             </button>
           )}
         </div>

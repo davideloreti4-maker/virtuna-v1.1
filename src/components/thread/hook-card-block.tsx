@@ -97,6 +97,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     proof,
     grounded,
     target,
+    population,
   } = block.props;
 
   // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →", the forward chain).
@@ -163,6 +164,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
+          population={population}
           rewrite={buildCardRewrite({
             skill: 'hooks',
             fraction,

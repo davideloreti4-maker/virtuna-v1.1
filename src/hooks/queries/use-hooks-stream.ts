@@ -27,8 +27,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookCardBlock, HookCardTarget, HookProof, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp, parseGroundedProp, parseTargetProp } from '@/lib/tools/blocks';
+import type { HookCardBlock, HookCardTarget, HookProof, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -64,6 +64,10 @@ export interface PartialHookCard {
   // nobody we assigned. This is THE field that shows the user the audience model did work, so it
   // is exactly the one whose silent loss would be invisible — five touchpoints, all of them.
   target?: HookCardTarget;
+  // AUDIENCE SIM v2 (Stage 2): the N-individual population projection → the Population·1,000 Sheet.
+  // undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as proof/target:
+  // declared + parsed + carried through toBlocks so it renders live, not only after a reload.
+  population?: PopulationAggregateBlock;
 }
 
 export interface UseHooksStreamReturn {
@@ -273,6 +277,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
+                  population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -449,6 +454,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
                   target: parseTargetProp(props.target), // who this hook was written for + how they reacted
+                  population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                 };
               })
               .filter((c: PartialHookCard) => c.hookLine.length > 0);
@@ -537,6 +543,8 @@ export function useHooksStream(): UseHooksStreamReturn {
         // Same hazard, same fix: the target line is the ONLY visible evidence that the audience
         // model steered anything, and the live stream is where the user watches for it.
         ...(c.target ? { target: c.target } : {}),
+        // Sim v2 Stage 2 — the population projection renders live in the Sheet, not just after reload.
+        ...(c.population ? { population: c.population } : {}),
       },
     }));
   }, [streamingCards]);

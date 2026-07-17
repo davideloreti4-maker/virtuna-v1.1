@@ -104,6 +104,20 @@ export function formatArchetype(archetype: string): string {
   return archetypeDisplayName(archetype);
 }
 
+/**
+ * v2: the display name for a signature persona — prefers the creator-specific `display_name` the
+ * generator wrote ("The Archive Builder"), falling back to the generic archetype label ("Saver")
+ * for legacy/General/preset personas that carry none. Display only (F7: the engine still binds on
+ * `archetype` + `reaction_frame`; this string must never reach a prompt).
+ */
+export function getPersonaDisplayName(persona: {
+  archetype: string;
+  display_name?: string;
+}): string {
+  const custom = persona.display_name?.trim();
+  return custom ? custom : archetypeDisplayName(persona.archetype);
+}
+
 /** Top-N personas by share for card preview lines. */
 export function getTopArchetypes(audience: Audience, n = 2): string[] {
   const roster = [...getPersonaRoster(audience)].sort((a, b) => b.share - a.share);

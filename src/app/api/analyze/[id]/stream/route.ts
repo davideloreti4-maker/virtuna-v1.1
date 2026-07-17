@@ -104,7 +104,7 @@ async function resolveRunRoster(
   // getOpenThread (not createOpenThreadLazy): watching a Read must never create a thread.
   const thread = await getOpenThread(userId);
   const audience = thread
-    ? await resolveThreadAudience(supabase, thread)
+    ? await resolveThreadAudience(supabase, thread, userId)
     : GENERAL_AUDIENCE;
   if (audience.personas.length > 0) return toEntries(audience.personas);
 

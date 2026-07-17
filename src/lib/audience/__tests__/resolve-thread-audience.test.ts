@@ -66,4 +66,46 @@ describe("resolveThreadAudience", () => {
     const result = await resolveThreadAudience(supabase, { active_audience_id: "aud-err" });
     expect(result).toBe(GENERAL_AUDIENCE);
   });
+
+  // ── AUD-SYNC-01: a NULL thread pin + a userId falls back to the user's LAST-USED audience ──
+  // (resolveUserAudience reads user_settings.last_audience_id → getAudience). This keeps the runner
+  // in sync with the composer pill; before the fix a fresh thread hard-defaulted to General.
+  //
+  // resolveUserAudience touches supabase.from("user_settings")…maybeSingle(), so these tests give a
+  // minimal chainable stub for that ONE read (getAudience itself stays mocked on audience-repo).
+  function supabaseWithLastAudience(lastAudienceId: string | null): SupabaseClient {
+    return {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({ data: { last_audience_id: lastAudienceId } }),
+          }),
+        }),
+      }),
+    } as unknown as SupabaseClient;
+  }
+
+  it("falls back to the user's LAST-USED audience when the pin is null and a userId is given", async () => {
+    const lastUsed = { id: "aud-last", is_general: false } as unknown as Audience;
+    getAudienceMock.mockResolvedValue(lastUsed);
+    const db = supabaseWithLastAudience("aud-last");
+
+    const result = await resolveThreadAudience(db, { active_audience_id: null }, "user-1");
+
+    expect(result).toBe(lastUsed);
+    expect(getAudienceMock).toHaveBeenCalledWith(db, "aud-last");
+  });
+
+  it("resolves General when the pin is null, a userId is given, but last_audience_id is null", async () => {
+    const db = supabaseWithLastAudience(null);
+    const result = await resolveThreadAudience(db, { active_audience_id: null }, "user-1");
+    expect(result).toBe(GENERAL_AUDIENCE);
+    expect(getAudienceMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the legacy hard-General fallback when the pin is null and NO userId is given", async () => {
+    const result = await resolveThreadAudience(supabase, { active_audience_id: null });
+    expect(result).toBe(GENERAL_AUDIENCE);
+    expect(getAudienceMock).not.toHaveBeenCalled();
+  });
 });

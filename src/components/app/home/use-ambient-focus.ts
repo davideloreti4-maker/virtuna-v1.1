@@ -32,6 +32,7 @@ import type {
   AmbientFocus,
   AmbientPersonaReaction,
 } from '@/components/audience-lens/ambient-presence-types';
+import type { PopulationAggregate } from '@/lib/audience/population';
 
 /**
  * A focusable card descriptor derived from a rendered card's already-emitted reaction data.
@@ -45,6 +46,9 @@ export interface AmbientCardDescriptor {
   /** The card's own real per-persona reactions (S3′) — registry-enum archetypes when present.
    *  Threaded onto the focus so the Room's People cast + "Ask them why" list are named/real. */
   personas?: AmbientPersonaReaction[];
+  /** The Stage 2 population projection, when a producer computed one (type-to-room does; card
+   *  descriptors don't yet). Carried through so the Population·1,000 view shows real numbers. */
+  population?: PopulationAggregate;
 }
 
 /** The pure inputs the focus decision reads — no DOM, no time, no randomness. */
@@ -71,6 +75,7 @@ function toFocus(d: AmbientCardDescriptor): AmbientFocus {
     fraction: d.fraction,
     scrollQuote: d.scrollQuote,
     personas: d.personas,
+    population: d.population,
   };
 }
 
