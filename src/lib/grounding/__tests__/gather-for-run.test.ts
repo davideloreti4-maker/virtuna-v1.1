@@ -89,13 +89,49 @@ describe("gatherCorpusForRun — read-back first", () => {
     ]);
   });
 
-  it("falls through to the scrape when the cache has too few good rows", async () => {
+  /**
+   * THE SPEND GATE. A cache miss used to reach for Apify on its own — measured 2026-07-17, that
+   * billed the owner on 75% of realistic ideas/script asks (only 3 of 12 cleared the old 0.58
+   * floor), silently and with no way to decline. The scrape is now explicit-only. These three
+   * assert the DEFAULT costs nothing; the trio below assert the authorized path still works.
+   */
+  it("does NOT scrape on a cache miss by default — it degrades to ungrounded, free", async () => {
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather });
+
+    expect(gather).not.toHaveBeenCalled(); // the whole point: no silent Apify bill
+    // `miss` returns 1 partial row — better than nothing, and it cost nothing to have.
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["a"]);
+  });
+
+  it("does NOT scrape when read-back throws, by default", async () => {
+    const warnings: string[] = [];
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(baseInput(warnings), {
+      retrieve: async () => {
+        throw new Error("rpc down");
+      },
+      gather,
+    });
+
+    expect(gather).not.toHaveBeenCalled();
+    expect(result.corpus).toBeUndefined();
+    expect(result.examples).toEqual([]);
+    expect(warnings).toEqual([]); // read-back failure stays invisible to the user
+  });
+
+  it("scrapes on a cache miss ONLY when the user authorized it", async () => {
     const gather = vi.fn<Gather>(async () => ({
       examples: [example("live")],
       stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
     }));
 
-    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather });
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve: miss, gather },
+    );
 
     expect(gather).toHaveBeenCalledOnce();
     expect(result.examples.map((e) => e.teardownId)).toEqual(["live"]);
@@ -108,26 +144,32 @@ describe("gatherCorpusForRun — read-back first", () => {
       stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
     }));
 
-    const result = await gatherCorpusForRun(baseInput(warnings), {
-      retrieve: async () => {
-        throw new Error("rpc down");
+    const result = await gatherCorpusForRun(
+      { ...baseInput(warnings), allowScrape: true },
+      {
+        retrieve: async () => {
+          throw new Error("rpc down");
+        },
+        gather,
       },
-      gather,
-    });
+    );
 
     expect(gather).toHaveBeenCalledOnce();
     expect(result.examples).toHaveLength(1);
     expect(warnings).toEqual([]); // read-back failure is invisible to the user
   });
 
-  it("degrades to ungrounded with a warning only when the scrape ALSO fails", async () => {
+  it("degrades to ungrounded with a warning only when an AUTHORIZED scrape ALSO fails", async () => {
     const warnings: string[] = [];
-    const result = await gatherCorpusForRun(baseInput(warnings), {
-      retrieve: miss,
-      gather: async () => {
-        throw new Error("apify down");
+    const result = await gatherCorpusForRun(
+      { ...baseInput(warnings), allowScrape: true },
+      {
+        retrieve: miss,
+        gather: async () => {
+          throw new Error("apify down");
+        },
       },
-    });
+    );
 
     expect(result.corpus).toBeUndefined();
     expect(result.examples).toEqual([]);

@@ -126,20 +126,38 @@ export function resolveRetrieveConfig(skill?: GroundingSkill): RetrieveConfig {
     // TOPICAL FLOOR — ideas + script only.
     //
     // ⚠️ 0.58 is MIS-CALIBRATED and known to be so. It was measured on the corpus UNFILTERED,
-    // but every runner passes filterPlatform, and the platform-filtered distribution sits lower:
-    // "personal branding for founders" peaks at 0.629 across all 532 rows but only 0.576 across
-    // the 177 TikTok ones — under its own floor. The comment this replaces also claimed off-topic
-    // asks land ≤0.54; "carbonara recipe" measures 0.673. The floor does not separate relevant
-    // from irrelevant, it detects whether the corpus happens to hold your subject.
+    // and the platform-filtered distribution sits lower: "personal branding for founders" peaks
+    // at 0.629 across all 532 rows but only 0.576 across the 177 TikTok ones — under its own
+    // floor. The comment this replaces also claimed off-topic asks land ≤0.54; "carbonara recipe"
+    // measures 0.673. The floor does not separate relevant from irrelevant, it detects whether the
+    // corpus happens to hold your subject.
     //
-    // It is left at 0.58 deliberately: hooks no longer depends on it, and re-tuning it for ideas
-    // needs its own measurement (belief↔reality is genuinely subject-bound, so the fix there is a
-    // better-calibrated floor, NOT this structural path). Re-measure PER PLATFORM before moving it:
-    //   npx tsx scripts/probe-hook-transfer.ts
-    minSimilarity: envFloat("GROUNDING_CACHE_MIN_SIMILARITY", 0.58),
+    // 0.50 (was 0.58, owner call 2026-07-17), measured across the real 532-row corpus on 12
+    // realistic asks — hit rate at each candidate, needing ≥4 admissible rows of the top 12:
+    //   0.58 → 3/12 (25%)   0.55 → 4/12   0.52 → 7/12   0.50 → 9/12 (75%)   0.45 → 12/12
+    //
+    // 0.45 is the only value that ALWAYS hits, and it is a trap: the corpus's median similarity
+    // IS ~0.45, so that floor means "accept a random row". It scores 12 good rows for "cold plunge
+    // benefits", whose best row anywhere is 0.490 — i.e. the corpus holds nothing on the subject
+    // and we would ground belief↔reality on noise. That is the blind transplant the first A/B
+    // measured LOSING. Hooks can sit at 0 because STRUCTURE transfers across subjects; ideas and
+    // script cannot, because their lesson is the subject.
+    //
+    // So the floor is now a QUALITY lever only — it no longer decides cost. A miss degrades to
+    // honestly-ungrounded (free), never to a silent Apify scrape; see gather-for-run `allowScrape`.
+    // 0.50 grounds 75% of asks on genuinely related rows and tells the truth about the other 25%.
+    minSimilarity: envFloat("GROUNDING_CACHE_MIN_SIMILARITY", 0.5),
     fetchCount: 12,
     rank: "topical",
-    filterPlatform: true,
+    // Cross-platform read-back (owner call, 2026-07-17) — matches the structural path above.
+    // The platform gate cost more than it bought: it is the measured cause of the 0.629 → 0.576
+    // collapse that puts an ON-TOPIC ask under its own floor, and it hid the majority of the
+    // corpus (333 IG / 22 YT vs 177 TT) from every TikTok creator. The lesson a teardown carries
+    // — belief↔reality for ideas, the timed beats for script — is a property of the CONTENT, not
+    // of the app it was posted to; the platform-shaped part is format, which the runner already
+    // supplies from the target platform. NOTE: this alone does not restore grounding — the floor
+    // still rejects every measured query (see §the-floor); it removes one of the two blockers.
+    filterPlatform: false,
   };
 }
 
