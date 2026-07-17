@@ -2,8 +2,16 @@
 
 **Worktree:** `~/virtuna-ambient-room` · **Branch:** `milestone/ambient-room-v2` · rebased on `main` @ `4a648e83`
 **Written:** 2026-07-17 (design session, no code written)
-**Status (2026-07-17):** ✅ **P0 RAN — §3 + §5 amended in place from measurements.** One fix shipped
-(`57288baa`, the chat-ledger bug, verified live). P2 → P1 → P3 still to build.
+**Status (2026-07-18):** ✅ **P0 RAN + THREE fixes shipped & verified LIVE.** The moat now works on the
+default road AND reacts as you scroll:
+- `57288baa` — chat-ledger bug (room reacted to the CHIP, not the CARDS). Verified live.
+- `66241a0f` — **scroll-spy re-anchored to the real cards** (was DEAD: sr-only 1×1 markers at y=-1).
+  Shipped ahead of P2; guard fails-first; live-measured across 4 cards. §5.
+- `9b657eb4` — **"See the room →" was a silent no-op on IDEA cards** (ancient conceptText mismatch).
+  Fixed to conform to the ledger SSOT; guard fails-first; live-verified panel bloom. §5.
+**▶ NEXT = P2 (placement/re-parent), then P1 (craft), then P3.** Full run order + open items in §4.
+One residual logged (openRoomForCard matches by concept STRING → duplicate concepts open the first;
+scroll-spy immune) — §5, deferred.
 
 ---
 
@@ -253,12 +261,13 @@ Take the ranked view's grammar as the bar.
    (§6.2's arithmetic is confirmed in code), so still do it *with* the re-parent — just know you are
    deleting a **mode**, not a widget.
 5. Drop the rank numerals; name true ties (§6.3).
-6. 🆕 **Re-anchor the scroll-spy to the real cards** (§5) — `[data-ambient-card]` are `sr-only` 1×1
-   markers at y=-1, so the observer watches nothing and the band is stuck on the last card forever.
-   **P2 does not fix this by itself** (the old note claiming a rail makes it "impossible" is wrong).
-   It belongs in P2 because the fix is the same re-parent: put the markers on the real card wrappers,
-   or observe the cards directly. **Ship it with a guard that fails against today's code first.**
-7. 🆕 **Re-copy `"Type a thought below…"`** — "below" is false in a rail (§3, end).
+6. ✅ **DONE (`66241a0f`, 2026-07-17) — scroll-spy re-anchored to the real cards.** Shipped AHEAD of
+   the re-parent (it did not need P2 after all). The anchor now rides each real card at the one choke
+   point every thread view funnels through (`message-blocks.tsx` `ambientBaseIndex`); the sr-only
+   markers are deleted. Guard `ambient-card-anchors.test.tsx` ran red against the old code first
+   (4 failed, 0 anchors). **Verified LIVE** — see §5. When P2 re-parents the room, this survives
+   untouched: the observer roots on `[data-ambient-card]` wherever the cards render.
+7. 🆕 **Re-copy `"Type a thought below…"`** — "below" is false in a rail (§3, end). **Still open.**
 
 ### P3 — Bugs (separable, some are one-liners)
 See §5. `/dev/cards` and the orphaned routes are independent of everything else and can ship first
@@ -306,26 +315,59 @@ as easy wins.
   merely idle on arrival — it is silent on the main road.
   Same defect in `ambientKindLabel` (`:1815`): chat → `"Concept"`.
   </details>
-- 🔴 **SCROLL-SPY IS DEAD — root-caused + measured in P0. This entry was wrong twice.**
-  The symptom was described as "scroll-spy focus resolving to something out of the viewport". It does
-  not *resolve to the wrong card* — **it never resolves at all.** The band is permanently pinned to
-  the LAST descriptor via `resolveAmbientFocus`'s default-latest fallback.
-  **Measured** (real thread, 5 hook cards): scrolled card 1 (`10/10`) under the focus line → band
-  still `4 of 10`. Scrolled card 2 (`8/10`) → band still `4 of 10`. It never moves.
-  **Cause:** `useAmbientFocus` roots its IntersectionObserver on `[data-ambient-card]`, but those
-  wrappers are the **`sr-only` synthetic markers** (`composer.tsx`, `ambientFocusMarkers`) — all five
-  measure **1×1 at y=-1**, stacked in one `sr-only` box at the top of the thread region, while the
-  real cards sit at **y=1147…2529** (334px each). The observer watches five zero-height boxes above
-  the focus line; the real cards scroll past unobserved. `focusByScroll` is never called.
-  (`focusByTap` **does** work — "See the room →" moves the band correctly, so the ledger + focus +
-  stepper are otherwise sound. The defect is isolated to the scroll-spy axis.)
-  ⛔ **"A rail/header makes this impossible — they'd be side by side" is FALSE.** The markers are
-  decoupled from the cards *regardless of where the panel lives*. A rail would sit there showing the
-  stale last card while you read card 1. **P2 does not fix this; only re-anchoring the observer to the
-  real card DOM does.**
-  🔑 `[[green-test-is-the-accomplice]]` again: `use-ambient-focus.test.ts` is fully green over a dead
-  feature because it calls `focusByScroll(id)` **directly** — it asserts the decision core, and never
-  once asks whether anything in the product ever calls it.
+- ✅ **FIXED + verified LIVE, 2026-07-18 (`66241a0f`) — scroll-spy was DEAD; it now tracks the real cards.**
+  P0 root-caused it (kept below for the record): the band was permanently pinned to the LAST descriptor
+  because `useAmbientFocus` rooted its IntersectionObserver on `[data-ambient-card]` wrappers that were
+  **`sr-only` synthetic markers** at **1×1, y=-1**, stacked at the top of the thread region, while the
+  real cards scrolled past unobserved — `focusByScroll` was never called.
+  **The fix:** delete the sr-only markers; put the anchor on each REAL card at the one choke point every
+  thread view funnels through — `message-blocks.tsx`, opt-in `ambientBaseIndex`. Each reactable card is
+  wrapped in `[data-ambient-card][data-card-id]`, the id resolved by `toAmbientDescriptor` (the SAME
+  function the ledger uses) at the card's true **LEDGER** index — not its DOM index (the tool views
+  render this run's cards ABOVE the earlier ones under an "Earlier" divider; the chat ledger is
+  `[...persisted, ...streaming]`). Non-reactable blocks (markdown, prose) emit no anchor and stay
+  byte-identical. Every thread view (chat/hooks/ideas/script/remix) passes its true offset.
+  **Guard** `ambient-card-anchors.test.tsx` locks the property a shadow copy can't satisfy: every
+  observed node is a real card carrying its own text, and `id → descriptor → concept` equals that text
+  even under the DOM/ledger reversal. Run against the OLD code first: **4 failed, 0 anchors** (the exact
+  symptom, for the right reason — the precondition proves the cards render).
+  🔑 **VERIFIED LIVE, measured not eyeballed** (raw Playwright — screenshots hang on this app — + a
+  minted `@supabase/ssr` session cookie, real 20-idea-card chat thread, :3002): **20 anchors**
+  (min height 311px, spread **y 105→7052**, no longer 1×1 at y=-1), **0** sr-only shadow markers,
+  ids unique + each carrying its own card text, no horizontal scroll, **12px gap** preserved. Scrolling
+  cards under the focus line moved the band across **4 distinct real cards**, and an INDEPENDENT geometry
+  recompute (topmost card in the −48px/−60% focus band) **agreed with the room's reported focus on every
+  probe**. Pre-fix the band never moved off the latest.
+  ⚠️ **`use-ambient-focus.test.ts` stays green over what WAS a dead feature** — it calls `focusByScroll(id)`
+  directly, so it never asked whether anything called it. The new guard is what closes that gap.
+  <details><summary>Note on the P2 assumption (kept for the record)</summary>
+  The old note said "a rail makes this impossible; only P2's re-parent fixes it." Both halves were wrong:
+  the markers were decoupled from the cards regardless of placement, and the fix was independent of the
+  re-parent (it shipped ahead of P2). When P2 re-hosts the room, the observer re-roots on the same
+  `[data-ambient-card]` wherever the cards render — this survives untouched.
+  </details>
+- ✅ **FIXED + verified LIVE, 2026-07-18 (`9b657eb4`) — "See the room →" was a SILENT NO-OP on IDEA cards.**
+  Found while verifying the tap axis (the plan's step 6 assumed "focusByTap was never broken" — true, but
+  the tap routes through `openRoomForCard`, which WAS broken). The idea card fed `openRoomForCard`
+  `` `${title}\n\n${angle}` `` while the ledger keys an idea on its **title alone**
+  (`ambient-descriptors.ts` `hookLine ?? title ?? …`). `openRoomForCard` resolves the tapped card with an
+  exact-string `descriptors.find(x => x.conceptText === conceptText)`, so `title\n\nangle` never matched
+  `title` — the tap fell through: no focus, no bloom. **Idea was the lone offender**; hook (`hookLine`),
+  remix (`adaptedHook`), script (`openingBeatSeed`) already pass the bare ledger key. **Ancient**
+  (since `e0aefea6` / `216df989`), independent of the scroll-spy work — touches none of that diff's files.
+  **Fix** (owner picked conform-to-SSOT): the idea card passes `conceptText={title}` — the SAME key the
+  ledger keys it on. One fact, one source (the PR #306 family). The rewrite anchor keeps the angle
+  deliberately: it's a generation input, not a lookup key.
+  **Guard** (`idea-card-block.test.tsx`): tap "See the room →" and assert it fires
+  `toAmbientDescriptor(block).conceptText` — the ledger's own key, from the same function. Fails against
+  the old `title\n\nangle`.
+  🔑 **VERIFIED LIVE:** tapping a card's CTA now blooms the docked room panel on that exact card (headline
+  "The Door to Nowhere"), scroll unchanged; pre-fix the click fired and nothing happened.
+  ⚠️ **RESIDUAL (pre-existing, ALL card types — NOT introduced here):** `openRoomForCard` matches by
+  concept **STRING**, so two cards with an identical concept open the FIRST (this very thread has a dup:
+  idea-15/idea-16 both "The Infinite Coffee Loop"). The **scroll-spy axis is immune** — it keys on the
+  positional `data-card-id`. Proper fix = thread the descriptor **id** through `ProofUnit` instead of the
+  concept string. Deeper, deferred. Family of `[[green-test-is-the-accomplice]]`.
 - 🔴 **`MADE FOR YOUR AUDIENCE` over a `General · NOT CALIBRATED` audience — ✅ CONFIRMED in P0, and
   it is not a one-liner.** The eyebrow **does not gate on anything**: `idea-card-block.tsx:100`
   hardcodes the string, unconditionally, on every idea card.
