@@ -26,11 +26,13 @@
  * Markdown turns render through MarkdownBlockRenderer via MessageBlocks (not plain text).
  */
 
+import { Fragment } from 'react';
 import { MessageBlocks } from '@/components/thread/message-blocks';
-import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
+import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from '@/components/thread/thread-shell';
 import { SkillResultCard } from '@/components/thread/skill-result-card';
 import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
+import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -39,13 +41,14 @@ export interface ChatThreadViewProps {
   /** Validated markdown blocks from the persisted open thread (rehydration). */
   persistedBlocks: MarkdownBlock[];
   /**
-   * Chat-as-agent reload (CHAT_AGENT_DISPATCH): the FULL ordered assistant block stream for a thread
-   * produced by chat-as-agent — cards + co-pilot lines interleaved in message order. When non-empty it
-   * REPLACES the markdown-only `persistedBlocks` as the persisted body, so a reloaded chat-run ideas
-   * set renders as one thread here (not split into the ideas view). Empty for a normal chat thread →
-   * the markdown-only path is unchanged. Raw blocks (MessageBlocks re-validates each) → loosely typed.
+   * Chat-as-agent reload (CHAT_AGENT_DISPATCH): the thread's ordered TURNS — each the user's question
+   * plus the assistant blocks (cards + co-pilot line) it produced. When non-empty it REPLACES the
+   * markdown-only `persistedBlocks` as the persisted body, so a reloaded multi-turn chat-run renders
+   * as one question-per-card thread here (not one mega-card, and not split into the per-tool views).
+   * Empty for a normal chat thread → the markdown-only path is unchanged. Blocks stay loosely typed
+   * (MessageBlocks re-validates each on render).
    */
-  persistedStream?: unknown[];
+  persistedTurns?: RehydrateTurn[];
   /** In-flight streamed turn (single MarkdownBlock or [] when idle). */
   streamingBlocks: MarkdownBlock[];
   /**
@@ -92,7 +95,7 @@ export interface ChatThreadViewProps {
 
 export function ChatThreadView({
   persistedBlocks,
-  persistedStream = [],
+  persistedTurns = [],
   streamingBlocks,
   streamingCardBlocks = [],
   isStreaming,
@@ -105,10 +108,15 @@ export function ChatThreadView({
   skillLabel = 'Chat',
   audienceLabel = 'General',
 }: ChatThreadViewProps) {
-  // Unified chat-agent reload: the ordered stream (cards + co-pilot lines) REPLACES the markdown-only
-  // persisted body when present. A normal chat thread has an empty stream → markdown-only, unchanged.
-  const hasPersistedStream = persistedStream.length > 0;
-  const hasPersistedContent = hasPersistedStream || persistedBlocks.length > 0;
+  // Unified chat-agent reload: the ordered TURNS (each question + its cards/co-pilot line) REPLACE the
+  // markdown-only persisted body when present. A normal chat thread has no turns → markdown-only path,
+  // byte-identical to the shipped chat.
+  const hasPersistedTurns = persistedTurns.length > 0;
+  // The markdown-only persisted body is the original chat path; it is NOT used when per-turn data is
+  // present (the chat-agent thread also populates persistedBlocks with its markdown, but the turns are
+  // the complete, correctly-attributed source, so they win — matching the old stream-wins precedence).
+  const showMarkdownBody = !hasPersistedTurns && persistedBlocks.length > 0;
+  const hasPersistedContent = hasPersistedTurns || persistedBlocks.length > 0;
   const hasStreamingContent = streamingBlocks.length > 0;
   // Chat-as-agent skill cards streamed this turn (CHAT_AGENT_DISPATCH). Drive the result-card
   // gate too, so a dispatched run that produced ONLY cards (co-pilot line still streaming) shows.
@@ -131,24 +139,31 @@ export function ChatThreadView({
   const nicheLabel = niche && niche.trim() ? niche.trim() : 'your niche';
   const platformLabel = platform && platform.trim() ? platform.trim() : 'your platform';
 
-  // Build raw body arrays for MessageBlocks (it expects unknown[]). A unified chat-agent reload passes
-  // the ordered stream verbatim; a normal chat thread maps its markdown blocks. MessageBlocks
-  // re-validates every block either way (D-14).
-  const persistedBody: unknown[] = hasPersistedStream
-    ? persistedStream
-    : persistedBlocks.map((b) => ({ type: b.type, props: b.props }));
+  // Build raw body arrays for MessageBlocks (it expects unknown[]). The markdown-only path maps its
+  // blocks; the per-turn path passes each turn's blocks verbatim below. MessageBlocks re-validates
+  // every block either way (D-14).
+  const persistedMarkdownBody: unknown[] = persistedBlocks.map((b) => ({ type: b.type, props: b.props }));
 
   const streamingBody: unknown[] = streamingBlocks.map((b) => ({
     type: b.type,
     props: b.props,
   }));
 
+  // The live turn (streaming) renders as a distinct turn AFTER any persisted turns, with its own
+  // question bubble. On a pure reload (no streaming) the persisted turns already include the last
+  // turn's question, so no live turn renders → no duplicate bubble. The markdown-only reload also
+  // renders through this block (its question comes from `userTurn`).
+  const showLiveTurn = hasStreamingContent || hasStreamingCards || showMarkdownBody;
+  const liveQuestion = userTurn?.trim();
+
   return (
     // Idle is NOT this view's business any more. Chat's empty state was a left-aligned
     // prose block that matched nothing else in the app; it now comes from the ONE starter
     // (home-starter.tsx — THE STARTER CONTRACT), rendered by the composer alongside every
     // other skill's. This view owns only what it produces: turns, nudge, error.
-    <ThreadShell userTurn={userTurn}>
+    // userTurn is owned per-turn inside children (persisted turns each carry their own question, and
+    // the live turn renders its own bubble), so ThreadShell's single top bubble is not used here.
+    <ThreadShell userTurn={undefined}>
       {nudgeShown && (
         <p
           className="text-xs text-foreground-muted leading-normal py-1"
@@ -161,31 +176,54 @@ export function ChatThreadView({
 
       {isStreaming && !hasStreamingContent && !hasStreamingCards && <ThreadLoadingSkeleton variant="chat" />}
 
-      {(hasStreamingContent || hasStreamingCards || hasPersistedContent) && (
-        <ThreadAssistantTurn>
-          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
-            {hasStreamingCards && (
-              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in
-              // this thread, ABOVE the co-pilot line. MessageBlocks re-validates every block.
-              <div aria-live="polite" aria-atomic="false">
-                <MessageBlocks body={streamingCardBlocks} />
-              </div>
+      {/* PERSISTED (chat-agent reload): one question-bubble + one result card PER TURN, in order.
+          This is the multi-turn reload fix — turn boundaries are preserved, so each question sits
+          above only the answer it produced instead of every answer collapsing under the last. */}
+      {hasPersistedTurns &&
+        persistedTurns.map((turn, i) => (
+          <Fragment key={i}>
+            {turn.userTurn?.trim() && <ThreadUserTurn text={turn.userTurn.trim()} />}
+            {turn.blocks.length > 0 && (
+              <ThreadAssistantTurn>
+                <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+                  <MessageBlocks body={turn.blocks} />
+                </SkillResultCard>
+              </ThreadAssistantTurn>
             )}
-            {hasStreamingContent && (
-              <div aria-live="polite" aria-atomic="false">
-                <MessageBlocks body={streamingBody} />
-              </div>
-            )}
-            {hasPersistedContent && (
-              <>
-                {hasStreamingContent && (
-                  <div className="border-t border-white/[0.06] pt-4" />
-                )}
-                <MessageBlocks body={persistedBody} />
-              </>
-            )}
-          </SkillResultCard>
-        </ThreadAssistantTurn>
+          </Fragment>
+        ))}
+
+      {/* LIVE turn (in-flight stream) + the markdown-only reload path. Renders its own question bubble
+          from `userTurn`. On a pure chat-agent reload showLiveTurn is false → the persisted turns above
+          are the whole thread (no duplicate last question). */}
+      {showLiveTurn && (
+        <>
+          {liveQuestion && <ThreadUserTurn text={liveQuestion} />}
+          <ThreadAssistantTurn>
+            <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+              {hasStreamingCards && (
+                // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in
+                // this thread, ABOVE the co-pilot line. MessageBlocks re-validates every block.
+                <div aria-live="polite" aria-atomic="false">
+                  <MessageBlocks body={streamingCardBlocks} />
+                </div>
+              )}
+              {hasStreamingContent && (
+                <div aria-live="polite" aria-atomic="false">
+                  <MessageBlocks body={streamingBody} />
+                </div>
+              )}
+              {showMarkdownBody && (
+                <>
+                  {hasStreamingContent && (
+                    <div className="border-t border-white/[0.06] pt-4" />
+                  )}
+                  <MessageBlocks body={persistedMarkdownBody} />
+                </>
+              )}
+            </SkillResultCard>
+          </ThreadAssistantTurn>
+        </>
       )}
 
       {suggestedCTAs.length > 0 && (

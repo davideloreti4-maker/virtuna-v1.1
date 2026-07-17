@@ -78,7 +78,8 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
-import { isChatAgentThread, orderedAssistantBlocks } from "@/components/app/home/rehydrate-thread";
+import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "@/components/app/home/rehydrate-thread";
+import type { RehydrateTurn } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
 import { ScriptThreadView } from "@/components/thread/script-thread-view";
 import { useRemixStream } from "@/hooks/queries/use-remix-stream";
@@ -409,11 +410,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
-  // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): the FULL ordered assistant block stream for a
-  // thread stamped chat-agent (rehydrate-thread.ts). Non-empty ONLY for such threads → the chat view
-  // renders the whole thread as one ordered stream instead of segregating cards into per-tool views.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [persistedChatStream, setPersistedChatStream] = useState<any[]>([]);
+  // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): the thread's ordered TURNS (each question + the
+  // cards/co-pilot line it produced), from rehydrate-thread.ts. Non-empty ONLY for chat-agent threads →
+  // the chat view renders each question above only its own answer (multi-turn reload fidelity) instead
+  // of segregating cards into per-tool views.
+  const [persistedChatTurns, setPersistedChatTurns] = useState<RehydrateTurn[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -700,6 +701,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setPersistedIdeaBlocks([]);
       setPersistedHookBlocks([]);
       setPersistedChatBlocks([]);
+      // Clear the chat-agent turns too — without this, "New Thread" kept the prior chat-agent thread's
+      // turns rendering under the fresh thread until the reload fetch resolved.
+      setPersistedChatTurns([]);
       setPersistedScriptBlocks([]);
       setPersistedRemixBlocks([]);
       setPersistedExploreBlocks([]);
@@ -775,9 +779,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setPersistedRemixBlocks(remixBlocks);
         setPersistedExploreBlocks(outlierGridBlocks);
         setPersistedProfileBlocks(profileBlocks);
-        // The ordered stream powers the unified chat-view render; empty for non-chat-agent threads so
-        // the per-tool buckets above stay the sole source (byte-identical reload for those).
-        setPersistedChatStream(chatAgentThread ? allBlocks : []);
+        // The ordered TURNS power the unified chat-view render — each question above only its own
+        // answer (multi-turn reload fidelity). Empty for non-chat-agent threads so the per-tool buckets
+        // above stay the sole source (byte-identical reload for those).
+        setPersistedChatTurns(chatAgentThread ? orderedTurns(messages) : []);
 
         // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
         // activeTool defaults to "test", but every thread-view gate (showHooksView,
@@ -804,7 +809,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             }
           }
           // A chat-agent thread lands back in the unified chat view regardless of its last card type —
-          // that view renders the whole ordered stream (persistedChatStream), so the cards show there.
+          // that view renders the whole thread as ordered turns (persistedChatTurns), so the cards show there.
           if (chatAgentThread) restored = 'chat';
           // A thread with cards restores ITS tool. A thread with none — a brand-new thread —
           // resets to the DEFAULT. Without the else, "New Thread" silently inherited the last
@@ -2177,7 +2182,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {showChatView && (
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
-          persistedStream={persistedChatStream}
+          persistedTurns={persistedChatTurns}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
           isStreaming={chat.isStreaming}

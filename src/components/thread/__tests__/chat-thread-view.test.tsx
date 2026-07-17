@@ -79,31 +79,73 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(screen.queryByText('The 5am myth')).toBeNull();
   });
 
-  it('unified reload: persistedStream renders the ordered mixed thread (cards + co-pilot line)', () => {
-    // On reload of a chat-agent thread the composer passes the FULL ordered stream here; MessageBlocks
-    // renders each block by type, so a chat-run ideas set shows IN the chat view (not the ideas view).
+  it('unified reload: a turn renders its question + its ordered mixed answer (cards + co-pilot line)', () => {
+    // On reload of a chat-agent thread the composer passes ordered TURNS here; each turn is a question
+    // plus its own blocks. MessageBlocks renders each block by type, so a chat-run ideas set shows IN
+    // the chat view (not the ideas view), with the question above it.
     renderWithClient(
       <ChatThreadView
         {...baseProps}
-        persistedStream={[
-          IDEA_CARD,
-          { type: 'markdown', props: { text: "I've generated 3 angles — want hooks?", origin: 'chat-agent' } },
+        persistedTurns={[
+          {
+            userTurn: 'give me 3 ideas about morning routines',
+            blocks: [
+              IDEA_CARD,
+              { type: 'markdown', props: { text: "I've generated 3 angles — want hooks?", origin: 'chat-agent' } },
+            ],
+          },
         ]}
       />,
     );
+    expect(screen.getByText('give me 3 ideas about morning routines')).toBeTruthy(); // the question bubble
     expect(screen.getByText('The 5am myth')).toBeTruthy(); // the card
     expect(screen.getByText(/want hooks/i)).toBeTruthy(); // the co-pilot line, same thread
   });
 
-  it('persistedStream takes precedence over markdown-only persistedBlocks when both are present', () => {
+  it('MULTI-TURN reload: each question sits above only its own answer (the reload-fidelity fix)', () => {
+    // The bug this locks: a 2-turn thread reloaded as ONE card under the LAST question, dropping the
+    // first question and reattaching its answer under the second. Per-turn rendering must keep both
+    // questions AND order the first answer before the second question.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[
+          {
+            userTurn: 'what makes a good hook?',
+            blocks: [{ type: 'markdown', props: { text: 'A good hook is a specific prediction error.', origin: 'chat-agent' } }],
+          },
+          {
+            userTurn: 'give me 3 ideas about morning routines',
+            blocks: [IDEA_CARD],
+          },
+        ]}
+      />,
+    );
+    // Both questions survive (the first was previously dropped).
+    expect(screen.getByText('what makes a good hook?')).toBeTruthy();
+    expect(screen.getByText('give me 3 ideas about morning routines')).toBeTruthy();
+    // Attribution by DOM order: Q1 → its answer → Q2 → its answer. The hook explainer must land BEFORE
+    // the ideas question, not under it (the misattribution the bug produced).
+    const text = document.body.textContent ?? '';
+    const iQ1 = text.indexOf('what makes a good hook?');
+    const iA1 = text.indexOf('A good hook is a specific prediction error.');
+    const iQ2 = text.indexOf('give me 3 ideas about morning routines');
+    const iA2 = text.indexOf('The 5am myth');
+    expect(iQ1).toBeGreaterThanOrEqual(0);
+    expect(iA1).toBeGreaterThan(iQ1);
+    expect(iQ2).toBeGreaterThan(iA1);
+    expect(iA2).toBeGreaterThan(iQ2);
+  });
+
+  it('persistedTurns take precedence over markdown-only persistedBlocks when both are present', () => {
     renderWithClient(
       <ChatThreadView
         {...baseProps}
         persistedBlocks={[{ type: 'markdown', props: { text: 'markdown-bucket-only' } }] as MarkdownBlock[]}
-        persistedStream={[IDEA_CARD]}
+        persistedTurns={[{ userTurn: 'q', blocks: [IDEA_CARD] }]}
       />,
     );
-    // The ordered stream wins: the card shows, the markdown-only bucket is not double-rendered.
+    // The ordered turns win: the card shows, the markdown-only bucket is not double-rendered.
     expect(screen.getByText('The 5am myth')).toBeTruthy();
     expect(screen.queryByText('markdown-bucket-only')).toBeNull();
   });
