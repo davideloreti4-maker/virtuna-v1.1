@@ -50,6 +50,13 @@ export interface HooksThreadViewProps {
   stages: StageState[];
   /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
   followupText: string | null;
+  /**
+   * Run-level degrade notices from the `warning` SSE event — e.g. per-persona targeting drifted
+   * (target-assignment.ts) or grounding fell back to ungrounded. [] on a clean run. The route has
+   * emitted these since grounding shipped; until 2026-07-17 nothing rendered them, so a degrade was
+   * indistinguishable from a clean run at the glass.
+   */
+  warnings: string[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string from the stream (truthy = skill run failed — render W2 error block). */
@@ -75,6 +82,7 @@ export function HooksThreadView({
   streamingBlocks,
   stages,
   followupText,
+  warnings,
   isStreaming,
   error,
   platform,
@@ -157,6 +165,11 @@ export function HooksThreadView({
                 </div>
               )}
 
+              {/* Degrade notices — shown once the run settles, below the result. A degrade is not
+                  a failure (the cards are real), so this reads as an informational note, not the
+                  W2 error block. Hidden entirely on a clean run. */}
+              {!isStreaming && warnings.length > 0 && <RunWarnings warnings={warnings} />}
+
               {/* Outro — the engine's real follow-up (restyled) + the forward chip. */}
               {!isStreaming && (
                 <ThreadOutro
@@ -181,6 +194,38 @@ export function HooksThreadView({
         </HookWriteScriptContext.Provider>
       </HookTestContext.Provider>
     </PlatformContext.Provider>
+  );
+}
+
+// ── RunWarnings ───────────────────────────────────────────────────────────────
+
+/**
+ * Run-level degrade notices from the `warning` SSE event. A degrade is NOT a failure — the cards
+ * are real and were charged — so this is a quiet informational note (role="status"), never the W2
+ * error block. Renders the pipeline's own warning strings verbatim (e.g. a per-persona targeting
+ * mismatch, or grounding falling back to ungrounded) so the reader sees exactly what shifted.
+ * Caller guarantees warnings.length > 0.
+ */
+interface RunWarningsProps {
+  warnings: string[];
+}
+
+function RunWarnings({ warnings }: RunWarningsProps) {
+  return (
+    <div
+      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1"
+      role="status"
+      aria-live="polite"
+    >
+      <p className="text-[11px] uppercase tracking-wide" style={{ color: 'var(--color-cream-muted)' }}>
+        Heads up — this run degraded
+      </p>
+      {warnings.map((w, i) => (
+        <p key={i} className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
+          {w}
+        </p>
+      ))}
+    </div>
   );
 }
 
