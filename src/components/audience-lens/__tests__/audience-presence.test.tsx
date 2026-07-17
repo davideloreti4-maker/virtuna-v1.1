@@ -635,6 +635,32 @@ describe("AudiencePresence — variant='rail' (persistent, in-flow, no bloom)", 
   });
 });
 
+// ── variant='header' — the <xl mobile/tablet presentation (P2 · A2b) ──
+// A compact bar ABOVE the thread that expands DOWNWARD (a top-full sheet), not the composer-fused
+// tab that blooms upward. Same body; the container + bloom direction flip. These lock the flip and
+// fail against pre-header code (which renders the upward 'thread' peek/bloom for any variant).
+describe("AudiencePresence — variant='header' (mobile, expands downward)", () => {
+  it('collapsed: a standalone rounded bar (not the composer-fused, rounded-top tab)', () => {
+    setup({ variant: 'header', open: false, focus: FOCUS });
+    const bar = screen.getByRole('button', { name: /open your audience/i });
+    // Header = a standalone all-corners bar; the thread tab is rounded-top-only, fused to the composer.
+    expect(bar.className).toMatch(/rounded-\[12px\]/);
+    expect(bar.className).not.toMatch(/rounded-t-\[14px\]/);
+  });
+
+  it('open: the sheet blooms DOWN (top-full), never up (bottom-full)', () => {
+    setup({ variant: 'header', open: true, focus: FOCUS });
+    const panel = screen.getByTestId('audience-panel');
+    expect(panel.className).toMatch(/top-full/);
+    expect(panel.className).not.toMatch(/bottom-full/);
+  });
+
+  it('surfaces data-variant="header" on the dock root', () => {
+    setup({ variant: 'header', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('header');
+  });
+});
+
 // ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {

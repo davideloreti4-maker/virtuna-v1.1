@@ -1779,6 +1779,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // collapsing to the centered hero. Empty home (no thread, not rehydrating) keeps
   // the existing centered hero layout (no regression).
   const homeThreadMode = (hasThread || rehydrating) && !hasSimulation;
+  // P2 (A2b): <xl thread mode, the room is a 68px HEADER above the thread (variant='header'),
+  // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
+  // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
+  const useHeader = homeThreadMode && !isXl;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // The room's card ledger + the batch's kind label for the anchored-focus stepper
@@ -2030,6 +2034,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Same props (same focus/asks/reacting state), so the rail reacts to scroll-spy exactly as the
   // dock peek did; only the container + DOM owner change. Rendered ONLY via the portal below.
   const audienceRail = <AudiencePresence {...presenceCommonProps} variant="rail" />;
+  // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
+  // TOP of the thread branch (below), not the dock.
+  const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2560,9 +2567,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
-      {/* The audience room. ≥xl thread mode → PORTALED to HomePageLayout's right rail (A2a); every
-          other state → the dock peek/bloom, byte-identical to before. Exactly one mounts. */}
-      {useRail && railHost ? createPortal(audienceRail, railHost) : audiencePresence}
+      {/* The audience room, ONE mount routed by breakpoint/mode:
+          ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
+          <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
+          empty / permalink → the dock peek/bloom, byte-identical to before. */}
+      {useRail && railHost
+        ? createPortal(audienceRail, railHost)
+        : useHeader
+          ? null
+          : audiencePresence}
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
@@ -2660,6 +2673,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           className,
         )}
       >
+        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A 68px bar
+            above the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
+            shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
+            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash. */}
+        {useHeader && (
+          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
+            <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
+          </div>
+        )}
         {/* Scrollable thread region — full width, fills the FULL shell height and scrolls
             UNDER the floating dock (the dock is absolutely positioned below, not in flow).
             The bottom padding clears the collapsed dock so the last message can rest just

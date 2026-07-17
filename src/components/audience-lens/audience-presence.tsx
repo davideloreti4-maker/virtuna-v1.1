@@ -160,10 +160,14 @@ export interface AudiencePresenceProps {
    *
    *  'rail' = the PERSISTENT presentation (P2, ambient-room-v2). The panel BODY is always shown
    *  in-flow inside a fixed-height column — it never blooms, never collapses, has no z-[55] overlay
-   *  and no rise animation. The desktop right rail (≥xl) and the mobile expand-sheet host this. The
-   *  inner <AmbientRoom>/idle cast is byte-identical to the 'thread' panel; only the CONTAINER
-   *  changes (an absolute upward bloom → an in-flow card), so this is a re-host, not a rebuild. */
-  variant?: 'thread' | 'surface' | 'rail';
+   *  and no rise animation. The desktop right rail (≥xl) hosts this. The inner <AmbientRoom>/idle
+   *  cast is byte-identical to the 'thread' panel; only the CONTAINER changes (an absolute upward
+   *  bloom → an in-flow card), so this is a re-host, not a rebuild.
+   *
+   *  'header' = the <xl mobile/tablet presentation (P2 · A2b). A compact 68px bar that expands
+   *  DOWNWARD (a `top-full` sheet over the thread) instead of upward — it sits ABOVE the thread and
+   *  survives the keyboard because it is top-anchored, not bottom-pinned. Same body; the bloom flips. */
+  variant?: 'thread' | 'surface' | 'rail' | 'header';
 }
 
 export function AudiencePresence({
@@ -204,6 +208,10 @@ export function AudiencePresence({
   // bloom, but the container is a static full-height card: no `absolute bottom-full z-[55]`, no
   // rise animation, no collapse chevron. It shows regardless of `open` (the rail never dismisses).
   const isRail = variant === 'rail';
+  // 'header' = the <xl mobile/tablet presentation (P2 · A2b): a compact 68px bar at rest that
+  // expands DOWNWARD (open ⇒ a top-full sheet over the thread) instead of upward. It survives the
+  // keyboard because it's TOP-anchored, not bottom-pinned. Same body; only the bloom flips.
+  const isHeader = variant === 'header';
   const effectiveCanRewrite = isSurface ? false : canRewrite;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // "Meet your room" persona chat — the idle-cast introduction (meet-mode: no reaction yet).
@@ -724,9 +732,18 @@ export function AudiencePresence({
           aria-label="Your audience"
           className={
             isRail
-              ? // Persistent rail/header card: static, full-height, matte (12px radius, no shadow,
-                // no upward-bloom transform). Fills its host column; the body scrolls internally.
+              ? // Persistent rail card: static, full-height, matte (12px radius, no shadow, no
+                // bloom transform). Fills its host column; the body scrolls internally.
                 'relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-none'
+              : isHeader
+              ? // Header sheet: blooms DOWN from the 68px bar (top-full) over the thread, capped +
+                // internally scrolled. Rounded BOTTOM, no top border (flush into the bar); rises
+                // from the top edge (-translate-y).
+                'absolute top-full left-0 right-0 z-[55] flex max-h-[70dvh] flex-col overflow-hidden rounded-b-[22px] border border-t-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-float)] ' +
+                (reducedMotion
+                  ? ''
+                  : 'transition-[transform,opacity] duration-300 ease-out ' +
+                    (risen ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'))
               : 'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
                 (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
                 (reducedMotion
@@ -737,6 +754,10 @@ export function AudiencePresence({
           style={
             isRail
               ? undefined
+              : isHeader
+              ? reducedMotion
+                ? undefined
+                : { willChange: 'transform' }
               : {
                   ...(reducedMotion ? {} : { willChange: 'transform' }),
                   // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
@@ -754,7 +775,8 @@ export function AudiencePresence({
               {openPulse}
             </span>
             {arrivalBadge}
-            {/* Collapse — 'thread' bloom only. The rail never dismisses (§2), so it has no chevron. */}
+            {/* Collapse — bloom presentations only. The rail never dismisses (§2), so no chevron.
+                'thread' blooms up ⇒ collapse points down; 'header' blooms down ⇒ collapse up. */}
             {!isRail && (
               <button
                 type="button"
@@ -762,7 +784,11 @@ export function AudiencePresence({
                 aria-label="Collapse your audience"
                 className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
               >
-                <ChevronDown className="h-4 w-4" aria-hidden />
+                {isHeader ? (
+                  <ChevronUp className="h-4 w-4" aria-hidden />
+                ) : (
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                )}
               </button>
             )}
           </div>
@@ -895,11 +921,11 @@ export function AudiencePresence({
           )}
         </div>
       ) : (
-        /* ── COLLAPSED: a tab CONNECTED to the composer top — narrower than the composer (inset on
-              both sides), no gap, rounded TOP corners only, square bottom flush into the composer.
-              Same surface tone as the composer (surface-elevated) so it reads as one continuous
-              surface — no darker backing plate behind it; tap to bloom open. ── */
-        <div className="px-4">
+        /* ── COLLAPSED: at rest. 'thread' → a tab CONNECTED to the composer top (rounded TOP only,
+              square bottom flush into the composer). 'header' (A2b) → a standalone rounded bar
+              ABOVE the thread that expands DOWNWARD. Same tone as the composer (surface-elevated),
+              tap to open. ── */
+        <div className={isHeader ? '' : 'px-4'}>
           <div
             role="button"
             tabIndex={0}
@@ -916,7 +942,14 @@ export function AudiencePresence({
                using it as the hover background swaps the opaque surface for a translucent
                one and the thread scrolling behind the dock shows straight through. The tab
                floats over that scroll, so its fill stays opaque — lift it with a solid tone. */
-            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 transition-colors hover:bg-[#32312e]"
+            className={
+              'flex w-full items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 transition-colors hover:bg-[#32312e] ' +
+              (isHeader
+                ? // Standalone bar, all corners rounded, taller (the 68px header target).
+                  'rounded-[12px] py-2.5'
+                : // Tab fused to the composer top: rounded top only, square bottom.
+                  'rounded-t-[14px] border-b-0 py-1.5')
+            }
             style={{ cursor: 'pointer' }}
           >
             {identity}
@@ -936,7 +969,12 @@ export function AudiencePresence({
               ) : null}
             </span>
             {arrivalBadge}
-            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            {/* Direction of expansion: 'thread' blooms UP (chevron up); 'header' expands DOWN. */}
+            {isHeader ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            ) : (
+              <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            )}
           </div>
         </div>
       )}
