@@ -148,6 +148,8 @@ export function CalibrationFlow({ audience, onDone, onSkip, prefillHandle, prefi
                   displayName: parsed.displayName ?? parsed.handle,
                   avatarUrl: parsed.avatarUrl ?? "",
                   followerCount: parsed.followerCount ?? 0,
+                  heartCount: parsed.heartCount ?? 0,
+                  videoCount: parsed.videoCount ?? 0,
                   videos: parsed.videos ?? [],
                 });
               }

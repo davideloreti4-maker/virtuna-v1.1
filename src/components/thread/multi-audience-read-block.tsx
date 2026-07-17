@@ -190,6 +190,14 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
           <TrustBadge tier={block.props.tier ?? 'Directional'} />
         </div>
 
+        {/* Orphaned-pin fallback (P3): the thread's pinned audience no longer exists, so this
+            Read scored General instead — said out loud, once, quietly. Never a silent swap. */}
+        {block.props.fallback === 'audience-removed' && (
+          <p className="text-[12px] text-foreground-muted">
+            Audience removed · scoring against General.
+          </p>
+        )}
+
         {/* 2-audience compare: the side-by-side verdict header (wins-for-X / bombs-for-Y). */}
         {isCompare && <CompareVerdictRow audiences={audiences} />}
 

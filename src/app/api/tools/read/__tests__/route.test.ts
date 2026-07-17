@@ -11,8 +11,12 @@
  *   - Bad explicit id: POST { concept, audienceIds: [a, missing] } → 400
  *     { error: "audience_not_found" } and runTwoAudienceRead is NOT called (no silent
  *     General fallback for an explicit pick, CR-01).
- *   - Default path preserved: POST { concept } with no audienceIds → 200 (the shipped
- *     active-vs-General path still runs).
+ *   - Default path (P3): POST { concept } with no audienceIds reads the SELECTED
+ *     audience ALONE — the pinned audience when the thread carries one, General when
+ *     nothing is pinned. NEVER a forced [active, General] pair (the killed double-score).
+ *   - Orphaned pin (P3): a pinned id whose row is GONE falls back to General AND the
+ *     block carries fallback: "audience-removed" — said out loud, never silent. A
+ *     transient getAudience THROW keeps the silent General fallback (not "removed").
  *   - Unauthorized: no user → 401 (auth-first, T-03-07).
  */
 
@@ -237,19 +241,45 @@ describe("POST /api/tools/read — bad explicit id (no silent General fallback, 
   });
 });
 
-describe("POST /api/tools/read — default path preserved (08-06 smoke)", () => {
-  it("runs the active-vs-General path when no audienceIds are supplied", async () => {
-    // No audienceIds → default path. active_audience_id is null → General active.
+describe("POST /api/tools/read — single-audience default (P3)", () => {
+  it("reads General ALONE when nothing is pinned — no forced pair", async () => {
+    // No audienceIds → default path. active_audience_id is null → General, alone.
     const res = await callPOST({ concept: "a calm morning routine" });
 
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body).toHaveProperty("block");
 
-    // The default path did not break: the Read ran exactly once.
+    // ONE audience reaches the runner. The old route always passed [active, General].
     expect(mockRunTwoAudienceRead).toHaveBeenCalledTimes(1);
     const [, audiences] = mockRunTwoAudienceRead.mock.calls[0]!;
-    expect(audiences).toHaveLength(2);
+    expect(audiences).toHaveLength(1);
+    expect(audiences[0].is_general).toBe(true);
+  });
+
+  it("reads the PINNED audience alone — General is not dragged in as a second side", async () => {
+    const pinned = makeAudience("aud-pinned", "Growth");
+    mockCreateOpenThreadLazy.mockResolvedValue({
+      id: "thread-1",
+      type: "open",
+      user_id: "user-1",
+      reading_id: null,
+      active_audience_id: "aud-pinned",
+    });
+    mockGetAudience.mockImplementation(async (_supabase: unknown, id: string) =>
+      id === "aud-pinned" ? pinned : null,
+    );
+
+    const res = await callPOST({ concept: "a calm morning routine" });
+
+    expect(res.status).toBe(200);
+    // The killed double-score: exactly ONE audience, the pinned one, no General.
+    const [, audiences] = mockRunTwoAudienceRead.mock.calls[0]!;
+    expect(audiences).toHaveLength(1);
+    expect(audiences[0].id).toBe("aud-pinned");
+    // And no fallback marker — the pin resolved.
+    const body = await res.json();
+    expect(body.block.props.fallback).toBeUndefined();
   });
 
   it("returns 400 when concept is missing (default-path validation intact)", async () => {
@@ -257,5 +287,55 @@ describe("POST /api/tools/read — default path preserved (08-06 smoke)", () => 
 
     expect(res.status).toBe(400);
     expect(mockRunTwoAudienceRead).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/tools/read — orphaned pin says so out loud (P3)", () => {
+  it("marks the block fallback: 'audience-removed' when the pinned row is GONE", async () => {
+    mockCreateOpenThreadLazy.mockResolvedValue({
+      id: "thread-1",
+      type: "open",
+      user_id: "user-1",
+      reading_id: null,
+      active_audience_id: "aud-deleted",
+    });
+    // getAudience resolves NULL — the row was deleted (or the account disconnected).
+    mockGetAudience.mockResolvedValue(null);
+
+    const res = await callPOST({ concept: "a calm morning routine" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+
+    // Fell back to General — but SAID SO on the block, not silently.
+    const [, audiences] = mockRunTwoAudienceRead.mock.calls[0]!;
+    expect(audiences).toHaveLength(1);
+    expect(audiences[0].is_general).toBe(true);
+    expect(body.block.props.fallback).toBe("audience-removed");
+
+    // The persisted block carries the marker too (what the thread re-renders).
+    const [, , persistedBlocks] = mockInsertMessage.mock.calls[0]!;
+    expect(persistedBlocks[0].props.fallback).toBe("audience-removed");
+  });
+
+  it("does NOT claim 'removed' on a transient load error — silent General fallback (D-04)", async () => {
+    mockCreateOpenThreadLazy.mockResolvedValue({
+      id: "thread-1",
+      type: "open",
+      user_id: "user-1",
+      reading_id: null,
+      active_audience_id: "aud-flaky",
+    });
+    // getAudience THROWS — a real DB error, not a missing row. The audience may
+    // still exist, so "Audience removed" would be a false statement.
+    mockGetAudience.mockRejectedValue(new Error("audiences get failed: timeout"));
+
+    const res = await callPOST({ concept: "a calm morning routine" });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    const [, audiences] = mockRunTwoAudienceRead.mock.calls[0]!;
+    expect(audiences[0].is_general).toBe(true);
+    expect(body.block.props.fallback).toBeUndefined();
   });
 });

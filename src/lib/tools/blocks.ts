@@ -651,6 +651,13 @@ export const MultiAudienceReadBlockSchema = z.object({
     // MAX_CONCEPT_LENGTH so a payload the route accepts can never fail its own write
     // boundary. Optional + additive: the already-persisted blocks omit it.
     concept: z.string().min(1).max(2000).optional(),
+    // P3 orphaned-pin honesty: the thread's pinned audience no longer resolved (deleted /
+    // disconnected), so this Read scored General instead — and says so. The route sets it;
+    // the renderer maps it to one quiet line ("Audience removed · scoring against General.").
+    // A typed literal, not free text: the fact lives here, the copy lives in the renderer.
+    // RUN-level + optional + additive: persisted blocks omit it, and a transient load error
+    // NEVER sets it (that would claim "removed" about an audience that still exists).
+    fallback: z.literal("audience-removed").optional(),
   }),
 });
 

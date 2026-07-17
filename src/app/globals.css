@@ -350,6 +350,17 @@
   }
 }
 
+/* The primary account's liveness dot (audience rebuild) — the ONE accent element
+ * on the manager surfaces. A slow opacity breathe, motion-only. */
+@keyframes live-breathe {
+  0%, 100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Composer popover (UX-01): a quick upward fade-scale from the trigger's bottom-left.
  * Calm + short (.14s) per the flat-warm taste bar — no bounce, no glow. */
 @keyframes composer-pop {

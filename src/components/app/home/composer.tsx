@@ -770,7 +770,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           (b) =>
             b.type === 'profile-read' ||
             b.type === 'reaction-distribution' ||
-            b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+            b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+            // The Read (P3 follow-up): also tool-agnostic — no composer tool owns it, and
+            // before this line a persisted Read NEVER re-rendered on the thread surface.
+            b.type === 'multi-audience-read',
         );
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
@@ -1060,7 +1063,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         (b: { type?: string }) =>
           b.type === 'profile-read' ||
           b.type === 'reaction-distribution' ||
-          b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+          b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+          b.type === 'multi-audience-read', // the Read — tool-agnostic (mirrors rehydration)
       );
       setPersistedProfileBlocks(profileBlocks);
     } catch {
@@ -2144,10 +2148,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {testSubmitTurn}
       {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
           blocks render here via the shared MessageBlocks renderer (registered in 05-01).
-          NOT gated on activeTool: the evidence-drop affordance is the entry, and the
+          Not gated on any CARD tool: the evidence-drop affordance is the entry, and the
           profile-read card carries its own Simulate CTA → reaction-distribution lands in
-          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only. */}
-      {persistedProfileBlocks.length > 0 && (
+          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only.
+          EXCEPT the chat view: ChatThreadView renders the whole thread as ordered turns
+          (every block type, via the same MessageBlocks registry), so with chat active this
+          bucket would paint the SAME blocks a second time — live-caught when the chat
+          default (#316) met the tool-agnostic bucket (a Read-only thread restored to chat
+          and "The Read" rendered twice, 2026-07-17). */}
+      {!showChatView && persistedProfileBlocks.length > 0 && (
         <div data-testid="profile-thread-view" className="px-1 py-4">
           <MessageBlocks body={persistedProfileBlocks} />
         </div>
