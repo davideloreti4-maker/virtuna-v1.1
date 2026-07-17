@@ -30,6 +30,7 @@
 
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
 import { buildCorpusBlock, type GroundingSkill } from "@/lib/grounding/prompt";
+import { adaptCorpusBlock, type AdaptProfile } from "@/lib/grounding/adapt";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
@@ -54,6 +55,14 @@ export interface GatherCorpusInput {
   onStage?: (name: string, status: "active" | "done") => void;
   /** Runner warning sink — degrade reasons land here (surfaced via the SSE warning event). */
   warnings: string[];
+  /**
+   * Route the retrieved corpus through the grounding-as-REMIX adapt stage (decode→adapt briefer,
+   * adapt.ts) instead of the raw per-skill slice? Default-off; hooks-only in Phase 1. Resolved by
+   * the caller (GROUNDING_HOOKS_ADAPT === "true"). Requires `adaptProfile`; absent → skipped.
+   */
+  adapt?: boolean;
+  /** Creator context the adapt stage re-voices the proven structures toward. */
+  adaptProfile?: AdaptProfile;
 }
 
 /** Platforms whose teardowns live in the corpus and can be retrieved. */
@@ -73,6 +82,7 @@ export interface GatherCorpusResult {
 export interface GatherCorpusDeps {
   retrieve?: typeof retrieveCachedExamples;
   gather?: typeof gatherAndExtract;
+  adapt?: typeof adaptCorpusBlock;
 }
 
 /**
@@ -93,6 +103,30 @@ export async function gatherCorpusForRun(
 
   const retrieve = deps.retrieve ?? retrieveCachedExamples;
   const gather = deps.gather ?? gatherAndExtract;
+  const adapt = deps.adapt ?? adaptCorpusBlock;
+
+  /**
+   * Turn the retrieved exemplars into the `{ corpus, examples }` result the runner consumes.
+   * ONE place so all three retrieval paths (cache hit · non-scrapable partial · live scrape) route
+   * identically: the grounding-as-remix adapt briefer when it is enabled (hooks + a profile),
+   * otherwise the raw per-skill slice. `used` (not the input list) is returned as `examples` so the
+   * runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
+   */
+  const finalize = async (examples: RetrievedExample[]): Promise<GatherCorpusResult> => {
+    if (input.adapt && input.skill === "hooks" && input.adaptProfile && examples.length > 0) {
+      const { corpus, used } = await adapt({
+        skill: input.skill,
+        ask: query,
+        niche: input.niche,
+        platform: input.platform,
+        profile: input.adaptProfile,
+        examples,
+      });
+      return { corpus, examples: used };
+    }
+    const { corpus, used } = buildCorpusBlock(examples, input.skill);
+    return { corpus, examples: used };
+  };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
   try {
@@ -117,8 +151,7 @@ export async function gatherCorpusForRun(
         );
         // `used` (not the input list) — the model can only cite what it was actually shown,
         // and the runner resolves sourceIndex positionally against this array.
-        const { corpus, used } = buildCorpusBlock(cached.examples, input.skill);
-        return { corpus, examples: used };
+        return finalize(cached.examples);
       }
       partial = cached.examples;
       console.info(
@@ -143,8 +176,7 @@ export async function gatherCorpusForRun(
         console.info(
           `[grounding] ${input.platform} is not scrapable — grounding on the ${partial.length} cached teardowns we do have`,
         );
-        const { corpus, used } = buildCorpusBlock(partial, input.skill);
-        return { corpus, examples: used };
+        return finalize(partial);
       }
       console.info(
         `[grounding] no cached teardowns for "${query}" on ${input.platform} and no scraper for it — degrading to ungrounded`,
@@ -157,8 +189,7 @@ export async function gatherCorpusForRun(
       platform: input.platform,
       niche: input.niche,
     });
-    const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return { corpus, examples: used };
+    return finalize(examples);
   } catch (err) {
     input.warnings.push(
       `grounding failed (degraded to ungrounded): ${err instanceof Error ? err.message : String(err)}`,

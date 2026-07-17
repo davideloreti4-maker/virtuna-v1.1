@@ -78,6 +78,22 @@ export function detectSubjectKind(evidence: string): "person" | "panel" {
 
 // ─── Synthesis output contract (reuse the enrich-signature PARTS) ───────────────
 
+// v2 scored axes (mirrors enrich-signature) — the machine side of a persona: named + scored,
+// auditable, feeds Stage 2 population math (reaction) + the virality layer (behavior).
+const ReactionAxesSchema = z.object({
+  interests: z.record(z.string(), z.number().min(0).max(1)).default({}),
+  hookSensitivity: z.number().min(0).max(1).default(0.5),
+  noveltyBias: z.number().min(0).max(1).default(0.5),
+  skepticism: z.number().min(0).max(1).default(0.5),
+  attentionSpan: z.number().min(0).max(1).default(0.5),
+});
+const BehaviorAxesSchema = z.object({
+  watchThrough: z.number().min(0).max(1).default(0.5),
+  sharePropensity: z.number().min(0).max(1).default(0.5),
+  commentPropensity: z.number().min(0).max(1).default(0.5),
+  savePropensity: z.number().min(0).max(1).default(0.5),
+});
+
 /**
  * A reactor as the synthesis LLM returns it — engine fills temperature/disposition.
  * Unlike the scrape bake, `evidence` is REQUIRED non-empty: a verbatim quote from the
@@ -88,6 +104,13 @@ const ProfilePersonaSchema = z.object({
   share: z.number().min(0).max(1),
   reaction_frame: z.string().min(1),
   evidence: z.string().min(1), // TRUST-02 — verbatim evidence quote (never empty)
+  // v2 (Stage 1 mirror of enrich-signature): custom, creator-specific identity + scored axes.
+  // All optional — legacy-safe; undefined means the model didn't supply it → mapping skips it →
+  // display falls back to the archetype name.
+  display_name: z.string().optional(),
+  blurb: z.string().optional(),
+  reaction: ReactionAxesSchema.optional(),
+  behavior: BehaviorAxesSchema.optional(),
 });
 
 /**
@@ -113,6 +136,8 @@ const ProfileSynthSchema = z.object({
       hot: z.number().min(0).max(1),
     }),
     interest_tags: z.array(z.string()).default([]),
+    // v2: canonical topic vocab for this audience (evidence subjects + cross-cutting appeal registers).
+    topic_vocab: z.array(z.string()).default([]),
     what_resonates: z.string().default(""),
     what_falls_flat: z.string().default(""),
     persona_weights: z
@@ -151,7 +176,7 @@ export type ProfileSynth = z.infer<typeof ProfileSynthSchema>;
  * (evidence/goal/success_criterion live only in the USER message). Mirrors the
  * enrich-signature `SYNTH_SYSTEM` shape, re-grounded on EVIDENCE instead of a scrape.
  */
-export const PROFILE_SYNTH_SYSTEM = `You build a person/panel AUDIENCE SIGNATURE from EVIDENCE (chat lines, a document, a screenshot read, or a video transcript). Reality first; the stated goal is ONLY a tie-break lens, never the source. Map the audience onto the FIXED 10 archetypes (below). For a PERSON: emit a small set (1-3) dominated by the one person's best-fit archetype slot. For a PANEL: emit one persona per distinct participant across slots. Shares sum to 1.0. Derive temperature_mix + dispositions + weights from the evidence; NEVER invent counts or demographics. Each persona's "evidence" MUST be a VERBATIM quote drawn from the evidence (provenance — never paraphrase, never fabricate). Return ONLY JSON matching this schema, no preamble:
+export const PROFILE_SYNTH_SYSTEM = `You build a person/panel AUDIENCE SIGNATURE from EVIDENCE (chat lines, a document, a screenshot read, or a video transcript). Reality first; the stated goal is ONLY a tie-break lens, never the source. Map the audience onto the FIXED 10 archetypes (below). For a PERSON: emit a small set (1-3) dominated by the one person's best-fit archetype slot. For a PANEL: emit one persona per distinct participant across slots. Shares sum to 1.0. Derive temperature_mix + dispositions + weights from the evidence; NEVER invent counts or demographics. Each persona's "evidence" MUST be a VERBATIM quote drawn from the evidence (provenance — never paraphrase, never fabricate). Each persona keeps its fixed archetype slug, but MAKE IT SPECIFIC TO THIS SUBJECT — not a generic template: give it a display_name (a concrete human label for how this audience actually shows up, e.g. "Skeptical realists" — never the raw archetype word), a one-line blurb in that viewer's voice, and scored reaction+behavior axes (every value 0..1) that FOLLOW from the evidence. Also emit topic_vocab: 6-14 lowercase_snake tags mixing this audience's subjects WITH cross-cutting appeal registers (spectacle, humor, relatable, transformation, satisfying, educational). Each persona's reaction.interests references ONLY topic_vocab tags — the ones that segment truly cares about. Return ONLY JSON matching this schema, no preamble:
 {
   "creator_persona": { "content_description": "<who they are, 1 line>", "context": "<setting · voice · drivers · AVOID>", "writing_style_sample": "<verbatim line that typifies them>", "format_signature": "<how they communicate>" },
   "audience": {
@@ -159,14 +184,15 @@ export const PROFILE_SYNTH_SYSTEM = `You build a person/panel AUDIENCE SIGNATURE
     "maturity": "new|growing|established",
     "temperature_mix": { "cold": 0.0, "warm": 0.0, "hot": 0.0 },
     "interest_tags": ["..."],
+    "topic_vocab": ["<subject or appeal register, lowercase_snake>"],
     "what_resonates": "<what moves them>",
     "what_falls_flat": "<what loses them>",
     "persona_weights": { "fyp":0.0,"niche":0.0,"loyalist":0.0,"cross_niche":0.0 },
-    "personas": [ { "archetype":"<slug>","share":0.0,"reaction_frame":"<how this segment judges a message>","evidence":"<verbatim evidence quote>" } ]
+    "personas": [ { "archetype":"<slug>","share":0.0,"display_name":"<subject-specific label>","blurb":"<one line in this viewer's voice>","reaction_frame":"<how this segment judges a message>","evidence":"<verbatim evidence quote>","reaction":{"interests":{"<topic_vocab tag>":0.0},"hookSensitivity":0.0,"noveltyBias":0.0,"skepticism":0.0,"attentionSpan":0.0},"behavior":{"watchThrough":0.0,"sharePropensity":0.0,"commentPropensity":0.0,"savePropensity":0.0} } ]
   },
   "summary": "<1-2 sentence read>"
 }
-temperature_mix sums to 1.0. persona_weights sums to 1.0. 1-10 personas, one per slug (no repeats), shares sum to 1.0.
+temperature_mix sums to 1.0. persona_weights sums to 1.0. 1-10 personas, one per slug (no repeats), shares sum to 1.0. Every reaction/behavior axis in [0,1]; interests keys come only from topic_vocab.
 FIXED ARCHETYPES (archetype | temperature | disposition | weight-slot):
  tough_crowd|cold|skeptic|fyp · lurker|cold|lurker|fyp · high_engager|warm|connector|fyp · saver|warm|collector|fyp · sharer|warm|connector|fyp · purposeful_viewer|warm|scanner|niche · niche_deep_buyer|hot|converter|niche · niche_deep_scout|hot|skeptic|niche · loyalist|hot|connector|loyalist · cross_niche_curiosity|cold|scanner|cross_niche`;
 
@@ -291,6 +317,12 @@ export async function bakeProfileSignature(
       disposition: label.disposition,
       reaction_frame: p.reaction_frame,
       evidence: p.evidence,
+      // v2 (Stage 1 mirror): carry the custom identity + scored axes when supplied (legacy-safe —
+      // omit empties so old-shape consumers/tests see no change).
+      ...(p.display_name ? { display_name: p.display_name } : {}),
+      ...(p.blurb ? { blurb: p.blurb } : {}),
+      ...(p.reaction ? { reaction: p.reaction } : {}),
+      ...(p.behavior ? { behavior: p.behavior } : {}),
     };
   });
 
@@ -305,6 +337,7 @@ export async function bakeProfileSignature(
       what_falls_flat: synth.audience.what_falls_flat,
       persona_weights: synth.audience.persona_weights,
       personas,
+      ...(synth.audience.topic_vocab?.length ? { topic_vocab: synth.audience.topic_vocab } : {}),
     },
     summary: synth.summary,
     provenance: {

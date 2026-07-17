@@ -46,6 +46,13 @@ import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
 import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
+import { characterizeContent } from "@/lib/audience/characterize-content";
+import {
+  reactPopulation,
+  signatureHasPopulationAxes,
+  type ContentVector,
+  type PopulationAggregate,
+} from "@/lib/audience/population";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
@@ -476,6 +483,19 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   // Matches hooks/ideas runners; audienceRepaint construction is byte-identical to before.
   const { panel, audienceRepaint } = buildReactionPanel(profileRow, audience);
 
+  // ── Audience Sim v2 (Stage 2): population projection gate + concurrent characterize ──
+  // A calibrated signature with the v2 axes is the gate — General / legacy / preset skip it
+  // (population stays undefined → byte-identical pre-v2 shape). The script card's reaction is
+  // OPENER-ONLY in "hook" mode (D-01), so we characterize the SAME openingBeatSeed the SIM scores
+  // → the projection and the on-card panel agree (a script is a hook HERE, by the opener design).
+  // Fired BEFORE the SIM so it runs concurrently (no serial latency); a failure degrades to null.
+  const populationSignature = audience?.signature ?? null;
+  const wantPopulation = signatureHasPopulationAxes(populationSignature);
+  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
+  const vectorPromise: Promise<ContentVector | null> = wantPopulation
+    ? characterizeContent(script.openingBeatSeed, populationVocab).catch(() => null)
+    : Promise.resolve(null);
+
   let simResult: Awaited<ReturnType<typeof runFlashTextMode>> | null;
   // ── STAGE: Simulating your audience (real boundary — the opener SIM call) ──
   input.onStage?.("Simulating your audience", "active");
@@ -493,6 +513,20 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
 
   // D-04: select lead scrollQuote NOW — ships on the card face
   const scrollQuote = selectLeadScrollQuote(personas);
+
+  // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
+  // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
+  // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
+  // signal, the population is additive texture.
+  let population: PopulationAggregate | undefined;
+  const contentVector = await vectorPromise;
+  if (populationSignature && contentVector) {
+    try {
+      population = reactPopulation(populationSignature, contentVector);
+    } catch {
+      population = undefined;
+    }
+  }
 
   // ── FLYWHEEL-02: pin the predicted signature (non-fatal, fire-after-compute) ──
   // The opener's personas ARE the run's prediction (opener-only SIM, D-01). Pinned
@@ -544,6 +578,9 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
       // Per-persona generation — omitted entirely when there is no named reader, so General and
       // every pre-target persisted card keep their exact shape (regression gate).
       ...(cardTarget ? { target: cardTarget } : {}),
+      // Audience Sim v2 (Stage 2) — the N-individual population projection (opener-as-hook).
+      // Omitted when the audience lacks the v2 axes or characterization failed → pre-v2 shape.
+      ...(population ? { population } : {}),
     },
   };
 

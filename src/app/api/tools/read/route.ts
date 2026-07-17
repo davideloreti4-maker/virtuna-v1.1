@@ -1,33 +1,37 @@
 /**
- * /api/tools/read — the multi-audience Read route (Plan 08-06, W4 / D-08/D-09).
+ * /api/tools/read — the concept Read route (Plan 08-06, W4 / D-08/D-09; re-scoped by P3).
  *
- * POST — authenticate, resolve the default pair (active calibrated audience vs General),
- *        run runTwoAudienceRead against ONE concept, and persist the resulting
- *        `multi-audience-read` block to the user's open thread.
+ * POST — authenticate, resolve the SELECTED audience (thread pin, General when nothing
+ *        is pinned), run runTwoAudienceRead against ONE concept, and persist the
+ *        resulting `multi-audience-read` block to the user's open thread.
  *
- * The killer feature: score one concept against TWO audiences side by side, defaulting
- * to active-vs-General (which doubles as proof calibration MOVES the verdict). The DELTA
- * is the one-line Read + Lever — the foresight payoff.
+ * P3 (owner-confirmed): the default Read scores ONLY the selected audience. The old
+ * default dragged GENERAL_AUDIENCE in as a forced second side — a full extra Flash
+ * pass, billed, on every Read of a pinned audience. A compare is now EXPLICIT only.
  *
- * Two pair-resolution paths share the SAME runner + persistence:
- *   - DEFAULT (08-06): primary from thread.active_audience_id, optional secondAudienceId
- *     from the body, default second = General (active-vs-General).
+ * Two resolution paths share the SAME runner + persistence:
+ *   - DEFAULT (P3): the single audience from thread.active_audience_id; NULL = General.
+ *     An ORPHANED pin (the row was deleted / the account disconnected) falls back to
+ *     General and SAYS SO — the block carries `fallback: "audience-removed"`, which the
+ *     renderer shows as one quiet line. Never a silent swap (the shadow-audience lesson).
+ *     A transient load ERROR keeps the old silent General fallback (D-04) — it must not
+ *     claim "removed" about an audience that still exists.
  *   - EXPLICIT PAIR (AUD-EDIT-02 / D-05): an OPTIONAL `audienceIds: [string, string]`
  *     body field selects an ARBITRARY pair of saved audiences. Each id is resolved via
  *     getAudience under the session (RLS-scoped); a bad id is rejected 400 (audience_not_found)
- *     — NO silent General fallback for an explicit pick.
+ *     — NO silent General fallback for an explicit pick. (The legacy `secondAudienceId`
+ *     body field is GONE — it had zero callers and duplicated this path.)
  *
  * Security spine (mirrors the ideas route — T-03-07 … T-03-12):
  *   - Auth enforced BEFORE any DB read or Flash run (T-03-07)
- *   - Default-path primary audience id read from the THREAD (active_audience_id), never the
+ *   - Default-path audience id read from the THREAD (active_audience_id), never the
  *     body (T-03-08 / CR-01). Explicit-pair ids are still resolved via getAudience under the
  *     session (RLS-scoped) — never trusted as raw weights.
  *   - Server-side concept length cap (WARNING-5)
  *   - insertMessage re-validates the block at the write boundary (T-03-11)
  *   - KC_GEN_VERSION stamp on the persisted message (T-03-12)
  *
- * Cap (D-09): exactly 2 audiences for v1 legibility. runTwoAudienceRead enforces the cap;
- *   the route resolves a default pair, one explicit second pick, OR an explicit arbitrary pair.
+ * Cap (D-09): at most 2 audiences for v1 legibility. runTwoAudienceRead enforces the cap.
  *
  * Honesty spine (Pitfall 5 / D-11): the emitted block is bands-only (no numeric score).
  */
@@ -69,11 +73,11 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ────────────────────────────────────────────────
-  // Body carries the concept text + an OPTIONAL explicit second audience id.
-  // The PRIMARY (active) audience id is NEVER read from the body — it comes from the
-  // thread (T-03-08 / CR-01). The optional second id is still resolved under the
-  // session via getAudience (RLS-scoped), never trusted as raw weights.
-  let body: { concept?: unknown; secondAudienceId?: unknown; audienceIds?: unknown } = {};
+  // Body carries the concept text + an OPTIONAL explicit audience pair. The default
+  // audience id is NEVER read from the body — it comes from the thread
+  // (T-03-08 / CR-01). Explicit ids are still resolved under the session via
+  // getAudience (RLS-scoped), never trusted as raw weights.
+  let body: { concept?: unknown; audienceIds?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -90,8 +94,6 @@ export async function POST(request: Request): Promise<Response> {
       { status: 400 },
     );
   }
-  const secondAudienceId =
-    typeof body.secondAudienceId === "string" ? body.secondAudienceId : null;
 
   // Explicit arbitrary-pair input (NEW, AUD-EDIT-02 / D-05): an OPTIONAL array of
   // string audience ids. When it carries exactly 2 entries, the route compares that
@@ -105,14 +107,18 @@ export async function POST(request: Request): Promise<Response> {
   // ── (3) Get/create open thread ───────────────────────────────────────────────
   const openThread = await createOpenThreadLazy(user.id);
 
-  // ── (4) Resolve the comparison PAIR ───────────────────────────────────────────
+  // ── (4) Resolve WHAT gets read ─────────────────────────────────────────────────
   // Two paths share the SAME runner + persistence below:
   //   • Explicit-pair path (AUD-EDIT-02): exactly 2 arbitrary audienceIds, each
   //     resolved under the session. A bad id is rejected 400 — NO silent General
   //     fallback for an explicitly-requested pick (that would hide a bad pair).
-  //   • Default path (UNCHANGED, 08-06): primary from thread.active_audience_id,
-  //     optional secondAudienceId from the body, default second = General.
-  let pair: [Audience, Audience];
+  //   • Default path (P3): the SINGLE audience from thread.active_audience_id;
+  //     NULL = General. No forced second side.
+  let pick: Audience[];
+  // Orphaned-pin marker (P3): the thread points at an audience whose row is GONE
+  // (deleted / account disconnected). The Read falls back to General and the block
+  // says so — never a silent swap.
+  let audienceRemoved = false;
 
   if (audienceIds && audienceIds.length === 2) {
     // ── Explicit arbitrary-pair path (NEW) ──────────────────────────────────────
@@ -149,11 +155,16 @@ export async function POST(request: Request): Promise<Response> {
         { status: 400 },
       );
     }
-    pair = [firstAudience, secondPick];
+    pick = [firstAudience, secondPick];
   } else {
-    // ── Default path (UNCHANGED) — active-vs-General (08-06) ─────────────────────
+    // ── Default path (P3) — the selected audience, ALONE ─────────────────────────
     // thread.active_audience_id: NULL = General default. Non-null = load the row
-    // (virtual ids short-circuit). Falls back to General on any load failure.
+    // (virtual ids short-circuit). getAudience distinguishes the two failure shapes:
+    //   • null  = the row is GONE (deleted audience / disconnected account) — the
+    //     orphaned pin. Fall back to General AND mark it, so the block says
+    //     "Audience removed · scoring against General." out loud.
+    //   • throw = a real DB error. The audience may still exist, so claiming
+    //     "removed" would be false — keep the old silent General fallback (D-04).
     let activeAudience: Audience = GENERAL_AUDIENCE;
     const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
     const activeAudienceId = rawThread.active_audience_id ?? null;
@@ -161,35 +172,29 @@ export async function POST(request: Request): Promise<Response> {
       try {
         const loaded = await getAudience(supabase, activeAudienceId);
         if (loaded) activeAudience = loaded;
+        else audienceRemoved = true;
       } catch {
-        // Non-fatal: fall back to General (no regression, D-04).
+        // Non-fatal: fall back to General (no regression, D-04). NOT marked as
+        // removed — a transient error is not a deletion.
       }
     }
 
-    // Resolve the SECOND audience (default = General) — D-09 default pair.
-    // The default pair is active-vs-General. An explicit secondAudienceId is honored
-    // ONLY when it resolves under the session (RLS-scoped via getAudience). The cap of
-    // 2 is enforced downstream by runTwoAudienceRead.
-    let secondAudience: Audience = GENERAL_AUDIENCE;
-    if (secondAudienceId && secondAudienceId !== activeAudienceId) {
-      try {
-        const loaded = await getAudience(supabase, secondAudienceId);
-        if (loaded) secondAudience = loaded;
-      } catch {
-        // Non-fatal: keep General as the comparison pair.
-      }
-    }
-
-    pair = [activeAudience, secondAudience];
+    pick = [activeAudience];
   }
 
-  // ── (6) Run the 2-audience Read + persist the block ──────────────────────────
-  // CR-02: the runner dedupes by audience IDENTITY. In the common default (no
-  // calibrated audience pinned, no explicit second pick) both resolve to General,
-  // and the runner collapses that self-pair to a SINGLE-audience Read instead of a
-  // degenerate "General vs General" compare.
+  // ── (6) Run the Read + persist the block ──────────────────────────────────────
+  // Default path → ONE audience → a single-audience Read (P3). Explicit pair → the
+  // compare. The runner still dedupes by identity (CR-02), so an explicit [a, a]
+  // reads single rather than as a degenerate self-compare.
   try {
-    const block = await runTwoAudienceRead(concept, pair);
+    const run = await runTwoAudienceRead(concept, pick);
+
+    // Orphaned-pin honesty (P3): the fact is route-level (only the route sees the
+    // thread pin), so it is attached here — the renderer turns it into one quiet
+    // line. Typed by the block schema; insertMessage re-validates it below.
+    const block = audienceRemoved
+      ? { ...run, props: { ...run.props, fallback: "audience-removed" as const } }
+      : run;
 
     // insertMessage re-validates the block at the write boundary (T-03-11) + stamps
     // KC_GEN_VERSION provenance (T-03-12).

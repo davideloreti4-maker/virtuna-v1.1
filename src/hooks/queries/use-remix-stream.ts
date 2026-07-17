@@ -25,7 +25,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { RemixCardBlock, ReactionPersona } from '@/lib/tools/blocks';
+import type { RemixCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
+import { parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -49,6 +50,10 @@ export interface PartialRemixCard {
   scored: boolean;
   // S3′: adapted hook's real per-persona reactions → named ambient Room cast live, pre-reload (Task B).
   personas?: ReactionPersona[];
+  // AUDIENCE SIM v2 (Stage 2): the adapted hook's N-individual population projection → Population·
+  // 1,000 Sheet. undefined on General/uncalibrated/uncharacterized runs. Declared + parsed +
+  // carried through toBlocks so it renders live, not only after a reload (the reload-only hazard).
+  population?: PopulationAggregateBlock;
 }
 
 export interface UseRemixStreamReturn {
@@ -227,6 +232,7 @@ export function useRemixStream(): UseRemixStreamReturn {
                   personas: Array.isArray(props.personas)
                     ? (props.personas as ReactionPersona[])
                     : undefined,
+                  population: parsePopulationProp(props.population), // Sim v2: adapted-hook projection → Population·1,000 Sheet
                 };
               })
               .filter((c: PartialRemixCard) => c.adaptedHook.length > 0);
@@ -282,6 +288,8 @@ export function useRemixStream(): UseRemixStreamReturn {
         scrollQuote: c.scrollQuote,
         model: 'sim1-flash',
         personas: c.personas, // S3′: real per-persona reactions → named ambient Room cast (Task B)
+        // Sim v2 Stage 2 — the adapted-hook projection renders live in the Sheet, not just after reload.
+        ...(c.population ? { population: c.population } : {}),
       },
     }));
   }, [streamingCards]);

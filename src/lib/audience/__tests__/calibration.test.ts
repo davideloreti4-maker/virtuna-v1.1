@@ -127,6 +127,23 @@ describe("calibrateFromScrape — success path (real signature)", () => {
     expect(audience.creator_persona).toBeTruthy();
   });
 
+  // v2 (Audience Sim v2, Stage 1): the roster's presentation label is seeded from the generator's
+  // custom display_name, so the ambient audience shows "The Archive Builder", not "Saver".
+  it("seeds each roster persona's label from the signature persona's display_name", async () => {
+    const sig = makeSignature();
+    sig.audience.personas = sig.audience.personas.map((p, i) => ({ ...p, display_name: `Custom ${i}` }));
+    const result = await calibrateFromScrape(BASE_INPUT, makeDeps({ enrich: vi.fn(async () => sig) }));
+    const { audience } = result as { audience: { personas: Array<{ label?: string }> } };
+    expect(audience.personas[0]!.label).toBe("Custom 0");
+    expect(audience.personas.every((p, i) => p.label === `Custom ${i}`)).toBe(true);
+  });
+
+  it("is legacy-safe — a signature without display_name leaves roster labels undefined (falls back to archetype)", async () => {
+    const result = await calibrateFromScrape(BASE_INPUT, makeDeps());
+    const { audience } = result as { audience: { personas: Array<{ label?: string }> } };
+    expect(audience.personas[0]!.label).toBeUndefined();
+  });
+
   it("bakes the DERIVED weights into persona_weights (reality first, P-5 — not goal-intent bias)", async () => {
     const result = await calibrateFromScrape(BASE_INPUT, makeDeps());
     const { audience } = result as unknown as { audience: { persona_weights: Record<string, number> } };
@@ -330,5 +347,44 @@ describe("calibrateFromScrape — onEvidence (the ~2min wait shows the account i
 
     expect("audience" in result || "fallback" in result).toBe(true);
     expect(onEvidence).not.toHaveBeenCalled();
+  });
+
+  it("carries the profile's heart + video counts — the reveal figures come from the scrape", async () => {
+    const onEvidence = vi.fn();
+    const deps = makeDeps({ onEvidence });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    const evidence = onEvidence.mock.calls[0]![0];
+    expect(evidence.heartCount).toBe(100_000);
+    expect(evidence.videoCount).toBe(50);
+  });
+});
+
+describe("calibrateFromScrape — onBundle (one scrape feeds persistence too)", () => {
+  it("hands the RAW scraped bundle to the caller on the real-scrape path", async () => {
+    // P4 one-scrape: the route persists account_posts from the SAME bundle the
+    // calibration read — not a second Apify run. onBundle is that seam.
+    const onBundle = vi.fn();
+    const deps = makeDeps({ onBundle });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onBundle).toHaveBeenCalledTimes(1);
+    const bundle = onBundle.mock.calls[0]![0];
+    expect(bundle.videos).toHaveLength(15);
+    expect(bundle.profile.followerCount).toBe(50_000);
+  });
+
+  it("fires NO bundle on the niche fallback — those videos are not the account's", async () => {
+    // Niche-search videos belong to strangers; persisting them as the creator's own
+    // account_posts would fabricate an archive.
+    const onBundle = vi.fn();
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(20)),
+      onBundle,
+    });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onBundle).not.toHaveBeenCalled();
   });
 });

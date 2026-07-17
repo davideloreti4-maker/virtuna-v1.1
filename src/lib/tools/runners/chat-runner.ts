@@ -40,11 +40,29 @@ import {
   ARCHETYPE_TRIGGERS,
   type Archetype,
 } from "@/lib/engine/wave3/persona-registry";
+import {
+  gatherReferencesViaTool,
+  buildReferenceBlock,
+} from "@/lib/grounding/corpus-tool";
 
 // ─── Generation call timeout ───────────────────────────────────────────────────
 
 /** Chat generation timeout — matches ideas/hooks runners (300s). */
 const GENERATE_TIMEOUT_MS = 300_000;
+
+/**
+ * Reference-mode PULL flag (default OFF). When on, OPEN chat runs a pre-flight tool loop that lets the
+ * model search the corpus on demand (corpus-tool.ts) and grounds the streamed answer on what it pulls.
+ * Gate-free (reference mode: real evidence, no baseline claim). INDEPENDENT of the GENERATE-path
+ * grounding flags. Persona/meet-mode chat is intentionally excluded — a viewer reacts in-voice, it does
+ * not consult a strategy corpus.
+ */
+function isCorpusChatToolEnabled(): boolean {
+  return process.env.GROUNDING_CHAT_TOOL === "true";
+}
+
+/** Platforms whose teardowns live in the corpus and can be retrieved. */
+const REFERENCEABLE_PLATFORMS = new Set(["tiktok", "instagram", "youtube"]);
 
 // ─── Input type ───────────────────────────────────────────────────────────────
 
@@ -105,6 +123,12 @@ export interface ChatPipelineResult {
   fullContent: string;
   /** True when the profile is thin/null — the route emits this as a structured meta frame (D-08). */
   coldStart: boolean;
+}
+
+/** Injectable pipeline deps (tests swap these; prod uses the real modules). */
+export interface ChatPipelineDeps {
+  /** The reference-mode corpus pull. Tests inject a stub; prod uses the real gatherReferencesViaTool. */
+  gatherReferences?: typeof gatherReferencesViaTool;
 }
 
 // ─── isColdStart ──────────────────────────────────────────────────────────────
@@ -233,6 +257,7 @@ function serializePersonaReaction(g: {
 export async function runChatPipeline(
   input: ChatPipelineInput,
   onToken: (delta: string) => void,
+  deps: ChatPipelineDeps = {},
 ): Promise<ChatPipelineResult> {
   const {
     ask,
@@ -299,9 +324,38 @@ export async function runChatPipeline(
 
   // System prompt: byte-identical KC_CHAT_SYSTEM_PROMPT for open chat; persona-grounded
   // chat PREPENDS the registry-derived persona prefix so Qwen answers in-voice (D-03).
-  const systemContent = personaSystemPrefix
+  const baseSystem = personaSystemPrefix
     ? `${personaSystemPrefix}\n\n${KC_CHAT_SYSTEM_PROMPT}`
     : KC_CHAT_SYSTEM_PROMPT;
+
+  // ── PULL (reference mode, flag-gated, degrade-safe): OPEN chat only ──────────
+  // Let the model search the corpus on demand (pre-flight tool loop) and ground the streamed answer on
+  // what it pulls. Excluded for persona/meet-mode (a viewer reacts in-voice, it does not consult a
+  // strategy corpus). Any failure OR zero rows → the block stays undefined → the streamed call is
+  // BYTE-IDENTICAL to today's chat (no-op guarantee). Costs one pre-flight call before the stream starts.
+  let corpusReferenceBlock: string | undefined;
+  if (
+    !personaGrounding &&
+    isCorpusChatToolEnabled() &&
+    ask.trim().length > 0 &&
+    REFERENCEABLE_PLATFORMS.has(platform)
+  ) {
+    const gather = deps.gatherReferences ?? gatherReferencesViaTool;
+    try {
+      const { references } = await gather({ ask, platform });
+      if (references.length > 0) corpusReferenceBlock = buildReferenceBlock(references);
+    } catch (err) {
+      console.warn(
+        `[grounding] chat corpus pull degraded (streaming ungrounded): ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  const systemContent = corpusReferenceBlock
+    ? `${baseSystem}\n\n${corpusReferenceBlock}`
+    : baseSystem;
 
   // ── STREAM: Qwen generation (D-07 temperature 0.3 — matches grounded chat route) ──
   const controller = new AbortController();

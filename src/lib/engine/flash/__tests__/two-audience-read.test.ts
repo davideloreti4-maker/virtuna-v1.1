@@ -10,10 +10,11 @@
  * two aggregates (pure, no extra model call) — never fabricated.
  *
  * Tests (tagged "runner"):
- *   - returns exactly 2 per-audience entries (capped at 2 for v1 legibility, D-09)
+ *   - an explicit distinct pair returns 2 entries (capped at 2 for v1 legibility, D-09)
  *   - each entry carries a band + fraction (NO numeric score) — bands-only spine
  *   - a delta interpretation line + Lever are present (the foresight payoff, D-08)
- *   - the default pair is active-calibrated-audience vs General (D-09)
+ *   - ONE audience reads ALONE (P3): no General fill, ONE Flash call — the killed
+ *     phantom second pass
  *   - resolveAudienceWeights is called once PER audience (the second resolve is real)
  *   - per-audience who-not-for falls out of the compare (the scrolls-past segment)
  */
@@ -159,17 +160,23 @@ describe("runTwoAudienceRead (runner)", () => {
     expect(block.props.audiences[0]!.interpretation).toContain("General");
   });
 
-  it("defaults the pair to the active calibrated audience vs General (D-09)", async () => {
+  it("reads ONE audience ALONE — no General fill, ONE Flash call (P3)", async () => {
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
     (runFlashTextMode as ReturnType<typeof vi.fn>)
-      .mockResolvedValue({ result: { personas: makePersonas(6) }, warnings: [] });
+      .mockResolvedValue({ result: { personas: makePersonas(8) }, warnings: [] });
 
-    // pass ONLY the active calibrated audience → the function fills General as the pair
+    // ONE audience in → ONE audience out. The old behavior filled GENERAL_AUDIENCE
+    // as a phantom second side — a full extra Flash pass, billed, on every default
+    // Read of a pinned audience (the killed double-score, owner-confirmed).
     const block = await runTwoAudienceRead("hook", [makeCalibratedAudience()]);
 
-    expect(block.props.audiences).toHaveLength(2);
+    expect(block.props.audiences).toHaveLength(1);
     expect(block.props.audiences[0]!.name).toBe("Growth");
-    expect(block.props.audiences[1]!.name).toBe("General");
+    expect(block.props.audiences.some((a) => a.name === "General")).toBe(false);
+    // Exactly ONE Flash call — the phantom General pass is dead, so it isn't billed.
+    expect((runFlashTextMode as ReturnType<typeof vi.fn>).mock.calls).toHaveLength(1);
+    // Single-read framing: this audience's verdict on its own terms, no delta prose.
+    expect(block.props.audiences[0]!.interpretation).not.toContain("General");
   });
 
   // ─── MODE-01: the audience must actually REACH the model ────────────────────────
@@ -329,9 +336,9 @@ describe("runTwoAudienceRead (runner)", () => {
     expect(runFlashTextMode).toHaveBeenCalledTimes(1);
   });
 
-  // A duplicate CALIBRATED pair dedupes to one distinct calibrated audience, which
-  // then defaults to the D-09 compare (calibrated vs General) — NOT a self-compare.
-  it("dedupes a duplicate calibrated pair to calibrated-vs-General (CR-02)", async () => {
+  // A duplicate CALIBRATED pair dedupes to one distinct audience, which reads
+  // SINGLE (P3) — never a "Growth vs Growth" self-compare, never a General fill.
+  it("dedupes a duplicate calibrated pair to a SINGLE read (CR-02 + P3)", async () => {
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
     (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
       result: { personas: makePersonas(6) },
@@ -341,12 +348,10 @@ describe("runTwoAudienceRead (runner)", () => {
     const aud = makeCalibratedAudience(); // same id on both sides
     const block = await runTwoAudienceRead("hook", [aud, aud]);
 
-    // Distinct ids = 1 → defaults to [Growth, General], a genuine compare.
-    expect(block.props.audiences).toHaveLength(2);
+    // Distinct ids = 1 → a single-audience Read of Growth. No phantom General.
+    expect(block.props.audiences).toHaveLength(1);
     expect(block.props.audiences[0]!.name).toBe("Growth");
-    expect(block.props.audiences[1]!.name).toBe("General");
-    // Never a "Growth vs Growth" self-compare.
-    expect(block.props.audiences[1]!.name).not.toBe("Growth");
+    expect(runFlashTextMode).toHaveBeenCalledTimes(1);
   });
 
   it("caps the pick at 2 audiences for v1 legibility (D-09)", async () => {

@@ -78,6 +78,8 @@ import { useHooksStream } from "@/hooks/queries/use-hooks-stream";
 import { HooksThreadView } from "@/components/thread/hooks-thread-view";
 import { useChatStream } from "@/hooks/queries/use-chat-stream";
 import { ChatThreadView } from "@/components/thread/chat-thread-view";
+import { isChatAgentThread, orderedAssistantBlocks, orderedTurns } from "@/components/app/home/rehydrate-thread";
+import type { RehydrateTurn } from "@/components/app/home/rehydrate-thread";
 import { useScriptStream } from "@/hooks/queries/use-script-stream";
 import { ScriptThreadView } from "@/components/thread/script-thread-view";
 import { useRemixStream } from "@/hooks/queries/use-remix-stream";
@@ -408,6 +410,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const [persistedHookBlocks, setPersistedHookBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedChatBlocks, setPersistedChatBlocks] = useState<any[]>([]);
+  // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): the thread's ordered TURNS (each question + the
+  // cards/co-pilot line it produced), from rehydrate-thread.ts. Non-empty ONLY for chat-agent threads →
+  // the chat view renders each question above only its own answer (multi-turn reload fidelity) instead
+  // of segregating cards into per-tool views.
+  const [persistedChatTurns, setPersistedChatTurns] = useState<RehydrateTurn[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [persistedScriptBlocks, setPersistedScriptBlocks] = useState<any[]>([]);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -516,6 +523,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
+    chat.streamingBlocks.length > 0 || // chat-as-agent dispatched skill cards (CHAT_AGENT_DISPATCH)
     scriptBlocks.length > 0 ||
     remixBlocks.length > 0 ||
     exploreBlocks.length > 0 ||
@@ -589,6 +597,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     ideasBlocks.length > 0 ||
     hooksBlocks.length > 0 ||
     chatBlocks.length > 0 ||
+    chat.streamingBlocks.length > 0 || // chat-as-agent dispatched skill cards (CHAT_AGENT_DISPATCH)
     scriptBlocks.length > 0 ||
     remixBlocks.length > 0 ||
     exploreBlocks.length > 0 ||
@@ -692,6 +701,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       setPersistedIdeaBlocks([]);
       setPersistedHookBlocks([]);
       setPersistedChatBlocks([]);
+      // Clear the chat-agent turns too — without this, "New Thread" kept the prior chat-agent thread's
+      // turns rendering under the fresh thread until the reload fetch resolved.
+      setPersistedChatTurns([]);
       setPersistedScriptBlocks([]);
       setPersistedRemixBlocks([]);
       setPersistedExploreBlocks([]);
@@ -741,9 +753,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         if (userTurns.length > 0) setLastUserTurn(userTurns[userTurns.length - 1] ?? null);
         // Flatten ASSISTANT/tool blocks across messages, split by type (user turns
         // are surfaced via lastUserTurn above, never as assistant cards/bubbles).
-        const allBlocks = messages
-          .filter((m) => m.role !== 'user')
-          .flatMap((m) => m.blocks ?? []);
+        const allBlocks = orderedAssistantBlocks(messages);
+        // Chat-as-agent unified reload (CHAT_AGENT_DISPATCH): a thread stamped chat-agent renders as ONE
+        // ordered stream in the chat view rather than split by tool. Reads the server-set marker
+        // (rehydrate-thread.ts); absent (every existing/flag-off thread) → false → reload is unchanged.
+        const chatAgentThread = isChatAgentThread(messages);
         const ideaBlocks = allBlocks.filter((b) => b.type === 'idea-card');
         const hookBlocks = allBlocks.filter((b) => b.type === 'hook-card');
         const markdownBlocks = allBlocks.filter((b) => b.type === 'markdown');
@@ -756,7 +770,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           (b) =>
             b.type === 'profile-read' ||
             b.type === 'reaction-distribution' ||
-            b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+            b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+            // The Read (P3 follow-up): also tool-agnostic — no composer tool owns it, and
+            // before this line a persisted Read NEVER re-rendered on the thread surface.
+            b.type === 'multi-audience-read',
         );
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
@@ -765,6 +782,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setPersistedRemixBlocks(remixBlocks);
         setPersistedExploreBlocks(outlierGridBlocks);
         setPersistedProfileBlocks(profileBlocks);
+        // The ordered TURNS power the unified chat-view render — each question above only its own
+        // answer (multi-turn fidelity). Populated for EVERY thread (cheap; only rendered when the chat
+        // view is active — selector threads restore to their own tool view and never read this), so a
+        // pure plain-chat thread also rehydrates per-turn, not flattened. `chatAgentThread` still only
+        // gates the restore-to-chat decision below (regression-safe for selector threads).
+        setPersistedChatTurns(orderedTurns(messages));
 
         // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
         // activeTool defaults to "test", but every thread-view gate (showHooksView,
@@ -790,6 +813,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
               if (t && TYPE_TO_TOOL[t]) { restored = TYPE_TO_TOOL[t]; break; }
             }
           }
+          // A chat-agent thread lands back in the unified chat view regardless of its last card type —
+          // that view renders the whole thread as ordered turns (persistedChatTurns), so the cards show there.
+          if (chatAgentThread) restored = 'chat';
           // A thread with cards restores ITS tool. A thread with none — a brand-new thread —
           // resets to the DEFAULT. Without the else, "New Thread" silently inherited the last
           // thread's skill: open a hooks thread, hit New Thread, and you got a blank page
@@ -1037,13 +1063,58 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         (b: { type?: string }) =>
           b.type === 'profile-read' ||
           b.type === 'reaction-distribution' ||
-          b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+          b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+          b.type === 'multi-audience-read', // the Read — tool-agnostic (mirrors rehydration)
       );
       setPersistedProfileBlocks(profileBlocks);
     } catch {
       // Network error — silent (the user can retry the drop)
     }
   }, []);
+
+  // ── Chat-agent live-turn persistence (SCROLL/DISAPPEAR fix) ─────────────────
+  // useChatStream holds only the CURRENT turn (reset on each send), and persistedChatTurns loads
+  // only on mount — so a live chat with >1 turn dropped earlier turns from view (the user could no
+  // longer scroll up; a reload brought them back). When a chat turn finishes (isDone), re-read the
+  // open thread (every turn IS persisted server-side) into persistedChatTurns, THEN reset the live
+  // turn — swapping the just-finished turn from "live" to "persisted" in ONE commit (React 18 batches
+  // the sets after the awaited fetch), so no turn disappears and no duplicate flashes. Every turn now
+  // renders from the same clean per-turn path (live === reloaded).
+  const { isDone: chatIsDone, isStreaming: chatIsStreaming, reset: chatReset } = chat;
+  const chatDoneHandledRef = useRef(false);
+  useEffect(() => {
+    if (!chatIsDone) {
+      // A new turn started (or state cleared) — re-arm for the next completion.
+      chatDoneHandledRef.current = false;
+      return;
+    }
+    if (chatIsStreaming || chatDoneHandledRef.current) return;
+    chatDoneHandledRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/threads/open', { cache: 'no-store' });
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as {
+          messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
+        };
+        if (cancelled) return;
+        const messages = data.messages ?? [];
+        if (messages.length === 0) return; // nothing persisted → keep the live turn visible
+        // One commit (React 18 batches these three): persisted history gains the finished turn AND the
+        // live turn clears together, so the turn swaps from live→persisted with no flash and no dup.
+        // chatReset() runs ONLY here (on success) — a failed fetch must NOT clear an unpersisted turn.
+        setPersistedChatTurns(orderedTurns(messages));
+        setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
+        chatReset();
+      } catch {
+        // Network error — leave the live turn in place; the next reload reconciles it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatIsDone, chatIsStreaming, chatReset]);
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
   // set the inline muted reject; never a blocking modal. Server re-validates (T-05-18).
@@ -1719,12 +1790,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
     // the presence falls back to the honest fraction-expansion placeholders.
     const personas = Array.isArray(p.personas) ? p.personas : undefined;
+    // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection onto the
+    // focus so the Room's "Population · 1,000" view shows THIS card's real N-individual numbers
+    // instead of the honest-lean "MODELED FROM YOUR 10" fallback (which densifies the k/10 SIM and
+    // can DISAGREE with the card's projection). Absent on General/legacy cards → the fallback stands.
+    const population = p.population ?? undefined;
     return {
       id: `${kind}-${idx}`,
       conceptText: concept,
       fraction,
       scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
       personas,
+      population,
     };
   };
   const ambientDescriptors: AmbientCardDescriptor[] = (() => {
@@ -1896,14 +1973,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           fraction?: string;
           scrollQuote?: string;
           personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
+          population?: import("@/lib/audience/population").PopulationAggregate | null;
         } = await res.json();
         if (controller.signal.aborted) return;
         const fraction = data.fraction ?? "";
         const scrollQuote = data.scrollQuote ?? "";
         const personas = Array.isArray(data.personas) ? data.personas : undefined;
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas }]);
+        // Stage 2 population projection — present only for a calibrated audience with v2 axes.
+        const population = data.population ?? undefined;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas, population }]);
         // Lens shows this read — with the real named cast (react route returns registry-enum personas).
-        focusByThought({ conceptText: text, fraction, scrollQuote, personas });
+        focusByThought({ conceptText: text, fraction, scrollQuote, personas, population });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
@@ -1964,6 +2044,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         fraction: a.fraction,
         scrollQuote: a.scrollQuote,
         personas: a.personas,
+        population: a.population,
       }),
     onBuildAudience: () => setBuildOpen(true),
     focusList: ambientDescriptors,
@@ -2067,10 +2148,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {testSubmitTurn}
       {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
           blocks render here via the shared MessageBlocks renderer (registered in 05-01).
-          NOT gated on activeTool: the evidence-drop affordance is the entry, and the
+          Not gated on any CARD tool: the evidence-drop affordance is the entry, and the
           profile-read card carries its own Simulate CTA → reaction-distribution lands in
-          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only. */}
-      {persistedProfileBlocks.length > 0 && (
+          the SAME thread (SIMU-03). Sibling to the creator tool views — additive only.
+          EXCEPT the chat view: ChatThreadView renders the whole thread as ordered turns
+          (every block type, via the same MessageBlocks registry), so with chat active this
+          bucket would paint the SAME blocks a second time — live-caught when the chat
+          default (#316) met the tool-agnostic bucket (a Read-only thread restored to chat
+          and "The Read" rendered twice, 2026-07-17). */}
+      {!showChatView && persistedProfileBlocks.length > 0 && (
         <div data-testid="profile-thread-view" className="px-1 py-4">
           <MessageBlocks body={persistedProfileBlocks} />
         </div>
@@ -2161,7 +2247,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {showChatView && (
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
+          persistedTurns={persistedChatTurns}
           streamingBlocks={chatBlocks}
+          streamingCardBlocks={chat.streamingBlocks}
           isStreaming={chat.isStreaming}
           coldStart={chat.coldStart}
           nudgeShown={chat.nudgeShown}

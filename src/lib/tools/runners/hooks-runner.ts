@@ -65,6 +65,13 @@ import { HookCardBlockSchema } from "@/lib/tools/blocks";
 import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
+import { characterizeContent } from "@/lib/audience/characterize-content";
+import {
+  reactPopulation,
+  signatureHasPopulationAxes,
+  type ContentVector,
+  type PopulationAggregate,
+} from "@/lib/audience/population";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
@@ -91,6 +98,55 @@ const GENERATE_TIMEOUT_MS = 300_000;
  */
 function isGroundingEnabled(): boolean {
   return process.env.GROUNDING_HOOKS_ENABLED === "true";
+}
+
+/**
+ * Grounding-as-REMIX gate (adapt.ts). When ON *and* grounding is on, the retrieved corpus is routed
+ * through the decode→adapt briefer (full anatomy → per-structure dosage → a fitted brief) instead of
+ * the raw per-skill slice — the fix for the "blind transplant" the first A/B measured losing. OFF by
+ * default and independent of GROUNDING_HOOKS_ENABLED: flipping it only changes the CONTENT of the
+ * `corpus` string, so the SIM gate, the sourceIndex→receipt link, and per-persona targeting are all
+ * untouched. The honest outcome gate (does it make a BETTER hook?) is still open — keep this behind
+ * the flag until a real view signal exists.
+ */
+function isGroundingAdaptEnabled(): boolean {
+  return process.env.GROUNDING_HOOKS_ADAPT === "true";
+}
+
+/**
+ * Flatten the structured target_audience JSON into the one-line string the adapt briefer wants
+ * (it re-voices proven structures toward this reader). Mirrors profile-role-map's audience formatter;
+ * null when nothing is set (the briefer simply omits the line). A value that is ALREADY a plain
+ * string (a pre-formatted audience line) is used as-is — robust to that shape, inert for the typed
+ * object path prod uses.
+ */
+function flattenTargetAudience(
+  ta: ProfileRow["target_audience"] | string,
+): string | null {
+  if (!ta) return null;
+  if (typeof ta === "string") return ta.trim() || null;
+  const parts = [
+    ta.age_range ? `age ${ta.age_range}` : null,
+    ta.gender_skew ? `${ta.gender_skew}-skewed` : null,
+    ta.geo,
+    ta.language,
+  ].filter((p): p is string => Boolean(p));
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
+/**
+ * Reduce past_wins/past_flops to the descriptive strings the briefer reasons over. Prod stores them
+ * as `{ url }[]` (no scraped text in v1 — the briefer just gets the URLs); tolerate a bare `string[]`
+ * too, and drop any empty/undefined entry so the prompt never renders "undefined". null when empty.
+ */
+function toOutcomeList(
+  items: ProfileRow["past_wins"] | string[] | null | undefined,
+): string[] | null {
+  if (!items?.length) return null;
+  const out = items
+    .map((w) => (typeof w === "string" ? w : w?.url))
+    .filter((s): s is string => Boolean(s && s.trim()));
+  return out.length > 0 ? out : null;
 }
 
 /**
@@ -462,6 +518,17 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     niche: genProfileRow?.niche_primary ?? null,
     onStage: input.onStage,
     warnings: allWarnings,
+    // Grounding-as-remix: when ON, the corpus is a fitted+dosed brief instead of the raw slice.
+    // The briefer re-voices proven structures toward THIS creator, so hand it their profile.
+    adapt: isGroundingAdaptEnabled(),
+    adaptProfile: {
+      niche_primary: genProfileRow?.niche_primary ?? null,
+      target_audience: flattenTargetAudience(genProfileRow?.target_audience),
+      primary_goal: genProfileRow?.primary_goal ?? null,
+      writing_voice_sample: genProfileRow?.writing_voice_sample ?? null,
+      past_wins: toOutcomeList(genProfileRow?.past_wins),
+      past_flops: toOutcomeList(genProfileRow?.past_flops),
+    },
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
@@ -506,8 +573,17 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     audienceArchetype: string;
     predictedFailureMode: string | null; // KCQ-04 (null on clean pass)
     personas: FlashPersona[];             // for the FLYWHEEL-02 pin + per-card modal feed (S3′)
+    population?: PopulationAggregate;      // Audience Sim v2 Stage 2 — the N-individual projection
     generationIndex: number;              // preserves generation order for tie-break
   }
+
+  // ── Audience Sim v2 (Stage 2): population projection gate ──────────────────
+  // A calibrated signature carrying the v2 axes (topic_vocab + scored persona.reaction) is the
+  // gate — General / legacy / preset audiences skip it (population stays undefined → the card
+  // omits the field, byte-identical to the pre-v2 shape). Resolved ONCE per run.
+  const populationSignature = audience?.signature ?? null;
+  const wantPopulation = signatureHasPopulationAxes(populationSignature);
+  const populationVocab = populationSignature?.audience.topic_vocab ?? [];
 
   /**
    * S3′ generate-rate-rank: ONE batched SIM call rates ALL candidates, then KEEP them all
@@ -523,6 +599,19 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
       text: hook.seedHook ?? hook.hookLine,
     }));
 
+    // ── Audience Sim v2 (Stage 2): characterize each hook CONCURRENTLY with the SIM ──
+    // Fire the per-candidate content-characterization calls BEFORE awaiting the batched Flash
+    // reaction so they run in parallel (no serial latency added — mirrors /api/tools/react).
+    // Each resolves to the ContentVector the cheap O(N) scorer reacts on; a per-call failure
+    // degrades to null (that card just omits the population field). Gated off entirely for
+    // audiences without the v2 axes → all null, no LLM calls, byte-identical old behaviour.
+    // Scored on the SAME `text` the SIM reacts to, so the projection and the panel agree.
+    const vectorPromises: Promise<ContentVector | null>[] = candidates.map((c) =>
+      wantPopulation
+        ? characterizeContent(c.text, populationVocab).catch(() => null)
+        : Promise.resolve(null),
+    );
+
     const batch = await runFlashTextModeBatch(
       candidates,
       "hook",
@@ -536,6 +625,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     });
     if (!batch) return [];
     allWarnings.push(...batch.warnings);
+
+    // Collect the (already in-flight) content vectors — indexed to match `hookBatch`/candidates.
+    const vectors = await Promise.all(vectorPromises);
 
     const out: RatedCandidate[] = [];
 
@@ -567,6 +659,20 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         })),
       );
 
+      // Audience Sim v2 (Stage 2): the population projection — pure O(N) once the vector lands.
+      // A null vector (skip / characterize failure) or a scorer throw → undefined (card omits the
+      // field). Never let the projection break a card: the SIM band/fraction is the load-bearing
+      // signal, the population is additive texture.
+      let population: PopulationAggregate | undefined;
+      const vector = vectors[i];
+      if (populationSignature && vector) {
+        try {
+          population = reactPopulation(populationSignature, vector);
+        } catch {
+          population = undefined;
+        }
+      }
+
       out.push({
         hook,
         band,
@@ -575,6 +681,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         audienceArchetype,
         predictedFailureMode: null, // S5: rubric critic removed (was OFF / ~100% fail)
         personas,
+        population,
         generationIndex: i,
       });
     });
@@ -668,6 +775,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         // Per-persona generation — omitted entirely when there is no named reader, so General
         // and every pre-target persisted card keep their exact shape (regression gate).
         ...(target ? { target } : {}),
+        // Audience Sim v2 (Stage 2) — the N-individual population projection. Omitted when the
+        // audience lacks the v2 axes or characterization failed → byte-identical pre-v2 shape.
+        ...(candidate.population ? { population: candidate.population } : {}),
       },
     };
 

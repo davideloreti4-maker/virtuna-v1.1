@@ -579,6 +579,9 @@ export async function updateAudience(
   // Strip user_id from the update payload — RLS enforces ownership at DB layer too
   const rowPayload = audienceToRow(input, user.id);
   delete rowPayload.user_id; // do NOT overwrite user_id on update
+  // No DB trigger maintains updated_at — stamp it here or the row lies about its
+  // freshness forever (a live re-bake at 10:02 still read 08:26, 2026-07-17).
+  rowPayload.updated_at = new Date().toISOString();
 
   const { data, error } = await supabase
     .from("audiences")

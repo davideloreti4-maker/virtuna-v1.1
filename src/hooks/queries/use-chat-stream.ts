@@ -23,12 +23,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
+import type { StageState } from '@/components/thread/progress-checklist';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export interface UseChatStreamReturn {
   /** Accumulated assistant turn text (in-flight, empty when idle/complete). */
   streamingText: string;
+  /**
+   * Skill card-blocks streamed inline this turn (CHAT_AGENT_DISPATCH — event: block), in arrival
+   * order. Empty on a plain chat turn. Rendered via MessageBlocks in ChatThreadView so a
+   * chat-dispatched ideas/hooks/script run shows its real cards in the SAME thread. Raw blocks
+   * (MessageBlocks re-validates each), so the type is intentionally loose.
+   */
+  streamingBlocks: unknown[];
+  /**
+   * Pipeline stages from the dispatched skill's real phase boundaries (event: stage). Empty on a
+   * plain chat turn. Feeds the progress spine, mirroring the skill-route stream hooks.
+   */
+  stages: StageState[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string if the stream or route failed. Null when no error. */
@@ -71,6 +84,10 @@ export interface UseChatStreamReturn {
 
 export function useChatStream(): UseChatStreamReturn {
   const [streamingText, setStreamingText] = useState('');
+  // Skill card-blocks + stages from a chat-as-agent dispatch (CHAT_AGENT_DISPATCH). Empty on a
+  // plain chat turn — these paths only fire when the route ran a skill (event: block / stage).
+  const [streamingBlocks, setStreamingBlocks] = useState<unknown[]>([]);
+  const [stages, setStages] = useState<StageState[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -80,6 +97,9 @@ export function useChatStream(): UseChatStreamReturn {
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // Ref copies so block/stage events patch without a stale closure (mirrors use-ideas-stream).
+  const blocksRef = useRef<unknown[]>([]);
+  const stagesRef = useRef<StageState[]>([]);
 
   // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
   // on an unmounted component. Without this the useRef(true) guard is permanently
@@ -97,11 +117,15 @@ export function useChatStream(): UseChatStreamReturn {
 
   const reset = useCallback(() => {
     setStreamingText('');
+    setStreamingBlocks([]);
+    setStages([]);
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
     setColdStart(false);
     textRef.current = '';
+    blocksRef.current = [];
+    stagesRef.current = [];
   }, []);
 
   const stop = useCallback(() => {
@@ -117,13 +141,17 @@ export function useChatStream(): UseChatStreamReturn {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Reset state for a new run (clears error, coldStart, streamingText)
+    // Reset state for a new run (clears error, coldStart, streamingText, dispatch blocks/stages)
     setStreamingText('');
+    setStreamingBlocks([]);
+    setStages([]);
     setError(null);
     setIsDone(false);
     setColdStart(false);
     setIsStreaming(true);
     textRef.current = '';
+    blocksRef.current = [];
+    stagesRef.current = [];
 
     try {
       // CRITICAL: fetch + getReader, NOT EventSource (POST needs a body — BLOCKER-1).
@@ -188,6 +216,31 @@ export function useChatStream(): UseChatStreamReturn {
               if (isMountedRef.current) setStreamingText(textRef.current);
             }
 
+          } else if (eventType === 'block') {
+            // Chat-as-agent (CHAT_AGENT_DISPATCH): a dispatched skill's card-block. Append in
+            // arrival order; MessageBlocks re-validates each on render (unknown/invalid → placeholder).
+            const block = (data as { block?: unknown }).block;
+            if (block !== undefined) {
+              blocksRef.current = [...blocksRef.current, block];
+              if (isMountedRef.current) setStreamingBlocks([...blocksRef.current]);
+            }
+
+          } else if (eventType === 'stage') {
+            // Dispatched skill's real pipeline phase — upsert by name, preserve first-seen order
+            // (mirrors use-ideas-stream). Feeds the progress spine during a chat-run skill.
+            const stageName = typeof data.name === 'string' ? data.name : '';
+            const stageStatus = (data.status === 'active' || data.status === 'done')
+              ? (data.status as StageState['status'])
+              : 'pending';
+            if (stageName) {
+              const existing = stagesRef.current.find((s) => s.name === stageName);
+              const updated = existing
+                ? stagesRef.current.map((s) => (s.name === stageName ? { ...s, status: stageStatus } : s))
+                : [...stagesRef.current, { name: stageName, status: stageStatus }];
+              stagesRef.current = updated;
+              if (isMountedRef.current) setStages([...updated]);
+            }
+
           } else if (eventType === 'done') {
             if (isMountedRef.current) {
               setIsDone(true);
@@ -227,6 +280,8 @@ export function useChatStream(): UseChatStreamReturn {
 
   return {
     streamingText,
+    streamingBlocks,
+    stages,
     isStreaming,
     error,
     isDone,

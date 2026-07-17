@@ -28,8 +28,6 @@ vi.mock("../calibration-flow", () => ({
 }));
 
 import { AudienceForm } from "../audience-form";
-import NewAudiencePage from "@/app/(app)/audience/new/page";
-import { HORIZONTAL_ENABLED } from "@/lib/flags/horizontal";
 
 function savedAudience(): Audience {
   return {
@@ -106,36 +104,6 @@ describe("AudienceForm — mode preset (D-08)", () => {
   });
 });
 
-describe("/audience/new page wiring (non-conditional)", () => {
-  // Recurses the returned tree — the page now nests AudienceForm inside the shared
-  // radial surface shell, so a shallow direct-children scan no longer finds it. The
-  // wiring contract asserted below (initialMode value) is unchanged.
-  function findForm(node: React.ReactNode): React.ReactElement | null {
-    if (!node || typeof node !== "object") return null;
-    if (Array.isArray(node)) {
-      for (const c of node) {
-        const found = findForm(c);
-        if (found) return found;
-      }
-      return null;
-    }
-    const el = node as React.ReactElement;
-    if ("type" in el && el.type === AudienceForm) return el;
-    return findForm((el.props as { children?: React.ReactNode }).children);
-  }
-
-  it.skipIf(!HORIZONTAL_ENABLED)("?mode=general ⇒ initialMode='general' passed to AudienceForm", async () => {
-    const tree = await NewAudiencePage({ searchParams: Promise.resolve({ mode: "general" }) });
-    const form = findForm(tree);
-    expect(form).not.toBeNull();
-    expect((form!.props as { initialMode?: string }).initialMode).toBe("general");
-  });
-
-  it("absent/other mode ⇒ initialMode undefined (Socials default)", async () => {
-    const treeAbsent = await NewAudiencePage({ searchParams: Promise.resolve({}) });
-    expect((findForm(treeAbsent)!.props as { initialMode?: string }).initialMode).toBeUndefined();
-
-    const treeOther = await NewAudiencePage({ searchParams: Promise.resolve({ mode: "socials" }) });
-    expect((findForm(treeOther)!.props as { initialMode?: string }).initialMode).toBeUndefined();
-  });
-});
+// The /audience/new page-wiring tests moved to audience-create.test.tsx — the page
+// renders the three-door AudienceCreate flow now (P4). AudienceForm remains the EDIT
+// surface ([id]/page.tsx), and its direct-render contracts above still hold.

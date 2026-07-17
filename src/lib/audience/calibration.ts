@@ -64,6 +64,10 @@ function personasFromSignature(sig: AudienceSignature): CalibratedPersona[] {
     temperature: p.temperature,
     disposition: p.disposition,
     share: p.share,
+    // v2: seed the presentation label from the generator's custom display_name so the ambient
+    // audience shows "The Archive Builder" not "Saver". Presentation-only (engine never reads
+    // label); a later manual rename (AUD-EDIT-01) still overrides. Absent on legacy → falls back.
+    ...(p.display_name ? { label: p.display_name } : {}),
   }));
 }
 
@@ -128,6 +132,13 @@ export interface CalibrationDeps {
    * instant they exist. Purely additive: an absent callback changes nothing.
    */
   onEvidence?: (evidence: CalibrationEvidence) => void;
+  /**
+   * Raw-bundle reporter — fires with the scraped ProfileBundle on the real-scrape branch only
+   * (never the niche fallback: those videos belong to strangers, not the account). The P4
+   * one-scrape seam: the caller persists account_posts / snapshots from the SAME bundle the
+   * calibration read instead of running a second Apify scrape. Purely additive.
+   */
+  onBundle?: (bundle: ProfileBundle) => void;
 }
 
 /** What the scrape actually pulled — shown during the wait, not just used and hidden. */
@@ -136,6 +147,10 @@ export interface CalibrationEvidence {
   displayName: string;
   avatarUrl: string;
   followerCount: number;
+  /** Account-level total likes (TikTok heart count) — the reveal's Likes figure. */
+  heartCount: number;
+  /** The account's total posted videos (profile-level, not the scraped window). */
+  videoCount: number;
   /** The posts we are about to watch, newest-first as the scraper returned them. */
   videos: { coverUrl: string | null; views: number }[];
 }
@@ -232,6 +247,7 @@ export async function calibrateFromScrape(
   const enrich = deps.enrich ?? enrichSignature;
   const onStage = deps.onStage;
   const onEvidence = deps.onEvidence;
+  const onBundle = deps.onBundle;
 
   // ── PLATFORM guard — the whole scrape stack below is TikTok-ONLY ──────────────────────
   //
@@ -306,11 +322,16 @@ export async function calibrateFromScrape(
           displayName: bundle.profile.displayName,
           avatarUrl: bundle.profile.avatarUrl,
           followerCount: bundle.profile.followerCount,
+          heartCount: bundle.profile.heartCount,
+          videoCount: bundle.profile.videoCount,
           videos: bundle.videos.map((v) => ({
             coverUrl: v.coverUrl ?? null,
             views: v.views,
           })),
         });
+        // Same branch, same honesty rule: the raw bundle goes to the caller so persistence
+        // (account_posts, snapshots) reads the ONE scrape instead of running another.
+        onBundle?.(bundle);
       }
     } else {
       // ── Target with no reference handle → niche search from the description ──
