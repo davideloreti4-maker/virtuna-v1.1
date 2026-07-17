@@ -110,20 +110,47 @@ Original spec (for reference). `/audience/[id]` for a synced audience:
 - Described/simulated audience variant: no SOURCE zone; description + `custom_context` instead.
 - Mix sliders die. Persona EDITING (persona-edit-form) — keep reachable (owner hasn't killed it).
 
-## P3 — Single-audience Read
+## P3 — Single-audience Read — DONE (2026-07-17, session 3)
 
-Owner push-back CONFIRMED: score only the selected audience. General scores only when nothing
-is pinned. "Compare" stays as the explicit list-page action (route already accepts
-`audienceIds: [a, b]` — keep that path intact).
-- Change the default pairing at `read/route.ts:157` (drop the forced GENERAL second side).
-- **ENGINE_VERSION bump** or the cache replays old two-audience reads.
-- Block shape: `multi-audience-read` block + `MultiAudienceReadBlockRenderer` — single-read
-  rendering, delta/"wins for X bombs for Y" only in explicit compares.
-- 🔴 Five touchpoints (schema → runner → route SSE emit → parse → toBlocks) — the route's SSE
-  emit is the one everybody forgets.
-- **Orphaned pin decision (owner asked, I recommended, owner accepted "what do you think")**:
-  disconnected/deleted audience → thread falls back to General, NEVER silently — next Read
-  shows one quiet line "Audience removed · scoring against General."
+Owner push-back CONFIRMED and shipped: the default Read scores ONLY the selected audience.
+What landed:
+- **Route** (`read/route.ts`): default path passes `[activeAudience]` — the forced
+  `GENERAL_AUDIENCE` second side is dead (was 2 full Flash passes per Read). Explicit
+  Compare (`audienceIds: [a, b]`) untouched. The legacy `secondAudienceId` body field
+  DELETED (zero callers; duplicated the explicit path).
+- **Runner** (`two-audience-read.ts`): `comparable.length <= 1` → single-audience Read
+  directly — the `pair = [first, GENERAL_AUDIENCE]` fill is gone. Subsumes the old CR-02
+  self-pair collapse and the MODE-01 drop. Explicit distinct same-mode pair → compare,
+  delta prose only there.
+- **Orphaned pin said out loud** (owner accepted): pinned row GONE (`getAudience` → null)
+  → General + `fallback: "audience-removed"` on the block (new optional run-level schema
+  prop) → renderer shows one quiet line "Audience removed · scoring against General."
+  A getAudience THROW stays a silent General fallback (transient DB error ≠ deleted —
+  claiming "removed" there would be false). Route tests lock BOTH shapes.
+- **/dev/cards**: second Read section "Text Read (single + orphaned pin)" — the default
+  shape is now visually inspectable. (Section `type` needed a `--single` suffix: it doubles
+  as the React key/anchor on the gallery page.)
+- **⛔ ENGINE_VERSION NOT bumped — the earlier "bump mandatory" note was WRONG for this
+  path.** Verified: the text-Read path has NO result cache anywhere (`run-flash-text-mode.ts`
+  is hard-isolated from `version.ts` by design — see its module docblock; every call hits
+  Qwen fresh; prediction-cache is video-only). Bumping would have invalidated the video
+  L1/L2 cache for nothing. The "cache replays old reads" lesson applies to the VIDEO read
+  pipeline only.
+- Verification: full suite 3872 green · tsc 0 · prod build green · live on :3001 — real
+  default Read returned ONE entry (General, Strong, 7/10 stop, single-read copy), persisted
+  block DB-verified single-entry, bad explicit pair → 400, /dev/cards renders both Read
+  sections with the quiet line, 0 console errors. Screenshots: `.planning/sketches/p3-live/`.
+- 🔍 **Live-caught, PRE-EXISTING, deferred**: the /home composer's rehydration whitelist
+  (`composer.tsx` `loadPersistedBlocks`) never restored `multi-audience-read` — a persisted
+  Read has NEVER re-rendered on the thread surface (only the audience-manager Compare
+  renders one, inline). Harmless today (no UI issues default Reads), but whichever phase
+  gives the Read a composer entry must add it to the whitelist + a thread view.
+  DB note for queries: `messages.body` is `{blocks: [...]}` (object), so
+  `body @> '[{"type":...}]'` array-containment does NOT match — `read-rollup.ts` already
+  documents this.
+- `tier: "Validated"` on a General read is CORRECT (pre-existing design): `resolveTier`
+  keys on mode — `socials` → the pack's live-validated baseline; the T-03-15
+  never-Validated rule is about `mode: "general"` panels.
 
 ## P4 — Create flow + unified scrape (LAST — waits for sim-v2 merge)
 
