@@ -21,11 +21,16 @@
  *    The stage is honest on BOTH paths — cache read-back finds proven outliers too,
  *    just instantly.
  *  - Read-back FIRST (gather-once/walk-many): the teardown cache is consulted before
- *    any scrape; enough good cached rows → the scrape is skipped entirely. A cache
- *    miss OR read-back failure falls through to the live scrape (which write-through
- *    populates the cache). Only when the scrape path ALSO fails does the run degrade
- *    to ungrounded — corpus stays undefined, examples stay [], a warning is pushed.
- *    Never fabricate a source, never block generation.
+ *    any scrape; enough good cached rows → the scrape is skipped entirely.
+ *  - The SCRAPE IS EXPLICIT-ONLY (`allowScrape`, default false — owner call 2026-07-17).
+ *    A cache miss on a default run degrades to ungrounded; it does NOT reach for Apify.
+ *    Spending the owner's money is a decision the user makes, not a consequence of the
+ *    corpus being thin on their subject. `allowScrape: true` (a deliberate "find me new
+ *    outliers" action) restores the live scrape, whose write-through populates the cache
+ *    so the NEXT run on that subject is free — the gather-once/walk-many loop, driven by
+ *    intent instead of by accident.
+ *  - Degrade is always honest and never blocking: corpus stays undefined, examples stay [],
+ *    a warning is pushed. Never fabricate a source, never block generation.
  */
 
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
@@ -40,6 +45,18 @@ export const GROUNDING_STAGE_NAME = "Finding proven outliers";
 export interface GatherCorpusInput {
   /** Per-skill env gate, resolved by the caller (e.g. GROUNDING_HOOKS_ENABLED === "true"). */
   enabled: boolean;
+  /**
+   * May this run pay for a LIVE SCRAPE on a cache miss? Default false — the scrape is an
+   * explicit, user-authorized action, never an automatic consequence of a thin corpus.
+   *
+   * The read-back is free; the scrape is ~25s of Apify. Measured 2026-07-17 against the real
+   * 532-row corpus: at the 0.58 floor only 3 of 12 realistic asks cleared it, so an automatic
+   * fallback billed the owner on 75% of ideas/script runs — silently, with no affordance and
+   * no way to decline. That is the wrong default for a spend. A miss now degrades to ungrounded
+   * (free, instant, honest); the user gets the outliers we already own, and asks for new ones
+   * when they want them.
+   */
+  allowScrape?: boolean;
   /**
    * Which skill is grounding. One teardown holds several lessons; this selects the SLICE the
    * model is shown (hooks → the madlib · ideas → belief↔reality · script → the timed beats).
@@ -165,21 +182,26 @@ export async function gatherCorpusForRun(
     }
 
     // 2. live scrape + extract (write-through populates the cache for next time).
-    //    Only where we can actually scrape. `minRows` decides whether the scrape is WORTH
-    //    skipping — it is not a quality bar, and on a platform we cannot scrape there is no
-    //    scrape to skip. Throwing away 2 real proven outliers to run ungrounded, because a
-    //    threshold designed to save an Apify call said "only 2", would be self-defeating:
-    //    two proven sources beat none. Use what we found; degrade to raw only when we found
-    //    nothing at all (and say so).
-    if (!SCRAPABLE_PLATFORMS.has(input.platform)) {
+    //    Only where we can actually scrape, and only when the USER asked to pay for it.
+    //    `minRows` decides whether the scrape is WORTH skipping — it is not a quality bar, and
+    //    where there is no scrape to reach for there is no scrape to skip. Throwing away 2 real
+    //    proven outliers to run ungrounded, because a threshold designed to save an Apify call
+    //    said "only 2", would be self-defeating: two proven sources beat none. Use what we found;
+    //    degrade to raw only when we found nothing at all (and say so).
+    if (!input.allowScrape || !SCRAPABLE_PLATFORMS.has(input.platform)) {
+      // Name the REAL reason: "not scrapable" and "not authorized to spend" are different
+      // facts, and a log that conflates them sends the next reader to the wrong platform gate.
+      const why = !input.allowScrape
+        ? "scrape not requested (explicit-only)"
+        : `${input.platform} is not scrapable`;
       if (partial.length > 0) {
         console.info(
-          `[grounding] ${input.platform} is not scrapable — grounding on the ${partial.length} cached teardowns we do have`,
+          `[grounding] ${why} — grounding on the ${partial.length} cached teardowns we do have`,
         );
         return finalize(partial);
       }
       console.info(
-        `[grounding] no cached teardowns for "${query}" on ${input.platform} and no scraper for it — degrading to ungrounded`,
+        `[grounding] no cached teardowns for "${query}" on ${input.platform} and ${why} — degrading to ungrounded`,
       );
       return none;
     }
