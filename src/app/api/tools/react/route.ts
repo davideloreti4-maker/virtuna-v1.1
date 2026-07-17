@@ -124,7 +124,7 @@ export async function POST(request: Request): Promise<Response> {
   // Read active_audience_id off the user's open thread, then resolve under the session.
   // NULL = General default; a missing id or load failure degrades to General (never blocks).
   const openThread = await createOpenThreadLazy(user.id);
-  const audience = await resolveThreadAudience(supabase, openThread);
+  const audience = await resolveThreadAudience(supabase, openThread, user.id);
 
   // ── (5) Build the niche panel + audience repaint (shared helper — Task 1) ───
   // The SAME construction ideas-runner / hooks-runner use, so the typed thought

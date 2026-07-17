@@ -155,7 +155,7 @@ export async function POST(request: Request): Promise<Response> {
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Falls back to General on a missing id or a load failure (non-fatal). Id is NEVER from
   // the request body — session/thread only (CR-01).
-  const activeAudience = await resolveThreadAudience(supabase, openThread);
+  const activeAudience = await resolveThreadAudience(supabase, openThread, user.id);
 
   // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
   // hooks is socials-shaped by construction. A `mode: 'general'` audience (a panel, a

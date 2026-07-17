@@ -143,7 +143,7 @@ export async function POST(request: Request): Promise<Response> {
   // ── (5a) Load active audience (07-04 / D-04 per-thread pin — shared helper) ──
   // thread.active_audience_id: NULL = General default; non-null = load under the session.
   // Resolves to General on a missing id or a load failure (graceful degradation — never blocks).
-  const activeAudience = await resolveThreadAudience(supabase, openThread);
+  const activeAudience = await resolveThreadAudience(supabase, openThread, user.id);
 
   // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
   // ideas is socials-shaped by construction. A `mode: 'general'` audience (a panel, a
