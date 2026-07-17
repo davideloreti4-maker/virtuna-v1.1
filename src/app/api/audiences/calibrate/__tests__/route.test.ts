@@ -29,6 +29,7 @@ vi.mock("@/lib/audience/calibration", () => ({
 vi.mock("@/lib/audience/audience-repo", () => ({
   createAudience: vi.fn(),
   updateAudience: vi.fn(),
+  listAudiences: vi.fn(),
 }));
 
 vi.mock("@/lib/account-metrics/account-metrics-repo", () => ({
@@ -49,7 +50,7 @@ vi.mock("@/lib/connected-accounts/connected-accounts-repo", () => ({
 
 import { createClient } from "@/lib/supabase/server";
 import { calibrateFromScrape } from "@/lib/audience/calibration";
-import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
+import { createAudience, updateAudience, listAudiences } from "@/lib/audience/audience-repo";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
@@ -59,6 +60,7 @@ const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockCalibrate = calibrateFromScrape as ReturnType<typeof vi.fn>;
 const mockCreateAudience = createAudience as ReturnType<typeof vi.fn>;
 const mockUpdateAudience = updateAudience as ReturnType<typeof vi.fn>;
+const mockListAudiences = listAudiences as ReturnType<typeof vi.fn>;
 const mockUpsertSnapshot = upsertAccountSnapshot as ReturnType<typeof vi.fn>;
 const mockUpsertPosts = upsertAccountPosts as ReturnType<typeof vi.fn>;
 const mockCluster = clusterPillarsForAccount as ReturnType<typeof vi.fn>;
@@ -180,6 +182,7 @@ beforeEach(() => {
   mockUpsertSnapshot.mockResolvedValue(undefined);
   mockUpsertPosts.mockResolvedValue(undefined);
   mockCluster.mockResolvedValue({ status: "clustered", pillarCount: 5, assigned: 3 });
+  mockListAudiences.mockResolvedValue([]);
 });
 
 describe("POST /api/audiences/calibrate — gates", () => {
@@ -247,6 +250,36 @@ describe("POST /api/audiences/calibrate — success path (SSE)", () => {
 
     // Pillars clustered right after, so the detail page is lit at creation.
     expect(mockCluster).toHaveBeenCalledWith(expect.anything(), "user-1", "acct-1");
+  });
+
+  it("re-connecting a synced handle UPDATES the canonical audience — one connection, one audience", async () => {
+    // The account already manifests as an audience. A second connect-door run must
+    // re-calibrate THAT row, not strand a duplicate behind audienceForAccount.
+    mockListAudiences.mockResolvedValue([
+      {
+        id: "aud-existing",
+        user_id: "user-1",
+        name: "@zachking",
+        type: "personal",
+        mode: "socials",
+        platform: "tiktok",
+        is_general: false,
+        is_preset: false,
+        source_account_id: "acct-1",
+        personas: [{ archetype: "fyp" }],
+        profile: null,
+        calibration: { source: "scrape", handle: "zachking" },
+      },
+    ]);
+    mockCalibrate.mockResolvedValue(SUCCESS_RESULT);
+
+    const res = await callPOST(PERSONAL_BODY);
+    const frames = await readSse(res);
+
+    expect(frames.map((f) => f.event)).toContain("done");
+    expect(mockUpdateAudience).toHaveBeenCalledTimes(1);
+    expect(mockUpdateAudience.mock.calls[0]![1]).toBe("aud-existing");
+    expect(mockCreateAudience).not.toHaveBeenCalled();
   });
 
   it("updates the draft row in place when audienceId is supplied (no orphan dupe)", async () => {

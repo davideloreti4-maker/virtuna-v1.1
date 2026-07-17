@@ -25,7 +25,8 @@ import {
   calibrateFromScrape,
   type CalibrationStage,
 } from "@/lib/audience/calibration";
-import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
+import { createAudience, updateAudience, listAudiences } from "@/lib/audience/audience-repo";
+import { audienceForAccount } from "@/components/audience/audience-display";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
@@ -208,13 +209,29 @@ export async function POST(request: Request): Promise<Response> {
         // so calibration enriches the existing row instead of leaving an orphan dupe.
         // Falls back to insert when no draft id is supplied (back-compat / API callers).
         // source_account_id links the audience to the account it calibrated from.
+        // One connection → ONE canonical audience: re-connecting an already-synced
+        // handle re-calibrates the audience that account manifests as (the same row
+        // audienceForAccount resolves on the list), instead of stranding a duplicate
+        // behind it. Best-effort — an unreadable list just falls through to insert.
+        let canonicalId: string | undefined = audienceId;
+        if (!canonicalId && type === "personal" && connectedAccount) {
+          try {
+            canonicalId = audienceForAccount(
+              connectedAccount,
+              await listAudiences(supabase),
+            )?.id;
+          } catch {
+            /* fall through to insert */
+          }
+        }
+
         let persistedAudience;
         try {
           const withSource = connectedAccount
             ? { ...audienceInput, source_account_id: connectedAccount.id }
             : audienceInput;
-          persistedAudience = audienceId
-            ? await updateAudience(supabase, audienceId, withSource)
+          persistedAudience = canonicalId
+            ? await updateAudience(supabase, canonicalId, withSource)
             : await createAudience(supabase, {
                 ...withSource,
                 user_id: user.id, // pre-fill for the repo validation step
