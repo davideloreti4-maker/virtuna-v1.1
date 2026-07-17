@@ -76,6 +76,7 @@ function makeSynth() {
       maturity: "established" as const,
       temperature_mix: { cold: 0.2, warm: 0.5, hot: 0.3 },
       interest_tags: ["adhd", "productivity", "tools"],
+      topic_vocab: ["adhd_hacks", "system_building", "spectacle", "relatable"],
       what_resonates: "step-by-step saves",
       what_falls_flat: "talking-head storytime",
       persona_weights: { fyp: 0.55, niche: 0.3, loyalist: 0.1, cross_niche: 0.05 },
@@ -312,5 +313,57 @@ describe("enrichSignature — onStage announces each phase as it BEGINS", () => 
         synthesize: vi.fn(async () => makeSynth()),
       }),
     ).resolves.toBeTruthy();
+  });
+
+  // ─── v2: custom-per-creator persona fields flow through (Audience Sim v2, Stage 1) ─────
+  it("carries the v2 custom persona fields (display_name, blurb, axes) + topic_vocab into the signature", async () => {
+    const base = makeSynth();
+    const custom = {
+      ...base,
+      audience: {
+        ...base.audience,
+        topic_vocab: ["sleight_of_hand", "spectacle", "humor"],
+        personas: base.audience.personas.map((p, i) => ({
+          ...p,
+          display_name: `Custom ${i}`,
+          blurb: `blurb ${i}`,
+          reaction: {
+            interests: { spectacle: 0.8 },
+            hookSensitivity: 0.5,
+            noveltyBias: 0.4,
+            skepticism: 0.3,
+            attentionSpan: 0.6,
+          },
+          behavior: {
+            watchThrough: 0.5,
+            sharePropensity: 0.4,
+            commentPropensity: 0.3,
+            savePropensity: 0.7,
+          },
+        })),
+      },
+    };
+    const sig = await enrichSignature(makeInput([makeVideo(0, 10_000, 400, 100)]), {
+      watchVideo: vi.fn(async () => WATCH_NOTE),
+      fetchSubtitle: vi.fn(async () => null),
+      synthesize: vi.fn(async () => custom),
+    });
+    expect(sig.audience.topic_vocab).toEqual(["sleight_of_hand", "spectacle", "humor"]);
+    expect(sig.audience.personas[0]!.display_name).toBe("Custom 0");
+    expect(sig.audience.personas[0]!.blurb).toBe("blurb 0");
+    expect(sig.audience.personas[0]!.reaction?.hookSensitivity).toBe(0.5);
+    expect(sig.audience.personas[0]!.reaction?.interests.spectacle).toBe(0.8);
+    expect(sig.audience.personas[0]!.behavior?.savePropensity).toBe(0.7);
+  });
+
+  it("is legacy-safe — a synth without v2 persona fields yields personas that omit them (display falls back to archetype)", async () => {
+    const sig = await enrichSignature(makeInput([makeVideo(0, 10_000, 400, 100)]), {
+      watchVideo: vi.fn(async () => WATCH_NOTE),
+      fetchSubtitle: vi.fn(async () => null),
+      synthesize: vi.fn(async () => makeSynth()),
+    });
+    expect(sig.audience.personas[0]!.display_name).toBeUndefined();
+    expect(sig.audience.personas[0]!.reaction).toBeUndefined();
+    expect(sig.audience.personas[0]!.behavior).toBeUndefined();
   });
 });

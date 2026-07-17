@@ -156,7 +156,12 @@ describe("getTopArchetypes", () => {
       ],
     });
     const top = getTopArchetypes(audience, 2);
-    expect(top[0]).toContain("High Engager");
+    // The workspace calls a persona what a PERSON would call them, not what the engine calls them.
+    // `high_engager` → "Commenters" (SSOT: lib/audience/archetype-names.ts). Before this, the app
+    // title-cased the raw slug and said "High Engager" — and on a hook card, "CROSS NICHE
+    // CURIOSITY" — which is the machine's name for a person, shown to that person's creator.
+    expect(top[0]).toContain("Commenters");
+    expect(top[0]).not.toContain("High Engager");
     expect(top[0]).toContain("40%");
   });
 });

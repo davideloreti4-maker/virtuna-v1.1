@@ -79,18 +79,23 @@ export interface HookTarget {
   archetype: Archetype;
   /** The persona's calibrated description. THE ONLY persona text the model sees. */
   repaint: string;
-  /** Display only — NEVER goes in a prompt (F7). Falls back to the archetype-derived string. */
-  label: string;
+  /**
+   * The CREATOR'S OWN name for this persona, when they set one — and ONLY then. Display only;
+   * NEVER goes in a prompt (F7).
+   *
+   * ⚠️ Deliberately NOT pre-resolved to a fallback. The distinction matters at the persistence
+   * boundary: a creator's name is HISTORY (snapshot it — a later rename must not rewrite what a
+   * card said when it was written), whereas OUR fallback name is merely our current vocabulary
+   * (resolve it at RENDER, so improving the vocabulary improves every card ever generated). Bake
+   * the fallback in here and old cards say "NICHE DEEP BUYER" forever.
+   */
+  label?: string;
   /** 0..1 share of the audience. */
   share: number;
   /** Which of the four `persona_weights` buckets this archetype lives in. */
   slot: SlotType;
 }
 
-/** Presentation fallback when a persona carries no creator-set label. Mirrors formatArchetype. */
-function fallbackLabel(archetype: string): string {
-  return archetype.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
 
 /**
  * The DISTINCT cast, ranked: top persona of each slot type first (coverage), then the rest by
@@ -113,7 +118,8 @@ export function rankHookTargets(audience: Audience | null, limit: number): HookT
     .map((p) => ({
       archetype: p.archetype,
       repaint: p.repaint.trim(),
-      label: p.label?.trim() || fallbackLabel(p.archetype),
+      // Only the creator's OWN name is carried. No fallback here — see the `label?` doc above.
+      ...(p.label?.trim() ? { label: p.label.trim() } : {}),
       share: p.share,
       slot: ARCHETYPE_SLOT[p.archetype],
     }));

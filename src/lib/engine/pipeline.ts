@@ -876,7 +876,23 @@ export async function runPredictionPipeline(
     } catch (error) {
       Sentry.captureException(error, { tags: { stage: "wave_3_fold", requestId } });
       warnings.push(`Fold unavailable: ${error instanceof Error ? error.message : String(error)}`);
-      // foldOutcome remains null — aggregator falls back to deepseek.behavioral_predictions
+      // AUD-FAIL-01 — a fold that dies by THROWING is still a fold that was attempted, and it
+      // must be scored exactly like one that dies by returning fold_success:false. Leaving
+      // foldOutcome null here made the two indistinguishable from text mode (where no fold was
+      // ever promised), so the aggregator took the apollo-vs-behavioral fallback and handed the
+      // run the same 0.4 self-agreement bonus this fix exists to remove — a dead audience back
+      // at HIGH confidence. Not a hypothetical branch: getQwenClient() and buildFoldUserContent()
+      // run OUTSIDE runFold's per-attempt try, so a missing/rotated API key throws right here.
+      // Record the attempt. Every other consumer of foldOutcome guards on fold_success, so a
+      // failed outcome is inert to them (pass2_timeline=false, no heatmap, 0 cost) — the only
+      // thing it changes is that the aggregator now knows the audience was supposed to exist.
+      foldOutcome = {
+        pass2Results: [],
+        personaSimResults: [],
+        warnings: [], // already pushed above — do not double-report
+        cost_cents: 0,
+        fold_success: false,
+      };
     }
   }
 

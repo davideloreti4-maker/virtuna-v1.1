@@ -14,7 +14,10 @@
  *     re-focuses the Room on the prev/next sibling in place; `⤺ all N` opens the ranked
  *     "How the room ranked your N" list → tap a row to re-focus. Ranked by the real stop-count;
  *     an ad-hoc typed thought (no `focusId`) shows no stepper (the honest state).
- *   • The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the view.
+ *   • The brain ⇄ The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the
+ *     view. The brain is FIRST and the dock's landing view (owner call, 2026-07-12); it is an
+ *     explicitly-labeled simulated neural read (see BrainView's own honesty spine) gated OFF
+ *     the embedded (video-Read / room-drawer) variant, which keeps its two-segment layout.
  *   • The people = pure voices: each real persona is a named row — a TONAL avatar (calm
  *     cream for a stop; accent-soft for a bounce, the signal), the name, `ask →` (opens the
  *     in-voice PersonaChatDrawer), and its OWN verbatim serif quote as the hero. "▶ Replay"
@@ -41,7 +44,9 @@ import type { PersonaNode } from '@/components/board/_kit';
 import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { cascadeOrder } from './lens-derive';
 import { PersonaChatDrawer, type PersonaChatTarget } from './PersonaChatDrawer';
+import { BrainView } from './BrainView';
 import type { AmbientFocusSibling } from './ambient-presence-types';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { stripWrappingQuotes } from '@/lib/utils';
 
 export interface AmbientRoomProps {
@@ -49,6 +54,11 @@ export interface AmbientRoomProps {
    *  The flat text-skill shape (binary verdict + quote); rebuilt into nodes here. Optional
    *  when `personaNodes` is supplied instead (the rich video-Read path). */
   flatPersonas?: FlatPersonaReaction[];
+  /** The Audience Sim v2 population projection (Stage 2) — a REAL O(N) score of ~1,000
+   *  sampled individuals. When present it drives the Population·1,000 view's NUMBERS + the
+   *  per-segment split (the 10 personas above still supply the VOICES); absent ⇒ that view
+   *  falls back to the honest-lean rollup of the 10. */
+  population?: PopulationAggregate;
   /** Pre-built rich PersonaNodes (the video Read's `buildAudienceNodes` — real names,
    *  quotes, archetypes, continuous watch-through). When present it is used DIRECTLY,
    *  bypassing the flat rebuild, so the video's richer signal is not binarised away. The
@@ -98,9 +108,29 @@ export interface AmbientRoomProps {
    *  ranked your N" first). A targeted entry — a card's "See the room →" that pre-focuses ONE
    *  card — passes false so the Room drills straight into that card's people (prototype parity). */
   initialCompareOpen?: boolean;
+  /** A REAL video + the audience's REAL retention curve → the brain scale runs GROUNDED: the
+   *  video plays as the stimulus and the predicted response is modeled from measured retention
+   *  (see BrainView). Supplied only by the video Read, and only when both actually exist — with
+   *  no video the dock's brain stays an explicitly-labeled simulation over the concept text. */
+  brainSource?: BrainSource | null;
 }
 
-type Scale = 'people' | 'population';
+/** The grounded brain's inputs — a real video and the audience's real retention over it. */
+export interface BrainSource {
+  videoSrc: string;
+  /** Retention at normalized stimulus time u∈[0,1] → 0..1 (the measured curve). */
+  retentionAt: (u: number) => number;
+  durationS: number;
+}
+
+type Scale = 'brain' | 'people' | 'population';
+
+/** The scale toggle, in view order — the brain first (the dock's landing view). */
+const SCALES: { value: Scale; label: string }[] = [
+  { value: 'brain', label: 'The brain' },
+  { value: 'people', label: 'The people' },
+  { value: 'population', label: 'Population · 1,000' },
+];
 
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape. */
 function parseStop(fraction: string): { stop: number; total: number } | null {
@@ -137,6 +167,7 @@ const meterTone = (stop: number, total: number): string => {
 
 export function AmbientRoom({
   flatPersonas,
+  population,
   personaNodes,
   embedded = false,
   conceptText,
@@ -152,8 +183,16 @@ export function AmbientRoom({
   onRewrite,
   rewriteNonce = 0,
   initialCompareOpen = true,
+  brainSource,
 }: AmbientRoomProps) {
-  const [scale, setScale] = useState<Scale>('people');
+  // The brain scale exists wherever it can be honest: always in the dock (a labeled simulation
+  // over the concept text), and in the EMBEDDED Read only when a real video + a real retention
+  // curve are supplied (`brainSource`) — there it runs grounded, with the video playing as the
+  // stimulus. An embedded Room without that source (the room drawer) keeps its two segments.
+  const hasBrain = !embedded || brainSource != null;
+  // It is the LANDING view wherever it exists (owner call): open the room, see the head it landed
+  // in first, then step out to the voices and the 1,000.
+  const [scale, setScale] = useState<Scale>(hasBrain ? 'brain' : 'people');
   const [chatTarget, setChatTarget] = useState<PersonaChatTarget | null>(null);
   // The `⤺ all N` ranked view-all (prototype code name: compare). Opens on the OVERVIEW (the ranked
   // list) so the bloom always lands on "how the room ranked your N" first, not a single card's
@@ -400,19 +439,16 @@ export function AmbientRoom({
           </div>
           )}
 
-          {/* ── The people ⇄ Population · 1,000 — quiet text tabs (underline = the active view) ── */}
+          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — quiet text tabs (underline = the
+                active view). The brain segment is dock-only (filtered out when !hasBrain); the
+                embedded Read/drawer keeps the two-segment toggle it shipped with. ── */}
           <div className="shrink-0 px-5 pt-3">
             <div
               role="group"
               aria-label="Audience scale"
               className="flex w-full items-center gap-5 border-b border-[var(--color-border)]"
             >
-              {(
-                [
-                  { value: 'people', label: 'The people' },
-                  { value: 'population', label: 'Population · 1,000' },
-                ] as const
-              ).map((opt) => {
+              {SCALES.filter((opt) => opt.value !== 'brain' || hasBrain).map((opt) => {
                 const active = opt.value === scale;
                 return (
                   <button
@@ -441,11 +477,41 @@ export function AmbientRoom({
               <p className="py-8 text-center text-[13px] text-[var(--color-foreground-muted)]">
                 No reaction yet — test a concept to hear the room.
               </p>
+            ) : scale === 'brain' ? (
+              <BrainView
+                stopCount={stopCount}
+                total={total}
+                conceptText={conceptText}
+                seedKey={focusId ?? conceptText}
+                reducedMotion={reducedMotion}
+                videoSrc={brainSource?.videoSrc}
+                retentionAt={brainSource?.retentionAt}
+                durationS={brainSource?.durationS}
+                // The room's REAL votes. Without a video the brain has no honest timeline, so THESE
+                // become the card's instrument (BrainView's INSTANT mode + ./room-readout).
+                personas={nodes}
+                // Scopes the readout's claim: on a SCRIPT the room only ever voted on the opener.
+                kindLabel={kindLabel}
+                // The counterfactual — the SAME lever the Population weak-spot pulls, on the same
+                // state, so the two can never disagree about what the room said or what to do.
+                canRewrite={canRewrite}
+                onRewrite={handleRewriteTap}
+                rewriteBusy={rewriteBusy}
+                rewriteError={rewriteError}
+                rewriteDelta={rewriteDelta}
+                // The readout's SCALE — the batch this card came from, each sibling's REAL
+                // stop-ratio. Not an invented benchmark: "where this lands against your other four".
+                // A sibling with an unparseable fraction carries stop:-1 → dropped, never zeroed.
+                batchRatios={rankedSiblings
+                  .filter((s) => s.stop >= 0 && s.total > 0)
+                  .map((s) => s.stop / s.total)}
+              />
             ) : scale === 'people' ? (
               <PeopleView ordered={ordered} reducedMotion={reducedMotion} onAsk={openChat} />
             ) : (
               <PopulationView
                 nodes={nodes}
+                population={population}
                 total={total}
                 stopCount={stopCount}
                 reducedMotion={reducedMotion}
@@ -559,8 +625,22 @@ function PeopleView({
                       &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
                     </span>
                   ) : (
-                    <span className="mt-1.5 block text-[12px] italic text-[var(--color-foreground-muted)]">
-                      {bounced ? 'scrolled past' : 'stopped — no words this time'}
+                    /* An ABSENCE, styled as an absence.
+                     *
+                     * This slot used to render `italic` — and italic IS this app's verbatim idiom
+                     * (PopulationSwarm renders a real quote in italic; the thread's blockquotes are
+                     * italic). So the one thing standing where a quote goes, wearing a quote's
+                     * clothing, was the fact that the persona NEVER SPOKE. We are scrupulous about
+                     * never fabricating a quote, and then dressed the absence of one to look like a
+                     * quiet remark.
+                     *
+                     * Same defect class as the missing proof receipt (#287 → NoSourceNote) and the
+                     * dead audience that shipped as HIGH confidence: STATE THE ABSENCE, DON'T DRESS
+                     * IT UP. So this borrows NoSourceNote's exact spine — dashed hairline, muted,
+                     * NOT italic, a plain declarative sentence — because a slot that is empty
+                     * should LOOK empty. */
+                    <span className="mt-1.5 block rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-2 py-1 text-[12px] not-italic leading-snug text-[var(--color-foreground-muted)]">
+                      {bounced ? 'Scrolled past. No words recorded.' : 'Stopped. No words recorded.'}
                     </span>
                   )}
                 </span>
@@ -590,14 +670,20 @@ function PeopleView({
 }
 
 /**
- * Population · 1,000 — the v6 hero. Everything is computed PURELY from the real 10's verdicts
- * (never a fabricated crowd): the stay/bounce headline + the stats bar + the weak spot are the
- * same signal at a denser resolution (1,000 modeled from your N — NOT 1,000 model calls). The
- * WEAK SPOT (who bounced + their exact words) is the diagnostic value. Coral marks only the
- * bounce (dosage LOCKED). Play reveals the swarm by stable index order (deterministic).
+ * Population · 1,000 — the v6 hero. Two data modes:
+ *   - REAL (Audience Sim v2 Stage 2): when a `population` aggregate is supplied, the stay/bounce
+ *     headline + stats bar + per-segment split are a genuine O(N) score of ~1,000 individuals
+ *     SAMPLED off the audience's segments (a projection, not 1,000 replies) — a distribution the
+ *     10's rollup cannot produce (different hooks light different segments).
+ *   - ROLLUP (fallback): with no aggregate, everything is the real 10's verdicts at a denser
+ *     resolution (1,000 modeled from your N — NOT 1,000 model calls), the prior honest-lean v1.
+ * In BOTH modes the WEAK SPOT (who bounced + their exact words) is sourced from the real 10 —
+ * the projection supplies NUMBERS, never fabricated quotes. Coral marks only the bounce (dosage
+ * LOCKED). Play reveals the swarm by stable index order (deterministic).
  */
 function PopulationView({
   nodes,
+  population,
   total,
   stopCount,
   reducedMotion,
@@ -608,6 +694,7 @@ function PopulationView({
   rewriteDelta,
 }: {
   nodes: PersonaNode[];
+  population?: PopulationAggregate;
   total: number;
   stopCount: number;
   reducedMotion: boolean;
@@ -620,16 +707,23 @@ function PopulationView({
   const stops = nodes.filter((n) => verdictOf(n) === 'stop');
   const bounces = nodes.filter((n) => verdictOf(n) === 'scroll');
   const tot = nodes.length || total || 1;
-  const stayK = Math.round((stops.length / tot) * 1000);
-  const bounceK = Math.round((bounces.length / tot) * 1000);
-  const pct = (x: number) => Math.round((x / tot) * 100);
 
-  // The swarm dot mix — a sample presentation of the 1,000, colored by the REAL stop/bounce
-  // split. Cream-alpha for a stop; accent for a bounce (dosage LOCKED). Deterministic order.
+  // Headline numbers — from the REAL population aggregate when present (a genuine 1,000-individual
+  // projection), else the 10's verdicts scaled to 1,000 (honest-lean rollup). Both are 1,000-scale.
+  const real = population && population.total > 0 ? population : null;
+  const stayK = real ? real.stop : Math.round((stops.length / tot) * 1000);
+  const bounceK = real ? real.scroll : Math.round((bounces.length / tot) * 1000);
+  const roomSize = real ? real.total : 1000;
+  const stopFrac = real ? real.stop / real.total : stops.length / tot;
+  const stopPctInt = real ? real.stopPct : Math.round((stops.length / tot) * 100);
+  const bouncePctInt = 100 - stopPctInt;
+
+  // The swarm dot mix — a sample presentation of the room, colored by the REAL stop/bounce split.
+  // Cream-alpha for a stop; accent for a bounce (dosage LOCKED). Deterministic order.
   const dots = useMemo(() => {
-    const gd = Math.round((stops.length / tot) * SWARM_DOTS);
+    const gd = Math.round(stopFrac * SWARM_DOTS);
     return Array.from({ length: SWARM_DOTS }, (_, i): 'stop' | 'bounce' => (i < gd ? 'stop' : 'bounce'));
-  }, [stops.length, tot]);
+  }, [stopFrac]);
 
   // Reveal-on-Play: null = all shown (static); a number = the count revealed so far.
   const [revealed, setRevealed] = useState<number | null>(null);
@@ -700,7 +794,7 @@ function PopulationView({
         ))}
       </div>
       <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-        1,000 modeled from your {tot}
+        {real ? `${roomSize.toLocaleString()} sampled from your audience · a projection` : `1,000 modeled from your ${tot}`}
         {!reducedMotion && (
           <>
             {' · '}
@@ -719,24 +813,50 @@ function PopulationView({
       {/* STATS BAR — the exact split (loved / mixed / bounced). */}
       <div className="mt-4 border-t border-[var(--color-border)] pt-3.5">
         <div className="flex h-[6px] overflow-hidden rounded-[4px] bg-white/[0.05]">
-          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${pct(stops.length)}%` }} />
-          <span className="h-full bg-[var(--color-accent)]" style={{ width: `${pct(bounces.length)}%` }} />
+          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${stopPctInt}%` }} />
+          <span className="h-full bg-[var(--color-accent)]" style={{ width: `${bouncePctInt}%` }} />
         </div>
         <div className="mt-2 flex justify-between text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
           <span>
-            <b className="font-semibold text-[var(--color-positive)]">{pct(stops.length)}%</b> loved
+            <b className="font-semibold text-[var(--color-positive)]">{stopPctInt}%</b> loved
           </span>
           <span>
-            <b className="font-semibold text-[var(--color-accent-text)]">{pct(bounces.length)}%</b> bounced
+            <b className="font-semibold text-[var(--color-accent-text)]">{bouncePctInt}%</b> bounced
           </span>
         </div>
       </div>
+
+      {/* PER-SEGMENT SPLIT — real mode only (Stage 2). WHICH of your people this lands with,
+          share-sorted. This is the projection's genuine signal: different hooks light different
+          segments (the 10's rollup cannot show this). Meter = each segment's real stop rate. */}
+      {real && real.segments.length > 0 && (
+        <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
+          <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+            Who it lands with
+          </p>
+          <ul className="flex flex-col gap-1.5">
+            {real.segments.map((s) => (
+              <li key={s.archetype} className="flex items-center gap-3">
+                <span className="w-[116px] shrink-0 truncate text-[12px] text-foreground" title={s.displayName}>
+                  {s.displayName}
+                </span>
+                <span className="flex h-[5px] flex-1 overflow-hidden rounded-[3px] bg-white/[0.05]">
+                  <span className="h-full bg-[var(--color-positive)]" style={{ width: `${s.stopPct}%` }} />
+                </span>
+                <span className="w-[32px] shrink-0 text-right text-[11px] tabular-nums text-[var(--color-foreground-muted)]">
+                  {s.stopPct}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* WEAK SPOT — who you're losing + their exact words (the diagnostic value). */}
       {weakVoices.length > 0 && (
         <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-            Where you&rsquo;re losing them · {bounceK} of 1,000
+            Where you&rsquo;re losing them · {bounceK} of {roomSize.toLocaleString()}
           </p>
           <ul className="flex flex-col">
             {weakVoices.map((n) => (
@@ -796,7 +916,7 @@ function PopulationView({
             >
               {rewriteBusy
                 ? 'Rewriting for the room…'
-                : `Rewrite to win back the ${pct(bounces.length)}% who bounced →`}
+                : `Rewrite to win back the ${bouncePctInt}% who bounced →`}
             </button>
           )}
         </div>

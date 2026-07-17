@@ -15,6 +15,7 @@
  */
 
 import type { Audience } from '@/lib/audience/audience-types';
+import type { PopulationAggregate } from '@/lib/audience/population';
 
 /**
  * One person's REAL reaction to the focused concept — the exact `{archetype, verdict, quote}`
@@ -58,6 +59,14 @@ export type AmbientFocus = {
   fraction: string;
   scrollQuote: string;
   personas?: AmbientPersonaReaction[];
+  /**
+   * The Audience Sim v2 population projection (Stage 2) — a REAL O(N) score of ~1,000
+   * individuals sampled off the audience's 10 segments, present when the react route ran it
+   * (a calibrated signature with v2 axes). Drives the Population·1,000 view's NUMBERS + the
+   * per-segment split; the 10 real personas still supply the VOICES. Absent ⇒ the view falls
+   * back to the honest-lean rollup of the 10 (never fabricated).
+   */
+  population?: PopulationAggregate;
 } | null;
 
 /**

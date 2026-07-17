@@ -224,6 +224,7 @@ export async function POST(request: Request): Promise<Response> {
               scrollQuote: b.props.scrollQuote,
               model: b.props.model,
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
+              population: b.props.population,    // Audience Sim v2 Stage 2: the N-individual projection → Population·1,000 Sheet (rides the face)
               // band/fraction deferred to score event
             },
           })),

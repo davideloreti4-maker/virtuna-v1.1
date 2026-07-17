@@ -289,7 +289,7 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── (3) Open thread + active audience (CR-01 — id NEVER from body) ─────────
   const openThread = await createOpenThreadLazy(user.id);
-  const activeAudience = await resolveThreadAudience(supabase, openThread);
+  const activeAudience = await resolveThreadAudience(supabase, openThread, user.id);
 
   // ── MODE-01 — the socials-skill guard (server half of the mode seam) ─────────
   // explore is socials-shaped by construction. A `mode: 'general'` audience (a panel, a

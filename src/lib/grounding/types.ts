@@ -230,8 +230,11 @@ export interface TemplateSlot {
 export interface TeardownBeat {
   name: string;
   description: string;
-  startSec: number | null;
-  endSec: number | null;
+  // Optional, not merely nullable: a cheap metadata/caption extraction produces beats with only
+  // name+description and no timing keys at all. Matches TeardownBeatSchema (`.nullable().optional()`)
+  // so a parsed template assigns cleanly. See the schema comment for the 14/300-drop history.
+  startSec?: number | null;
+  endSec?: number | null;
 }
 
 /** template JSONB — the generalized reusable structure (§13 proposed sub-shape). */

@@ -92,6 +92,7 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
           </Tabs.Content>
           <Tabs.Content value="account" className="outline-none">
             <AccountSection />
+            <Credits />
           </Tabs.Content>
           <Tabs.Content value="connected" className="outline-none">
             <ConnectedAccountsSection accounts={connectedAccounts} />
@@ -120,5 +121,51 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
         </div>
       </Tabs.Root>
     </div>
+  );
+}
+
+/**
+ * CREDITS — the price of the licence, and it is not optional.
+ *
+ * The cortical surface the Room renders ("The brain") is a real FreeSurfer reconstruction from a
+ * T1-weighted MRI, published by dgallichan under CC-BY-4.0. That licence permits commercial use and
+ * requires credit, so the credit ships WITH the asset rather than as a follow-up. The same text is in
+ * public/brain/LICENSE.txt, next to the file it describes.
+ */
+function Credits() {
+  return (
+    <section className="mt-10 border-t border-[var(--color-border)] pt-6">
+      <h3 className="text-[12px] font-medium text-[var(--color-foreground-secondary)]">Credits</h3>
+      <p className="mt-2 max-w-prose text-[12px] leading-relaxed text-[var(--color-foreground-muted)]">
+        The cortical surface rendered in The Room is based on{" "}
+        <a
+          href="https://sketchfab.com/3d-models/brain-cadd2bde67404c43b2359a6a3281d84a"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
+        >
+          &ldquo;Brain&rdquo;
+        </a>{" "}
+        by{" "}
+        <a
+          href="https://sketchfab.com/dgallichan"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
+        >
+          dgallichan
+        </a>
+        , licensed under{" "}
+        <a
+          href="http://creativecommons.org/licenses/by/4.0/"
+          target="_blank"
+          rel="noreferrer noopener"
+          className="underline underline-offset-2 hover:text-[var(--color-cream-primary)]"
+        >
+          CC-BY-4.0
+        </a>
+        . Generated with FreeSurfer from a T1-weighted MRI scan, and modified for Maven.
+      </p>
+    </section>
   );
 }

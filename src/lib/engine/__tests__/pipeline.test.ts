@@ -30,6 +30,21 @@ vi.mock("@sentry/nextjs", () => ({
   addBreadcrumb: vi.fn(),
 }));
 
+// AUD-FAIL-01 — lets a single test force runFold to THROW (as it really can: getQwenClient() and
+// buildFoldUserContent() run outside its per-attempt try/catch, so a rotated API key throws out of
+// it). Defaults to the real implementation, so every other test in this file is untouched.
+const foldThrow = vi.hoisted(() => ({ enabled: false }));
+vi.mock("../wave3/fold", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../wave3/fold")>();
+  return {
+    ...actual,
+    runFold: (...args: Parameters<typeof actual.runFold>) => {
+      if (foldThrow.enabled) throw new Error("QWEN_API_KEY is not set");
+      return actual.runFold(...args);
+    },
+  };
+});
+
 vi.mock("nanoid", () => ({
   nanoid: vi.fn(() => "test-req-id"),
 }));
@@ -953,6 +968,76 @@ describe("Phase 4 Plan 05 — filmstrip trigger + fold wiring", () => {
     mockTriggerFilmstripGeneration.mockReturnValue(undefined);
   });
 
+  // video_upload input whose Omni call returns SEGMENTS — the fold is only invoked when segments
+  // are present (pipeline.ts: `if (omniSegments && omniSegments.length > 0)`), so a video fixture
+  // without them never reaches the fold at all and cannot exercise its failure paths.
+  const VIDEO_INPUT = {
+    input_mode: "video_upload" as const,
+    video_storage_path: "user-abc/test-content.mp4",
+    content_text: "GRWM for date night #beauty",
+    content_type: "video" as const,
+    mode: "score" as const,
+  };
+
+  function armOmniWithSegments() {
+    mockDeepSeekCreate.mockImplementation((args: { messages: Array<{ role: string; content: unknown }> }) => {
+      const sys = args.messages.find((m) => m.role === "system");
+      const sysText = typeof sys?.content === "string" ? sys.content : "";
+      const isOmni = sysText.includes("expert TikTok content analyst");
+      const body = isOmni
+        ? JSON.stringify({
+            content_type: "talking_head",
+            niche_primary_slug: "beauty",
+            niche_micro_slug: null,
+            factors: [
+              { name: "Scroll-Stop Power", score: 7, rationale: "x", improvement_tip: "y" },
+              { name: "Completion Pull", score: 7, rationale: "x", improvement_tip: "y" },
+              { name: "Rewatch Potential", score: 6, rationale: "x", improvement_tip: "y" },
+              { name: "Share Trigger", score: 6, rationale: "x", improvement_tip: "y" },
+              { name: "Emotional Charge", score: 7, rationale: "x", improvement_tip: "y" },
+            ],
+            overall_impression: "Solid GRWM",
+            content_summary: "Beauty GRWM clip",
+            hook_visual_impact: 7,
+            hook_decomposition: {
+              visual_stop_power: 7,
+              audio_hook_quality: 6,
+              text_overlay_score: 5,
+              first_words_speech_score: 6,
+              weakest_modality: "text_overlay_score",
+              visual_audio_coherence: 7,
+              cognitive_load: 4,
+              watermark_detected: { tiktok: false, ig: false, yt: false },
+            },
+            video_signals: {
+              visual_production_quality: 7,
+              pacing_score: 7,
+              transition_quality: 6,
+            },
+            cta_segment: { cta_present: false, strength: null, type: null, rationale: "no CTA" },
+            audio_signals: {
+              voice_clarity_0_10: 7,
+              audio_hook_first_2s_0_10: 6,
+              silence_ratio: 0.1,
+              voiceover_ratio: 0.7,
+              music_ratio: 0.2,
+              audio_description: "Voiceover with light bg music",
+            },
+            audio_perceptual_score: 70,
+            // The point of this fixture: without segments the fold is never invoked.
+            segments: [
+              { t_start: 0, t_end: 2, visual_event: "face to camera", audio_event: "voiceover" },
+              { t_start: 2, t_end: 5, visual_event: "product held up", audio_event: "voiceover" },
+            ],
+          })
+        : JSON.stringify(makeDeepSeekReasoning());
+      return Promise.resolve({
+        choices: [{ message: { content: body } }],
+        usage: { prompt_tokens: 1000, completion_tokens: 500 },
+      });
+    });
+  }
+
   it("filmstrip: triggerFilmstripGeneration NOT called in text mode (no video)", async () => {
     await runPredictionPipeline(input);
     expect(mockTriggerFilmstripGeneration).not.toHaveBeenCalled();
@@ -968,14 +1053,47 @@ describe("Phase 4 Plan 05 — filmstrip trigger + fold wiring", () => {
     expect(result.pass2Outcome).toBeNull();
   });
 
-  it("fold: PipelineResult valid when fold throws (graceful degradation — foldOutcome=null)", async () => {
-    // Simulate fold unavailable by mocking runFold to throw (via deep mock of wave3/fold).
-    // The pipeline should not crash; foldOutcome=null, wave3Result=[].
+  // AUD-FAIL-01 — the two ways a fold can be absent are NOT the same thing, and the aggregator
+  // scores them differently: text mode never promised an audience (fall back to apollo-vs-
+  // behavioral), a fold that was attempted and died has no counterpart at all (agreement 0, and
+  // never HIGH). The distinction IS `foldOutcome === null`, so these two tests pin it.
+  //
+  // The test that used to live here was named "when fold throws" but ran text mode and asserted
+  // foldOutcome=null — it never mocked a throw, so the throw path had zero coverage while looking
+  // covered, and the null it asserted was the bug: a thrown fold read as "no fold was ever run".
+  it("fold: text mode never runs a fold → foldOutcome=null (no audience was promised)", async () => {
     const result = await runPredictionPipeline(input);
-    // text mode: no segments → fold not invoked; graceful no-op
     expect(result).toBeDefined();
-    expect(result.foldOutcome).toBeNull();
     expect(result.payload).toBeDefined();
+    // No segments → fold not invoked at all. Null here means "not applicable", not "failed".
+    expect(result.foldOutcome).toBeNull();
+  });
+
+  it("fold: a fold that THROWS records the attempt (foldOutcome != null, fold_success=false)", async () => {
+    // runFold really can throw: getQwenClient() and buildFoldUserContent() run outside its
+    // per-attempt try/catch, so a missing/rotated API key escapes it. If the pipeline swallowed
+    // that to foldOutcome=null, a dead audience would be indistinguishable from text mode and the
+    // aggregator would hand it the 0.4 self-agreement bonus → HIGH confidence with zero personas.
+    armOmniWithSegments();
+    foldThrow.enabled = true;
+    try {
+      const result = await runPredictionPipeline(VIDEO_INPUT);
+
+      // The pipeline still degrades gracefully — a dead fold is not a dead Read.
+      expect(result).toBeDefined();
+      expect(result.payload).toBeDefined();
+      expect(result.wave3Result).toEqual([]);
+      expect(result.personaBehavioralAggregate).toBeNull();
+
+      // ...but the attempt is on the record. This is the whole fix.
+      expect(result.foldOutcome).not.toBeNull();
+      expect(result.foldOutcome?.fold_success).toBe(false);
+      expect(result.foldOutcome?.personaSimResults).toEqual([]);
+      expect(result.foldOutcome?.cost_cents).toBe(0);
+      expect(result.warnings.some((w) => w.includes("Fold unavailable"))).toBe(true);
+    } finally {
+      foldThrow.enabled = false;
+    }
   });
 });
 

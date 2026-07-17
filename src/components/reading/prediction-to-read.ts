@@ -44,7 +44,7 @@ function nodeToReaction(n: PersonaNode): Reaction {
     person: { id: n.archetype ?? n.id, name: n.name ?? n.label, segment: n.segment ?? '' },
     tone: toneOf(n.watchThrough),
     // The persona's REAL verbatim reaction (`segment_reasons`); '' when it carried none (honest —
-    // the Room shows "stopped — no words this time"), never a fabricated quote.
+    // the Room STATES the absence: "Stopped. No words recorded."), never a fabricated quote.
     verdict: n.quote ?? '',
   };
   if (n.dropAt) reaction.moment = `drop at ${n.dropAt}`;

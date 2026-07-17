@@ -4,12 +4,15 @@
  * Sidebar — lean flat-warm shell (Maven Rework P1, D-10..D-16)
  *
  * Sections (top → bottom):
- *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut, always visible
- *  Audience         — audience manager (D-04)
- *  Library          — saved-content State surface (IA-01 / D-01) → /library
- *  Thread           — chronological history from useAnalysisHistory (D-13);
- *                     score chips + remix tag; rows route to /analyze/[id]
+ *  ⊕ New Thread     — coral primary CTA, ⌘N shortcut; opens the /home composer (which IS the home)
+ *  Audience         — the calibrated-audience moat (D-04)
+ *  Thread           — chronological chat history; rows re-open in place
  *  👤 Account        — bottom-anchored, user avatar + settings/logout
+ *
+ * MVP launch cut (lane/launch-prep, 2026-07-15): the standalone briefing was removed after preview
+ * (New Thread / the /home composer IS the home). Calendar · Discover · Library · Start nav items
+ * are hidden and their routes redirect to /home. Restore the NavItems + revert the page.tsx
+ * redirects (git) to bring them back post-launch.
  *
  * Flat-warm matte: no Raycast glass, no blur, no inset shine (THEME-02 Layer B).
  * Desktop: persistent + collapsible to an icon rail via ⌘\ (D-14), choice
@@ -28,11 +31,7 @@ import {
   SidebarSimple,
   SignOut,
   CaretUpDown,
-  House,
-  CalendarDots,
   UsersThree,
-  Books,
-  Binoculars,
   Trash,
   Check,
   X,
@@ -365,17 +364,11 @@ export function Sidebar() {
   // User profile for Account section
   const { data: profile } = useProfile();
 
-  const isOnStart = pathname.startsWith("/start");
-  const isOnCalendar = pathname.startsWith("/calendar");
   // Analytics folded into /audience (/analytics + /grow redirect there), so those light Audience.
   const isOnAudience =
     pathname.startsWith("/audience") ||
     pathname.startsWith("/analytics") ||
     pathname.startsWith("/grow");
-  const isOnLibrary = pathname.startsWith("/library");
-  // Discover is a hub: /competitors redirects into it, so both light the item.
-  const isOnDiscover =
-    pathname.startsWith("/feed") || pathname.startsWith("/competitors");
 
   const [accountOpen, setAccountOpen] = useState(false);
 
@@ -468,71 +461,18 @@ export function Sidebar() {
           {/* Divider */}
           <div className="mx-2 border-t border-white/[0.06]" />
 
-          {/* ── Destinations, grouped (Surfaces IA, P1): Create · Analyze · Assets.
-              Umbrella labels over pairs — the ratified 5-group IA collapses to 3 scannable
-              sections (single-item labels would just echo their item's name). Labels hide in
-              the collapsed rail; the gap-3 between groups still chunks the icon stack. ── */}
-          <div className="pt-3 flex flex-col gap-3">
-            {/* CREATE — make & schedule content */}
-            <div className="flex flex-col gap-0.5">
-              {!effectiveCollapsed && <SectionLabel>Create</SectionLabel>}
-              {/* Start — the flagship briefing landing (Surfaces milestone): your day,
-                  pre-tested on your people. The front door to the destinations; /home
-                  stays the thread/composer surface, so this never steals the thread flow. */}
-              <NavItem
-                icon={House}
-                label="Start"
-                isActive={isOnStart}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/start")}
-              />
-              {/* Calendar — the standalone month planner (Surfaces milestone): the workspace
-                  behind /start's glanceable month widget. */}
-              <NavItem
-                icon={CalendarDots}
-                label="Calendar"
-                isActive={isOnCalendar}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/calendar")}
-              />
-            </div>
-
-            {/* ANALYZE — the outside world (your own numbers moved to /audience) */}
-            <div className="flex flex-col gap-0.5">
-              {!effectiveCollapsed && <SectionLabel>Analyze</SectionLabel>}
-              {/* Discover — the outward-looking hub (Surfaces IA): Watching (watched
-                  channels' outliers) · Trending · Competitors, as tabs at /feed.
-                  /competitors redirects here. */}
-              <NavItem
-                icon={Binoculars}
-                label="Discover"
-                isActive={isOnDiscover}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/feed")}
-              />
-            </div>
-
-            {/* ASSETS — your persistent substrate */}
-            <div className="flex flex-col gap-0.5">
-              {!effectiveCollapsed && <SectionLabel>Assets</SectionLabel>}
-              {/* Audience Manager — the calibrated-audience moat; D-04 per-thread pin entry point. */}
-              <NavItem
-                icon={UsersThree}
-                label="Audience"
-                isActive={isOnAudience}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/audience")}
-              />
-              {/* Library — saved State surface (IA-01 / D-01). NO accent: its active
-                  state is matte white/[0.06] — the nav's one accent belongs to "New Thread". */}
-              <NavItem
-                icon={Books}
-                label="Library"
-                isActive={isOnLibrary}
-                isCollapsed={effectiveCollapsed}
-                onClick={() => router.push("/library")}
-              />
-            </div>
+          {/* ── Destinations — post-briefing cut (2026-07-15): the standalone briefing was removed
+              (New Thread / the /home composer IS the home). Audience — the calibrated moat — is the
+              one persistent destination. Calendar · Discover · Library stay hidden (→ /home). ── */}
+          <div className="pt-3 flex flex-col gap-0.5">
+            {/* Audience Manager — the calibrated-audience moat; D-04 per-thread pin entry point. */}
+            <NavItem
+              icon={UsersThree}
+              label="Audience"
+              isActive={isOnAudience}
+              isCollapsed={effectiveCollapsed}
+              onClick={() => router.push("/audience")}
+            />
           </div>
 
           {/* ── Chat thread history (multi-thread) ── */}

@@ -52,24 +52,24 @@ describe('useReadingReveal — real-signal liveness (REVEAL-01)', () => {
     expect(MockEventSource.instances).toHaveLength(0);
   });
 
-  it('counts personas streaming in (max-monotonic) and keyframes (deduped by idx)', async () => {
+  // The `partial` half of this test is DELETED, not ported.
+  //
+  // It emitted a fake `partial` frame and asserted personaCount grew — proving the handler worked
+  // for an event the route could never send (it read `analysis_results.partial.personas`, and
+  // `analysis_results` is a separate TABLE, not a column on the polled row). A green test standing
+  // over a dead path, which is precisely how the defect stayed invisible. A mock EventSource will
+  // happily emit any event you name, including ones that do not exist.
+  it('counts keyframes, deduped by segment idx', async () => {
     const { result } = renderHook(() => useReadingReveal('sim-1', true));
     const es = MockEventSource.instances[0]!;
     expect(es.url).toBe('/api/analyze/sim-1/stream');
-
-    act(() => es.emit('partial', { personas: [{ id: 'a' }, { id: 'b' }] }));
-    await waitFor(() => expect(result.current.personaCount).toBe(2));
-    expect(result.current.phase).toBe('live');
-
-    // A later, smaller partial must not regress the count (max-monotonic).
-    act(() => es.emit('partial', { personas: [{ id: 'a' }] }));
-    expect(result.current.personaCount).toBe(2);
 
     // Filmstrip dedupes by segment idx.
     act(() => es.emit('filmstrip_segment_ready', { segment_idx: 0 }));
     act(() => es.emit('filmstrip_segment_ready', { segment_idx: 0 }));
     act(() => es.emit('filmstrip_segment_ready', { segment_idx: 3 }));
     await waitFor(() => expect(result.current.keyframeCount).toBe(2));
+    expect(result.current.phase).toBe('live');
   });
 
   it('closes the connection on complete', async () => {

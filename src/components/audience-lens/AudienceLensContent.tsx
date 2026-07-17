@@ -35,6 +35,7 @@ import {
   type SlotKey,
 } from '@/components/board/audience/audience-derive';
 import type { PersonaNode } from '@/components/board/_kit';
+import type { PopulationAggregate } from '@/lib/audience/population';
 import { ARCHETYPES, type Archetype } from '@/lib/engine/wave3/persona-registry';
 import { MultiAudienceReadBlockRenderer } from '@/components/thread/multi-audience-read-block';
 import { ReplayController } from './ReplayController';
@@ -105,6 +106,13 @@ export interface AudienceLensContentProps {
    * real, still recurring. Memoize in the host so the node build stays stable across renders.
    */
   personaNameOverrides?: Record<string, string>;
+  /**
+   * Audience Sim v2 (Stage 2): the REAL N-individual population projection for this concept.
+   * When present it drives the Population·1,000 view's counters + honesty label + per-segment
+   * breakdown (the genuine distribution the type-to-room path already shows). Absent ⇒ the
+   * honest-lean rollup of the 10 (byte-identical to the pre-v2 Sheet).
+   */
+  population?: PopulationAggregate;
 }
 
 const SCALE_OPTIONS: ReadonlyArray<{ value: LensScale; label: string }> = [
@@ -129,6 +137,7 @@ export function AudienceLensContent({
   platform = 'tiktok',
   rewrite,
   personaNameOverrides,
+  population,
 }: AudienceLensContentProps) {
   const [scale, setScale] = useLensScale();
   // The persona currently being asked "why" (null = drawer closed). One at a time (D-03).
@@ -266,7 +275,7 @@ export function AudienceLensContent({
             <EmptyReaction />
           )
         ) : hasReaction ? (
-          <PopulationRegion nodes={nodes} reducedMotion={reducedMotion} />
+          <PopulationRegion nodes={nodes} population={population} reducedMotion={reducedMotion} />
         ) : (
           <EmptyReaction />
         )}
@@ -406,9 +415,11 @@ function ScaleToggle({
  */
 function PopulationRegion({
   nodes,
+  population,
   reducedMotion,
 }: {
   nodes: PersonaNode[];
+  population?: PopulationAggregate;
   reducedMotion: boolean;
 }) {
   // null = static (all dots present, pre-Play). A number 0..1 = cascade in progress.
@@ -436,6 +447,7 @@ function PopulationRegion({
     <div className="flex flex-col gap-3">
       <PopulationSwarm
         nodes={nodes}
+        population={population}
         reducedMotion={reducedMotion}
         cascadeProgress={progress ?? undefined}
       />

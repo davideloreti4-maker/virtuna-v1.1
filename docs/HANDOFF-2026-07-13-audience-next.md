@@ -1,11 +1,19 @@
 # Handoff — /audience, after P1–P3 + the rollup + the platform guard
 
+> # 👉 NOT THE START-HERE DOC ANY MORE
+> **Read `docs/HANDOFF-2026-07-14-per-persona-generation.md` FIRST** (session 3). It carries the two
+> rules, the corrected 5-touchpoint list, the corrected gate command, and the next task.
+> **This document remains the deep reference** for the /audience subsystem — the F1–F10 facts (§3),
+> the traps (§6), and why P4 is dead as specced (§4). Come back here for detail, not for orientation.
+
+
 **Updated:** 2026-07-14 (session 3) · **Worktree:** `~/virtuna-explore-b`
 **Spec:** `docs/SPEC-2026-07-13-audience-redesign.md` — ⚠️ **its P2 divergence design is WRONG.** See §4.
 **Shipped:** P1 (#280) · mode seam (#281) · archetype binding (#282) · progress+receipts (#284)
 · the Read rollup (#286) · the calibrate platform guard (#289) · the divergence panel (#294)
 · **the dead route-test layer + the dropped `grounded` prop (#298)**
-· **PER-PERSONA HOOK GENERATION (#299) — the audience now steers the WRITING, measured.**
+· **PER-PERSONA HOOK GENERATION (#299) — the audience now steers the WRITING, measured**
+· the 10 personas' human names (#302).
 
 > ⚠️ **This document lied to its last reader once already.** Everything in it is code- or
 > live-verified. **If you add a claim here, say how you verified it.** "I read the code" is not
@@ -236,12 +244,15 @@ and the data already has a case.
 
 ### 🎯 What I'd do next, in order (written 2026-07-14, session 3)
 
-1. **The archetype display names — the one thing blocking #299 from feeling finished.** The card
-   currently says **"FOR YOUR CROSS NICHE CURIOSITY"** because the scraped personas carry no
-   creator-set `label` and we fall back to the archetype slug. It is honest and it is ugly. This is
-   a **product-voice call**, which is why I did not invent the names. Two options: a static
-   human-name map for the 10 archetypes, or have calibration name them (it already writes repaints).
-2. **Fan the assignment out to `ideas` and `script`.** They share the exact runner shape, the same
+1. ~~**The archetype display names**~~ — ✅ **SHIPPED (#302).** SSOT `src/lib/audience/archetype-names.ts`:
+   Quiet Watchers · Savers · Commenters · Sharers · Tough Crowd · Purposeful Viewers · Deep Fans ·
+   Scouts · Regulars · Passers-by. Typed `Record<Archetype,string>` — a new engine archetype without
+   a name is a **type error**, not a card that shouts a slug. ⚠️ It also fixed a flaw #299 shipped:
+   the label was SNAPSHOTTED onto the block, so improving the names would have left old cards reading
+   "NICHE DEEP BUYER" forever. Now only a CREATOR-SET name is persisted (that's history); ours is
+   resolved at RENDER (that's vocabulary) — so future naming improvements are retroactive.
+
+2. **▶ START HERE — fan the assignment out to `ideas` and `script`.** They share the exact runner shape, the same
    `overrides` seam, and the same 5-touchpoint prop path — and `select-hook-targets.ts` is already
    generic. The measurement harness generalises with a one-line change of pipeline.
    ⚠️ **Re-run `scripts/measure-hook-targeting.ts` per skill.** A script is not a hook; do not

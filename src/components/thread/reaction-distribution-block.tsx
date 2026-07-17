@@ -23,14 +23,13 @@ import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
+import { ProofUnit } from './proof-unit';
 import { stripWrappingQuotes } from '@/lib/utils';
-
-// Sanctioned band tones (data colors, NOT the terracotta accent) — reuse the band-block map.
-const BAND_COLOR: Record<'Strong' | 'Mixed' | 'Weak', string> = {
-  Strong: 'var(--color-success)',
-  Mixed: 'var(--color-warning)',
-  Weak: 'var(--color-error)',
-};
+// Sanctioned band tones (data colors, NOT the terracotta accent). band-block.tsx exports this map
+// FOR reuse and every other card imports it; this file used to re-declare a byte-identical local
+// copy under a comment that said "reuse the band-block map". Two maps, one meaning — they only ever
+// drift apart silently.
+import { BAND_COLOR } from './band-block';
 
 export interface ReactionDistributionBlockRendererProps {
   block: ReactionDistributionBlock;
@@ -39,14 +38,31 @@ export interface ReactionDistributionBlockRendererProps {
 export function ReactionDistributionBlockRenderer({
   block,
 }: ReactionDistributionBlockRendererProps) {
-  const { audienceName, audienceId, subjectKind, read, band, fraction, themes, reactions, model } =
-    block.props;
+  const {
+    audienceName,
+    audienceId,
+    subjectKind,
+    read,
+    band,
+    fraction,
+    themes,
+    reactions,
+    model,
+    stimulus,
+  } = block.props;
 
   const modelLabel = model === 'sim1-max' ? 'SIM-1 Max' : 'SIM-1 Flash';
   const [drillOpen, setDrillOpen] = useState(false);
 
-  const stopCount = reactions?.filter((r) => r.verdict === 'stop').length ?? 0;
-  const total = reactions?.length ?? 0;
+  // The room's own reactions ARE FlatPersonaReaction[] — {archetype, verdict, quote}, the exact
+  // shape the Lens consumes. Simulate is the ONE card that carries real per-persona reactions
+  // (the four text cards synthesize positional placeholders via cardScrollQuoteReactions because
+  // they have none), so it can open the Lens on the actual people who reacted.
+  const flatPersonas = reactions ?? [];
+
+  // The Lens door only opens on a real concept. No carried stimulus (an image/video simulate, or
+  // a block persisted before `stimulus` existed) ⇒ no door, rather than a door onto nothing.
+  const canOpenRoom = !!stimulus && flatPersonas.length > 0;
 
   // ── Predict chain CTA (PRED-01 / D-06) — read from the chain-handoff SSOT. ──────
   // Rendered ONLY for a PANEL simulate that carries its audienceId (D-03 — predicting
@@ -91,44 +107,91 @@ export function ReactionDistributionBlockRenderer({
       aria-label={`Reaction from ${audienceName}`}
     >
       <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
-        {/* Provenance header (shared) */}
+        {/* Eyebrow — the audience kicker (band-colored dot) + ONE meta item right: the trust tier.
+            The model tag used to live here too; §0.5.1 is explicit that provenance does NOT go in
+            the eyebrow, so it is demoted onto the disclosure line below (§0.5.6). */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
+            {band && (
+              <span
+                className="h-[6px] w-[6px] rounded-full"
+                style={{ backgroundColor: BAND_COLOR[band] }}
+                aria-hidden="true"
+              />
+            )}
             {audienceName}
           </span>
-          <div className="flex shrink-0 items-center gap-2">
-            <span className="text-xs text-foreground-muted">{modelLabel}</span>
-            <TrustBadge tier="Directional" />
-          </div>
+          <TrustBadge tier="Directional" />
         </div>
 
         {/* ── PERSON variant — single read, NO fraction (Pitfall 2) ───────────── */}
         {subjectKind === 'person' && read && (
           <div className="flex flex-col gap-2">
-            <h3 className="text-[15px] font-semibold text-foreground leading-snug">
+            {/* The hero — a sentence, at the contract's 17px (it shipped at 15px). */}
+            <h3 className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
               {audienceName} is likely to be {read.verdict}
             </h3>
             <p className="text-sm text-foreground-secondary leading-relaxed">{read.reasoning}</p>
             <blockquote className="border-l-2 border-white/[0.12] pl-3 text-sm italic text-foreground/70 leading-relaxed">
               &ldquo;{stripWrappingQuotes(read.quote)}&rdquo;
             </blockquote>
+            {/* Provenance, demoted out of the eyebrow. A person read has no drill to hang it on
+                (one human has no distribution to disclose), so it lands here as the footnote it
+                is — never a headline (§0.5.6). */}
+            <p className="text-[12.5px] text-foreground-muted/70">{modelLabel}</p>
           </div>
         )}
 
-        {/* ── PANEL variant — band + fraction + themes + drill ────────────────── */}
+        {/* ── PANEL variant — proof unit + themes + drill ─────────────────────── */}
         {subjectKind === 'panel' && (
           <div className="flex flex-col gap-3">
-            {/* Band word + fraction */}
-            <div className="flex items-baseline gap-2">
-              {band && (
-                <span className="text-2xl font-semibold leading-none" style={{ color: BAND_COLOR[band] }}>
-                  {band}
-                </span>
-              )}
-              {fraction && <span className="text-sm text-foreground-muted">{fraction}</span>}
-            </div>
+            {/* THE proof unit — band + fraction (stated ONCE) + the real room behind it.
+                This card used to print the fraction TWICE from TWO SOURCES: `fraction` here
+                (from aggregateFlash, which the schema says must never be re-rolled) and, on the
+                drill toggle below, a client-side recount of `reactions` — `{stopCount}/{total}`.
+                They can disagree: a salvaged/dropped persona, or any re-roll, and the card shows
+                8/10 up top and 7/10 below. On the one surface whose entire job is to be believed.
+                The recount is gone; the engine's fraction is the single stated number. (§1.3)
 
-            {/* Clustered themes — the panel's proof unit */}
+                It also gives Simulate the Lens door it never had — on the card whose entire
+                subject IS the room. And unlike the text cards, the personas here are REAL. */}
+            {band && fraction ? (
+              canOpenRoom ? (
+                <ProofUnit
+                  band={band}
+                  fraction={fraction}
+                  // The engine's own word ("N/10 react"), not the shared primitive's default
+                  // "stopped". A Simulate panel can run in `mode: 'general'`, which the runner is
+                  // explicit must NOT be asked the FYP stop-or-scroll question (MODE-01) — so
+                  // "stopped" would be a claim this run never made.
+                  verb="react"
+                  flatPersonas={flatPersonas}
+                  conceptText={stimulus!}
+                  label="See how the room reacted"
+                />
+              ) : (
+                // Honest degrade — no carried stimulus (image/video simulate, or a block persisted
+                // before `stimulus` existed) ⇒ the band row without a Lens door onto nothing.
+                <div className="flex items-center gap-2.5 text-[13px]">
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1.5 font-semibold"
+                    style={{ color: BAND_COLOR[band] }}
+                  >
+                    <span
+                      className="h-[7px] w-[7px] rounded-full"
+                      style={{ backgroundColor: BAND_COLOR[band] }}
+                      aria-hidden="true"
+                    />
+                    {band}
+                  </span>
+                  <span className="shrink-0 font-semibold tabular-nums text-foreground">
+                    {fraction}
+                  </span>
+                </div>
+              )
+            ) : null}
+
+            {/* Clustered themes — what the room actually converged on. */}
             {themes && themes.length > 0 && (
               <ul className="flex flex-col gap-2">
                 {themes.map((theme, i) => (
@@ -142,22 +205,20 @@ export function ReactionDistributionBlockRenderer({
               </ul>
             )}
 
-            {/* Per-persona drill — collapsible */}
+            {/* Per-persona drill — the ONE disclosure, with provenance demoted onto its line
+                (§0.5.6: provenance is a footnote, never a headline — it used to sit in the
+                eyebrow). The toggle states NO count: the fraction is stated once, above. */}
             {reactions && reactions.length > 0 && (
               <div className="flex flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => setDrillOpen((v) => !v)}
-                  className="flex items-center justify-between gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+                  className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
                   aria-expanded={drillOpen}
                 >
-                  <span className="text-xs text-foreground-muted">
-                    Audience reactions — {stopCount}/{total} react
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs text-foreground-muted">
-                    <CaretToggle open={drillOpen} size={12} />
-                    {drillOpen ? 'Hide' : 'Show'}
-                  </span>
+                  <CaretToggle open={drillOpen} size={12} />
+                  {drillOpen ? 'Hide details' : 'Why & details'}
+                  <span className="text-foreground-muted/70">· {modelLabel}</span>
                 </button>
                 {drillOpen && (
                   <ul className="flex flex-col gap-2">
@@ -193,49 +254,57 @@ export function ReactionDistributionBlockRenderer({
         )}
       </div>
 
-      {/* Footer — Save + forward-chain Predict CTA (panel-only, D-03/D-06) */}
-      <div className="border-t border-white/[0.06] px-4 py-3 flex flex-col gap-3">
-        <div className="flex items-center gap-4">
-          <SaveAffordance item_type="read" title={audienceName} snapshot={block.props} />
+      {/* Footer. The scenario field is an INPUT, not an action — it sits above the bar, and the
+          bar itself is ONE row: the forward chain step as the cream primary, Save as an ml-auto
+          icon (§0.5.7). It used to be two stacked rows — Save alone in the first, then a textarea
+          and a text-LINK "Predict an outcome →" — so the card's forward step read as less
+          important than Save, and there was no cream primary at all. */}
+      {canPredict && !predicted && (
+        <div className="border-t border-white/[0.06] px-4 pt-3">
+          <textarea
+            value={scenario}
+            onChange={(e) => setScenario(e.target.value)}
+            placeholder="Describe an outcome to predict…"
+            rows={2}
+            className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+            aria-label="Scenario to predict"
+          />
+          {predictError && (
+            <p className="mt-2 text-xs" style={{ color: 'var(--color-error)' }} role="alert">
+              {predictError}
+            </p>
+          )}
         </div>
+      )}
+
+      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
         {canPredict &&
           (!predicted ? (
-            <div className="flex flex-col gap-2">
-              <textarea
-                value={scenario}
-                onChange={(e) => setScenario(e.target.value)}
-                placeholder="Describe an outcome to predict…"
-                rows={2}
-                className="w-full rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-sm text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-                aria-label="Scenario to predict"
-              />
-              <button
-                type="button"
-                onClick={() => void handlePredict()}
-                disabled={predicting || scenario.trim().length === 0}
-                className="self-start text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-                style={{
-                  color:
-                    predicting || scenario.trim().length === 0
-                      ? 'rgba(236,231,222,0.5)'
-                      : 'var(--color-foreground-secondary)',
-                  cursor: predicting ? 'wait' : 'pointer',
-                }}
-                aria-label="Predict an outcome →"
-              >
-                {predicting ? 'Predicting…' : 'Predict an outcome →'}
-              </button>
-              {predictError && (
-                <p className="text-xs text-red-400" role="alert">
-                  {predictError}
-                </p>
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => void handlePredict()}
+              disabled={predicting || scenario.trim().length === 0}
+              className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
+              aria-label="Predict an outcome →"
+              title={
+                scenario.trim().length === 0
+                  ? 'Describe an outcome first'
+                  : 'Predict this outcome with the same audience'
+              }
+            >
+              {predicting ? 'Predicting…' : 'Predict an outcome →'}
+            </button>
           ) : (
             <p className="text-sm text-foreground-muted">
               Prediction queued — check the thread below.
             </p>
           ))}
+        <SaveAffordance
+          className="ml-auto"
+          item_type="read"
+          title={audienceName}
+          snapshot={block.props}
+        />
       </div>
     </div>
   );

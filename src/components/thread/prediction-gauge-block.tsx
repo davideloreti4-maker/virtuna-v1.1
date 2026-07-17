@@ -98,7 +98,7 @@ export function PredictionGaugeBlockRenderer({ block }: PredictionGaugeBlockRend
       <div className="px-4 pt-4 pb-3 flex flex-col gap-3">
         {/* 1 — Provenance header */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
             {audienceName}
           </span>
           <div className="flex shrink-0 items-center gap-2">
@@ -165,7 +165,7 @@ export function PredictionGaugeBlockRenderer({ block }: PredictionGaugeBlockRend
 
         {/* 4 — Factors (the receipts) — every factor names its analyst (F-05) */}
         <div className="flex flex-col gap-2">
-          <h4 className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+          <h4 className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
             What&rsquo;s driving this
           </h4>
           <ul className="flex flex-col gap-2">
@@ -229,7 +229,7 @@ export function PredictionGaugeBlockRenderer({ block }: PredictionGaugeBlockRend
         {/* 6 — Assumptions */}
         {(assumptions.length > 0 || successCriterion) && (
           <div className="flex flex-col gap-2 rounded-lg border border-white/[0.06] bg-white/[0.04] px-3 py-2">
-            <h4 className="text-[10px] font-medium uppercase tracking-[0.14em] text-foreground-muted">
+            <h4 className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
               Assumptions
             </h4>
             {assumptions.length > 0 && (

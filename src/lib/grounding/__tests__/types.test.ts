@@ -26,7 +26,7 @@ describe("parseTeardownTemplate — beats timings are optional", () => {
     });
     expect(t).not.toBeNull();
     expect(t?.beats).toHaveLength(2);
-    expect(t?.beats?.[0].name).toBe("Problem Identification");
+    expect(t?.beats?.[0]?.name).toBe("Problem Identification");
     expect(t?.guidance).toContain("technical tips");
   });
 
@@ -35,8 +35,8 @@ describe("parseTeardownTemplate — beats timings are optional", () => {
       ...base,
       beats: [{ name: "Hook", description: "Open on the claim.", startSec: 0, endSec: 2 }],
     });
-    expect(t?.beats?.[0].startSec).toBe(0);
-    expect(t?.beats?.[0].endSec).toBe(2);
+    expect(t?.beats?.[0]?.startSec).toBe(0);
+    expect(t?.beats?.[0]?.endSec).toBe(2);
   });
 
   it("still rejects a genuinely malformed template and names the failing path", () => {

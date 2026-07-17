@@ -42,6 +42,12 @@ vi.mock("@/lib/engine/flash/run-flash-text-mode", () => ({
   runFlashTextMode: vi.fn(),
 }));
 
+// The content-characterization LLM call is mocked; reactPopulation runs REAL (pure math) so the
+// tests exercise the actual Stage 2 aggregate, not a stubbed shape.
+vi.mock("@/lib/audience/characterize-content", () => ({
+  characterizeContent: vi.fn(),
+}));
+
 // buildReactionPanel is real (we want to assert the route wires the resolved panel through).
 // resolveNicheKey + the helper run unmocked so a real niche resolves to a non-null panel.niche.
 
@@ -54,6 +60,42 @@ function makePersonas(stops: number) {
     verdict: i < stops ? "stop" : "scroll",
     quote: `Quote from persona ${i}`,
   }));
+}
+
+/** A minimal calibrated audience whose signature carries v2 axes (drives the population path). */
+function makeAudienceWithAxes() {
+  const reaction = (interests: Record<string, number>, attentionSpan: number) => ({
+    interests,
+    hookSensitivity: 0.3,
+    noveltyBias: 0.5,
+    skepticism: 0.2,
+    attentionSpan,
+  });
+  const behavior = { watchThrough: 0.5, sharePropensity: 0.3, commentPropensity: 0.3, savePropensity: 0.3 };
+  return {
+    id: "aud-calibrated",
+    is_general: false,
+    personas: [{ archetype: "lurker", repaint: "Scrollers" }],
+    signature: {
+      creator_persona: { content_description: "x", context: "x", writing_style_sample: "x", format_signature: "x" },
+      audience: {
+        follower_tier: "10k-100k",
+        maturity: "established",
+        temperature_mix: { cold: 0.5, warm: 0.3, hot: 0.2 },
+        interest_tags: ["magic"],
+        what_resonates: "x",
+        what_falls_flat: "x",
+        persona_weights: { fyp: 0.4, niche: 0.3, loyalist: 0.2, cross_niche: 0.1 },
+        topic_vocab: ["spectacle", "craft"],
+        personas: [
+          { archetype: "lurker", share: 0.6, temperature: "cold", disposition: "scanner", reaction_frame: "x", evidence: "x", display_name: "Scrollers", reaction: reaction({}, 0.1), behavior },
+          { archetype: "niche_deep_buyer", share: 0.4, temperature: "hot", disposition: "collector", reaction_frame: "x", evidence: "x", display_name: "Craft nerds", reaction: reaction({ craft: 0.9 }, 0.9), behavior },
+        ],
+      },
+      summary: "x",
+      provenance: { handle: "@x", scraped_at: "2026-07-16", videos_analyzed: 8, videos_watched: 4, sub_coverage: "6/8" },
+    },
+  };
 }
 
 function makeRequest(body: unknown) {
@@ -141,6 +183,82 @@ describe("POST /api/tools/react", () => {
     const json = await res.json();
     expect(json.fraction).toBe("6/10 stop");
     expect(json.scrollQuote).toBe("Quote from persona 0"); // first stop-verdict persona
+    // General/no-signature audience → no v2 axes → population is null (the guard holds).
+    expect(json.population).toBeNull();
+  });
+
+  it("computes the population projection when the resolved signature has v2 axes", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-calibrated",
+    });
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue(makeAudienceWithAxes());
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+    // A strong spectacle hook → the pure scorer stops some individuals.
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue({
+      topics: { spectacle: 0.9 },
+      hookStrength: 0.95,
+      novelty: 0.5,
+      hype: 0.1,
+      slowness: 0.1,
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "I zipped open my wall like a tent." }));
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    // characterize was called with the signature's topic_vocab (the axis space).
+    expect(characterizeContent).toHaveBeenCalledTimes(1);
+    expect((characterizeContent as ReturnType<typeof vi.fn>).mock.calls[0]![1]).toEqual([
+      "spectacle",
+      "craft",
+    ]);
+    // A REAL aggregate came back — a genuine distribution, not the 10's rollup.
+    expect(json.population).toBeTruthy();
+    expect(json.population.total).toBeGreaterThan(0);
+    expect(json.population.stop + json.population.scroll).toBe(json.population.total);
+    expect(json.population.segments.length).toBe(2);
+    // The reaction ({fraction} from the 10) is UNCHANGED — population rides alongside it.
+    expect(json.fraction).toBe("6/10 stop");
+  });
+
+  it("degrades gracefully — characterize throws → population null, reaction still 200", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue(mockAuthedClient());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-calibrated",
+    });
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue(makeAudienceWithAxes());
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(4) },
+      warnings: [],
+    });
+    (characterizeContent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error("qwen down"));
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a thought" }));
+
+    expect(res.status).toBe(200); // the projection failing NEVER breaks the reaction
+    const json = await res.json();
+    expect(json.population).toBeNull();
+    expect(json.fraction).toBe("4/10 stop");
   });
 
   it("calls runFlashTextMode with the resolved panel (niche discrimination wired, Pitfall 2)", async () => {

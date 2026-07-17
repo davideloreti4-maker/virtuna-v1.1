@@ -416,6 +416,8 @@ const REACTION_DISTRIBUTION_BLOCK: ReactionDistributionBlock = {
     subjectKind: "panel",
     band: "Strong",
     fraction: "7/10 react",
+    // The concept the room reacted to — what grounds the Lens door ("See the room →").
+    stimulus: "Fire your team. Use AI. Here's the 3-person stack that replaced 12 hires.",
     themes: [
       { label: "Relief", quote: "Finally someone says the quiet part — I don't need a big team." },
       { label: "Doubt", quote: "Sounds great until it breaks at scale, then what?" },
@@ -596,8 +598,12 @@ export const BLOCK_SECTIONS: BlockSection[] = [
   {
     type: "band",
     label: "Band (primitive)",
-    note: "The bare honesty signal — band word + audience fraction + SIM provenance. No 0-100.",
-    body: [{ type: "band", props: { band: "Strong", fraction: "7/10 stop", model: "sim1-flash" } }],
+    note: "The bare honesty signal — band dot+word + audience fraction + SIM provenance. No 0-100. All three bands and BOTH model containers (Flash lighter, Max heavier) render here: this primitive was the source of the card drift and it shipped one visible state, so nobody could see that its band color was applied twice or that its 24px band word had become two other cards' hero.",
+    body: [
+      { type: "band", props: { band: "Strong", fraction: "7/10 stop", model: "sim1-flash" } },
+      { type: "band", props: { band: "Mixed", fraction: "5/10 stop", model: "sim1-max" } },
+      { type: "band", props: { band: "Weak", fraction: "2/10 stop", model: "sim1-flash" } },
+    ],
   },
   {
     type: "markdown",

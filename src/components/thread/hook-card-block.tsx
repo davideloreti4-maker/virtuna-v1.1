@@ -30,6 +30,7 @@ import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
 import { CaretToggle } from './caret-toggle';
 import type { HookCardTarget } from '@/lib/tools/blocks';
+import { archetypeDisplayName } from '@/lib/audience/archetype-names';
 
 /**
  * TargetReaction — "we aimed this at your skeptics, and here is what your skeptics said."
@@ -46,14 +47,18 @@ import type { HookCardTarget } from '@/lib/tools/blocks';
  * feature decorative.
  */
 function TargetReaction({ target }: { target: HookCardTarget }) {
-  const { label, share, verdict, quote } = target;
+  const { archetype, label, share, verdict, quote } = target;
   const stopped = verdict === 'stop';
+  // A CREATOR-SET name is snapshotted on the block and wins. Otherwise the name is derived HERE,
+  // at render — so improving our archetype vocabulary improves every card ever generated, instead
+  // of leaving old ones reading "NICHE DEEP BUYER" forever. (Their engine slug never changes.)
+  const displayName = label ?? archetypeDisplayName(archetype);
 
   return (
     <div className="flex flex-col gap-1 rounded-[8px] border border-white/[0.06] px-3 py-2">
       <p className="text-[12px] leading-snug text-foreground-secondary">
         <span className="text-foreground-muted">Written for </span>
-        <span className="font-medium text-foreground">{label}</span>
+        <span className="font-medium text-foreground">{displayName}</span>
         <span className="text-foreground-muted"> · {Math.round(share * 100)}% of your audience</span>
       </p>
 
@@ -92,6 +97,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
     proof,
     grounded,
     target,
+    population,
   } = block.props;
 
   // hooks→script handoff (CHAIN_HANDOFFS hooks→script — "Write script →", the forward chain).
@@ -121,7 +127,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <div className="flex items-center justify-between gap-3">
           <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            {target ? `For your ${target.label}` : audienceArchetype}
+            {target ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}` : audienceArchetype}
           </span>
           <span className="shrink-0 text-[12px] font-semibold tabular-nums text-foreground-muted" aria-label={`Rank ${rank}`}>
             #{rank}
@@ -158,6 +164,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={hookLine}
+          population={population}
           rewrite={buildCardRewrite({
             skill: 'hooks',
             fraction,

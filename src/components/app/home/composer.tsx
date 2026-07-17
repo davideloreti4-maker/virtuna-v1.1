@@ -1786,12 +1786,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
     // the presence falls back to the honest fraction-expansion placeholders.
     const personas = Array.isArray(p.personas) ? p.personas : undefined;
+    // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection onto the
+    // focus so the Room's "Population · 1,000" view shows THIS card's real N-individual numbers
+    // instead of the honest-lean "MODELED FROM YOUR 10" fallback (which densifies the k/10 SIM and
+    // can DISAGREE with the card's projection). Absent on General/legacy cards → the fallback stands.
+    const population = p.population ?? undefined;
     return {
       id: `${kind}-${idx}`,
       conceptText: concept,
       fraction,
       scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
       personas,
+      population,
     };
   };
   const ambientDescriptors: AmbientCardDescriptor[] = (() => {
@@ -1963,14 +1969,17 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           fraction?: string;
           scrollQuote?: string;
           personas?: { archetype: string; verdict: "stop" | "scroll"; quote: string }[];
+          population?: import("@/lib/audience/population").PopulationAggregate | null;
         } = await res.json();
         if (controller.signal.aborted) return;
         const fraction = data.fraction ?? "";
         const scrollQuote = data.scrollQuote ?? "";
         const personas = Array.isArray(data.personas) ? data.personas : undefined;
-        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas }]);
+        // Stage 2 population projection — present only for a calibrated audience with v2 axes.
+        const population = data.population ?? undefined;
+        setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction, scrollQuote, personas, population }]);
         // Lens shows this read — with the real named cast (react route returns registry-enum personas).
-        focusByThought({ conceptText: text, fraction, scrollQuote, personas });
+        focusByThought({ conceptText: text, fraction, scrollQuote, personas, population });
       } catch (e) {
         if (controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) return;
         setAudienceAsks((a) => [...a, { id: nanoid(), thought: text, fraction: "", scrollQuote: "", error: true }]);
@@ -2031,6 +2040,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         fraction: a.fraction,
         scrollQuote: a.scrollQuote,
         personas: a.personas,
+        population: a.population,
       }),
     onBuildAudience: () => setBuildOpen(true),
     focusList: ambientDescriptors,

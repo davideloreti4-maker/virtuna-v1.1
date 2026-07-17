@@ -79,3 +79,6 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 .planning/corpus/models/
 .planning/corpus/raw/
 .scratch/
+
+# Dev-only sample media for /dev/cards (never committed — see the Room section)
+/public/dev/

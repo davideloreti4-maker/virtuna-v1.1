@@ -64,6 +64,10 @@ function personasFromSignature(sig: AudienceSignature): CalibratedPersona[] {
     temperature: p.temperature,
     disposition: p.disposition,
     share: p.share,
+    // v2: seed the presentation label from the generator's custom display_name so the ambient
+    // audience shows "The Archive Builder" not "Saver". Presentation-only (engine never reads
+    // label); a later manual rename (AUD-EDIT-01) still overrides. Absent on legacy → falls back.
+    ...(p.display_name ? { label: p.display_name } : {}),
   }));
 }
 
