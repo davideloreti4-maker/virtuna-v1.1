@@ -70,10 +70,25 @@ export interface UseScriptStreamReturn {
   /** Model-authored follow-up text from the followup SSE event. */
   followupText: string | null;
   /**
+   * True when the server signalled (via the `outliers` SSE event) that a live scrape could find
+   * proven outliers this run couldn't. Drives the "Find new outliers" affordance. Cleared at the
+   * start of every run; false on a clean grounded run or a platform that can't be scraped.
+   */
+  outliersAvailable: boolean;
+  /**
    * Start the Script stream.
    * ask: topic/topic-seed or empty; anchor: hookLine from hooks→script handoff (optional).
+   *
+   * opts.allowScrape authorizes a live outlier scrape for THIS run (explicit spend) — set only by
+   * findOutliers(), never by a normal send.
    */
-  start: (ask: string, platform: string, anchor?: string, intent?: IntentLens) => Promise<void>;
+  start: (ask: string, platform: string, anchor?: string, intent?: IntentLens, opts?: { allowScrape?: boolean }) => Promise<void>;
+  /**
+   * Re-run the LAST script send with a live outlier scrape authorized (allowScrape: true) — the
+   * "Find new outliers" action. Scrapes fresh proven outliers on the same subject and write-throughs
+   * them into the cache (so the next normal run is grounded free). No-op before the first run.
+   */
+  findOutliers: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -94,9 +109,14 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [isDone, setIsDone] = useState(false);
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
+  const [outliersAvailable, setOutliersAvailable] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
+  // authorized. The scrape query is derived from ask/anchor, so replaying "" would scrape on the
+  // niche only — we must re-send the real ask/platform/anchor/intent.
+  const lastRunRef = useRef<{ ask: string; platform: string; anchor?: string; intent?: IntentLens } | null>(null);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -116,6 +136,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsDone(false);
     setStages([]);
     setFollowupText(null);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
   }, []);
@@ -127,10 +148,20 @@ export function useScriptStream(): UseScriptStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string, anchor?: string, intent?: IntentLens) => {
+  const start = useCallback(async (
+    ask: string,
+    platform: string,
+    anchor?: string,
+    intent?: IntentLens,
+    opts?: { allowScrape?: boolean },
+  ) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
+    // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly.
+    lastRunRef.current = { ask, platform, anchor, intent };
 
     setStreamingCards([]);
     setError(null);
@@ -138,13 +169,17 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
 
     try {
+      // allowScrape rides the body ONLY when explicitly authorized (findOutliers) — a normal send
+      // omits it, so the route's `body.allowScrape === true` check keeps the scrape off by default.
       const body: Record<string, unknown> = { ask, platform };
       if (anchor) body.anchor = anchor;
       if (intent) body.intent = intent;
+      if (opts?.allowScrape) body.allowScrape = true;
 
       const res = await fetch('/api/tools/script', {
         method: 'POST',
@@ -210,6 +245,12 @@ export function useScriptStream(): UseScriptStreamReturn {
           } else if (eventType === 'followup') {
             const text = typeof data.text === 'string' ? data.text : null;
             if (text && isMountedRef.current) setFollowupText(text);
+
+          } else if (eventType === 'outliers') {
+            // The server says a live scrape could find proven outliers this run couldn't. Flip the
+            // flag that drives the "Find new outliers" affordance. Only ever true here — the server
+            // is the sole authority on whether a scrape would actually do anything.
+            if (data.available === true && isMountedRef.current) setOutliersAvailable(true);
 
           } else if (eventType === 'content') {
             // content event: card face with beats+openingBeatSeed+scrollQuote; band/fraction absent
@@ -285,6 +326,12 @@ export function useScriptStream(): UseScriptStreamReturn {
     }
   }, []);
 
+  const findOutliers = useCallback(async () => {
+    const last = lastRunRef.current;
+    if (!last) return;
+    await start(last.ask, last.platform, last.anchor, last.intent, { allowScrape: true });
+  }, [start]);
+
   const toBlocks = useCallback((): ScriptCardBlock[] => {
     return streamingCards.map((c): ScriptCardBlock => ({
       type: 'script-card',
@@ -314,7 +361,9 @@ export function useScriptStream(): UseScriptStreamReturn {
     isDone,
     stages,
     followupText,
+    outliersAvailable,
     start,
+    findOutliers,
     stop,
     reset,
     toBlocks,

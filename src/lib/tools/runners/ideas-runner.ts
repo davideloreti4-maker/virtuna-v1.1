@@ -225,6 +225,13 @@ export interface IdeasPipelineInput {
    */
   intent?: IntentLens;
   /**
+   * May THIS run pay for a live outlier scrape on a cache miss? Default false (see gather-for-run
+   * `allowScrape`) — a normal run never bills Apify. Set true ONLY by the explicit "Find new
+   * outliers" action; the scrape's write-through then repopulates the cache so the next normal run
+   * is grounded for free. Mirrors hooks-runner.
+   */
+  allowScrape?: boolean;
+  /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
    * (lead idea's personas) + audience_id. Non-fatal — never blocks the cards.
    */
@@ -247,6 +254,13 @@ export interface IdeasPipelineResult {
   warnings: string[];
   /** Which seed-hook extraction path shipped (Open Q1 resolved decision). */
   seedHookPath: "structured" | "markered";
+  /**
+   * Could a live scrape have found outliers this (ungrounded/partial) run couldn't? Surfaced from
+   * gather-for-run — true only when the run degraded purely because `allowScrape` was false on a
+   * scrapable platform. The route forwards it as the `outliers` SSE event → the "Find new outliers"
+   * affordance. Mirrors hooks-runner.
+   */
+  scrapeAvailable: boolean;
 }
 
 // ─── Structured idea type ────────────────────────────────────────────────────
@@ -462,12 +476,18 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
   //    ungrounded — corpus stays undefined → byte-identical no-op (honesty spine).
   //    `groundingExamples` maps each idea's sourceIndex back to its outlier (the receipt).
-  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+  const {
+    corpus,
+    examples: groundingExamples,
+    scrapeAvailable,
+  } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "ideas", // → the belief↔reality slice: the tension that made the video travel
     platform,
     queryCandidates: [ask, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,
+    // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
+    allowScrape: input.allowScrape,
     onStage: input.onStage,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed belief↔reality brief, not the raw
@@ -613,7 +633,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   const firstBatch = await generateIdeasStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
-    return { blocks: [], warnings: allWarnings, seedHookPath };
+    return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
   // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
@@ -724,5 +744,5 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     }
   }
 
-  return { blocks, warnings: allWarnings, seedHookPath };
+  return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
 }

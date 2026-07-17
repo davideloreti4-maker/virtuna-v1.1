@@ -80,6 +80,27 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
     ),
   },
   {
+    id: "ideas-outliers",
+    label: "Ideas (find new outliers)",
+    note: "Same run, with the `outliers` SSE event populated — the shared OutliersOffer affordance below the cards. Set by the server only when a live scrape could find outliers this (ungrounded/partial) run couldn't.",
+    node: (
+      <IdeasThreadView
+        persistedBlocks={[]}
+        streamingBlocks={IDEA_BLOCKS}
+        statusMessage={null}
+        stages={doneStages(["Generating", "Simulating your audience", "Ranking"])}
+        followupText={FOLLOWUPS.ideas}
+        outliersAvailable
+        onFindOutliers={noop}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        userTurn={USER_TURNS.ideas}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
     id: "hooks",
     label: "Hooks",
     note: "Make → Hooks skill. Ranked hook cards with 'Test full →' / 'Write script →' handoffs.",
@@ -160,6 +181,28 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         streamingBlocks={SCRIPT_BLOCKS}
         stages={doneStages(["Generating", "Simulating your audience"])}
         followupText={FOLLOWUPS.script}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        inputHookLine="Stop editing your videos. Do this instead."
+        onTestScript={noop}
+        userTurn={USER_TURNS.script}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
+    id: "script-outliers",
+    label: "Script (find new outliers)",
+    note: "Same run, with the `outliers` SSE event populated — the shared OutliersOffer affordance below the card. Set by the server only when a live scrape could find outliers this (ungrounded/partial) run couldn't.",
+    node: (
+      <ScriptThreadView
+        persistedBlocks={[]}
+        streamingBlocks={SCRIPT_BLOCKS}
+        stages={doneStages(["Generating", "Simulating your audience"])}
+        followupText={FOLLOWUPS.script}
+        outliersAvailable
+        onFindOutliers={noop}
         isStreaming={false}
         error={null}
         platform="tiktok"

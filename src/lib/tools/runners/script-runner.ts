@@ -212,6 +212,13 @@ export interface ScriptPipelineInput {
    */
   intent?: IntentLens;
   /**
+   * May THIS run pay for a live outlier scrape on a cache miss? Default false (see gather-for-run
+   * `allowScrape`) — a normal run never bills Apify. Set true ONLY by the explicit "Find new
+   * outliers" action; the scrape's write-through then repopulates the cache so the next normal run
+   * is grounded for free. Mirrors hooks-runner.
+   */
+  allowScrape?: boolean;
+  /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector (the
    * opener's personas) + audience_id post-SIM. Non-fatal — never blocks the card.
    */
@@ -231,6 +238,13 @@ export interface ScriptPipelineResult {
   blocks: ScriptCardBlock[];
   /** Warnings from Flash SIM calls or schema validation. */
   warnings: string[];
+  /**
+   * Could a live scrape have found outliers this (ungrounded/partial) run couldn't? Surfaced from
+   * gather-for-run — true only when the run degraded purely because `allowScrape` was false on a
+   * scrapable platform. The route forwards it as the `outliers` SSE event → the "Find new outliers"
+   * affordance. Mirrors hooks-runner.
+   */
+  scrapeAvailable: boolean;
 }
 
 // ─── Structured script type ───────────────────────────────────────────────────
@@ -444,12 +458,18 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
   //    ungrounded — corpus stays undefined → byte-identical no-op (honesty spine).
   //    `groundingExamples` maps the script's sourceIndex back to its outlier (the receipt).
-  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+  const {
+    corpus,
+    examples: groundingExamples,
+    scrapeAvailable,
+  } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "script", // → the timed-beats slice: the pacing a proven outlier actually ran
     platform,
     queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,
+    // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
+    allowScrape: input.allowScrape,
     onStage: input.onStage,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed beat-arc brief, not the raw slice.
@@ -479,14 +499,14 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`Script generation failed: ${msg}`);
-    return { blocks: [], warnings: allWarnings };
+    return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
   input.onStage?.("Generating", "done");
 
   // ── SELF-JUDGE: bounded gate — drop sub-floor generation (no regen — cost) ───
   if (!script || script.beats.length === 0) {
     allWarnings.push("Script generation sub-floored: beats array empty or malformed — dropped.");
-    return { blocks: [], warnings: allWarnings };
+    return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
 
   // ── REACT path (A1 — weighted SIM aggregation): build the optional Flash weighting ──
@@ -521,7 +541,7 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     allWarnings.push(`SIM failed for script opener "${script.openingBeatSeed.slice(0, 60)}": ${msg}`);
-    return { blocks: [], warnings: allWarnings };
+    return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
   input.onStage?.("Simulating your audience", "done");
 
@@ -607,8 +627,8 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     allWarnings.push(
       `script-card block validation failed — dropped: ${validated.error.message}`,
     );
-    return { blocks: [], warnings: allWarnings };
+    return { blocks: [], warnings: allWarnings, scrapeAvailable };
   }
 
-  return { blocks: [validated.data as ScriptCardBlock], warnings: allWarnings };
+  return { blocks: [validated.data as ScriptCardBlock], warnings: allWarnings, scrapeAvailable };
 }

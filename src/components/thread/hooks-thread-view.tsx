@@ -36,6 +36,7 @@ import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro, outroFallback, type ForwardChip } from '@/components/thread/conversational-frame';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
+import { OutliersOffer } from '@/components/thread/outliers-offer';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { HookCardBlock } from '@/lib/tools/blocks';
 
@@ -245,48 +246,6 @@ function RunWarnings({ warnings }: RunWarningsProps) {
           {w}
         </p>
       ))}
-    </div>
-  );
-}
-
-// ── OutliersOffer ─────────────────────────────────────────────────────────────
-
-/**
- * "Find new outliers" — the explicit-spend affordance. Rendered ONLY when the server signalled a
- * scrape would find proven outliers this run couldn't (outliersAvailable). Tapping it authorizes a
- * live scan (allowScrape: true) that re-runs the same subject; the scrape's write-through then keeps
- * the subject grounded for free next time. Copy is honest for both the fully-ungrounded and the
- * grounded-on-a-partial cases — either way, this run skipped the live scan.
- *
- * The CTA carries the primary action treatment (bg action / accent) on purpose: authorizing a spend
- * is a genuine, deliberate action — exactly the liveness moment the near-zero accent dosage is for.
- */
-interface OutliersOfferProps {
-  onFindOutliers: () => void;
-}
-
-function OutliersOffer({ onFindOutliers }: OutliersOfferProps) {
-  return (
-    <div
-      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1.5"
-      role="status"
-      aria-live="polite"
-    >
-      <p className="text-sm font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
-        Want live proof for this?
-      </p>
-      <p className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
-        This run skipped the live outlier scan. Run it now to pull fresh proven outliers on this
-        topic — a few seconds, and they&rsquo;re cached for next time.
-      </p>
-      <button
-        type="button"
-        onClick={onFindOutliers}
-        className="mt-1.5 self-start rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
-        aria-label="Find new outliers with a live scan"
-      >
-        Find new outliers →
-      </button>
     </div>
   );
 }
