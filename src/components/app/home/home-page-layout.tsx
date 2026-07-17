@@ -25,6 +25,10 @@ export function HomePageLayout() {
   // shell mounted + suppresses the welcome hero across the load gap (so the layout
   // never collapses to the centered serif hero between threads).
   const [rehydrating, setRehydrating] = useState(false);
+  // P2 (A2a): the desktop right-rail portal host. A ref-callback into state (not a raw ref) so the
+  // Composer re-renders once the aside mounts and can portal its room in. Only rendered ≥xl in
+  // thread mode; null otherwise ⇒ the composer keeps the room in its dock.
+  const [railHost, setRailHost] = useState<HTMLDivElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
 
   const handleThreadChange = useCallback((next: boolean) => {
@@ -48,14 +52,18 @@ export function HomePageLayout() {
   const emptyHome = !hasConversation && !rehydrating;
 
   return (
-    // The audience presence is a single docked card on top of the composer at every breakpoint
-    // (the ≥xl right rail was retired 2026-07-07), so the work column centers full-width.
-    // On the empty home the greeting + quick-actions + composer read as ONE group,
-    // vertically centered as a unit (justify-center) with generous air on top — rather
-    // than the greeting floating alone in the upper third above a bottom-pinned dock.
+    // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
+    // right rail beside the work column (portaled from the composer — §7 re-host, not a rebuild).
+    // The parent switches to a row there so the thread column + rail read as one centered pair;
+    // empty home / permalink stay a centered column. Below xl the rail `hidden`s and the composer
+    // keeps the dock peek (the mobile header lands in A2b).
+    // Composer stays at a STABLE child position (index 1) across every mode — the greeting (index
+    // 0) and the rail (index 2) are the only conditional siblings — so it never remounts (which
+    // would reset its stream/rehydration state).
     <div
       className={cn(
-        "flex h-full w-full flex-col items-center",
+        "flex h-full w-full",
+        threadMode ? "flex-row justify-center" : "flex-col items-center",
         emptyHome && "justify-center",
       )}
     >
@@ -72,13 +80,14 @@ export function HomePageLayout() {
           <HomeGreeting />
         </div>
       )}
-      {/* Single, always-mounted composer (never remounted across empty↔thread —
-          that would reset its stream/rehydration state). Its wrapper is full-width
-          in thread mode and a centered 760px column when empty. */}
+      {/* Single, always-mounted composer (never remounted across empty↔thread — that would reset
+          its stream/rehydration state). In thread mode it's the left column of the pair: flex-1 so
+          it fills the space beside the rail, capped at 760 so it never outgrows the reading column,
+          min-w-0 so it can shrink under the rail on a narrow main. Empty/permalink: centered 760. */}
       <div
         className={cn(
           "flex w-full flex-col",
-          threadMode ? "flex-1 min-h-0" : "max-w-[760px] px-4",
+          threadMode ? "min-w-0 flex-1 min-h-0 max-w-[760px]" : "max-w-[760px] px-4",
         )}
       >
         <Composer
@@ -86,8 +95,20 @@ export function HomePageLayout() {
           onThreadChange={handleThreadChange}
           onConversationChange={handleConversationChange}
           onRehydratingChange={handleRehydratingChange}
+          railHost={railHost}
         />
       </div>
+      {threadMode && (
+        // The persistent audience rail — desktop (≥xl) only; `hidden` below xl so the composer's
+        // dock peek owns it there. The composer portals <AudiencePresence variant='rail'> into this
+        // host. shrink-0 fixed width; full height with internal scroll (the rail body scrolls).
+        <aside
+          aria-label="Your audience"
+          className="hidden h-full min-h-0 w-[340px] shrink-0 flex-col py-4 pl-4 xl:flex"
+        >
+          <div ref={setRailHost} className="min-h-0 w-full flex-1" />
+        </aside>
+      )}
     </div>
   );
 }

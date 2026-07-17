@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { OpenRoomContext } from "@/lib/hook-test-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,6 +59,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
@@ -253,15 +255,26 @@ export interface ComposerProps {
    *  mounted + suppresses the welcome hero during the load gap so the layout never
    *  collapses to the centered serif hero between threads. */
   onRehydratingChange?: (rehydrating: boolean) => void;
+  /** P2 (A2a) — the desktop RIGHT-RAIL host owned by HomePageLayout. When present (≥xl, thread
+   *  mode) the audience room re-parents OUT of the bottom dock and is PORTALED here (state stays
+   *  in the composer; only the DOM owner changes). Null/absent ⇒ the dock keeps the room (the
+   *  <xl header path lands in A2b). Exactly one AmbientRoom mounts either way. */
+  railHost?: HTMLElement | null;
 }
 
-export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
+export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
-  // The audience presence is a SINGLE docked card on top of the composer at every breakpoint
-  // (unified 2026-07-07): the old ≥xl right rail is retired so desktop and mobile read the same —
-  // a small cap fused to the composer that blooms open into one surface. One presence mounts, so
-  // there is never a hidden second AmbientRoom running its timers.
+  // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
+  // (false until mounted) + railHost is null until the aside mounts, so the portal only engages
+  // post-mount on a wide thread view; every other state keeps the dock room byte-identical.
+  const isXl = useMediaQuery("(min-width: 1280px)");
+  const useRail = isXl && railHost != null;
+  // The audience presence docks above the composer as a peek→bloom card — EXCEPT ≥xl in thread
+  // mode, where P2 (A2a) re-parents it into HomePageLayout's persistent right rail (portaled; see
+  // `useRail`). The dock room and the rail room are mutually exclusive on the same `useRail` flag,
+  // so exactly ONE AmbientRoom ever mounts — never a hidden second one running its timers.
+  // (The <xl header path lands in A2b; until then <xl keeps the dock peek unchanged.)
 
   // Layout signal: does a Simulation exist? Mirrors ContentForm L158.
   const params = useParams();
@@ -2013,6 +2026,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     arrivalNonce,
   };
   const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
+  // P2 (A2a) — the SAME presence, persistent + in-flow, for the desktop rail (variant='rail', A1).
+  // Same props (same focus/asks/reacting state), so the rail reacts to scroll-spy exactly as the
+  // dock peek did; only the container + DOM owner change. Rendered ONLY via the portal below.
+  const audienceRail = <AudiencePresence {...presenceCommonProps} variant="rail" />;
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2543,7 +2560,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
-      {audiencePresence}
+      {/* The audience room. ≥xl thread mode → PORTALED to HomePageLayout's right rail (A2a); every
+          other state → the dock peek/bloom, byte-identical to before. Exactly one mounts. */}
+      {useRail && railHost ? createPortal(audienceRail, railHost) : audiencePresence}
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
