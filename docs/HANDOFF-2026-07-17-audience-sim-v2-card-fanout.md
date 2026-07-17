@@ -141,6 +141,50 @@ open the PR against `main` and merge.
 
 ---
 
+## 4b · Session 2 (2026-07-17) — fully-authed live e2e + two fixes it surfaced
+
+Ran the fully-authenticated e2e (owner gave `e2e-test@virtuna.local` creds). Seeded the test user's
+"Zach King" audience with a real v2 bake, logged in via the real `/login`, generated ideas. **The
+producer path works end-to-end**: real DB audience (v2 axes) → `/api/tools/ideas` → runner →
+`characterizeContent` + `reactPopulation` → `block.props.population` (total 1000, differentiated
+35/58/59/43% across cards, 10 segments) → SSE `content` event → **persisted** to
+`messages.body->blocks[].props.population`. Verified at the SSE layer AND in the DB. The
+Population·1,000 view renders in the authed room. `/api/tools/react` returns a real projection live.
+
+The e2e surfaced two real gaps — **both now fixed + live-verified**:
+
+### AUD-SYNC-01 (🔴 was a blocker) — a fresh thread scored against General despite the pill
+`createOpenThreadLazy` inserts a new open thread with `active_audience_id = NULL`. The composer pill
+displays the user's LAST-USED audience (seeded from `user_settings.last_audience_id`), but the runner
+resolved the audience from `thread.active_audience_id` via `resolveThreadAudience`, which hard-defaulted
+NULL → **General**. So a user with a calibrated v2 audience who generated in a fresh thread got
+General-scored content + ZERO population while the UI showed their calibrated audience. (This gated ALL
+per-audience scoring on new threads, not just population — pre-existing infra, not a sim-v2 regression.)
+**Fix:** `resolveThreadAudience(supabase, thread, userId?)` now falls back to `resolveUserAudience`
+(last-used) when the pin is NULL — keeping the runner in sync with the pill. All 7 route call sites pass
+`user.id`. An explicit General pick writes both the pin and last_audience_id to null, so General still
+resolves to General. `src/lib/audience/resolve-thread-audience.ts` + 7 routes + 3 new tests.
+**Live-verified:** thread pin NULL → ideas now attach real population (all 4 cards, 1000-total).
+
+### AUD-SYNC-02 (🟡 honesty) — the room drill showed the "MODELED FROM YOUR 10" fallback
+Drilling into a generated card from the room's ranked list showed the honest-lean fallback (e.g. 90% =
+densified 9/10 SIM), which can DISAGREE with the card's own real projection (35%). Cause:
+`cardDescriptor` (composer.tsx) built the ambient focus WITHOUT the card's `population`, so
+`focus.population` was undefined and `AmbientRoom` fell back. The descriptor type + `toFocus` already
+threaded `population` — the field just wasn't populated. **Fix:** one line — `cardDescriptor` now sets
+`population: p.population`. **Live-verified:** the room's Population·1,000 for a card now reads
+"1,000 SAMPLED FROM YOUR AUDIENCE · A PROJECTION" with the card's real 352/648 (35%) + per-segment split,
+no longer "MODELED FROM YOUR 10".
+
+### Still owner-operational — existing audiences are DARK until re-baked (not a code fix)
+Every existing prod audience was baked with pre-v2 code (no `topic_vocab`/`reaction`) → `signatureHas
+PopulationAxes` is false → population dark for them. Merging the branch is necessary but NOT sufficient.
+A true offline backfill isn't possible (the original scrape/evidence isn't stored — the bake needs a
+re-scrape). Rollout = **(a)** fix the prod drift cron (owner: add `SUPABASE_SERVICE_ROLE_KEY` to Vercel —
+see the `vercel-crons-dead` note — which unblocks `audience-drift` to re-bake personal accounts on its
+schedule) **or (b)** have each creator recalibrate their audience once. New calibrations light up
+automatically. Flag this in the PR so the owner sequences it.
+
 ## 5 · Pointers
 
 - **Reference impl (the pattern all 4 cards follow):** `src/lib/tools/runners/hooks-runner.ts`
