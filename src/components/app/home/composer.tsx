@@ -780,9 +780,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setPersistedExploreBlocks(outlierGridBlocks);
         setPersistedProfileBlocks(profileBlocks);
         // The ordered TURNS power the unified chat-view render — each question above only its own
-        // answer (multi-turn reload fidelity). Empty for non-chat-agent threads so the per-tool buckets
-        // above stay the sole source (byte-identical reload for those).
-        setPersistedChatTurns(chatAgentThread ? orderedTurns(messages) : []);
+        // answer (multi-turn fidelity). Populated for EVERY thread (cheap; only rendered when the chat
+        // view is active — selector threads restore to their own tool view and never read this), so a
+        // pure plain-chat thread also rehydrates per-turn, not flattened. `chatAgentThread` still only
+        // gates the restore-to-chat decision below (regression-safe for selector threads).
+        setPersistedChatTurns(orderedTurns(messages));
 
         // ── RESTORE activeTool on rehydration (render-after-reload fix) ──────────
         // activeTool defaults to "test", but every thread-view gate (showHooksView,
@@ -1065,6 +1067,50 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       // Network error — silent (the user can retry the drop)
     }
   }, []);
+
+  // ── Chat-agent live-turn persistence (SCROLL/DISAPPEAR fix) ─────────────────
+  // useChatStream holds only the CURRENT turn (reset on each send), and persistedChatTurns loads
+  // only on mount — so a live chat with >1 turn dropped earlier turns from view (the user could no
+  // longer scroll up; a reload brought them back). When a chat turn finishes (isDone), re-read the
+  // open thread (every turn IS persisted server-side) into persistedChatTurns, THEN reset the live
+  // turn — swapping the just-finished turn from "live" to "persisted" in ONE commit (React 18 batches
+  // the sets after the awaited fetch), so no turn disappears and no duplicate flashes. Every turn now
+  // renders from the same clean per-turn path (live === reloaded).
+  const { isDone: chatIsDone, isStreaming: chatIsStreaming, reset: chatReset } = chat;
+  const chatDoneHandledRef = useRef(false);
+  useEffect(() => {
+    if (!chatIsDone) {
+      // A new turn started (or state cleared) — re-arm for the next completion.
+      chatDoneHandledRef.current = false;
+      return;
+    }
+    if (chatIsStreaming || chatDoneHandledRef.current) return;
+    chatDoneHandledRef.current = true;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/threads/open', { cache: 'no-store' });
+        if (cancelled || !res.ok) return;
+        const data = (await res.json()) as {
+          messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
+        };
+        if (cancelled) return;
+        const messages = data.messages ?? [];
+        if (messages.length === 0) return; // nothing persisted → keep the live turn visible
+        // One commit (React 18 batches these three): persisted history gains the finished turn AND the
+        // live turn clears together, so the turn swaps from live→persisted with no flash and no dup.
+        // chatReset() runs ONLY here (on success) — a failed fetch must NOT clear an unpersisted turn.
+        setPersistedChatTurns(orderedTurns(messages));
+        setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
+        chatReset();
+      } catch {
+        // Network error — leave the live turn in place; the next reload reconciles it.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [chatIsDone, chatIsStreaming, chatReset]);
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
   // set the inline muted reject; never a blocking modal. Server re-validates (T-05-18).

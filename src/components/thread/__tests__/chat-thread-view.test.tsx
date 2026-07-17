@@ -67,6 +67,31 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(screen.getByText(/want hooks for it/i)).toBeTruthy();
   });
 
+  it('while thinking (streaming, no content yet) shows the lightweight typing indicator, not the heavy skeleton', () => {
+    renderWithClient(
+      <ChatThreadView {...baseProps} isStreaming={true} userTurn="why do hooks matter?" />,
+    );
+    // The premium inline typing indicator is present (sr-only label + role=status).
+    expect(screen.getByText('Thinking…')).toBeTruthy();
+    // The old centered constellation skeleton is NOT used in the chat view anymore.
+    expect(screen.queryByTestId('thread-loading-skeleton')).toBeNull();
+    // The user's question still shows above the thinking state.
+    expect(screen.getByText('why do hooks matter?')).toBeTruthy();
+  });
+
+  it('renders assistant answers WITHOUT the old result-card frame (no "· General" header chrome)', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'q', blocks: [{ type: 'markdown', props: { text: 'A clean prose answer.' } }] }]}
+      />,
+    );
+    expect(screen.getByText('A clean prose answer.')).toBeTruthy();
+    // The SkillResultCard header rendered "<skill> · <audience>"; chat answers must no longer carry it.
+    expect(screen.queryByText(/·\s*General/)).toBeNull();
+    expect(screen.queryByText(/Chat\s*·/)).toBeNull();
+  });
+
   it('plain chat turn (markdown only, no cards) is unchanged', () => {
     renderWithClient(
       <ChatThreadView

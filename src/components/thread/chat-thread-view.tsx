@@ -29,8 +29,7 @@
 import { Fragment } from 'react';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from '@/components/thread/thread-shell';
-import { SkillResultCard } from '@/components/thread/skill-result-card';
-import { ThreadLoadingSkeleton } from '@/components/thread/thread-loading';
+import { ChatTypingIndicator } from '@/components/thread/thread-loading';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
@@ -105,8 +104,6 @@ export function ChatThreadView({
   platform,
   onSuggestChain,
   userTurn,
-  skillLabel = 'Chat',
-  audienceLabel = 'General',
 }: ChatThreadViewProps) {
   // Unified chat-agent reload: the ordered TURNS (each question + its cards/co-pilot line) REPLACE the
   // markdown-only persisted body when present. A normal chat thread has no turns → markdown-only path,
@@ -153,16 +150,16 @@ export function ChatThreadView({
   // question bubble. On a pure reload (no streaming) the persisted turns already include the last
   // turn's question, so no live turn renders → no duplicate bubble. The markdown-only reload also
   // renders through this block (its question comes from `userTurn`).
-  const showLiveTurn = hasStreamingContent || hasStreamingCards || showMarkdownBody;
+  const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards;
+  const showLiveTurn = isStreaming || hasStreamingContent || hasStreamingCards || showMarkdownBody;
   const liveQuestion = userTurn?.trim();
 
   return (
-    // Idle is NOT this view's business any more. Chat's empty state was a left-aligned
-    // prose block that matched nothing else in the app; it now comes from the ONE starter
-    // (home-starter.tsx — THE STARTER CONTRACT), rendered by the composer alongside every
-    // other skill's. This view owns only what it produces: turns, nudge, error.
-    // userTurn is owned per-turn inside children (persisted turns each carry their own question, and
-    // the live turn renders its own bubble), so ThreadShell's single top bubble is not used here.
+    // Premium chat surface (Claude/Perplexity-native): assistant answers read as clean prose under a
+    // quiet "Maven" label — NO bordered result-card, NO "Chat · General" header. Only real skill
+    // outputs (idea/hook/script cards) carry card chrome, and those blocks self-frame. Idle is not this
+    // view's business — the starter (home-starter.tsx) owns the empty state; this view owns turns,
+    // nudge, error. User bubbles are owned per-turn inside children, so ThreadShell's top bubble is off.
     <ThreadShell userTurn={undefined}>
       {nudgeShown && (
         <p
@@ -174,54 +171,41 @@ export function ChatThreadView({
         </p>
       )}
 
-      {isStreaming && !hasStreamingContent && !hasStreamingCards && <ThreadLoadingSkeleton variant="chat" />}
-
-      {/* PERSISTED (chat-agent reload): one question-bubble + one result card PER TURN, in order.
-          This is the multi-turn reload fix — turn boundaries are preserved, so each question sits
-          above only the answer it produced instead of every answer collapsing under the last. */}
+      {/* PERSISTED: one question-bubble + one clean assistant turn PER turn, in order (multi-turn
+          reload fidelity). Turn boundaries preserved → each question sits above only its own answer. */}
       {hasPersistedTurns &&
         persistedTurns.map((turn, i) => (
           <Fragment key={i}>
             {turn.userTurn?.trim() && <ThreadUserTurn text={turn.userTurn.trim()} />}
             {turn.blocks.length > 0 && (
               <ThreadAssistantTurn>
-                <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
-                  <MessageBlocks body={turn.blocks} />
-                </SkillResultCard>
+                <MessageBlocks body={turn.blocks} />
               </ThreadAssistantTurn>
             )}
           </Fragment>
         ))}
 
-      {/* LIVE turn (in-flight stream) + the markdown-only reload path. Renders its own question bubble
-          from `userTurn`. On a pure chat-agent reload showLiveTurn is false → the persisted turns above
-          are the whole thread (no duplicate last question). */}
+      {/* LIVE turn (in-flight stream) + the markdown-only reload fallback. Renders its own question
+          bubble from `userTurn`, then the assistant turn: a typing indicator while thinking, then the
+          streamed cards/prose as they arrive. On a pure reload showLiveTurn is false. */}
       {showLiveTurn && (
         <>
           {liveQuestion && <ThreadUserTurn text={liveQuestion} />}
           <ThreadAssistantTurn>
-            <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
-              {hasStreamingCards && (
-                // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in
-                // this thread, ABOVE the co-pilot line. MessageBlocks re-validates every block.
-                <div aria-live="polite" aria-atomic="false">
-                  <MessageBlocks body={streamingCardBlocks} />
-                </div>
-              )}
-              {hasStreamingContent && (
-                <div aria-live="polite" aria-atomic="false">
-                  <MessageBlocks body={streamingBody} />
-                </div>
-              )}
-              {showMarkdownBody && (
-                <>
-                  {hasStreamingContent && (
-                    <div className="border-t border-white/[0.06] pt-4" />
-                  )}
-                  <MessageBlocks body={persistedMarkdownBody} />
-                </>
-              )}
-            </SkillResultCard>
+            {thinking && <ChatTypingIndicator />}
+            {hasStreamingCards && (
+              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in this
+              // thread, ABOVE the co-pilot line. The cards self-frame; MessageBlocks re-validates each.
+              <div aria-live="polite" aria-atomic="false">
+                <MessageBlocks body={streamingCardBlocks} />
+              </div>
+            )}
+            {hasStreamingContent && (
+              <div aria-live="polite" aria-atomic="false">
+                <MessageBlocks body={streamingBody} />
+              </div>
+            )}
+            {showMarkdownBody && <MessageBlocks body={persistedMarkdownBody} />}
           </ThreadAssistantTurn>
         </>
       )}
