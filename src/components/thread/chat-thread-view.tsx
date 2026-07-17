@@ -141,6 +141,16 @@ export function ChatThreadView({
   // every block either way (D-14).
   const persistedMarkdownBody: unknown[] = persistedBlocks.map((b) => ({ type: b.type, props: b.props }));
 
+  // ── The ambient room's scroll-spy anchor offsets ────────────────────────────────────────────
+  // The room's chat ledger (composer.tsx → buildAmbientDescriptors) is the FLAT concat, in DOM
+  // order: [...persistedTurns.flatMap(t => t.blocks), ...streamingCardBlocks]. Card ids are that
+  // array's indices, so each body below must render with its own offset into it — otherwise a card
+  // carries another card's id and the room reads out the wrong reaction.
+  // `persistedBlocks` (the markdown-only reload path) is NOT in the ledger and gets no offset.
+  const persistedBaseIndex = (turnIndex: number) =>
+    persistedTurns.slice(0, turnIndex).reduce((n, t) => n + t.blocks.length, 0);
+  const streamingCardsBaseIndex = persistedBaseIndex(persistedTurns.length);
+
   const streamingBody: unknown[] = streamingBlocks.map((b) => ({
     type: b.type,
     props: b.props,
@@ -179,7 +189,10 @@ export function ChatThreadView({
             {turn.userTurn?.trim() && <ThreadUserTurn text={turn.userTurn.trim()} />}
             {turn.blocks.length > 0 && (
               <ThreadAssistantTurn>
-                <MessageBlocks body={turn.blocks} />
+                {/* Scroll-spy anchors: the room's chat ledger is the FLAT concat
+                    `[...persistedTurns.flatMap(t => t.blocks), ...streamingCardBlocks]`, so this
+                    turn's blocks start after every earlier turn's. */}
+                <MessageBlocks body={turn.blocks} ambientBaseIndex={persistedBaseIndex(i)} />
               </ThreadAssistantTurn>
             )}
           </Fragment>
@@ -197,7 +210,10 @@ export function ChatThreadView({
               // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in this
               // thread, ABOVE the co-pilot line. The cards self-frame; MessageBlocks re-validates each.
               <div aria-live="polite" aria-atomic="false">
-                <MessageBlocks body={streamingCardBlocks} />
+                <MessageBlocks
+                  body={streamingCardBlocks}
+                  ambientBaseIndex={streamingCardsBaseIndex}
+                />
               </div>
             )}
             {hasStreamingContent && (

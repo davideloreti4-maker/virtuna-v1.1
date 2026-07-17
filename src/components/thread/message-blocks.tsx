@@ -9,8 +9,10 @@
  * the model can only produce block types already in the registry.
  */
 
+import { Fragment } from 'react';
 import { validateBlock } from '@/lib/tools/block-registry';
 import type { BlockType } from '@/lib/tools/block-registry';
+import { toAmbientDescriptor } from '@/components/app/home/ambient-descriptors';
 import { MarkdownBlockRenderer } from '@/components/thread/markdown-block';
 import { BandBlockRenderer } from '@/components/thread/band-block';
 import { PersonasBlockRenderer } from '@/components/thread/personas-block';
@@ -59,6 +61,23 @@ export interface MessageBlocksProps {
    * block renderer is invoked byte-identically (`<Component block={block} />`) regardless.
    */
   conceptText?: string;
+  /**
+   * The ambient room's scroll-spy anchor seam. When set, every reactable card this call renders is
+   * wrapped in a `[data-ambient-card]` node carrying the LEDGER id for that card, so
+   * `useAmbientFocus`'s IntersectionObserver tracks the real cards as they scroll.
+   *
+   * The value is this body's offset into `buildAmbientDescriptors`' source array — NOT the DOM
+   * position. The two differ: the tool views render this run's cards ABOVE the earlier ones under an
+   * "Earlier" divider, while the ledger is `[...persisted, ...streaming]`. Passing the true offset is
+   * what keeps a card's id pointing at its OWN descriptor.
+   *
+   * OPT-IN by design (undefined = no anchors). Ids are positional, so a body that is NOT part of the
+   * ledger — the profile thread view, the /dev/cards gallery — must never emit them: it would mint a
+   * colliding `idea-0` and hand the room another card's reaction.
+   *
+   * Guard: `__tests__/ambient-card-anchors.test.tsx`.
+   */
+  ambientBaseIndex?: number;
 }
 
 /**
@@ -81,7 +100,7 @@ function inBandConceptText(body: unknown[]): string | undefined {
   return undefined;
 }
 
-export function MessageBlocks({ body, conceptText }: MessageBlocksProps) {
+export function MessageBlocks({ body, conceptText, ambientBaseIndex }: MessageBlocksProps) {
   // Prefer the explicit concept (threaded by the test/Read view); else derive the
   // in-band concept from a co-located markdown block (LIVE-06 text-Read surface).
   const personaConcept = conceptText ?? inBandConceptText(body);
@@ -106,19 +125,37 @@ export function MessageBlocks({ body, conceptText }: MessageBlocksProps) {
         // The `personas` (text-Read) renderer additively accepts a `conceptText` so the
         // shared AudienceLens mounts with a concept to ground chat (LIVE-03 (b) / LIVE-06).
         // All other renderers are invoked byte-identically — no behavior change for them.
-        if (block.type === 'personas' && personaConcept) {
-          // block is the validated personas block; props is typed `unknown` on the registry
-          // result, so cast to the renderer's expected shape (already schema-validated above).
-          return (
+        const rendered =
+          block.type === 'personas' && personaConcept ? (
+            // block is the validated personas block; props is typed `unknown` on the registry
+            // result, so cast to the renderer's expected shape (already schema-validated above).
             <PersonasBlockRenderer
-              key={index}
               block={block as Parameters<typeof PersonasBlockRenderer>[0]['block']}
               conceptText={personaConcept}
             />
+          ) : (
+            <Component block={block} />
           );
-        }
 
-        return <Component key={index} block={block} />;
+        // The ambient room's scroll-spy anchor. The id is resolved by `toAmbientDescriptor` — the
+        // SAME function `buildAmbientDescriptors` uses to build the ledger — fed the SAME raw block
+        // at its true ledger index. One function, one input: the DOM and the ledger cannot disagree
+        // about what this card is, which is the failure shape of PR #306 (one fact, two sources).
+        // It also decides WHETHER this is a card the room reacts to at all, so prose and non-scored
+        // blocks are never anchored.
+        const ambientId =
+          ambientBaseIndex === undefined
+            ? null
+            : (toAmbientDescriptor(rawBlock, ambientBaseIndex + index)?.id ?? null);
+
+        // Not an anchor → a Fragment emits no DOM: the unanchored tree stays byte-identical.
+        if (ambientId === null) return <Fragment key={index}>{rendered}</Fragment>;
+
+        return (
+          <div key={index} data-ambient-card="" data-card-id={ambientId}>
+            {rendered}
+          </div>
+        );
       })}
     </div>
   );

@@ -2037,31 +2037,19 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     />
   );
 
-  // Per-card focus markers (data-ambient-card) — the scroll-spy + capture-phase tap seam,
-  // kept at the TOP of the thread scroll region so registerThreadRegion's IntersectionObserver
-  // tracks the ledger and a tap re-points the spotlight, WITHOUT forking the shipped card
-  // renderers. sr-only (the visible presence now lives in the bottom dock).
-  const ambientFocusMarkers = ambientDescriptors.length > 0 && (
-    <div data-testid="ambient-focus-markers" className="sr-only flex flex-col">
-      {ambientDescriptors.map((d) => (
-        <div
-          key={d.id}
-          data-ambient-card=""
-          data-card-id={d.id}
-          data-concept={d.conceptText}
-          data-fraction={d.fraction}
-          data-scroll-quote={d.scrollQuote}
-          role="button"
-          tabIndex={0}
-          aria-label={`Focus the audience on: ${d.conceptText}`}
-          onClickCapture={() => focusByTap(d.id)}
-          onKeyDownCapture={(e) => {
-            if (e.key === "Enter" || e.key === " ") focusByTap(d.id);
-          }}
-        />
-      ))}
-    </div>
-  );
+  // DELETED (2026-07-17): the sr-only `[data-ambient-card]` focus markers — a shadow copy of the
+  // ledger stacked at the top of the scroll region, which is why the scroll-spy never worked.
+  //
+  // They claimed to let the IntersectionObserver "track the ledger ... WITHOUT forking the shipped
+  // card renderers", but all N markers measured 1x1 at y=-1 in one sr-only box ABOVE the focus line
+  // while the real cards sat at y=1147..2529. The observer watched five zero-height boxes; the cards
+  // scrolled past unobserved and the band stayed pinned to the last descriptor forever.
+  //
+  // The anchors now ride the REAL cards (message-blocks.tsx `ambientBaseIndex`) — one shared choke
+  // point, so no renderer was forked after all. Their other job, a keyboard tap seam, was a second
+  // invisible copy of every card's own "See the room →" (which calls the same focusByTap via
+  // openRoomForCard). Their data-concept/-fraction/-scroll-quote payload was read by nothing —
+  // not one test. Guard: thread/__tests__/ambient-card-anchors.test.tsx.
 
   // Shared thread content block (rendered in both mode branches below).
   const threadSkillLabel = getSkill(activeTool).label;
@@ -2658,15 +2646,14 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
             The bottom padding clears the collapsed dock so the last message can rest just
             above the composer instead of hiding behind it.
             registerThreadRegion roots the scroll-spy IntersectionObserver on this element
-            (Pattern 5); the sr-only focus markers ride at the top so the spotlight tracks
-            the ledger as it scrolls (D-01). */}
+            (Pattern 5). It observes the `[data-ambient-card]` anchors that the REAL cards carry
+            (message-blocks.tsx), so the spotlight tracks the ledger as it actually scrolls (D-01). */}
         <div
           ref={registerThreadRegion}
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
         >
           <div className="w-full max-w-[760px] mx-auto px-4">
-            {ambientFocusMarkers}
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a
