@@ -325,3 +325,63 @@ describe('Composer — General verbs (Profile / Simulate / Predict)', () => {
     expect(calledWith('/api/tools/predict')).toBe(false);
   });
 });
+
+// ── Persisted Read restore (P3 follow-up) ─────────────────────────────────────
+// The rehydration whitelist never included `multi-audience-read`, so a persisted
+// Read NEVER re-rendered on the thread surface — the block sat valid in the DB
+// while the thread showed everything around it (live-caught 2026-07-17). It now
+// rides the tool-agnostic bucket (profile-read / reaction-distribution /
+// prediction-gauge), rendered via MessageBlocks regardless of activeTool.
+describe('Composer — persisted multi-audience-read restores on the thread', () => {
+  beforeEach(() => {
+    installFetchMock();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('renders a persisted Read block after rehydration', async () => {
+    // Override the open-thread mount fetch: ONE assistant message holding a
+    // single-audience Read (the P3 default shape).
+    const READ_BLOCK = {
+      type: 'multi-audience-read',
+      props: {
+        model: 'sim1-flash',
+        tier: 'Validated',
+        concept: 'I fired my whole marketing team.',
+        audiences: [
+          {
+            name: 'General',
+            band: 'Strong',
+            fraction: '7/10 stop',
+            interpretation: 'General wins (Strong).',
+            lever: 'Strong for General. Calibrate a second audience to see where it diverges.',
+            whoNotFor: '',
+            personas: [],
+          },
+        ],
+      },
+    };
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      let body: unknown = {};
+      if (url.includes('/api/audiences')) body = { audiences: [] };
+      else if (url.includes('/api/threads/open')) {
+        body = {
+          threadId: 't1',
+          messages: [{ id: 'm1', role: 'assistant', blocks: [READ_BLOCK] }],
+        };
+      } else if (url.includes('/api/tracked-accounts')) body = { accounts: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+    }) as typeof fetch;
+
+    renderWithClient(<Composer />);
+
+    // The Read card renders through the real MessageBlocks registry — eyebrow +
+    // interpretation prove the actual renderer mounted, not a placeholder.
+    await waitFor(() => {
+      expect(screen.getByText('The Read')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/General wins \(Strong\)\./)).toBeInTheDocument();
+  });
+});

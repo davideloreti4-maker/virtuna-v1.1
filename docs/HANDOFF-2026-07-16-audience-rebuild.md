@@ -140,11 +140,15 @@ What landed:
   default Read returned ONE entry (General, Strong, 7/10 stop, single-read copy), persisted
   block DB-verified single-entry, bad explicit pair → 400, /dev/cards renders both Read
   sections with the quiet line, 0 console errors. Screenshots: `.planning/sketches/p3-live/`.
-- 🔍 **Live-caught, PRE-EXISTING, deferred**: the /home composer's rehydration whitelist
-  (`composer.tsx` `loadPersistedBlocks`) never restored `multi-audience-read` — a persisted
-  Read has NEVER re-rendered on the thread surface (only the audience-manager Compare
-  renders one, inline). Harmless today (no UI issues default Reads), but whichever phase
-  gives the Read a composer entry must add it to the whitelist + a thread view.
+- 🔍 **Live-caught, PRE-EXISTING → ✅ CLOSED same session**: the /home composer's
+  rehydration whitelist (`composer.tsx` `loadPersistedBlocks` + `reloadProfileThread`)
+  never restored `multi-audience-read` — a persisted Read had NEVER re-rendered on the
+  thread surface. Now rides the tool-agnostic bucket (profile-read /
+  reaction-distribution / prediction-gauge → MessageBlocks, ungated on activeTool).
+  Guard test written RED-first against the old whitelist; live-verified — the real
+  persisted Read from the P3 engine run renders on thread restore (screenshot in
+  `.planning/sketches/p3-live/single-read-in-thread.png`). A Read-only thread also
+  correctly flips to thread layout now (the `persistedProfileBlocks.length > 0` gates).
   DB note for queries: `messages.body` is `{blocks: [...]}` (object), so
   `body @> '[{"type":...}]'` array-containment does NOT match — `read-rollup.ts` already
   documents this.

@@ -756,7 +756,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           (b) =>
             b.type === 'profile-read' ||
             b.type === 'reaction-distribution' ||
-            b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+            b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+            // The Read (P3 follow-up): also tool-agnostic — no composer tool owns it, and
+            // before this line a persisted Read NEVER re-rendered on the thread surface.
+            b.type === 'multi-audience-read',
         );
         setPersistedIdeaBlocks(ideaBlocks);
         setPersistedHookBlocks(hookBlocks);
@@ -1037,7 +1040,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         (b: { type?: string }) =>
           b.type === 'profile-read' ||
           b.type === 'reaction-distribution' ||
-          b.type === 'prediction-gauge', // 07-04: the Predict (analyst-panel) result block
+          b.type === 'prediction-gauge' || // 07-04: the Predict (analyst-panel) result block
+          b.type === 'multi-audience-read', // the Read — tool-agnostic (mirrors rehydration)
       );
       setPersistedProfileBlocks(profileBlocks);
     } catch {
