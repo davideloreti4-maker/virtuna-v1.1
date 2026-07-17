@@ -86,6 +86,16 @@ export interface UseHooksStreamReturn {
   /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
   followupText: string | null;
   /**
+   * Run-level degrade notices from the `warning` SSE event — e.g. grounding fell back to
+   * ungrounded. Empty on a clean run.
+   *
+   * ⚠️ This event was emitted by the route and consumed by NOBODY until 2026-07-17: every
+   * warning the pipeline ever raised streamed into the void, so a degrade was indistinguishable
+   * from a clean run at the glass. The route-side test asserted the event was SENT; nothing
+   * asserted it was received. Wire it, don't just type it.
+   */
+  warnings: string[];
+  /**
    * Start the Hooks stream. Call from the composer Hook send.
    * ask: empty string → Auto mode (anchored idea); non-empty → seeded mode (D-09).
    * Re-expose as the retry entry point for the skill-run error state (W2).
@@ -121,6 +131,7 @@ export function useHooksStream(): UseHooksStreamReturn {
   // Plan 05-04 additions: stage checklist + model follow-up text (STUDIO-01/02)
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
@@ -149,6 +160,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     setIsDone(false);
     setStages([]);
     setFollowupText(null);
+    setWarnings([]);
     cardsRef.current = [];
     stagesRef.current = [];
   }, []);
@@ -253,6 +265,14 @@ export function useHooksStream(): UseHooksStreamReturn {
           } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
             if (isMountedRef.current) setStatusMessage(msg);
+
+          } else if (eventType === 'warning') {
+            // Run-level degrade notices. The route has sent these since grounding shipped; this
+            // branch is what finally reads them (see UseHooksStreamReturn.warnings).
+            const list = Array.isArray(data.warnings)
+              ? data.warnings.filter((w: unknown): w is string => typeof w === 'string')
+              : [];
+            if (list.length > 0 && isMountedRef.current) setWarnings(list);
 
           } else if (eventType === 'content') {
             // content event: hook faces WITH scrollQuote; band/fraction absent until score
@@ -557,6 +577,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     isDone,
     stages,
     followupText,
+    warnings,
     start,
     startRefine,
     stop,

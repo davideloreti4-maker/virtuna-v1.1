@@ -2192,6 +2192,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           statusMessage={hooks.statusMessage}
           stages={hooks.stages}
           followupText={hooks.followupText}
+          warnings={hooks.warnings}
           isStreaming={hooks.isStreaming}
           error={hooks.error}
           platform={platform}

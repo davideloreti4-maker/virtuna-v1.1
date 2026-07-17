@@ -90,6 +90,32 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         statusMessage={null}
         stages={doneStages(["Generating", "Simulating your audience", "Ranking"])}
         followupText={FOLLOWUPS.hooks}
+        warnings={[]}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        onTestHook={noop}
+        onWriteScriptHook={noop}
+        userTurn={USER_TURNS.hooks}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
+    id: "hooks-degraded",
+    label: "Hooks (degraded run)",
+    note: "Same run, with the `warning` SSE event populated — the RunWarnings notice below the cards. Fires on per-persona targeting drift or a grounding fall-back; empty on a clean run.",
+    node: (
+      <HooksThreadView
+        persistedBlocks={[]}
+        streamingBlocks={HOOK_BLOCKS}
+        statusMessage={null}
+        stages={doneStages(["Generating", "Simulating your audience", "Ranking"])}
+        followupText={FOLLOWUPS.hooks}
+        warnings={[
+          'Hook "Editing is a trap." targeted "The Overwhelmed Beginner" but was assigned "The Plateaued Pro" — reporting the model\'s target',
+          "grounding degraded to ungrounded — no proven outliers matched this ask",
+        ]}
         isStreaming={false}
         error={null}
         platform="tiktok"
