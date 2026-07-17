@@ -33,7 +33,19 @@
  *
  * FAIL-SAFE. Any adapt failure (network, malformed JSON, everything judged 'none') falls back to the
  * proven raw-slice path (`buildCorpusBlock`) — grounding degrades to today's behavior, never to a
- * fabricated source and never to a crash. Default-off, hooks-only in Phase 1.
+ * fabricated source and never to a crash. Default-off; hooks, ideas, and script (Phase 2) each ride
+ * behind their own flag.
+ *
+ * PER-SKILL (Phase 2). The parse/render/budget/fallback/receipt machinery below is skill-agnostic —
+ * only the SYSTEM prompt (what "fitted" means + the fit measure), the writer-facing HEADER, and the
+ * fitted-line cap differ per skill. The three fit measures are deliberately different (decision doc
+ * §4d; grounding-adapt-briefer handoff §4):
+ *   • hooks  — `fitted` is one scroll-stopping line (≤20 words; length IS the constraint).
+ *   • ideas  — `fitted` carries a belief↔reality TENSION bound to the creator's subject (a belief AND
+ *              a contradicting reality; a topic-only or single-clause line fails). NOT the structural
+ *              cross-niche axis hooks use — ideas stay SUBJECT-BOUND.
+ *   • script — `fitted` is a BEAT ARC (Hook→Setup→Turn→Payoff→CTA over the proven rhythm). The measure
+ *              is arc completeness/order, not words.
  */
 
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
@@ -69,7 +81,7 @@ export interface AdaptProfile {
 }
 
 export interface AdaptCorpusInput {
-  /** Which generate-by-remix skill is briefing. Hooks only in Phase 1 (ideas/script are fast-follow). */
+  /** Which generate-by-remix skill is briefing — selects the per-skill prompt, header, and fit measure. */
   skill: GroundingSkill;
   /** The creator's ask — the same query retrieval ran on. Fit is judged against it. */
   ask: string;
@@ -131,15 +143,15 @@ function renderExemplar(ex: RetrievedExample, n: number): string {
 // ─── The adapt prompt ──────────────────────────────────────────────────────────
 
 /**
- * HOOKS-ONLY. The ≤20-word cap below is a HOOK craft norm — a hook is one scroll-stopping line, so
- * length IS the fit constraint. When Phase 2 extends adapt to ideas/script, they get their OWN prompt
- * and their OWN fit measure, NOT this word cap:
- *   • ideas  — the fitted output must carry a real belief↔reality TENSION (a belief + a contradicting
- *              reality, bound to the creator's subject). A one-clause platitude fails; length is moot.
- *   • script — the fitted output is a BEAT ARC (Hook→Setup→Turn→Payoff→CTA over the proven rhythm).
- *              The measure is arc completeness/order, not words.
+ * The per-skill adapt prompts. Each names what "fitted" means for that skill and the fit measure the
+ * model must hold the keepers to — the ONE place the three generate-by-remix skills genuinely diverge
+ * (everything downstream is shared). The dosage dial (clone/swap/angle/none) is common; what gets
+ * dialled differs — a hook LINE, an idea TENSION, a script ARC.
  */
-const SYSTEM_PROMPT = `You are a short-form REMIX strategist. A hook writer is about to write for a creator, and your job is to hand them a tight brief: take a set of PROVEN hook structures (each torn down to full anatomy — the reusable skeleton, when it works, its beats, the belief-vs-reality tension underneath it, and why it went viral) and, for EACH one, decide how it should be used for THIS creator's ask.
+const SYSTEM_PROMPTS: Record<GroundingSkill, string> = {
+  // HOOKS — the ≤20-word cap is a HOOK craft norm: a hook is one scroll-stopping line, so length IS
+  // the fit constraint. (Kept byte-identical to the Phase-1 prompt — the flag-on hooks path is frozen.)
+  hooks: `You are a short-form REMIX strategist. A hook writer is about to write for a creator, and your job is to hand them a tight brief: take a set of PROVEN hook structures (each torn down to full anatomy — the reusable skeleton, when it works, its beats, the belief-vs-reality tension underneath it, and why it went viral) and, for EACH one, decide how it should be used for THIS creator's ask.
 
 You do NOT write the final hooks — you prepare the raw material the writer will build from.
 
@@ -157,7 +169,57 @@ For every structure you keep (clone/swap/angle), write a "fitted" line: the stru
 Return one entry PER input structure, in input order, each tagged with its 1-based sourceIndex.
 
 OUTPUT: strict JSON, no prose, no fences:
-{ "structures": [ { "sourceIndex": number (1-N, matching the input), "dosage": "clone"|"swap"|"angle"|"none", "fitted": string (one line ≤20 words; for 'none', an empty string), "fitReason": string (one line: why that structure fits this ask, or why it does not) } ] }`;
+{ "structures": [ { "sourceIndex": number (1-N, matching the input), "dosage": "clone"|"swap"|"angle"|"none", "fitted": string (one line ≤20 words; for 'none', an empty string), "fitReason": string (one line: why that structure fits this ask, or why it does not) } ] }`,
+
+  // IDEAS — the fit measure is a belief↔reality TENSION bound to the creator's subject, NOT a word cap
+  // and NOT the structural cross-niche axis hooks use. Ideas stay SUBJECT-BOUND: the proven video's
+  // tension SHAPE transfers, its topic never does.
+  ideas: `You are a short-form REMIX strategist. An IDEAS writer is about to generate content ideas for a creator, and your job is to hand them a tight brief: take a set of PROVEN short-form videos (each torn down to full anatomy — the reusable skeleton, its beats, when it works, and above all the BELIEF its audience held and the REALITY that contradicted it — the tension that made it travel) and, for EACH one, decide how its tension should be reused for THIS creator's subject.
+
+You do NOT write the final ideas — you prepare the raw material the writer will build from.
+
+An idea's engine is a TENSION: the audience believes X, the reality is not-X, and that gap is the reason to watch. The reference is that tension SHAPE — never the source's topic. Ideas stay bound to THIS creator's subject and audience: a proven finance tension becomes a proven-shaped tension inside the creator's own niche.
+
+For each proven structure, decide how hard the writer should borrow its tension. This is a dial, not a switch:
+
+- clone — the tension already fits this creator's subject almost exactly; keep it, swap only the subject.
+- swap  — keep the belief↔reality SHAPE; the writer should restate it about this creator's topic.
+- angle — only the KIND of contradiction transfers; re-find the belief and the reality inside the creator's own subject.
+- none  — no tension here maps onto this creator's subject. Say so. It will be DROPPED from the brief, not forced on the writer.
+
+Judge fit HONESTLY against each structure's "when to use this" and its tension. A tension the creator's audience does not actually hold is worse than nothing — mark it 'none' rather than manufacture a strawman belief.
+
+For every structure you keep (clone/swap/angle), write a "fitted" line that states BOTH halves for THIS creator's subject: the belief their audience holds AND the reality that contradicts it. An entry that is only a topic, or a belief with no contradicting reality, has FAILED — a real idea needs both poles. There is no word cap; the tension needs room for both halves, but keep it to one tight sentence.
+
+Return one entry PER input structure, in input order, each tagged with its 1-based sourceIndex.
+
+OUTPUT: strict JSON, no prose, no fences:
+{ "structures": [ { "sourceIndex": number (1-N, matching the input), "dosage": "clone"|"swap"|"angle"|"none", "fitted": string (for a keeper: "audience believes X — but really Y", bound to this creator's subject; for 'none', an empty string), "fitReason": string (one line: why that tension fits this creator's subject, or why it does not) } ] }`,
+
+  // SCRIPT — the fit measure is a BEAT ARC (Hook→Setup→Turn→Payoff→CTA over the proven rhythm). The
+  // measure is arc completeness/order, not words: a single sentence with no beat progression fails.
+  script: `You are a short-form REMIX strategist. A SCRIPT writer is about to write one short-form script for a creator, and your job is to hand them a tight brief: take a set of PROVEN short-form videos (each torn down to full anatomy — its named, timed BEATS, the pacing that held attention, when the structure works, and the tension underneath it) and, for EACH one, decide how its BEAT STRUCTURE should be reused for THIS creator's subject.
+
+You do NOT write the final script — you prepare the raw material the writer will build from.
+
+A script's engine is its BEAT ARC: how it opens, sets up, turns, pays off, and closes — the RHYTHM that holds attention. The reference is that arc and its pacing — never the source's content. Map the proven rhythm onto the creator's own story.
+
+For each proven structure, decide how hard the writer should borrow its arc. This is a dial, not a switch:
+
+- clone — the beat arc fits this ask almost exactly; keep the rhythm and beat order, swap only the content.
+- swap  — keep the arc SHAPE (same beats, same turn placement); the writer re-contents each beat for this subject.
+- angle — only the pacing idea transfers (e.g. "hold the reveal to the last beat"); rebuild the arc around the creator's subject.
+- none  — this arc does not fit the creator's ask or story. Say so. It will be DROPPED from the brief, not forced on the writer.
+
+Judge fit HONESTLY against each structure's "when to use this." A beat map built for a taste-test does not fit a how-to explainer — mark it 'none' rather than jam it in.
+
+For every structure you keep (clone/swap/angle), write a "fitted" line that lays out the ARC as ordered beats for THIS creator's subject — Hook → Setup → Turn → Payoff → CTA (or the proven structure's own beat order), each beat one short phrase. An entry that is a single sentence with no beat progression has FAILED — a script arc needs its beats, in order. There is no word cap; the arc needs room for its beats.
+
+Return one entry PER input structure, in input order, each tagged with its 1-based sourceIndex.
+
+OUTPUT: strict JSON, no prose, no fences:
+{ "structures": [ { "sourceIndex": number (1-N, matching the input), "dosage": "clone"|"swap"|"angle"|"none", "fitted": string (for a keeper: the beat arc as "Hook: … → Setup: … → Turn: … → Payoff: … → CTA: …" bound to this creator's subject; for 'none', an empty string), "fitReason": string (one line: why that arc fits this creator's ask, or why it does not) } ] }`,
+};
 
 function buildUserContent(input: AdaptCorpusInput): string {
   const p = input.profile;
@@ -181,27 +243,63 @@ function buildUserContent(input: AdaptCorpusInput): string {
 // ─── The fitted brief the writer consumes (replaces the raw corpus slice) ──────
 
 /**
- * The writer-facing header. Unlike the raw-slice header, it says the structures below are ALREADY
- * fitted to the ask and carry a DOSAGE recommendation. The two LOCKED honesty rules (WARRANT_NOTE)
- * and the sourceIndex-citation rule are unchanged — the writer still attributes exactly what it used.
+ * The writer-facing headers (per skill). Unlike the raw-slice header, each says the structures below
+ * are ALREADY fitted to the ask and carry a DOSAGE recommendation. The two LOCKED honesty rules
+ * (WARRANT_NOTE) and the sourceIndex-citation rule are unchanged across all three — the writer still
+ * attributes exactly what it used.
  */
-const BRIEF_HEADER =
-  "GROUNDING — proven short-form hook structures, each ALREADY FITTED to your ask and tagged with " +
-  "how hard to borrow it (the DOSAGE): clone = a proven line already fits — keep its shape, swap the " +
-  "subject · swap = keep the structure, write a fresh line in the creator's voice · angle = take only " +
-  "the tension, re-voice it fully. Build each hook in THIS creator's voice about THEIR subject — " +
-  "borrow the engineering, never the source's words. " +
-  WARRANT_NOTE +
-  " Tag each hook with the sourceIndex (1-N) of the fitted structure it used, or 0 if none — never " +
-  "cite a source you did not use.";
+const BRIEF_HEADERS: Record<GroundingSkill, string> = {
+  hooks:
+    "GROUNDING — proven short-form hook structures, each ALREADY FITTED to your ask and tagged with " +
+    "how hard to borrow it (the DOSAGE): clone = a proven line already fits — keep its shape, swap the " +
+    "subject · swap = keep the structure, write a fresh line in the creator's voice · angle = take only " +
+    "the tension, re-voice it fully. Build each hook in THIS creator's voice about THEIR subject — " +
+    "borrow the engineering, never the source's words. " +
+    WARRANT_NOTE +
+    " Tag each hook with the sourceIndex (1-N) of the fitted structure it used, or 0 if none — never " +
+    "cite a source you did not use.",
+  ideas:
+    "GROUNDING — proven short-form IDEAS, each torn down to the belief↔reality TENSION that carried it " +
+    "and ALREADY RE-POINTED at your subject, tagged with how hard to borrow it (the DOSAGE): clone = " +
+    "the tension already fits — keep it, swap the subject · swap = keep the belief↔reality shape, " +
+    "restate it about your topic · angle = take only the kind of contradiction, re-find it in your " +
+    "subject. Build ideas that create THIS tension for THIS creator's audience about THEIR subject — " +
+    "borrow the tension, never the source's topic. " +
+    WARRANT_NOTE +
+    " Tag each idea with the sourceIndex (1-N) of the fitted tension it borrows, or 0 if none — never " +
+    "cite a source you did not use.",
+  script:
+    "GROUNDING — proven short-form BEAT ARCS, each torn down to the timed rhythm that held attention " +
+    "and ALREADY MAPPED onto your subject, tagged with how hard to borrow it (the DOSAGE): clone = the " +
+    "arc fits — keep the rhythm, swap the content · swap = keep the beat order, re-content each beat · " +
+    "angle = take only the pacing idea, rebuild the arc. Map your Hook → Setup → Turn → Payoff → CTA " +
+    "onto the proven rhythm — borrow the pacing, never the source's content. " +
+    WARRANT_NOTE +
+    " Tag the script with the sourceIndex (1-N) of the fitted arc it adapts, or 0 if none — never " +
+    "cite a source you did not use.",
+};
 
-/** Cap the model-authored lines so one chatty entry cannot dominate the brief budget. */
-const MAX_FITTED = 180;
+/**
+ * Cap the model-authored `fitted` line so one chatty entry cannot dominate the brief budget. Per-skill
+ * because the fit measures produce different shapes: a hook is one ≤20-word line, an idea is a
+ * two-clause tension, a script is a five-beat arc — the same 180-char cap that suits a hook would
+ * truncate a beat arc mid-arc.
+ */
+const MAX_FITTED: Record<GroundingSkill, number> = {
+  hooks: 180,
+  ideas: 260,
+  script: 420,
+};
 const MAX_FIT_REASON = 160;
 
 /** Render one kept structure into the brief. Receipt is CODE-stamped (honesty spine), never authored. */
-function renderBriefEntry(ex: RetrievedExample, s: AdaptedStructure, n: number): string {
-  const lines = [`${n}. [${s.dosage}] ${clip(s.fitted, MAX_FITTED)}`];
+function renderBriefEntry(
+  ex: RetrievedExample,
+  s: AdaptedStructure,
+  n: number,
+  maxFitted: number,
+): string {
+  const lines = [`${n}. [${s.dosage}] ${clip(s.fitted, maxFitted)}`];
   if (s.fitReason.trim()) lines.push(`   why it fits: ${clip(s.fitReason, MAX_FIT_REASON)}`);
   // `receipt` supplies its own lead-in ("proven by" / "curated exemplar —"): only it knows the warrant.
   lines.push(`   ${receipt(ex)}`);
@@ -286,7 +384,7 @@ export async function adaptCorpusBlock(
 
   let structures: AdaptedStructure[];
   try {
-    const raw = await complete(SYSTEM_PROMPT, buildUserContent(input));
+    const raw = await complete(SYSTEM_PROMPTS[skill], buildUserContent(input));
     structures = parseStructures(raw, examples.length);
   } catch (err) {
     console.warn(
@@ -301,14 +399,16 @@ export async function adaptCorpusBlock(
   for (const s of structures) if (!byIndex.has(s.sourceIndex)) byIndex.set(s.sourceIndex, s);
 
   const budget = corpusBudgetFor(skill);
+  const header = BRIEF_HEADERS[skill];
+  const maxFitted = MAX_FITTED[skill];
   const rendered: string[] = [];
   const used: RetrievedExample[] = [];
-  let size = BRIEF_HEADER.length;
+  let size = header.length;
 
   examples.forEach((ex, i) => {
     const s = byIndex.get(i + 1);
     if (!s || s.dosage === "none" || !s.fitted.trim()) return; // dropped: nothing here fit this ask
-    const line = renderBriefEntry(ex, s, used.length + 1);
+    const line = renderBriefEntry(ex, s, used.length + 1, maxFitted);
     // +2 for the blank-line join. Keep at least one even if it alone is over budget (mirror buildCorpusBlock).
     if (used.length > 0 && size + line.length + 2 > budget) return;
     rendered.push(line);
@@ -326,5 +426,5 @@ export async function adaptCorpusBlock(
     return fallback();
   }
 
-  return { corpus: `${BRIEF_HEADER}\n\n${rendered.join("\n\n")}`, used };
+  return { corpus: `${header}\n\n${rendered.join("\n\n")}`, used };
 }

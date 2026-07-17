@@ -222,15 +222,19 @@ describe("gatherCorpusForRun — adapt routing", () => {
     );
   });
 
-  it("does NOT adapt a non-hooks skill even when the flag is on (Phase 1 = hooks only)", async () => {
-    const adapt = fakeAdapt();
-    const result = await gatherCorpusForRun(
-      { ...baseInput(), skill: "ideas", adapt: true, adaptProfile: profile },
-      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
-    );
+  it("routes ideas AND script through the adapt briefer too (Phase 2 fan-out)", async () => {
+    for (const skill of ["ideas", "script"] as const) {
+      const adapt = fakeAdapt();
+      const result = await gatherCorpusForRun(
+        { ...baseInput(), skill, adapt: true, adaptProfile: profile },
+        { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+      );
 
-    expect(adapt).not.toHaveBeenCalled();
-    expect(result.corpus).toContain("Stop buying"); // raw ideas slice
+      expect(adapt).toHaveBeenCalledOnce();
+      expect(adapt).toHaveBeenCalledWith(expect.objectContaining({ skill }));
+      expect(result.corpus).toBe("ADAPTED-BRIEF");
+      expect(result.examples.map((e) => e.teardownId)).toEqual(["z"]);
+    }
   });
 
   it("does NOT adapt when the flag is on but no profile was threaded", async () => {

@@ -61,6 +61,7 @@ import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { buildAdaptProfile } from "./adapt-profile";
 import { resolveSingleTarget, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -82,6 +83,18 @@ const GENERATE_TIMEOUT_MS = 300_000;
  */
 function isGroundingEnabled(): boolean {
   return process.env.GROUNDING_SCRIPT_ENABLED === "true";
+}
+
+/**
+ * Grounding-as-REMIX gate (adapt.ts) — the script fan-out of GROUNDING_HOOKS_ADAPT. When ON *and*
+ * grounding is on, the retrieved corpus is routed through the decode→adapt briefer with the SCRIPT fit
+ * measure (a Hook→Setup→Turn→Payoff→CTA beat arc over the proven rhythm) instead of the raw slice. OFF
+ * by default and independent of GROUNDING_SCRIPT_ENABLED: it only changes the CONTENT of the `corpus`
+ * string, so the opener SIM gate, the sourceIndex→receipt link, and (dormant) targeting are untouched.
+ * The honest outcome gate (does grounding make a BETTER script?) is still open — keep it behind the flag.
+ */
+function isGroundingAdaptEnabled(): boolean {
+  return process.env.GROUNDING_SCRIPT_ADAPT === "true";
 }
 
 /**
@@ -439,6 +452,10 @@ export async function runScriptPipeline(input: ScriptPipelineInput): Promise<Scr
     niche: genProfileRow?.niche_primary ?? null,
     onStage: input.onStage,
     warnings: allWarnings,
+    // Grounding-as-remix: when ON, the corpus is a fitted+dosed beat-arc brief, not the raw slice.
+    // The briefer maps proven rhythms onto THIS creator's subject, so hand it their profile.
+    adapt: isGroundingAdaptEnabled(),
+    adaptProfile: buildAdaptProfile(genProfileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
