@@ -95,6 +95,7 @@ import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
+import { buildAmbientDescriptors } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -1767,65 +1768,24 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   const homeThreadMode = (hasThread || rehydrating) && !hasSimulation;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
-  // Build the focus descriptors from the VISIBLE tool's already-rendered cards
-  // (persisted + streaming, in render order). Each card already emits its real
-  // { fraction, scrollQuote } + a concept line — the spotlight READS that data,
-  // never re-runs a model (D-03 determinism-gate-safe; zero new model calls).
-  // Only the active tool's view is mounted at a time, so we derive from that set.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cardDescriptor = (b: any, idx: number, kind: string): AmbientCardDescriptor | null => {
-    const p = b?.props;
-    if (!p) return null;
-    const concept: string | undefined =
-      p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook;
-    const fraction: string | undefined = p.fraction;
-    const scrollQuote: string | undefined = p.scrollQuote;
-    if (typeof concept !== "string" || typeof fraction !== "string") return null;
-    // S3′: a generated card carries its own 10-persona reaction (real registry-enum
-    // archetypes). Thread it onto the focus so the Room's People cast + "Ask them why"
-    // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
-    // the presence falls back to the honest fraction-expansion placeholders.
-    const personas = Array.isArray(p.personas) ? p.personas : undefined;
-    // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection onto the
-    // focus so the Room's "Population · 1,000" view shows THIS card's real N-individual numbers
-    // instead of the honest-lean "MODELED FROM YOUR 10" fallback (which densifies the k/10 SIM and
-    // can DISAGREE with the card's projection). Absent on General/legacy cards → the fallback stands.
-    const population = p.population ?? undefined;
-    return {
-      id: `${kind}-${idx}`,
-      conceptText: concept,
-      fraction,
-      scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
-      personas,
-      population,
-    };
-  };
-  const ambientDescriptors: AmbientCardDescriptor[] = (() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pick = (persisted: any[], streaming: any[], kind: string) =>
-      [...persisted, ...streaming]
-        .map((b, i) => cardDescriptor(b, i, kind))
-        .filter((d): d is AmbientCardDescriptor => d !== null);
-    if (activeTool === "hooks") return pick(persistedHookBlocks, hooksBlocks, "hook");
-    if (activeTool === "idea") return pick(persistedIdeaBlocks, ideasBlocks, "idea");
-    if (activeTool === "script") return pick(persistedScriptBlocks, scriptBlocks, "script");
-    if (activeTool === "remix") return pick(persistedRemixBlocks, remixBlocks, "remix");
-    return [];
-  })();
-
-  // The batch's kind label for the Room's anchored-focus stepper (‹ Hook N of M ›) + view-all
-  // (PR-2). The descriptor set is already scoped to the active tool (all one kind), so a single
-  // singular label fits the whole batch.
-  const ambientKindLabel =
-    activeTool === "hooks"
-      ? "Hook"
-      : activeTool === "idea"
-        ? "Idea"
-        : activeTool === "script"
-          ? "Script"
-          : activeTool === "remix"
-            ? "Remix"
-            : "Concept";
+  // The room's card ledger + the batch's kind label for the anchored-focus stepper
+  // (‹ Hook N of M ›), built from the blocks the MOUNTED thread view already rendered
+  // (persisted + streaming, in DOM order). Each card already emits its real
+  // { fraction, scrollQuote } + a concept line — the spotlight READS that data, never re-runs
+  // a model (D-03 determinism-gate-safe; zero new model calls).
+  //
+  // The ledger is keyed on the BLOCKS, never on the composer chip: chat-as-agent
+  // (CHAT_AGENT_DISPATCH) dispatches real idea/hook/script cards inline while the chip stays
+  // "chat", so the chat view's cards are its own dispatched blocks — every persisted turn's,
+  // then this turn's stream. See ambient-descriptors.ts for the decision + its guard.
+  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } = buildAmbientDescriptors({
+    activeTool,
+    hook: [...persistedHookBlocks, ...hooksBlocks],
+    idea: [...persistedIdeaBlocks, ...ideasBlocks],
+    script: [...persistedScriptBlocks, ...scriptBlocks],
+    remix: [...persistedRemixBlocks, ...remixBlocks],
+    chat: [...persistedChatTurns.flatMap((t) => t.blocks), ...chat.streamingBlocks],
+  });
 
   const {
     focus: ambientFocus,
