@@ -1,7 +1,9 @@
 # The ambient audience — placement + craft redesign
 
-**Worktree:** `~/virtuna-ambient-room` · **Branch:** `milestone/ambient-room-v2` · off `main` @ `1bdb5f53`
-**Written:** 2026-07-17 (design session, no code written) · **Status:** plan only, nothing built
+**Worktree:** `~/virtuna-ambient-room` · **Branch:** `milestone/ambient-room-v2` · rebased on `main` @ `4a648e83`
+**Written:** 2026-07-17 (design session, no code written)
+**Status (2026-07-17):** ✅ **P0 RAN — §3 + §5 amended in place from measurements.** One fix shipped
+(`57288baa`, the chat-ledger bug, verified live). P2 → P1 → P3 still to build.
 
 ---
 
@@ -19,9 +21,16 @@ materially wrong **twice**:
 
 Both errors have the same cause: **I reviewed the wrong state and never ran the thing.**
 
-> ⛔ **P0 below is not optional.** Run the app, calibrate an audience, and look — before you touch
-> a line. Re-verify every claim in this document against what's on screen. Cross-ref
-> `[[green-test-is-the-accomplice]]` and the standing rule: *run it for real · measure your instrument.*
+> ✅ **P0 HAS NOW RUN (2026-07-17).** It found a **third** instance of the same error, and it was
+> structural: **§3 as a whole describes the UNCALIBRATED `General` state**, and one of its screenshots
+> was the **mock sandbox**, not a live run. §3.5 turned out not to exist at all. See §4 P0 for the
+> full account; §3 and §5 are amended in place.
+>
+> **The rule that replaces P0 for the rest of this milestone: measure the DOM, don't eyeball the
+> render.** Every real finding came from `getComputedStyle`/`getBoundingClientRect` — a 3px
+> truncation, byte-identical rows, a 489px label, an absent scrim, a scroll-spy that never fires. Not
+> one was visible in a picture. Cross-ref `[[green-test-is-the-accomplice]]` and the standing rule:
+> *run it for real · measure your instrument.*
 
 ---
 
@@ -76,27 +85,86 @@ bottom. Nobody has ever put the recipient on the text field.
 
 ---
 
-## 3. The craft problems (all verified in owner screenshots, 2026-07-17)
+## 3. The craft problems
+
+> ### ✅ P0 RAN — measured on screen 2026-07-17, dev :3002, calibrated `@zachking`, real thread
+>
+> Every item below is now **measured**, not read off a screenshot. Five of the six survive; **§3.5 is
+> deleted** (it does not exist); three had wrong numbers; two got *worse*. Method: DOM +
+> `getComputedStyle`/`getBoundingClientRect` via `browser_evaluate` (screenshots hang — CLAUDE.md).
+>
+> **The doc's own thesis proved itself twice.** §3.1 missed a 5th truncated row because it overflows
+> by **3px** — invisible to the eye, obvious to `scrollWidth`. And §3.4 is not "no hierarchy": the
+> rows are *byte-identical*, which no screenshot can prove and one `getComputedStyle` can.
+>
+> Verdicts: **§3.1 ✅ (4→5)** · **§3.2 ✅ +new bug** · **§3.3 ✅ (×8→×10, +a 3rd)** ·
+> **§3.4 ✅ worse** · **§3.5 ❌ DELETED — does not exist** · **§3.6 ✅ (7→5) +new**
 
 Owner's words: *"doesn't look like something clean and something a premium company would release."*
 
-1. **Mid-word truncation in 4 of 10 roster rows.** `Likes, comments, tags fri…` ·
-   `Watches silently, never r…` · `DMs relatable stuff to frie…` · `Knows the niche, spots c…`
-   → Either write traits to a fixed budget (3–4 words) or give them the width. Not both-and-neither.
-2. **Everything is stated 3–5×.** The population view says 70/30 as: the header fraction, two big
-   numerals, a 1,000-dot matrix, a split bar, *and* `300 OF 1,000`. The at-rest view says
-   `10 ready` in the header and `10 people ready` again as the headline.
+1. **Mid-word truncation — ✅ CONFIRMED, but it is 5 of 10, not 4.** The trait cell is a fixed
+   **160px** `truncate`; the five that overflow measure **163–181px**:
+   `Knows the niche, spots clichés` (181) · `Likes, comments, tags friends` (176) ·
+   `Watches silently, never reacts` (175) · `DMs relatable stuff to friends` (171) ·
+   **`Loyal follower, roots for you` (163)** ← the one the screenshots missed, over by 3px.
+   → **The fork is closed by arithmetic: give them the width.** Worst case is 181px, so **+24px
+   (160→184) fits all ten** with no copy rewrite. Only the **at-rest** roster shows traits; the
+   reacted roster shows full, untruncated quotes (no truncation there).
+2. **Everything is stated 3–5× — ✅ CONFIRMED, exactly this shape.** The population view states one
+   40/60 split **five times**: header `4 of 10 would stop` → `400 would stay`/`600 would bounce` →
+   `40% loved`/`60% bounced` → `600 OF 1.000` → the bar/matrix. At rest: `10 ready` (header) +
+   `10 people ready` (headline), and `@zachking` twice.
    → **Premium is confidence. Repetition is anxiety.** Say it once.
-3. **Repeated CTAs.** `say hi →` ×10, `ask →` ×8. When every row has the same button, the button is
-   texture. → Make the row the target.
-4. **No hierarchy inside lists.** Eight quotes at identical weight and length — and Robin, the *only*
-   bounce, is last, in the same type as everyone else. → The bounce is the most valuable line on the
-   page. Surface it.
-5. **Dead wells.** Every view ends in a large empty `Ask your audience…` area — ~25% of the panel
-   doing nothing, on all four screens.
-6. **The header is a junk drawer.** glyph + name + live dot + `NOT CALIBRATED` pill + chevron +
-   `10 ready` + chevron = 7 elements, two of them chevrons doing different jobs.
+   🔴 **NEW BUG the restatements are not even consistent — and this is the PR #306 family.**
+   `AmbientRoom.tsx:859` renders `{roomSize.toLocaleString()}` (**locale-dependent**) while `:132`
+   (`label: 'Population · 1,000'`) and `:797` (`` `1,000 modeled from your ${tot}` ``) are
+   **hardcoded** en-US commas. On any European locale the same view reads *"Population · 1,000"* and
+   *"600 OF **1.000**"* — where `1.000` means **one**. The hardcoded label can never localize, so
+   outside en-US `toLocaleString()` can only ever *disagree* with it. **Same fact, two sources that
+   can disagree** — precisely what §6.3 forbids. (Measured under `de-DE`; client-only, so no
+   hydration mismatch. Fix: one formatter, or drop the restatement per §3.2 and the bug dies with it.)
+3. **Repeated CTAs — ✅ CONFIRMED; the counts are ×10/×10, and there is a THIRD.**
+   `say hi →` **×10** at rest; `ask →` **×10** reacted (not ×8); and — on a surface §3 never saw —
+   **`WHY THIS SCORE →` ×9** in the brain's nine-signal grid. When every row has the same button, the
+   button is texture. → Make the row the target. **Include the brain grid in this pass.**
+4. **No hierarchy inside lists — ✅ CONFIRMED, and it is worse than "no hierarchy".**
+   Measured on a real 4/10 card: **all ten rows are byte-identical** — quote `rgb(236,231,222)`
+   (`--cream-primary`, the *brightest* tier), 15px, weight 400, opacity 1, no border; name weight 600.
+   The 4 who **stopped** and the 6 who **bounced** render *pixel-identically*.
+   → The defect is not weak hierarchy, it is that **the row does not encode its verdict at all.** The
+   card says "4 of 10 would stop" and then shows ten identical rows: you cannot see *which* four
+   without reading all ten quotes. Ten rows at max brightness = no hierarchy by construction.
+   ⚠️ **"Robin, the *only* bounce" mis-framed the problem.** Bounces are sorted last (confirmed), but
+   on a 4/10 card **6 of 10 are bounces — the majority**; on a 10/10 card there are none. "Surface the
+   bounce" is state-dependent. **Encode the verdict per row; let the sort follow.**
+5. ~~**Dead wells.**~~ ❌ **DELETED — THIS DOES NOT EXIST.** There is **no `Ask your audience…` field
+   in the panel** (`/Ask your audience/` matches nothing inside `[role=dialog]`). It is the
+   **composer's placeholder**, which flips when `audienceOpen` (`activePlaceholder`, composer.tsx).
+   The screenshots showed the composer *below* the panel, not a well *inside* it.
+   §6.2 already closed this item — but for the wrong reason. **Nothing to reclaim; nothing to delete.
+   No work here.**
+6. **The header is a junk drawer — ✅ CONFIRMED in spirit; it is 5 elements, not 7.** Measured
+   calibrated + at rest (54px × 726px): constellation `svg` + `@zachking` + chevron ¹ (all inside one
+   `button` aria=*"Audience: @zachking. Switch audience"*) + `10 ready` + chevron ² (`button`
+   aria=*"Collapse your audience"*). **"Two chevrons doing different jobs" is exactly right** (switch
+   audience vs collapse panel). The missing two — **live dot** and **`NOT CALIBRATED` pill** — are
+   *uncalibrated-state* elements, so the "7" was the **General** header (the same wrong-state error
+   §0 flags).
+   🔴 **NEW, and sharper than the count:** `10 ready` is `min-w-0 flex-1 truncate` and is allotted
+   **489px of the 726px header — 67% of the width.** The least informative string owns two-thirds of
+   the header.
    → `10 ready` (ready for *what?*) becomes the count. One chevron. The pill becomes the empty state.
+
+### Also measured in P0 — two structural claims elsewhere in this doc are WRONG
+
+- 🔴 **§2 / P2.3 "blooms over the thread behind a scrim" → THERE IS NO SCRIM.** Zero fixed
+  full-viewport overlays, no Radix overlay, `aria-modal` **absent**. The panel is a **non-modal**
+  `role="dialog"`, `position: relative`, `z-index: 55`, in normal flow inside `relative w-full`,
+  anchored above the composer. **P2.3 "kill the scrim" is a no-op against something that does not
+  exist.** The *bloom* is real; the scrim is not. Delete the scrim from the plan.
+- ⚠️ **Placement-coupled copy P2 must carry:** the at-rest headline reads *"Type a thought **below**
+  and watch the whole room react."* In a right-hand **rail** the composer is not "below" the roster.
+  This string breaks on contact with P2 — it is not a craft nicety, it is a P2 task.
 
 ### The reference is already in the product
 
@@ -121,14 +189,31 @@ You don't need to invent this. It's missing its deepest stop.
 
 ## 4. The plan
 
-### P0 — Look at it. Non-negotiable. (½ session)
-- Run the dev server. Calibrate a real audience (**not** `General`). Drive: type → cards → band →
-  panel → the people → population → rewrite.
-- **Re-verify §3 against the screen.** The screenshots that produced this doc were from an old dev
-  server and predate the brain.
-- ⚠️ **Screenshots hang on this app** (ambient animation never settles). Read the DOM via
-  `browser_evaluate`, or raw Playwright with `animations: 'disabled'`. See CLAUDE.md.
-- Note what §3 got wrong. Amend this doc before building.
+### ~~P0 — Look at it. Non-negotiable.~~ ✅ **DONE 2026-07-17.** Findings are in §3 + §5.
+
+Ran on dev `:3002`, calibrated `@zachking` (10 named personas), a real 5-card thread, DOM measured via
+`browser_evaluate`. **§3 amended in place; §5 amended in place.** Headline: **§3.5 does not exist**,
+**there is no scrim**, **scroll-spy has never worked**, the numbers in §3.1/§3.3/§3.6 were all wrong,
+and §3.2/§3.4 are worse than written. The brain is now the DEFAULT view and §3 never looked at it.
+
+> 🔑 **What P0 actually proved — read this before P1.** The doc's §0 said "I reviewed the wrong state
+> and never ran the thing", and the P0 pass shows that error had a **third** form nobody named:
+> **§3 systematically describes the UNCALIBRATED `General` state.** §3.6's "7 elements" counts a
+> `NOT CALIBRATED` pill + live dot that a calibrated header does not render (it has 5). §3.5's "dead
+> well" was the composer, not the panel. And the *"over-indexes on budget + macros"* quote is a
+> string from **`mock/fixtures.ts`** — that screenshot was the mock skill sandbox, not a live run.
+> **§0 caught two instances of this; it was the whole document's water supply.**
+>
+> Corollary, and the reason P0 is a stop block: **looking is not measuring.** A screenshot could never
+> have found the 5th truncated row (3px), the byte-identical rows, the 489px `10 ready`, the absent
+> scrim, or a dead scroll-spy. Every one came from `getComputedStyle`/`getBoundingClientRect`.
+> **For the rest of this milestone: measure the DOM, don't eyeball the render.**
+
+Setup that worked (supersedes §9's warnings): **do a real `pnpm install` in the worktree.** The
+`node_modules` symlink hard-fails Turbopack (`Symlink node_modules is invalid, it points out of the
+filesystem root`) and forces the `--webpack` → `react-scan` workaround. A real install costs ~1 min,
+runs Turbopack clean, and **also fixes** the `@gltf-transform/*` gap that made `cortex-field.test.ts`
+fail (declared in package.json; absent from main's older `node_modules`).
 
 > ⚠️ **ORDER CORRECTION (2026-07-17, after the forks closed): do P2 BEFORE P1.**
 > The doc originally had craft first, on the reasoning that it's placement-agnostic. That's wrong for
@@ -137,27 +222,43 @@ You don't need to invent this. It's missing its deepest stop.
 > a rewrite** (every component in §7 survives), so the risk is lower than it reads.
 > **Run order: P0 → P2 → P1 → P3.**
 
-### P1 — Panel craft pass (do AFTER P2, in the final container)
+### P1 — Panel craft pass (do AFTER P2, in the final container) — **re-scoped by P0**
 Take the ranked view's grammar as the bar.
-1. Kill the truncation (§3.1)
-2. De-duplicate the repeated facts (§3.2)
-3. Row-as-target, drop the repeated CTAs (§3.3)
-4. Hierarchy: bounces surface above stays (§3.4)
-5. ~~Reclaim the dead wells (§3.5)~~ — **CLOSED by §6.2.** The rail has no input; the well is deleted,
-   not redesigned. Don't fix this separately.
-6. Rebuild the header (§3.6)
+1. Kill the truncation (§3.1) — **decided: 160→184px.** Five rows, not four; +24px clears the 181px
+   worst case. No copy rewrite.
+2. De-duplicate the repeated facts (§3.2) — **five restatements of one split.** Killing them also
+   kills the `1.000` locale bug for free; if any survive, they must share one formatter.
+3. Row-as-target, drop the repeated CTAs (§3.3) — **three sets now: `say hi →`×10, `ask →`×10, and
+   `WHY THIS SCORE →`×9 in the brain.**
+4. **Encode the verdict in the row (§3.4)** — reframed by P0: the rows are *byte-identical*, so this
+   is not "add hierarchy", it is "the row never says whether that person stopped." Do that first; the
+   sort follows. (Do **not** build around "the only bounce" — bounces are often the majority.)
+5. ~~Reclaim the dead wells (§3.5)~~ — ❌ **DELETED. The well does not exist** (P0). Not "closed by
+   §6.2" — there was never anything there. No work.
+6. Rebuild the header (§3.6) — 5 elements, not 7; the real prize is the **489px (67%) `10 ready`**.
 7. Add a `not`-line to the people view — the population view already has one
    (`1,000 MODELED FROM YOUR 10`), the others don't. Steal Sapient's move: *every card states what it
    is not.*
+8. 🆕 **The brain is the DEFAULT view and §3 never saw it.** Before P1 closes, give it the same pass
+   the other three got — it is the first thing the creator looks at.
 
-### P2 — Placement (structural) — all decisions in, build it
+### P2 — Placement (structural) — all decisions in, build it — **corrected by P0**
 1. Re-parent the room out of `composer.tsx` (mount @1939–1978, `presenceCommonProps` @1950) to thread level
 2. Desktop: the rail · Mobile: the audience header — **both owner-approved**
-3. Kill the scrim + the bloom. It occupies; it does not overlay.
-4. **Kill the panel's `Ask your audience…` field entirely** and add `Ask` to the composer's verb chip
-   (§6.2). Do this *with* the re-parent, not after — the always-open panel makes the current
-   composer-becomes-room-input mode unshippable the moment step 2 lands.
+3. ~~Kill the scrim~~ + kill the bloom. **There is no scrim** (P0 — non-modal `role=dialog`, z=55,
+   in-flow, no overlay, `aria-modal` absent). Only the **bloom** is real. It occupies; it does not overlay.
+4. **Kill the composer's `Ask your audience…` MODE** and add `Ask` to the composer's verb chip (§6.2).
+   ⚠️ **P0 correction:** this is the *composer's* placeholder + `audienceOpen` early-return — **not a
+   field inside the panel** (§3.5 is deleted). The mode is still unshippable the moment step 2 lands
+   (§6.2's arithmetic is confirmed in code), so still do it *with* the re-parent — just know you are
+   deleting a **mode**, not a widget.
 5. Drop the rank numerals; name true ties (§6.3).
+6. 🆕 **Re-anchor the scroll-spy to the real cards** (§5) — `[data-ambient-card]` are `sr-only` 1×1
+   markers at y=-1, so the observer watches nothing and the band is stuck on the last card forever.
+   **P2 does not fix this by itself** (the old note claiming a rail makes it "impossible" is wrong).
+   It belongs in P2 because the fix is the same re-parent: put the markers on the real card wrappers,
+   or observe the cards directly. **Ship it with a guard that fails against today's code first.**
+7. 🆕 **Re-copy `"Type a thought below…"`** — "below" is false in a rail (§3, end).
 
 ### P3 — Bugs (separable, some are one-liners)
 See §5. `/dev/cards` and the orphaned routes are independent of everything else and can ship first
@@ -165,12 +266,31 @@ as easy wins.
 
 ---
 
-## 5. Bugs found during the session (unverified against current main — check first)
+## 5. Bugs — ✅ all panel-adjacent entries verified in P0 (2026-07-17)
+
+> The panel-adjacent list below is no longer "unverified": each entry was checked against the running
+> app or the source on `4a648e83`. One is **fixed** (`57288baa`), one is **stale** (the brain), one was
+> **materially mis-described** (scroll-spy), one is **bigger than it looked** (the eyebrow), and two
+> are **new**. The **Elsewhere** entries below are still un-rechecked — they were static-source finds
+> and are independent of the panel.
 
 **Panel-adjacent:**
 
-- 🔴 **`ambientDescriptors` gates on the CHIP, not on the CARDS — and PR #316 just made it bite.**
-  **VERIFIED on current main `4a648e83`, 2026-07-17** (not a stale-screenshot claim):
+- ✅ **FIXED + verified live, 2026-07-17 (`57288baa`) — `ambientDescriptors` gated on the CHIP.**
+  **Proven on screen before/after**, not just in tests: opening a real chat thread whose agent had
+  dispatched 5 hook cards, the chip reads `Chat` and the room now shows **5 descriptors** with real
+  fractions (10/10, 8/10, 6/10, 5/10, 4/10), the band reacts, and the stepper reads
+  **"‹ Hook 1 of 5 ›"** — the label came from the **block type** while the chip still says "chat".
+  Pre-fix that thread produced **0**.
+  Fix: the ledger moved out of the 2,800-line component into a pure
+  `buildAmbientDescriptors` (`ambient-descriptors.ts`, mirroring `resolveAmbientFocus`) keyed on the
+  **blocks the mounted view rendered** — for chat, every persisted turn's blocks then this turn's
+  stream, i.e. exactly what `ChatThreadView` renders, so it stays faithful by construction on both the
+  live and reload paths. Kind derives from each block's own `type`, so a mixed chat batch indexes
+  across the ledger (`idea-0`, `hook-1`) and is labelled "Card".
+  The guard was **run against the old logic first and failed on exactly the 3 chat cases** while the
+  other 9 passed. Locked both ways: a card you CAN see must move the room; one you CANNOT must not.
+  <details><summary>The original defect (kept for the record)</summary>
   ```js
   // composer.tsx:1803
   if (activeTool === "hooks")  return pick(persistedHookBlocks,  hooksBlocks,  "hook");
@@ -185,16 +305,43 @@ as easy wins.
   ⇒ **The product's DEFAULT path now generates cards the audience never reacts to.** The moat is not
   merely idle on arrival — it is silent on the main road.
   Same defect in `ambientKindLabel` (`:1815`): chat → `"Concept"`.
-  **Fix: branch on the blocks that exist, not on the chip.** Small, high-value, and independent of
-  P1/P2 — a candidate to ship first. Coordinate with [[chat-as-agent-premium-pass]] (active track).
-- The collapsed band read `8 of 10` for an off-screen card while the visible card said `7/10`
-  (scroll-spy focus resolving to something out of the viewport). A rail/header makes this
-  impossible — they'd be side by side.
-- `MADE FOR YOUR AUDIENCE` + *"Your audience over-indexes on budget + macros"* rendered over a
-  `General · NOT CALIBRATED` audience. **A confident claim riding on nothing** — same shape as
-  `[[read-ships-high-confidence-with-no-audience]]`. Check whether that eyebrow gates on calibration.
-- The brain was absent from all four screenshots (only `The people` / `Population · 1,000`).
-  Owner confirms those shots predate the brain — **verify on current main in P0.**
+  </details>
+- 🔴 **SCROLL-SPY IS DEAD — root-caused + measured in P0. This entry was wrong twice.**
+  The symptom was described as "scroll-spy focus resolving to something out of the viewport". It does
+  not *resolve to the wrong card* — **it never resolves at all.** The band is permanently pinned to
+  the LAST descriptor via `resolveAmbientFocus`'s default-latest fallback.
+  **Measured** (real thread, 5 hook cards): scrolled card 1 (`10/10`) under the focus line → band
+  still `4 of 10`. Scrolled card 2 (`8/10`) → band still `4 of 10`. It never moves.
+  **Cause:** `useAmbientFocus` roots its IntersectionObserver on `[data-ambient-card]`, but those
+  wrappers are the **`sr-only` synthetic markers** (`composer.tsx`, `ambientFocusMarkers`) — all five
+  measure **1×1 at y=-1**, stacked in one `sr-only` box at the top of the thread region, while the
+  real cards sit at **y=1147…2529** (334px each). The observer watches five zero-height boxes above
+  the focus line; the real cards scroll past unobserved. `focusByScroll` is never called.
+  (`focusByTap` **does** work — "See the room →" moves the band correctly, so the ledger + focus +
+  stepper are otherwise sound. The defect is isolated to the scroll-spy axis.)
+  ⛔ **"A rail/header makes this impossible — they'd be side by side" is FALSE.** The markers are
+  decoupled from the cards *regardless of where the panel lives*. A rail would sit there showing the
+  stale last card while you read card 1. **P2 does not fix this; only re-anchoring the observer to the
+  real card DOM does.**
+  🔑 `[[green-test-is-the-accomplice]]` again: `use-ambient-focus.test.ts` is fully green over a dead
+  feature because it calls `focusByScroll(id)` **directly** — it asserts the decision core, and never
+  once asks whether anything in the product ever calls it.
+- 🔴 **`MADE FOR YOUR AUDIENCE` over a `General · NOT CALIBRATED` audience — ✅ CONFIRMED in P0, and
+  it is not a one-liner.** The eyebrow **does not gate on anything**: `idea-card-block.tsx:100`
+  hardcodes the string, unconditionally, on every idea card.
+  **It cannot gate — the `idea-card` block schema (`blocks.ts:208`) carries no calibration field at
+  all**, so the card has no way to know. Fixing it means threading calibration through the full
+  touchpoint chain (schema → runner → parse → toBlocks → **the route's SSE emit** — the five, see
+  `[[per-persona-hook-generation]]`), not editing one line. **Scope it as its own task.**
+  A confident claim riding on nothing — same shape as
+  `[[read-ships-high-confidence-with-no-audience]]`. (The *"over-indexes on budget + macros"* half is
+  `whyItFits`, and the exact string in the screenshot is from **`lib/tools/mock/fixtures.ts:108`** —
+  i.e. that shot was the **mock**, not a live run. Verify the live copy before quoting it as evidence.)
+- ✅ **RESOLVED in P0 — the brain is present and is the DEFAULT room view.** The toggle reads
+  `The brain · The people · Population · 1,000`, and the brain lands first (PREDICTED CORTEX → HOW TO
+  READ → nine signals → THE ROOM readout). The "absent from all four screenshots" note is **stale**,
+  as suspected. ⚠️ Consequence for P1: the brain is the surface the creator sees FIRST, and §3 was
+  written without ever looking at it (that is where the third repeated CTA lives — §3.3).
 
 **Elsewhere:**
 - `/dev/cards` ships to production — auth-gated only, **no `NODE_ENV` gate**, despite its header
@@ -207,10 +354,25 @@ as easy wins.
 - `account-read` is rated **STRUCTURAL** (worst tier) in `docs/subsystems/ui-skill-cards.md` §0.6
   *and* is starter card #6 — the one card that **runs on tap**.
 
+**Found in P0 (new — measured, not from screenshots):**
+- 🔴 **`600 OF 1.000` — the population view disagrees with itself outside en-US.**
+  `AmbientRoom.tsx:859` uses `roomSize.toLocaleString()` (locale-dependent) while `:132`
+  (`'Population · 1,000'`) and `:797` (`` `1,000 modeled from your ${tot}` ``) hardcode en-US commas.
+  On `de-DE`/`it-IT` the same view reads `Population · 1,000` **and** `600 OF 1.000`. Detail in §3.2.
+  Client-only → no hydration mismatch. **Dies for free if §3.2 (say it once) is done properly.**
+- ⚠️ **`use-ambient-focus.test.ts` is green over a dead feature.** It asserts the pure decision core by
+  calling `focusByScroll(id)` directly, so it can never notice that nothing in the product calls it
+  (see the scroll-spy entry above). Any scroll-spy fix must add a guard that **fails first**.
+
 **Token drift — resolve before styling anything:**
 - `CLAUDE.md` says the accent is terracotta `#d97757`. `globals.css` says
   `--color-accent: #FF6363` (coral-red, dated 2026-07-07). **globals.css is the declared SSOT**, so
   the design work assumes `#FF6363` — but one of the two is stale and should be fixed.
+  ✅ **P0 settled which:** measured at runtime, `getComputedStyle(document.documentElement)
+  .getPropertyValue('--color-accent')` → **`#ff6363`**. globals.css wins; **the app ships coral-red,
+  and `CLAUDE.md` (+ the memory note that repeats it) is the stale one.** Design to `#FF6363`, and fix
+  CLAUDE.md so the next session isn't misled again. ⚠️ Under the LOCKED near-zero dosage rule this is
+  nearly moot in this panel — the only sanctioned accent here is the settling dots (§8).
 
 ---
 
