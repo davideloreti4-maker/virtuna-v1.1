@@ -211,7 +211,7 @@ describe("gatherCorpusForRun — read-back first", () => {
   it("keeps the gates: disabled / unsupported platform / empty query short-circuit before any I/O", async () => {
     const retrieve = vi.fn<Retrieve>();
     const gather = vi.fn<Gather>();
-    const none = { corpus: undefined, examples: [] };
+    const none = { corpus: undefined, examples: [], scrapeAvailable: false };
 
     expect(
       await gatherCorpusForRun({ ...baseInput(), enabled: false }, { retrieve, gather }),
@@ -227,6 +227,78 @@ describe("gatherCorpusForRun — read-back first", () => {
     ).toEqual(none);
     expect(retrieve).not.toHaveBeenCalled();
     expect(gather).not.toHaveBeenCalled();
+  });
+});
+
+// ─── scrapeAvailable — the "Find new outliers" capability signal ──────────────
+
+/** A cache read that finds NOTHING usable — the fully-ungrounded degrade (vs `miss`'s 1 partial). */
+const missEmpty: Retrieve = async () => ({
+  examples: [],
+  enough: false,
+  stats: { matched: 0, good: 0, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 0 },
+});
+
+describe("gatherCorpusForRun — scrapeAvailable", () => {
+  // The signal must be true EXACTLY when a live scrape would find outliers this run couldn't:
+  // grounding on, platform scrapable, cache thin, and the spend not yet authorized. The button
+  // that reads it should never dangle where a scrape can't help, and never nag once one has run.
+
+  it("is TRUE when a scrapable run degrades to ungrounded only because the scrape wasn't authorized", async () => {
+    const result = await gatherCorpusForRun(baseInput(), {
+      retrieve: missEmpty,
+      gather: vi.fn<Gather>(),
+    });
+
+    expect(result.examples).toEqual([]); // ungrounded…
+    expect(result.scrapeAvailable).toBe(true); // …but a scrape is a tap away
+  });
+
+  it("is TRUE on a thin partial too — the run is grounded, but more outliers are a scrape away", async () => {
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather: vi.fn<Gather>() });
+
+    expect(result.examples).toHaveLength(1); // grounded on the 1 partial row we had
+    expect(result.scrapeAvailable).toBe(true);
+  });
+
+  it("is FALSE on a non-scrapable platform — nothing to reach for, so nothing to offer", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: missEmpty, gather: vi.fn<Gather>() },
+    );
+
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE on a full cache hit — the run is grounded, a scrape adds nothing", async () => {
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: hit, gather: vi.fn<Gather>() });
+
+    expect(result.examples.length).toBeGreaterThan(0);
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE once a scrape is already authorized — there is nothing left to offer", async () => {
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [example("live")],
+      stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
+    }));
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve: miss, gather },
+    );
+
+    expect(gather).toHaveBeenCalledOnce();
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE when grounding is disabled — the button would be a no-op", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), enabled: false },
+      { retrieve: vi.fn<Retrieve>(), gather: vi.fn<Gather>() },
+    );
+
+    expect(result.scrapeAvailable).toBe(false);
   });
 });
 

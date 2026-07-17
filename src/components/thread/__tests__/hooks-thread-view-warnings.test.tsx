@@ -10,8 +10,8 @@
  *
  * Run against pre-2026-07-17 HooksThreadView (no `warnings` prop) these FAIL — that is the point.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HooksThreadView } from '@/components/thread/hooks-thread-view';
 import type { HookCardBlock } from '@/lib/tools/blocks';
@@ -93,5 +93,61 @@ describe('HooksThreadView — degrade notices (warning SSE channel)', () => {
     // …and the error block (role="alert", tap-to-retry) is not.
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.queryByText(/couldn.t finish that run/i)).toBeNull();
+  });
+});
+
+describe('HooksThreadView — Find new outliers (outliers SSE channel)', () => {
+  // THE ACCOMPLICE THIS GUARDS AGAINST: the plumbing (allowScrape → gather → route `outliers`
+  // event → hook.outliersAvailable) can all be green while the button that spends the money is
+  // never actually rendered, or rendered where a scrape can't help. These assert the RECEIVING end:
+  // the affordance appears exactly when the server offered it, fires the callback on tap, and stays
+  // hidden otherwise. Run against pre-2026-07-17 HooksThreadView (no outliersAvailable prop) they FAIL.
+
+  it('renders the Find-new-outliers CTA when the server offered it and the run has settled', () => {
+    renderWithClient(
+      <HooksThreadView {...baseProps()} warnings={[]} outliersAvailable onFindOutliers={() => {}} />,
+    );
+
+    expect(screen.getByRole('button', { name: /find new outliers/i })).toBeTruthy();
+  });
+
+  it('calls onFindOutliers exactly once on tap — the explicit spend, never on render', () => {
+    const onFindOutliers = vi.fn();
+    renderWithClient(
+      <HooksThreadView {...baseProps()} warnings={[]} outliersAvailable onFindOutliers={onFindOutliers} />,
+    );
+
+    // Never fired on render (an accidental scrape-on-mount would bill the owner).
+    expect(onFindOutliers).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /find new outliers/i }));
+    expect(onFindOutliers).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders NOTHING when the server did not offer a scrape (outliersAvailable false)', () => {
+    renderWithClient(
+      <HooksThreadView {...baseProps()} warnings={[]} outliersAvailable={false} onFindOutliers={() => {}} />,
+    );
+
+    expect(screen.queryByRole('button', { name: /find new outliers/i })).toBeNull();
+  });
+
+  it('does not dangle a dead button when no callback is wired', () => {
+    renderWithClient(<HooksThreadView {...baseProps()} warnings={[]} outliersAvailable />);
+
+    expect(screen.queryByRole('button', { name: /find new outliers/i })).toBeNull();
+  });
+
+  it('suppresses the offer while still streaming (only shows once settled)', () => {
+    renderWithClient(
+      <HooksThreadView
+        {...baseProps()}
+        isStreaming
+        warnings={[]}
+        outliersAvailable
+        onFindOutliers={() => {}}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: /find new outliers/i })).toBeNull();
   });
 });

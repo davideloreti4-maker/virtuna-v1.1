@@ -104,7 +104,13 @@ export async function POST(request: Request): Promise<Response> {
   if (limited) return limited;
 
   // ── (2) Parse + validate body ─────────────────────────────────────────────
-  let body: { ask?: unknown; platform?: unknown; anchor?: unknown; intent?: unknown } = {};
+  let body: {
+    ask?: unknown;
+    platform?: unknown;
+    anchor?: unknown;
+    intent?: unknown;
+    allowScrape?: unknown;
+  } = {};
   try {
     body = await request.json();
   } catch {
@@ -114,6 +120,10 @@ export async function POST(request: Request): Promise<Response> {
   const rawAsk = typeof body.ask === "string" ? body.ask : "";
   const rawPlatform = typeof body.platform === "string" ? body.platform : "tiktok";
   const rawAnchor = typeof body.anchor === "string" ? body.anchor : undefined;
+  // EXPLICIT-ONLY SPEND: the only field that can authorize a live Apify scrape. Default false —
+  // a normal run never bills. Set true solely by the "Find new outliers" affordance the user taps
+  // (see gather-for-run `allowScrape`). Coerced strictly to boolean; anything non-`true` is false.
+  const allowScrape = body.allowScrape === true;
 
   // SERVER-SIDE ASK CAP (WARNING-5): independent of client validation (T-04-06)
   if (rawAsk.length > MAX_MESSAGE_LENGTH) {
@@ -194,13 +204,14 @@ export async function POST(request: Request): Promise<Response> {
         // Stage events now stream from the REAL pipeline boundaries (Generating → Simulating
         // your audience → Ranking) via onStage — the spine reflects genuine phase timing instead
         // of a single opaque await + an end-of-run burst (D-02: real boundaries, no fake timers).
-        const { blocks, warnings } = await runHooksPipeline({
+        const { blocks, warnings, scrapeAvailable } = await runHooksPipeline({
           ask: rawAsk,
           platform,
           profileRow: profileRow ?? null,
           anchor: rawAnchor,
           audience: activeAudience,
           intent: effectiveIntent,
+          allowScrape,
           onStage: (name, status) => send("stage", { name, status }),
           // FLYWHEEL-02: pin the predicted vector for this run (text skill → no analysis).
           pin: { supabase, analysisId: null },
@@ -208,6 +219,14 @@ export async function POST(request: Request): Promise<Response> {
 
         if (warnings.length > 0) {
           send("warning", { warnings });
+        }
+
+        // OUTLIERS OFFER: this run couldn't ground itself, but a live scrape could find proven
+        // outliers on the subject. The server owns this call — it knows grounding is on, the
+        // platform is scrapable, and the cache came up thin — so the client never guesses; it just
+        // renders the "Find new outliers" affordance when told a scrape would actually do something.
+        if (scrapeAvailable) {
+          send("outliers", { available: true });
         }
 
         // Status event: SIM has run (legacy status for older clients)
