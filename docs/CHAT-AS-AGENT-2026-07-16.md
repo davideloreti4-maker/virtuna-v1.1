@@ -12,7 +12,9 @@ the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 > → its own corpus scout) is GONE for flag-on open chat. Proven live (Part 2 of
 > `scripts/spike-stream-tools.ts`) + unit-tested; DashScope streams `delta.tool_calls` in fragments
 > (step-0 spike). Earlier session-3 work still stands: reload fidelity (§4d), analysis-skill dispatch
-> (§4c). **Still open (ranked):** **(a) OWNER LIVE PASS** — flag-on browser session vs live
+> (§4c). **Session 5 (§4f):** multi-turn reload FIXED (per-turn rehydration — §4d gap #1 closed) +
+> grounding arm LIVE-VERIFIED headless (search_corpus fires, answer grounds on real corpus creators).
+> **Still open (ranked):** **(a) OWNER LIVE PASS** — flag-on browser session vs live
 > DashScope+Supabase (owner-auth-gated); the gate before retiring the selector / defaulting the flag on.
 > **(b) selector retirement** (keep until prod-proven). **(c) read/profile as tools** (needs `supabase`
 > on the context + profile WRITES an audience — product call). **(d) light attribution / cite corpus
@@ -193,8 +195,9 @@ shows markdown → proves `activeTool` flipped to chat), while an UNSTAMPED sele
 the card (ideas view, no markdown) — the second test FAILS if all threads were unified, so it locks the
 no-regression guarantee. 108 green across the touched areas; tsc clean (4 grounding errors pre-existing).
 
-**Honest gaps.** (1) The unified reload wraps the whole stream in one `SkillResultCard` (label "Chat")
-— acceptable one-turn presentation, not per-message chrome. (2) A chat-agent turn that returns NO
+**Honest gaps.** (1) ✅ **CLOSED (§4f, session 5).** The unified reload wrapped the whole stream in one
+`SkillResultCard` under one user bubble — fine single-turn, but on multi-turn it dropped earlier
+questions and misattributed answers. Now renders per-turn (`orderedTurns`). (2) A chat-agent turn that returns NO
 closing text persists no marker → that thread reloads via the old per-tool path (cards still present,
 just in the tool view). Rare (the prompt always asks for a closing line) and a graceful degrade. (3) Not
 live-run in a browser (owner-auth-gated) — same gate as the rest of the feature.
@@ -245,6 +248,44 @@ pure-chat ask streams 1557 chars directly, no tool. The double-call is gone.
 a tool call would reload slightly out of order (the spike showed 0 lead-in text before a tool call).
 (3) `runSkillDispatch` + `runChatPipeline`'s corpus pre-flight are now dead for open chat (persona still
 uses `runChatPipeline`) — a later dead-code pass.
+
+## 4f. Session 5 — multi-turn reload fix + grounding live-verified
+
+**The reload bug (§4d honest gap #1, now CLOSED).** Session-4's live pass found the mega-card gap was
+worse than "not per-message chrome": `orderedAssistantBlocks` flattened EVERY assistant block across ALL
+turns into one stream, and `ChatThreadView` dumped it into ONE `SkillResultCard` under ONE user bubble.
+So any thread with ≥1 skill turn reloaded with **earlier questions dropped and answers misattributed** —
+a plain-chat answer reattached under the *next* question, above unrelated cards. For a multi-turn chat
+product that's a real defect, not cosmetic. It shipped green because §4d's tests only asserted
+single-turn reload (the accomplice pattern).
+
+**Fix — per-turn rehydration.**
+- New pure `orderedTurns(messages)` (`rehydrate-thread.ts`, unit-tested) groups persisted messages into
+  `{ userTurn, blocks }[]` — one turn per user message, consecutive assistant messages merged into it.
+  `orderedAssistantBlocks` stays (still correct for the per-tool bucket split, where the question is
+  never shown beside the cards).
+- `ChatThreadView` renders **one question-bubble + one result-card PER turn**, in order; the live
+  streaming turn renders as the last turn with its own bubble. Prop `persistedStream` → `persistedTurns`.
+- Composer passes `persistedChatTurns` (via `orderedTurns`) and now **clears it on New Thread** — a
+  latent bug where a prior chat-agent thread's turns lingered under a fresh thread until reload resolved.
+- Verified against the REAL route persistence shape: a 2-turn thread (plain-chat Q → ideas Q) writes
+  `user(Q1) → assistant md(A1) → user(Q2) → assistant cards → assistant md(A2, origin:chat-agent)`, and
+  `orderedTurns` groups exactly that into two correctly-attributed turns.
+
+**Proof.** `rehydrate-thread` (10 — incl. multi-turn attribution) + `chat-thread-view` (5 — incl. a
+**multi-turn DOM-order guard** the old single-card render could not pass). 234 green across the touched
+areas; tsc clean (4 grounding errors pre-existing). NOT re-run in a browser — the fix is client render
+logic locked by the DOM-order test + confirmed against the real persistence shape; a pixel drive buys
+little until right before defaulting the flag on.
+
+**Grounding arm — live-verified (closes the §4e "not triggered" note).** Drove `runChatAgentStream`
+headless with REAL deps (real DashScope stream + real `executeCorpusSearch`) on a growth-strategy ask.
+The model called `search_corpus` → 5 real corpus rows (4827 chars) fed back → the streamed answer
+grounded on real creators quoted **verbatim** (`cassie.schoonover` 421k/5.2×, `madisonknowsbest`
+819k/458.3×, `luvswallet`). Confirmed those handles are genuinely in the corpus rows (no-model check),
+not hallucinated. So on the streaming loop the tool binds, the model chooses it for strategy asks, and
+rows feed the grounded answer. (Gap (d) "cite corpus creators" — the model already does this in prose;
+a formal citation card is still optional.)
 
 ## 5. Guardrails (hold these)
 
