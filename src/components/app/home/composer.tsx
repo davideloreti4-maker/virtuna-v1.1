@@ -2193,6 +2193,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           stages={hooks.stages}
           followupText={hooks.followupText}
           warnings={hooks.warnings}
+          outliersAvailable={hooks.outliersAvailable}
+          onFindOutliers={() => void hooks.findOutliers()}
           isStreaming={hooks.isStreaming}
           error={hooks.error}
           platform={platform}

@@ -31,6 +31,12 @@
  *    intent instead of by accident.
  *  - Degrade is always honest and never blocking: corpus stays undefined, examples stay [],
  *    a warning is pushed. Never fabricate a source, never block generation.
+ *  - It reports back whether a scrape WOULD have helped (`scrapeAvailable`): true only when the
+ *    run degraded (or grounded on a partial) purely because `allowScrape` was false on a scrapable
+ *    platform. That is the capability signal behind the "Find new outliers" button — the SERVER
+ *    knows a scrape is worth offering (grounding on, platform scrapable, cache thin), so the glass
+ *    never has to guess. False on a full cache hit (grounded, no need), on a non-scrapable platform
+ *    (nothing to reach for), when grounding is off, and while a scrape is already running.
  */
 
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
@@ -101,6 +107,15 @@ export interface GatherCorpusResult {
   corpus: string | undefined;
   /** The retrieved examples backing `corpus` — [] on skip/degrade (no receipt without a source). */
   examples: RetrievedExample[];
+  /**
+   * Would a live scrape have found outliers this run couldn't? True ONLY when the run degraded (or
+   * grounded on a thin partial) purely because `allowScrape` was false on a scrapable platform —
+   * i.e. we could have scraped, the user just didn't authorize the spend. This is the capability
+   * signal behind the "Find new outliers" affordance: the server already knows a scrape is worth
+   * offering, so the glass never guesses. False on a full cache hit, a non-scrapable platform,
+   * grounding-off, or while a scrape is already running (allowScrape true → nothing to offer).
+   */
+  scrapeAvailable: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -120,7 +135,7 @@ export async function gatherCorpusForRun(
   input: GatherCorpusInput,
   deps: GatherCorpusDeps = {},
 ): Promise<GatherCorpusResult> {
-  const none: GatherCorpusResult = { corpus: undefined, examples: [] };
+  const none: GatherCorpusResult = { corpus: undefined, examples: [], scrapeAvailable: false };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
   const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
@@ -137,7 +152,10 @@ export async function gatherCorpusForRun(
    * a profile), otherwise the raw per-skill slice. `used` (not the input list) is returned as
    * `examples` so the runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
    */
-  const finalize = async (examples: RetrievedExample[]): Promise<GatherCorpusResult> => {
+  const finalize = async (
+    examples: RetrievedExample[],
+    scrapeAvailable = false,
+  ): Promise<GatherCorpusResult> => {
     if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
       const { corpus, used } = await adapt({
         skill: input.skill,
@@ -147,10 +165,10 @@ export async function gatherCorpusForRun(
         profile: input.adaptProfile,
         examples,
       });
-      return { corpus, examples: used };
+      return { corpus, examples: used, scrapeAvailable };
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return { corpus, examples: used };
+    return { corpus, examples: used, scrapeAvailable };
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
@@ -202,16 +220,21 @@ export async function gatherCorpusForRun(
       const why = !input.allowScrape
         ? "scrape not requested (explicit-only)"
         : `${input.platform} is not scrapable`;
+      // A scrape would only help if we DIDN'T scrape purely because it wasn't requested — and the
+      // platform can actually be scraped. "Not scrapable" is a dead end, not an offer; conflating
+      // the two would dangle a button that could never do anything. This is the "Find new outliers"
+      // capability signal, computed at the one place that knows both facts.
+      const scrapeAvailable = !input.allowScrape && SCRAPABLE_PLATFORMS.has(input.platform);
       if (partial.length > 0) {
         console.info(
           `[grounding] ${why} — grounding on the ${partial.length} cached teardowns we do have`,
         );
-        return finalize(partial);
+        return finalize(partial, scrapeAvailable);
       }
       console.info(
         `[grounding] no cached teardowns for "${query}" on ${input.platform} and ${why} — degrading to ungrounded`,
       );
-      return none;
+      return { ...none, scrapeAvailable };
     }
 
     const { examples } = await gather({

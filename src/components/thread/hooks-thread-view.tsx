@@ -57,6 +57,17 @@ export interface HooksThreadViewProps {
    * indistinguishable from a clean run at the glass.
    */
   warnings: string[];
+  /**
+   * True when the server signalled (via the `outliers` SSE event) that a live scrape could find
+   * proven outliers this run couldn't — grounding is on, the platform is scrapable, and the cache
+   * came up thin. Gates the "Find new outliers" affordance. Default false / omitted → no offer.
+   */
+  outliersAvailable?: boolean;
+  /**
+   * "Find new outliers" callback — re-runs the last send with a live outlier scrape authorized
+   * (explicit spend). Called ONLY on tap, never on render. Absent → the affordance is not rendered.
+   */
+  onFindOutliers?: () => void;
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /** Error string from the stream (truthy = skill run failed — render W2 error block). */
@@ -83,6 +94,8 @@ export function HooksThreadView({
   stages,
   followupText,
   warnings,
+  outliersAvailable = false,
+  onFindOutliers,
   isStreaming,
   error,
   platform,
@@ -170,6 +183,13 @@ export function HooksThreadView({
                   W2 error block. Hidden entirely on a clean run. */}
               {!isStreaming && warnings.length > 0 && <RunWarnings warnings={warnings} />}
 
+              {/* Find new outliers — offered only when the server says a live scrape would actually
+                  find some (outliersAvailable) and the run has settled. Tapping it spends: it re-runs
+                  the same subject with a live scan authorized. No offer on a clean grounded run. */}
+              {!isStreaming && outliersAvailable && onFindOutliers && (
+                <OutliersOffer onFindOutliers={onFindOutliers} />
+              )}
+
               {/* Outro — the engine's real follow-up (restyled) + the forward chip. */}
               {!isStreaming && (
                 <ThreadOutro
@@ -225,6 +245,48 @@ function RunWarnings({ warnings }: RunWarningsProps) {
           {w}
         </p>
       ))}
+    </div>
+  );
+}
+
+// ── OutliersOffer ─────────────────────────────────────────────────────────────
+
+/**
+ * "Find new outliers" — the explicit-spend affordance. Rendered ONLY when the server signalled a
+ * scrape would find proven outliers this run couldn't (outliersAvailable). Tapping it authorizes a
+ * live scan (allowScrape: true) that re-runs the same subject; the scrape's write-through then keeps
+ * the subject grounded for free next time. Copy is honest for both the fully-ungrounded and the
+ * grounded-on-a-partial cases — either way, this run skipped the live scan.
+ *
+ * The CTA carries the primary action treatment (bg action / accent) on purpose: authorizing a spend
+ * is a genuine, deliberate action — exactly the liveness moment the near-zero accent dosage is for.
+ */
+interface OutliersOfferProps {
+  onFindOutliers: () => void;
+}
+
+function OutliersOffer({ onFindOutliers }: OutliersOfferProps) {
+  return (
+    <div
+      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1.5"
+      role="status"
+      aria-live="polite"
+    >
+      <p className="text-sm font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
+        Want live proof for this?
+      </p>
+      <p className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
+        This run skipped the live outlier scan. Run it now to pull fresh proven outliers on this
+        topic — a few seconds, and they&rsquo;re cached for next time.
+      </p>
+      <button
+        type="button"
+        onClick={onFindOutliers}
+        className="mt-1.5 self-start rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+        aria-label="Find new outliers with a live scan"
+      >
+        Find new outliers →
+      </button>
     </div>
   );
 }

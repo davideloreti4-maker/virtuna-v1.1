@@ -96,11 +96,27 @@ export interface UseHooksStreamReturn {
    */
   warnings: string[];
   /**
+   * True when the server signalled (via the `outliers` SSE event) that a live scrape could find
+   * proven outliers this run couldn't. Drives the "Find new outliers" affordance. Cleared at the
+   * start of every run; stays false on a clean grounded run or a platform that can't be scraped.
+   */
+  outliersAvailable: boolean;
+  /**
    * Start the Hooks stream. Call from the composer Hook send.
    * ask: empty string → Auto mode (anchored idea); non-empty → seeded mode (D-09).
    * Re-expose as the retry entry point for the skill-run error state (W2).
+   *
+   * opts.allowScrape authorizes a live outlier scrape for THIS run (explicit spend) — set only by
+   * findOutliers(), never by a normal send.
    */
-  start: (ask: string, platform: string, intent?: IntentLens) => Promise<void>;
+  start: (ask: string, platform: string, intent?: IntentLens, opts?: { allowScrape?: boolean }) => Promise<void>;
+  /**
+   * Re-run the LAST hooks send with a live outlier scrape authorized (allowScrape: true). This is
+   * the "Find new outliers" action — a deliberate spend that scrapes fresh proven outliers on the
+   * same subject and write-throughs them into the cache (so the next normal run is grounded free).
+   * No-op if nothing has been run yet.
+   */
+  findOutliers: () => Promise<void>;
   /**
    * Start a scoped refine re-run via /api/tools/refine (Plan 05-05 / D-04).
    * Consumes the refine SSE into the same streaming state as start() so the new
@@ -132,9 +148,14 @@ export function useHooksStream(): UseHooksStreamReturn {
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [outliersAvailable, setOutliersAvailable] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
+  // authorized. Captured on every start(); the scrape query is derived from the ask, so replaying
+  // "" (Auto) would scrape on the niche only — we must re-send the real ask/platform/intent.
+  const lastRunRef = useRef<{ ask: string; platform: string; intent?: IntentLens } | null>(null);
 
   // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
   // on an unmounted component. Without this the useRef(true) guard is permanently
@@ -161,6 +182,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     setStages([]);
     setFollowupText(null);
     setWarnings([]);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
   }, []);
@@ -172,11 +194,21 @@ export function useHooksStream(): UseHooksStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string, intent?: IntentLens) => {
+  const start = useCallback(async (
+    ask: string,
+    platform: string,
+    intent?: IntentLens,
+    opts?: { allowScrape?: boolean },
+  ) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
+    // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly, so a
+    // stored scrape authorization can never leak into a later normal run.
+    lastRunRef.current = { ask, platform, intent };
 
     // Reset state for a new run
     setStreamingCards([]);
@@ -186,6 +218,8 @@ export function useHooksStream(): UseHooksStreamReturn {
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
+    setWarnings([]);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
 
@@ -194,7 +228,14 @@ export function useHooksStream(): UseHooksStreamReturn {
       const res = await fetch('/api/tools/hooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ask, platform, ...(intent ? { intent } : {}) }),
+        // allowScrape rides the body ONLY when explicitly authorized (findOutliers) — a normal send
+        // omits it, so the route's `body.allowScrape === true` check keeps the scrape off by default.
+        body: JSON.stringify({
+          ask,
+          platform,
+          ...(intent ? { intent } : {}),
+          ...(opts?.allowScrape ? { allowScrape: true } : {}),
+        }),
         signal: controller.signal,
       });
 
@@ -273,6 +314,12 @@ export function useHooksStream(): UseHooksStreamReturn {
               ? data.warnings.filter((w: unknown): w is string => typeof w === 'string')
               : [];
             if (list.length > 0 && isMountedRef.current) setWarnings(list);
+
+          } else if (eventType === 'outliers') {
+            // The server says a live scrape could find proven outliers this run couldn't. Flip the
+            // flag that drives the "Find new outliers" affordance. Only ever true here — the server
+            // is the sole authority on whether a scrape would actually do anything.
+            if (data.available === true && isMountedRef.current) setOutliersAvailable(true);
 
           } else if (eventType === 'content') {
             // content event: hook faces WITH scrollQuote; band/fraction absent until score
@@ -366,6 +413,18 @@ export function useHooksStream(): UseHooksStreamReturn {
   }, []);
 
   /**
+   * "Find new outliers" — replay the last send with a live scrape authorized (explicit spend).
+   * Delegates to start() so the whole streaming path (reset, cards, score, done, and a FRESH
+   * outliers signal) is identical; the only difference is allowScrape: true, which lets the route
+   * scrape → write-through the cache → ground this run. No-op before the first run.
+   */
+  const findOutliers = useCallback(async () => {
+    const last = lastRunRef.current;
+    if (!last) return;
+    await start(last.ask, last.platform, last.intent, { allowScrape: true });
+  }, [start]);
+
+  /**
    * Scoped refine re-run (Plan 05-05 / D-04).
    * POSTs to /api/tools/refine and consumes the SSE into the same streaming state.
    * A failed refine sets error → the Plan-04 SkillRunError surface renders for retry.
@@ -385,6 +444,8 @@ export function useHooksStream(): UseHooksStreamReturn {
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
+    setWarnings([]);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
 
@@ -578,7 +639,9 @@ export function useHooksStream(): UseHooksStreamReturn {
     stages,
     followupText,
     warnings,
+    outliersAvailable,
     start,
+    findOutliers,
     startRefine,
     stop,
     reset,

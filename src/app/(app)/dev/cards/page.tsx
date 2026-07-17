@@ -127,6 +127,30 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
     ),
   },
   {
+    id: "hooks-outliers",
+    label: "Hooks (find new outliers)",
+    note: "Same run, with the `outliers` SSE event populated — the OutliersOffer affordance below the cards. The server sets it only when a live scrape could find outliers this (ungrounded/partial) run couldn't; tapping it authorizes the scan. Absent on a clean grounded run or a non-scrapable platform.",
+    node: (
+      <HooksThreadView
+        persistedBlocks={[]}
+        streamingBlocks={HOOK_BLOCKS}
+        statusMessage={null}
+        stages={doneStages(["Generating", "Simulating your audience", "Ranking"])}
+        followupText={FOLLOWUPS.hooks}
+        warnings={[]}
+        outliersAvailable
+        onFindOutliers={noop}
+        isStreaming={false}
+        error={null}
+        platform="tiktok"
+        onTestHook={noop}
+        onWriteScriptHook={noop}
+        userTurn={USER_TURNS.hooks}
+        audienceLabel={AUDIENCE}
+      />
+    ),
+  },
+  {
     id: "script",
     label: "Script",
     note: "Make → Script skill. Beat structure card; intro cites the input hook it was anchored on.",

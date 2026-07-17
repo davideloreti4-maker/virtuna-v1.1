@@ -218,6 +218,13 @@ export interface HooksPipelineInput {
    */
   intent?: IntentLens;
   /**
+   * May THIS run pay for a live outlier scrape on a cache miss? Default false (see gather-for-run
+   * `allowScrape`) — a normal run never bills Apify. Set true ONLY by the explicit "Find new
+   * outliers" action the user takes when they want fresh proven outliers on this subject; the
+   * scrape's write-through then repopulates the cache so the next normal run is grounded for free.
+   */
+  allowScrape?: boolean;
+  /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
    * (rank-1 hook's personas) + audience_id. Non-fatal — never blocks the cards.
    */
@@ -240,6 +247,13 @@ export interface HooksPipelineResult {
   warnings: string[];
   /** Which seed-hook extraction path shipped (Open Q1 resolved decision). */
   seedHookPath: "structured" | "markered";
+  /**
+   * Could a live scrape have found outliers this (ungrounded/partial) run couldn't? Surfaced from
+   * gather-for-run — true only when the run degraded purely because `allowScrape` was false on a
+   * scrapable platform. The route forwards it to the client as the `outliers` SSE event, which drives
+   * the "Find new outliers" affordance. False on a clean grounded run or when a scrape can't help.
+   */
+  scrapeAvailable: boolean;
 }
 
 // ─── Structured hook type ─────────────────────────────────────────────────────
@@ -475,12 +489,18 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   //    ANY failure degrades to ungrounded — corpus stays undefined → byte-identical no-op,
   //    never fabricate a source (honesty spine). `groundingExamples` is retained so the BUILD
   //    step can map each hook's sourceIndex back to the outlier it adapted (the on-card receipt).
-  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+  const {
+    corpus,
+    examples: groundingExamples,
+    scrapeAvailable,
+  } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "hooks", // → the madlib slice: the reusable skeleton a proven hook ran on
     platform,
     queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,
+    // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
+    allowScrape: input.allowScrape,
     onStage: input.onStage,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed brief instead of the raw slice.
@@ -653,7 +673,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
-    return { blocks: [], warnings: allWarnings, seedHookPath };
+    return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
   // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
@@ -769,5 +789,5 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     }
   }
 
-  return { blocks, warnings: allWarnings, seedHookPath };
+  return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
 }
