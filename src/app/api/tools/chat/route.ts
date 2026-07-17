@@ -112,7 +112,8 @@ const MAX_MESSAGE_LENGTH = 2000;
  * the corpus-tool exclusion. Flag OFF → byte-identical to the shipped open-chat + persona paths.
  */
 function isChatAgentDispatchEnabled(): boolean {
-  return process.env.CHAT_AGENT_DISPATCH === "true";
+  // Default ON (shipped 2026-07-17). Set CHAT_AGENT_DISPATCH="false" to disable.
+  return process.env.CHAT_AGENT_DISPATCH !== "false";
 }
 
 /**
@@ -121,7 +122,8 @@ function isChatAgentDispatchEnabled(): boolean {
  * `GROUNDING_CHAT_TOOL` gate `runChatPipeline` used for its (now-replaced) corpus pre-flight.
  */
 function isCorpusChatToolEnabled(): boolean {
-  return process.env.GROUNDING_CHAT_TOOL === "true";
+  // Default ON (shipped 2026-07-17). Set GROUNDING_CHAT_TOOL="false" to disable.
+  return process.env.GROUNDING_CHAT_TOOL !== "false";
 }
 
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */

@@ -86,8 +86,10 @@ async function readSSE(response: Response): Promise<string> {
 describe("POST /api/tools/chat (SSE route)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default-off flag — each dispatch test opts in explicitly (byte-identical path otherwise).
-    delete process.env.CHAT_AGENT_DISPATCH;
+    // Dispatch ships default-ON (2026-07-17). These legacy tests exercise the runChatPipeline path, so
+    // pin the flag OFF here; the dispatch tests below opt back IN with "true", and one test asserts the
+    // unset-env default is ON.
+    process.env.CHAT_AGENT_DISPATCH = "false";
   });
 
   it("Test 1: returns 401 when user is not authenticated (auth gate before any DB read)", async () => {
@@ -583,6 +585,25 @@ describe("POST /api/tools/chat (SSE route)", () => {
 
     expect(runChatAgentStream).not.toHaveBeenCalled();
     expect(runChatPipeline).toHaveBeenCalledTimes(1);
+  });
+
+  it("Test 8b: dispatch flag UNSET → defaults ON (agent loop runs, no runChatPipeline)", async () => {
+    delete process.env.CHAT_AGENT_DISPATCH; // prod default is now ON
+    await primeDispatchHarness();
+    const { runChatAgentStream } = await import("@/lib/tools/chat-agent-loop");
+    const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
+    (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(async (input: { onToken: (d: string) => void }) => {
+      input.onToken("grounded answer");
+      return { text: "grounded answer", skillRuns: [], toolCalls: [] };
+    });
+
+    const { POST } = await import("@/app/api/tools/chat/route");
+    const res = await POST(makeChatRequest({ ask: "what should I post?", platform: "tiktok" }));
+    expect(res.status).toBe(200);
+    await readSSE(res);
+
+    expect(runChatAgentStream).toHaveBeenCalledTimes(1);
+    expect(runChatPipeline).not.toHaveBeenCalled();
   });
 
   it("Test 9: dispatch ON but persona/meet mode → agent loop SKIPPED, persona answer path runs", async () => {

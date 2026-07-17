@@ -166,7 +166,7 @@ describe("runSkillDispatch [tools]", () => {
     expect(res.toolCalls[0]!.note).toBe("no draft");
   });
 
-  it("registry wires both shapes: generators require `topic`, analysis skills require `draft`", () => {
+  it("registry ships the generators, each requiring `topic`", () => {
     const byName = new Map(SKILL_TOOLS.map((s) => [s.name, s]));
 
     for (const gen of ["generate_ideas", "generate_hooks", "write_script"]) {
@@ -174,16 +174,9 @@ describe("runSkillDispatch [tools]", () => {
       expect(s).toBeDefined();
       expect(s.primaryArg ?? "topic").toBe("topic");
     }
-
-    for (const ana of ["simulate_reaction", "predict_outcome"]) {
-      const s = byName.get(ana)!;
-      expect(s).toBeDefined();
-      expect(s.primaryArg).toBe("draft");
-      // The model sees a `draft` param that is required (the second adapter's tool schema).
-      const params = (s.schema as { function: { parameters: { properties: Record<string, unknown>; required: string[] } } })
-        .function.parameters;
-      expect(params.properties.draft).toBeDefined();
-      expect(params.required).toContain("draft");
-    }
+    // Analysis skills (simulate/predict) were removed from chat dispatch (2026-07-17) — audience-tier
+    // ineligible for the default General audience; the standalone selector routes still own them.
+    expect(byName.has("simulate_reaction")).toBe(false);
+    expect(byName.has("predict_outcome")).toBe(false);
   });
 });

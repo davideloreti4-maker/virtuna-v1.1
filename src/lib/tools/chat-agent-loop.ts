@@ -53,7 +53,7 @@ const defaultStreamComplete: StreamingChatComplete = async (params) => {
 // ─── Public types ────────────────────────────────────────────────────────────
 
 export interface ChatAgentStreamInput {
-  /** The creator's message this turn. */
+  /** The creator's message this turn — as sent to the model (may be the grounding-assembled bundle). */
   ask: string;
   /** Shared skill context (platform, profileRow, audience, onStage) — same shape the skills already use. */
   context: SkillRunContext;
@@ -102,14 +102,22 @@ const DEFAULT_MAX_SKILL_RUNS = 2;
  */
 function toolUseDirective(grounding: boolean): string {
   const base =
-    "You also have TOOLS. When the creator asks you to MAKE content, call the matching skill tool instead " +
-    "of writing it yourself — generate_ideas / generate_hooks / write_script (pass the `topic`); the tool " +
-    "produces rich cards shown to the creator. To TEST a specific drafted message the creator already has, " +
-    "or to forecast a scenario, call simulate_reaction / predict_outcome (pass the `draft`). Call a tool " +
-    "ONLY when it fits the ask; if the creator is just talking or asking strategy, answer conversationally " +
-    "— do not call a tool they didn't ask for. After a tool runs, its cards are already shown to the " +
-    "creator; add ONE short line pointing at what you made and a natural next step, and never re-write the " +
-    "card content in prose.";
+    "You also have TOOLS that produce rich scored cards shown to the creator. To MAKE content call " +
+    "generate_ideas / generate_hooks / write_script (pass the `topic`; pass an optional `anchor` for a " +
+    "chosen idea/hook to build on). " +
+    "DISPATCH EAGERLY: when the ask is a clear request to make ideas, hooks, or a script and you have a " +
+    "workable subject, CALL the matching tool THIS turn — do NOT ask whether they want 'a card vs an " +
+    "opinion', do NOT offer to run it, and do NOT write the content yourself first. Just call it. Stay " +
+    "conversational only when the creator is genuinely just talking or thinking out loud, OR when the ask " +
+    "is too vague or too generic to produce something non-obvious — then push back ONCE for a sharper " +
+    "angle, and the moment you have a workable subject, call the tool. " +
+    "CRITICAL — NEVER tell the creator a card is 'on screen', 'generated', or 'ready', and never describe " +
+    "its contents, UNLESS you actually called the tool THIS turn. If you did not call a tool, do not claim " +
+    "a card exists. " +
+    "After a tool runs, its cards are already shown to the creator; add ONE short line pointing at what " +
+    "you made and a natural next step, and never re-write the card content in prose. If a tool returns an " +
+    "ERROR instead of a card, tell the creator plainly what went wrong and what to do about it (relay the " +
+    "error's guidance) — do NOT silently answer the request in prose as though the tool had succeeded.";
   const groundLine = grounding
     ? " When a real, proven real-world example would make a strategy answer stronger, call search_corpus " +
       "and ground your answer on what it returns."
@@ -117,7 +125,7 @@ function toolUseDirective(grounding: boolean): string {
   return base + groundLine;
 }
 
-/** Parse the model's tool args into the union both skill shapes read (generators: topic; analysis: draft). */
+/** Parse the model's tool args into the shape the skills read (topic + optional anchor). */
 function parseSkillArgs(raw: string): SkillToolArgs {
   try {
     const p = JSON.parse(raw || "{}");

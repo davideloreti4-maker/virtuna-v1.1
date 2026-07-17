@@ -24,10 +24,6 @@ import type { Audience } from "@/lib/audience/audience-types";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
-import { runSimulate } from "@/lib/tools/runners/simulate-runner";
-import { runPredict } from "@/lib/tools/runners/predict-runner";
-import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
-import { resolveTier } from "@/lib/audience/resolve-tier";
 
 // ─── Shared run context (loaded once by the route; passed to every skill) ────
 
@@ -40,17 +36,17 @@ export interface SkillRunContext {
 }
 
 /**
- * Args the MODEL supplies per skill call (extracted from the conversation). Two shapes coexist:
- *   - GENERATORS (ideas/hooks/script) supply a `topic` (+ optional `anchor`) — "make me X".
- *   - ANALYSIS (simulate/predict) supply a `draft` — the exact message/scenario to test, not a subject.
- * Each `SkillTool` names its own `primaryArg`, so the dispatcher validates the right required field.
+ * Args the MODEL supplies per skill call (extracted from the conversation). The registry is generators
+ * today (ideas/hooks/script → a `topic`, + optional `anchor`), but the shape stays general: a skill can
+ * name a different `primaryArg` (e.g. a `draft` for a future analysis skill) and the dispatcher validates
+ * whichever field that skill requires.
  */
 export interface SkillToolArgs {
   /** Generator primary input: the subject to generate for. */
   topic?: string;
   /** Optional carried concept/hook to build on (hooks/script). */
   anchor?: string;
-  /** Analysis primary input: the drafted message / scenario to test or forecast. */
+  /** Alternate primary input for a non-generator skill: a specific drafted message/scenario. */
   draft?: string;
 }
 
@@ -86,43 +82,7 @@ function skillSchema(name: string, description: string, withAnchor: boolean): Re
   };
 }
 
-/**
- * The SECOND adapter shape — analysis skills (simulate/predict). They don't generate about a subject;
- * they read a SPECIFIC drafted message/scenario. So the model supplies a `draft`, not a `topic`.
- */
-function analysisSchema(name: string, description: string, draftDescription: string): Record<string, unknown> {
-  return {
-    type: "function",
-    function: {
-      name,
-      description,
-      parameters: {
-        type: "object",
-        properties: { draft: { type: "string", description: draftDescription } },
-        required: ["draft"],
-      },
-    },
-  };
-}
-
-/**
- * Simulate/Predict run ONLY against a General (Directional) audience (the route enforces the same rule).
- * A missing or ineligible audience is an expected precondition, not a crash — throw a creator-facing
- * message the dispatcher absorbs into the tool result and the model relays ("pick a General audience").
- */
-function requireDirectionalAudience(audience: Audience | null | undefined): Audience {
-  if (!audience) {
-    throw new Error("no audience selected — ask the creator to pick a General audience to test against");
-  }
-  if (resolveTier(audience) !== "Directional") {
-    throw new Error(
-      "that audience isn't eligible — Simulate and Predict run against a General (Directional) audience",
-    );
-  }
-  return audience;
-}
-
-// ─── The registry — generators (topic shape) + analysis skills (draft shape) ──
+// ─── The registry — generators (topic shape) ──
 
 export const SKILL_TOOLS: SkillTool[] = [
   {
@@ -187,45 +147,6 @@ export const SKILL_TOOLS: SkillTool[] = [
       return { blocks: r.blocks, warnings: r.warnings };
     },
   },
-  // ─── Analysis skills (draft shape — a specific message/scenario, not a subject) ──
-  {
-    name: "simulate_reaction",
-    paid: true,
-    primaryArg: "draft",
-    schema: analysisSchema(
-      "simulate_reaction",
-      "Simulate how the creator's AUDIENCE reacts to a SPECIFIC drafted message, hook, or post — the " +
-        "honest receptive / on-the-fence / resistant read. Use when the creator asks 'how would my " +
-        "audience react to this', 'test this draft', or pastes a message wanting a gut-check. Produces a " +
-        "reaction card in the thread.",
-      "The exact drafted message / hook / post to test, quoted verbatim from the creator's ask.",
-    ),
-    run: async (args, ctx) => {
-      const audience = requireDirectionalAudience(ctx.audience);
-      const stimulus = await normalizeStimulus({ kind: "text", text: args.draft ?? "" });
-      const block = await runSimulate({ audience, stimulus });
-      return { blocks: [block], warnings: [] };
-    },
-  },
-  {
-    name: "predict_outcome",
-    paid: true,
-    primaryArg: "draft",
-    schema: analysisSchema(
-      "predict_outcome",
-      "Predict the likely OUTCOME of a content or business scenario via the analyst panel — a directional " +
-        "band + range + the factors driving it. Use when the creator asks 'will this work', 'what's the " +
-        "likely outcome', or describes a plan/decision wanting a forecast. Produces a prediction gauge in " +
-        "the thread.",
-      "The scenario / plan / decision to forecast, quoted from the creator's ask.",
-    ),
-    run: async (args, ctx) => {
-      const audience = requireDirectionalAudience(ctx.audience);
-      const stimulus = await normalizeStimulus({ kind: "text", text: args.draft ?? "" });
-      const block = await runPredict({ audience, stimulus });
-      return { blocks: [block], warnings: [] };
-    },
-  },
 ];
 
 // ─── The dispatcher loop ─────────────────────────────────────────────────────
@@ -242,14 +163,12 @@ export type ChatComplete = (params: Record<string, unknown>) => Promise<{
 const DISPATCH_SYSTEM_PROMPT =
   "You are Numen's content co-pilot, talking with a creator in one continuous thread. You can either " +
   "answer conversationally OR run a skill by calling a tool. The GENERATORS make new content for a " +
-  "subject — generate_ideas, generate_hooks, write_script (pass the `topic`). The ANALYSIS skills read " +
-  "a SPECIFIC drafted message the creator already has — simulate_reaction tests how their audience " +
-  "reacts to it, predict_outcome forecasts how a scenario/plan lands (pass the `draft`, quoted from " +
-  "their message). Call a tool ONLY when the creator asks for that kind of help; extract the topic or " +
-  "the drafted message from their words and the conversation so far. If they are just talking, asking " +
-  "strategy, or thinking out loud, answer directly — do NOT call a tool they didn't ask for. After a " +
-  "skill runs, its cards are already shown to the creator; add ONE short line pointing at what you made " +
-  "and a natural next step. Never invent card content in text — the cards carry it.";
+  "subject — generate_ideas, generate_hooks, write_script (pass the `topic`). Call a tool ONLY when the " +
+  "creator asks for that kind of help; extract the topic from their words and the conversation so far. " +
+  "If they are just talking, asking strategy, or thinking out loud, answer directly — do NOT call a tool " +
+  "they didn't ask for. After a skill runs, its cards are already shown to the creator; add ONE short " +
+  "line pointing at what you made and a natural next step. Never invent card content in text — the cards " +
+  "carry it.";
 
 const DEFAULT_MAX_ROUNDS = 4;
 const DEFAULT_MAX_SKILL_RUNS = 2; // paid-engine leash: skill invocations per dispatch turn

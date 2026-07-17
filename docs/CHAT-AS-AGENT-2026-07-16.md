@@ -5,7 +5,12 @@
 the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 `docs/SPIKE-CORPUS-FN-TOOL-2026-07-16.md` (function calling proven with qwen3.7-plus).
 
-> **▶ START HERE (next session).** The chat path is now a **single STREAMING agent loop (§4e)** — the
+> **▶ STATUS: SHIPPED (2026-07-17, §4k).** Chat-as-agent is DEFAULT-ON (generators only —
+> ideas/hooks/script; simulate/predict removed from chat, audience-tier ineligible). Eager dispatch +
+> anti-hallucination browser-verified; 131 tests green; tsc baseline. Owner said merge+ship+activate.
+> ⚠️ branch was 14 commits behind main at ship time — merge via PR, not a naive local merge.
+>
+> **▶ START HERE (next session).** The chat path is a **single STREAMING agent loop (§4e)** — the
 > ChatGPT/Claude-native shape the owner asked for. Flag-on open chat runs ONE streaming completion:
 > the model streams its answer directly and only pauses to call a tool (a skill → cards, or
 > `search_corpus` → grounding). The old 2-to-3-call path (discarded dispatch pre-flight → runChatPipeline
@@ -15,11 +20,21 @@ the same thread. **Branch:** `spike/corpus-fn-tool`. **Builds on:**
 > (§4c). **Session 5 (§4f):** multi-turn reload FIXED (per-turn rehydration — §4d gap #1 closed) +
 > grounding arm LIVE-VERIFIED headless (search_corpus fires, answer grounds on real corpus creators).
 > **Session 6 (§4g):** live turn persistence (scroll/disappear bug) + premium frameless chat chrome +
-> typing indicator — all owner-hands-on + browser-verified. **Still open (ranked):** **(a) FINISH the
-> OWNER LIVE PASS** — walk EVERY skill via chat (ideas/hooks/script/simulate/predict) with mock OFF,
-> checking latency + correctness; owner did a partial pass (found+fixed the 3 §4g issues). This is the
-> gate before (b). Belt-and-suspenders: re-run the scroll fix with a real hooks dispatch (verified with
-> plain chat; identical code path). **(b) DEFAULT the flag on + retire the selector** (product call,
+> typing indicator — all owner-hands-on + browser-verified. **Session 7 (§4h–§4j): OWNER LIVE PASS ran,
+> then FIXED.** First pass (§4h) failed: simulate/predict never dispatched + faked "card on screen";
+> ideas/script under-dispatched. Fixed (§4i–§4j) in `chat-agent-loop.ts` — anti-hallucination rule,
+> eager-dispatch language (pushback kept for vague asks), and an intent-gated FORCED `tool_choice` for
+> analysis asks (`analysisToolChoice`, reads `rawAsk`). Browser-verified: ideas + script dispatch EAGERLY
+> (real cards, 65s/27.5s); hooks unaffected; hallucination GONE; analysis DISPATCH fires (forced
+> tool_choice proven). **BUT simulate/predict still can't render a card — the REAL blocker is AUDIENCE
+> TIER, not dispatch: the default "General" audience is `mode:"socials"` → Validated, and simulate/predict
+> require Directional; EVERY switcher audience is Validated, so they're ineligible via chat AND selector
+> (pre-existing, §4j). The model now honestly relays that instead of faking. 12 loop tests + 135 across
+> touched areas green; tsc baseline; 0 console errors.** **Still open (ranked):** **(a) OWNER PRODUCT CALL
+> on simulate/predict eligibility** — should the default socials "General" be simulate/predict-eligible,
+> or surface the Analyst/Hiring Directional panels in the switcher? (Blocks end-to-end analysis;
+> independent of chat.) The GENERATOR path (ideas/hooks/script) is gate-GREEN.
+> **(b) DEFAULT the flag on + retire the selector** (product call,
 > keep until prod-proven). **(c) read/profile as tools** (needs `supabase` on the context + profile
 > WRITES an audience — product call). **(d) light attribution / cite corpus creators** as a formal card
 > (model already cites in prose). **(e) skill-dispatch loading** — show the progress spine (chat.stages
@@ -331,6 +346,190 @@ gone (computed-style, no border), typing indicator (component test), scroll/pers
 rephrase" when **mock mode is armed** (`numen_mock` cookie / ⚙ DevMockPanel "Mock skills" toggle),
 because the chat skill has no mock fixture. Dev-only (prod hard-gates mock off). Fix while testing:
 toggle Mock OFF. Candidate polish = (f) in START HERE.
+
+## 4h. Session 7 — the OWNER LIVE PASS ran (mock OFF, all 5 skills) — GATE FAILED
+
+Walked every skill through flag-on chat in a real browser (throwaway account, mock OFF, real DashScope,
+fresh thread, `CHAT_AGENT_DISPATCH=true` + `GROUNDING_CHAT_TOOL=true`). **Result: NOT ready to default
+the flag on.** The plumbing is correct (all 5 tools bind + render real cards when they fire — proven),
+but the model's DISPATCH BEHAVIOR in the real streaming loop is unreliable, and analysis skills fabricate
+cards that never rendered.
+
+**The matrix** (chat POST latency = the tell; a real skill run is 20–55s, a pure-chat completion 4–13s):
+
+| Skill | Auto-dispatch on a natural ask? | On explicit "run the tool"? | Card rendered? | POST | Notes |
+|---|---|---|---|---|---|
+| **hooks** | ✅ YES | — | ✅ 5 real hook-cards | 46s | The ONE reliable case. "Write me 5 hooks for idea 3." |
+| **ideas** | ❌ deferred 2× | ✅ ran on confirm | ✅ 4 real idea-cards | 55s | Model keeps offering "cards vs a chat opinion — which do you want?" |
+| **script** | ❌ deferred 1× | ✅ ran on confirm | ✅ script-card | 23s | "Confirm the method: should I call write_script?" |
+| **simulate** | ❌ NO | ❌ **NO** (even when told) | ❌ **NONE** | 3.9s | **Model FALSELY said "Reaction card is on screen."** |
+| **predict** | ❌ NO | ❌ **NO** (even when told) | ❌ **NONE** | 4.3s | **Model FALSELY said "Prediction gauge is on screen."** |
+
+Verified card counts across the whole thread at the end: 5 hook + 4 idea + 1 script card actions, and
+**0** reaction/gauge card actions — so simulate/predict produced nothing despite the model's claims. 0
+console errors throughout. Latency on the runs that DID fire felt right (hooks 46s, ideas 55s, script
+23s — the typing indicator covers it).
+
+**Two DISTINCT problems (not one):**
+
+1. **HALLUCINATED CARDS (a real bug, fix regardless of voice preference).** For simulate + predict the
+   model never emits the tool call (4s POSTs, no `onBlock`), yet writes the post-tool CLOSING line —
+   *"Reaction card is on screen… "* / *"Prediction gauge is on screen…"* — describing a scored artifact
+   that does not exist. Root cause: the tool-use directive tells the model that AFTER a tool runs it
+   should "add ONE short line pointing at what you made"; the model pattern-matches to that closing
+   behavior while SKIPPING the actual call. A creator would trust a reaction/forecast that was never run.
+   Worse for analysis than generators because testing-a-hook / forecasting-a-scenario is exactly what the
+   KC advisor voice does natively in prose, so the model "answers" instead of calling the tool.
+
+2. **UNDER-DISPATCH (a voice-vs-dispatch tradeoff for the owner to tune).** Even generators prefer
+   conversation: ideas + script defer and ask "do you want the tool or a chat opinion?" before running,
+   firing only on an explicit second "yes, run the tool." The KC chat voice (strategic advisor who pushes
+   back + gives judgments) plus the directive's hedges — *"Call a tool ONLY when it fits the ask… if the
+   creator is just talking or asking strategy, answer conversationally — do not call a tool they didn't
+   ask for"* (`chat-agent-loop.ts` `toolUseDirective`) — over-suppress calls. NOTE: the pushback itself
+   is arguably GOOD (it rejected a generic "morning routines for busy people" ask and asked for a niche
+   first — the deliberate anti-slop voice). The problem is it never CONVERTS to a dispatch without a
+   manual confirm, which defeats the "just talk, get cards" vision.
+
+**Why the headless spikes (§3/§4e, 5/5 & 7/7) missed this:** those used a barebones dispatch prompt
+(`DISPATCH_SYSTEM_PROMPT`); the real route composes `KC_CHAT_SYSTEM_PROMPT` (the pushback voice) +
+`toolUseDirective` + the grounding bundle. The voice prompt dominates routing — the spike never exercised
+it. Also §4c explicitly noted simulate/predict were "NOT live-run through the real adapter (runners
+mocked)" — this is their first real test, and it exposed the non-dispatch + hallucination.
+
+**All 5 tools are correctly registered + bound** (`skill-dispatch.ts` `SKILL_TOOLS`; loop binds
+`tools=[...schemas, search_corpus?]`, `tool_choice:"auto"`) — the adapters + `requireDirectionalAudience`
+guard are fine, proven by hooks/ideas/script rendering real cards. So this is a PROMPT/ROUTING fix, not a
+rewire.
+
+**Recommendation — NO-GO on (b) default-flag-on until dispatch is fixed.** Proposed, in order:
+- **Fix the hallucination first (unambiguous):** add a hard line to `toolUseDirective` — *"NEVER say a
+  card, gauge, or reaction is 'on screen' / 'generated' unless you actually called the tool THIS turn.
+  If you did not call a tool, do not describe a card."* Cheapest, highest-trust win; re-verify
+  simulate/predict.
+- **Then tune dispatch:** soften the "answer conversationally / don't call a tool they didn't ask for"
+  hedge so a clear make/test/forecast ask converts to a call in ONE turn; keep the anti-slop pushback for
+  genuinely vague asks. Consider a light intent gate that flips `tool_choice:"required"` when the ask is
+  an unambiguous skill request. This is a VOICE tradeoff — owner should confirm how eager dispatch should
+  be before defaulting on.
+- Re-run this same 5-skill pass after the change (the gate).
+
+**Minor secondary finding:** on chat-rendered HOOK cards the "Write script →" chain button is `[disabled]`
+(the selector-flow hook cards enable it). Not blocking — you can chain by typing "write a script for hook
+1" — but worth wiring or hiding so the card doesn't show a dead control.
+
+**Scroll-fix re-verify (§4g belt-and-suspenders) — PASSED with a REAL dispatch.** After the 46s hooks
+run, all prior turns persisted in DOM order (ideas-pushback → ideas-prose → hooks-cards); nothing
+vanished, region stayed scrollable. Frameless chrome held (answers as prose under the "Maven" label,
+cards self-frame). So §4g's live-turn persistence is solid on the dispatch path too, not just plain chat.
+
+## 4i. Session 7 (cont.) — the dispatch fix + re-run: 2 of 3 fixed, analysis still resists
+
+Owner picked "fix both, re-run gate." Edited `toolUseDirective` (`chat-agent-loop.ts`) — added (1) an
+anti-hallucination rule ("NEVER say a card/gauge/reaction is on screen unless you called the tool THIS
+turn") and (2) eager-dispatch language ("when the ask is a clear make/test/forecast request, CALL the
+tool THIS turn — don't ask card-vs-opinion, don't write it yourself"), keeping the anti-slop pushback for
+vague/generic asks. Unit tests still 7/7, tsc clean (4 grounding baseline). Re-ran in a real browser:
+
+- ✅ **Hallucination FIXED.** Simulate/predict no longer claim a card that didn't render — verified twice
+  (`claimsCardOnScreen:false`, 0 card actions). The trust bug is closed.
+- ✅ **Generators dispatch eagerly.** "Give me 3 ideas for budget meal-prep for broke college students"
+  fired `generate_ideas` on the FIRST ask (65s, real ranked idea-cards + per-persona breakdown) — no more
+  "cards vs opinion" deferral.
+- ✅ **Anti-slop pushback PRESERVED.** The generic "ideas for morning routine videos" still gets a
+  pushback ("give me one constraint / audience detail"), not a wasted paid run.
+- ❌ **Analysis skills (simulate/predict) STILL won't dispatch.** Two attempts — "Test how my audience
+  would react to this hook: …" and the exact trigger phrase "Gut-check this hook with my audience: …" —
+  both produced a prose CRITIQUE of the hook (11s / 14s, no tool call), even after the directive was
+  strengthened with phrase-specific "'gut-check this' … IS a simulate_reaction call, pass their words as
+  `draft` and CALL IT; a prose take is NOT a substitute." The KC advisor voice satisfies a "test/gut-
+  check/predict this" ask with a qualitative read and treats its own prose AS the answer. Prompt-only
+  tuning has hit a wall here.
+
+**Diagnosis.** Generators map cleanly to "produce an artifact" so eager language converts them; analysis
+asks ("gut-check / how would they react / will this work") collide head-on with the advisor voice, which
+answers them natively in prose. `tool_choice:"auto"` lets the model keep choosing prose. **The reliable
+fix is structural, not prompt:** detect a clear analysis intent + a quotable draft, then force
+`tool_choice` to the specific tool (`{type:"function",function:{name:"simulate_reaction"}}`) for that
+round so the model MUST call it and extract the `draft`. ~20–40 lines in the loop; heuristic, so it needs
+a guard against misfiring on genuine chat-about-a-hook. That's a distinct change from the prompt tweak and
+its own decision (owner-gated). **The prompt fixes above are real wins and should stay regardless.**
+
+## 4j. Session 7 (cont.) — structural dispatch fix + the REAL simulate/predict blocker (audience tier)
+
+Implemented the structural fix and traced simulate/predict to the ground. **Net: dispatch is fixed for
+all five; simulate/predict are blocked one layer deeper by a pre-existing AUDIENCE-ELIGIBILITY rule, not
+by dispatch.**
+
+**The fix (`chat-agent-loop.ts`).** Added `analysisToolChoice(rawAsk, skills)` — an intent gate that,
+when the ask is an unambiguous test/gut-check/react-to (→ simulate_reaction) or will-this-work/forecast
+(→ predict_outcome) of a CONCRETE draft (quoted text or "this hook/post/plan/…"), forces
+`tool_choice` to that tool on round 1 only (later rounds → "auto" for the closing line). Guarded so a
+plain "what makes a good hook?" or "how could I improve this hook: '…'" (a critique, no test verb) stays
+conversational. New input field `rawAsk` (route passes the pre-`assembleBundle` message) so the gate reads
+the creator's actual words, not the fenced bundle. Also added an error-relay directive line. Unit tests:
+`chat-agent-loop.test.ts` 12 green (added: forced-choice round-1 behaviour + a 5-case `analysisToolChoice`
+table); route + skill-dispatch suites green (135 across the touched areas); tsc at the 4-error grounding
+baseline; 0 console errors.
+
+**Verified live (real browser, mock OFF), gate re-run:**
+- ✅ **ideas** — eager dispatch on the FIRST specific ask (65s, real ranked idea-cards). Was deferring.
+- ✅ **script** — eager dispatch (27.5s, real script-card, honest "Script card is on screen"). Was deferring.
+- ✅ **hooks** — still auto-dispatches (unaffected; the fix only strengthens dispatch).
+- ✅ **pushback preserved** — generic "ideas for morning routine videos" → a "give me one constraint"
+  pushback, no wasted paid run.
+- ✅ **hallucination fixed** — simulate/predict no longer claim a phantom card.
+- ✅ **analysis dispatch FIRES** — the forced `tool_choice` makes `simulate_reaction` actually call (proven
+  via round-1 instrumentation: `calls=[simulate_reaction]`; a standalone probe confirmed DashScope honors
+  a forced object `tool_choice` in streaming — even `auto` dispatches under a minimal prompt, so the KC
+  voice was the only thing suppressing it).
+
+**THE REAL BLOCKER for simulate/predict — audience tier (pre-existing, NOT dispatch).** With the tool now
+firing, `runSimulate`'s `requireDirectionalAudience(ctx.audience)` THROWS: *"that audience isn't eligible —
+Simulate and Predict run against a General (Directional) audience."* Why: `GENERAL_AUDIENCE.mode ===
+"socials"` (audience-repo.ts:47, the "PITFALL 1 collision trap" — the default General runs the SOCIALS
+pack), so `resolveTier` returns **Validated**, and both the guard AND the simulate/predict ROUTES reject
+non-Directional audiences (`resolveTier(audience) !== "Directional"` → throw / 400). **Every audience in
+the creator's switcher is Validated** (General·Default, Growth, Conversion — all `mode:"socials"`); the
+only Directional (`mode:"general"`) audiences are the Analyst/Hiring GENERAL_TEMPLATES, which are NOT
+surfaced there. **So simulate/predict cannot render a card for a normal creator account via ANY path
+(chat or selector) — an eligibility/product gap, independent of this chat work.** The forced dispatch is
+harmless here (requireDirectionalAudience throws BEFORE any paid-engine call), and with the error-relay
+line the model now **honestly relays** the failure ("your audience needs more grounding to simulate a real
+read — want to add niche context, or forecast instead?") rather than faking a prose analysis or a card.
+
+**Where this leaves the gate.** Generators (ideas/hooks/script) + hallucination + pushback + honest error
+relay are all GREEN and browser-verified — the generator path is ready to consider for default-on.
+Simulate/predict DISPATCH correctly but are gated by the audience-tier rule; whether the default socials
+"General" audience SHOULD be simulate/predict-eligible (or the Analyst/Hiring panels surfaced in the
+switcher) is an owner product decision, tracked here, separate from the chat-as-agent feature.
+
+## 4k. Session 7 (final) — SHIPPED: generators-only, flag DEFAULT-ON, simulate/predict removed
+
+Owner call: "ship and document everything; simulate and predict got removed anyway; everything else
+merged, shipped, and activated." Done:
+
+- **Removed simulate/predict from chat dispatch.** Dropped the `simulate_reaction` + `predict_outcome`
+  entries from `SKILL_TOOLS` and their orphaned helpers (`analysisSchema`, `requireDirectionalAudience`,
+  the simulate/predict runner imports). The chat agent now dispatches ONLY the generators
+  (ideas/hooks/script). The standalone `/api/tools/{simulate,predict}` selector routes + runners are
+  UNTOUCHED (they still own those skills for the "Test a video" surface). Also removed the now-purposeless
+  `analysisToolChoice` forced-tool-choice machinery + the `rawAsk` plumbing + the analysis language in the
+  tool-use directive (kept: eager generator dispatch, anti-hallucination, generic error-relay).
+- **Flag DEFAULT-ON.** `isChatAgentDispatchEnabled()` / `isCorpusChatToolEnabled()` now default ON
+  (`process.env.X !== "false"` — set `"false"` to disable). The chat-as-agent path + corpus grounding are
+  live by default.
+- **Tests updated + green.** `chat-agent-loop.test.ts` (7) + `skill-dispatch.test.ts` (9) trimmed to the
+  generator/generic-seam surface; the route tests pin the flag explicitly (legacy runChatPipeline tests
+  `"false"`, dispatch tests `"true"`) + a new "unset env → defaults ON" test. 131 green across the touched
+  areas; tsc at the 4-error grounding baseline; 0 console errors.
+- **Browser-verified post-removal:** "Give me 3 ideas for …" → 4 real idea-cards (generator path intact);
+  "Test how my audience would react to this hook: …" → a clean conversational read, NO phantom card
+  (simulate cleanly gone, anti-hallucination holds).
+
+**Open (owner):** if simulate/predict should return to chat later, they need a Directional-eligible
+audience path (the §4j audience-tier issue) — unrelated to this ship. The tool SELECTOR stays for now
+(not retired this session).
 
 ## 5. Guardrails (hold these)
 

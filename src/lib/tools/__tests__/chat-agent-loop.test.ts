@@ -154,15 +154,15 @@ describe("runChatAgentStream [tools]", () => {
     expect(hooks.run).not.toHaveBeenCalled();
   });
 
-  it("refuses a skill call missing its primary arg (analysis skill needs draft)", async () => {
-    const simulate = mkSkill("simulate_reaction", { primaryArg: "draft" });
-    const stream = mockStream([[toolName(0, "c1", "simulate_reaction"), toolArgs(0, "{}")], [textChunk("ok")]]);
+  it("refuses a skill call missing its declared primary arg (generic draft-shape seam)", async () => {
+    const draftSkill = mkSkill("needs_draft", { primaryArg: "draft" });
+    const stream = mockStream([[toolName(0, "c1", "needs_draft"), toolArgs(0, "{}")], [textChunk("ok")]]);
 
-    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [simulate] }));
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [draftSkill] }));
 
     expect(res.skillRuns).toHaveLength(0);
     expect(res.toolCalls[0]!.note).toBe("no draft");
-    expect(simulate.run).not.toHaveBeenCalled();
+    expect(draftSkill.run).not.toHaveBeenCalled();
   });
 
   it("absorbs a skill run error without throwing", async () => {
