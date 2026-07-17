@@ -1,10 +1,11 @@
 /**
- * runTwoAudienceRead — the pulled-forward killer feature (Plan 08-06, W4 / D-08/D-09).
+ * runTwoAudienceRead — the concept Read (Plan 08-06, W4 / D-08/D-09; re-scoped by P3).
  *
- * Score ONE concept against TWO audiences side by side, defaulting to the active
- * calibrated audience vs General (which doubles as proof calibration MOVES the
- * verdict). The DELTA between the two verdicts is the one-line Read + Lever — the
- * foresight payoff: "wins for growth, bombs for buyers".
+ * Score ONE concept against the selected audience — or against TWO side by side when
+ * the caller explicitly passes a distinct same-mode pair (the list page's Compare).
+ * P3 (owner-confirmed) killed the always-on General second side: the default Read is
+ * SINGLE now. In an explicit compare, the DELTA between the two verdicts is the
+ * one-line Read + Lever — the foresight payoff: "wins for growth, bombs for buyers".
  *
  * This EXTENDS the multi-audience-read block (Plan 08-05, W3) from 1 to 2 audiences.
  * The block schema's `audiences` array was built W4-ready, so this is purely additive:
@@ -167,24 +168,24 @@ function buildDelta(self: { name: string; band: FlashBand }, other: { name: stri
 }
 
 /**
- * Read one concept against up to 2 audiences side by side (D-08/D-09).
+ * Read one concept against 1 audience — or 2 side by side when the caller explicitly
+ * asks for a compare (D-08/D-09, re-scoped by P3).
  *
- * Defaulting: if only ONE distinct audience is passed, General is filled as the
- * comparison pair (the default = active calibrated audience vs General, D-09). The
- * pick is capped at 2 for v1 legibility — extra audiences are dropped (array-ready
- * for N).
+ * Defaulting (P3, owner-confirmed): ONE distinct audience reads ALONE. The old behavior
+ * filled GENERAL_AUDIENCE as a phantom second side — a full extra Flash pass, billed, on
+ * every default Read. A compare now requires two DISTINCT, SAME-MODE audiences in the
+ * input (the list page's explicit Compare). The pick stays capped at 2 for v1 legibility —
+ * extra audiences are dropped (array-ready for N).
  *
- * Identity dedupe (CR-02): audiences are deduped by `id` BEFORE defaulting. When the
- * two resolved audiences are the SAME audience (e.g. the common default where no
- * calibrated audience is pinned → [General, General]), the result collapses to a
- * SINGLE-audience Read rather than a degenerate self-compare ("Both General and
- * General land the same"). A genuine compare requires two distinct audiences.
+ * Identity dedupe (CR-02): audiences are deduped by `id` first, so a same-identity pair
+ * (e.g. [General, General]) reads SINGLE rather than as a degenerate self-compare
+ * ("Both General and General land the same").
  *
  * @param concept    The concept/hook text to read.
- * @param audiences  1 or 2 audiences. 1 → [active, General]. >2 → first 2 kept.
- *                   Same-identity pairs collapse to a single-audience Read.
- * @returns A `multi-audience-read` block with 1 entry (same-identity / single-audience
- *          case) or 2 per-audience entries (genuine compare) — each carrying
+ * @param audiences  1 or 2 audiences. 1 → single-audience Read (no General fill).
+ *                   2 distinct same-mode → compare. >2 → first 2 kept.
+ * @returns A `multi-audience-read` block with 1 entry (single-audience Read — the
+ *          default) or 2 per-audience entries (explicit compare) — each carrying
  *          band + fraction + interpretation + Lever + who-not-for + persona drill,
  *          bands only, `model: "sim1-flash"` provenance.
  */
@@ -193,12 +194,10 @@ export async function runTwoAudienceRead(
   audiences: Audience[],
 ): Promise<MultiAudienceReadBlock> {
   // ── Dedupe by audience IDENTITY first (CR-02) ──────────────────────────────
-  // The route ALWAYS passes a 2-element [active, second] array, so a length check
-  // is not enough: the common default (no calibrated audience pinned, no explicit
-  // second pick) resolves to [General, General]. Comparing General-to-General
-  // renders a degenerate "General: Strong · General: Strong / Both General and
-  // General land the same" Read. Collapse same-identity pairs to ONE audience BEFORE
-  // defaulting, so the dedupe fires regardless of array length.
+  // The route's default path passes ONE audience now (P3), but the explicit-pair API
+  // still accepts arbitrary ids — [a, a] must read SINGLE, not as the degenerate
+  // "Both a and a land the same" self-compare. Collapse same-identity entries BEFORE
+  // the single-vs-compare split, so the dedupe fires regardless of array length.
   const distinct: Audience[] = [];
   const seenIds = new Set<string>();
   for (const aud of audiences.slice(0, MAX_AUDIENCES)) {
@@ -219,54 +218,35 @@ export async function runTwoAudienceRead(
   // The two sides are asked DIFFERENT QUESTIONS (would you scroll past · are you convinced), so a
   // delta between their bands is an artifact of the frame, not a fact about the concept.
   //
-  // This filter runs on the DEDUPED list, BEFORE defaulting, because the route always hands us a
-  // 2-element [active, second] array — a length check would never catch the real shape (the bug a
-  // unit test missed and a live run caught). A general-mode lead keeps only general-mode company;
-  // everything else is dropped and it reads SINGLE (the self-pair collapse below).
+  // This filter runs on the DEDUPED list, BEFORE the single-vs-compare split, so an explicit
+  // cross-mode input can never sneak into the compare path (the bug a unit test missed and a
+  // live run caught — the route used to always hand us [active, General]). A general-mode lead
+  // keeps only general-mode company; everything else is dropped and it reads SINGLE.
   //
   // A general-mode CONTROL would have to be an authored general panel. That belongs to the General
   // pack (domain-pack.ts reserves the slot), not to this seam.
   const lead = distinct[0];
   const comparable = lead ? distinct.filter((a) => a.mode === lead.mode) : distinct;
 
-  // Default pair (D-09): a single active audience compares against General.
-  // Dedupe the explicit General case so we never compare General to General.
-  let pair: Audience[];
-  if (comparable.length === 0) {
-    pair = [GENERAL_AUDIENCE, GENERAL_AUDIENCE];
-  } else if (comparable.length === 1) {
-    const first = comparable[0]!;
-    if (first.is_general) {
-      pair = [GENERAL_AUDIENCE, GENERAL_AUDIENCE];
-    } else if (first.mode === "general") {
-      // Self-pair → collapses to ONE honest entry below. Compared against nothing, because
-      // there is nothing here it is comparable to.
-      pair = [first, first];
-    } else {
-      pair = [first, GENERAL_AUDIENCE];
-    }
-  } else {
-    // Two distinct, SAME-MODE audiences — the genuine compare path (panel-vs-panel or
-    // crowd-vs-crowd). Cross-mode explicit pairs are also rejected upstream at the route
-    // (400 audience_mode_mismatch) so the user gets an explanation, not a silent drop.
-    pair = comparable;
-  }
-
-  // ── Single-audience Read (CR-02): both sides are the SAME identity ──────────
-  // When the dedupe collapsed to a self-pair (e.g. the default General-only case),
-  // present a single-audience Read — NOT a degenerate self-compare. One entry, no
-  // delta framing against an identical "other" audience (which would read as the
-  // dishonest "Both General and General land the same").
-  const isSelfPair = pair[0]!.id === pair[1]!.id;
-  if (isSelfPair) {
-    const { entry, band } = await readForAudience(concept, pair[0]!);
+  // ── Single-audience Read — the DEFAULT (P3, owner-confirmed) ────────────────
+  // ONE distinct audience reads ALONE. The old branch filled GENERAL_AUDIENCE as a
+  // phantom second side here — a full extra Flash pass, billed, on every default Read
+  // of a pinned audience. A compare now requires two distinct same-mode audiences in
+  // the input (the list page's explicit Compare → audienceIds: [a, b]).
+  //
+  // This branch subsumes the old CR-02 self-pair collapse ([General, General] dedupes
+  // to length 1) and the MODE-01 drop (a panel stripped of its incomparable company
+  // reads single). comparable can only be empty if the CALLER passed [] — read General.
+  if (comparable.length <= 1) {
+    const single = comparable[0] ?? GENERAL_AUDIENCE;
+    const { entry, band } = await readForAudience(concept, single);
     // No comparison audience → no delta. The interpretation states this audience's
     // verdict on its own terms; the lever points at the single verdict.
     //
     // MODE-01: the socials copy ("sharpen the hook", "tighten the opener", "wins/bombs") is FYP
     // language — it tells a panel of analysts to fix a scroll-stopper. A general-mode audience
     // gets copy about its own frame: the case either lands or it doesn't.
-    const isGeneral = pair[0]!.mode === "general";
+    const isGeneral = single.mode === "general";
     const interpretation = isGeneral
       ? `${entry.name} ${GENERAL_BAND_VERB[band]} (${band}).`
       : `${entry.name} ${BAND_VERB[band]} (${band}).`;
@@ -286,16 +266,20 @@ export async function runTwoAudienceRead(
       props: {
         audiences: [{ ...entry, interpretation, lever }],
         model: "sim1-flash",
-        // Run-level honesty tier (TRUST-01) — the ACTIVE audience is the lead (pair[0]).
-        // Presentation-only; resolveTier is the single source of truth (never-Validated-
-        // for-general rule, T-03-15). Self-pair: lead === the single audience.
-        tier: resolveTier(pair[0]!),
+        // Run-level honesty tier (TRUST-01) — presentation-only; resolveTier is the
+        // single source of truth (never-Validated-for-general rule, T-03-15).
+        tier: resolveTier(single),
         // ROLLUP-01 — what was read. A single-audience Read has no second side, so it
         // contributes persona reactions to the rollup but NEVER a divergence case.
         concept,
       },
     };
   }
+
+  // Two distinct, SAME-MODE audiences — the explicit compare path (panel-vs-panel or
+  // crowd-vs-crowd). Cross-mode explicit pairs are also rejected upstream at the route
+  // (400 audience_mode_mismatch) so the user gets an explanation, not a silent drop.
+  const pair = comparable;
 
   // Resolve + run Flash per audience SEPARATELY (the second resolve is real, D-08).
   const reads = await Promise.all(pair.map((aud) => readForAudience(concept, aud)));
