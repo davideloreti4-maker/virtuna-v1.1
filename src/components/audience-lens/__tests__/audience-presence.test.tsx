@@ -595,6 +595,46 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
   });
 });
 
+// ── variant='rail' — the PERSISTENT, in-flow presentation (P2, ambient-room-v2) ──
+// The rail hosts the SAME Room body as the 'thread' bloom, but shown ALWAYS, in-flow, inside a
+// fixed-height column: it never blooms, never collapses, has no z-[55] overlay. The binding
+// property a pre-rail build cannot satisfy: with open=false the Room body is STILL mounted (the
+// 'thread' variant shows only the peek band there). These guards fail against the old code.
+describe("AudiencePresence — variant='rail' (persistent, in-flow, no bloom)", () => {
+  it('mounts the Room body PERSISTENTLY even when open=false (the rail never blooms)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    // The in-flow rail container, never the bloom panel.
+    expect(screen.getByTestId('audience-rail')).toBeInTheDocument();
+    expect(screen.queryByTestId('audience-panel')).toBeNull();
+    // The v6 Room body is mounted DESPITE open=false — the whole point of the rail. (Against the
+    // pre-rail code, open=false renders the peek band and this group is absent → red.)
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
+  });
+
+  it('is not a dialog and carries no collapse affordance (never dismisses)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    // role="dialog" belongs to the modal-ish bloom; the persistent rail is in-flow content.
+    expect(screen.getByTestId('audience-rail').getAttribute('role')).toBeNull();
+    expect(screen.queryByRole('button', { name: /collapse your audience/i })).toBeNull();
+  });
+
+  it('surfaces the seam on the dock root as data-variant="rail"', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('rail');
+  });
+
+  // The contrast that makes the persistence meaningful — and documents exactly why the first
+  // assertion above fails against pre-rail code: the DEFAULT 'thread' variant with open=false
+  // shows ONLY the peek band, no Room body. (This one passes on old and new code alike.)
+  it("contrast — the 'thread' variant with open=false shows only the peek band (no Room)", () => {
+    setup({ variant: 'thread', open: false, focus: FOCUS });
+    expect(screen.queryByTestId('audience-rail')).toBeNull();
+    expect(screen.getByRole('button', { name: /open your audience/i })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
+  });
+});
+
 // ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {

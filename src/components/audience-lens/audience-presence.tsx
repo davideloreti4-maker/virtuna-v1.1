@@ -156,8 +156,14 @@ export interface AudiencePresenceProps {
    *  presentation EXCEPT the composer-bound affordances are gated off: the Rewrite CTA is forced
    *  off (`canRewrite=false`) and the idle copy drops the "type below" prompt (§3 sign-off delta —
    *  no ask input / Rewrite unless the surface hosts a composer). Currently unmounted (the /start
-   *  dock was retired in #208) but kept forward-ready per `docs/SURFACE-SEAM-SPEC.md` §2. */
-  variant?: 'thread' | 'surface';
+   *  dock was retired in #208) but kept forward-ready per `docs/SURFACE-SEAM-SPEC.md` §2.
+   *
+   *  'rail' = the PERSISTENT presentation (P2, ambient-room-v2). The panel BODY is always shown
+   *  in-flow inside a fixed-height column — it never blooms, never collapses, has no z-[55] overlay
+   *  and no rise animation. The desktop right rail (≥xl) and the mobile expand-sheet host this. The
+   *  inner <AmbientRoom>/idle cast is byte-identical to the 'thread' panel; only the CONTAINER
+   *  changes (an absolute upward bloom → an in-flow card), so this is a re-host, not a rebuild. */
+  variant?: 'thread' | 'surface' | 'rail';
 }
 
 export function AudiencePresence({
@@ -194,6 +200,10 @@ export function AudiencePresence({
   // constellation, the roster, the on-focus AmbientRoom) is already read-only. Guarded so
   // variant='thread' stays byte-identical (§3 sign-off delta; docs/SURFACE-SEAM-SPEC.md §2.1).
   const isSurface = variant === 'surface';
+  // 'rail' = the persistent, in-flow presentation (P2). The panel body renders like the OPEN
+  // bloom, but the container is a static full-height card: no `absolute bottom-full z-[55]`, no
+  // rise animation, no collapse chevron. It shows regardless of `open` (the rail never dismisses).
+  const isRail = variant === 'rail';
   const effectiveCanRewrite = isSurface ? false : canRewrite;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // "Meet your room" persona chat — the idle-cast introduction (meet-mode: no reaction yet).
@@ -696,28 +706,43 @@ export function AudiencePresence({
   );
 
   return (
-    <div ref={dockRootRef} className="relative w-full" data-testid="audience-presence" data-variant={variant}>
-      {open ? (
-        /* ── OPEN: the panel expands UPWARD and connects into the composer as ONE surface. Its
-              bottom is flush with the composer (border-b-0 + shared surface tone); the composer box
-              flattens its top when open. The audience SWITCHER sits at the TOP of this card. ── */
+    <div
+      ref={dockRootRef}
+      className={isRail ? 'flex h-full min-h-0 w-full flex-col' : 'relative w-full'}
+      data-testid="audience-presence"
+      data-variant={variant}
+    >
+      {open || isRail ? (
+        /* ── OPEN / RAIL: the panel body (switcher bar + Room/idle). In 'thread' it expands UPWARD
+              and connects into the composer as ONE surface (absolute bloom, rise animation). In
+              'rail' the SAME body renders in-flow inside a fixed-height card — no bloom, no rise,
+              no collapse (isRail branches the container, never the body). The audience SWITCHER
+              sits at the TOP of this card either way. ── */
         <div
-          data-testid="audience-panel"
-          role="dialog"
+          data-testid={isRail ? 'audience-rail' : 'audience-panel'}
+          role={isRail ? undefined : 'dialog'}
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
-            (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
-            (reducedMotion
-              ? ''
-              : 'transition-[transform,opacity] duration-300 ease-out ' +
-                (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
+            isRail
+              ? // Persistent rail/header card: static, full-height, matte (12px radius, no shadow,
+                // no upward-bloom transform). Fills its host column; the body scrolls internally.
+                'relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-none'
+              : 'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+                (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
+                (reducedMotion
+                  ? ''
+                  : 'transition-[transform,opacity] duration-300 ease-out ' +
+                    (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
           }
-          style={{
-            ...(reducedMotion ? {} : { willChange: 'transform' }),
-            // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
-            ...(panelMaxH != null ? { maxHeight: panelMaxH } : {}),
-          }}
+          style={
+            isRail
+              ? undefined
+              : {
+                  ...(reducedMotion ? {} : { willChange: 'transform' }),
+                  // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
+                  ...(panelMaxH != null ? { maxHeight: panelMaxH } : {}),
+                }
+          }
         >
           {/* Switcher bar — TOP of the card (identity + readiness + collapse). */}
           <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
@@ -729,14 +754,17 @@ export function AudiencePresence({
               {openPulse}
             </span>
             {arrivalBadge}
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Collapse your audience"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
-            >
-              <ChevronDown className="h-4 w-4" aria-hidden />
-            </button>
+            {/* Collapse — 'thread' bloom only. The rail never dismisses (§2), so it has no chevron. */}
+            {!isRail && (
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="Collapse your audience"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+              >
+                <ChevronDown className="h-4 w-4" aria-hidden />
+              </button>
+            )}
           </div>
 
           {asking && (
