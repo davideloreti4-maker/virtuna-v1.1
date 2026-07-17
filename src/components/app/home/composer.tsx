@@ -1719,12 +1719,18 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
     // the presence falls back to the honest fraction-expansion placeholders.
     const personas = Array.isArray(p.personas) ? p.personas : undefined;
+    // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection onto the
+    // focus so the Room's "Population · 1,000" view shows THIS card's real N-individual numbers
+    // instead of the honest-lean "MODELED FROM YOUR 10" fallback (which densifies the k/10 SIM and
+    // can DISAGREE with the card's projection). Absent on General/legacy cards → the fallback stands.
+    const population = p.population ?? undefined;
     return {
       id: `${kind}-${idx}`,
       conceptText: concept,
       fraction,
       scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
       personas,
+      population,
     };
   };
   const ambientDescriptors: AmbientCardDescriptor[] = (() => {
