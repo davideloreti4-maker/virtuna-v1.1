@@ -130,8 +130,15 @@ You don't need to invent this. It's missing its deepest stop.
   `browser_evaluate`, or raw Playwright with `animations: 'disabled'`. See CLAUDE.md.
 - Note what §3 got wrong. Amend this doc before building.
 
-### P1 — Panel craft pass (placement-agnostic, safe, visible)
-Internal to the panel; survives whatever placement wins. Take the ranked view's grammar as the bar.
+> ⚠️ **ORDER CORRECTION (2026-07-17, after the forks closed): do P2 BEFORE P1.**
+> The doc originally had craft first, on the reasoning that it's placement-agnostic. That's wrong for
+> **2 of the 6 items**: §3.5 (dead wells) is *deleted* by P2, and §3.6 (the header) is *reshaped* by it —
+> a header in a rail is not a header on a band. Craft-then-move = craft twice. P2 is a **re-parent, not
+> a rewrite** (every component in §7 survives), so the risk is lower than it reads.
+> **Run order: P0 → P2 → P1 → P3.**
+
+### P1 — Panel craft pass (do AFTER P2, in the final container)
+Take the ranked view's grammar as the bar.
 1. Kill the truncation (§3.1)
 2. De-duplicate the repeated facts (§3.2)
 3. Row-as-target, drop the repeated CTAs (§3.3)
