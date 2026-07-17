@@ -47,6 +47,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
     audienceName,
     coverUrl,
     proof,
+    population,
   } = block.props;
 
   // Read RemixDevelopContext — enables RemixThreadView to provide the handler without
@@ -138,6 +139,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
           suffix="adapted hook"
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={adaptedHook}
+          population={population}
           platform={platform}
           rewrite={buildCardRewrite({
             skill: 'remix',

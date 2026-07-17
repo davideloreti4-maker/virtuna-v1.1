@@ -160,6 +160,45 @@ export function parseGroundedProp(value: unknown): boolean {
   return value === true;
 }
 
+// ─── Population aggregate (Audience Sim v2, Stage 2) ────────────────────────────
+// The wire mirror of `PopulationAggregate` (src/lib/audience/population.ts) — the REAL
+// O(N) score of ~1,000 individuals sampled off the signature's 10 segments (NOT the 10's
+// rollup at higher resolution). Carried on a card so the AudienceLens Population·1,000 Sheet
+// renders the genuine distribution the type-to-room path already shows. The interface fields
+// are mirrored exactly so `z.infer` is structurally assignable to `PopulationAggregate`.
+// OPTIONAL on the block → General / legacy / uncharacterized runs omit it byte-identically.
+// Declared before the card schemas because idea/hook/script/remix cards all reference it.
+export const PopulationSegmentSchema = z.object({
+  archetype: z.string(),   // engine slug — keys the swarm nodes + the legacy breakdown
+  displayName: z.string(), // creator label (display_name) falling back to the archetype label
+  share: z.number(),       // 0..1 share of the audience
+  total: z.number(),       // individuals sampled into this segment
+  stop: z.number(),        // how many stopped
+  stopPct: z.number(),     // stop / total × 100
+});
+
+export const PopulationAggregateSchema = z.object({
+  total: z.number(),
+  stop: z.number(),
+  scroll: z.number(),
+  stopPct: z.number(),
+  segments: z.array(PopulationSegmentSchema),
+  reasons: z.array(z.object({ reason: z.string(), count: z.number() })),
+});
+
+export type PopulationAggregateBlock = z.infer<typeof PopulationAggregateSchema>;
+
+/**
+ * `population` at the wire boundary — safeParse, not trust-the-wire (mirrors parseTargetProp).
+ * A malformed aggregate → undefined → the Sheet falls back to the honest-lean rollup swarm,
+ * never a broken distribution (the honesty spine: no fabricated crowd off an unvalidated payload).
+ */
+export function parsePopulationProp(value: unknown): PopulationAggregateBlock | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed = PopulationAggregateSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 export const IdeaCardBlockSchema = z.object({
   type: z.literal("idea-card"),
   props: z.object({
@@ -198,6 +237,11 @@ export const IdeaCardBlockSchema = z.object({
     // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Ideas
     // fan out, so this is the card type where a half-attributed grid was visible.
     grounded: z.boolean().optional(),
+    // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for this idea —
+    // a REAL O(N) score of ~1,000 sampled individuals (per-segment stop split), computed by the
+    // runner when the active signature carries the v2 axes. Feeds the AudienceLens Population·1,000
+    // Sheet. OPTIONAL → General / legacy / uncharacterized runs omit it (byte-identical shape).
+    population: PopulationAggregateSchema.optional(),
   }),
 });
 
@@ -274,44 +318,6 @@ export type HookCardTarget = z.infer<typeof HookCardTargetSchema>;
 export function parseTargetProp(value: unknown): HookCardTarget | undefined {
   if (!value || typeof value !== "object") return undefined;
   const parsed = HookCardTargetSchema.safeParse(value);
-  return parsed.success ? parsed.data : undefined;
-}
-
-// ─── Population aggregate (Audience Sim v2, Stage 2) ────────────────────────────
-// The wire mirror of `PopulationAggregate` (src/lib/audience/population.ts) — the REAL
-// O(N) score of ~1,000 individuals sampled off the signature's 10 segments (NOT the 10's
-// rollup at higher resolution). Carried on a card so the AudienceLens Population·1,000 Sheet
-// renders the genuine distribution the type-to-room path already shows. The interface fields
-// are mirrored exactly so `z.infer` is structurally assignable to `PopulationAggregate`.
-// OPTIONAL on the block → General / legacy / uncharacterized runs omit it byte-identically.
-export const PopulationSegmentSchema = z.object({
-  archetype: z.string(),   // engine slug — keys the swarm nodes + the legacy breakdown
-  displayName: z.string(), // creator label (display_name) falling back to the archetype label
-  share: z.number(),       // 0..1 share of the audience
-  total: z.number(),       // individuals sampled into this segment
-  stop: z.number(),        // how many stopped
-  stopPct: z.number(),     // stop / total × 100
-});
-
-export const PopulationAggregateSchema = z.object({
-  total: z.number(),
-  stop: z.number(),
-  scroll: z.number(),
-  stopPct: z.number(),
-  segments: z.array(PopulationSegmentSchema),
-  reasons: z.array(z.object({ reason: z.string(), count: z.number() })),
-});
-
-export type PopulationAggregateBlock = z.infer<typeof PopulationAggregateSchema>;
-
-/**
- * `population` at the wire boundary — safeParse, not trust-the-wire (mirrors parseTargetProp).
- * A malformed aggregate → undefined → the Sheet falls back to the honest-lean rollup swarm,
- * never a broken distribution (the honesty spine: no fabricated crowd off an unvalidated payload).
- */
-export function parsePopulationProp(value: unknown): PopulationAggregateBlock | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const parsed = PopulationAggregateSchema.safeParse(value);
   return parsed.success ? parsed.data : undefined;
 }
 
@@ -412,6 +418,11 @@ export const ScriptCardBlockSchema = z.object({
     // has no sibling to look half-rendered against (one per run), but the statement is the same
     // fact and the receipt primitive is shared — so it says it too, rather than drifting.
     grounded: z.boolean().optional(),
+    // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for this script's
+    // OPENER (scored opener-as-hook, D-01), computed by the runner when the active signature
+    // carries the v2 axes. Feeds the AudienceLens Population·1,000 Sheet. OPTIONAL → General /
+    // legacy / uncharacterized runs omit it (byte-identical shape).
+    population: PopulationAggregateSchema.optional(),
   }),
 });
 
@@ -482,6 +493,11 @@ export const RemixCardBlockSchema = z.object({
     audienceName: z.string().min(1).optional(),
     // S3′: the adapted hook's 10-persona reaction. OPTIONAL (back-compat). Modal reads it (PR-2).
     personas: z.array(ReactionPersonaSchema).optional(),
+    // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for the adapted
+    // hook (opener-scoped, Pitfall 5), computed by the runner when the active signature carries
+    // the v2 axes. Feeds the AudienceLens Population·1,000 Sheet. OPTIONAL → General / legacy /
+    // uncharacterized runs omit it (byte-identical shape).
+    population: PopulationAggregateSchema.optional(),
   }),
 });
 

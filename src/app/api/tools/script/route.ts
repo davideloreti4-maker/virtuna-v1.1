@@ -207,6 +207,7 @@ export async function POST(request: Request): Promise<Response> {
               personas: b.props.personas,       // S3′: real per-persona reactions → named ambient Room cast (Task B)
               proof: b.props.proof,             // §11f: receipt streams WITH the face (mirrors hooks)
               grounded: b.props.grounded,       // §11f: the RUN had sources even if this card cited none — gates NoSourceNote
+              population: b.props.population,    // Audience Sim v2 Stage 2: the N-individual projection → Population·1,000 Sheet (rides the face)
               // band/fraction deferred to score event (content-first)
             },
           })),
