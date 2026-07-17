@@ -2250,6 +2250,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           persistedTurns={persistedChatTurns}
           streamingBlocks={chatBlocks}
           streamingCardBlocks={chat.streamingBlocks}
+          stages={chat.stages}
           isStreaming={chat.isStreaming}
           coldStart={chat.coldStart}
           nudgeShown={chat.nudgeShown}

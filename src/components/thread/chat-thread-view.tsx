@@ -30,6 +30,7 @@ import { Fragment } from 'react';
 import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from '@/components/thread/thread-shell';
 import { ChatTypingIndicator } from '@/components/thread/thread-loading';
+import { ProgressChecklist, type StageState } from '@/components/thread/progress-checklist';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
@@ -58,6 +59,16 @@ export interface ChatThreadViewProps {
    * blocks (MessageBlocks re-validates each), so the type is intentionally loose.
    */
   streamingCardBlocks?: unknown[];
+  /**
+   * Chat-as-agent (CHAT_AGENT_DISPATCH) — live pipeline stages from a dispatched skill's real phase
+   * boundaries (event: stage), in emit order. Empty on a plain chat turn. While a skill is running
+   * (streaming + stages present, before its cards land) these render as the progress SPINE in place
+   * of the typing dots, so the ~20–65s generator wait reads like the per-skill views instead of a
+   * silent typing cursor. Legacy (no `plan` seed): chat cannot know which of ideas/hooks/script the
+   * model will pick, so the spine grows from live events rather than pre-seeding a pipeline that
+   * might diverge (e.g. script never emits Ranking → a seeded step would hang `pending`).
+   */
+  stages?: StageState[];
   /** True while the SSE stream is active. */
   isStreaming: boolean;
   /**
@@ -97,6 +108,7 @@ export function ChatThreadView({
   persistedTurns = [],
   streamingBlocks,
   streamingCardBlocks = [],
+  stages = [],
   isStreaming,
   nudgeShown,
   error,
@@ -150,7 +162,16 @@ export function ChatThreadView({
   // question bubble. On a pure reload (no streaming) the persisted turns already include the last
   // turn's question, so no live turn renders → no duplicate bubble. The markdown-only reload also
   // renders through this block (its question comes from `userTurn`).
-  const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards;
+  // A dispatched skill (CHAT_AGENT_DISPATCH) is mid-run when the stream has emitted real pipeline
+  // stages but its cards (produced at the END of the run) have not arrived yet. Its live spine
+  // replaces the typing dots for the long generator wait; once cards land the run is effectively
+  // done and the cards + co-pilot line carry the turn. The pivot is CARDS, not text: the model may
+  // stream a short preamble BEFORE it calls the tool, so gating on !hasStreamingContent would
+  // suppress the spine for the whole run and silently re-open the very gap this closes.
+  const runningSkill = isStreaming && stages.length > 0 && !hasStreamingCards;
+  // Pure-chat "thinking" dots: streaming with nothing yet AND no skill running (stages empty). A
+  // grounded/plain chat turn emits no stages → this is byte-identical to the shipped behavior.
+  const thinking = isStreaming && !hasStreamingContent && !hasStreamingCards && stages.length === 0;
   const showLiveTurn = isStreaming || hasStreamingContent || hasStreamingCards || showMarkdownBody;
   const liveQuestion = userTurn?.trim();
 
@@ -193,6 +214,14 @@ export function ChatThreadView({
           {liveQuestion && <ThreadUserTurn text={liveQuestion} />}
           <ThreadAssistantTurn>
             {thinking && <ChatTypingIndicator />}
+            {runningSkill && (
+              // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's live progress spine, so
+              // the long generator wait reads like the per-skill views instead of silent dots. Legacy
+              // mode (no plan seed) — the skill is the model's choice, unknowable at mount.
+              <div aria-live="polite" aria-atomic="false">
+                <ProgressChecklist stages={stages} />
+              </div>
+            )}
             {hasStreamingCards && (
               // Chat-as-agent (CHAT_AGENT_DISPATCH): the dispatched skill's real cards, inline in this
               // thread, ABOVE the co-pilot line. The cards self-frame; MessageBlocks re-validates each.
