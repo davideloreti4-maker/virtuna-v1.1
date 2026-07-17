@@ -53,7 +53,7 @@ those people.
 | **Mobile** | same band → full-screen modal | **Header** — ~68px above the thread. Survives the keyboard |
 | **Owner** | `composer.tsx` (~1939–1978) | thread-level |
 
-**Owner approved the mobile header** (2026-07-17). Desktop rail is **proposed, not confirmed.**
+**Both placements owner-approved 2026-07-17** — mobile header *and* desktop rail. Build to them.
 
 ### Why the header wins on mobile — the arithmetic that settled it
 
@@ -136,18 +136,21 @@ Internal to the panel; survives whatever placement wins. Take the ranked view's 
 2. De-duplicate the repeated facts (§3.2)
 3. Row-as-target, drop the repeated CTAs (§3.3)
 4. Hierarchy: bounces surface above stays (§3.4)
-5. Reclaim the dead wells (§3.5)
+5. ~~Reclaim the dead wells (§3.5)~~ — **CLOSED by §6.2.** The rail has no input; the well is deleted,
+   not redesigned. Don't fix this separately.
 6. Rebuild the header (§3.6)
 7. Add a `not`-line to the people view — the population view already has one
    (`1,000 MODELED FROM YOUR 10`), the others don't. Steal Sapient's move: *every card states what it
    is not.*
 
-### P2 — Placement (structural)
-1. Re-parent the room out of `composer.tsx` to thread level
-2. Mobile: the audience header (**owner-approved**)
-3. Desktop: the rail (**needs owner sign-off first — do not build on spec**)
-4. Kill the scrim + the bloom. It occupies; it does not overlay.
-5. **Resolve the two-input problem** (§6) before writing the mobile sheet.
+### P2 — Placement (structural) — all decisions in, build it
+1. Re-parent the room out of `composer.tsx` (mount @1939–1978, `presenceCommonProps` @1950) to thread level
+2. Desktop: the rail · Mobile: the audience header — **both owner-approved**
+3. Kill the scrim + the bloom. It occupies; it does not overlay.
+4. **Kill the panel's `Ask your audience…` field entirely** and add `Ask` to the composer's verb chip
+   (§6.2). Do this *with* the re-parent, not after — the always-open panel makes the current
+   composer-becomes-room-input mode unshippable the moment step 2 lands.
+5. Drop the rank numerals; name true ties (§6.3).
 
 ### P3 — Bugs (separable, some are one-liners)
 See §5. `/dev/cards` and the orphaned routes are independent of everything else and can ship first
@@ -188,15 +191,54 @@ as easy wins.
 
 ---
 
-## 6. Open questions — owner input needed
+## 6. Resolved by owner, 2026-07-17
 
-1. **Desktop rail — confirmed or not?** Mobile header is approved. The rail costs ~35% of width
-   permanently and narrows the thread. Not built on spec.
-2. **Two inputs.** Today the composer field *becomes* the audience chat input when the panel opens
-   (`askAudience` → `/api/tools/react`, `composer.tsx:1887`). With a header + sheet there are two
-   inputs on screen — the sheet's `Ask the room` and the composer's. **Must collapse one way.**
-3. **The ranked view's tie.** Two 7/10s ranked 1 and 2 with identical bars. Break the tie or drop
-   the numbering.
+### 6.1 Placement — BOTH APPROVED ✅
+Desktop rail **and** mobile header. Build to §2.
+
+### 6.2 The two inputs — ONE INPUT. `Ask` becomes a verb in the composer chip. ✅
+
+**The forcing function:** today the composer field *becomes* the room input **when the panel is open**
+(`askAudience` → `/api/tools/react`, `composer.tsx:1887`). A rail/header is **permanently open** ⇒ that
+mode would be permanently on ⇒ you could never make anything again. **The mode dies whether we like it
+or not.** Not a preference — arithmetic.
+
+**The resolution:** `Ask` is already one of the three locked verbs (**Make · Test · Ask**). Verbs live
+in the composer's chip. So it's the *same field* with an *explicit target*:
+
+```
+[Ideas ▾]  → makes ideas
+[Hooks ▾]  → makes hooks
+[Ask ▾]    → asks the room about whatever's in focus
+```
+
+The rail shows **who** and **what's in focus**. The composer **types**. (Same messaging-app model that
+produced the header answer — third time this session it's been right.)
+
+Falls out for free:
+- **§3.5 dead wells DIE.** The rail simply has no input. That craft item is now closed by this decision
+  — don't fix it separately.
+- **The mode error dies.** No more "where does my text go? depends on a panel."
+- **Per-person ask is untouched.** `ask →` on a row stays a *tap* → `PersonaChatDrawer.tsx` (exists).
+  Different object, correctly a different affordance.
+
+Cost: opening the room no longer auto-arms asking — one extra click. Accepted: a click for the user
+always knowing where their words go.
+
+### 6.3 The ranked view's tie — DROP THE NUMERALS. Keep the sort. Name true ties. ✅
+
+**Ties are the NORM, not an edge case.** 10 personas × stop/no-stop = 11 possible scores, over 4 ideas.
+You will tie constantly. This is the common path.
+
+- **The numerals are the bug.** A big serif `1` asserts a strict order the data refuses — two 7/10s with
+  identical bars ranked 1 and 2 is a lie of typography. The sort + bar + score already carry the order.
+- **When two genuinely tie, say so.** *"Your top two are tied at 7/10 — the room can't separate them"*
+  is more honest **and more interesting** than a fabricated winner. It invites the drill, which is where
+  the value is.
+- 🔴 **DO NOT break the tie with the population number** (700 vs 683). That is **exactly PR #306** —
+  Simulate stating the fraction twice from two sources that can disagree. A card that *displays* `7/10`
+  while *ranking* on `700/1000` will one day ship a #2 that visibly beats its #1.
+  See [[read-ships-high-confidence-with-no-audience]] for the family of bug.
 
 ---
 
