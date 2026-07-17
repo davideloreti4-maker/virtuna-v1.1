@@ -74,6 +74,13 @@ import {
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
+import {
+  buildTargetAssignments,
+  normalizeTargetArchetype,
+  bindTarget,
+  type TargetUnitCopy,
+} from "./target-assignment";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -144,6 +151,47 @@ OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences
 Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "sourceIndex": number } ] }
 Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required (use "" or null where empty); "seedHook" must be non-empty. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this idea adapts, or 0 if the idea adapts no specific example — never cite a source you did not actually use (honesty).`;
 
+/**
+ * PER-PERSONA GENERATION (fan-out from hooks #299) — the craft half of the assignment.
+ *
+ * The SHAPE of the assignment lives in ./target-assignment (shared, and the source of the two
+ * bugs worth remembering). What lives HERE is the only genuinely idea-craft part: writing an IDEA
+ * for one person is not the same instruction as writing a HOOK for one person. A hook has two
+ * seconds to stop a thumb; an idea has to be a thing that person actually wants to exist.
+ *
+ * ⚠️ THE EFFECT TRANSFERRING FROM HOOKS IS A HYPOTHESIS, NOT A GIVEN — see
+ * scripts/measure-targeting.ts, which is what decides whether this ships.
+ */
+const IDEA_UNIT: TargetUnitCopy = {
+  noun: "Idea",
+  craft: `Build each idea around what ITS assigned person actually wants to watch — the angle THAT person
+would click, the take THAT person would argue with or send to a friend, the format THAT person
+already consumes. An idea that would suit any of them equally well has failed its assignment.
+Do not hedge toward the middle.`,
+};
+
+/**
+ * Output contract for a targeted (calibrated) run — adds the one field that carries the binding.
+ *
+ * Mirrors hooks' targetedOutputContract. `targetArchetype` is what makes the persona STRUCTURAL
+ * rather than ambient: the model cannot satisfy the schema without naming who each idea is for,
+ * so non-compliance is visible instead of silent.
+ */
+function targetedOutputContract(grounded: boolean): string {
+  const groundedField = grounded ? `, "sourceIndex": number` : "";
+  const groundedRule = grounded
+    ? ` "sourceIndex" is the 1-based number of the GROUNDING example whose proven STRUCTURE this idea adapts, or 0 if none — never cite a source you did not actually use (honesty).`
+    : "";
+
+  return `
+
+---
+
+OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
+Shape: { "ideas": [ { "title": string, "angle": string, "mechanism": string, "seedHook": string, "needsTake": boolean, "topic": string, "take": string, "format": string | null, "targetArchetype": string${groundedField} } ] }
+Return an "ideas" array of exactly ${IDEA_COUNT} STRONG, distinct idea objects, in assignment order — idea N is for person N from the list above. Every field is required (use "" or null where empty); "seedHook" must be non-empty. "targetArchetype" is the bare slug of the person this idea was written for.${groundedRule}`;
+}
+
 // ─── Input type ───────────────────────────────────────────────────────────────
 
 export interface IdeasPipelineInput {
@@ -209,6 +257,14 @@ interface StructuredIdea {
    * the on-card receipt via buildProofFromSource (§11f).
    */
   sourceIndex: number;
+  /**
+   * PER-PERSONA GENERATION: the archetype slug of the person this idea was written for, as
+   * reported BY THE MODEL. Empty string = the model named nobody (or an unassigned slug) — the
+   * card then carries no target line at all. That silence is deliberate: a writer that ignored
+   * its assignment must show up as a MISSING claim, never as a generic idea wearing a
+   * personalised label. Only ever set on a targeted (calibrated) run.
+   */
+  targetArchetype: string;
 }
 
 // ─── Qwen generation call ────────────────────────────────────────────────────
@@ -221,15 +277,24 @@ interface StructuredIdea {
 async function generateIdeasStructured(
   userMessage: string,
   grounded: boolean,
+  targets: PersonaTarget[],
 ): Promise<StructuredIdea[]> {
   const ai = getQwenClient();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
-  // Grounded runs use the sourceIndex-carrying contract so ideas can be attributed to the real
-  // outlier they adapted; ungrounded runs keep the byte-identical original (warm-cache prefix).
-  const outputContract = grounded ? IDEAS_OUTPUT_CONTRACT_GROUNDED : IDEAS_OUTPUT_CONTRACT;
+  // Targeted (calibrated) runs swap in the contract that carries `targetArchetype` — the field
+  // that makes the persona binding STRUCTURAL rather than ambient (see IDEA_UNIT). General and
+  // uncalibrated keep the byte-identical original contract (warm-cache prefix + regression gate):
+  // no audience, no real people, no cast — the honest degrade.
+  // Grounded runs carry sourceIndex so ideas can be attributed to the real outlier they adapted.
+  const outputContract =
+    targets.length > 0
+      ? targetedOutputContract(grounded)
+      : grounded
+        ? IDEAS_OUTPUT_CONTRACT_GROUNDED
+        : IDEAS_OUTPUT_CONTRACT;
 
   let raw: string;
   try {
@@ -300,6 +365,9 @@ async function generateIdeasStructured(
       // Attribution index (grounded runs only) — missing/malformed → 0 (no source) so an
       // ungrounded or sloppy response never fabricates one (§11f honesty spine).
       sourceIndex: coerceSourceIndex(r.sourceIndex),
+      // Whom the model SAYS it wrote this for. Not trusted yet — validated against the
+      // assignments below, because a slug we never assigned is not a person we can name.
+      targetArchetype: normalizeTargetArchetype(r.targetArchetype),
     });
     if (ideas.length >= IDEA_COUNT) break;
   }
@@ -358,6 +426,25 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // creatorSteer folds who's writing into overrides. General/no-audience → inputs unchanged.
   const { profileRow: genProfileRow, creatorSteer } = applyCreatorPersona(profileRow, audience);
 
+  // ── TARGET (per-persona generation, fan-out from hooks #299): WHO each idea is written for ──
+  // Deterministic, no LLM — top-N by share, forced to span the four persona_weights slots (see
+  // select-persona-targets.ts). Empty for General / uncalibrated / no bindable persona: there are
+  // no real people behind those, so we name none and the run is byte-identical to today's.
+  //
+  // NOTE what is deliberately NOT here: an ambient "generate for this audience — <grounding line>"
+  // override. Ideas has never had one, and this change does not add one. Feeding the writer more
+  // audience PROSE was measured at chance (handoff §4c) and reverted; the assignment below is the
+  // whole mechanism. That also makes this the cleanest test of the claim: the ONLY new generation
+  // input on a calibrated ideas run is the contract itself.
+  const targets = selectPersonaTargets(audience, IDEA_COUNT);
+  const targetAssignments =
+    targets.length > 0 ? buildTargetAssignments(targets, IDEA_UNIT) : undefined;
+  // The slugs we are willing to have named back at us. An idea claiming anything outside this set
+  // names nobody (bindTarget) — we never print a reader we did not brief the writer on.
+  const assignments = new Map<string, PersonaTarget>(targets.map((t) => [t.archetype, t]));
+
+  const overrides = [creatorSteer, targetAssignments].filter(Boolean).join("\n") || undefined;
+
   // ── GROUND (§11f fan-out, gated): pull LIVE outlier teardowns for the topic → the one
   //    additive corpus field. OFF by default; TikTok-only. ANY failure degrades to
   //    ungrounded — corpus stays undefined → byte-identical no-op (honesty spine).
@@ -378,7 +465,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
       ask: ask || "Generate ideas from my profile",
       platform,
       mode: "idea",
-      ...(creatorSteer ? { overrides: creatorSteer } : {}),
+      ...(overrides ? { overrides } : {}),
       ...(corpus ? { corpus } : {}),
     },
     genProfileRow,
@@ -506,7 +593,7 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
   // Generate exactly IDEA_COUNT ideas (no over-gen buffer — all are shown).
   // ── STAGE: Generating (real boundary — the big LLM call) ──
   input.onStage?.("Generating", "active");
-  const firstBatch = await generateIdeasStructured(userMessage, Boolean(corpus));
+  const firstBatch = await generateIdeasStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
     return { blocks: [], warnings: allWarnings, seedHookPath };
@@ -542,6 +629,21 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     // byte-identical to the pre-grounding card (regression gate + honesty spine).
     const proof = buildProofFromSource(candidate.idea.sourceIndex, groundingExamples);
 
+    // WHO this idea was written for + how that exact person reacted. null on an uncalibrated run,
+    // and null on a calibrated run whose writer named nobody we assigned — the card then simply
+    // carries no target line (an honest absence beats a personalised label over a generic idea).
+    // NOTE the positional lookup uses generationIndex, not the loop position: the cards have been
+    // SORTED by band since generation, so the first card is not assignment-1.
+    const target = bindTarget({
+      claimedArchetype: candidate.idea.targetArchetype,
+      positionalTarget: targets[candidate.generationIndex],
+      assignments,
+      personas: candidate.personas,
+      warnings: allWarnings,
+      unitNoun: "Idea",
+      subject: candidate.idea.title,
+    });
+
     const blockData = {
       type: "idea-card" as const,
       props: {
@@ -566,6 +668,9 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
         // still grounded, and that is exactly the case the card's note explains. Omitted on
         // ungrounded runs so the pre-grounding block shape stays byte-identical.
         ...(groundingExamples.length > 0 ? { grounded: true } : {}),
+        // Per-persona generation — omitted entirely when there is no named reader, so General
+        // and every pre-target persisted card keep their exact shape (regression gate).
+        ...(target ? { target } : {}),
         // Audience Sim v2 (Stage 2) — the N-individual population projection. Omitted when the
         // audience lacks the v2 axes or characterization failed → byte-identical pre-v2 shape.
         ...(candidate.population ? { population: candidate.population } : {}),

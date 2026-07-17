@@ -14,7 +14,7 @@
  * 1. **THIS NEVER REACHES THE MODEL (F7).** The workspace tells users in as many words that a
  *    persona's display name stays out of the prompt. The engine binds on `archetype` and briefs
  *    the writer with `repaint`. A display name that leaked into a prompt would make the UI a liar
- *    — so this module is imported by presentation and by `select-hook-targets` (whose `label` is
+ *    — so this module is imported by presentation and by `select-persona-targets` (whose `label` is
  *    card-only), and by nothing that builds a prompt.
  *
  * 2. **A CREATOR-SET `label` ALWAYS WINS.** These are the fallback for the common case: a scraped
