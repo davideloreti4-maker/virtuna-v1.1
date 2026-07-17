@@ -3,7 +3,7 @@
 ## Identity
 
 - **Stack:** Next.js 15, TypeScript, Tailwind v4, Supabase
-- **Branding:** Flat-warm charcoal + terracotta accent + cream text + matte (migrated v5.0/v6.0; the old Raycast/coral system is RETIRED)
+- **Branding:** Flat-warm charcoal + coral-red accent + cream text + matte (migrated v5.0/v6.0; the old Raycast system is RETIRED)
 - **Design system:** source of truth = `src/app/globals.css` + `docs/DESIGN-SYSTEM.md`. ⚠️ `BRAND-BIBLE.md`, `docs/tokens.md`, `docs/components.md` are STALE (describe the dead Raycast system) — do not trust them
 - **Repo:** https://github.com/davideloreti4-maker/virtuna-v1.1
 - **Deployed:** Vercel
@@ -73,11 +73,12 @@ After clone: `git config core.hooksPath .githooks` (enables auto-push hook)
 
 ⚠️ The old "Raycast Design Language" section here was RETIRED in the v5.0/v6.0 migration.
 **Source of truth: `src/app/globals.css` (`@theme`) + `docs/DESIGN-SYSTEM.md`.** Summary:
-- **System:** flat-warm charcoal + cream text + terracotta accent + **matte** (no glass, no glow, no inset-shine)
-- **Tokens:** bg `#262624`, cream text `#ece7de` (never `#fff`), accent terracotta `#d97757` (never `#FF7F50`)
+- **System:** flat-warm charcoal + cream text + coral-red accent + **matte** (no glass, no glow, no inset-shine)
+- **Tokens:** bg `#1f1f1e` (`--charcoal-app`), cream text `#ece7de` (never `#fff`), accent **coral-red `#FF6363`** (`--color-accent`, dated 2026-07-07 — never the RETIRED `#FF7F50`, and NOT terracotta `#d97757`)
+  - ⚠️ This line claimed bg `#262624` + terracotta `#d97757` until 2026-07-17. Both were stale and both misled a live design session. Verified against `globals.css:57`/`:120` **and** at runtime: `getComputedStyle(document.documentElement).getPropertyValue('--color-accent')` → `#ff6363`. When in doubt, measure — globals.css is the SSOT, this file is a summary of it.
 - **Borders:** 6% (`white/[0.06]`), hover 10%. **Radius:** 4/6/8/12/16/20/24 (cards 12, inputs/buttons 8)
 - **Type:** Inter for all chrome; Newsreader serif for voice-moments ONLY (greeting/hero)
-- **Guard:** `reading/__tests__/reskin-matte.test.ts` asserts no coral/glass — keep green
+- **Guard:** `reading/__tests__/reskin-matte.test.ts` asserts no **legacy** coral (`#FF7F50` / `rgba(255,127,80,…)`) and no glass/glow — keep green. It does NOT ban the current accent `#FF6363`; "no coral" is about the retired Raycast hue only
 - **Dev server cache:** kill dev server + clear `.next/` + restart when CSS changes don't appear
 
 ## Conventions
