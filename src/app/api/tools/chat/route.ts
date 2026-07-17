@@ -32,6 +32,9 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
+import { runChatAgentStream } from "@/lib/tools/chat-agent-loop";
+import { assembleBundle } from "@/lib/kc/assembler";
+import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { csrfGuard } from "@/lib/http/csrf-guard";
@@ -96,6 +99,32 @@ function parsePersonaGrounding(raw: unknown): PersonaGrounding | null {
 
 /** Server-side ask cap — independent of client validation (mirrors analyze/[id]/chat). */
 const MAX_MESSAGE_LENGTH = 2000;
+
+/**
+ * Chat-as-agent dispatch flag (default OFF). When on, an OPEN-chat turn is first handed to the
+ * skill-dispatch model (skill-dispatch.ts): if the creator asked for content it can name, the model
+ * runs that skill (generate_ideas / generate_hooks / write_script) and its real card-blocks land in
+ * THIS thread like any other message — no manual skill selector. Paid runs are leashed inside
+ * runSkillDispatch. When the model runs NO skill (pure chat / strategy talk), the route falls back to
+ * the existing grounded runChatPipeline, so the plain-chat answer is never degraded.
+ *
+ * Persona / meet-mode is EXCLUDED (a viewer reacts in-voice; it does not orchestrate skills) — mirrors
+ * the corpus-tool exclusion. Flag OFF → byte-identical to the shipped open-chat + persona paths.
+ */
+function isChatAgentDispatchEnabled(): boolean {
+  // Default ON (shipped 2026-07-17). Set CHAT_AGENT_DISPATCH="false" to disable.
+  return process.env.CHAT_AGENT_DISPATCH !== "false";
+}
+
+/**
+ * Grounding-as-a-tool flag (default OFF, independent lever). When on, the streaming agent loop binds
+ * the corpus `search_corpus` tool so the model can pull real proven examples mid-answer. Mirrors the
+ * `GROUNDING_CHAT_TOOL` gate `runChatPipeline` used for its (now-replaced) corpus pre-flight.
+ */
+function isCorpusChatToolEnabled(): boolean {
+  // Default ON (shipped 2026-07-17). Set GROUNDING_CHAT_TOOL="false" to disable.
+  return process.env.GROUNDING_CHAT_TOOL !== "false";
+}
 
 /** Cap on client-carried prior turns (meet-mode ephemeral context — see POST). */
 const MAX_CLIENT_PRIOR_TURNS = 20;
@@ -344,30 +373,80 @@ export async function POST(request: Request): Promise<Response> {
         // meta frame LEADS the stream — Plan 05-03 gates the one-time nudge on this (D-08)
         send("meta", { coldStart });
 
-        // Run the pipeline — tokens are emitted via callback as they arrive.
-        // personaGrounding (when present) makes the answer in-voice (D-03); absent → open chat.
-        const { fullContent } = await runChatPipeline(
-          {
-            ask: rawAsk,
-            platform,
-            profileRow,
+        // ── (8a) Chat-as-agent — single STREAMING agent loop (default-off flag) ──
+        // Open chat only (persona/meet excluded — a viewer reacts in-voice, it does not orchestrate).
+        // ONE streaming completion: the model streams its answer directly (token frames) and pauses only
+        // to call a tool — a content skill (its cards stream as `block` events) or `search_corpus`
+        // (grounding). No pre-flight, no discarded answer (the old runSkillDispatch + runChatPipeline
+        // double-call). Flag OFF or persona → the unchanged runChatPipeline path below.
+        let dispatched = false;
+        if (isChatAgentDispatchEnabled() && personaGrounding == null) {
+          dispatched = true;
+          // Grounding (niche/audience/platform) rides the fenced user message, exactly as
+          // runChatPipeline builds it (assembleBundle → <<<USER_CONTENT>>>). Prior turns go to the loop
+          // as real role messages (natural turn structure for the agent), not folded into the anchor.
+          const userMessage = assembleBundle({ ask: rawAsk, platform, mode: "chat" }, profileRow);
+          const agentResult = await runChatAgentStream({
+            ask: userMessage,
+            systemPrompt: KC_CHAT_SYSTEM_PROMPT,
             priorTurns,
-            audience: activeAudience,
-            ...(personaGrounding ? { personaGrounding } : {}),
-          },
-          (delta: string) => send("token", { delta }),
-        );
+            grounding: isCorpusChatToolEnabled(),
+            context: {
+              platform,
+              profileRow,
+              audience: activeAudience,
+              // Real skill phase boundaries → the client's progress spine (mirrors skill routes).
+              onStage: (name, status) => send("stage", { name, status }),
+            },
+            onToken: (delta) => send("token", { delta }),
+            onBlock: (block) => send("block", { block }),
+          });
 
-        // Persist assistant turn — persona-chat-turn (sub-thread, D-03) or markdown (open chat).
-        // Meet-ephemeral (no thread) → the streamed answer lives only in the drawer.
-        if (openThread) {
-          const assistantBlock = personaGrounding
-            ? {
-                type: "persona-chat-turn",
-                props: { archetype: personaGrounding.archetype, role: "assistant", text: fullContent },
+          // Persist: each skill's card-blocks first (in run order), then the assistant text. A turn that
+          // ran a skill marks the text origin:"chat-agent" so the thread reloads as ONE ordered stream in
+          // the chat view (rehydrate-thread.ts); a pure-chat turn persists plain markdown → byte-identical
+          // to the old open-chat reload. insertMessage re-validates every block at the write boundary (D-14).
+          if (openThread) {
+            for (const run of agentResult.skillRuns) {
+              if (run.blocks.length > 0) {
+                await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
               }
-            : { type: "markdown", props: { text: fullContent } };
-          await insertMessage(openThread.id, "assistant", [assistantBlock], kcStamp().kcGenVersion);
+            }
+            const text = agentResult.text.trim();
+            if (text.length > 0) {
+              const props = agentResult.skillRuns.length > 0 ? { text, origin: "chat-agent" } : { text };
+              await insertMessage(openThread.id, "assistant", [{ type: "markdown", props }], kcStamp().kcGenVersion);
+            }
+          }
+        }
+
+        // ── (8b) Grounded open-chat / persona answer (unchanged path) ───────────
+        // Runs unless a skill was dispatched above. Tokens are emitted via callback as they
+        // arrive; personaGrounding (when present) makes the answer in-voice (D-03).
+        if (!dispatched) {
+          const { fullContent } = await runChatPipeline(
+            {
+              ask: rawAsk,
+              platform,
+              profileRow,
+              priorTurns,
+              audience: activeAudience,
+              ...(personaGrounding ? { personaGrounding } : {}),
+            },
+            (delta: string) => send("token", { delta }),
+          );
+
+          // Persist assistant turn — persona-chat-turn (sub-thread, D-03) or markdown (open chat).
+          // Meet-ephemeral (no thread) → the streamed answer lives only in the drawer.
+          if (openThread) {
+            const assistantBlock = personaGrounding
+              ? {
+                  type: "persona-chat-turn",
+                  props: { archetype: personaGrounding.archetype, role: "assistant", text: fullContent },
+                }
+              : { type: "markdown", props: { text: fullContent } };
+            await insertMessage(openThread.id, "assistant", [assistantBlock], kcStamp().kcGenVersion);
+          }
         }
 
         send("done", {});

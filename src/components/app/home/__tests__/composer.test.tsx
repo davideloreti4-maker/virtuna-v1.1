@@ -385,3 +385,62 @@ describe('Composer — persisted multi-audience-read restores on the thread', ()
     expect(screen.getByText(/General wins \(Strong\)\./)).toBeInTheDocument();
   });
 });
+
+// ── Chat-as-agent unified reload (CHAT_AGENT_DISPATCH) ───────────────────────
+// On reload of a thread STAMPED chat-agent, the composer must land in the chat view and render the
+// whole ordered stream there — NOT split the cards into the ideas view. The discriminator: the
+// co-pilot markdown line only renders in the chat view (the ideas view renders idea-cards only), so
+// asserting BOTH the card AND the co-pilot line prove activeTool flipped to "chat".
+describe('Composer — chat-agent unified reload', () => {
+  const IDEA_CARD = {
+    type: 'idea-card',
+    props: {
+      title: 'The 5am myth', angle: 'contrarian', whyItFits: 'your audience distrusts hustle culture',
+      mechanism: 'pattern-break', seedHook: 'Everyone lied about 5am', needsTake: false,
+      topic: 'morning routines', take: '', format: null, band: 'Strong', fraction: '4/5',
+      scored: true, scrollQuote: 'Everyone lied to you about 5am', model: 'sim1-flash',
+    },
+  };
+  const COPILOT_LINE = { type: 'markdown', props: { text: 'I generated 3 angles — want hooks?', origin: 'chat-agent' } };
+
+  function installFetchMockWithThread(messages: unknown[]) {
+    global.fetch = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      let body: unknown = {};
+      if (url.includes('/api/audiences')) body = { audiences: [GENERAL_AUD] };
+      else if (url.includes('/api/threads/open')) body = { threadId: 't1', messages };
+      else if (url.includes('/api/tracked-accounts')) body = { accounts: [] };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
+    }) as typeof fetch;
+  }
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('a stamped thread reloads into the chat view: card AND co-pilot line both render', async () => {
+    installFetchMockWithThread([
+      { role: 'user', blocks: [{ type: 'markdown', props: { text: 'ideas about morning routines' } }] },
+      { role: 'assistant', blocks: [IDEA_CARD] },
+      { role: 'assistant', blocks: [COPILOT_LINE] },
+    ]);
+    renderWithClient(<Composer />);
+    // The card lands...
+    expect(await screen.findByText('The 5am myth')).toBeInTheDocument();
+    // ...and the co-pilot line renders too — only possible in the CHAT view (ideas view shows no markdown).
+    expect(await screen.findByText(/want hooks/i)).toBeInTheDocument();
+  });
+
+  it('an UNSTAMPED thread (selector) does NOT render the co-pilot line in a card view', async () => {
+    // Same cards, but the markdown carries NO origin marker → isChatAgentThread false → activeTool
+    // restores to "idea" and the ideas view (idea-cards only) renders — the markdown line is absent.
+    installFetchMockWithThread([
+      { role: 'user', blocks: [{ type: 'markdown', props: { text: 'ideas about morning routines' } }] },
+      { role: 'assistant', blocks: [IDEA_CARD] },
+      { role: 'assistant', blocks: [{ type: 'markdown', props: { text: 'Here are 3 ideas — want hooks?' } }] },
+    ]);
+    renderWithClient(<Composer />);
+    expect(await screen.findByText('The 5am myth')).toBeInTheDocument();
+    // The unmarked co-pilot line is NOT surfaced (ideas view renders no markdown) — proves no accidental
+    // unification of ordinary selector threads.
+    await waitFor(() => expect(screen.queryByText(/want hooks/i)).toBeNull());
+  });
+});

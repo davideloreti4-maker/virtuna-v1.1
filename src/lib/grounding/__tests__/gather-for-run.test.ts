@@ -3,6 +3,7 @@ import { gatherCorpusForRun, GROUNDING_STAGE_NAME } from "../gather-for-run";
 import type { RetrievedExample } from "../types";
 import type { retrieveCachedExamples } from "../retrieve";
 import type { gatherAndExtract } from "../orchestrator";
+import type { adaptCorpusBlock } from "../adapt";
 
 function example(id: string): RetrievedExample {
   return {
@@ -184,5 +185,73 @@ describe("gatherCorpusForRun — read-back first", () => {
     ).toEqual(none);
     expect(retrieve).not.toHaveBeenCalled();
     expect(gather).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Grounding-as-remix routing (adapt briefer) ───────────────────────────────
+
+type Adapt = typeof adaptCorpusBlock;
+
+/** A fake adapt stage: proves the corpus was routed through it, and returns its own `used`. */
+function fakeAdapt(): ReturnType<typeof vi.fn<Adapt>> {
+  return vi.fn<Adapt>(async () => ({ corpus: "ADAPTED-BRIEF", used: [example("z")] }));
+}
+
+describe("gatherCorpusForRun — adapt routing", () => {
+  const profile = { niche_primary: "food", writing_voice_sample: "plain" };
+
+  it("routes the retrieved corpus through the adapt briefer when adapt is on (hooks + profile)", async () => {
+    const adapt = fakeAdapt();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), adapt: true, adaptProfile: profile },
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+    );
+
+    expect(adapt).toHaveBeenCalledOnce();
+    // The runner receives the brief's `used` as its examples (sourceIndex maps against it), not the
+    // raw retrieved list — and the corpus is the fitted brief, not the raw slice.
+    expect(result.corpus).toBe("ADAPTED-BRIEF");
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["z"]);
+    // adapt was handed the resolved ask + the retrieved exemplars.
+    expect(adapt).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skill: "hooks",
+        ask: "high protein breakfast",
+        examples: expect.arrayContaining([expect.objectContaining({ teardownId: "a" })]),
+      }),
+    );
+  });
+
+  it("does NOT adapt a non-hooks skill even when the flag is on (Phase 1 = hooks only)", async () => {
+    const adapt = fakeAdapt();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), skill: "ideas", adapt: true, adaptProfile: profile },
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+    );
+
+    expect(adapt).not.toHaveBeenCalled();
+    expect(result.corpus).toContain("Stop buying"); // raw ideas slice
+  });
+
+  it("does NOT adapt when the flag is on but no profile was threaded", async () => {
+    const adapt = fakeAdapt();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), adapt: true }, // adaptProfile omitted
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+    );
+
+    expect(adapt).not.toHaveBeenCalled();
+    expect(result.corpus).toContain("Stop buying");
+  });
+
+  it("does NOT adapt when the flag is off (default byte-identical path)", async () => {
+    const adapt = fakeAdapt();
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), adaptProfile: profile }, // adapt flag absent
+      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+    );
+
+    expect(adapt).not.toHaveBeenCalled();
+    expect(result.corpus).toContain("Stop buying");
   });
 });
