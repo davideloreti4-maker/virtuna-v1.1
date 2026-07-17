@@ -32,9 +32,13 @@ import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import {
   getOrCreateConnectedAccount,
+  touchAccountSynced,
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import type { ProfileBundle } from "@/lib/scraping/types";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "audience.calibrate" });
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -163,6 +167,9 @@ export async function POST(request: Request): Promise<Response> {
             return;
           }
           // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
+          log.warn("calibration returned scrape_failed", {
+            detail: calibrationResult.message ?? null,
+          });
           send("error", {
             message: "Calibration failed. Check the handle and try again.",
             retry: true,
@@ -199,8 +206,9 @@ export async function POST(request: Request): Promise<Response> {
               displayName:
                 reveal.profile.displayName || reveal.profile.handle || handle || name,
             });
-          } catch {
+          } catch (e) {
             /* connect is best-effort — calibration proceeds without a linked account */
+            log.warn("connect account failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
 
@@ -220,8 +228,9 @@ export async function POST(request: Request): Promise<Response> {
               connectedAccount,
               await listAudiences(supabase),
             )?.id;
-          } catch {
+          } catch (e) {
             /* fall through to insert */
+            log.warn("canonical audience lookup failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
 
@@ -236,9 +245,13 @@ export async function POST(request: Request): Promise<Response> {
                 ...withSource,
                 user_id: user.id, // pre-fill for the repo validation step
               });
-        } catch {
-          // Persist failure is non-fatal in the same style as other routes
-          // (the calibration succeeded — best effort persist)
+        } catch (e) {
+          // The calibration succeeded but the row write didn't — say so in the log
+          // (a silent catch here cost a live-verification run to diagnose, 2026-07-17).
+          log.error("audience persist failed", {
+            canonicalId: canonicalId ?? null,
+            err: e instanceof Error ? e.message : String(e),
+          });
           send("error", { message: "Calibration failed. Check the handle and try again.", retry: true });
           return;
         }
@@ -262,8 +275,16 @@ export async function POST(request: Request): Promise<Response> {
               heartCount: reveal.profile.heartCount,
               videoCount: reveal.profile.videoCount,
             });
-          } catch {
+          } catch (e) {
             /* snapshot capture is best-effort — calibration already succeeded */
+            log.warn("snapshot seed failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+          // A successful scrape IS a sync — without this the SYNC rail reads "Last —"
+          // moments after calibrating (live-caught 2026-07-17). RLS-scoped fine here.
+          try {
+            await touchAccountSynced(supabase, connectedAccount.id);
+          } catch (e) {
+            log.warn("sync stamp failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
 
@@ -283,8 +304,9 @@ export async function POST(request: Request): Promise<Response> {
               captured.bundle.videos,
             );
             await clusterPillarsForAccount(supabase, user.id, connectedAccount.id);
-          } catch {
+          } catch (e) {
             /* posts archive + pillars are best-effort — the daily cron converges them */
+            log.warn("posts archive / pillar cluster failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
       } catch (err) {

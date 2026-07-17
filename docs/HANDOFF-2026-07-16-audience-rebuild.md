@@ -1,7 +1,9 @@
 # HANDOFF — Audience rebuild (2026-07-16)
 
-**Branch: `feat/audience-rebuild`** (off origin/main, worktree `~/virtuna-prod`, dev server :3000).
-**P1 (list) SHIPPED — `5782351c`.** This doc is the SSOT for P2–P4.
+**Branch: `feat/audience-rebuild`** (off origin/main, worktree `~/virtuna-prod`, dev server :3002).
+**ALL FOUR PHASES SHIPPED** — P1 list `5782351c` · P2 detail `3a4f3eee` · P3 single-audience
+Read `751b06af` · P4 create flow + one-scrape (2026-07-17, session 4; main merged back in at
+`7064361a` after #314/#315). The lane is ready to PR.
 **Sketch (approved direction): `.planning/sketches/audience-rebuild.html`** — open it in a browser
 first. Live screenshots from P1 verification sit next to it.
 
@@ -156,19 +158,48 @@ What landed:
   keys on mode — `socials` → the pack's live-validated baseline; the T-03-15
   never-Validated rule is about `mode: "general"` panels.
 
-## P4 — Create flow + unified scrape (LAST — waits for sim-v2 merge)
+## P4 — Create flow + unified scrape — DONE (2026-07-17, session 4)
 
-`calibration.ts` is also being rewritten on `feat/audience-sim-v2` (ANOTHER SESSION'S worktree
-`~/virtuna-audience-sim-v2` — do not touch that branch). Sequence P4 after it merges.
-- Three doors: Connect account / From a handle / From a description (templates: Growth ·
-  Conversion). One-line descriptions, no narration. Name auto-derived; goal/intent optional
-  post-create.
-- **One scrape**: connect grabs profile + videos once; calibration + the reveal consume stored
-  data instead of re-scraping.
-- Reveal state: handle + figures (videos/followers/likes/pillars) + thumbnails + "Building
-  audience" with the liveness dot. Error state: "Account not found. Check the handle — private
-  accounts can't be read." (inline, quiet).
-- Auto-create the synced audience on connect.
+Unblocked when #314 (sim-v2) + #315 (lockfile) landed on main; merge into this branch was
+conflict-free (the feared `calibration.ts` collision never materialized — P1–P3 never touched
+it). What landed:
+- **/audience/new is three doors** (`audience-create.tsx`, page rewritten): Connect account /
+  From a handle / From a description. One-line facts, name auto-derived (`@handle`, or the
+  description's first words ≤60 chars). The dead presets are the describe door's
+  Growth/Conversion templates — each prefills the textarea AND carries its goal intent
+  (grow/sell); hand-editing drops the stale intent. Legacy deep-links honored:
+  `?source=account&handle=…` → connect door prefilled; `?mode=general` → describe door.
+  IG/YT on the connect door → `/api/connected-accounts/connect` (analytics-only, honest) →
+  the account's detail. `AudienceForm` is now EDIT-only (`[id]/page.tsx`).
+- **One scrape, for real**: `calibrateFromScrape` gained `onBundle` (real-scrape branch ONLY —
+  niche videos belong to strangers) and the calibrate route archives `account_posts` from the
+  SAME bundle it watched, then runs `clusterPillarsForAccount` — SOURCE zone + pillars lit at
+  creation, no second Apify run. Post-`done`, best-effort, now LOGGED (every catch on that
+  path was silent; run #1 of the live pass failed transiently and cost a full run to diagnose).
+  ⚠️ `account_posts` can NOT feed calibration (no downloadUrl/subtitleUrl) — one-scrape means
+  one request lifecycle, not replay-from-DB.
+- **One connection → ONE canonical audience**: the route resolves the existing audience via
+  the shared `audienceForAccount` (most-personas tie-break) and UPDATEs it in place; no more
+  duplicate rows per re-connect. (The e2e user's June-22 "test" shell row still exists — left
+  as data; a thread pins it and the P3 orphan-pin fallback owns that case.)
+- **Reveal**: evidence now carries `heartCount`/`videoCount` → figures are Videos (scraped
+  count, exact) / Followers / Likes — Pillars deliberately OMITTED from the reveal (they don't
+  exist until the post-done cluster; a fabricated count would violate the honesty spine).
+  Building line = the ONE accent element (pulsing dot).
+- **Two honest-fact stamps** (both live-caught): `updateAudience` now writes `updated_at`
+  (NO db trigger exists — a re-bake at 10:02 still read 08:26) and the route stamps
+  `touchAccountSynced` after a successful scrape (the SYNC rail read "Last —" seconds after
+  syncing).
+- Verification: suite green (+ ~30 new tests: calibrate route layer had NONE — now covers
+  gates, SSE order, one-scrape archive, canonical update, target isolation, 3 failure shapes;
+  every new guard was RED first) · tsc 0 · prod build green · **live E2E on :3002**: real
+  @zachking connect run → reveal (12 videos · 86.2M · 1.3B + 8 covers + dot) → done landed on
+  the EXISTING canonical detail page (`6b1114e6…`), fresh signature (`scraped_at` 10:02:50),
+  posts 30→32 (12 fresh-stamped), snapshot seeded, 0 console errors. Screenshots:
+  `.planning/sketches/p4-live/`.
+- 🔴 Worth remembering: run #1 died at synthesis/persist with EVERY catch silent — the only
+  diagnosis path was diffing DB timestamps. The logging added this session is the fix; if a
+  calibrate run 200s with no `done`, grep the server log for `audience.calibrate`.
 
 ## Verification protocol (what worked this session)
 

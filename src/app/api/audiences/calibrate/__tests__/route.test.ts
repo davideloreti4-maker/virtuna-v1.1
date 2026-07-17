@@ -46,6 +46,7 @@ vi.mock("@/lib/content-pillars/cluster", () => ({
 
 vi.mock("@/lib/connected-accounts/connected-accounts-repo", () => ({
   getOrCreateConnectedAccount: vi.fn(),
+  touchAccountSynced: vi.fn(),
 }));
 
 import { createClient } from "@/lib/supabase/server";
@@ -54,7 +55,10 @@ import { createAudience, updateAudience, listAudiences } from "@/lib/audience/au
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
 import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
-import { getOrCreateConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
+import {
+  getOrCreateConnectedAccount,
+  touchAccountSynced,
+} from "@/lib/connected-accounts/connected-accounts-repo";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockCalibrate = calibrateFromScrape as ReturnType<typeof vi.fn>;
@@ -65,6 +69,7 @@ const mockUpsertSnapshot = upsertAccountSnapshot as ReturnType<typeof vi.fn>;
 const mockUpsertPosts = upsertAccountPosts as ReturnType<typeof vi.fn>;
 const mockCluster = clusterPillarsForAccount as ReturnType<typeof vi.fn>;
 const mockGetOrCreateAccount = getOrCreateConnectedAccount as ReturnType<typeof vi.fn>;
+const mockTouchSynced = touchAccountSynced as ReturnType<typeof vi.fn>;
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -250,6 +255,9 @@ describe("POST /api/audiences/calibrate — success path (SSE)", () => {
 
     // Pillars clustered right after, so the detail page is lit at creation.
     expect(mockCluster).toHaveBeenCalledWith(expect.anything(), "user-1", "acct-1");
+
+    // A successful scrape IS a sync — the SYNC rail's "Last" fact must not read "—".
+    expect(mockTouchSynced).toHaveBeenCalledWith(expect.anything(), "acct-1");
   });
 
   it("re-connecting a synced handle UPDATES the canonical audience — one connection, one audience", async () => {
