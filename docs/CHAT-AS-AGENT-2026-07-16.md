@@ -274,9 +274,11 @@ single-turn reload (the accomplice pattern).
 
 **Proof.** `rehydrate-thread` (10 — incl. multi-turn attribution) + `chat-thread-view` (5 — incl. a
 **multi-turn DOM-order guard** the old single-card render could not pass). 234 green across the touched
-areas; tsc clean (4 grounding errors pre-existing). NOT re-run in a browser — the fix is client render
-logic locked by the DOM-order test + confirmed against the real persistence shape; a pixel drive buys
-little until right before defaulting the flag on.
+areas; tsc clean (4 grounding errors pre-existing). **BROWSER-VERIFIED (session 5):** loaded the real
+2-turn thread (hook-Q → ideas-Q) on a full page reload → the real persistence path renders **2 question
+bubbles + 2 per-turn cards**, DOM order Q1→A1→Q2→A2 (`q1_answer_not_under_q2` true), 0 console errors.
+The old flatten would show 1 bubble + 1 card, so this is unambiguously the new code. (Reload portion of
+the "owner live pass" gate is done; the full flag-on latency/owner pass is still separate.)
 
 **Grounding arm — live-verified (closes the §4e "not triggered" note).** Drove `runChatAgentStream`
 headless with REAL deps (real DashScope stream + real `executeCorpusSearch`) on a growth-strategy ask.
