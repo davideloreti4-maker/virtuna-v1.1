@@ -75,6 +75,7 @@ import {
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { buildAdaptProfile } from "./adapt-profile";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -111,42 +112,6 @@ function isGroundingEnabled(): boolean {
  */
 function isGroundingAdaptEnabled(): boolean {
   return process.env.GROUNDING_HOOKS_ADAPT === "true";
-}
-
-/**
- * Flatten the structured target_audience JSON into the one-line string the adapt briefer wants
- * (it re-voices proven structures toward this reader). Mirrors profile-role-map's audience formatter;
- * null when nothing is set (the briefer simply omits the line). A value that is ALREADY a plain
- * string (a pre-formatted audience line) is used as-is — robust to that shape, inert for the typed
- * object path prod uses.
- */
-function flattenTargetAudience(
-  ta: ProfileRow["target_audience"] | string,
-): string | null {
-  if (!ta) return null;
-  if (typeof ta === "string") return ta.trim() || null;
-  const parts = [
-    ta.age_range ? `age ${ta.age_range}` : null,
-    ta.gender_skew ? `${ta.gender_skew}-skewed` : null,
-    ta.geo,
-    ta.language,
-  ].filter((p): p is string => Boolean(p));
-  return parts.length > 0 ? parts.join(", ") : null;
-}
-
-/**
- * Reduce past_wins/past_flops to the descriptive strings the briefer reasons over. Prod stores them
- * as `{ url }[]` (no scraped text in v1 — the briefer just gets the URLs); tolerate a bare `string[]`
- * too, and drop any empty/undefined entry so the prompt never renders "undefined". null when empty.
- */
-function toOutcomeList(
-  items: ProfileRow["past_wins"] | string[] | null | undefined,
-): string[] | null {
-  if (!items?.length) return null;
-  const out = items
-    .map((w) => (typeof w === "string" ? w : w?.url))
-    .filter((s): s is string => Boolean(s && s.trim()));
-  return out.length > 0 ? out : null;
 }
 
 /**
@@ -521,14 +486,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed brief instead of the raw slice.
     // The briefer re-voices proven structures toward THIS creator, so hand it their profile.
     adapt: isGroundingAdaptEnabled(),
-    adaptProfile: {
-      niche_primary: genProfileRow?.niche_primary ?? null,
-      target_audience: flattenTargetAudience(genProfileRow?.target_audience),
-      primary_goal: genProfileRow?.primary_goal ?? null,
-      writing_voice_sample: genProfileRow?.writing_voice_sample ?? null,
-      past_wins: toOutcomeList(genProfileRow?.past_wins),
-      past_flops: toOutcomeList(genProfileRow?.past_flops),
-    },
+    adaptProfile: buildAdaptProfile(genProfileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────

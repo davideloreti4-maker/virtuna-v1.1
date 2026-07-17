@@ -74,8 +74,9 @@ export interface GatherCorpusInput {
   warnings: string[];
   /**
    * Route the retrieved corpus through the grounding-as-REMIX adapt stage (decode→adapt briefer,
-   * adapt.ts) instead of the raw per-skill slice? Default-off; hooks-only in Phase 1. Resolved by
-   * the caller (GROUNDING_HOOKS_ADAPT === "true"). Requires `adaptProfile`; absent → skipped.
+   * adapt.ts) instead of the raw per-skill slice? Default-off; supported for hooks, ideas, and
+   * script (Phase 2). Resolved by the caller (GROUNDING_<SKILL>_ADAPT === "true"). Requires
+   * `adaptProfile`; absent → skipped.
    */
   adapt?: boolean;
   /** Creator context the adapt stage re-voices the proven structures toward. */
@@ -84,6 +85,13 @@ export interface GatherCorpusInput {
 
 /** Platforms whose teardowns live in the corpus and can be retrieved. */
 const READABLE_PLATFORMS = new Set(["tiktok", "instagram", "youtube"]);
+
+/**
+ * The generate-by-remix skills the adapt briefer supports (decision doc §4d, consumption mode 1).
+ * GroundingSkill is exactly these three today, but the set is explicit so a future non-remix skill
+ * routed through this seam would NOT silently get the dosage briefer meant for structure transfer.
+ */
+const ADAPT_SKILLS = new Set<GroundingSkill>(["hooks", "ideas", "script"]);
 
 /** The live scrape+extract path is Apify/clockworks — TikTok only. IG native is the fast-follow. */
 const SCRAPABLE_PLATFORMS = new Set(["tiktok"]);
@@ -125,12 +133,12 @@ export async function gatherCorpusForRun(
   /**
    * Turn the retrieved exemplars into the `{ corpus, examples }` result the runner consumes.
    * ONE place so all three retrieval paths (cache hit · non-scrapable partial · live scrape) route
-   * identically: the grounding-as-remix adapt briefer when it is enabled (hooks + a profile),
-   * otherwise the raw per-skill slice. `used` (not the input list) is returned as `examples` so the
-   * runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
+   * identically: the grounding-as-remix adapt briefer when it is enabled (an adapt-supported skill +
+   * a profile), otherwise the raw per-skill slice. `used` (not the input list) is returned as
+   * `examples` so the runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
    */
   const finalize = async (examples: RetrievedExample[]): Promise<GatherCorpusResult> => {
-    if (input.adapt && input.skill === "hooks" && input.adaptProfile && examples.length > 0) {
+    if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
       const { corpus, used } = await adapt({
         skill: input.skill,
         ask: query,

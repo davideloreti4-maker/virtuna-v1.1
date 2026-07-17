@@ -74,6 +74,7 @@ import {
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { buildAdaptProfile } from "./adapt-profile";
 import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
 import {
   buildTargetAssignments,
@@ -103,6 +104,18 @@ const GENERATE_TIMEOUT_MS = 300_000;
  */
 function isGroundingEnabled(): boolean {
   return process.env.GROUNDING_IDEAS_ENABLED === "true";
+}
+
+/**
+ * Grounding-as-REMIX gate (adapt.ts) — the ideas fan-out of GROUNDING_HOOKS_ADAPT. When ON *and*
+ * grounding is on, the retrieved corpus is routed through the decode→adapt briefer with the IDEAS fit
+ * measure (a belief↔reality tension bound to the creator's subject) instead of the raw slice. OFF by
+ * default and independent of GROUNDING_IDEAS_ENABLED: it only changes the CONTENT of the `corpus`
+ * string, so the SIM gate, the sourceIndex→receipt link, and per-persona targeting are untouched. The
+ * honest outcome gate (does grounding make a BETTER idea?) is still open — keep it behind the flag.
+ */
+function isGroundingAdaptEnabled(): boolean {
+  return process.env.GROUNDING_IDEAS_ADAPT === "true";
 }
 
 // ─── Rank helpers (S3′ — mirrors hooks-runner) ──────────────────────────────────
@@ -457,6 +470,10 @@ export async function runIdeasPipeline(input: IdeasPipelineInput): Promise<Ideas
     niche: genProfileRow?.niche_primary ?? null,
     onStage: input.onStage,
     warnings: allWarnings,
+    // Grounding-as-remix: when ON, the corpus is a fitted+dosed belief↔reality brief, not the raw
+    // slice. The briefer re-points proven tensions at THIS creator, so hand it their profile.
+    adapt: isGroundingAdaptEnabled(),
+    adaptProfile: buildAdaptProfile(genProfileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────

@@ -44,9 +44,12 @@ function curated(id: string, madlib: string): RetrievedExample {
   };
 }
 
-function input(examples: RetrievedExample[]): AdaptCorpusInput {
+function input(
+  examples: RetrievedExample[],
+  skill: AdaptCorpusInput["skill"] = "hooks",
+): AdaptCorpusInput {
   return {
-    skill: "hooks",
+    skill,
     ask: "how to price freelance work",
     niche: "creator-economy",
     platform: "tiktok",
@@ -159,5 +162,83 @@ describe("adaptCorpusBlock — the fitted+dosed brief", () => {
     const result = await adaptCorpusBlock(input([]), { complete });
     expect(result).toEqual({ corpus: undefined, used: [] });
     expect(complete).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Phase 2: ideas + script get their OWN prompt, header, and fit measure ────
+
+describe("adaptCorpusBlock — per-skill briefs (ideas + script fan-out)", () => {
+  it("ideas: emits the belief↔reality brief header and keeps the fitted tension", async () => {
+    const a = proven("a", "Stop buying [product].");
+    const b = curated("b", "The [N] levels of [topic].");
+    const complete = vi.fn<AdaptComplete>(
+      canned({
+        structures: [
+          { sourceIndex: 1, dosage: "swap", fitted: "Freelancers believe rates equal skill — but clients pay for outcomes.", fitReason: "reframes the pricing belief" },
+          { sourceIndex: 2, dosage: "none", fitted: "", fitReason: "no tension maps" },
+        ],
+      }),
+    );
+
+    // The system prompt handed to the model is the IDEAS one — not the hooks prompt.
+    const { corpus, used } = await adaptCorpusBlock(input([a, b], "ideas"), { complete });
+    const [systemPrompt] = complete.mock.calls[0]!;
+    expect(systemPrompt).toContain("An IDEAS writer is about to generate content ideas");
+    expect(systemPrompt).not.toContain("hook writer");
+
+    // Brief header is the ideas one (unique marker), and the tension line survives.
+    expect(corpus).toContain("ALREADY RE-POINTED at your subject");
+    expect(corpus).toContain("1. [swap] Freelancers believe rates equal skill — but clients pay for outcomes.");
+    expect(used.map((e) => e.teardownId)).toEqual(["a"]); // b dropped (none)
+    // Not the hooks brief header, not the raw slice.
+    expect(corpus).not.toContain("proven short-form hook structures");
+    expect(corpus).not.toContain("works because:");
+  });
+
+  it("script: emits the beat-arc brief header and keeps the fitted arc uncapped", async () => {
+    const a = proven("a", "Stop buying [product].");
+    // A 5-beat arc is ~200 chars — it must NOT be truncated the way a 180-char hook cap would.
+    const arc =
+      "Hook: overpaying → Setup: your rate story → Turn: outcomes not hours → Payoff: a pricing frame → CTA: audit one invoice today";
+    const complete = vi.fn<AdaptComplete>(
+      canned({
+        structures: [{ sourceIndex: 1, dosage: "swap", fitted: arc, fitReason: "arc fits a how-to" }],
+      }),
+    );
+
+    const { corpus, used } = await adaptCorpusBlock(input([a], "script"), { complete });
+    const [systemPrompt] = complete.mock.calls[0]!;
+    expect(systemPrompt).toContain("A SCRIPT writer is about to write one short-form script");
+
+    expect(corpus).toContain("ALREADY MAPPED onto your subject");
+    expect(corpus).toContain(arc); // full arc, no mid-beat clip
+    expect(corpus).toContain("→ CTA: audit one invoice today");
+    expect(used.map((e) => e.teardownId)).toEqual(["a"]);
+  });
+
+  it("code-stamps the receipt for ideas/script too — a curated row is never 'proven'", async () => {
+    const b = curated("b", "The [N] levels of [topic].");
+    const complete = canned({
+      structures: [
+        { sourceIndex: 1, dosage: "swap", fitted: "belief X — but really Y", fitReason: "this proven banger fits" },
+      ],
+    });
+
+    const { corpus } = await adaptCorpusBlock(input([b], "ideas"), { complete });
+    expect(corpus).toContain("curated exemplar — @curator_b");
+    expect(corpus).not.toContain("proven by @curator_b");
+  });
+
+  it("falls back to the raw per-skill slice on failure (script → the raw script renderer)", async () => {
+    const a = proven("a", "Stop buying [product].");
+    const complete: AdaptComplete = async () => {
+      throw new Error("dashscope 500");
+    };
+
+    const { corpus, used } = await adaptCorpusBlock(input([a], "script"), { complete });
+    // Raw script slice opens each line with the source hook — the brief never emits "opened with:".
+    expect(corpus).toContain('opened with: "spoken a"');
+    expect(corpus).not.toContain("ALREADY MAPPED");
+    expect(used.map((e) => e.teardownId)).toEqual(["a"]);
   });
 });
