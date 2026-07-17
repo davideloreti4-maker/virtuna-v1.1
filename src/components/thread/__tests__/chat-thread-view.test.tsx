@@ -162,6 +162,66 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(iA2).toBeGreaterThan(iQ2);
   });
 
+  it('while a dispatched skill runs (streaming + live stages, no cards yet) shows the progress SPINE, not typing dots', () => {
+    // The gap this locks: a chat-dispatched generator is a 20–65s run, but the route already emits
+    // real `stage` events and use-chat-stream exposes them. Without rendering them the whole wait was
+    // silent typing dots. Now the live spine renders in their place.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        userTurn="give me 3 ideas about morning routines"
+        stages={[
+          { name: 'Generating', status: 'active' },
+          { name: 'Simulating your audience', status: 'pending' },
+        ]}
+      />,
+    );
+    // The spine container + the live stage label render.
+    expect(screen.getByLabelText('Skill run progress')).toBeTruthy();
+    expect(screen.getByText('Generating')).toBeTruthy();
+    // The pure-chat typing dots are NOT shown while a skill is running (the spine replaced them).
+    expect(screen.queryByText('Thinking…')).toBeNull();
+  });
+
+  it('spine survives a pre-tool preamble (streamed text before cards must NOT suppress it)', () => {
+    // The loop may stream a short "on it…" line BEFORE it calls the tool. The spine pivots on CARDS,
+    // not text — otherwise that preamble would silence the whole run (the exact gap being closed).
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        streamingBlocks={[{ type: 'markdown', props: { text: 'On it — generating a few angles.' } }]}
+        stages={[{ name: 'Generating', status: 'active' }]}
+      />,
+    );
+    // The preamble line AND the live spine both render (no cards yet → run still in progress).
+    expect(screen.getByText('On it — generating a few angles.')).toBeTruthy();
+    expect(screen.getByLabelText('Skill run progress')).toBeTruthy();
+  });
+
+  it('once the dispatched skill cards arrive, the spine gives way to the cards', () => {
+    // Cards are produced at the END of the run (onBlock fires after the pipeline finishes), so the
+    // moment streamingCardBlocks is non-empty the run is effectively done — the spine unmounts and the
+    // real cards carry the turn, even though stages are still present and the stream is still open.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        streamingCardBlocks={[IDEA_CARD]}
+        stages={[
+          { name: 'Generating', status: 'done' },
+          { name: 'Simulating your audience', status: 'done' },
+          { name: 'Ranking', status: 'done' },
+        ]}
+      />,
+    );
+    // The card is shown…
+    expect(screen.getByText('The 5am myth')).toBeTruthy();
+    // …and the loading spine is gone (its job is done once cards render).
+    expect(screen.queryByLabelText('Skill run progress')).toBeNull();
+  });
+
   it('persistedTurns take precedence over markdown-only persistedBlocks when both are present', () => {
     renderWithClient(
       <ChatThreadView
