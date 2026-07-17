@@ -168,9 +168,25 @@ as easy wins.
 ## 5. Bugs found during the session (unverified against current main — check first)
 
 **Panel-adjacent:**
-- `DEFAULT_TOOL = "chat"` (`composer.tsx:155`) and Chat emits **no** ambient descriptors
-  (`ambientDescriptors`, `composer.tsx:1730`, returns `[]` for everything except
-  hooks/idea/script/remix) → **the moat is idle on arrival by default.**
+
+- 🔴 **`ambientDescriptors` gates on the CHIP, not on the CARDS — and PR #316 just made it bite.**
+  **VERIFIED on current main `4a648e83`, 2026-07-17** (not a stale-screenshot claim):
+  ```js
+  // composer.tsx:1803
+  if (activeTool === "hooks")  return pick(persistedHookBlocks,  hooksBlocks,  "hook");
+  if (activeTool === "idea")   return pick(persistedIdeaBlocks,  ideasBlocks,  "idea");
+  if (activeTool === "script") return pick(persistedScriptBlocks, scriptBlocks, "script");
+  if (activeTool === "remix")  return pick(persistedRemixBlocks, remixBlocks,  "remix");
+  return [];   // ← chat lands here
+  ```
+  `DEFAULT_TOOL = "chat"` (`:155`). **Chat-as-agent (PR #316, `4a648e83`, shipped 2026-07-17,
+  `CHAT_AGENT_DISPATCH` default-ON) now dispatches real hook/idea/script cards inline from chat** —
+  but `activeTool` is still `"chat"`, so the room returns `[]`.
+  ⇒ **The product's DEFAULT path now generates cards the audience never reacts to.** The moat is not
+  merely idle on arrival — it is silent on the main road.
+  Same defect in `ambientKindLabel` (`:1815`): chat → `"Concept"`.
+  **Fix: branch on the blocks that exist, not on the chip.** Small, high-value, and independent of
+  P1/P2 — a candidate to ship first. Coordinate with [[chat-as-agent-premium-pass]] (active track).
 - The collapsed band read `8 of 10` for an off-screen card while the visible card said `7/10`
   (scroll-spy focus resolving to something out of the viewport). A rail/header makes this
   impossible — they'd be side by side.
@@ -205,9 +221,17 @@ Desktop rail **and** mobile header. Build to §2.
 
 ### 6.2 The two inputs — ONE INPUT. `Ask` becomes a verb in the composer chip. ✅
 
-**The forcing function:** today the composer field *becomes* the room input **when the panel is open**
-(`askAudience` → `/api/tools/react`, `composer.tsx:1887`). A rail/header is **permanently open** ⇒ that
-mode would be permanently on ⇒ you could never make anything again. **The mode dies whether we like it
+**The forcing function — CONFIRMED IN CODE on main `4a648e83`**, it's an early return:
+```js
+if (e.key === "Enter" && !e.shiftKey) {
+  e.preventDefault();
+  if (audienceOpen) { if (url.trim()) { void askAudience(url); setUrl(""); } return; }  // ← handleSubmit unreachable
+  if (canSubmit) void handleSubmit();
+}
+// and: const activePlaceholder = audienceOpen ? "Ask your audience…" : PLACEHOLDER_BY_TOOL[activeTool];
+```
+A rail/header is **permanently open** ⇒ `audienceOpen` is permanently true ⇒ `handleSubmit` is
+**permanently unreachable** ⇒ you could never make anything again. **The mode dies whether we like it
 or not.** Not a preference — arithmetic.
 
 **The resolution:** `Ask` is already one of the three locked verbs (**Make · Test · Ask**). Verbs live
