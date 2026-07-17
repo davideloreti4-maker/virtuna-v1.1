@@ -35,6 +35,7 @@ import { MessageBlocks } from '@/components/thread/message-blocks';
 import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-shell';
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
+import { OutliersOffer } from '@/components/thread/outliers-offer';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 
@@ -56,6 +57,16 @@ export interface ScriptThreadViewProps {
   /** "Test full →" handoff callback — called with opening beat line + script brief. */
   onTestScript?: OnTestScriptFn;
   /**
+   * True when the server signalled (via the `outliers` SSE event) that a live scrape could find
+   * proven outliers this run couldn't. Gates the "Find new outliers" affordance. Default false.
+   */
+  outliersAvailable?: boolean;
+  /**
+   * "Find new outliers" callback — re-runs the last send with a live outlier scrape authorized
+   * (explicit spend). Called ONLY on tap, never on render. Absent → the affordance is not rendered.
+   */
+  onFindOutliers?: () => void;
+  /**
    * Retry callback — re-invokes the skill run from the parent.
    * Called only on explicit tap (W2). Never fires on render.
    */
@@ -73,6 +84,8 @@ export function ScriptThreadView({
   streamingBlocks,
   stages,
   followupText,
+  outliersAvailable = false,
+  onFindOutliers,
   isStreaming,
   error,
   platform,
@@ -139,6 +152,13 @@ export function ScriptThreadView({
                 <div className="reading-reveal flex flex-col gap-3">
                   <MessageBlocks body={streamingBody} />
                 </div>
+              )}
+
+              {/* Find new outliers — offered only when the server says a live scrape would actually
+                  find some (outliersAvailable) and the run has settled. Tapping it spends: it re-runs
+                  the same subject with a live scan authorized. No offer on a clean grounded run. */}
+              {!isStreaming && outliersAvailable && onFindOutliers && (
+                <OutliersOffer onFindOutliers={onFindOutliers} />
               )}
 
               {/* Outro — the engine's real follow-up, restyled (no chips: the script card
