@@ -40,6 +40,11 @@ export const MarkdownBlockSchema = z.object({
   type: z.literal("markdown"),
   props: z.object({
     text: z.string(),
+    // Provenance marker. Set to "chat-agent" ONLY by the chat route's CHAT_AGENT_DISPATCH branch
+    // (server-side, flag-on) so a reloaded thread can tell it was produced by chat-as-agent and
+    // render as ONE ordered stream in the chat view. Optional + non-strict-safe: absent on every
+    // existing block and every flag-off write, so rehydration of old threads is byte-identical.
+    origin: z.string().optional(),
   }),
 });
 

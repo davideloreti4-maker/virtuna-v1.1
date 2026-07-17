@@ -65,3 +65,32 @@ export function ThreadLoadingSkeleton({
     </div>
   );
 }
+
+/**
+ * ChatTypingIndicator — premium inline "assistant is thinking" state for a chat turn.
+ *
+ * Three softly-pulsing dots, left-aligned under the assistant label (Claude/Perplexity-native),
+ * instead of the heavy centered constellation skeleton. Reduced-motion → a single steady dot row.
+ * `label` lets a skill dispatch say what it's doing (e.g. "Writing hooks…") while it runs.
+ */
+export function ChatTypingIndicator({ label }: { label?: string }) {
+  const reducedMotion = usePrefersReducedMotion();
+  return (
+    <div className="flex items-center gap-2 py-1" role="status" aria-live="polite">
+      <span className="sr-only">{label ?? 'Thinking…'}</span>
+      <span className="flex items-center gap-1" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={
+              'h-1.5 w-1.5 rounded-full bg-foreground-muted' +
+              (reducedMotion ? ' opacity-60' : ' animate-pulse')
+            }
+            style={reducedMotion ? undefined : { animationDelay: `${i * 180}ms`, animationDuration: '1s' }}
+          />
+        ))}
+      </span>
+      {label ? <span className="text-sm text-foreground-muted">{label}</span> : null}
+    </div>
+  );
+}
