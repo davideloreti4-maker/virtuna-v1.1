@@ -251,23 +251,50 @@ Take the ranked view's grammar as the bar.
    the other three got — it is the first thing the creator looks at.
 
 ### P2 — Placement (structural) — all decisions in, build it — **corrected by P0**
-1. Re-parent the room out of `composer.tsx` (mount @1939–1978, `presenceCommonProps` @1950) to thread level
-2. Desktop: the rail · Mobile: the audience header — **both owner-approved**
-3. ~~Kill the scrim~~ + kill the bloom. **There is no scrim** (P0 — non-modal `role=dialog`, z=55,
-   in-flow, no overlay, `aria-modal` absent). Only the **bloom** is real. It occupies; it does not overlay.
+
+> ## ✅ PLACEMENT SHIPPED 2026-07-18 — the re-parent is done + LIVE-verified (A1 · A2a · A2b)
+> Split as decided (A1 presentation → A2a desktop → A2b mobile), each measured on a real 20-card
+> thread (raw Playwright + minted `@supabase/ssr` cookie, :3002 — screenshots hang):
+> - **A1 `28f8ed27`** — `AudiencePresence variant='rail'`: the panel body persistent + IN-FLOW (no
+>   `bottom-full` bloom, no z-55, no collapse, no rise). Verified at `/dev/cards#room` (two boxes:
+>   ranked + brain-drill) — `position:relative`, fills its host, tall content scrolls INSIDE.
+> - **A2a `4644ebee`** — desktop right rail (≥xl). HomePageLayout grows a `hidden xl:flex` `<aside>`
+>   + hands `railHost` down; the composer `createPortal`s `variant='rail'` there (state stays in the
+>   composer — a re-host). Thread reflows to a centered pair (thread flex-1 cap 760 + rail 340). The
+>   single Composer keeps a STABLE child index (never remounts). Verified: rail in the aside not the
+>   dock, no overlap/no h-scroll, and **scroll-spy survives — scrolling moved focus 9/10 → 3/10.**
+> - **A2b `03395fcd`** — the `<xl` header: `variant='header'`, a 68px bar ABOVE the thread (rendered
+>   at the top of the composer's thread branch — the header sits over the scroll the composer owns,
+>   unlike the rail which sits beside it) that expands DOWNWARD (`top-full` z-55 sheet). Top-anchored
+>   → survives the keyboard (structural, measured — a soft keyboard can't be driven headless).
+>
+> **One mount, routed by `useRail`/`useHeader`/else** (isXl = `useMediaQuery('(min-width:1280px)')`):
+> rail ≥xl thread · header <xl thread · dock peek elsewhere — mutually exclusive, so never a hidden
+> second AmbientRoom. Guards `home-page-rail.test.tsx` + the rail/header blocks in
+> `audience-presence.test.tsx`, each ran RED against old code first. Scratch drivers in `.scratch/`.
+>
+> **▶ REMAINING P2 (the copy/mode cleanups — placement itself is done):** steps **4, 5, 7** below.
+> Step 4 (kill the `Ask` MODE + `Ask` verb) is a composer-verb refactor — `audienceOpen` is woven
+> through ~17 sites and `Ask` as a verb touches the whole `ToolId`/`SkillRows` system; scope it as
+> its own commit, NOT a copy tweak.
+
+1. ~~Re-parent the room out of `composer.tsx` to thread level~~ ✅ **DONE (A2a/A2b).**
+2. ~~Desktop: the rail · Mobile: the audience header~~ ✅ **DONE — both shipped.**
+3. ~~Kill the bloom~~ ✅ **DONE** — the rail is in-flow (no bloom); the header blooms DOWN (over the
+   thread, dismissible) by decision. There never was a scrim (P0).
 4. **Kill the composer's `Ask your audience…` MODE** and add `Ask` to the composer's verb chip (§6.2).
-   ⚠️ **P0 correction:** this is the *composer's* placeholder + `audienceOpen` early-return — **not a
-   field inside the panel** (§3.5 is deleted). The mode is still unshippable the moment step 2 lands
-   (§6.2's arithmetic is confirmed in code), so still do it *with* the re-parent — just know you are
-   deleting a **mode**, not a widget.
-5. Drop the rank numerals; name true ties (§6.3).
-6. ✅ **DONE (`66241a0f`, 2026-07-17) — scroll-spy re-anchored to the real cards.** Shipped AHEAD of
-   the re-parent (it did not need P2 after all). The anchor now rides each real card at the one choke
-   point every thread view funnels through (`message-blocks.tsx` `ambientBaseIndex`); the sr-only
-   markers are deleted. Guard `ambient-card-anchors.test.tsx` ran red against the old code first
-   (4 failed, 0 anchors). **Verified LIVE** — see §5. When P2 re-parents the room, this survives
-   untouched: the observer roots on `[data-ambient-card]` wherever the cards render.
-7. 🆕 **Re-copy `"Type a thought below…"`** — "below" is false in a rail (§3, end). **Still open.**
+   ⚠️ **STILL OPEN.** This is the *composer's* placeholder + `audienceOpen` early-return — **not a
+   field inside the panel** (§3.5 is deleted). ⚠️ **2026-07-18 correction to §6.2's arithmetic:** the
+   rail is NOT wired to `audienceOpen` (it ignores `open`, always shows), so `handleSubmit` is NOT
+   "permanently unreachable" after placement — the mode is not force-broken, it's just now
+   *pointless* (the room is always present) and should be replaced by an explicit `Ask` verb. The
+   `<xl` header's expand still routes through `audienceOpen` today (parity with the old dock) — B must
+   decouple the visual expand from the input-rerouting mode.
+5. Drop the rank numerals; name true ties (§6.3). **STILL OPEN.**
+6. ✅ **DONE (`66241a0f`, 2026-07-17) — scroll-spy re-anchored to the real cards.** Survived the
+   re-parent untouched (proven in A2a — the observer re-roots on `[data-ambient-card]` wherever the
+   cards render; live focus tracked 9/10 → 3/10 in the rail).
+7. 🆕 **Re-copy `"Type a thought below…"`** — "below" is false in a rail (§3, end). **STILL OPEN.**
 
 ### P3 — Bugs (separable, some are one-liners)
 See §5. `/dev/cards` and the orphaned routes are independent of everything else and can ship first
