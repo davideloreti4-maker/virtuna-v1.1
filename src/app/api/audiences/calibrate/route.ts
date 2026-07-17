@@ -27,10 +27,13 @@ import {
 } from "@/lib/audience/calibration";
 import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
+import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
+import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import {
   getOrCreateConnectedAccount,
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
+import type { ProfileBundle } from "@/lib/scraping/types";
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -124,6 +127,11 @@ export async function POST(request: Request): Promise<Response> {
         // ── Staged status, driven by the pipeline itself (not guessed) ────
         // The stages are emitted by calibrateFromScrape/enrichSignature as each phase BEGINS —
         // the route awaits one opaque promise and cannot see those boundaries from out here.
+        // The raw bundle from the ONE scrape — persistence (posts archive → pillars)
+        // reads this after `done` instead of running a second Apify scrape (P4).
+        // Holder object: TS doesn't track assignments made inside the callback.
+        const captured: { bundle: ProfileBundle | null } = { bundle: null };
+
         const calibrationResult = await calibrateFromScrape(
           { handle, type, platform, goalIntent, name, description },
           {
@@ -132,6 +140,9 @@ export async function POST(request: Request): Promise<Response> {
             // ~2 minutes before the audience they produce. A status line claims we are working;
             // the creator's own face and covers prove it.
             onEvidence: (evidence) => send("evidence", evidence),
+            onBundle: (bundle) => {
+              captured.bundle = bundle;
+            },
           },
         );
 
@@ -184,7 +195,8 @@ export async function POST(request: Request): Promise<Response> {
               userId: user.id,
               platform,
               handle: reveal.profile.handle || handle || name,
-              displayName: reveal.profile.handle || handle || name,
+              displayName:
+                reveal.profile.displayName || reveal.profile.handle || handle || name,
             });
           } catch {
             /* connect is best-effort — calibration proceeds without a linked account */
@@ -235,6 +247,27 @@ export async function POST(request: Request): Promise<Response> {
             });
           } catch {
             /* snapshot capture is best-effort — calibration already succeeded */
+          }
+        }
+
+        // One-scrape unification (P4): archive the SAME videos the calibration just
+        // watched as account_posts (the SOURCE zone's proof-of-scrape + the pillar
+        // input), then cluster pillars so the detail page is lit at creation instead
+        // of waiting a day for the refresh cron. Both best-effort, both post-`done` —
+        // the audience is already delivered; this work must never cost the creator it.
+        if (connectedAccount && captured.bundle) {
+          try {
+            await upsertAccountPosts(
+              supabase,
+              connectedAccount.id,
+              user.id,
+              connectedAccount.platform,
+              connectedAccount.handle,
+              captured.bundle.videos,
+            );
+            await clusterPillarsForAccount(supabase, user.id, connectedAccount.id);
+          } catch {
+            /* posts archive + pillars are best-effort — the daily cron converges them */
           }
         }
       } catch (err) {

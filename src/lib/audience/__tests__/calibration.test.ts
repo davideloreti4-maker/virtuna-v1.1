@@ -348,4 +348,43 @@ describe("calibrateFromScrape — onEvidence (the ~2min wait shows the account i
     expect("audience" in result || "fallback" in result).toBe(true);
     expect(onEvidence).not.toHaveBeenCalled();
   });
+
+  it("carries the profile's heart + video counts — the reveal figures come from the scrape", async () => {
+    const onEvidence = vi.fn();
+    const deps = makeDeps({ onEvidence });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    const evidence = onEvidence.mock.calls[0]![0];
+    expect(evidence.heartCount).toBe(100_000);
+    expect(evidence.videoCount).toBe(50);
+  });
+});
+
+describe("calibrateFromScrape — onBundle (one scrape feeds persistence too)", () => {
+  it("hands the RAW scraped bundle to the caller on the real-scrape path", async () => {
+    // P4 one-scrape: the route persists account_posts from the SAME bundle the
+    // calibration read — not a second Apify run. onBundle is that seam.
+    const onBundle = vi.fn();
+    const deps = makeDeps({ onBundle });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onBundle).toHaveBeenCalledTimes(1);
+    const bundle = onBundle.mock.calls[0]![0];
+    expect(bundle.videos).toHaveLength(15);
+    expect(bundle.profile.followerCount).toBe(50_000);
+  });
+
+  it("fires NO bundle on the niche fallback — those videos are not the account's", async () => {
+    // Niche-search videos belong to strangers; persisting them as the creator's own
+    // account_posts would fabricate an archive.
+    const onBundle = vi.fn();
+    const deps = makeDeps({
+      scrapeBundle: vi.fn(async () => makeBundle(0, THIN_MIN_VIDEOS - 1)),
+      scrapeNiche: vi.fn(async () => makeVideos(20)),
+      onBundle,
+    });
+    await calibrateFromScrape(BASE_INPUT, deps);
+
+    expect(onBundle).not.toHaveBeenCalled();
+  });
 });
