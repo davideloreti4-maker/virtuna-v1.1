@@ -219,7 +219,9 @@ export function PopulationSwarm({
   // Honesty label — the "a projection" framing when the real aggregate is present (mirrors
   // AmbientRoom.PopulationView copy), else the rollup's "instantiated from your 10" line.
   const honestyLabel = real
-    ? `${totalCount.toLocaleString()} sampled from your audience · a projection`
+    ? // §3.2: pin en-US so the count reads "1,000" everywhere, never a locale-dependent "1.000"
+      // that would collide with the hardcoded "1,000" tab label + honesty copy (#306 family).
+      `${totalCount.toLocaleString('en-US')} sampled from your audience · a projection`
     : HONESTY_LABEL;
 
   return (

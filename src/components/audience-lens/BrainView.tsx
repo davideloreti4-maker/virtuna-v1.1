@@ -476,15 +476,23 @@ export function BrainView({
           t {t.toFixed(1)}s · TR {TR_S}s
         </p>
 
-        {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
-            trails the stimulus because of it, and the figure says so out loud. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
-          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-        </p>
-        {/* Sapient's cortex caption — how many networks are lit, and at what scan time. */}
-        <p className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          7 networks · lit at t = {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
-        </p>
+        {/* Bottom captions — the lag claim (load-bearing: the HRF is real, the brain visibly trails
+            the stimulus, and the figure says so out loud) + Sapient's cortex caption (networks lit +
+            scan time). ⚠️ These were TWO independent `absolute left-3`/`right-3` captions and they
+            OVERPRINTED INTO GARBAGE at rail width (~280px well — the brain was tuned for the old
+            ~500px card). Now ONE flex row: the lag claim holds the corner (whitespace-nowrap), the
+            cortex caption truncates instead of colliding, and at the wide video-Read card both show
+            in full. (The card-polish lane converged on the SAME collision and DROPPED the cortex
+            caption as decoration; kept the flex-row superset here — both are collision-safe, this one
+            preserves the Sapient-parity "N networks" signal. Card owner can re-drop if preferred.) */}
+        <div className="pointer-events-none absolute inset-x-3 bottom-2.5 flex items-baseline justify-between gap-3">
+          <p className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+            trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+          </p>
+          <p className="min-w-0 truncate text-right font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+            7 networks · t {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
+          </p>
+        </div>
       </div>
 
       {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
@@ -513,7 +521,7 @@ export function BrainView({
             desaturate the ramp: `barFill` maps value→colour exactly as the shader paints it, so a
             quieter ramp would make the legend LIE about the map. So the ramp stays honest and the
             ELEMENT shrinks — TRIBE's legend is ~30% of their well's width; ours was 100%. */}
-        <div className="pointer-events-none w-[62%] min-w-0 max-w-[190px]">
+        <div className="pointer-events-none min-w-0 flex-1 max-w-[190px]">
           <div className="relative">
             <span className="flex h-[4px] overflow-hidden rounded-full">
               {Array.from({ length: 40 }, (_, i) => (
@@ -555,7 +563,9 @@ export function BrainView({
         </div>
         {/* The unit, and the CLAIM — BESIDE the legend, not crushed under it. The map is a contrast
             now, not raw activity, and this is the one place that has to say which. */}
-        <span className="truncate font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+        {/* §3.8: whitespace-nowrap + the colorbar flexing (min-w-0 flex-1) so this caption always
+            shows in full — it was truncating to "vs…" at rail width when the bar took a fixed 62%. */}
+        <span className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
           predicted BOLD · vs rest
         </span>
       </div>

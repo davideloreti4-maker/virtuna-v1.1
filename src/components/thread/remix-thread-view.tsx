@@ -128,7 +128,10 @@ export function RemixThreadView({
               {/* Result: bare remix card (no wrapper frame), revealed once complete (after the spine). */}
               {hasStreamingContent && !isStreaming && (
                 <div className="reading-reveal flex flex-col gap-3">
-                  <MessageBlocks body={streamingBody} />
+                  {/* Scroll-spy anchors: this run's cards render FIRST here but sit LAST in the
+                      room's ledger ([...persisted, ...streaming]) — so the offset is the persisted
+                      count. Anchor ids are LEDGER positions, never DOM positions. */}
+                  <MessageBlocks body={streamingBody} ambientBaseIndex={persistedBlocks.length} />
                 </div>
               )}
 
@@ -143,7 +146,7 @@ export function RemixThreadView({
                       Earlier
                     </p>
                   )}
-                  <MessageBlocks body={persistedBody} />
+                  <MessageBlocks body={persistedBody} ambientBaseIndex={0} />
                 </div>
               )}
             </ThreadAssistantTurn>

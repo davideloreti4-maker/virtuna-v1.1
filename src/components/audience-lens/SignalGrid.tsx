@@ -11,7 +11,6 @@
  * See `brain-signals.ts` for the mapping and the per-signal grade DIRECTION (a low Hesitation is STRONG).
  */
 
-import { useState } from 'react';
 import type { BrainSignal, SignalTone } from '@/lib/brain/brain-signals';
 
 const WORD_COLOR: Record<SignalTone, string> = {
@@ -21,12 +20,15 @@ const WORD_COLOR: Record<SignalTone, string> = {
 };
 
 function SignalCell({ s }: { s: BrainSignal }) {
-  const [open, setOpen] = useState(false);
   const barColor =
     s.tone === 'weak' ? 'var(--color-accent)' : s.tone === 'strong' ? 'var(--sage, #8aa383)' : 'var(--color-cream-primary)';
 
   return (
-    <div className="flex flex-col px-3.5 py-3.5">
+    // P1 · §3.8: the per-cell "WHY THIS SCORE" disclosure is GONE. At nine cells it repeated the
+    // same chrome ×9, and the single "How to read these numbers" expander above the grid already
+    // states — once — that every number is modeled, how it is graded, and that none is benchmarked.
+    // The per-signal derivation is preserved on the cell's hover title, at zero visible cost.
+    <div className="flex flex-col px-3.5 py-3.5" title={s.whyScore}>
       {/* The big thin numeral — Sapient's move exactly. */}
       <span className="font-extralight text-[36px] leading-none tracking-[-0.03em] tabular-nums text-foreground">
         {s.score}
@@ -49,19 +51,6 @@ function SignalCell({ s }: { s: BrainSignal }) {
           style={{ width: `${Math.max(2, Math.min(100, s.score))}%`, background: barColor, opacity: 0.85 }}
         />
       </span>
-
-      {/* WHY THIS SCORE — the disclosure lives behind an affordance, so the cell breathes (Sapient 1:1) */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="mt-2.5 self-start font-mono text-[8px] uppercase tracking-[0.12em] leading-none text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)]"
-      >
-        Why this score {open ? '↑' : '→'}
-      </button>
-      {open && (
-        <p className="mt-1.5 text-[9px] leading-[1.45] text-[var(--color-foreground-muted)]">{s.whyScore}</p>
-      )}
     </div>
   );
 }
@@ -74,7 +63,11 @@ export function SignalGrid({ signals, title = 'The nine breakdown signals' }: { 
         <span>{title}</span>
         <span className="text-[8px] tracking-[0.16em] text-[var(--color-foreground-muted)] opacity-70">modeled</span>
       </p>
-      <div className="grid grid-cols-3 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] [&>*]:border-[var(--color-border)] [&>*]:border-t [&>*]:border-l [&>*:nth-child(-n+3)]:border-t-0 [&>*:nth-child(3n+1)]:border-l-0">
+      {/* 2 columns (was 3): at the ~346px rail the 3-col cells were ~100px wide and every multi-word
+          label wrapped ("VISUAL PULL", "COGNITIVE GRIP", "HESITATION / RISK"). Two columns give each
+          cell room to sit on one line; the grid is exactly as tall but reads clean. Border resets
+          follow the 2-col rhythm. */}
+      <div className="grid grid-cols-2 overflow-hidden rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] [&>*]:border-[var(--color-border)] [&>*]:border-t [&>*]:border-l [&>*:nth-child(-n+2)]:border-t-0 [&>*:nth-child(2n+1)]:border-l-0">
         {signals.map((s) => (
           <SignalCell key={s.key} s={s} />
         ))}

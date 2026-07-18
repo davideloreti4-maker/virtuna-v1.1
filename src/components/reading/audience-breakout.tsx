@@ -219,7 +219,7 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
   return (
     <div
       data-testid="audience-breakout"
-      className="border-t border-[var(--color-border)] px-[18px] pb-[18px] pt-5 min-[520px]:px-6"
+      className="px-0.5"
     >
       {/* quiet title + info "!" (explanation behind it) + breakout badge */}
       <div className="flex items-center justify-between gap-3">
@@ -311,14 +311,16 @@ export function AudienceBreakout({ heatmap, simResults, dropT }: AudienceBreakou
                   className="absolute inset-x-0 bottom-0"
                   style={{
                     height: `${s.rate}%`,
-                    // Was two hardcoded rgba literals. The "not cleared" fill was
-                    // rgba(217,119,87,…) — #d97757, the RETIRED terracotta accent — rendering a
-                    // second, different red four hundred pixels from the live --color-accent
-                    // (#FF6363) dot in the same Reading. Neither literal tracked a token, so
-                    // the accent migration silently skipped the flagship surface.
+                    // Quieter (2026-07-18, B+tweak): green/amber are reserved for the score gauge
+                    // + the single weakest driver, so the reach tubes read in CREAM, not a
+                    // green-good / red-bad pair. Cleared vs. stalled is still legible — cleared
+                    // fills brighter, stalled dimmer, and the dashed promotion line + the darkened
+                    // connector into an unreached pillar (below) still mark where the breakout
+                    // stops. (Earlier this was color-mix(success)/color-mix(accent); before THAT a
+                    // hardcoded #d97757 — the retired terracotta — a second red in the same Read.)
                     background: s.cleared
-                      ? 'color-mix(in srgb, var(--color-success) 26%, transparent)'
-                      : 'color-mix(in srgb, var(--color-accent) 28%, transparent)',
+                      ? 'rgba(236,231,222,0.34)'
+                      : 'rgba(236,231,222,0.13)',
                   }}
                 />
                 <div

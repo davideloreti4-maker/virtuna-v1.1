@@ -81,3 +81,44 @@ describe('AmbientRoom — ranked list vs a typed ask', () => {
     expect(rankedList()).toBeNull();
   });
 });
+
+// ── D (§6.3, 07-18): drop rank numerals · keep the sort · name true ties ─────
+// The big serif "1" over two identical bars asserts an order the data refuses. The rows carry
+// their order via sort + bar + score; a genuine top tie is NAMED instead of faking a winner.
+// The tie is counted on the stop-count ONLY (the number the row shows) — never the population,
+// which is exactly the PR #306 family of bug (display one number, rank on another).
+function renderTiedRoom(topFraction: string) {
+  return (
+    <AmbientRoom
+      reducedMotion
+      conceptText="Hook one"
+      fraction={topFraction}
+      flatPersonas={flatPersonas}
+      focusId="h1"
+      siblings={[
+        { id: 'h1', conceptText: 'Hook one', fraction: topFraction },
+        { id: 'h2', conceptText: 'Hook two', fraction: '7/10 stop' },
+      ]}
+      kindLabel="Hook"
+      initialCompareOpen
+    />
+  );
+}
+
+describe('AmbientRoom — ranked list numerals + true ties', () => {
+  it('renders NO serif rank numeral on the ranked rows (getNodeText of the old span was exactly "1")', () => {
+    render(renderRoom('h1')); // 8/10 vs 3/10 — a clean, unique order
+    expect(screen.queryByText('1')).toBeNull();
+    expect(screen.queryByText('2')).toBeNull();
+  });
+
+  it('names a true top tie — "your top two are tied at 7/10" — instead of a fabricated winner', () => {
+    render(renderTiedRoom('7/10 stop')); // both leaders 7/10
+    expect(screen.getByText(/your top two are tied at 7\/10/i)).toBeInTheDocument();
+  });
+
+  it('does NOT claim a tie when the top score is unique', () => {
+    render(renderTiedRoom('9/10 stop')); // 9/10 clears the 7/10 runner-up
+    expect(screen.queryByText(/are tied at/i)).toBeNull();
+  });
+});

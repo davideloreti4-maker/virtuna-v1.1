@@ -35,6 +35,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { OpenRoomContext } from "@/lib/hook-test-context";
 import { InThreadInputContext } from "@/lib/in-thread-input-context";
 import { useParams, useRouter } from "next/navigation";
@@ -59,6 +60,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { isPaidPlanId, readingsRemainingLabel } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { createClient } from "@/lib/supabase/client";
 import {
   ComposerControls,
@@ -96,6 +98,7 @@ import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
+import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -171,6 +174,9 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   idea: "A topic to build ideas around — or leave empty and I'll pick the angles…",
   hooks: "A topic to write hooks for — or leave empty and I'll pick the angles…",
   chat: "Ask about your niche, your audience, or an idea you're weighing…",
+  // Ask the room (replaces the old `audienceOpen` "Ask your audience…" mode placeholder).
+  // Placement-neutral: the room is a rail (≥xl) / header (<xl), never literally "below".
+  ask: "Type a thought and watch the whole room react…",
   script: "A topic to script — or leave empty to carry in the hook you picked…",
   remix: "Paste a TikTok URL — I'll decode why it worked, then rebuild it as yours…",
   explore: "A niche or competitor to scan — or leave empty and I'll pull your niche…",
@@ -253,15 +259,26 @@ export interface ComposerProps {
    *  mounted + suppresses the welcome hero during the load gap so the layout never
    *  collapses to the centered serif hero between threads. */
   onRehydratingChange?: (rehydrating: boolean) => void;
+  /** P2 (A2a) — the desktop RIGHT-RAIL host owned by HomePageLayout. When present (≥xl, thread
+   *  mode) the audience room re-parents OUT of the bottom dock and is PORTALED here (state stays
+   *  in the composer; only the DOM owner changes). Null/absent ⇒ the dock keeps the room (the
+   *  <xl header path lands in A2b). Exactly one AmbientRoom mounts either way. */
+  railHost?: HTMLElement | null;
 }
 
-export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange }: ComposerProps) {
+export function Composer({ className, onThreadChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
   const reducedMotion = usePrefersReducedMotion();
-  // The audience presence is a SINGLE docked card on top of the composer at every breakpoint
-  // (unified 2026-07-07): the old ≥xl right rail is retired so desktop and mobile read the same —
-  // a small cap fused to the composer that blooms open into one surface. One presence mounts, so
-  // there is never a hidden second AmbientRoom running its timers.
+  // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
+  // (false until mounted) + railHost is null until the aside mounts, so the portal only engages
+  // post-mount on a wide thread view; every other state keeps the dock room byte-identical.
+  const isXl = useMediaQuery("(min-width: 1280px)");
+  const useRail = isXl && railHost != null;
+  // The audience presence docks above the composer as a peek→bloom card — EXCEPT ≥xl in thread
+  // mode, where P2 (A2a) re-parents it into HomePageLayout's persistent right rail (portaled; see
+  // `useRail`). The dock room and the rail room are mutually exclusive on the same `useRail` flag,
+  // so exactly ONE AmbientRoom ever mounts — never a hidden second one running its timers.
+  // (The <xl header path lands in A2b; until then <xl keeps the dock peek unchanged.)
 
   // Layout signal: does a Simulation exist? Mirrors ContentForm L158.
   const params = useParams();
@@ -360,18 +377,25 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
   const [buildOpen, setBuildOpen] = useState(false);
 
-  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
-  // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
-  // submit/keydown/placeholder render code below can branch on it). The asks feed + in-flight
-  // flag + the askAudience handler live further down (askAudience needs focusByThought).
-  const [audienceOpen, setAudienceOpen] = useState(false);
+  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21; mode killed 2026-07-18) ─────
+  // `roomExpanded` is now PURELY VISUAL: it blooms the dock peek (empty/permalink) and expands
+  // the <xl header sheet — nothing more. It used to be `audienceOpen`, a fused flag that ALSO
+  // put the composer field into a hidden "ask the room" input MODE. That mode is dead: after P2
+  // the room is always present, so a permanently-open rail made handleSubmit unreachable. Asking
+  // the room is now the explicit `ask` VERB (activeTool === "ask" → askAudience). The rail (≥xl)
+  // ignores this flag entirely (persistent, in-flow), so it's only the dock + header that read it.
+  const [roomExpanded, setRoomExpanded] = useState(false);
+  // Asking the room is a composer VERB now, not a panel mode: when the `ask` skill is armed, the
+  // field's submit/keydown route to askAudience and the placeholder/send-button say "ask", while
+  // the room stays visually wherever P2 placed it. One boolean, read everywhere the old mode was.
+  const isAsk = activeTool === "ask";
   // True while the presence was opened by a card's "See the room →" (a targeted single-card
   // entry) → the Room drills straight into that card instead of the ranked overview. Reset on
   // close so the next plain tab-tap opens the overview (the default bloom).
   const [roomDrill, setRoomDrill] = useState(false);
-  // Wrap the open/close setter so closing always clears the drill intent.
-  const handleAudienceOpenChange = useCallback((next: boolean) => {
-    setAudienceOpen(next);
+  // Wrap the expand/collapse setter so collapsing always clears the drill intent.
+  const handleRoomExpandedChange = useCallback((next: boolean) => {
+    setRoomExpanded(next);
     if (!next) setRoomDrill(false);
   }, []);
   const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
@@ -1710,8 +1734,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    // Audience-chat mode: the field sends into the room, not the skill (P13 redesign).
-    if (audienceOpen) {
+    // Ask-the-room verb: the field sends into the room, not a skill pipeline (mode → verb, 07-18).
+    if (isAsk) {
       if (url.trim().length > 0) {
         void askAudience(url);
         setUrl("");
@@ -1732,8 +1756,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Typing `/` in the field opens the skill list as a command menu, filterable;
   // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
   // this never collides with the Test/Remix URL paths.
-  // In audience-chat mode the field feeds the room — `/` is plain text, not a skill menu.
-  const slashActive = !audienceOpen && url.startsWith("/");
+  // `/` always opens the skill switcher — it's how you leave any verb, Ask included (typing
+  // `/hooks` from Ask arms Hooks). A real thought rarely starts with `/`, and only a leading
+  // `/` triggers, so it never eats a mid-sentence slash.
+  const slashActive = url.startsWith("/");
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
@@ -1775,8 +1801,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      // Audience-chat mode: send the thought into the room (P13 redesign).
-      if (audienceOpen) {
+      // Ask-the-room verb: send the thought into the room (mode → verb, 07-18).
+      if (isAsk) {
         if (url.trim().length > 0) {
           void askAudience(url);
           setUrl("");
@@ -1787,13 +1813,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
   };
 
-  // Placeholder follows the active chip; in the pinned state the follow-up copy
-  // takes precedence so it's contextually accurate (D-07 / D-24).
-  const activePlaceholder = audienceOpen
-    ? "Ask your audience…"
-    : hasSimulation
-      ? PLACEHOLDER_ACTIVE
-      : PLACEHOLDER_BY_TOOL[activeTool];
+  // Placeholder follows the active chip (the `ask` verb's copy lives in PLACEHOLDER_BY_TOOL now,
+  // not a mode branch); in the pinned state the follow-up copy takes precedence so it's
+  // contextually accurate (D-07 / D-24).
+  const activePlaceholder = hasSimulation
+    ? PLACEHOLDER_ACTIVE
+    : PLACEHOLDER_BY_TOOL[activeTool];
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. Active when hasThread is true OR while a switch
@@ -1801,67 +1826,30 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // collapsing to the centered hero. Empty home (no thread, not rehydrating) keeps
   // the existing centered hero layout (no regression).
   const homeThreadMode = (hasThread || rehydrating) && !hasSimulation;
+  // P2 (A2b): <xl thread mode, the room is a 68px HEADER above the thread (variant='header'),
+  // not the bottom-dock peek — it survives the keyboard (top-anchored). ≥xl the rail (A2a) owns it,
+  // so `!isXl` keeps them exclusive. Empty/permalink keep the dock peek (no thread to head).
+  const useHeader = homeThreadMode && !isXl;
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
-  // Build the focus descriptors from the VISIBLE tool's already-rendered cards
-  // (persisted + streaming, in render order). Each card already emits its real
-  // { fraction, scrollQuote } + a concept line — the spotlight READS that data,
-  // never re-runs a model (D-03 determinism-gate-safe; zero new model calls).
-  // Only the active tool's view is mounted at a time, so we derive from that set.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cardDescriptor = (b: any, idx: number, kind: string): AmbientCardDescriptor | null => {
-    const p = b?.props;
-    if (!p) return null;
-    const concept: string | undefined =
-      p.hookLine ?? p.title ?? p.openingBeatSeed ?? p.adaptedHook;
-    const fraction: string | undefined = p.fraction;
-    const scrollQuote: string | undefined = p.scrollQuote;
-    if (typeof concept !== "string" || typeof fraction !== "string") return null;
-    // S3′: a generated card carries its own 10-persona reaction (real registry-enum
-    // archetypes). Thread it onto the focus so the Room's People cast + "Ask them why"
-    // list are named/real — never re-runs a model. Absent on pre-S3′ persisted blocks →
-    // the presence falls back to the honest fraction-expansion placeholders.
-    const personas = Array.isArray(p.personas) ? p.personas : undefined;
-    // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection onto the
-    // focus so the Room's "Population · 1,000" view shows THIS card's real N-individual numbers
-    // instead of the honest-lean "MODELED FROM YOUR 10" fallback (which densifies the k/10 SIM and
-    // can DISAGREE with the card's projection). Absent on General/legacy cards → the fallback stands.
-    const population = p.population ?? undefined;
-    return {
-      id: `${kind}-${idx}`,
-      conceptText: concept,
-      fraction,
-      scrollQuote: typeof scrollQuote === "string" ? scrollQuote : "",
-      personas,
-      population,
-    };
-  };
-  const ambientDescriptors: AmbientCardDescriptor[] = (() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const pick = (persisted: any[], streaming: any[], kind: string) =>
-      [...persisted, ...streaming]
-        .map((b, i) => cardDescriptor(b, i, kind))
-        .filter((d): d is AmbientCardDescriptor => d !== null);
-    if (activeTool === "hooks") return pick(persistedHookBlocks, hooksBlocks, "hook");
-    if (activeTool === "idea") return pick(persistedIdeaBlocks, ideasBlocks, "idea");
-    if (activeTool === "script") return pick(persistedScriptBlocks, scriptBlocks, "script");
-    if (activeTool === "remix") return pick(persistedRemixBlocks, remixBlocks, "remix");
-    return [];
-  })();
-
-  // The batch's kind label for the Room's anchored-focus stepper (‹ Hook N of M ›) + view-all
-  // (PR-2). The descriptor set is already scoped to the active tool (all one kind), so a single
-  // singular label fits the whole batch.
-  const ambientKindLabel =
-    activeTool === "hooks"
-      ? "Hook"
-      : activeTool === "idea"
-        ? "Idea"
-        : activeTool === "script"
-          ? "Script"
-          : activeTool === "remix"
-            ? "Remix"
-            : "Concept";
+  // The room's card ledger + the batch's kind label for the anchored-focus stepper
+  // (‹ Hook N of M ›), built from the blocks the MOUNTED thread view already rendered
+  // (persisted + streaming, in DOM order). Each card already emits its real
+  // { fraction, scrollQuote } + a concept line — the spotlight READS that data, never re-runs
+  // a model (D-03 determinism-gate-safe; zero new model calls).
+  //
+  // The ledger is keyed on the BLOCKS, never on the composer chip: chat-as-agent
+  // (CHAT_AGENT_DISPATCH) dispatches real idea/hook/script cards inline while the chip stays
+  // "chat", so the chat view's cards are its own dispatched blocks — every persisted turn's,
+  // then this turn's stream. See ambient-descriptors.ts for the decision + its guard.
+  const { descriptors: ambientDescriptors, kindLabel: ambientKindLabel } = buildAmbientDescriptors({
+    activeTool,
+    hook: [...persistedHookBlocks, ...hooksBlocks],
+    idea: [...persistedIdeaBlocks, ...ideasBlocks],
+    script: [...persistedScriptBlocks, ...scriptBlocks],
+    remix: [...persistedRemixBlocks, ...remixBlocks],
+    chat: [...persistedChatTurns.flatMap((t) => t.blocks), ...chat.streamingBlocks],
+  });
 
   const {
     focus: ambientFocus,
@@ -1876,12 +1864,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // and bloom the presence open. Returns false when no descriptor matches → ProofUnit keeps its
   // standalone Lens fallback.
   const openRoomForCard = useCallback(
-    (conceptText: string): boolean => {
-      const d = ambientDescriptors.find((x) => x.conceptText === conceptText);
+    (conceptText: string, cardId?: string | null): boolean => {
+      // Resolve by the card's LEDGER id first (dup-concept safe), falling back to concept text —
+      // matching text alone opened the FIRST of two identical concepts (family of #306).
+      const d = resolveFocusDescriptor(ambientDescriptors, conceptText, cardId);
       if (!d) return false;
       setRoomDrill(true);
       focusByTap(d.id);
-      setAudienceOpen(true);
+      // Visual expand only (dock/header) — drilling into a card's read never arms the ask verb.
+      setRoomExpanded(true);
       return true;
     },
     [ambientDescriptors, focusByTap],
@@ -1976,11 +1967,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     focusByTap,
   ]);
 
-  // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
-  // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
-  // open, the COMPOSER FIELD becomes the audience-chat input (no second input): submit routes
-  // to askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows
-  // the room's read. (State declared up top so the render code can branch on `audienceOpen`.)
+  // ── Ask-the-room handler (P13; mode → `ask` verb 2026-07-18) ────────────────
+  // The `ask` verb makes the composer FIELD the room input (no second input): submit routes to
+  // askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows the
+  // room's read. (`isAsk` is declared up top so the submit/render code can branch on it.)
   const askInflightRef = useRef<AbortController | null>(null);
   useEffect(() => () => askInflightRef.current?.abort(), []);
 
@@ -2065,8 +2055,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     },
     focus: ambientFocus,
     reducedMotion,
-    open: audienceOpen,
-    onOpenChange: handleAudienceOpenChange,
+    // Visual expand only (dock bloom + <xl header sheet). The rail ignores it; tapping the band
+    // no longer arms an input mode — asking the room is the `ask` verb (activeTool === "ask").
+    open: roomExpanded,
+    onOpenChange: handleRoomExpandedChange,
     drillIntoFocus: roomDrill,
     asks: audienceAsks,
     asking,
@@ -2089,6 +2081,13 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     arrivalNonce,
   };
   const audiencePresence = <AudiencePresence {...presenceCommonProps} docked />;
+  // P2 (A2a) — the SAME presence, persistent + in-flow, for the desktop rail (variant='rail', A1).
+  // Same props (same focus/asks/reacting state), so the rail reacts to scroll-spy exactly as the
+  // dock peek did; only the container + DOM owner change. Rendered ONLY via the portal below.
+  const audienceRail = <AudiencePresence {...presenceCommonProps} variant="rail" />;
+  // P2 (A2b) — the <xl header: a 68px bar that expands DOWNWARD. Same props again; rendered at the
+  // TOP of the thread branch (below), not the dock.
+  const audienceHeader = <AudiencePresence {...presenceCommonProps} variant="header" />;
 
   // ── Build-an-audience chooser host (UX-04 / D-03 / D-08) ────────────────────
   // onBuilt → the cloned General SIM becomes the active audience; onEvidence reuses
@@ -2113,31 +2112,19 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     />
   );
 
-  // Per-card focus markers (data-ambient-card) — the scroll-spy + capture-phase tap seam,
-  // kept at the TOP of the thread scroll region so registerThreadRegion's IntersectionObserver
-  // tracks the ledger and a tap re-points the spotlight, WITHOUT forking the shipped card
-  // renderers. sr-only (the visible presence now lives in the bottom dock).
-  const ambientFocusMarkers = ambientDescriptors.length > 0 && (
-    <div data-testid="ambient-focus-markers" className="sr-only flex flex-col">
-      {ambientDescriptors.map((d) => (
-        <div
-          key={d.id}
-          data-ambient-card=""
-          data-card-id={d.id}
-          data-concept={d.conceptText}
-          data-fraction={d.fraction}
-          data-scroll-quote={d.scrollQuote}
-          role="button"
-          tabIndex={0}
-          aria-label={`Focus the audience on: ${d.conceptText}`}
-          onClickCapture={() => focusByTap(d.id)}
-          onKeyDownCapture={(e) => {
-            if (e.key === "Enter" || e.key === " ") focusByTap(d.id);
-          }}
-        />
-      ))}
-    </div>
-  );
+  // DELETED (2026-07-17): the sr-only `[data-ambient-card]` focus markers — a shadow copy of the
+  // ledger stacked at the top of the scroll region, which is why the scroll-spy never worked.
+  //
+  // They claimed to let the IntersectionObserver "track the ledger ... WITHOUT forking the shipped
+  // card renderers", but all N markers measured 1x1 at y=-1 in one sr-only box ABOVE the focus line
+  // while the real cards sat at y=1147..2529. The observer watched five zero-height boxes; the cards
+  // scrolled past unobserved and the band stayed pinned to the last descriptor forever.
+  //
+  // The anchors now ride the REAL cards (message-blocks.tsx `ambientBaseIndex`) — one shared choke
+  // point, so no renderer was forked after all. Their other job, a keyboard tap seam, was a second
+  // invisible copy of every card's own "See the room →" (which calls the same focusByTap via
+  // openRoomForCard). Their data-concept/-fraction/-scroll-quote payload was read by nothing —
+  // not one test. Guard: thread/__tests__/ambient-card-anchors.test.tsx.
 
   // Shared thread content block (rendered in both mode branches below).
   const threadSkillLabel = getSkill(activeTool).label;
@@ -2348,9 +2335,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       onSubmit={onSubmitForm}
       onDragOver={(e) => {
         // Evidence-drop overlay (D-07). Additive: VideoUpload stops propagation on its
-        // own drop zone, so the creator upload path is unaffected. Inert while the audience
-        // room owns the field — submit goes to askAudience, so a staged file would be dropped.
-        if (audienceOpen) return;
+        // own drop zone, so the creator upload path is unaffected. Inert while the ask verb
+        // owns the field — submit goes to askAudience, so a staged file would be dropped.
+        if (isAsk) return;
         e.preventDefault();
         if (!dragOver) setDragOver(true);
       }}
@@ -2359,7 +2346,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setDragOver(false);
       }}
       onDrop={(e) => {
-        if (audienceOpen) return;
+        if (isAsk) return;
         e.preventDefault();
         setDragOver(false);
         const f = e.dataTransfer.files?.[0];
@@ -2522,12 +2509,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 The skill menu is mode-scoped (07-01/UX-02/D-07): activeMode is DERIVED from the
                 selected audience (null/Socials → "socials" — Pitfall 2). */}
             <div className="flex items-center justify-between gap-2">
-              {/* LEFT cluster — attach + verb. Both are HIDDEN while the audience room owns the
-                  field: submit routes to askAudience there (onSubmitForm's first branch), so a
-                  staged evidence file would be silently discarded and a picked skill silently
-                  ignored. Rather than show controls whose promise the submit won't keep, the open
-                  room strips the row to field + send. The file <input> stays mounted regardless —
-                  handleUserSelectTool("profile") clicks it by ref. */}
+              {/* LEFT cluster — attach + verb. The `+` attach is HIDDEN while the ask verb owns
+                  the field: submit routes to askAudience (onSubmitForm's first branch), so a staged
+                  evidence file would be silently discarded. The verb chip STAYS in every mode —
+                  it's the only way OUT of Ask (Ask is a verb now, not a trap you can't leave). The
+                  file <input> stays mounted regardless — handleUserSelectTool("profile") clicks it. */}
               <div className="flex min-w-0 items-center gap-1.5">
                 {/* In-input evidence attach (05-06 / D-07) — a chat / screenshot (the Profile
                     evidence door). Opens a file picker; drag-drop is the form overlay. */}
@@ -2542,33 +2528,31 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                     e.target.value = ""; // allow re-selecting the same file
                   }}
                 />
-                {!audienceOpen && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label={EVIDENCE_ATTACH_LABEL}
-                      title={EVIDENCE_ATTACH_LABEL}
-                      onClick={() => evidenceInputRef.current?.click()}
-                      className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
-                    >
-                      <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                    </button>
-
-                    <ComposerControls
-                      activeTool={activeTool}
-                      onSelectTool={handleUserSelectTool}
-                      activeMode={selectedAudience?.mode ?? "socials"}
-                      onRunExplore={(params) => void explore.start(params)}
-                      className="shrink-0"
-                    />
-                  </>
+                {!isAsk && (
+                  <button
+                    type="button"
+                    aria-label={EVIDENCE_ATTACH_LABEL}
+                    title={EVIDENCE_ATTACH_LABEL}
+                    onClick={() => evidenceInputRef.current?.click()}
+                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+                  >
+                    <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                  </button>
                 )}
+
+                <ComposerControls
+                  activeTool={activeTool}
+                  onSelectTool={handleUserSelectTool}
+                  activeMode={selectedAudience?.mode ?? "socials"}
+                  onRunExplore={(params) => void explore.start(params)}
+                  className="shrink-0"
+                />
               </div>
 
               <div className="flex items-center gap-2.5">
                 {/* Read-only SIM-1 tier — the skill picks it, so it's metadata, not a control.
-                    Hidden while the audience panel owns the field (the tier wouldn't apply). */}
-                {!audienceOpen && <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />}
+                    Shown for every verb including Ask (the room reaction is a Flash call). */}
+                <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />
 
                 {/* Submit — the cream disc. boxShadow is forced off inline so the primary
                     variant's dark 2px ring (--shadow-button) can never re-add a border. */}
@@ -2580,9 +2564,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                   // chain never needed a case for it. Now that send RUNS the read, the button
                   // has to say so: a screen-reader user pressing "Simulate" and being charged
                   // for an account scrape is the same bug as a sighted one, just louder.
-                  aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
-                  disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
-                  loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+                  aria-label={isAsk ? "Ask the room" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
+                  disabled={isAsk ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
+                  loading={isAsk ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
                   style={{ boxShadow: "none" }}
                   className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
                 >
@@ -2635,7 +2619,15 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // composer, and the box flattens its top so the two read as one connected surface.
   const composerDock = (
     <div data-testid="composer-dock" className="pointer-events-auto relative flex w-full flex-col">
-      {audiencePresence}
+      {/* The audience room, ONE mount routed by breakpoint/mode:
+          ≥xl thread → PORTALED to HomePageLayout's right rail (A2a);
+          <xl thread → the HEADER above the thread (A2b, rendered in the thread branch — not here);
+          empty / permalink → the dock peek/bloom, byte-identical to before. */}
+      {useRail && railHost
+        ? createPortal(audienceRail, railHost)
+        : useHeader
+          ? null
+          : audiencePresence}
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
@@ -2654,8 +2646,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <div
           className={cn(
             "relative w-full rounded-[24px] border border-white/[0.06] bg-surface-elevated",
-            !audienceOpen && "overflow-hidden",
-            audienceOpen && "rounded-t-none border-t-0",
+            // The dock panel blooms flush with the composer top → flatten the box's top edge so
+            // the two read as one surface. Driven by the VISUAL expand, never the ask verb.
+            !roomExpanded && "overflow-hidden",
+            roomExpanded && "rounded-t-none border-t-0",
             layout === "centered" && "shadow-float",
             !reducedMotion && "transition-shadow duration-200",
           )}
@@ -2733,20 +2727,28 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           className,
         )}
       >
+        {/* P2 (A2b) — the mobile/tablet audience HEADER (<xl only; the rail owns ≥xl). A 68px bar
+            above the thread that expands DOWNWARD, top-anchored so it survives the keyboard (§2).
+            shrink-0 so it holds its height; the sheet blooms over the thread below (z-55). The
+            xl:hidden is belt-and-suspenders against the one-frame pre-hydration flash. */}
+        {useHeader && (
+          <div data-testid="audience-header-slot" className="relative z-10 shrink-0 px-4 pt-2 xl:hidden">
+            <div className="mx-auto w-full max-w-[760px]">{audienceHeader}</div>
+          </div>
+        )}
         {/* Scrollable thread region — full width, fills the FULL shell height and scrolls
             UNDER the floating dock (the dock is absolutely positioned below, not in flow).
             The bottom padding clears the collapsed dock so the last message can rest just
             above the composer instead of hiding behind it.
             registerThreadRegion roots the scroll-spy IntersectionObserver on this element
-            (Pattern 5); the sr-only focus markers ride at the top so the spotlight tracks
-            the ledger as it scrolls (D-01). */}
+            (Pattern 5). It observes the `[data-ambient-card]` anchors that the REAL cards carry
+            (message-blocks.tsx), so the spotlight tracks the ledger as it actually scrolls (D-01). */}
         <div
           ref={registerThreadRegion}
           data-testid="composer-thread-region"
           className="flex-1 min-h-0 overflow-y-auto pb-[184px]"
         >
           <div className="w-full max-w-[760px] mx-auto px-4">
-            {ambientFocusMarkers}
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a

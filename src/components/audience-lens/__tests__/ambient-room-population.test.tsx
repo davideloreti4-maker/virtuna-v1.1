@@ -10,6 +10,8 @@
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup, screen, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { AmbientRoom } from '../AmbientRoom';
 import type { PopulationAggregate } from '@/lib/audience/population';
 
@@ -74,5 +76,22 @@ describe('AmbientRoom Population view — real projection vs rollup fallback', (
 
     expect(screen.queryByText(/Who it lands with/i)).toBeNull();
     expect(screen.getByText(/modeled from your/i)).toBeTruthy();
+  });
+});
+
+// ── §3.2 — population counts format under ONE pinned locale ──
+// A bare `toLocaleString()` (no locale arg) renders "1.000" under de-DE / most of the EU, colliding
+// with the hardcoded "1,000" tab label + honesty copy: two formatters for one number that disagree
+// by locale (the #306 family — the same number stated twice from sources that can diverge). Every
+// population count must pin the locale so it reads identically everywhere the user is. Comment-
+// stripped so a mention in prose can't satisfy the guard.
+describe('AmbientRoom / PopulationSwarm — §3.2 pinned-locale population counts', () => {
+  const strip = (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  it('never uses a locale-dependent toLocaleString() for a population count', () => {
+    for (const f of ['AmbientRoom.tsx', 'PopulationSwarm.tsx']) {
+      const src = strip(readFileSync(join(process.cwd(), 'src/components/audience-lens', f), 'utf8'));
+      const bare = src.match(/\.toLocaleString\(\s*\)/g) || [];
+      expect(bare, `${f} has a locale-dependent toLocaleString() — pin 'en-US'`).toEqual([]);
+    }
   });
 });

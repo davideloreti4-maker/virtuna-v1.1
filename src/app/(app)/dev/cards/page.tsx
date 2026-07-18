@@ -24,6 +24,7 @@ import { ExploreThreadView } from "@/components/thread/explore-thread-view";
 import { AccountReadThreadView } from "@/components/thread/account-read-thread-view";
 import { MessageBlocks } from "@/components/thread/message-blocks";
 import { AmbientRoom } from "@/components/audience-lens/AmbientRoom";
+import { AudiencePresence } from "@/components/audience-lens/audience-presence";
 import { useState } from "react";
 import { Reading } from "@/components/reading/reading";
 import { ReadingSkeleton } from "@/components/reading/reading-skeleton";
@@ -755,6 +756,24 @@ const ROOM_FOCUS = {
   ],
 };
 
+// The persistent RAIL presentation (P2, ambient-room-v2) — the SAME AmbientRoom body, but hosted
+// by AudiencePresence's `variant='rail'` (in-flow, always-open, no bloom, no collapse). Boxed at a
+// real rail width×height so the geometry reads like the desktop rail. Same fixture focus as ROOM.
+const RAIL_FOCUS = {
+  id: "h3",
+  conceptText: ROOM_FOCUS.conceptText,
+  fraction: ROOM_FOCUS.fraction,
+  scrollQuote: "Wait — do WHAT instead? I need the answer.",
+  personas: ROOM_FOCUS.personas,
+};
+const RAIL_SIBLINGS = [
+  { id: "h1", conceptText: "The edit nobody tells you about.", fraction: "9/10 stop" },
+  { id: "h2", conceptText: "I deleted 40 hours of B-roll.", fraction: "7/10 stop" },
+  { id: "h3", conceptText: "Stop editing your videos. Do this instead.", fraction: "6/10 stop" },
+  { id: "h4", conceptText: "Your cuts are why they leave.", fraction: "4/10 stop" },
+  { id: "h5", conceptText: "Editing is a trap.", fraction: "2/10 stop" },
+];
+
 export default function DevCardsPage() {
   const [readingState, setReadingState] = useState('complete');
   const active = READING_STATES.find((s) => s.id === readingState) ?? READING_STATES[1]!;
@@ -905,6 +924,55 @@ export default function DevCardsPage() {
                   canRewrite={false}
                   brainSource={DEV_BRAIN_SOURCE}
                 />
+              </div>
+            </div>
+
+            {/* P2 — the PERSISTENT rail presentation (variant='rail'). The same body as above, but
+                hosted by AudiencePresence in-flow: no bloom, no z-[55] overlay, no collapse chevron.
+                Boxed at a real rail width (340) × height (720) so the geometry reads like the ≥xl
+                desktop rail. This is the A1 verify surface — prove it renders before A2 re-parents it
+                into HomePageLayout. */}
+            <div className="mt-6">
+              <SectionHead
+                label="The Room · persistent rail (P2)"
+                code="AudiencePresence variant='rail'"
+                note="variant='rail' — the panel body always shown in-flow inside a fixed-height column: never blooms, never collapses, no overlay. A2 re-parents THIS into the desktop rail (≥xl) / mobile header. The box below stands in for the rail column (340×720)."
+              />
+              <div className="flex flex-wrap gap-4">
+                {/* Ranked-compare view (a batch of siblings → the ranked overview). */}
+                <div id="rail-ranked" className="h-[720px] w-[340px] max-w-full">
+                  <AudiencePresence
+                    variant="rail"
+                    audience={null}
+                    audiences={[]}
+                    selectedAudienceId={null}
+                    onSelectAudience={() => {}}
+                    focus={RAIL_FOCUS}
+                    focusList={RAIL_SIBLINGS}
+                    onStep={() => {}}
+                    kindLabel="Hook"
+                    open={false}
+                    onOpenChange={() => {}}
+                  />
+                </div>
+                {/* Drill view (drillIntoFocus → the brain/people readout, the taller state that
+                    exercises the rail's internal scroll). */}
+                <div id="rail-drill" className="h-[720px] w-[340px] max-w-full">
+                  <AudiencePresence
+                    variant="rail"
+                    audience={null}
+                    audiences={[]}
+                    selectedAudienceId={null}
+                    onSelectAudience={() => {}}
+                    focus={RAIL_FOCUS}
+                    focusList={RAIL_SIBLINGS}
+                    onStep={() => {}}
+                    kindLabel="Hook"
+                    drillIntoFocus
+                    open={false}
+                    onOpenChange={() => {}}
+                  />
+                </div>
               </div>
             </div>
           </section>

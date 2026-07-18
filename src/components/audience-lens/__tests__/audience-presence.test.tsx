@@ -412,7 +412,10 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
 
   it('shows the idle hero prompt + the real cast (no fabricated reaction) when open + idle', () => {
     setup({ open: true, focus: null });
-    expect(screen.getByText(/type a thought below/i)).toBeInTheDocument();
+    // Placement-neutral copy (C, 07-18): "below" was dropped — the composer is a right rail (≥xl)
+    // or a top header (<xl) now, never literally below the roster.
+    expect(screen.getByText(/type a thought and watch the whole room react/i)).toBeInTheDocument();
+    expect(screen.queryByText(/type a thought below/i)).toBeNull();
     // "Meet your room" — the General cast renders as real named people (the moat), not an abstract count.
     expect(screen.getByText('Maya')).toBeInTheDocument();
     expect(screen.getByText('Dev')).toBeInTheDocument();
@@ -592,6 +595,101 @@ describe("AudiencePresence — variant='surface' (read-only)", () => {
     // the binding assertion is the ROOM's serif score for the one in-focus concept.
     const scores = within(panel).getAllByText(/6 of 10/i);
     expect(scores.some((el) => el.className.includes('font-serif'))).toBe(true);
+  });
+});
+
+// ── variant='rail' — the PERSISTENT, in-flow presentation (P2, ambient-room-v2) ──
+// The rail hosts the SAME Room body as the 'thread' bloom, but shown ALWAYS, in-flow, inside a
+// fixed-height column: it never blooms, never collapses, has no z-[55] overlay. The binding
+// property a pre-rail build cannot satisfy: with open=false the Room body is STILL mounted (the
+// 'thread' variant shows only the peek band there). These guards fail against the old code.
+describe("AudiencePresence — variant='rail' (persistent, in-flow, no bloom)", () => {
+  it('mounts the Room body PERSISTENTLY even when open=false (the rail never blooms)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    // The in-flow rail container, never the bloom panel.
+    expect(screen.getByTestId('audience-rail')).toBeInTheDocument();
+    expect(screen.queryByTestId('audience-panel')).toBeNull();
+    // The v6 Room body is mounted DESPITE open=false — the whole point of the rail. (Against the
+    // pre-rail code, open=false renders the peek band and this group is absent → red.)
+    expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
+  });
+
+  it('is not a dialog and carries no collapse affordance (never dismisses)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    // role="dialog" belongs to the modal-ish bloom; the persistent rail is in-flow content.
+    expect(screen.getByTestId('audience-rail').getAttribute('role')).toBeNull();
+    expect(screen.queryByRole('button', { name: /collapse your audience/i })).toBeNull();
+  });
+
+  it('surfaces the seam on the dock root as data-variant="rail"', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('rail');
+  });
+
+  // The contrast that makes the persistence meaningful — and documents exactly why the first
+  // assertion above fails against pre-rail code: the DEFAULT 'thread' variant with open=false
+  // shows ONLY the peek band, no Room body. (This one passes on old and new code alike.)
+  it("contrast — the 'thread' variant with open=false shows only the peek band (no Room)", () => {
+    setup({ variant: 'thread', open: false, focus: FOCUS });
+    expect(screen.queryByTestId('audience-rail')).toBeNull();
+    expect(screen.getByRole('button', { name: /open your audience/i })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /audience scale/i })).toBeNull();
+  });
+});
+
+// ── variant='header' — the <xl mobile/tablet presentation (P2 · A2b) ──
+// A compact bar ABOVE the thread that expands DOWNWARD (a top-full sheet), not the composer-fused
+// tab that blooms upward. Same body; the container + bloom direction flip. These lock the flip and
+// fail against pre-header code (which renders the upward 'thread' peek/bloom for any variant).
+describe("AudiencePresence — variant='header' (mobile, expands downward)", () => {
+  it('collapsed: a standalone rounded bar (not the composer-fused, rounded-top tab)', () => {
+    setup({ variant: 'header', open: false, focus: FOCUS });
+    const bar = screen.getByRole('button', { name: /open your audience/i });
+    // Header = a standalone all-corners bar; the thread tab is rounded-top-only, fused to the composer.
+    expect(bar.className).toMatch(/rounded-\[12px\]/);
+    expect(bar.className).not.toMatch(/rounded-t-\[14px\]/);
+  });
+
+  it('open: the sheet blooms DOWN (top-full), never up (bottom-full)', () => {
+    setup({ variant: 'header', open: true, focus: FOCUS });
+    const panel = screen.getByTestId('audience-panel');
+    expect(panel.className).toMatch(/top-full/);
+    expect(panel.className).not.toMatch(/bottom-full/);
+  });
+
+  it('surfaces data-variant="header" on the dock root', () => {
+    setup({ variant: 'header', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-presence').getAttribute('data-variant')).toBe('header');
+  });
+});
+
+// ── §3.6 — the OPEN/RAIL switcher bar drops the redundant readiness echo ──
+// P1 re-measurement (2026-07-18): "N ready" sat in a flex-1 cell in the switcher bar. In the
+// 322px rail identity ate 78% and the pulse was CLIPPED to 39px ("10 read…"); in the wide <xl
+// header sheet the same pulse floated in ~56% dead space. The room body right below already
+// states readiness (idle cast headline) or the score (focus serif), so the bar echo is dropped.
+// Scoped to the OPEN/RAIL bar only — the COLLAPSED tab keeps its live at-rest pulse.
+describe('AudiencePresence — §3.6 open/rail bar (no redundant readiness echo)', () => {
+  it('rail: the top switcher bar carries NO readiness pulse (the body owns it)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-rail')).toBeInTheDocument();
+    // The rail has no collapsed state → with the echo gone there is no audience-pulse at all.
+    expect(screen.queryByTestId('audience-pulse')).toBeNull();
+    // Identity stays (the switcher is the bar's reason to exist).
+    expect(screen.getByRole('button', { name: /switch audience/i })).toBeInTheDocument();
+  });
+
+  it('open thread panel: the switcher bar drops the pulse (only the open bar renders when open)', () => {
+    setup({ variant: 'thread', open: true, focus: FOCUS });
+    expect(screen.getByTestId('audience-panel')).toBeInTheDocument();
+    expect(screen.queryByTestId('audience-pulse')).toBeNull();
+  });
+
+  it('collapsed tab keeps its live pulse (the valuable at-rest read is untouched)', () => {
+    // Protective pin: the fix must NOT strip the collapsed-state pulse (the closed-tab read).
+    setup({ variant: 'thread', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/6 of 10 would stop/i);
   });
 });
 

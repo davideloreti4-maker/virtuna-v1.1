@@ -34,8 +34,8 @@ export function HowToRead() {
           </p>
           <p>
             <span className="text-[var(--color-foreground-secondary)]">The nine signals</span> are graded weakness &lt;40 ·
-            okay 40&ndash;64 · strong &ge;65 in each signal&rsquo;s own direction (for Hesitation/Risk, low is strong). Tap
-            WHY THIS SCORE on any cell for its exact basis.
+            okay 40&ndash;64 · strong &ge;65 in each signal&rsquo;s own direction (for Hesitation/Risk, low is strong). Each is
+            a reading of the modeled cortical networks, not a measured outcome.
           </p>
           <p>
             <span className="text-[var(--color-foreground-secondary)]">σ</span> is how far a second sits from the clip&rsquo;s
