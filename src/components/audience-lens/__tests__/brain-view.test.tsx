@@ -14,7 +14,26 @@
  */
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, within, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { AmbientRoom } from '../AmbientRoom';
+
+// ── §3.8 (P1) — the well's bottom captions must not overprint at rail width ──
+// The lag claim + Sapient's cortex caption were two independent `absolute bottom-2.5 left-3` /
+// `right-3` <p>s. In the ~280px rail well (the brain was tuned for the old ~500px card) they
+// COLLIDED into garbage ("trails your con⟦…garbled…⟧lag"). They now share ONE inset-x-3 flex row
+// so they truncate instead of collide. This source-guard locks the collision-safe structure.
+describe('BrainView — §3.8 caption layout (no overprint at rail width)', () => {
+  const src = readFileSync(
+    join(process.cwd(), 'src/components/audience-lens/BrainView.tsx'),
+    'utf8',
+  ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  it('renders the two bottom captions in ONE spanning flex row, never two colliding absolutes', () => {
+    expect(src).toMatch(/inset-x-3 bottom-2\.5 flex/);
+    expect(src).not.toMatch(/absolute bottom-2\.5 left-3/);
+    expect(src).not.toMatch(/absolute bottom-2\.5 right-3/);
+  });
+});
 
 // The cortex is WebGL — there is no GL context in happy-dom, and the surface itself is covered by
 // its own headless tests (`src/lib/brain/__tests__/cortex-mesh.test.ts`). What matters HERE is that

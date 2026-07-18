@@ -476,15 +476,21 @@ export function BrainView({
           t {t.toFixed(1)}s · TR {TR_S}s
         </p>
 
-        {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
-            trails the stimulus because of it, and the figure says so out loud. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
-          trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-        </p>
-        {/* Sapient's cortex caption — how many networks are lit, and at what scan time. */}
-        <p className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          7 networks · lit at t = {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
-        </p>
+        {/* Bottom captions — the lag claim (load-bearing: the HRF is real, the brain visibly trails
+            the stimulus, and the figure says so out loud) + Sapient's cortex caption (networks lit +
+            scan time). ⚠️ These were TWO independent `absolute left-3`/`right-3` captions and they
+            OVERPRINTED INTO GARBAGE at rail width (~280px well — the brain was tuned for the old
+            ~500px card). Now ONE flex row: the lag claim holds the corner (whitespace-nowrap), the
+            cortex caption truncates instead of colliding, and at the wide video-Read card both show
+            in full. */}
+        <div className="pointer-events-none absolute inset-x-3 bottom-2.5 flex items-baseline justify-between gap-3">
+          <p className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+            trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+          </p>
+          <p className="min-w-0 truncate text-right font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+            7 networks · t {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
+          </p>
+        </div>
       </div>
 
       {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
