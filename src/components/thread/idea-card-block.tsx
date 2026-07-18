@@ -144,7 +144,13 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           scored={scored ?? true}
           quote={scrollQuote}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
-          conceptText={`${title}\n\n${angle}`}
+          /* The room LOOKS this card up by conceptText (openRoomForCard → the ledger's
+             `.find(x => x.conceptText === …)`), and the ledger keys an idea on its title alone
+             (ambient-descriptors.ts `hookLine ?? title ?? …`). It must be the bare title, not
+             `title\n\nangle`, or "See the room →" never matches and the tap is a silent no-op —
+             the one fact / two sources trap. The rewrite anchor below deliberately keeps the
+             angle: it's a generation input, not a lookup key. */
+          conceptText={title}
           population={population}
           platform={platform}
           rewrite={buildCardRewrite({

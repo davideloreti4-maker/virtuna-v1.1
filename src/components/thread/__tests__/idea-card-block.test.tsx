@@ -16,6 +16,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { IdeaCardRenderer } from '@/components/thread/idea-card-block';
+import { OpenRoomContext } from '@/lib/hook-test-context';
+import { toAmbientDescriptor } from '@/components/app/home/ambient-descriptors';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
 
 // IdeaCardRenderer mounts SaveAffordance (useSaveItem → useQueryClient), so every
@@ -89,6 +91,33 @@ describe('IdeaCardRenderer — KCQ-09 made-for-you rationale (Task 1)', () => {
     const text = container.textContent ?? '';
     const occurrences = text.split('7/10').length - 1;
     expect(occurrences).toBe(1);
+  });
+
+  // The room LOOKS a card up by conceptText (composer's openRoomForCard →
+  // `descriptors.find(x => x.conceptText === conceptText)`), and the ledger keys an idea on
+  // its title ALONE (ambient-descriptors `hookLine ?? title ?? …`). This card once fired
+  // `title\n\nangle`, which never equals the title-only key ⇒ the tap was a silent no-op on
+  // idea cards (verified live: click fired, panel never bloomed). This locks the CTA to the
+  // SSOT the room resolves against — one fact, one source. Fails against the old `title\n\nangle`.
+  it('"See the room →" fires openRoomForCard with the SAME key the ledger keys this idea on', () => {
+    const block = makeBlock();
+    const calls: string[] = [];
+    const spy = (conceptText: string) => {
+      calls.push(conceptText);
+      return true;
+    };
+    renderWithClient(
+      <OpenRoomContext.Provider value={spy}>
+        <IdeaCardRenderer block={block} />
+      </OpenRoomContext.Provider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /see how the room reacted to this idea/i }));
+
+    // The key the room will look this card up by — derived from the SAME function the ledger uses.
+    const ledgerKey = toAmbientDescriptor(block, 0)!.conceptText;
+    expect(ledgerKey).toBe(block.props.title); // guards the ledger's own contract for ideas
+    expect(calls).toEqual([ledgerKey]); // the CTA must fire EXACTLY that key, not title\n\nangle
   });
 });
 

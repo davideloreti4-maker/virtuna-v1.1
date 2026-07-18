@@ -505,6 +505,7 @@ describe("POST /api/tools/chat (SSE route)", () => {
       return {
         text: "I made 2 angles — want hooks for one?",
         skillRuns: [{ name: "generate_ideas", blocks: [IDEA_BLOCK("A"), IDEA_BLOCK("B")], warnings: [] }],
+        uiBlocks: [], // the route persists uiBlocks (request_input fields) → mock must return the real shape
         toolCalls: [{ name: "generate_ideas", ran: true }],
       };
     });
@@ -545,7 +546,7 @@ describe("POST /api/tools/chat (SSE route)", () => {
 
     (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(async (input: { onToken: (d: string) => void }) => {
       input.onToken("grounded answer");
-      return { text: "grounded answer", skillRuns: [], toolCalls: [] };
+      return { text: "grounded answer", skillRuns: [], uiBlocks: [], toolCalls: [] };
     });
 
     const { POST } = await import("@/app/api/tools/chat/route");
@@ -594,7 +595,7 @@ describe("POST /api/tools/chat (SSE route)", () => {
     const { runChatPipeline } = await import("@/lib/tools/runners/chat-runner");
     (runChatAgentStream as ReturnType<typeof vi.fn>).mockImplementation(async (input: { onToken: (d: string) => void }) => {
       input.onToken("grounded answer");
-      return { text: "grounded answer", skillRuns: [], toolCalls: [] };
+      return { text: "grounded answer", skillRuns: [], uiBlocks: [], toolCalls: [] };
     });
 
     const { POST } = await import("@/app/api/tools/chat/route");

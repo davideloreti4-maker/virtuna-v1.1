@@ -156,8 +156,18 @@ export interface AudiencePresenceProps {
    *  presentation EXCEPT the composer-bound affordances are gated off: the Rewrite CTA is forced
    *  off (`canRewrite=false`) and the idle copy drops the "type below" prompt (§3 sign-off delta —
    *  no ask input / Rewrite unless the surface hosts a composer). Currently unmounted (the /start
-   *  dock was retired in #208) but kept forward-ready per `docs/SURFACE-SEAM-SPEC.md` §2. */
-  variant?: 'thread' | 'surface';
+   *  dock was retired in #208) but kept forward-ready per `docs/SURFACE-SEAM-SPEC.md` §2.
+   *
+   *  'rail' = the PERSISTENT presentation (P2, ambient-room-v2). The panel BODY is always shown
+   *  in-flow inside a fixed-height column — it never blooms, never collapses, has no z-[55] overlay
+   *  and no rise animation. The desktop right rail (≥xl) hosts this. The inner <AmbientRoom>/idle
+   *  cast is byte-identical to the 'thread' panel; only the CONTAINER changes (an absolute upward
+   *  bloom → an in-flow card), so this is a re-host, not a rebuild.
+   *
+   *  'header' = the <xl mobile/tablet presentation (P2 · A2b). A compact 68px bar that expands
+   *  DOWNWARD (a `top-full` sheet over the thread) instead of upward — it sits ABOVE the thread and
+   *  survives the keyboard because it is top-anchored, not bottom-pinned. Same body; the bloom flips. */
+  variant?: 'thread' | 'surface' | 'rail' | 'header';
 }
 
 export function AudiencePresence({
@@ -194,6 +204,14 @@ export function AudiencePresence({
   // constellation, the roster, the on-focus AmbientRoom) is already read-only. Guarded so
   // variant='thread' stays byte-identical (§3 sign-off delta; docs/SURFACE-SEAM-SPEC.md §2.1).
   const isSurface = variant === 'surface';
+  // 'rail' = the persistent, in-flow presentation (P2). The panel body renders like the OPEN
+  // bloom, but the container is a static full-height card: no `absolute bottom-full z-[55]`, no
+  // rise animation, no collapse chevron. It shows regardless of `open` (the rail never dismisses).
+  const isRail = variant === 'rail';
+  // 'header' = the <xl mobile/tablet presentation (P2 · A2b): a compact 68px bar at rest that
+  // expands DOWNWARD (open ⇒ a top-full sheet over the thread) instead of upward. It survives the
+  // keyboard because it's TOP-anchored, not bottom-pinned. Same body; only the bloom flips.
+  const isHeader = variant === 'header';
   const effectiveCanRewrite = isSurface ? false : canRewrite;
   const [switcherOpen, setSwitcherOpen] = useState(false);
   // "Meet your room" persona chat — the idle-cast introduction (meet-mode: no reaction yet).
@@ -285,15 +303,12 @@ export function AudiencePresence({
       ? `${stopRead.stop} of ${stopRead.total} would stop`
       : `${rosterCount} ready`;
 
-  // OPEN-panel top bar shows READINESS, never the focus score — the Room right below owns
-  // the score (the serif hero in the drill view; per-row meters in the ranked view), and
-  // echoing it in the bar read as two competing reads (and as a phantom aggregate over the
-  // ranked list). "Reading the room…" still takes over while a generation is in flight.
-  const openPulse = reacting
-    ? LOADING_COPY
-    : isPersonSim
-      ? '1 reactor ready'
-      : `${rosterCount} ready`;
+  // §3.6 (P1, 2026-07-18): the OPEN/RAIL top bar used to echo READINESS ("N ready") in a flex-1
+  // cell. Re-measurement killed it: in the 322px rail identity ate 78% and the echo clipped to
+  // 39px ("10 read…"); in the wide <xl header sheet it floated in ~56% dead space. The room body
+  // right below already states readiness (idle cast headline) or the score (focus serif), so the
+  // echo was a redundant restatement either way. The COLLAPSED tab keeps its own live `dockPulse`
+  // (the valuable at-rest read); only the open/rail bar dropped the echo.
 
   // The "N new" arrival badge: on the reacting true→false edge (the room just finished
   // reacting), a terracotta pill pops onto the presence and counts up to the roster size —
@@ -696,47 +711,81 @@ export function AudiencePresence({
   );
 
   return (
-    <div ref={dockRootRef} className="relative w-full" data-testid="audience-presence" data-variant={variant}>
-      {open ? (
-        /* ── OPEN: the panel expands UPWARD and connects into the composer as ONE surface. Its
-              bottom is flush with the composer (border-b-0 + shared surface tone); the composer box
-              flattens its top when open. The audience SWITCHER sits at the TOP of this card. ── */
+    <div
+      ref={dockRootRef}
+      className={isRail ? 'flex h-full min-h-0 w-full flex-col' : 'relative w-full'}
+      data-testid="audience-presence"
+      data-variant={variant}
+    >
+      {open || isRail ? (
+        /* ── OPEN / RAIL: the panel body (switcher bar + Room/idle). In 'thread' it expands UPWARD
+              and connects into the composer as ONE surface (absolute bloom, rise animation). In
+              'rail' the SAME body renders in-flow inside a fixed-height card — no bloom, no rise,
+              no collapse (isRail branches the container, never the body). The audience SWITCHER
+              sits at the TOP of this card either way. ── */
         <div
-          data-testid="audience-panel"
-          role="dialog"
+          data-testid={isRail ? 'audience-rail' : 'audience-panel'}
+          role={isRail ? undefined : 'dialog'}
           aria-label="Your audience"
           className={
-            'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
-            (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
-            (reducedMotion
-              ? ''
-              : 'transition-[transform,opacity] duration-300 ease-out ' +
-                (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
+            isRail
+              ? // Persistent rail card: static, full-height, matte (12px radius, no shadow, no
+                // bloom transform). Fills its host column; the body scrolls internally.
+                'relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[12px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-none'
+              : isHeader
+              ? // Header sheet: blooms DOWN from the 68px bar (top-full) over the thread, capped +
+                // internally scrolled. Rounded BOTTOM, no top border (flush into the bar); rises
+                // from the top edge (-translate-y).
+                'absolute top-full left-0 right-0 z-[55] flex max-h-[70dvh] flex-col overflow-hidden rounded-b-[22px] border border-t-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-float)] ' +
+                (reducedMotion
+                  ? ''
+                  : 'transition-[transform,opacity] duration-300 ease-out ' +
+                    (risen ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'))
+              : 'absolute bottom-full left-0 right-0 z-[55] flex max-h-[calc(100dvh-140px)] flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] ' +
+                (docked ? 'shadow-none ' : 'shadow-[var(--shadow-float)] ') +
+                (reducedMotion
+                  ? ''
+                  : 'transition-[transform,opacity] duration-300 ease-out ' +
+                    (risen ? 'translate-y-0 opacity-100' : 'translate-y-2 opacity-0'))
           }
-          style={{
-            ...(reducedMotion ? {} : { willChange: 'transform' }),
-            // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
-            ...(panelMaxH != null ? { maxHeight: panelMaxH } : {}),
-          }}
+          style={
+            isRail
+              ? undefined
+              : isHeader
+              ? reducedMotion
+                ? undefined
+                : { willChange: 'transform' }
+              : {
+                  ...(reducedMotion ? {} : { willChange: 'transform' }),
+                  // Measured clamp — see panelMaxH above (centered-home anchor overflows the CSS max-h).
+                  ...(panelMaxH != null ? { maxHeight: panelMaxH } : {}),
+                }
+          }
         >
-          {/* Switcher bar — TOP of the card (identity + readiness + collapse). */}
+          {/* Switcher bar — TOP of the card (identity + collapse). The readiness echo is gone
+              (§3.6): the room body below owns readiness/score, and the bar's flex-1 cell either
+              clipped it (rail) or floated it in dead space (header). A spacer holds the arrival
+              badge + collapse to the right edge. */}
           <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
             {identity}
-            <span
-              data-testid="audience-pulse"
-              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
-            >
-              {openPulse}
-            </span>
+            <div className="min-w-0 flex-1" />
             {arrivalBadge}
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Collapse your audience"
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
-            >
-              <ChevronDown className="h-4 w-4" aria-hidden />
-            </button>
+            {/* Collapse — bloom presentations only. The rail never dismisses (§2), so no chevron.
+                'thread' blooms up ⇒ collapse points down; 'header' blooms down ⇒ collapse up. */}
+            {!isRail && (
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                aria-label="Collapse your audience"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px] text-[var(--color-foreground-muted)] transition-colors hover:bg-[var(--color-hover)] hover:text-[var(--color-foreground)]"
+              >
+                {isHeader ? (
+                  <ChevronUp className="h-4 w-4" aria-hidden />
+                ) : (
+                  <ChevronDown className="h-4 w-4" aria-hidden />
+                )}
+              </button>
+            )}
           </div>
 
           {asking && (
@@ -808,7 +857,10 @@ export function AudiencePresence({
                   <p className="max-w-[400px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
                     {isSurface
                       ? SURFACE_IDLE_SUB
-                      : `Type a thought below and watch the whole room react.`}
+                      : // Placement-neutral (P2): the composer is a right rail (≥xl) or a top
+                        // header (<xl), never literally "below" the roster. "below" was the last
+                        // string that assumed the old bottom-dock layout.
+                        `Type a thought and watch the whole room react.`}
                   </p>
                 </div>
               </div>
@@ -867,11 +919,11 @@ export function AudiencePresence({
           )}
         </div>
       ) : (
-        /* ── COLLAPSED: a tab CONNECTED to the composer top — narrower than the composer (inset on
-              both sides), no gap, rounded TOP corners only, square bottom flush into the composer.
-              Same surface tone as the composer (surface-elevated) so it reads as one continuous
-              surface — no darker backing plate behind it; tap to bloom open. ── */
-        <div className="px-4">
+        /* ── COLLAPSED: at rest. 'thread' → a tab CONNECTED to the composer top (rounded TOP only,
+              square bottom flush into the composer). 'header' (A2b) → a standalone rounded bar
+              ABOVE the thread that expands DOWNWARD. Same tone as the composer (surface-elevated),
+              tap to open. ── */
+        <div className={isHeader ? '' : 'px-4'}>
           <div
             role="button"
             tabIndex={0}
@@ -888,7 +940,14 @@ export function AudiencePresence({
                using it as the hover background swaps the opaque surface for a translucent
                one and the thread scrolling behind the dock shows straight through. The tab
                floats over that scroll, so its fill stays opaque — lift it with a solid tone. */
-            className="flex w-full items-center gap-2 rounded-t-[14px] border border-b-0 border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-1.5 transition-colors hover:bg-[#32312e]"
+            className={
+              'flex w-full items-center gap-2 border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 transition-colors hover:bg-[#32312e] ' +
+              (isHeader
+                ? // Standalone bar, all corners rounded, taller (the 68px header target).
+                  'rounded-[12px] py-2.5'
+                : // Tab fused to the composer top: rounded top only, square bottom.
+                  'rounded-t-[14px] border-b-0 py-1.5')
+            }
             style={{ cursor: 'pointer' }}
           >
             {identity}
@@ -908,7 +967,12 @@ export function AudiencePresence({
               ) : null}
             </span>
             {arrivalBadge}
-            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            {/* Direction of expansion: 'thread' blooms UP (chevron up); 'header' expands DOWN. */}
+            {isHeader ? (
+              <ChevronDown className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            ) : (
+              <ChevronUp className="h-4 w-4 shrink-0 text-[var(--color-foreground-muted)]" aria-hidden />
+            )}
           </div>
         </div>
       )}

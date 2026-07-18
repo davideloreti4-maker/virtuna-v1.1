@@ -444,3 +444,46 @@ describe('Composer — chat-agent unified reload', () => {
     await waitFor(() => expect(screen.queryByText(/want hooks/i)).toBeNull());
   });
 });
+
+// ── B (07-18): "Ask the room" is a VERB, not a hidden `audienceOpen` MODE ─────
+// The old mode silently rerouted the composer field to the room; after P2 made the room
+// always-present, a permanently-open rail made handleSubmit unreachable. Ask is a skill now
+// (activeTool === "ask" → askAudience → POST /api/tools/react). Each of these FAILS against the
+// pre-07-18 composer: `/ask` matched no skill, so send fell through to the chat/skill pipeline,
+// /api/tools/react was never called, and the placement-neutral placeholder did not exist. The
+// old "Ask your audience…" string only ever appeared while the (now-deleted) mode was open.
+describe('Composer — Ask the room is a verb (07-18)', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('routes send to /api/tools/react when the Ask verb is armed (never the skill pipeline)', async () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('ask');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'a hot take on protein timing' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(calledWith('/api/tools/react')).toBe(true));
+    // ...and it did NOT fall through to a content-generation stream.
+    expect(hooksStart).not.toHaveBeenCalled();
+  });
+
+  it('arming Ask shows the placement-neutral placeholder, never the retired "Ask your audience…" mode string', () => {
+    renderWithClient(<Composer />);
+    selectSkillBySlash('ask');
+    expect(screen.getByPlaceholderText(/watch the whole room react/i)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/ask your audience/i)).toBeNull();
+  });
+
+  it('still streams a real skill (Hooks) — the verb split did not break content generation', async () => {
+    const { container } = renderWithClient(<Composer />);
+    selectSkillBySlash('hooks');
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'protein timing' } });
+    fireEvent.click(submitBtn(container));
+    await waitFor(() => expect(hooksStart).toHaveBeenCalled());
+    expect(calledWith('/api/tools/react')).toBe(false);
+  });
+});

@@ -37,6 +37,7 @@ export type ToolId =
   | "idea"
   | "hooks"
   | "chat"
+  | "ask"
   | "script"
   | "remix"
   | "explore"
@@ -90,6 +91,13 @@ export const SKILLS: SkillMeta[] = [
   { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
   { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Ask — converse / probe. ──
+  // Two skills, both genuinely "Ask": CHAT is the agent conversation (streams turns, can
+  // dispatch cards); ASK THE ROOM is a one-shot reaction — type a thought, the whole room
+  // reacts (POST /api/tools/react). "Ask the room" replaces the old hidden `audienceOpen`
+  // MODE: after the ambient room became always-present (P2 placement), an input-mode that
+  // silently rerouted the field to the room was pointless — a permanently-open rail made
+  // handleSubmit permanently unreachable. It's a VERB now, so where your words go is explicit.
+  { id: "ask",     label: "Ask the room", desc: "Type a thought → the room reacts",  command: "/ask",  group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // Label is "Chat", not "The room". The Room is the ambient-audience surface and it has its
   // own front door; using its name for the CHAT skill meant the app's default state — now
   // chat — announced itself with a phrase that does not contain the word "chat". The skill
@@ -172,6 +180,7 @@ const SKILL_ICON: Record<ToolId, string> = {
   test: "crosshair",
   account: "search",
   chat: "chat",
+  ask: "people", // asks the ROOM (the people) — distinct from chat's speech-bubble glyph
   offer: "tag",
   ad: "mega",
   profile: "people",
@@ -192,6 +201,7 @@ export const VERB_BY_TOOL: Record<ToolId, "Make" | "Test" | "Ask"> = {
   test: "Test",
   account: "Test", // Account Read = judge something real (your own posts) — owner-locked
   chat: "Ask",
+  ask: "Ask", // Ask the room — the ambient-audience reaction, converse/probe under Ask
   idea: "Make",
   hooks: "Make",
   script: "Make",
