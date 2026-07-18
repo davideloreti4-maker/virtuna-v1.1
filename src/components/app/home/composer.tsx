@@ -34,8 +34,9 @@
  *   useIdeasStream drives IdeasThreadView rendered above the composer when active.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { OpenRoomContext } from "@/lib/hook-test-context";
+import { InThreadInputContext } from "@/lib/in-thread-input-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus } from "lucide-react";
@@ -1039,6 +1040,32 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
   }, []);
 
+  // Reload the CHAT thread into the ordered-turn buckets (persistedChatTurns/Blocks). Shared by the
+  // post-turn swap effect (below) and the in-thread input affordance (a Remix from a pasted link
+  // persists its card server-side, then calls this so the card surfaces in-place). no-store: this is
+  // a live poll for a just-persisted block; a cached GET would serve the pre-run thread.
+  const reloadChatThread = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/threads/open', { cache: 'no-store' });
+      if (!res.ok) return false;
+      const data = (await res.json()) as {
+        messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
+      };
+      const messages = data.messages ?? [];
+      if (messages.length === 0) return false;
+      setPersistedChatTurns(orderedTurns(messages));
+      setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
+      return true;
+    } catch {
+      // Network error — leave current state; the next reload reconciles it.
+      return false;
+    }
+  }, []);
+
+  // The in-thread input affordance (input-request block) reloads the chat thread on completion so its
+  // result card surfaces in-place. Memoised so the block's context consumers don't re-render each pass.
+  const inThreadInputValue = useMemo(() => ({ onLinkComplete: reloadChatThread }), [reloadChatThread]);
+
   // ── Evidence-drop affordance (D-07 — the additive Profile inbox) ────────────
   // reloadProfileThread re-reads the open thread and re-filters the profile-read +
   // reaction-distribution blocks IN PLACE. It surfaces (a) the profile-read just
@@ -1092,29 +1119,34 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     chatDoneHandledRef.current = true;
     let cancelled = false;
     void (async () => {
-      try {
-        const res = await fetch('/api/threads/open', { cache: 'no-store' });
-        if (cancelled || !res.ok) return;
-        const data = (await res.json()) as {
-          messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
-        };
-        if (cancelled) return;
-        const messages = data.messages ?? [];
-        if (messages.length === 0) return; // nothing persisted → keep the live turn visible
-        // One commit (React 18 batches these three): persisted history gains the finished turn AND the
-        // live turn clears together, so the turn swaps from live→persisted with no flash and no dup.
-        // chatReset() runs ONLY here (on success) — a failed fetch must NOT clear an unpersisted turn.
-        setPersistedChatTurns(orderedTurns(messages));
-        setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
-        chatReset();
-      } catch {
-        // Network error — leave the live turn in place; the next reload reconciles it.
-      }
+      // Persisted history gains the finished turn, THEN the live turn clears — swapping live→persisted
+      // with no flash and no dup. chatReset() runs ONLY on a successful reload (and if not cancelled) —
+      // a failed fetch must NOT clear an unpersisted turn.
+      const ok = await reloadChatThread();
+      if (cancelled || !ok) return;
+      chatReset();
     })();
     return () => {
       cancelled = true;
     };
-  }, [chatIsDone, chatIsStreaming, chatReset]);
+  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread]);
+
+  // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
+  // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
+  // optimistic user bubble (lastUserTurn) and re-enters the SSE loop (chat.start). No tool-switch,
+  // no blank re-run — the retired chain-handoff CTA did both and lost the topic. The thread already
+  // exists (a completed turn is on screen), and the route persists the user turn server-side, so no
+  // ensureThreadForSend / user-turn POST is needed here. Fires ONLY on the user's tap (D-05).
+  const sendChatFollowup = useCallback(
+    (prompt: string) => {
+      const t = prompt.trim();
+      if (!t) return;
+      setLastUserTurn(t);
+      chat.reset();
+      void chat.start(t, platform);
+    },
+    [chat, platform],
+  );
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
   // set the inline muted reject; never a blocking modal. Server re-validates (T-05-18).
@@ -2145,6 +2177,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   const threadContent = (
     <OpenRoomContext.Provider value={openRoomForCard}>
+     <InThreadInputContext.Provider value={inThreadInputValue}>
       {testSubmitTurn}
       {/* Profile thread view (05-06 — D-07) — the profile-read + reaction-distribution
           blocks render here via the shared MessageBlocks renderer (registered in 05-01).
@@ -2249,8 +2282,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       {/* Chat thread view — renders above the composer when the Chat tool is active.
           ChatThreadView owns its own empty state + cold-start nudge + error state.
           CRITICAL: chat send NEVER navigates; no pendingNavRef (D-05).
-          Plan 05-05: onSuggestChain taps switch the active tool + kick the skill.
-          The CTA tap fires ONLY on onClick — never auto-fires (D-05). */}
+          Follow-up chips SEND A NEW CHAT MESSAGE into this same thread (sendChatFollowup) —
+          the agent then routes it. No tool-switch, no blank re-run (the retired behavior).
+          The chip tap fires ONLY on onClick — never auto-fires (D-05). */}
       {showChatView && (
         <ChatThreadView
           persistedBlocks={persistedChatBlocks}
@@ -2264,19 +2298,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           error={chat.error}
           niche={undefined}
           platform={platform}
-          onSuggestChain={(ctaLabel) => {
-            // Map ctaLabel to a tool switch + skill run on explicit tap (D-05).
-            // "Turn this into hooks →" → switch to hooks, run Auto mode.
-            // "Develop this →" → switch to idea, run Auto mode.
-            // This fires ONLY because the user explicitly tapped — not auto-fire.
-            if (ctaLabel.toLowerCase().includes("hook")) {
-              setActiveTool("hooks");
-              void hooks.start("", platform);
-            } else if (ctaLabel.toLowerCase().includes("idea") || ctaLabel.toLowerCase().includes("develop")) {
-              setActiveTool("idea");
-              void ideas.start("", platform);
-            }
-          }}
+          onFollowup={sendChatFollowup}
           {...threadPresentation}
         />
       )}
@@ -2314,6 +2336,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
           userTurn={lastUserTurn}
         />
       )}
+     </InThreadInputContext.Provider>
     </OpenRoomContext.Provider>
   );
 

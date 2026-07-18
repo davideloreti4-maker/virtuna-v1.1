@@ -782,6 +782,30 @@ export const AccountReadBlockSchema = z.object({
 
 export type AccountReadBlock = z.infer<typeof AccountReadBlockSchema>;
 
+// ─── input-request ──────────────────────────────────────────────────────────────
+// An in-thread input affordance the chat AGENT surfaces when a skill needs structured input the
+// creator's sentence didn't supply — the canonical case being Remix, which needs a video LINK.
+// Instead of hallucinating a URL or answering in prose, the agent calls the request_link tool and
+// the loop emits ONE of these; the renderer shows an inline field, and on submit the composer runs
+// the named `action` skill and its card lands in the SAME thread. NO model-generated UI: the model
+// only CHOOSES to request a fixed kind; label/placeholder are set server-side, not by the model.
+export const InputRequestBlockSchema = z.object({
+  type: z.literal("input-request"),
+  props: z.object({
+    // The input shape. Only "link" today (a single URL field); this literal is where new kinds land.
+    kind: z.literal("link"),
+    // The skill the submitted value runs. "remix" today (url → remix-card in-thread).
+    action: z.literal("remix"),
+    // Field label + placeholder (deterministic copy, set by the loop — never model text).
+    label: z.string().min(1),
+    placeholder: z.string().optional(),
+    // Platform the action runs on (carried from the turn so the remix targets the right feed).
+    platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
+  }),
+});
+
+export type InputRequestBlock = z.infer<typeof InputRequestBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -796,6 +820,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
+  InputRequestBlockSchema,
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,

@@ -235,7 +235,7 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   {
     id: "chat",
     label: "Ask (chat)",
-    note: "Ask skill. Grounded answer in a SkillResultCard + suggested chain-step CTAs.",
+    note: "Chat-as-agent answer. A plain answer offers the generative entry points as follow-up chips (context-aware — see the skill-specific sets below).",
     node: (
       <ChatThreadView
         persistedBlocks={CHAT_BLOCKS}
@@ -245,11 +245,78 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         nudgeShown={false}
         error={null}
         platform="tiktok"
-        onSuggestChain={noop}
+        onFollowup={noop}
         userTurn={USER_TURNS.chat}
         skillLabel="Ask"
         audienceLabel={AUDIENCE}
       />
+    ),
+  },
+  {
+    id: "chat-followups",
+    label: "Chat follow-ups",
+    note: "The context-aware follow-up chips (chat-followups.ts). Each row is a completed chat turn of a different kind — the chips reflect WHAT RAN, never the old hardcoded idea handoff. Tapping sends the prompt back into the same chat thread.",
+    node: (
+      <div className="flex flex-col gap-6">
+        {[
+          { k: "after a plain answer", turn: { userTurn: "how often should I post?", blocks: [{ type: "markdown", props: { text: "Three times a week beats daily if each one earns the slot." } }] } },
+          { k: "after ideas ran", turn: { userTurn: "give me ideas about morning routines", blocks: IDEA_BLOCKS.slice(0, 1) } },
+          { k: "after hooks ran", turn: { userTurn: "write hooks for the 5am myth", blocks: HOOK_BLOCKS.slice(0, 1) } },
+          { k: "after a script ran", turn: { userTurn: "write a script for it", blocks: SCRIPT_BLOCKS.slice(0, 1) } },
+        ].map(({ k, turn }) => (
+          <div key={k} className="flex flex-col gap-2">
+            <p className="text-[11px] uppercase tracking-[0.06em] text-foreground-muted">{k}</p>
+            <ChatThreadView
+              persistedBlocks={[]}
+              persistedTurns={[turn]}
+              streamingBlocks={[]}
+              isStreaming={false}
+              coldStart={false}
+              nudgeShown={false}
+              error={null}
+              platform="tiktok"
+              onFollowup={noop}
+            />
+          </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    id: "in-thread-link",
+    label: "In-thread link field",
+    note: "The agent-surfaced input affordance (input-request block → request_link tool). When you ask to remix/adapt a video without a link, the agent shows this inline field IN THE THREAD; pasting a link runs the Remix in-place. Rendered via MessageBlocks (proves the registry routes input-request → the renderer).",
+    node: (
+      <div className="flex flex-col gap-4">
+        <ChatThreadView
+          persistedBlocks={[]}
+          persistedTurns={[
+            {
+              userTurn: "adapt this trending video for me",
+              blocks: [
+                {
+                  type: "input-request",
+                  props: {
+                    kind: "link",
+                    action: "remix",
+                    label: "Paste the video link and I'll adapt it for your audience.",
+                    placeholder: "https://…",
+                    platform: "tiktok",
+                  },
+                },
+                { type: "markdown", props: { text: "Drop the link and I'll adapt it for your audience.", origin: "chat-agent" } },
+              ],
+            },
+          ]}
+          streamingBlocks={[]}
+          isStreaming={false}
+          coldStart={false}
+          nudgeShown={false}
+          error={null}
+          platform="tiktok"
+          onFollowup={noop}
+        />
+      </div>
     ),
   },
   {

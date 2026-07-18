@@ -412,9 +412,17 @@ export async function POST(request: Request): Promise<Response> {
                 await insertMessage(openThread.id, "assistant", run.blocks, kcStamp().kcGenVersion);
               }
             }
+            // UI affordance blocks (an input-request field from request_link) — persisted so the field
+            // survives the post-turn reload; without this it would render live then vanish (D-14 revalidates).
+            if (agentResult.uiBlocks.length > 0) {
+              await insertMessage(openThread.id, "assistant", agentResult.uiBlocks, kcStamp().kcGenVersion);
+            }
             const text = agentResult.text.trim();
             if (text.length > 0) {
-              const props = agentResult.skillRuns.length > 0 ? { text, origin: "chat-agent" } : { text };
+              // origin:"chat-agent" makes the thread reload as ONE ordered stream in the chat view when
+              // the turn produced any blocks (skill cards OR a field), not just skill cards.
+              const producedBlocks = agentResult.skillRuns.length > 0 || agentResult.uiBlocks.length > 0;
+              const props = producedBlocks ? { text, origin: "chat-agent" } : { text };
               await insertMessage(openThread.id, "assistant", [{ type: "markdown", props }], kcStamp().kcGenVersion);
             }
           }

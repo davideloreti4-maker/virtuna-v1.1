@@ -16,13 +16,15 @@
  *    nudgeShown (sticky boolean from useChatStream, never reset) so it renders only once
  *    per session. Muted/secondary-cream styling, never coral.
  *  - ERROR (W2): inline notice when error is truthy. Clears on next successful start() call.
- *  - SUGGESTED CHAIN CTA (Plan 05-05 / D-05 / STUDIO-03): after a completed chat turn,
- *    renders a tappable "Turn this into hooks →" CTA sourced from chain-handoff.ts.
- *    CRITICAL: CTA NEVER auto-fires on render — only fires on explicit tap (onClick).
+ *  - FOLLOW-UP CHIPS (chat-followups.ts): after a completed chat turn, renders 2–3 tappable
+ *    suggestions keyed off WHAT ACTUALLY RAN this turn (a script turn offers script moves, a plain
+ *    answer offers the generative entry points). Tapping SENDS A NEW CHAT MESSAGE into the SAME
+ *    thread (onFollowup) — the agent routes it. This replaces the retired chain-handoff CTA that
+ *    always showed the idea handoff and switched the active tool away from chat (losing the topic).
+ *    CRITICAL: a chip NEVER auto-fires on render — it only fires on explicit tap (onClick), D-05.
  *
  * Column: max-w-[760px] mx-auto gap-6, THEME-06 flat-warm, no glow.
  * Muted/secondary cream only for nudge + error — never coral (UI-SPEC §Color).
- * Chain CTA uses coral accent per UI-SPEC §Color (coral reserved for chain CTAs).
  * Markdown turns render through MarkdownBlockRenderer via MessageBlocks (not plain text).
  */
 
@@ -33,7 +35,7 @@ import { ChatTypingIndicator } from '@/components/thread/thread-loading';
 import { ProgressChecklist, type StageState } from '@/components/thread/progress-checklist';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
-import { handoffsFor } from '@/lib/tools/chain-handoff';
+import { followupsForTurn, blockTypesOf } from '@/lib/tools/chat-followups';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -88,11 +90,12 @@ export interface ChatThreadViewProps {
   /** Current platform selection (interpolated into the cold-start nudge copy). */
   platform?: string;
   /**
-   * Called when the user taps a suggested chain-step CTA (Plan 05-05 / D-05 / STUDIO-03).
-   * Receives the ctaLabel of the tapped handoff (e.g. "Turn this into hooks →").
+   * Called when the user taps a follow-up chip (chat-followups.ts). Receives the PROMPT to send
+   * into the chat thread (e.g. "Give me a few more ideas along these lines.") — the composer wires
+   * this to chat.start, so the turn continues in the SAME thread and the agent routes it.
    * CRITICAL: this handler fires ONLY on user tap (onClick), NEVER on render (D-05).
    */
-  onSuggestChain?: (ctaLabel: string) => void;
+  onFollowup?: (prompt: string) => void;
   /** Optimistic echo of the user's submitted prompt (presentation-only). */
   userTurn?: string | null;
   /** Active skill label for result chrome (passed from composer). */
@@ -114,7 +117,7 @@ export function ChatThreadView({
   error,
   niche,
   platform,
-  onSuggestChain,
+  onFollowup,
   userTurn,
 }: ChatThreadViewProps) {
   // Unified chat-agent reload: the ordered TURNS (each question + its cards/co-pilot line) REPLACE the
@@ -131,18 +134,21 @@ export function ChatThreadView({
   // gate too, so a dispatched run that produced ONLY cards (co-pilot line still streaming) shows.
   const hasStreamingCards = streamingCardBlocks.length > 0;
 
-  // Suggested chain-step CTAs (D-05 / STUDIO-03): show after a chat turn completes.
-  // Sourced from chain-handoff.ts (handoffsFor "chat" — but chat is not a SkillId,
-  // so we use idea → hooks handoff as the canonical "next step" from a chat answer).
+  // Follow-up chips (D-05): show after a chat turn completes, keyed off WHAT RAN this turn.
   // Only show when there is content (a completed chat turn) and not currently streaming.
-  // CRITICAL: CTAs are NEVER auto-fired — they only render as tappable buttons.
+  // CRITICAL: chips are NEVER auto-fired — they only render as tappable buttons.
   const hasCompletedTurn = !isStreaming && (hasStreamingContent || hasStreamingCards || hasPersistedContent);
-  // Get CTAs from the chain-handoff registry for the "idea" skill (idea → hooks is the
-  // most relevant next step for a chat answer about content). Filter out placeholder
-  // entries (endpoint: null + not the test/hooks chain steps that are actually wired).
-  const suggestedCTAs = hasCompletedTurn && onSuggestChain
-    ? handoffsFor('idea').filter((h) => h.endpoint !== null || h.to === 'hooks')
-    : [];
+  // The just-completed turn's blocks: prefer the live turn's streamed cards/prose when still present
+  // (the window before the isDone effect swaps it into persistedTurns); else the LAST persisted turn;
+  // else the markdown-only bucket. Its block types decide which follow-ups fit (script vs ideas vs
+  // a plain answer) — the retired CTA ignored this and always showed the idea handoff.
+  const lastTurnBlocks: unknown[] =
+    hasStreamingCards || hasStreamingContent
+      ? [...streamingCardBlocks, ...streamingBlocks]
+      : hasPersistedTurns
+        ? persistedTurns[persistedTurns.length - 1]?.blocks ?? []
+        : persistedBlocks;
+  const followups = hasCompletedTurn && onFollowup ? followupsForTurn(blockTypesOf(lastTurnBlocks)) : [];
 
   // Interpolate niche/platform into the nudge copy, falling back to literal words
   const nicheLabel = niche && niche.trim() ? niche.trim() : 'your niche';
@@ -239,13 +245,13 @@ export function ChatThreadView({
         </>
       )}
 
-      {suggestedCTAs.length > 0 && (
-        <div className="flex flex-wrap gap-2 pt-1">
-          {suggestedCTAs.map((handoff) => (
+      {followups.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-1" data-testid="chat-followups">
+          {followups.map((followup) => (
             <button
-              key={`${handoff.from}-${handoff.to}`}
+              key={followup.label}
               type="button"
-              onClick={() => onSuggestChain?.(handoff.ctaLabel)}
+              onClick={() => onFollowup?.(followup.prompt)}
               className={[
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5",
                 "text-xs font-semibold leading-snug",
@@ -253,9 +259,9 @@ export function ChatThreadView({
                 "transition-colors hover:bg-active hover:border-border-hover",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               ].join(" ")}
-              aria-label={`Suggest: ${handoff.ctaLabel}`}
+              aria-label={`Follow up: ${followup.label}`}
             >
-              {handoff.ctaLabel}
+              {followup.label}
             </button>
           ))}
         </div>

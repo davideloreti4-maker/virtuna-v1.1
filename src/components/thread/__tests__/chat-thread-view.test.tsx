@@ -8,8 +8,8 @@
  * in the SAME thread — the whole point of "one thread, all skills". Also locks that a plain chat
  * turn (markdown only, no cards) is unchanged.
  */
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChatThreadView } from '../chat-thread-view';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
@@ -220,6 +220,75 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(screen.getByText('The 5am myth')).toBeTruthy();
     // …and the loading spine is gone (its job is done once cards render).
     expect(screen.queryByLabelText('Skill run progress')).toBeNull();
+  });
+
+  // ── Follow-up chips (chat-followups) — the redesign of the retired chain-handoff CTA ──────────
+  // The old code ALWAYS rendered handoffsFor('idea') ("Develop this →" / "Rewrite for this audience →")
+  // regardless of what ran, and tapping switched the active tool. These guards fail against that code.
+  const SCRIPT_CARD = {
+    type: 'script-card',
+    props: {
+      title: 'The 5am myth — script',
+      hook: 'Everyone lied about 5am',
+      beats: [{ label: 'Hook', text: 'Everyone lied about 5am' }],
+      band: 'Strong',
+      fraction: '4/5',
+      scored: true,
+      scrollQuote: 'wait, what?',
+      model: 'sim1-flash',
+    },
+  };
+
+  it('follow-up chips are context-aware: a script turn offers script moves, NOT the idea handoff', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'write a script', blocks: [SCRIPT_CARD] }]}
+        onFollowup={vi.fn()}
+      />,
+    );
+    // The retired hardcoded CTAs must be gone after a script turn.
+    expect(screen.queryByText('Develop this →')).toBeNull();
+    expect(screen.queryByText('Rewrite for this audience →')).toBeNull();
+    // Script-kind chips render instead (chat-followups.ts).
+    expect(screen.getByText('Make it punchier')).toBeTruthy();
+    expect(screen.getByText('Hooks for this')).toBeTruthy();
+  });
+
+  it('a plain chat answer offers the generative entry points as chips', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'how often should I post?', blocks: [{ type: 'markdown', props: { text: 'Three times a week.' } }] }]}
+        onFollowup={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Give me ideas')).toBeTruthy();
+    expect(screen.getByText('Write hooks')).toBeTruthy();
+    expect(screen.getByText('Draft a script')).toBeTruthy();
+  });
+
+  it('tapping a chip fires onFollowup with the PROMPT (never auto-fires on render)', () => {
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'how often should I post?', blocks: [{ type: 'markdown', props: { text: 'Three times a week.' } }] }]}
+        onFollowup={onFollowup}
+      />,
+    );
+    // D-05: nothing fired just by rendering.
+    expect(onFollowup).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Give me ideas'));
+    // The chip sends the full PROMPT (what the agent routes), not the short label.
+    expect(onFollowup).toHaveBeenCalledWith('Give me a few content ideas for what we just talked about.');
+  });
+
+  it('no chips render while streaming (a turn must complete first)', () => {
+    renderWithClient(
+      <ChatThreadView {...baseProps} isStreaming={true} userTurn="q" onFollowup={vi.fn()} />,
+    );
+    expect(screen.queryByTestId('chat-followups')).toBeNull();
   });
 
   it('persistedTurns take precedence over markdown-only persistedBlocks when both are present', () => {
