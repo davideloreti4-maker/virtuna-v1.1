@@ -78,6 +78,7 @@ function TemplatedHook({ text }: { text: string }) {
 export function ProofReceipt({
   proof,
   eyebrow = 'Proven structure',
+  compact = false,
 }: {
   proof: HookProof;
   /**
@@ -87,6 +88,14 @@ export function ProofReceipt({
    * outlier check that never ran. Same receipt, only the claim differs.
    */
   eyebrow?: string;
+  /**
+   * Shrink-to-content variant for the SPARSE receipt (remix: handle + views, no template + no
+   * multiplier). The grounded cards fill a full-width bar with their [templated] hook, so they
+   * stay `flex items-stretch` full-bleed. Remix's three short rows left a full-width bar mostly
+   * empty on the right — `compact` makes it an `inline-flex` chip that hugs its content with a
+   * square thumbnail. Default false ⇒ grounded receipts unchanged.
+   */
+  compact?: boolean;
 }) {
   // Null when nothing scored this source against the audience (a remix source). Then: no
   // glyph, no match language — the receipt states who and how many views, and stops there.
@@ -101,8 +110,14 @@ export function ProofReceipt({
   const body = (
     <>
       {/* Thumbnail — real cover on top of a play-tile placeholder. A missing/expired cover hides the
-          <img> and the play tile shows through, so a grounded card always anchors on a video tile. */}
-      <span className="relative block aspect-[9/16] w-16 shrink-0 overflow-hidden rounded-md border border-white/[0.06]">
+          <img> and the play tile shows through, so a grounded card always anchors on a video tile.
+          Grounded = a 9:16 tower balanced by the tall content column; compact (remix) = a square so
+          the short handle+views chip doesn't sit beside an empty portrait tower. */}
+      <span
+        className={`relative block w-16 shrink-0 overflow-hidden rounded-md border border-white/[0.06] ${
+          compact ? 'aspect-square' : 'aspect-[9/16]'
+        }`}
+      >
         <CoverFill coverUrl={proof.coverUrl} playSize={18} />
       </span>
 
@@ -150,8 +165,9 @@ export function ProofReceipt({
     </>
   );
 
-  const base =
-    'flex items-stretch gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5';
+  const base = compact
+    ? 'inline-flex items-center gap-3 self-start rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5'
+    : 'flex items-stretch gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5';
   const aria = `${eyebrow} from @${proof.handle}${statsAria ? `, ${statsAria}` : ''}${fit ? ` — match: ${fit.label}` : ''}`;
   const hint = fit ? `${fit.label} — open the source video` : 'Open the source video';
 
