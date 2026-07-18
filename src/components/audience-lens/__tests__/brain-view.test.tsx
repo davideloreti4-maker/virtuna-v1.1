@@ -35,6 +35,25 @@ describe('BrainView — §3.8 caption layout (no overprint at rail width)', () =
   });
 });
 
+// ── §3.8 (P1) — 9-signal grid density: 2 columns, no repeated per-cell WHY THIS SCORE ──
+// At 3 columns in the ~346px rail the cells were ~100px wide and every multi-word label wrapped;
+// the per-cell "WHY THIS SCORE" disclosure also repeated the same chrome ×9 while the single
+// "How to read these numbers" expander above the grid already states its content once. Owner call
+// (B): keep the full instrument, fix the density.
+describe('SignalGrid — §3.8 density (2-col, no per-cell WHY THIS SCORE ×9)', () => {
+  // Comment-stripped: the source comment legitimately explains why the affordance was removed, so
+  // the absence check must run against real code, not prose (the reskin-matte guard idiom).
+  const src = readFileSync(
+    join(process.cwd(), 'src/components/audience-lens/SignalGrid.tsx'),
+    'utf8',
+  ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+  it('is a 2-column grid with the repeated per-cell WHY THIS SCORE affordance removed', () => {
+    expect(src).toMatch(/grid-cols-2/);
+    expect(src).not.toMatch(/grid-cols-3/);
+    expect(src).not.toMatch(/Why this score/i);
+  });
+});
+
 // The cortex is WebGL — there is no GL context in happy-dom, and the surface itself is covered by
 // its own headless tests (`src/lib/brain/__tests__/cortex-mesh.test.ts`). What matters HERE is that
 // the panel mounts it, and that the honesty chrome around it survives.
