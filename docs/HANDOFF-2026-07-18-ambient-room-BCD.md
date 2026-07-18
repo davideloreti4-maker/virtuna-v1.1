@@ -29,8 +29,10 @@ handoff carrying "Ask" lands on the richer conversation, not the one-shot room p
 → two cards with an identical concept open the FIRST (its own task: thread the descriptor `id`
 through `ProofUnit`). Not touched by B.
 
-▶ **NEXT: P1 (panel craft) → P3 (separable bugs).** The sections below are the ORIGINAL brief, kept
-for the P1/P3 pointers; B/C/D within them are now historical.
+▶ **NEXT: P1 (panel craft) → P3 (separable bugs) — see `docs/HANDOFF-2026-07-18-ambient-room-P1.md`**
+(the fresh-session handoff, with the ⚠️ correction that P0's §3.4 "byte-identical rows" is already
+addressed in the room's `PeopleView` and must be re-measured on the Read roster instead). The sections
+below are the ORIGINAL brief, kept for the P1/P3 pointers; B/C/D within them are now historical.
 
 ---
 
