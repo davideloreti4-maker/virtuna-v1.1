@@ -862,7 +862,10 @@ export function AudiencePresence({
                   <p className="max-w-[400px] text-[13px] leading-relaxed text-[var(--color-foreground-muted)]">
                     {isSurface
                       ? SURFACE_IDLE_SUB
-                      : `Type a thought below and watch the whole room react.`}
+                      : // Placement-neutral (P2): the composer is a right rail (≥xl) or a top
+                        // header (<xl), never literally "below" the roster. "below" was the last
+                        // string that assumed the old bottom-dock layout.
+                        `Type a thought and watch the whole room react.`}
                   </p>
                 </div>
               </div>

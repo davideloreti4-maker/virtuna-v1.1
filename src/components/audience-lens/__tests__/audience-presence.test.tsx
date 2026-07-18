@@ -412,7 +412,10 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
 
   it('shows the idle hero prompt + the real cast (no fabricated reaction) when open + idle', () => {
     setup({ open: true, focus: null });
-    expect(screen.getByText(/type a thought below/i)).toBeInTheDocument();
+    // Placement-neutral copy (C, 07-18): "below" was dropped — the composer is a right rail (≥xl)
+    // or a top header (<xl) now, never literally below the roster.
+    expect(screen.getByText(/type a thought and watch the whole room react/i)).toBeInTheDocument();
+    expect(screen.queryByText(/type a thought below/i)).toBeNull();
     // "Meet your room" — the General cast renders as real named people (the moat), not an abstract count.
     expect(screen.getByText('Maya')).toBeInTheDocument();
     expect(screen.getByText('Dev')).toBeInTheDocument();
