@@ -173,6 +173,9 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   idea: "A topic to build ideas around — or leave empty and I'll pick the angles…",
   hooks: "A topic to write hooks for — or leave empty and I'll pick the angles…",
   chat: "Ask about your niche, your audience, or an idea you're weighing…",
+  // Ask the room (replaces the old `audienceOpen` "Ask your audience…" mode placeholder).
+  // Placement-neutral: the room is a rail (≥xl) / header (<xl), never literally "below".
+  ask: "Type a thought and watch the whole room react…",
   script: "A topic to script — or leave empty to carry in the hook you picked…",
   remix: "Paste a TikTok URL — I'll decode why it worked, then rebuild it as yours…",
   explore: "A niche or competitor to scan — or leave empty and I'll pull your niche…",
@@ -373,18 +376,25 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // The picker's `+ Build an audience` row (07-02 onBuildAudience) opens this S3 chooser.
   const [buildOpen, setBuildOpen] = useState(false);
 
-  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21) ──────────────
-  // When `audienceOpen`, the composer field IS the audience-chat input (declared early so the
-  // submit/keydown/placeholder render code below can branch on it). The asks feed + in-flight
-  // flag + the askAudience handler live further down (askAudience needs focusByThought).
-  const [audienceOpen, setAudienceOpen] = useState(false);
+  // ── Audience PRESENCE panel state (P13, redesigned 2026-06-21; mode killed 2026-07-18) ─────
+  // `roomExpanded` is now PURELY VISUAL: it blooms the dock peek (empty/permalink) and expands
+  // the <xl header sheet — nothing more. It used to be `audienceOpen`, a fused flag that ALSO
+  // put the composer field into a hidden "ask the room" input MODE. That mode is dead: after P2
+  // the room is always present, so a permanently-open rail made handleSubmit unreachable. Asking
+  // the room is now the explicit `ask` VERB (activeTool === "ask" → askAudience). The rail (≥xl)
+  // ignores this flag entirely (persistent, in-flow), so it's only the dock + header that read it.
+  const [roomExpanded, setRoomExpanded] = useState(false);
+  // Asking the room is a composer VERB now, not a panel mode: when the `ask` skill is armed, the
+  // field's submit/keydown route to askAudience and the placeholder/send-button say "ask", while
+  // the room stays visually wherever P2 placed it. One boolean, read everywhere the old mode was.
+  const isAsk = activeTool === "ask";
   // True while the presence was opened by a card's "See the room →" (a targeted single-card
   // entry) → the Room drills straight into that card instead of the ranked overview. Reset on
   // close so the next plain tab-tap opens the overview (the default bloom).
   const [roomDrill, setRoomDrill] = useState(false);
-  // Wrap the open/close setter so closing always clears the drill intent.
-  const handleAudienceOpenChange = useCallback((next: boolean) => {
-    setAudienceOpen(next);
+  // Wrap the expand/collapse setter so collapsing always clears the drill intent.
+  const handleRoomExpandedChange = useCallback((next: boolean) => {
+    setRoomExpanded(next);
     if (!next) setRoomDrill(false);
   }, []);
   const [audienceAsks, setAudienceAsks] = useState<AudienceAsk[]>([]);
@@ -1688,8 +1698,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   const onSubmitForm = (e: React.FormEvent) => {
     e.preventDefault();
-    // Audience-chat mode: the field sends into the room, not the skill (P13 redesign).
-    if (audienceOpen) {
+    // Ask-the-room verb: the field sends into the room, not a skill pipeline (mode → verb, 07-18).
+    if (isAsk) {
       if (url.trim().length > 0) {
         void askAudience(url);
         setUrl("");
@@ -1710,8 +1720,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // Typing `/` in the field opens the skill list as a command menu, filterable;
   // selecting sets the skill and clears the `/`. A URL never starts with `/`, so
   // this never collides with the Test/Remix URL paths.
-  // In audience-chat mode the field feeds the room — `/` is plain text, not a skill menu.
-  const slashActive = !audienceOpen && url.startsWith("/");
+  // `/` always opens the skill switcher — it's how you leave any verb, Ask included (typing
+  // `/hooks` from Ask arms Hooks). A real thought rarely starts with `/`, and only a leading
+  // `/` triggers, so it never eats a mid-sentence slash.
+  const slashActive = url.startsWith("/");
   const slashQuery = slashActive ? url.slice(1) : "";
   const firstSlashSkill = () => {
     const q = slashQuery.trim().toLowerCase();
@@ -1753,8 +1765,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      // Audience-chat mode: send the thought into the room (P13 redesign).
-      if (audienceOpen) {
+      // Ask-the-room verb: send the thought into the room (mode → verb, 07-18).
+      if (isAsk) {
         if (url.trim().length > 0) {
           void askAudience(url);
           setUrl("");
@@ -1765,13 +1777,12 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     }
   };
 
-  // Placeholder follows the active chip; in the pinned state the follow-up copy
-  // takes precedence so it's contextually accurate (D-07 / D-24).
-  const activePlaceholder = audienceOpen
-    ? "Ask your audience…"
-    : hasSimulation
-      ? PLACEHOLDER_ACTIVE
-      : PLACEHOLDER_BY_TOOL[activeTool];
+  // Placeholder follows the active chip (the `ask` verb's copy lives in PLACEHOLDER_BY_TOOL now,
+  // not a mode branch); in the pinned state the follow-up copy takes precedence so it's
+  // contextually accurate (D-07 / D-24).
+  const activePlaceholder = hasSimulation
+    ? PLACEHOLDER_ACTIVE
+    : PLACEHOLDER_BY_TOOL[activeTool];
 
   // Thread mode on /home (no route id): full-height column — thread region
   // scrolls above the pinned form. Active when hasThread is true OR while a switch
@@ -1822,7 +1833,8 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       if (!d) return false;
       setRoomDrill(true);
       focusByTap(d.id);
-      setAudienceOpen(true);
+      // Visual expand only (dock/header) — drilling into a card's read never arms the ask verb.
+      setRoomExpanded(true);
       return true;
     },
     [ambientDescriptors, focusByTap],
@@ -1917,11 +1929,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     focusByTap,
   ]);
 
-  // ── Audience PRESENCE panel handler (P13, redesigned 2026-06-21) ────────────
-  // The presence expands UPWARD into a panel over the composer (not a drawer). When it is
-  // open, the COMPOSER FIELD becomes the audience-chat input (no second input): submit routes
-  // to askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows
-  // the room's read. (State declared up top so the render code can branch on `audienceOpen`.)
+  // ── Ask-the-room handler (P13; mode → `ask` verb 2026-07-18) ────────────────
+  // The `ask` verb makes the composer FIELD the room input (no second input): submit routes to
+  // askAudience (POST /api/tools/react) → appends a turn + sets the focus so the Lens shows the
+  // room's read. (`isAsk` is declared up top so the submit/render code can branch on it.)
   const askInflightRef = useRef<AbortController | null>(null);
   useEffect(() => () => askInflightRef.current?.abort(), []);
 
@@ -2006,8 +2017,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
     },
     focus: ambientFocus,
     reducedMotion,
-    open: audienceOpen,
-    onOpenChange: handleAudienceOpenChange,
+    // Visual expand only (dock bloom + <xl header sheet). The rail ignores it; tapping the band
+    // no longer arms an input mode — asking the room is the `ask` verb (activeTool === "ask").
+    open: roomExpanded,
+    onOpenChange: handleRoomExpandedChange,
     drillIntoFocus: roomDrill,
     asks: audienceAsks,
     asking,
@@ -2280,9 +2293,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
       onSubmit={onSubmitForm}
       onDragOver={(e) => {
         // Evidence-drop overlay (D-07). Additive: VideoUpload stops propagation on its
-        // own drop zone, so the creator upload path is unaffected. Inert while the audience
-        // room owns the field — submit goes to askAudience, so a staged file would be dropped.
-        if (audienceOpen) return;
+        // own drop zone, so the creator upload path is unaffected. Inert while the ask verb
+        // owns the field — submit goes to askAudience, so a staged file would be dropped.
+        if (isAsk) return;
         e.preventDefault();
         if (!dragOver) setDragOver(true);
       }}
@@ -2291,7 +2304,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         setDragOver(false);
       }}
       onDrop={(e) => {
-        if (audienceOpen) return;
+        if (isAsk) return;
         e.preventDefault();
         setDragOver(false);
         const f = e.dataTransfer.files?.[0];
@@ -2454,12 +2467,11 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                 The skill menu is mode-scoped (07-01/UX-02/D-07): activeMode is DERIVED from the
                 selected audience (null/Socials → "socials" — Pitfall 2). */}
             <div className="flex items-center justify-between gap-2">
-              {/* LEFT cluster — attach + verb. Both are HIDDEN while the audience room owns the
-                  field: submit routes to askAudience there (onSubmitForm's first branch), so a
-                  staged evidence file would be silently discarded and a picked skill silently
-                  ignored. Rather than show controls whose promise the submit won't keep, the open
-                  room strips the row to field + send. The file <input> stays mounted regardless —
-                  handleUserSelectTool("profile") clicks it by ref. */}
+              {/* LEFT cluster — attach + verb. The `+` attach is HIDDEN while the ask verb owns
+                  the field: submit routes to askAudience (onSubmitForm's first branch), so a staged
+                  evidence file would be silently discarded. The verb chip STAYS in every mode —
+                  it's the only way OUT of Ask (Ask is a verb now, not a trap you can't leave). The
+                  file <input> stays mounted regardless — handleUserSelectTool("profile") clicks it. */}
               <div className="flex min-w-0 items-center gap-1.5">
                 {/* In-input evidence attach (05-06 / D-07) — a chat / screenshot (the Profile
                     evidence door). Opens a file picker; drag-drop is the form overlay. */}
@@ -2474,33 +2486,31 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                     e.target.value = ""; // allow re-selecting the same file
                   }}
                 />
-                {!audienceOpen && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label={EVIDENCE_ATTACH_LABEL}
-                      title={EVIDENCE_ATTACH_LABEL}
-                      onClick={() => evidenceInputRef.current?.click()}
-                      className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
-                    >
-                      <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
-                    </button>
-
-                    <ComposerControls
-                      activeTool={activeTool}
-                      onSelectTool={handleUserSelectTool}
-                      activeMode={selectedAudience?.mode ?? "socials"}
-                      onRunExplore={(params) => void explore.start(params)}
-                      className="shrink-0"
-                    />
-                  </>
+                {!isAsk && (
+                  <button
+                    type="button"
+                    aria-label={EVIDENCE_ATTACH_LABEL}
+                    title={EVIDENCE_ATTACH_LABEL}
+                    onClick={() => evidenceInputRef.current?.click()}
+                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full text-foreground-muted transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10 pointer-coarse:h-11 pointer-coarse:w-11"
+                  >
+                    <Plus className="h-[18px] w-[18px]" strokeWidth={1.75} />
+                  </button>
                 )}
+
+                <ComposerControls
+                  activeTool={activeTool}
+                  onSelectTool={handleUserSelectTool}
+                  activeMode={selectedAudience?.mode ?? "socials"}
+                  onRunExplore={(params) => void explore.start(params)}
+                  className="shrink-0"
+                />
               </div>
 
               <div className="flex items-center gap-2.5">
                 {/* Read-only SIM-1 tier — the skill picks it, so it's metadata, not a control.
-                    Hidden while the audience panel owns the field (the tier wouldn't apply). */}
-                {!audienceOpen && <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />}
+                    Shown for every verb including Ask (the room reaction is a Flash call). */}
+                <ModelTag activeTool={activeTool} className="hidden sm:inline-flex" />
 
                 {/* Submit — the cream disc. boxShadow is forced off inline so the primary
                     variant's dark 2px ring (--shadow-button) can never re-add a border. */}
@@ -2512,9 +2522,9 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
                   // chain never needed a case for it. Now that send RUNS the read, the button
                   // has to say so: a screen-reader user pressing "Simulate" and being charged
                   // for an account scrape is the same bug as a sighted one, just louder.
-                  aria-label={audienceOpen ? "Ask your audience" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
-                  disabled={audienceOpen ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
-                  loading={audienceOpen ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
+                  aria-label={isAsk ? "Ask the room" : evidenceFile ? "Read this evidence" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate"}
+                  disabled={isAsk ? url.trim().length === 0 || asking : evidenceFile ? profiling : !canSubmit}
+                  loading={isAsk ? asking : profiling || submitting || ideas.isStreaming || hooks.isStreaming || chat.isStreaming || script.isStreaming || remix.isStreaming || explore.isStreaming}
                   style={{ boxShadow: "none" }}
                   className="shrink-0 h-[36px] w-[36px] min-w-0 p-0 rounded-full"
                 >
@@ -2594,8 +2604,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
         <div
           className={cn(
             "relative w-full rounded-[24px] border border-white/[0.06] bg-surface-elevated",
-            !audienceOpen && "overflow-hidden",
-            audienceOpen && "rounded-t-none border-t-0",
+            // The dock panel blooms flush with the composer top → flatten the box's top edge so
+            // the two read as one surface. Driven by the VISUAL expand, never the ask verb.
+            !roomExpanded && "overflow-hidden",
+            roomExpanded && "rounded-t-none border-t-0",
             layout === "centered" && "shadow-float",
             !reducedMotion && "transition-shadow duration-200",
           )}
