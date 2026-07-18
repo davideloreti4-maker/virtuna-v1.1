@@ -132,7 +132,7 @@ export function ReadingHero({
       label="Test"
       labelSuffix={
         <span
-          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.1em]"
+          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.05em]"
           style={{
             borderColor: 'var(--color-cream-secondary)',
             color: 'var(--color-cream-secondary)',

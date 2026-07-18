@@ -177,7 +177,7 @@ export function ProofUnit({
       )}
 
       {/* Quote + the now-visible Lens cue. */}
-      {quote && (
+      {quote ? (
         <div className="flex w-full items-center justify-between gap-2.5">
           <blockquote className="border-l-2 border-white/[0.10] pl-3 text-[13px] italic leading-snug text-foreground/80">
             &ldquo;{stripWrappingQuotes(quote)}&rdquo;
@@ -187,6 +187,18 @@ export function ProofUnit({
             See the room →
           </span>
         </div>
+      ) : (
+        // No lead verbatim (Simulate passes none — its themes carry the quotes) but the room is
+        // still openable: show the cue on its own so the flagship interaction is never invisible.
+        // Gated on real reactions, so a reaction-less unit shows nothing (parity with the quote row).
+        flatPersonas.length > 0 && (
+          <div className="flex w-full items-center justify-end">
+            <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[12px] text-foreground-secondary">
+              <RoomAvatars />
+              See the room →
+            </span>
+          </div>
+        )
       )}
     </>
   );

@@ -82,7 +82,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             labels for one thing; the intent is the stronger, more honest signal, so it wins the
             eyebrow and the derivation stays available in `audienceArchetype` for the handoff. */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
             {target ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}` : audienceArchetype}
           </span>

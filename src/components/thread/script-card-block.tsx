@@ -71,7 +71,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
       <div className="flex flex-col gap-3 px-4 pb-3 pt-4">
         {/* Eyebrow — "Opener stops the scroll" kicker + beat-count meta. */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
             Opener stops the scroll
           </span>

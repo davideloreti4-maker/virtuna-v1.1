@@ -111,6 +111,18 @@ export function ExploreThreadView({
   const hasStreamingContent = streamingBlocks.length > 0;
   const hasPersistedContent = persistedBlocks.length > 0;
 
+  // Framing hero (§0.5.2) — how many measured outliers this pull surfaced, so the grid reads
+  // finding-first instead of as an unlabelled wall of tiles under a bland caption. Counts every
+  // tile across streaming + persisted blocks; the frame only renders when there IS content.
+  const outlierCount = [...streamingBlocks, ...persistedBlocks].reduce(
+    (n, b) => n + b.props.tiles.length,
+    0,
+  );
+  const resultHero =
+    outlierCount > 0
+      ? `${outlierCount} ${outlierCount === 1 ? 'outlier' : 'outliers'}, scored for your audience`
+      : undefined;
+
   // ── handleRemix (D-04/D-05, RESEARCH Q2) ──────────────────────────────────────
   // VERBATIM discover→remix chain launch (the DiscoverClient pattern), EXCEPT it
   // reloads the open thread in place (onThreadReload) instead of router.push("/home")
@@ -198,7 +210,7 @@ export function ExploreThreadView({
 
       {(hasStreamingContent || hasPersistedContent) && (
         <ThreadAssistantTurn>
-          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel}>
+          <SkillResultCard skillLabel={skillLabel} audienceLabel={audienceLabel} hero={resultHero}>
             {hasStreamingContent && (
               <div className="flex flex-col gap-4">
                 {streamingBlocks.map((block, index) => (

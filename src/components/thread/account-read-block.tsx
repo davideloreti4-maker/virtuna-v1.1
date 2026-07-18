@@ -41,6 +41,8 @@ import type { AccountReadBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { SaveAffordance } from './save-affordance';
 import { CoverFill } from '@/components/primitives/CoverFill';
+import { CaretToggle } from './caret-toggle';
+import { CardEyebrow, CardPrimaryAction, CardActionBar } from './card-primitives';
 
 type AccountReadPatterns = NonNullable<AccountReadBlock['props']['patterns']>;
 type FormatMix = AccountReadPatterns['formatMix'];
@@ -65,16 +67,14 @@ function formatCompact(n: number): string {
   return fmt(n / 1_000_000, 'M');
 }
 
-/** Eyebrow kicker — cream-muted dot + label; optional right-side @handle (back-compat/thin). */
+/** Eyebrow kicker — the shared CardEyebrow (§0.5.1); optional right-side @handle (back-compat/thin). */
 function Eyebrow({ handle }: { handle?: string }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
-        <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
-        A Read on your account
-      </span>
-      {handle ? <span className="shrink-0 text-[12px] text-foreground-muted">@{handle}</span> : null}
-    </div>
+    <CardEyebrow
+      kicker="A Read on your account"
+      dotColor="var(--color-foreground-muted)"
+      meta={handle ? <span className="text-[12px] text-foreground-muted">@{handle}</span> : undefined}
+    />
   );
 }
 
@@ -294,16 +294,14 @@ function WriteToStrengthsButton({ strengths }: { strengths: string[] }) {
   }
 
   return (
-    <button
-      type="button"
+    <CardPrimaryAction
       onClick={handleWrite}
       disabled={writing}
-      className="rounded text-[13px] font-medium text-foreground transition-opacity hover:opacity-80 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
       aria-label="Write to my strengths — generate ideas that lean into what's working"
       data-testid="account-read-write-strengths"
     >
       {writing ? 'Writing…' : 'Write to my strengths →'}
-    </button>
+    </CardPrimaryAction>
   );
 }
 
@@ -327,11 +325,21 @@ function ThinFallback({ handle }: { handle: string }) {
 
 export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockProps) {
   const { handle, fallback, patterns, trackRecord, profile, analyzedVideos } = block.props;
+  const [detailOpen, setDetailOpen] = useState(false);
 
   // Honest thin-history fallback (SELF-02) — never renders fabricated patterns.
   if (fallback === 'thin' || !patterns) {
     return <ThinFallback handle={handle} />;
   }
+
+  // The analytical tail folds into ONE disclosure (§0.5: promote one thing, collapse the rest).
+  // The face keeps the payoff — identity, the posts we read, and the What's-working / What-to-fix
+  // diagnosis; recurring hooks, format mix and drop-points are a tap away. This card used to stack
+  // SEVEN equal-weight ALL-CAPS labels on the face (the spec-sheet failure mode §0.5 names).
+  const hasDetail =
+    patterns.recurringHooks.length > 0 ||
+    patterns.formatMix.length > 0 ||
+    patterns.dropPoints.length > 0;
 
   return (
     <div className={CARD} data-testid="account-read-block">
@@ -345,7 +353,7 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
         {/* The analyzed posts — real cover thumbnails (top performers), proof the Read is grounded. */}
         {analyzedVideos && analyzedVideos.length > 0 ? <CoverStrip videos={analyzedVideos} /> : null}
 
-        {/* The hero comparison — What's working vs What to fix (sanctioned data tones). */}
+        {/* The payoff — What's working vs What to fix reads as the card's focus (§0.5.2). */}
         <div className="grid grid-cols-1 gap-y-4 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-1">
           <ListBlock
             label="What's working"
@@ -361,28 +369,49 @@ export function AccountReadBlockRenderer({ block, threadId }: AccountReadBlockPr
           />
         </div>
 
-        <ListBlock label="Recurring hooks" items={patterns.recurringHooks} testid="account-read-hooks" />
-        <FormatMixBlock formatMix={patterns.formatMix} />
-        <ListBlock label="Drop-points" items={patterns.dropPoints} testid="account-read-drop-points" />
+        {/* ONE disclosure — the analytical tail (was three stacked face labels). */}
+        {hasDetail && (
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => setDetailOpen((v) => !v)}
+              className="flex items-center gap-1.5 self-start text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+              aria-expanded={detailOpen}
+              data-testid="account-read-breakdown-toggle"
+            >
+              <CaretToggle open={detailOpen} size={12} />
+              {detailOpen ? 'Hide breakdown' : 'Recurring hooks, format mix & drop-points'}
+            </button>
+            {detailOpen && (
+              <div className="flex flex-col gap-4">
+                <ListBlock label="Recurring hooks" items={patterns.recurringHooks} testid="account-read-hooks" />
+                <FormatMixBlock formatMix={patterns.formatMix} />
+                <ListBlock label="Drop-points" items={patterns.dropPoints} testid="account-read-drop-points" />
+              </div>
+            )}
+          </div>
+        )}
 
         <Accuracy trackRecord={trackRecord ?? null} />
       </div>
 
-      {/* Footer — "Write to my strengths →" (forward action, LIVE §7) leads; Save trails.
-          The CTA only shows when there ARE strengths to seed from (honest — no empty run). */}
-      <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-4 py-3">
+      {/* Footer — "Write to my strengths →" (forward action, LIVE §7) as the cream primary; Save
+          trails as the ml-auto icon (§0.5.7). The CTA only shows when there ARE strengths to seed
+          from (honest — no empty run). */}
+      <CardActionBar>
         {patterns.working.length > 0 ? (
           <WriteToStrengthsButton strengths={patterns.working} />
         ) : (
           <span aria-hidden="true" />
         )}
         <SaveAffordance
+          className="ml-auto"
           item_type="read"
           thread_id={threadId}
           title={`Account Read — @${handle}`}
           snapshot={block.props as Record<string, unknown>}
         />
-      </div>
+      </CardActionBar>
     </div>
   );
 }
