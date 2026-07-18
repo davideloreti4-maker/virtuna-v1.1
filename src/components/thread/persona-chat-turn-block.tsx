@@ -25,7 +25,7 @@ export function PersonaChatTurnBlockRenderer({ block }: { block: PersonaChatTurn
         }
       >
         {!isUser && (
-          <p className="mb-0.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <p className="mb-0.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             {block.props.archetype}
           </p>
         )}

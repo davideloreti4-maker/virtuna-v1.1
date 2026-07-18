@@ -183,7 +183,7 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
             NOT repeated here: it already rides the action bar below, and the card was stating
             its own provenance twice. */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
             The Read
           </span>

@@ -101,7 +101,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
             "Made for your audience" is what we can honestly say when we wrote it for nobody in
             particular — the moment we can name the reader, saying the vaguer thing is a downgrade. */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
             {target
               ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}`
@@ -109,7 +109,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
           </span>
           {needsTake && (
             <span
-              className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.04em]"
+              className="shrink-0 rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.05em]"
               style={{ color: 'var(--color-warning)', borderColor: 'rgba(224,189,114,0.25)' }}
               title="This idea leans on a perspective only you can supply"
             >

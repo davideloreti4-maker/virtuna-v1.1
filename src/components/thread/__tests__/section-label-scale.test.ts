@@ -25,12 +25,13 @@ import { join } from 'node:path';
 //      untouched: timestamps (reading-hero), count badges (multi-audience) and
 //      the disclosure chevron (progress-checklist) are legitimately 10px and are
 //      not section labels.
-//
-// WHAT IT KNOWINGLY DOES NOT BAN (yet): the 11px near-misses — thread-shell
-// (0.08em), persona-chat-turn (0.06em), proof-receipt (10.5px/0.07em, its own
-// §0.5b primitive), script-card (12px). They are a smaller, separate drift and
-// tightening onto them is a follow-up, not a silent widening of this commit's
-// scope. Narrowing the rule to "0.05em or nothing" later is a one-line change.
+//   3. An UPPERCASE label with ANY arbitrary tracking other than `tracking-[0.05em]`.
+//      This is the "0.05em or nothing" tightening the first version of this gate
+//      flagged as a one-line follow-up: the 11px near-misses it once let through —
+//      the eyebrows at 0.06em, the idea "your take" badge at 0.04em, thread-shell's
+//      0.08em MAVEN label, proof-receipt at 0.07em, reading-hero's 0.1em pill — were
+//      all closed in the 2026-07-18 full-sweep pass and are now locked. Utility
+//      trackings (`tracking-wide` etc.) are not arbitrary values and are untouched.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COMPONENTS = join(__dirname, '..', '..'); // …/src/components
@@ -52,12 +53,21 @@ const CLASSNAME_RE = /className=(?:"([^"]*)"|\{`([^`]*)`\})/g;
 export function findLabelViolations(src: string): string[] {
   const violations: string[] = [];
 
+  // The dead stack's letter-spacing, flagged anywhere it survives (even off an uppercase label).
   for (const m of src.matchAll(OLD_TRACKING_RE)) violations.push(m[0]);
 
   for (const m of src.matchAll(CLASSNAME_RE)) {
     const cls = m[1] ?? m[2] ?? '';
-    if (/\btext-\[10px\]/.test(cls) && /\buppercase\b/.test(cls)) {
-      violations.push('text-[10px] + uppercase');
+    if (!/\buppercase\b/.test(cls)) continue;
+
+    // The old 10px size.
+    if (/\btext-\[10px\]/.test(cls)) violations.push('text-[10px] + uppercase');
+
+    // "0.05em or nothing" — an uppercase label carries exactly the contract tracking.
+    // Every other arbitrary letter-spacing (0.04/0.06/0.07/0.08/0.1/0.14em) is drift.
+    // `tracking-wide` and the other named utilities are not arbitrary values and never match.
+    for (const t of cls.matchAll(/\btracking-\[([^\]]+)\]/g)) {
+      if (t[1] !== '0.05em') violations.push(`tracking-[${t[1]}]`);
     }
   }
 
@@ -116,9 +126,27 @@ describe('section-label lint — the detector itself', () => {
     expect(findLabelViolations('<p className="text-[10px] uppercase tracking-wide">')).toEqual([
       'text-[10px] + uppercase',
     ]);
+    // A 10px arbitrary-tracking label trips on BOTH the size and the off-contract tracking.
     expect(findLabelViolations('<p className="text-[10px] uppercase tracking-[0.1em]">')).toEqual([
       'text-[10px] + uppercase',
+      'tracking-[0.1em]',
     ]);
+  });
+
+  it('fires on the 11px near-misses the tightened rule now closes', () => {
+    // The eyebrow drift (0.06em) and the "your take" badge (0.04em) the sweep normalised.
+    expect(
+      findLabelViolations('<span className="text-[11px] uppercase tracking-[0.06em] text-foreground-muted">'),
+    ).toEqual(['tracking-[0.06em]']);
+    expect(
+      findLabelViolations('<span className="text-[11px] uppercase tracking-[0.04em]">'),
+    ).toEqual(['tracking-[0.04em]']);
+  });
+
+  it('does NOT fire on utility tracking (tracking-wide is not an arbitrary value)', () => {
+    expect(
+      findLabelViolations('<span className="text-[11px] uppercase tracking-wide text-foreground-muted">'),
+    ).toEqual([]);
   });
 
   it('accepts the contract stack', () => {

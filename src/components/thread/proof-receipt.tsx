@@ -109,7 +109,7 @@ export function ProofReceipt({
       {/* Content column */}
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="flex items-center justify-between gap-2">
-          <span className="text-[10.5px] font-semibold uppercase tracking-[0.07em] text-foreground-muted">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-foreground-muted">
             {eyebrow}
           </span>
           {archetype && (
