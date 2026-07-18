@@ -21,12 +21,18 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { nanoid } from 'nanoid';
 import type { InputRequestBlock } from '@/lib/tools/blocks';
 import { usePlatform } from '@/lib/platform-context';
 import { useInThreadInput } from '@/lib/in-thread-input-context';
 import { useRemixStream } from '@/hooks/queries/use-remix-stream';
 import { useExploreStream } from '@/hooks/queries/use-explore-stream';
 import { useAccountReadStream } from '@/hooks/queries/use-account-read-stream';
+import { useAnalysisStream } from '@/hooks/queries/use-analysis-stream';
+import { VideoUpload } from '@/components/app/video-upload';
+import { createClient } from '@/lib/supabase/client';
+import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
 import { ProgressChecklist } from './progress-checklist';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -75,6 +81,8 @@ export function InputRequestBlockRenderer({ block }: InputRequestBlockRendererPr
       return <ReadField block={block} />;
     case 'account':
       return <AccountField block={block} />;
+    case 'test':
+      return <UploadField block={block} />;
     default:
       return null;
   }
@@ -354,4 +362,219 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
       {error && <ErrorLine text={error} />}
     </div>
   );
+}
+
+// ── Test (kind: upload — a real video file OR a TikTok URL) ──────────────────────
+// The heaviest input. It runs the FULL /api/analyze Max video pipeline (its own 300s route,
+// untouched) via useAnalysisStream; on completion it POSTs the analysisId to
+// /api/tools/test/card, the thin adapter that turns the persisted row into the honest
+// video-test-card and drops it in the open thread. The Test lands in-thread like every other
+// skill — no navigate-out (owner: "all skills 1:1 in thread"). The full frame-by-frame page
+// stays one door away, on the card. A run with no honest audience reaction (no per-persona
+// results) degrades to that link-out rather than fabricating a crowd.
+
+function UploadField({ block }: InputRequestBlockRendererProps) {
+  const { label, placeholder } = block.props;
+  const { onComplete } = useInThreadInput();
+
+  const { start, phase, analysisId, error: streamError, quotaError } = useAnalysisStream();
+
+  const [file, setFile] = useState<File | null>(null);
+  const [url, setUrl] = useState('');
+  const [staging, setStaging] = useState(false);
+  const [stageError, setStageError] = useState<string | null>(null);
+  const [carding, setCarding] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [degradedId, setDegradedId] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+  const cardHandledRef = useRef(false);
+
+  const trimmedUrl = url.trim();
+  const isValidTikTok = trimmedUrl.length > 0 && TIKTOK_URL_PATTERN.test(trimmedUrl);
+  const urlError = trimmedUrl.length > 0 && !isValidTikTok;
+  const analyzing = phase === 'analyzing' || phase === 'reconnecting' || phase === 'polling';
+  const busy = staging || analyzing || carding;
+  const canSubmit = (!!file || isValidTikTok) && !busy;
+
+  // When the analysis completes, turn the persisted row into an in-thread card. Fires once
+  // (cardHandledRef) — a fresh submit resets it. Only reachable via our own start() at /home
+  // (no urlAnalysisId there, so the hook never auto-completes off a permalink).
+  useEffect(() => {
+    if (phase !== 'complete' || !analysisId || cardHandledRef.current) return;
+    cardHandledRef.current = true;
+    void (async () => {
+      setCarding(true);
+      setCardError(null);
+      try {
+        const res = await fetch('/api/tools/test/card', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ analysisId }),
+        });
+        const data = (await res.json().catch(() => ({}))) as {
+          block?: unknown;
+          degraded?: string;
+          error?: string;
+        };
+        if (!res.ok) {
+          setCardError(
+            data.error === 'analysis_not_ready'
+              ? 'Still finishing the analysis — give it a moment and try again.'
+              : "Analyzed — but couldn't build the result card.",
+          );
+          setDegradedId(analysisId); // still let them open the full page
+          return;
+        }
+        if (data.degraded) {
+          // No honest audience reaction to card → point at the full breakdown instead.
+          setDegradedId(analysisId);
+          return;
+        }
+        setDone(true);
+        void onComplete();
+      } catch {
+        setCardError("Analyzed — but couldn't build the result card.");
+        setDegradedId(analysisId);
+      } finally {
+        setCarding(false);
+      }
+    })();
+  }, [phase, analysisId, onComplete]);
+
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit) return;
+    cardHandledRef.current = false;
+    setStageError(null);
+    setCardError(null);
+    setDegradedId(null);
+
+    if (file) {
+      // Stage the clip to Supabase storage (the proven composer path), then analyze the path.
+      setStaging(true);
+      try {
+        const supabase = createClient();
+        const { data: userData } = await supabase.auth.getUser();
+        const userId = userData.user?.id;
+        if (!userId) {
+          setStageError('Your session expired — sign in again.');
+          return;
+        }
+        const ext = (file.name.split('.').pop() ?? 'mp4').toLowerCase();
+        const path = `${userId}/${nanoid()}.${ext}`;
+        const { error } = await supabase.storage.from('videos').upload(path, file, {
+          contentType: file.type || 'video/mp4',
+          upsert: false,
+        });
+        if (error) {
+          setStageError("Couldn't upload that video — try again.");
+          return;
+        }
+        // No client-side cleanup on a later stream error: /api/analyze reads the path in a
+        // background job, so deleting it here would race the server (mirrors the composer's
+        // Test path — orphans are left to the server sweep).
+        await start({
+          input_mode: 'video_upload',
+          content_type: 'video',
+          video_storage_path: path,
+        }).catch(() => {
+          /* phase → error owns the UI */
+        });
+      } finally {
+        setStaging(false);
+      }
+      return;
+    }
+
+    await start({
+      input_mode: 'tiktok_url',
+      content_type: 'video',
+      tiktok_url: trimmedUrl,
+    }).catch(() => {
+      /* phase → error owns the UI */
+    });
+  }, [canSubmit, file, trimmedUrl, start]);
+
+  if (done) return <DoneReceipt text="Tested — your result is in the thread above." />;
+
+  // Analyzed but no in-thread card (degrade / card build failed) — the honest link-out.
+  if (degradedId) {
+    return (
+      <div className={SHELL_CLASS} data-testid="input-request">
+        {cardError && <ErrorLine text={cardError} />}
+        <p className="text-[13px] text-foreground-secondary">
+          Analyzed your video — open the full frame-by-frame breakdown:
+        </p>
+        <Link
+          href={`/analyze/${degradedId}`}
+          className="self-start text-[13px] font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+        >
+          See the full breakdown →
+        </Link>
+      </div>
+    );
+  }
+
+  const busyMessage = staging
+    ? 'Uploading your video…'
+    : carding
+      ? 'Building your result…'
+      : 'Testing your video against your audience… this takes a minute or two.';
+
+  return (
+    <div className={SHELL_CLASS} data-testid="input-request">
+      <p className="text-[13px] font-medium text-foreground-secondary">{label}</p>
+      {busy ? (
+        <div className="flex items-center gap-2 text-[13px] text-foreground-muted" aria-live="polite">
+          <Spinner size="sm" />
+          <span>{busyMessage}</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <VideoUpload file={file} onFileSelect={setFile} bare />
+          {!file && (
+            <>
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
+                <span className="h-px flex-1 bg-white/[0.06]" />
+                or paste a link
+                <span className="h-px flex-1 bg-white/[0.06]" />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="url"
+                  inputMode="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleSubmit();
+                    }
+                  }}
+                  placeholder={placeholder ?? 'https://tiktok.com/…'}
+                  className={INPUT_CLASS}
+                />
+              </div>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit}
+            className={`${CTA_CLASS} self-end`}
+          >
+            Test it →
+          </button>
+        </div>
+      )}
+      {urlError && !file && <ErrorLine text="That doesn't look like a TikTok video URL." />}
+      {stageError && <ErrorLine text={stageError} />}
+      {quotaError && <ErrorLine text={quotaError.message} />}
+      {streamError && !quotaError && <ErrorLine text={testErrorCopy(streamError)} />}
+    </div>
+  );
+}
+
+/** Map an analysis stream error to a plain sentence (the raw message is usually already human). */
+function testErrorCopy(error: string): string {
+  return error || 'Something went wrong testing that video — try again.';
 }

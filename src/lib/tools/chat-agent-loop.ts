@@ -178,8 +178,9 @@ function toolUseDirective(grounding: boolean): string {
     "ERROR instead of a card, tell the creator plainly what went wrong and what to do about it (relay the " +
     "error's guidance) — do NOT silently answer the request in prose as though the tool had succeeded. " +
     "When the creator wants a skill that still needs something from them — a video LINK to remix, a concept " +
-    "to read past their audience, a niche to explore — or an account read (which needs nothing typed), call " +
-    "request_input with the matching action so an inline field (or a confirm button) appears in the thread. " +
+    "to read past their audience, a niche to explore, a real finished video to TEST against their audience — " +
+    "or an account read (which needs nothing typed), call request_input with the matching action so an inline " +
+    "field (a text box, a video drop, or a confirm button) appears in the thread. " +
     "Never invent the missing value, never just describe a result you cannot produce, and never claim a card " +
     "exists before they submit the field.";
   const groundLine = grounding

@@ -18,6 +18,7 @@ import {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,
+  VideoTestCardBlockSchema,
 } from "./profile-blocks";
 
 // Re-export the sibling-module schemas + types so existing `@/lib/tools/blocks` import
@@ -27,11 +28,13 @@ export {
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,
+  VideoTestCardBlockSchema,
 } from "./profile-blocks";
 export type {
   ProfileReadBlock,
   ReactionDistributionBlock,
   PredictionGaugeBlock,
+  VideoTestCardBlock,
 } from "./profile-blocks";
 
 // ─── Markdown block ───────────────────────────────────────────────────────────
@@ -797,10 +800,11 @@ export type AccountReadBlock = z.infer<typeof AccountReadBlockSchema>;
 export const InputRequestBlockSchema = z.object({
   type: z.literal("input-request"),
   props: z.object({
-    // The input shape: a single URL field, a free-text field, or none (a confirm-to-run button).
-    kind: z.enum(["link", "text", "none"]),
+    // The input shape: a single URL field, a free-text field, none (a confirm-to-run button),
+    // or an upload (a video file drop, with a URL alternative — the heaviest input, /test).
+    kind: z.enum(["link", "text", "none", "upload"]),
     // The skill the submitted value (or button tap) runs, in-thread on its own route.
-    action: z.enum(["remix", "account", "explore", "read"]),
+    action: z.enum(["remix", "account", "explore", "read", "test"]),
     // Field label / confirm-card prompt + placeholder (deterministic copy, set by the loop — never model text).
     label: z.string().min(1),
     placeholder: z.string().optional(),
@@ -833,6 +837,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,
+  VideoTestCardBlockSchema,
 ]);
 
 export type BlockUnion = z.infer<typeof BlockUnionSchema>;

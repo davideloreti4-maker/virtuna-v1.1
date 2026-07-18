@@ -425,6 +425,41 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
     ),
   },
   {
+    id: "in-thread-upload",
+    label: "In-thread video field (test)",
+    note: "request_input(action:test) → a kind:'upload' field: a video FILE drop OR a TikTok URL. On submit it runs the FULL /api/analyze Max pipeline on its own 300s route, then POSTs the analysisId to /api/tools/test/card, which drops the video-test-card in the thread — no navigate-out. A run with no honest audience reaction degrades to a link-out to /analyze/[id].",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        persistedTurns={[
+          {
+            userTurn: "test this video for me",
+            blocks: [
+              {
+                type: "input-request",
+                props: {
+                  kind: "upload",
+                  action: "test",
+                  label: "Drop the video (or paste its link) and I'll test it against your audience.",
+                  placeholder: "https://tiktok.com/…",
+                  platform: "tiktok",
+                },
+              },
+              { type: "markdown", props: { text: "Drop the video below (or paste a TikTok link) and I'll test it.", origin: "chat-agent" } },
+            ],
+          },
+        ]}
+        streamingBlocks={[]}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
+      />
+    ),
+  },
+  {
     id: "explore",
     label: "Explore",
     note: "Discover → Explore skill. Measured outlier grid in a SkillResultCard (Remix / Track per tile).",
@@ -453,6 +488,56 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
         fallbackMessage={null}
         onRun={noop}
         userTurn={USER_TURNS.account}
+      />
+    ),
+  },
+  {
+    id: "video-test-card",
+    label: "Video Test card (test)",
+    note: "The /test in-thread result (video-test-card, model:sim1-max). The full frame-by-frame /api/analyze Max pipeline runs underneath; its result is mapped onto THIS card so the Test lands in the thread like every other skill — no navigate-out. Bands/WORDS only (never the 0-100 score); the number + filmstrips/verbatim/Apollo live one door away (See the full breakdown → /analyze/[id]). Rendered via MessageBlocks (proves the registry routes video-test-card → the renderer).",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        persistedTurns={[
+          {
+            userTurn: "test this video for me",
+            blocks: [
+              {
+                type: "video-test-card",
+                props: {
+                  verdict: "Solid contender",
+                  goNoGo: "go",
+                  audienceName: "Skincare buyers",
+                  band: "Mixed",
+                  fraction: "6/10 stopped",
+                  theOneFix:
+                    "Open on the after-shot, not the intro — the payoff is buried behind three seconds of setup.",
+                  ceiling:
+                    "The hook lands but the middle sags — retention drops the moment the demo starts, so it caps below a breakout.",
+                  reactions: [
+                    { archetype: "skeptic", verdict: "scroll", quote: "Seen this exact format a hundred times — nothing new in the first second." },
+                    { archetype: "collector", verdict: "stop", quote: "Saved it — the routine is specific enough to actually try." },
+                    { archetype: "scanner", verdict: "stop", quote: "The on-screen text told me what I'd get. I stayed." },
+                    { archetype: "converter", verdict: "scroll", quote: "No reason given to buy — it's a vibe, not a pitch." },
+                  ],
+                  postWindow: "Tue 18:00–21:00 UTC",
+                  conceptText: "Three things I wish I knew before I started my skincare routine",
+                  analysisId: "dev-fixture-id",
+                  model: "sim1-max",
+                  tier: "Directional",
+                },
+              },
+              { type: "markdown", props: { text: "Tested — here's how your audience reacts to the real video. Tap through for the full frame-by-frame.", origin: "chat-agent" } },
+            ],
+          },
+        ]}
+        streamingBlocks={[]}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
       />
     ),
   },

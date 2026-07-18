@@ -19,11 +19,12 @@
  * request_input tool's enum (chat-agent-loop.ts) both derive from these keys, so they can't drift.
  */
 
-/** The shape of the inline field the loop surfaces. `none` = no field, just a confirm-to-run button. */
-export type SkillInputKind = "link" | "text" | "none";
+/** The shape of the inline field the loop surfaces. `none` = no field, just a confirm-to-run button.
+ *  `upload` = a video the creator has on hand (a file drop, or a video URL) — the heaviest input. */
+export type SkillInputKind = "link" | "text" | "none" | "upload";
 
 /** The skill a submitted (or button-confirmed) field runs. One key per chat-routable input skill. */
-export type SkillInputAction = "remix" | "account" | "explore" | "read";
+export type SkillInputAction = "remix" | "account" | "explore" | "read" | "test";
 
 export interface SkillCapability {
   /** The field shape the renderer draws for this skill. */
@@ -74,6 +75,13 @@ export const SKILL_CAPABILITIES: Record<SkillInputAction, SkillCapability> = {
     prefillable: true,
     when:
       "the creator wants to know how their AUDIENCE would react to a concept, hook, or draft (\"what would my audience think of…\", \"read this idea\", \"would this land\")",
+  },
+  test: {
+    kind: "upload",
+    label: "Drop the video (or paste its link) and I'll test it against your audience.",
+    placeholder: "https://tiktok.com/…",
+    when:
+      "the creator wants to TEST a real, FINISHED video they already have — score how it will perform or how their audience will react to the actual clip (\"test this video\", \"how will this do\", \"score my video\", \"rate this clip\"). This runs the full frame-by-frame video analysis, so it needs a real video FILE or a TikTok URL — never text",
   },
 };
 

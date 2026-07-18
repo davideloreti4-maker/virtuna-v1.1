@@ -221,6 +221,34 @@ describe("runChatAgentStream [tools]", () => {
     });
   });
 
+  it("request_input(test) emits an UPLOAD field (a video drop — the /test heavy input)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "test"}')],
+      [textChunk("Drop the video and I'll test it.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks[0]).toMatchObject({
+      type: "input-request",
+      props: { kind: "upload", action: "test", label: expect.any(String) },
+    });
+    // Upload kind is not prefillable — a model `value` never lands on it (it's a real video, not text).
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+    expect(res.toolCalls.find((t) => t.name === "request_input")?.ran).toBe(true);
+  });
+
+  it("request_input(test) IGNORES a model-supplied prefill value (upload is not a text field)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "test", "value": "some text"}')],
+      [textChunk("Drop the video.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+  });
+
   it("request_input with an unknown action is refused (no field emitted)", async () => {
     const onBlock = vi.fn();
     const stream = mockStream([
