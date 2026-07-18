@@ -234,6 +234,18 @@ export function AmbientRoom({
   // (no focusId) keeps it reachable, so the creator can always step back from an ad-hoc ask to
   // "how the room ranked your N" (before this, the ask was a one-way door out of the batch).
   const showViewAll = rankedSiblings.length > 1;
+  // Ties are the NORM (10 personas → a handful of distinct stop-counts over N candidates), so the
+  // ranked list drops its numerals — a serif "1" over two identical 7/10 bars asserts an order the
+  // data refuses. When the TOP score is shared, name it instead of faking a winner. Counted on the
+  // stop-count ONLY — the same number the row displays — so this can never disagree with the sort
+  // the way a population-number tiebreak would (that is PR #306). Same total across a batch (one
+  // roster reacts to every candidate), so equal stop ⇒ equal score.
+  const topTie = useMemo(() => {
+    const top = rankedSiblings[0];
+    if (rankedSiblings.length < 2 || !top || top.total <= 0) return null;
+    const count = rankedSiblings.filter((s) => s.stop === top.stop && s.total === top.total).length;
+    return count >= 2 ? { count, stop: top.stop, total: top.total } : null;
+  }, [rankedSiblings]);
   const inCompare = compareOpen && showViewAll;
   const stepTo = (idx: number) => {
     const target = rankedSiblings[idx];
@@ -333,10 +345,16 @@ export function AmbientRoom({
             <p className="mt-2 font-serif text-[21px] leading-tight tracking-[-0.01em] text-foreground">
               How the room ranked your {rankedSiblings.length} {kindLabel.toLowerCase()}s
             </p>
+            {topTie && (
+              <p className="mt-1.5 text-[12.5px] leading-snug text-[var(--color-foreground-muted)]">
+                Your top {topTie.count === 2 ? 'two' : topTie.count === 3 ? 'three' : topTie.count === 4 ? 'four' : topTie.count} are
+                tied at {topTie.stop}/{topTie.total} — the room can&rsquo;t separate them.
+              </p>
+            )}
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-3">
             <ul className="flex flex-col">
-              {rankedSiblings.map((s, i) => {
+              {rankedSiblings.map((s) => {
                 const scoreLabel = s.total > 0 ? `${s.stop}/${s.total}` : '—';
                 const width = s.total > 0 ? `${Math.round((s.stop / s.total) * 100)}%` : '0%';
                 const isCurrent = s.id === focusId;
@@ -351,9 +369,9 @@ export function AmbientRoom({
                       aria-current={isCurrent ? 'true' : undefined}
                       className="flex w-full items-center gap-[11px] rounded-[8px] border-t border-[var(--color-border)] px-2 py-[11px] text-left transition-colors hover:bg-white/[0.02]"
                     >
-                      <span className="w-[15px] shrink-0 font-serif text-[17px] text-[var(--color-foreground-secondary)]">
-                        {i + 1}
-                      </span>
+                      {/* No rank numeral (§6.3): a serif "1" over two identical bars asserts an
+                          order the data refuses. The sort + bar + score carry the order; true ties
+                          are named in the header above. */}
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2 text-[11.5px] leading-[1.35] text-foreground">
                           {s.conceptText}
