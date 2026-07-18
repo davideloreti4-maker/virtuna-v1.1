@@ -41,17 +41,20 @@ export interface FixFirstListProps {
 }
 
 function FixCard({ fix }: { fix: CounterfactualSuggestionItem }) {
-  // Card markup reused from TopFixesList L34-62 (sans the dead audience-jump anchor).
+  // De-boxed (2026-07-18, B+tweak): a borderless list row with a quiet leading marker
+  // instead of a bordered chip, so the fixes read in the same calm column rhythm as the
+  // drivers rather than as a stack of little cards.
   return (
-    <li
-      data-testid="fix-first-item"
-      className="rounded-[8px] border border-[var(--color-border)] bg-white/[0.02] p-2"
-    >
+    <li data-testid="fix-first-item" className="flex gap-2.5 py-1">
+      <span
+        className="mt-[7px] h-[4px] w-[4px] shrink-0 rounded-full bg-[var(--color-foreground-muted)]"
+        aria-hidden="true"
+      />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-xs font-medium text-foreground" data-testid="fix-first-headline">
+        <span className="text-[13px] font-medium text-foreground" data-testid="fix-first-headline">
           {fix.headline}
         </span>
-        <span className="text-xs text-foreground-muted" data-testid="fix-first-detail">
+        <span className="text-[12.5px] leading-relaxed text-foreground-muted" data-testid="fix-first-detail">
           {fix.detail}
         </span>
       </div>

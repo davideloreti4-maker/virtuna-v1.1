@@ -1,5 +1,5 @@
 /**
- * select-hook-targets.test.ts — the deterministic cast for per-persona hook generation.
+ * select-persona-targets.test.ts — the deterministic cast for per-persona hook generation.
  *
  * The claims under test are the ones the PRODUCT COPY makes ("your five biggest groups") and
  * the ones the HONESTY SPINE makes (we never name a person the model was not told about). Both
@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { rankHookTargets, selectHookTargets } from "@/lib/audience/select-hook-targets";
+import { rankPersonaTargets, selectPersonaTargets } from "@/lib/audience/select-persona-targets";
 import type { Audience, CalibratedPersona } from "@/lib/audience/audience-types";
 
 /**
@@ -50,17 +50,17 @@ function makeAudience(over: Partial<Audience> = {}): Audience {
   };
 }
 
-describe("selectHookTargets — the honest degrade", () => {
+describe("selectPersonaTargets — the honest degrade", () => {
   it("names NOBODY for a General audience — there are no real people behind it", () => {
-    expect(selectHookTargets(makeAudience({ is_general: true }), 5)).toEqual([]);
+    expect(selectPersonaTargets(makeAudience({ is_general: true }), 5)).toEqual([]);
   });
 
   it("names NOBODY when there is no audience at all", () => {
-    expect(selectHookTargets(null, 5)).toEqual([]);
+    expect(selectPersonaTargets(null, 5)).toEqual([]);
   });
 
   it("names NOBODY for a calibrated audience carrying zero personas", () => {
-    expect(selectHookTargets(makeAudience({ personas: [] }), 5)).toEqual([]);
+    expect(selectPersonaTargets(makeAudience({ personas: [] }), 5)).toEqual([]);
   });
 
   /**
@@ -75,7 +75,7 @@ describe("selectHookTargets — the honest degrade", () => {
         persona({ archetype: "saver", share: 0.1 }),
       ],
     });
-    const cast = rankHookTargets(audience, 5);
+    const cast = rankPersonaTargets(audience, 5);
     expect(cast.map((t) => t.archetype)).toEqual(["saver"]);
   });
 
@@ -90,7 +90,7 @@ describe("selectHookTargets — the honest degrade", () => {
         persona({ archetype: "saver", share: 0.1, repaint: "Saves to study the cut." }),
       ],
     });
-    expect(rankHookTargets(audience, 5).map((t) => t.archetype)).toEqual(["saver"]);
+    expect(rankPersonaTargets(audience, 5).map((t) => t.archetype)).toEqual(["saver"]);
   });
 
   it("names NOBODY when every persona is unbindable — no cast, rather than a fake one", () => {
@@ -100,11 +100,11 @@ describe("selectHookTargets — the honest degrade", () => {
         persona({ archetype: "made_up" as CalibratedPersona["archetype"] }),
       ],
     });
-    expect(selectHookTargets(audience, 5)).toEqual([]);
+    expect(selectPersonaTargets(audience, 5)).toEqual([]);
   });
 });
 
-describe("rankHookTargets — slot-spread beats naive top-N", () => {
+describe("rankPersonaTargets — slot-spread beats naive top-N", () => {
   /**
    * THE POINT OF THE SPREAD. Six of the ten archetypes are `fyp`. A pure share sort therefore
    * hands back an ALL-FYP cast, and the shelf addresses one corner of the audience while calling
@@ -125,7 +125,7 @@ describe("rankHookTargets — slot-spread beats naive top-N", () => {
       ],
     });
 
-    const cast = rankHookTargets(audience, 5);
+    const cast = rankPersonaTargets(audience, 5);
     const slots = new Set(cast.map((t) => t.slot));
 
     // A naive top-5 by share would be all-fyp. All four buckets must be represented.
@@ -154,8 +154,8 @@ describe("rankHookTargets — slot-spread beats naive top-N", () => {
       ],
     });
     // `saver` precedes `lurker` in ARCHETYPES, so it wins the tie from EITHER input order.
-    expect(rankHookTargets(forward, 5)[0]!.archetype).toBe("saver");
-    expect(rankHookTargets(reversed, 5)[0]!.archetype).toBe("saver");
+    expect(rankPersonaTargets(forward, 5)[0]!.archetype).toBe("saver");
+    expect(rankPersonaTargets(reversed, 5)[0]!.archetype).toBe("saver");
   });
 
   it("carries the display label separately from the repaint the model is given (F7)", () => {
@@ -169,7 +169,7 @@ describe("rankHookTargets — slot-spread beats naive top-N", () => {
         }),
       ],
     });
-    const [t] = rankHookTargets(audience, 5);
+    const [t] = rankPersonaTargets(audience, 5);
     expect(t!.label).toBe("The Debunkers");
     expect(t!.repaint).toBe("Skeptical of the magic, hunting for the cut.");
   });
@@ -186,11 +186,11 @@ describe("rankHookTargets — slot-spread beats naive top-N", () => {
     // Baking "Deep Fans" in here would freeze it onto the persisted card, so improving our
     // vocabulary later would leave every old card reading the old name. Only a CREATOR'S name is
     // history worth snapshotting; ours is resolved by archetypeDisplayName at render.
-    expect(rankHookTargets(audience, 5)[0]!.label).toBeUndefined();
+    expect(rankPersonaTargets(audience, 5)[0]!.label).toBeUndefined();
   });
 });
 
-describe("selectHookTargets — the shelf size is fixed", () => {
+describe("selectPersonaTargets — the shelf size is fixed", () => {
   it("returns exactly `count` assignments for a ten-persona scraped audience", () => {
     const audience = makeAudience({
       personas: [
@@ -206,7 +206,7 @@ describe("selectHookTargets — the shelf size is fixed", () => {
         persona({ archetype: "cross_niche_curiosity", share: 0.02 }),
       ],
     });
-    const targets = selectHookTargets(audience, 5);
+    const targets = selectPersonaTargets(audience, 5);
     expect(targets).toHaveLength(5);
     // Ten real people → five DISTINCT readers, no repeats.
     expect(new Set(targets.map((t) => t.archetype)).size).toBe(5);
@@ -226,7 +226,7 @@ describe("selectHookTargets — the shelf size is fixed", () => {
         persona({ archetype: "loyalist", share: 0.2 }),           // loyalist
       ],
     });
-    const targets = selectHookTargets(audience, 5);
+    const targets = selectPersonaTargets(audience, 5);
 
     expect(targets).toHaveLength(5); // the shelf does NOT shrink
     expect(targets.map((t) => t.archetype)).toEqual([

@@ -23,18 +23,18 @@ import type {
   CalibratedPersona,
 } from "@/lib/audience/audience-types";
 import { PersonaEditForm } from "../persona-edit-form";
-// AudienceProfileView was retired by SPEC-2026-07-13; AudienceWorkspace is the surface that
-// now carries the per-persona Edit affordance and the protected-baseline refusal.
-import { AudienceWorkspace } from "../audience-workspace";
+// AudienceWorkspace was retired by the audience rebuild (P2, 2026-07-16); AudienceDetail is
+// the surface that now carries the per-persona Edit affordance and the read-only refusal.
+import { AudienceDetail } from "../audience-detail";
 
-// The workspace navigates (next rung / delete → /audience); the retired profile view did not.
+// The detail page navigates (edit / delete → /audience); mock the router.
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
 }));
 
-/** The workspace's props, minus the audience under test. */
-function workspaceProps() {
-  return { defaultAudienceId: null, onSetDefault: () => {}, onEditDetails: () => {} };
+/** The detail page's props, minus the audience under test. */
+function detailProps() {
+  return { account: null, defaultAudienceId: null, pinnedThreads: 0, source: null };
 }
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -160,16 +160,17 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
     ).toBeInTheDocument();
   });
 
-  it("a persona with no label displays the archetype-derived name (fallback)", () => {
-    // `high_engager` (no label) → "High Engager" (underscore→space, title-case).
+  it("a persona with no label displays the stable cast name (fallback)", () => {
+    // `high_engager` (no label) → "Maya" — the recurring-cast name every surface uses
+    // (persona-names is the naming SSOT; the manager must call the same person the
+    // same thing the room does).
     const audience = calibratedAudience([
       persona({ archetype: "high_engager", label: undefined }),
     ]);
 
-    render(<AudienceWorkspace audience={audience} {...workspaceProps()} />);
+    render(<AudienceDetail audience={audience} {...detailProps()} />);
 
-    // The archetype-derived name renders in the cast.
-    expect(screen.getAllByText("High Engager").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Maya").length).toBeGreaterThan(0);
   });
 
   it("the edit form surfaces NO weight / share / distribution input", () => {
@@ -215,34 +216,27 @@ describe("Persona editing (AUD-EDIT-01 / D-06)", () => {
     expect(screen.queryByText("Edit persona")).toBeNull();
   });
 
-  it("General/preset workspace shows NO Edit affordance + the protected-baseline caption", () => {
+  it("General/preset detail shows NO Edit affordance (read-only rooms)", () => {
     const general = generalAudience();
-    const { rerender } = render(<AudienceWorkspace audience={general} {...workspaceProps()} />);
+    const { rerender } = render(<AudienceDetail audience={general} {...detailProps()} />);
 
-    // No per-persona Edit affordance on General.
+    // No per-persona Edit affordance on General — and no Danger card either.
     expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
-    // The D-06 protected-baseline refusal is stated.
-    expect(screen.getByText(/protected baseline/)).toBeInTheDocument();
-    // The mix is rendered read-only — General's weights are the locked baseline.
-    expect(screen.getByLabelText("New viewers")).toBeDisabled();
+    expect(screen.queryByText("Delete audience")).toBeNull();
 
     // Same for a preset audience.
-    rerender(<AudienceWorkspace audience={presetAudience()} {...workspaceProps()} />);
+    rerender(<AudienceDetail audience={presetAudience()} {...detailProps()} />);
     expect(screen.queryByRole("button", { name: /^Edit / })).toBeNull();
-    expect(screen.getByLabelText("New viewers")).toBeDisabled();
+    expect(screen.queryByText("Delete audience")).toBeNull();
   });
 
-  it("calibrated workspace DOES show an Edit affordance per persona + an editable mix", () => {
+  it("calibrated detail DOES show an Edit affordance per persona — no mix sliders anywhere", () => {
     const audience = calibratedAudience([persona({ archetype: "tough_crowd" })]);
-    render(<AudienceWorkspace audience={audience} {...workspaceProps()} />);
-    // The row-action is present (accessible name "Edit <display name>"). Named exactly:
-    // the header also carries an "Edit details" button, which is a different affordance.
-    expect(screen.getByRole("button", { name: "Edit Tough Crowd" })).toBeInTheDocument();
-    // …and the read-only General caption is NOT shown for a calibrated audience.
-    expect(screen.queryByText(/protected baseline/)).toBeNull();
-    // The four engine dials are live (persona_weights → analysis_override).
-    expect(screen.getByLabelText("New viewers")).toBeEnabled();
-    expect(screen.getByLabelText("Loyalists")).toBeEnabled();
+    const { container } = render(<AudienceDetail audience={audience} {...detailProps()} />);
+    // The row-action is present (accessible name "Edit <cast name>": tough_crowd → Dev).
+    expect(screen.getByRole("button", { name: "Edit Dev" })).toBeInTheDocument();
+    // The mix sliders died with the workspace — the engine's dials stay baked.
+    expect(container.querySelector('input[type="range"]')).toBeNull();
   });
 
   it("a failed PATCH surfaces the error copy", async () => {
@@ -335,7 +329,7 @@ function scrapedAudience(): Audience {
 
 describe("Persona receipts — shown iff the scrape actually produced one", () => {
   it("renders the engagement receipt under a grounded persona", () => {
-    render(<AudienceWorkspace audience={scrapedAudience()} {...workspaceProps()} />);
+    render(<AudienceDetail audience={scrapedAudience()} {...detailProps()} />);
     expect(
       screen.getByText(/Low comment-to-view ratios on standard tricks\./),
     ).toBeInTheDocument();
@@ -343,7 +337,7 @@ describe("Persona receipts — shown iff the scrape actually produced one", () =
 
   it("claims NOTHING for a persona whose evidence is empty (no fabricated receipt)", () => {
     const { container } = render(
-      <AudienceWorkspace audience={scrapedAudience()} {...workspaceProps()} />,
+      <AudienceDetail audience={scrapedAudience()} {...detailProps()} />,
     );
     // Two personas, but only ONE carries evidence — so exactly one receipt may render.
     const receipts = within(container).getAllByText(/^Evidence ·/);
@@ -353,7 +347,7 @@ describe("Persona receipts — shown iff the scrape actually produced one", () =
   it("a DESCRIBED audience (no signature) shows no receipts at all", () => {
     const described = calibratedAudience([persona(), persona({ archetype: "loyalist" })]);
     const { container } = render(
-      <AudienceWorkspace audience={described} {...workspaceProps()} />,
+      <AudienceDetail audience={described} {...detailProps()} />,
     );
     expect(within(container).queryAllByText(/^Evidence ·/)).toHaveLength(0);
     expect(screen.queryByText(/Evidence is the engagement pattern/)).not.toBeInTheDocument();

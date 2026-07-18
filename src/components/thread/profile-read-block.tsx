@@ -132,7 +132,7 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
             the right rail; the model tag moves down to the disclosure line (hook-card rule:
             provenance is a footnote, not a headline). */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full bg-foreground-muted/60" aria-hidden="true" />
             {isPanel ? 'A read on this group' : 'A read on this person'}
           </span>

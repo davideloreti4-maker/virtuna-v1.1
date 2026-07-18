@@ -45,6 +45,7 @@ import { createOpenThreadLazy } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
+import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
@@ -163,6 +164,18 @@ export async function POST(request: Request): Promise<Response> {
   // ── (4) Get/create open thread (append-only — never overwrite) ────────────
   const openThread = await createOpenThreadLazy(user.id);
 
+  // ── (4a) Load the active audience — the SAME one the original card was generated under.
+  //
+  // 🔴 REFINE WAS AUDIENCE-BLIND. It re-ran the pipeline with no `audience` at all, so refining a
+  // card silently re-generated it as if the creator had never calibrated: DEFAULT persona weights
+  // instead of theirs (different band math), no audience repaint in the SIM (a generic room reacts
+  // instead of their room), and — once targeting shipped — no target. The refined card looked like
+  // a peer of the one it replaced and was measured against a different audience. Every other tools
+  // route resolves this from the thread pin; refine simply never did.
+  //
+  // Resolves to General on a missing id or a load failure (graceful degradation — never blocks).
+  const activeAudience = await resolveThreadAudience(supabase, openThread);
+
   // ── (5) SSE stream: re-run the skill + emit events ────────────────────────
   const encoder = new TextEncoder();
 
@@ -198,6 +211,7 @@ export async function POST(request: Request): Promise<Response> {
             platform: rawPlatform, // WR-07: use the client's selected platform (default "tiktok" if not sent)
             profileRow: profileRow ?? null,
             anchor: rawAnchor || undefined,
+            audience: activeAudience, // (4a): refine under the SAME audience the card was born under
           });
           hooksBlocks = result.blocks;
         } else {
@@ -205,6 +219,7 @@ export async function POST(request: Request): Promise<Response> {
             ask: refinedAsk,
             platform: rawPlatform, // WR-07: use the client's selected platform (default "tiktok" if not sent)
             profileRow: profileRow ?? null,
+            audience: activeAudience, // (4a): refine under the SAME audience the card was born under
           });
           ideasBlocks = result.blocks;
         }
@@ -241,6 +256,15 @@ export async function POST(request: Request): Promise<Response> {
                     scrollQuote: hb.props.scrollQuote,
                     model: hb.props.model,
                     channel: hb.props.channel,
+                    // ⚠️ THIS MAP IS WHERE PROPS GO TO DIE (#298). It is hand-built field-by-field,
+                    // so anything the runner produces and this map omits is dropped in SILENCE —
+                    // schema-valid, type-checked, and invisible. All four below were being dropped:
+                    // a refined card lost its persona reactions, its receipt, its no-source note
+                    // and its target line, and looked like a peer of the card it replaced.
+                    personas: hb.props.personas,
+                    proof: hb.props.proof,
+                    grounded: hb.props.grounded,
+                    target: hb.props.target,
                     // band/fraction deferred to score event
                   },
                 },
@@ -273,6 +297,11 @@ export async function POST(request: Request): Promise<Response> {
                     format: ib.props.format,
                     scrollQuote: ib.props.scrollQuote,
                     model: ib.props.model,
+                    // Same four, same silent drop as the hooks branch above — see the note there.
+                    personas: ib.props.personas,
+                    proof: ib.props.proof,
+                    grounded: ib.props.grounded,
+                    target: ib.props.target,
                     // band/fraction deferred to score event
                   },
                 },

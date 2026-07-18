@@ -8,8 +8,8 @@
  * in the SAME thread — the whole point of "one thread, all skills". Also locks that a plain chat
  * turn (markdown only, no cards) is unchanged.
  */
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ChatThreadView } from '../chat-thread-view';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
@@ -160,6 +160,135 @@ describe('ChatThreadView — chat-as-agent cards', () => {
     expect(iA1).toBeGreaterThan(iQ1);
     expect(iQ2).toBeGreaterThan(iA1);
     expect(iA2).toBeGreaterThan(iQ2);
+  });
+
+  it('while a dispatched skill runs (streaming + live stages, no cards yet) shows the progress SPINE, not typing dots', () => {
+    // The gap this locks: a chat-dispatched generator is a 20–65s run, but the route already emits
+    // real `stage` events and use-chat-stream exposes them. Without rendering them the whole wait was
+    // silent typing dots. Now the live spine renders in their place.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        userTurn="give me 3 ideas about morning routines"
+        stages={[
+          { name: 'Generating', status: 'active' },
+          { name: 'Simulating your audience', status: 'pending' },
+        ]}
+      />,
+    );
+    // The spine container + the live stage label render.
+    expect(screen.getByLabelText('Skill run progress')).toBeTruthy();
+    expect(screen.getByText('Generating')).toBeTruthy();
+    // The pure-chat typing dots are NOT shown while a skill is running (the spine replaced them).
+    expect(screen.queryByText('Thinking…')).toBeNull();
+  });
+
+  it('spine survives a pre-tool preamble (streamed text before cards must NOT suppress it)', () => {
+    // The loop may stream a short "on it…" line BEFORE it calls the tool. The spine pivots on CARDS,
+    // not text — otherwise that preamble would silence the whole run (the exact gap being closed).
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        streamingBlocks={[{ type: 'markdown', props: { text: 'On it — generating a few angles.' } }]}
+        stages={[{ name: 'Generating', status: 'active' }]}
+      />,
+    );
+    // The preamble line AND the live spine both render (no cards yet → run still in progress).
+    expect(screen.getByText('On it — generating a few angles.')).toBeTruthy();
+    expect(screen.getByLabelText('Skill run progress')).toBeTruthy();
+  });
+
+  it('once the dispatched skill cards arrive, the spine gives way to the cards', () => {
+    // Cards are produced at the END of the run (onBlock fires after the pipeline finishes), so the
+    // moment streamingCardBlocks is non-empty the run is effectively done — the spine unmounts and the
+    // real cards carry the turn, even though stages are still present and the stream is still open.
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        isStreaming={true}
+        streamingCardBlocks={[IDEA_CARD]}
+        stages={[
+          { name: 'Generating', status: 'done' },
+          { name: 'Simulating your audience', status: 'done' },
+          { name: 'Ranking', status: 'done' },
+        ]}
+      />,
+    );
+    // The card is shown…
+    expect(screen.getByText('The 5am myth')).toBeTruthy();
+    // …and the loading spine is gone (its job is done once cards render).
+    expect(screen.queryByLabelText('Skill run progress')).toBeNull();
+  });
+
+  // ── Follow-up chips (chat-followups) — the redesign of the retired chain-handoff CTA ──────────
+  // The old code ALWAYS rendered handoffsFor('idea') ("Develop this →" / "Rewrite for this audience →")
+  // regardless of what ran, and tapping switched the active tool. These guards fail against that code.
+  const SCRIPT_CARD = {
+    type: 'script-card',
+    props: {
+      title: 'The 5am myth — script',
+      hook: 'Everyone lied about 5am',
+      beats: [{ label: 'Hook', text: 'Everyone lied about 5am' }],
+      band: 'Strong',
+      fraction: '4/5',
+      scored: true,
+      scrollQuote: 'wait, what?',
+      model: 'sim1-flash',
+    },
+  };
+
+  it('follow-up chips are context-aware: a script turn offers script moves, NOT the idea handoff', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'write a script', blocks: [SCRIPT_CARD] }]}
+        onFollowup={vi.fn()}
+      />,
+    );
+    // The retired hardcoded CTAs must be gone after a script turn.
+    expect(screen.queryByText('Develop this →')).toBeNull();
+    expect(screen.queryByText('Rewrite for this audience →')).toBeNull();
+    // Script-kind chips render instead (chat-followups.ts).
+    expect(screen.getByText('Make it punchier')).toBeTruthy();
+    expect(screen.getByText('Hooks for this')).toBeTruthy();
+  });
+
+  it('a plain chat answer offers the generative entry points as chips', () => {
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'how often should I post?', blocks: [{ type: 'markdown', props: { text: 'Three times a week.' } }] }]}
+        onFollowup={vi.fn()}
+      />,
+    );
+    expect(screen.getByText('Give me ideas')).toBeTruthy();
+    expect(screen.getByText('Write hooks')).toBeTruthy();
+    expect(screen.getByText('Draft a script')).toBeTruthy();
+  });
+
+  it('tapping a chip fires onFollowup with the PROMPT (never auto-fires on render)', () => {
+    const onFollowup = vi.fn();
+    renderWithClient(
+      <ChatThreadView
+        {...baseProps}
+        persistedTurns={[{ userTurn: 'how often should I post?', blocks: [{ type: 'markdown', props: { text: 'Three times a week.' } }] }]}
+        onFollowup={onFollowup}
+      />,
+    );
+    // D-05: nothing fired just by rendering.
+    expect(onFollowup).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Give me ideas'));
+    // The chip sends the full PROMPT (what the agent routes), not the short label.
+    expect(onFollowup).toHaveBeenCalledWith('Give me a few content ideas for what we just talked about.');
+  });
+
+  it('no chips render while streaming (a turn must complete first)', () => {
+    renderWithClient(
+      <ChatThreadView {...baseProps} isStreaming={true} userTurn="q" onFollowup={vi.fn()} />,
+    );
+    expect(screen.queryByTestId('chat-followups')).toBeNull();
   });
 
   it('persistedTurns take precedence over markdown-only persistedBlocks when both are present', () => {

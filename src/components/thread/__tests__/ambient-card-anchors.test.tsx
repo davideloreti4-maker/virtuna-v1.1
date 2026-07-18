@@ -103,6 +103,7 @@ const hooksBase = {
   statusMessage: null,
   stages: [],
   followupText: null,
+  warnings: [], // main's RunWarnings (#320) made this a required HooksThreadView prop
   isStreaming: false,
   error: null,
   platform: 'tiktok',

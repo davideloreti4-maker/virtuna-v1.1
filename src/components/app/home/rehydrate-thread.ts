@@ -27,9 +27,11 @@ export interface RehydrateMessage {
 const CHAT_AGENT_ORIGIN = "chat-agent";
 
 /**
- * True when any ASSISTANT block carries the chat-agent origin marker. The marker is written only by
- * the chat route's flag-on dispatch branch, so it is the flag's shadow on the client: flag-off (and
- * every pre-existing thread) never has it → this returns false → reload behaviour is byte-identical.
+ * True when any ASSISTANT block carries the chat-agent origin marker (the co-pilot text stamped by
+ * the flag-on dispatch branch) OR is an `input-request` field (only the chat agent emits one). The
+ * marker is the flag's shadow on the client: flag-off (and every pre-existing thread) never has it →
+ * this returns false → reload behaviour is byte-identical. The input-request fallback keeps a
+ * request_link turn in the chat view even if the model streamed no closing text.
  */
 export function isChatAgentThread(messages: RehydrateMessage[]): boolean {
   return messages.some(
@@ -37,8 +39,9 @@ export function isChatAgentThread(messages: RehydrateMessage[]): boolean {
       m.role !== "user" &&
       (m.blocks ?? []).some(
         (b) =>
-          b.type === "markdown" &&
-          (b.props as { origin?: string } | undefined)?.origin === CHAT_AGENT_ORIGIN,
+          (b.type === "markdown" &&
+            (b.props as { origin?: string } | undefined)?.origin === CHAT_AGENT_ORIGIN) ||
+          b.type === "input-request",
       ),
   );
 }

@@ -1,5 +1,5 @@
 /**
- * select-hook-targets.ts — WHO each generated hook is written for (per-persona generation).
+ * select-persona-targets.ts — WHO each generated hook is written for (per-persona generation).
  *
  * ─── WHY THIS EXISTS ──────────────────────────────────────────────────────────
  *
@@ -74,7 +74,7 @@ const ARCHETYPE_ORDER = new Map<string, number>(ARCHETYPES.map((a, i) => [a, i])
  * reach the model (F7) — it is a creator-editable display string, and the workspace tells users
  * in as many words that it stays out of the prompt. Keep the two apart at every call site.
  */
-export interface HookTarget {
+export interface PersonaTarget {
   /** Binding key — the slug the engine's slots and the repaint map are keyed by. */
   archetype: Archetype;
   /** The persona's calibrated description. THE ONLY persona text the model sees. */
@@ -103,15 +103,15 @@ export interface HookTarget {
  * order, never by array position (two Flash runs carry no ordering guarantee).
  *
  * Returns [] for General / no audience / no bindable persona — the honest degrade. There are no
- * real people behind an uncalibrated audience, so we name none. See `selectHookTargets`.
+ * real people behind an uncalibrated audience, so we name none. See `selectPersonaTargets`.
  *
  * @param limit Max distinct people to cast (the shelf size).
  */
-export function rankHookTargets(audience: Audience | null, limit: number): HookTarget[] {
+export function rankPersonaTargets(audience: Audience | null, limit: number): PersonaTarget[] {
   if (!audience || audience.is_general || !audience.personas?.length) return [];
   if (limit <= 0) return [];
 
-  const eligible: HookTarget[] = audience.personas
+  const eligible: PersonaTarget[] = audience.personas
     // Rule 2 + Rule 3: a slug the engine cannot bind, or a persona with no brief to write from,
     // is not a person we can honestly claim to have written for.
     .filter((p) => ARCHETYPE_SET.has(p.archetype) && p.repaint?.trim().length > 0)
@@ -135,7 +135,7 @@ export function rankHookTargets(audience: Audience | null, limit: number): HookT
   // Pass 1 — COVERAGE: the strongest persona of each slot type present, in share order.
   // Six of the ten archetypes are `fyp`, so without this a top-5 can be all-FYP and the shelf
   // would address one corner of the audience while calling itself "your people".
-  const picked: HookTarget[] = [];
+  const picked: PersonaTarget[] = [];
   const seenSlots = new Set<SlotType>();
   for (const t of byShare) {
     if (picked.length >= limit) break;
@@ -169,8 +169,49 @@ export function rankHookTargets(audience: Audience | null, limit: number): HookT
  *
  * @returns exactly `count` targets, or [] for an audience with no real people to name.
  */
-export function selectHookTargets(audience: Audience | null, count: number): HookTarget[] {
-  const cast = rankHookTargets(audience, count);
+export function selectPersonaTargets(audience: Audience | null, count: number): PersonaTarget[] {
+  const cast = rankPersonaTargets(audience, count);
   if (cast.length === 0) return [];
   return Array.from({ length: count }, (_, i) => cast[i % cast.length]!);
+}
+
+/**
+ * The ONE reader a single-card skill writes for.
+ *
+ * Script emits exactly one card per run (D-02), so there is no N-cards-to-N-people fan-out to do:
+ * the question is not "who is the cast" but "who is THIS script for". Two callers, two answers:
+ *
+ * 1. HOOKS → SCRIPT (the real flow): the creator picked a hook, and that hook was written for
+ *    somebody. `preferred` carries that person through, so the script develops the chosen hook for
+ *    the SAME reader. Anything else would be a bait-and-switch — a hook aimed at your Deep Fans,
+ *    scripted for a passer-by.
+ *
+ * 2. STANDALONE /script: nobody upstream chose, so we take the biggest eligible segment. Naming the
+ *    largest slice of the audience is the honest default; inventing a preference is not.
+ *
+ * ⚠️ RESOLUTION IS OVER THE FULL ELIGIBLE LIST, NOT THE TOP-N CAST. A creator can pick the hook
+ * aimed at their 5th-biggest persona, and the script must be able to follow it there. Ranking to a
+ * shelf size here would silently retarget that script at somebody else — the exact class of silent
+ * substitution this subsystem keeps getting bitten by.
+ *
+ * @returns null for General / no audience / no bindable persona — the honest degrade (no card line).
+ */
+export function resolveSingleTarget(
+  audience: Audience | null,
+  preferred?: string,
+): PersonaTarget | null {
+  // ARCHETYPES.length is "all of them" — the ceiling of what could ever be eligible.
+  const eligible = rankPersonaTargets(audience, ARCHETYPES.length);
+  if (eligible.length === 0) return null;
+
+  if (preferred) {
+    const named = eligible.find((t) => t.archetype === preferred);
+    if (named) return named;
+    // Named somebody we cannot bind (unknown slug, empty repaint, not in this audience). We do NOT
+    // silently retarget to the biggest — falling through to a DIFFERENT person while the caller
+    // believes it asked for one is precisely the silent substitution above. Say nobody instead.
+    return null;
+  }
+
+  return eligible[0]!; // standalone run — the biggest segment
 }

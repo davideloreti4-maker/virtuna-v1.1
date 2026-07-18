@@ -25,6 +25,35 @@ import {
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
 
+// ─── In-thread input affordance (request_link) ───────────────────────────────
+// A free, non-paid tool: instead of guessing a URL for a Remix, the model asks for one by surfacing
+// an inline LINK FIELD in the thread. The loop services the call by emitting an `input-request`
+// block (the field) — the client runs the remix on submit. Label/placeholder are set HERE, never by
+// the model (no model-generated UI): the model only chooses to request, and which action to bind.
+export const REQUEST_LINK_TOOL = {
+  type: "function",
+  function: {
+    name: "request_link",
+    description:
+      "Show the creator an inline LINK FIELD in the thread to collect a video URL, then adapt it. " +
+      "Call this when the creator wants to REMIX / adapt / recreate a specific trending or competitor " +
+      "video but has NOT given a link — do NOT guess or invent a URL, and do NOT just ask for it in " +
+      "prose; call this so a field appears they can paste into. After calling it, add ONE short line " +
+      "telling them to drop the link.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: {
+          type: "string",
+          enum: ["remix"],
+          description: "What to run on the pasted link. Only 'remix' (adapt a video) is available.",
+        },
+      },
+      required: ["action"],
+    },
+  },
+} as const;
+
 // ─── Streaming completion seam ───────────────────────────────────────────────
 
 /** One streamed chunk (the OpenAI/DashScope streaming delta shape we consume). */
@@ -74,6 +103,13 @@ export interface ChatAgentStreamResult {
   text: string;
   /** Each skill that ran, with its block-cards (the route persists these). */
   skillRuns: SkillRunOutput[];
+  /**
+   * Non-skill UI affordance blocks the loop emitted this turn (today: an `input-request` field from
+   * request_link). Emitted via onBlock for the live render AND returned here so the route PERSISTS
+   * them — without persistence the field would vanish the moment the turn completes and the client
+   * reloads the thread from the server. Empty on a normal turn.
+   */
+  uiBlocks: unknown[];
   /** Telemetry: every tool the model called. */
   toolCalls: Array<{ name: string; ran: boolean; note?: string }>;
 }
@@ -117,7 +153,10 @@ function toolUseDirective(grounding: boolean): string {
     "After a tool runs, its cards are already shown to the creator; add ONE short line pointing at what " +
     "you made and a natural next step, and never re-write the card content in prose. If a tool returns an " +
     "ERROR instead of a card, tell the creator plainly what went wrong and what to do about it (relay the " +
-    "error's guidance) — do NOT silently answer the request in prose as though the tool had succeeded.";
+    "error's guidance) — do NOT silently answer the request in prose as though the tool had succeeded. " +
+    "If the creator wants to REMIX / adapt / recreate a specific trending or competitor video but has not " +
+    "given a link, call request_link so an inline field appears for them to paste it — never invent a URL " +
+    "and never just describe adapting a video you cannot see.";
   const groundLine = grounding
     ? " When a real, proven real-world example would make a strategy answer stronger, call search_corpus " +
       "and ground your answer on what it returns."
@@ -167,7 +206,13 @@ export async function runChatAgentStream(
   }
 
   const byName = new Map(skills.map((s) => [s.name, s]));
-  const tools = [...skills.map((s) => s.schema), ...(input.grounding ? [SEARCH_CORPUS_TOOL] : [])];
+  // request_link is always bound (free — it just shows an inline field); the corpus tool only when
+  // grounding is on (naming an unbound tool invites a call that can't be serviced).
+  const tools = [
+    ...skills.map((s) => s.schema),
+    REQUEST_LINK_TOOL,
+    ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
+  ];
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding)}`;
@@ -178,6 +223,7 @@ export async function runChatAgentStream(
   ];
 
   const skillRuns: SkillRunOutput[] = [];
+  const uiBlocks: unknown[] = [];
   const toolCalls: ChatAgentStreamResult["toolCalls"] = [];
   let paidRuns = 0;
   let fullText = "";
@@ -251,6 +297,41 @@ export async function runChatAgentStream(
         continue;
       }
 
+      // In-thread input affordance: the model asks for a link → emit an `input-request` block (the
+      // field) instead of running anything paid. The client renders it inline and runs the action on
+      // submit. label/placeholder are fixed here (no model-generated UI); the model only chose to ask.
+      if (call.name === "request_link") {
+        let action = "remix";
+        try {
+          const parsed = JSON.parse(call.args || "{}");
+          if (parsed.action === "remix") action = "remix";
+        } catch {
+          /* default action */
+        }
+        const fieldBlock = {
+          type: "input-request",
+          props: {
+            kind: "link",
+            action,
+            label: "Paste the video link and I'll adapt it for your audience.",
+            placeholder: "https://…",
+            platform: input.context.platform,
+          },
+        };
+        input.onBlock(fieldBlock); // live render this turn…
+        uiBlocks.push(fieldBlock); // …and persist it so a reload restores the field (route persists uiBlocks)
+        toolCalls.push({ name: "request_link", ran: true });
+        messages.push({
+          role: "tool",
+          tool_call_id: call.id,
+          content: JSON.stringify({
+            shown: "link input field",
+            note: "a field is now shown to the creator; ask them to paste the link — do not describe a result yet",
+          }),
+        });
+        continue;
+      }
+
       const skill = byName.get(call.name);
       if (!skill) {
         toolCalls.push({ name: call.name, ran: false, note: "unknown skill" });
@@ -295,5 +376,5 @@ export async function runChatAgentStream(
     }
   }
 
-  return { text: fullText, skillRuns, toolCalls };
+  return { text: fullText, skillRuns, uiBlocks, toolCalls };
 }

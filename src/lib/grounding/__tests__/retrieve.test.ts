@@ -92,7 +92,7 @@ describe("resolveRetrieveConfig", () => {
   it("uses documented defaults when env is unset", () => {
     const c = resolveRetrieveConfig();
     expect(c.minRows).toBe(4);
-    expect(c.minSimilarity).toBe(0.58);
+    expect(c.minSimilarity).toBe(0.5);
     expect(c.freshDays).toBe(90);
     expect(c.rank).toBe("topical");
   });
@@ -112,13 +112,40 @@ describe("resolveRetrieveConfig", () => {
     expect(c.fetchCount).toBeGreaterThan(532); // must see the whole corpus to spread across it
   });
 
-  it("keeps ideas + script on the topical path, platform-gated", () => {
+  /**
+   * ideas + script keep the topical AXIS (belief↔reality and the timed beats are subject-bound —
+   * that is the real difference from hooks), but no longer the platform GATE. Measured 2026-07-17:
+   * the gate is what drops an on-topic ask under its own floor ("personal branding for founders"
+   * 0.629 across the corpus → 0.576 across the 177 TikTok rows), and it hid 355 of 532 rows from
+   * every TikTok creator. Every skill now reads the whole corpus; only the ranking axis differs.
+   */
+  it("keeps ideas + script on the topical axis, but reads across platforms", () => {
     for (const skill of ["ideas", "script"] as const) {
       const c = resolveRetrieveConfig(skill);
       expect(c.rank).toBe("topical");
-      expect(c.minSimilarity).toBe(0.58);
-      expect(c.filterPlatform).toBe(true);
+      expect(c.minSimilarity).toBe(0.5);
+      expect(c.filterPlatform).toBe(false);
       expect(c.fetchCount).toBe(12);
+    }
+  });
+
+  /**
+   * The floor is a QUALITY lever, not a cost one (the scrape is explicit-only now). It must stay
+   * clear of ~0.45 — the corpus's own MEDIAN similarity — because a floor at the median accepts a
+   * random row: "cold plunge benefits" scores 12 "good" rows there while its best row anywhere is
+   * 0.490, i.e. the corpus holds nothing on the subject. Grounding belief↔reality on that is the
+   * blind transplant the first A/B measured losing. If someone lowers this to buy a hit rate, this
+   * test is the argument they have to answer.
+   */
+  it("keeps the ideas/script floor above the corpus median (0.45 = accept-anything)", () => {
+    for (const skill of ["ideas", "script"] as const) {
+      expect(resolveRetrieveConfig(skill).minSimilarity).toBeGreaterThan(0.45);
+    }
+  });
+
+  it("gates no skill on platform — the corpus is read whole regardless of target", () => {
+    for (const skill of ["hooks", "ideas", "script"] as const) {
+      expect(resolveRetrieveConfig(skill).filterPlatform).toBe(false);
     }
   });
 });

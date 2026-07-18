@@ -29,8 +29,8 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HookProof, IdeaCardBlock, PopulationAggregateBlock, ReactionPersona } from '@/lib/tools/blocks';
-import { parseProofProp, parseGroundedProp, parsePopulationProp } from '@/lib/tools/blocks';
+import type { HookProof, IdeaCardBlock, PopulationAggregateBlock, ReactionPersona, CardTarget } from '@/lib/tools/blocks';
+import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IntentLens } from '@/lib/audience/intent-lens';
 
@@ -62,6 +62,11 @@ export interface PartialIdeaCard {
   // Must be declared here, not merely passed: the live stream is the ONLY path on which the
   // half-attributed grid is visible, so a type that omits it would let the boundary drop it.
   grounded?: boolean;
+  // PER-PERSONA GENERATION: WHO this idea was written for + how that person reacted. Same rule as
+  // `grounded` above, and it is not a hypothetical — the identical prop was being dropped by the
+  // hooks SSE emit (#298), so the target line could only ever appear AFTER a reload, never on the
+  // live stream, which is the only path a user actually watches.
+  target?: CardTarget;
   // AUDIENCE SIM v2 (Stage 2): the N-individual population projection → the Population·1,000 Sheet.
   // undefined on General/uncalibrated/uncharacterized runs. Same reload-only hazard as proof:
   // declared + parsed + carried through toBlocks so it renders live, not only after a reload.
@@ -84,11 +89,26 @@ export interface UseIdeasStreamReturn {
   /** Model-authored follow-up text from the followup SSE event (D-03 / Plan 05-04). */
   followupText: string | null;
   /**
+   * True when the server signalled (via the `outliers` SSE event) that a live scrape could find
+   * proven outliers this run couldn't. Drives the "Find new outliers" affordance. Cleared at the
+   * start of every run; false on a clean grounded run or a platform that can't be scraped.
+   */
+  outliersAvailable: boolean;
+  /**
    * Start the Ideas stream. Call from the composer Idea send.
    * ask: empty string → Auto mode; non-empty → seeded mode.
    * Re-exposed as the retry entry point for the skill-run error state (W2).
+   *
+   * opts.allowScrape authorizes a live outlier scrape for THIS run (explicit spend) — set only by
+   * findOutliers(), never by a normal send.
    */
-  start: (ask: string, platform: string, intent?: IntentLens) => Promise<void>;
+  start: (ask: string, platform: string, intent?: IntentLens, opts?: { allowScrape?: boolean }) => Promise<void>;
+  /**
+   * Re-run the LAST ideas send with a live outlier scrape authorized (allowScrape: true) — the
+   * "Find new outliers" action. Scrapes fresh proven outliers on the same subject and write-throughs
+   * them into the cache (so the next normal run is grounded free). No-op before the first run.
+   */
+  findOutliers: () => Promise<void>;
   /**
    * Start a scoped refine re-run via /api/tools/refine (Plan 05-05 / D-04).
    * Consumes the refine SSE into the same streaming state as start() so the new
@@ -119,9 +139,14 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   // Plan 05-04 additions: stage checklist + model follow-up text (STUDIO-01/02)
   const [stages, setStages] = useState<StageState[]>([]);
   const [followupText, setFollowupText] = useState<string | null>(null);
+  const [outliersAvailable, setOutliersAvailable] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
+  // authorized. The scrape query is derived from the ask, so replaying "" (Auto) would scrape on
+  // the niche only — we must re-send the real ask/platform/intent.
+  const lastRunRef = useRef<{ ask: string; platform: string; intent?: IntentLens } | null>(null);
 
   // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
   // on an unmounted component. Without this the useRef(true) guard is permanently
@@ -147,6 +172,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setIsDone(false);
     setStages([]);
     setFollowupText(null);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
   }, []);
@@ -158,11 +184,20 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (ask: string, platform: string, intent?: IntentLens) => {
+  const start = useCallback(async (
+    ask: string,
+    platform: string,
+    intent?: IntentLens,
+    opts?: { allowScrape?: boolean },
+  ) => {
     // Abort any prior in-flight stream
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+
+    // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
+    // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly.
+    lastRunRef.current = { ask, platform, intent };
 
     // Reset state for a new run
     setStreamingCards([]);
@@ -172,6 +207,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
 
@@ -180,7 +216,14 @@ export function useIdeasStream(): UseIdeasStreamReturn {
       const res = await fetch('/api/tools/ideas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ask, platform, ...(intent ? { intent } : {}) }),
+        // allowScrape rides the body ONLY when explicitly authorized (findOutliers) — a normal send
+        // omits it, so the route's `body.allowScrape === true` check keeps the scrape off by default.
+        body: JSON.stringify({
+          ask,
+          platform,
+          ...(intent ? { intent } : {}),
+          ...(opts?.allowScrape ? { allowScrape: true } : {}),
+        }),
         signal: controller.signal,
       });
 
@@ -250,6 +293,12 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             const msg = typeof data.message === 'string' ? data.message : null;
             if (isMountedRef.current) setStatusMessage(msg);
 
+          } else if (eventType === 'outliers') {
+            // The server says a live scrape could find proven outliers this run couldn't. Flip the
+            // flag that drives the "Find new outliers" affordance. Only ever true here — the server
+            // is the sole authority on whether a scrape would actually do anything.
+            if (data.available === true && isMountedRef.current) setOutliersAvailable(true);
+
           } else if (eventType === 'content') {
             // content event: card faces WITH scrollQuote; band/fraction absent until score
             const rawBlocks = Array.isArray(data.blocks) ? data.blocks : [];
@@ -275,6 +324,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                 };
               })
@@ -349,6 +399,12 @@ export function useIdeasStream(): UseIdeasStreamReturn {
    * A failed refine sets error → the Plan-04 SkillRunError surface renders for retry.
    * NEVER called on render — only on explicit user send (D-05).
    */
+  const findOutliers = useCallback(async () => {
+    const last = lastRunRef.current;
+    if (!last) return;
+    await start(last.ask, last.platform, last.intent, { allowScrape: true });
+  }, [start]);
+
   const startRefine = useCallback(async (
     body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number; platform?: string },
   ) => {
@@ -363,6 +419,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setIsStreaming(true);
     setStages([]);
     setFollowupText(null);
+    setOutliersAvailable(false);
     cardsRef.current = [];
     stagesRef.current = [];
 
@@ -454,6 +511,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                     : undefined,
                   proof: parseProofProp(props.proof), // §11f: receipt arrives with the face
                   grounded: parseGroundedProp(props.grounded), // run had sources, even if this card cited none
+                  target: parseTargetProp(props.target), // who this idea was written for + how they reacted
                   population: parsePopulationProp(props.population), // Sim v2: N-individual projection → Population·1,000 Sheet
                 };
               })
@@ -539,6 +597,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
         // parsed off the wire but not copied HERE is silently dropped on the streaming path —
         // and the streaming path is the only one where the half-attributed grid is ever seen.
         ...(c.grounded ? { grounded: true } : {}),
+        // Same trap, same line: the target must be copied here or it renders only after a reload.
+        ...(c.target ? { target: c.target } : {}),
         // Sim v2 Stage 2 — the population projection renders live in the Sheet, not just after reload.
         ...(c.population ? { population: c.population } : {}),
       },
@@ -553,7 +613,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     isDone,
     stages,
     followupText,
+    outliersAvailable,
     start,
+    findOutliers,
     startRefine,
     stop,
     reset,

@@ -482,7 +482,9 @@ export function BrainView({
             OVERPRINTED INTO GARBAGE at rail width (~280px well — the brain was tuned for the old
             ~500px card). Now ONE flex row: the lag claim holds the corner (whitespace-nowrap), the
             cortex caption truncates instead of colliding, and at the wide video-Read card both show
-            in full. */}
+            in full. (The card-polish lane converged on the SAME collision and DROPPED the cortex
+            caption as decoration; kept the flex-row superset here — both are collision-safe, this one
+            preserves the Sapient-parity "N networks" signal. Card owner can re-drop if preferred.) */}
         <div className="pointer-events-none absolute inset-x-3 bottom-2.5 flex items-baseline justify-between gap-3">
           <p className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
             trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag

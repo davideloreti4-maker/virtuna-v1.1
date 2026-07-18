@@ -401,6 +401,14 @@ describe("updateAudience — never trusts user_id from input", () => {
     // Must target by id
     expect(sb._chain.eq).toHaveBeenCalledWith("id", "existing-id");
     expect(sb.from).toHaveBeenCalledWith("audiences");
+
+    // Must stamp updated_at — no DB trigger exists, so a silent repo skips it and the
+    // row lies about its freshness forever (a re-bake at 10:02 still read 08:26 live,
+    // 2026-07-17).
+    expect(typeof updateCall["updated_at"]).toBe("string");
+    const age = Date.now() - new Date(updateCall["updated_at"] as string).getTime();
+    expect(age).toBeGreaterThanOrEqual(0);
+    expect(age).toBeLessThan(60_000);
   });
 });
 

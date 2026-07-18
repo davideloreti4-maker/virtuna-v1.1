@@ -261,6 +261,51 @@ export function isCustomAudience(audience: Audience): boolean {
   return audience.mode === "general";
 }
 
+// ─── Account ↔ audience pairing (the ACCOUNTS zone + the detail page) ─────────
+
+/** The slice of a connected account the pairing reads (client- and server-safe). */
+export interface AccountLike {
+  id: string;
+  handle: string;
+  platform: "tiktok" | "instagram" | "youtube";
+}
+
+function isOwnedAudience(a: Audience): boolean {
+  return !a.is_general && !a.is_preset;
+}
+
+/**
+ * The audience a connected account manifests as. Matches by `source_account_id` OR by
+ * scrape handle+platform (audiences calibrated before connected_accounts existed carry
+ * no FK). Among candidates the CALIBRATED one wins — the connect deep-link can leave an
+ * empty shell with the FK set, and it must not shadow the audience that actually
+ * carries the account's reading (live-caught 2026-07-16).
+ */
+export function audienceForAccount(
+  account: AccountLike,
+  audiences: Audience[],
+): Audience | undefined {
+  const candidates = audiences.filter(
+    (a) =>
+      isOwnedAudience(a) &&
+      (a.source_account_id === account.id ||
+        (a.platform === account.platform &&
+          a.calibration?.source === "scrape" &&
+          a.calibration.handle?.toLowerCase() === account.handle.toLowerCase())),
+  );
+  if (candidates.length <= 1) return candidates[0];
+  return [...candidates].sort((x, y) => getPersonaCount(y) - getPersonaCount(x))[0];
+}
+
+/** The inverse pairing: which connected account stands behind this audience. */
+export function accountForAudience<A extends AccountLike>(
+  audience: Audience,
+  accounts: A[],
+  audiences: Audience[],
+): A | undefined {
+  return accounts.find((acc) => audienceForAccount(acc, audiences)?.id === audience.id);
+}
+
 /**
  * The composition mark: one segment per persona, width = share, tone = temperature.
  * Replaces the dot-scatter thumb, which encoded nothing on the rows that had no

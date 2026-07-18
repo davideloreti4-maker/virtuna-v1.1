@@ -183,12 +183,20 @@ export function MultiAudienceReadBlockRenderer({ block }: MultiAudienceReadBlock
             NOT repeated here: it already rides the action bar below, and the card was stating
             its own provenance twice. */}
         <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.06em] text-foreground-muted">
+          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
             <span className="h-[6px] w-[6px] rounded-full bg-[var(--color-foreground-muted)]" aria-hidden="true" />
             The Read
           </span>
           <TrustBadge tier={block.props.tier ?? 'Directional'} />
         </div>
+
+        {/* Orphaned-pin fallback (P3): the thread's pinned audience no longer exists, so this
+            Read scored General instead — said out loud, once, quietly. Never a silent swap. */}
+        {block.props.fallback === 'audience-removed' && (
+          <p className="text-[12px] text-foreground-muted">
+            Audience removed · scoring against General.
+          </p>
+        )}
 
         {/* 2-audience compare: the side-by-side verdict header (wins-for-X / bombs-for-Y). */}
         {isCompare && <CompareVerdictRow audiences={audiences} />}

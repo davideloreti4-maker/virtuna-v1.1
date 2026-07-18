@@ -21,11 +21,22 @@
  *    The stage is honest on BOTH paths — cache read-back finds proven outliers too,
  *    just instantly.
  *  - Read-back FIRST (gather-once/walk-many): the teardown cache is consulted before
- *    any scrape; enough good cached rows → the scrape is skipped entirely. A cache
- *    miss OR read-back failure falls through to the live scrape (which write-through
- *    populates the cache). Only when the scrape path ALSO fails does the run degrade
- *    to ungrounded — corpus stays undefined, examples stay [], a warning is pushed.
- *    Never fabricate a source, never block generation.
+ *    any scrape; enough good cached rows → the scrape is skipped entirely.
+ *  - The SCRAPE IS EXPLICIT-ONLY (`allowScrape`, default false — owner call 2026-07-17).
+ *    A cache miss on a default run degrades to ungrounded; it does NOT reach for Apify.
+ *    Spending the owner's money is a decision the user makes, not a consequence of the
+ *    corpus being thin on their subject. `allowScrape: true` (a deliberate "find me new
+ *    outliers" action) restores the live scrape, whose write-through populates the cache
+ *    so the NEXT run on that subject is free — the gather-once/walk-many loop, driven by
+ *    intent instead of by accident.
+ *  - Degrade is always honest and never blocking: corpus stays undefined, examples stay [],
+ *    a warning is pushed. Never fabricate a source, never block generation.
+ *  - It reports back whether a scrape WOULD have helped (`scrapeAvailable`): true only when the
+ *    run degraded (or grounded on a partial) purely because `allowScrape` was false on a scrapable
+ *    platform. That is the capability signal behind the "Find new outliers" button — the SERVER
+ *    knows a scrape is worth offering (grounding on, platform scrapable, cache thin), so the glass
+ *    never has to guess. False on a full cache hit (grounded, no need), on a non-scrapable platform
+ *    (nothing to reach for), when grounding is off, and while a scrape is already running.
  */
 
 import { gatherAndExtract } from "@/lib/grounding/orchestrator";
@@ -40,6 +51,18 @@ export const GROUNDING_STAGE_NAME = "Finding proven outliers";
 export interface GatherCorpusInput {
   /** Per-skill env gate, resolved by the caller (e.g. GROUNDING_HOOKS_ENABLED === "true"). */
   enabled: boolean;
+  /**
+   * May this run pay for a LIVE SCRAPE on a cache miss? Default false — the scrape is an
+   * explicit, user-authorized action, never an automatic consequence of a thin corpus.
+   *
+   * The read-back is free; the scrape is ~25s of Apify. Measured 2026-07-17 against the real
+   * 532-row corpus: at the 0.58 floor only 3 of 12 realistic asks cleared it, so an automatic
+   * fallback billed the owner on 75% of ideas/script runs — silently, with no affordance and
+   * no way to decline. That is the wrong default for a spend. A miss now degrades to ungrounded
+   * (free, instant, honest); the user gets the outliers we already own, and asks for new ones
+   * when they want them.
+   */
+  allowScrape?: boolean;
   /**
    * Which skill is grounding. One teardown holds several lessons; this selects the SLICE the
    * model is shown (hooks → the madlib · ideas → belief↔reality · script → the timed beats).
@@ -57,8 +80,9 @@ export interface GatherCorpusInput {
   warnings: string[];
   /**
    * Route the retrieved corpus through the grounding-as-REMIX adapt stage (decode→adapt briefer,
-   * adapt.ts) instead of the raw per-skill slice? Default-off; hooks-only in Phase 1. Resolved by
-   * the caller (GROUNDING_HOOKS_ADAPT === "true"). Requires `adaptProfile`; absent → skipped.
+   * adapt.ts) instead of the raw per-skill slice? Default-off; supported for hooks, ideas, and
+   * script (Phase 2). Resolved by the caller (GROUNDING_<SKILL>_ADAPT === "true"). Requires
+   * `adaptProfile`; absent → skipped.
    */
   adapt?: boolean;
   /** Creator context the adapt stage re-voices the proven structures toward. */
@@ -68,6 +92,13 @@ export interface GatherCorpusInput {
 /** Platforms whose teardowns live in the corpus and can be retrieved. */
 const READABLE_PLATFORMS = new Set(["tiktok", "instagram", "youtube"]);
 
+/**
+ * The generate-by-remix skills the adapt briefer supports (decision doc §4d, consumption mode 1).
+ * GroundingSkill is exactly these three today, but the set is explicit so a future non-remix skill
+ * routed through this seam would NOT silently get the dosage briefer meant for structure transfer.
+ */
+const ADAPT_SKILLS = new Set<GroundingSkill>(["hooks", "ideas", "script"]);
+
 /** The live scrape+extract path is Apify/clockworks — TikTok only. IG native is the fast-follow. */
 const SCRAPABLE_PLATFORMS = new Set(["tiktok"]);
 
@@ -76,6 +107,15 @@ export interface GatherCorpusResult {
   corpus: string | undefined;
   /** The retrieved examples backing `corpus` — [] on skip/degrade (no receipt without a source). */
   examples: RetrievedExample[];
+  /**
+   * Would a live scrape have found outliers this run couldn't? True ONLY when the run degraded (or
+   * grounded on a thin partial) purely because `allowScrape` was false on a scrapable platform —
+   * i.e. we could have scraped, the user just didn't authorize the spend. This is the capability
+   * signal behind the "Find new outliers" affordance: the server already knows a scrape is worth
+   * offering, so the glass never guesses. False on a full cache hit, a non-scrapable platform,
+   * grounding-off, or while a scrape is already running (allowScrape true → nothing to offer).
+   */
+  scrapeAvailable: boolean;
 }
 
 /** Injectable pipeline fns (tests swap these; prod uses the real modules). */
@@ -95,7 +135,7 @@ export async function gatherCorpusForRun(
   input: GatherCorpusInput,
   deps: GatherCorpusDeps = {},
 ): Promise<GatherCorpusResult> {
-  const none: GatherCorpusResult = { corpus: undefined, examples: [] };
+  const none: GatherCorpusResult = { corpus: undefined, examples: [], scrapeAvailable: false };
   if (!input.enabled || !READABLE_PLATFORMS.has(input.platform)) return none;
 
   const query = input.queryCandidates.find((q) => q && q.trim().length > 0)?.trim() ?? "";
@@ -108,12 +148,15 @@ export async function gatherCorpusForRun(
   /**
    * Turn the retrieved exemplars into the `{ corpus, examples }` result the runner consumes.
    * ONE place so all three retrieval paths (cache hit · non-scrapable partial · live scrape) route
-   * identically: the grounding-as-remix adapt briefer when it is enabled (hooks + a profile),
-   * otherwise the raw per-skill slice. `used` (not the input list) is returned as `examples` so the
-   * runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
+   * identically: the grounding-as-remix adapt briefer when it is enabled (an adapt-supported skill +
+   * a profile), otherwise the raw per-skill slice. `used` (not the input list) is returned as
+   * `examples` so the runner's sourceIndex→receipt mapping stays positional and exact on BOTH paths.
    */
-  const finalize = async (examples: RetrievedExample[]): Promise<GatherCorpusResult> => {
-    if (input.adapt && input.skill === "hooks" && input.adaptProfile && examples.length > 0) {
+  const finalize = async (
+    examples: RetrievedExample[],
+    scrapeAvailable = false,
+  ): Promise<GatherCorpusResult> => {
+    if (input.adapt && ADAPT_SKILLS.has(input.skill) && input.adaptProfile && examples.length > 0) {
       const { corpus, used } = await adapt({
         skill: input.skill,
         ask: query,
@@ -122,10 +165,10 @@ export async function gatherCorpusForRun(
         profile: input.adaptProfile,
         examples,
       });
-      return { corpus, examples: used };
+      return { corpus, examples: used, scrapeAvailable };
     }
     const { corpus, used } = buildCorpusBlock(examples, input.skill);
-    return { corpus, examples: used };
+    return { corpus, examples: used, scrapeAvailable };
   };
 
   input.onStage?.(GROUNDING_STAGE_NAME, "active");
@@ -165,23 +208,33 @@ export async function gatherCorpusForRun(
     }
 
     // 2. live scrape + extract (write-through populates the cache for next time).
-    //    Only where we can actually scrape. `minRows` decides whether the scrape is WORTH
-    //    skipping — it is not a quality bar, and on a platform we cannot scrape there is no
-    //    scrape to skip. Throwing away 2 real proven outliers to run ungrounded, because a
-    //    threshold designed to save an Apify call said "only 2", would be self-defeating:
-    //    two proven sources beat none. Use what we found; degrade to raw only when we found
-    //    nothing at all (and say so).
-    if (!SCRAPABLE_PLATFORMS.has(input.platform)) {
+    //    Only where we can actually scrape, and only when the USER asked to pay for it.
+    //    `minRows` decides whether the scrape is WORTH skipping — it is not a quality bar, and
+    //    where there is no scrape to reach for there is no scrape to skip. Throwing away 2 real
+    //    proven outliers to run ungrounded, because a threshold designed to save an Apify call
+    //    said "only 2", would be self-defeating: two proven sources beat none. Use what we found;
+    //    degrade to raw only when we found nothing at all (and say so).
+    if (!input.allowScrape || !SCRAPABLE_PLATFORMS.has(input.platform)) {
+      // Name the REAL reason: "not scrapable" and "not authorized to spend" are different
+      // facts, and a log that conflates them sends the next reader to the wrong platform gate.
+      const why = !input.allowScrape
+        ? "scrape not requested (explicit-only)"
+        : `${input.platform} is not scrapable`;
+      // A scrape would only help if we DIDN'T scrape purely because it wasn't requested — and the
+      // platform can actually be scraped. "Not scrapable" is a dead end, not an offer; conflating
+      // the two would dangle a button that could never do anything. This is the "Find new outliers"
+      // capability signal, computed at the one place that knows both facts.
+      const scrapeAvailable = !input.allowScrape && SCRAPABLE_PLATFORMS.has(input.platform);
       if (partial.length > 0) {
         console.info(
-          `[grounding] ${input.platform} is not scrapable — grounding on the ${partial.length} cached teardowns we do have`,
+          `[grounding] ${why} — grounding on the ${partial.length} cached teardowns we do have`,
         );
-        return finalize(partial);
+        return finalize(partial, scrapeAvailable);
       }
       console.info(
-        `[grounding] no cached teardowns for "${query}" on ${input.platform} and no scraper for it — degrading to ungrounded`,
+        `[grounding] no cached teardowns for "${query}" on ${input.platform} and ${why} — degrading to ungrounded`,
       );
-      return none;
+      return { ...none, scrapeAvailable };
     }
 
     const { examples } = await gather({

@@ -165,6 +165,63 @@ export function parseGroundedProp(value: unknown): boolean {
   return value === true;
 }
 
+// ─── Card target (per-persona generation) ─────────────────────────────────────
+//
+// WHO this card was written for, and whether that person then bit. Shared by every skill that
+// writes for someone (hooks #299; ideas/script fan-out) — the binding rule is identical, so the
+// shape is one type rather than three that drift.
+//
+// The audience was MEASURED not to steer generation as prompt CONTEXT (handoff §4c: 20 runs,
+// embeddings p=0.43, a blind judge told exactly who the audience is scored 45% — chance). The data
+// reached the writer and the writer ignored it. So the audience is made explicit in the OUTPUT
+// instead: each card is assigned one named reader, and the model must say which.
+//
+// `verdict`/`quote` are that reader's OWN reaction from the SIM panel — the receipt that the
+// aim actually landed. Both nullable: the target archetype may not appear in the run's panel,
+// and we never fabricate a reaction (honesty spine — same rule as the band).
+//
+// `label` is display-only. It NEVER reaches the model (F7); `archetype` is the binding key and
+// `repaint` is what the writer is given. Snapshotting the label here is deliberate — it records
+// what the persona was CALLED when the card was written, so a later rename cannot silently
+// rewrite history (the same reasoning that put `audienceId` on the Read block — never key on a
+// user-editable display string).
+// NOTE the name: `PersonaTarget` (select-persona-targets.ts) is the SELECTION-side shape — it carries
+// the `repaint`, which is prompt input and must never be persisted onto a card or shipped to the
+// client. This is the CARD-side shape: display + receipt, no prompt text. Keeping them distinct
+// types is what stops the repaint leaking into a block by an innocent-looking spread.
+export const CardTargetSchema = z.object({
+  archetype: z.string(),                       // binding key — one of the fixed 10. THE NAME IS DERIVED FROM THIS.
+  /**
+   * The CREATOR'S OWN name for this persona — present ONLY when they set one. Display only; it
+   * never reached the model (F7).
+   *
+   * ⚠️ OPTIONAL ON PURPOSE. When absent the renderer derives the name from `archetype` via
+   * `archetypeDisplayName`. The split is deliberate: a creator's name is HISTORY and is snapshotted
+   * (a later rename must not rewrite what a card said when it was written), while OUR name for an
+   * archetype is just our current vocabulary and is resolved at RENDER — so improving it improves
+   * every card ever generated instead of leaving old ones reading "NICHE DEEP BUYER" forever.
+   */
+  label: z.string().optional(),
+  share: z.number(),                           // 0..1 share of the audience
+  verdict: z.enum(["stop", "scroll"]).nullable(), // did the person we AIMED at bite?
+  quote: z.string().nullable(),                // that person's own words — never invented
+});
+
+export type CardTarget = z.infer<typeof CardTargetSchema>;
+
+/**
+ * `target` at the wire boundary — safeParse, not trust-the-wire (mirrors parseProofProp).
+ *
+ * A malformed target → undefined → the card renders with no target line, exactly like an
+ * uncalibrated one. The honesty spine again: a card must never name a reader off a payload we
+ * could not actually validate.
+ */
+export function parseTargetProp(value: unknown): CardTarget | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const parsed = CardTargetSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
 // ─── Population aggregate (Audience Sim v2, Stage 2) ────────────────────────────
 // The wire mirror of `PopulationAggregate` (src/lib/audience/population.ts) — the REAL
 // O(N) score of ~1,000 individuals sampled off the signature's 10 segments (NOT the 10's
@@ -242,6 +299,13 @@ export const IdeaCardBlockSchema = z.object({
     // Did the RUN have sources, even if THIS card cited none? See parseGroundedProp. Ideas
     // fan out, so this is the card type where a half-attributed grid was visible.
     grounded: z.boolean().optional(),
+    // PER-PERSONA GENERATION (fan-out from hooks #299): the named reader this idea was WRITTEN
+    // FOR, and how that exact person then reacted in the SIM. Same contract and the same honesty
+    // rule as the hook card — present ONLY on a calibrated run where the model echoed back a
+    // target we actually assigned; a writer that ignored its brief loses the LINE rather than
+    // getting a generic idea mislabelled with someone's name. OPTIONAL → General and every
+    // persisted pre-target card stay byte-identical (regression gate).
+    target: CardTargetSchema.optional(),
     // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for this idea —
     // a REAL O(N) score of ~1,000 sampled individuals (per-segment stop split), computed by the
     // runner when the active signature carries the v2 axes. Feeds the AudienceLens Population·1,000
@@ -271,60 +335,6 @@ export type IdeaCardBlock = z.infer<typeof IdeaCardBlockSchema>;
 // channel: multi-modal hint (spoken/visual/caption/edit/audio) per corpus/hooks.md.
 //   nullable — not every hook maps to a specific delivery channel.
 
-// ─── Hook target (per-persona generation) ─────────────────────────────────────
-//
-// WHO this hook was written for, and whether that person then bit.
-//
-// The audience was MEASURED not to steer generation (handoff §4c: 20 runs, embeddings p=0.43,
-// a blind judge told exactly who the audience is scored 45% — chance). The data reached the
-// writer and the writer ignored it. So the audience is made explicit in the OUTPUT instead:
-// each hook is assigned one named reader, and the model must say which.
-//
-// `verdict`/`quote` are that reader's OWN reaction from the SIM panel — the receipt that the
-// aim actually landed. Both nullable: the target archetype may not appear in the run's panel,
-// and we never fabricate a reaction (honesty spine — same rule as the band).
-//
-// `label` is display-only. It NEVER reaches the model (F7); `archetype` is the binding key and
-// `repaint` is what the writer is given. Snapshotting the label here is deliberate — it records
-// what the persona was CALLED when the hook was written, so a later rename cannot silently
-// rewrite history (the same reasoning that put `audienceId` on the Read block — never key on a
-// user-editable display string).
-// NOTE the name: `HookTarget` (select-hook-targets.ts) is the SELECTION-side shape — it carries
-// the `repaint`, which is prompt input and must never be persisted onto a card or shipped to the
-// client. This is the CARD-side shape: display + receipt, no prompt text. Keeping them distinct
-// types is what stops the repaint leaking into a block by an innocent-looking spread.
-export const HookCardTargetSchema = z.object({
-  archetype: z.string(),                       // binding key — one of the fixed 10. THE NAME IS DERIVED FROM THIS.
-  /**
-   * The CREATOR'S OWN name for this persona — present ONLY when they set one. Display only; it
-   * never reached the model (F7).
-   *
-   * ⚠️ OPTIONAL ON PURPOSE. When absent the renderer derives the name from `archetype` via
-   * `archetypeDisplayName`. The split is deliberate: a creator's name is HISTORY and is snapshotted
-   * (a later rename must not rewrite what a card said when it was written), while OUR name for an
-   * archetype is just our current vocabulary and is resolved at RENDER — so improving it improves
-   * every card ever generated instead of leaving old ones reading "NICHE DEEP BUYER" forever.
-   */
-  label: z.string().optional(),
-  share: z.number(),                           // 0..1 share of the audience
-  verdict: z.enum(["stop", "scroll"]).nullable(), // did the person we AIMED at bite?
-  quote: z.string().nullable(),                // that person's own words — never invented
-});
-
-export type HookCardTarget = z.infer<typeof HookCardTargetSchema>;
-
-/**
- * `target` at the wire boundary — safeParse, not trust-the-wire (mirrors parseProofProp).
- *
- * A malformed target → undefined → the card renders with no target line, exactly like an
- * uncalibrated one. The honesty spine again: a card must never name a reader off a payload we
- * could not actually validate.
- */
-export function parseTargetProp(value: unknown): HookCardTarget | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const parsed = HookCardTargetSchema.safeParse(value);
-  return parsed.success ? parsed.data : undefined;
-}
 
 export const HookCardBlockSchema = z.object({
   type: z.literal("hook-card"),
@@ -369,7 +379,7 @@ export const HookCardBlockSchema = z.object({
     // echoed back a target we actually assigned (see hooks-runner) — a run whose writer ignored
     // the assignment loses the line rather than mislabelling the hook. OPTIONAL → General and
     // every persisted pre-target card stay byte-identical (regression gate).
-    target: HookCardTargetSchema.optional(),
+    target: CardTargetSchema.optional(),
     // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for this hook —
     // a REAL O(N) score of ~1,000 sampled individuals (per-segment stop split), computed by the
     // runner when the active signature carries the v2 axes. Feeds the AudienceLens Population·1,000
@@ -423,6 +433,12 @@ export const ScriptCardBlockSchema = z.object({
     // has no sibling to look half-rendered against (one per run), but the statement is the same
     // fact and the receipt primitive is shared — so it says it too, rather than drifting.
     grounded: z.boolean().optional(),
+    // PER-PERSONA GENERATION (fan-out from hooks #299): the named reader this script was WRITTEN
+    // FOR — normally inherited from the hook the creator picked, so the script develops that hook
+    // for the same person. `verdict`/`quote` are that person's reaction to the OPENER only (D-01),
+    // which is the only thing the SIM ever scores — the card must never read as a full-watch
+    // promise. OPTIONAL → General and every persisted pre-target card stay byte-identical.
+    target: CardTargetSchema.optional(),
     // AUDIENCE SIM v2 (Stage 2): the honest N-individual population projection for this script's
     // OPENER (scored opener-as-hook, D-01), computed by the runner when the active signature
     // carries the v2 axes. Feeds the AudienceLens Population·1,000 Sheet. OPTIONAL → General /
@@ -651,6 +667,13 @@ export const MultiAudienceReadBlockSchema = z.object({
     // MAX_CONCEPT_LENGTH so a payload the route accepts can never fail its own write
     // boundary. Optional + additive: the already-persisted blocks omit it.
     concept: z.string().min(1).max(2000).optional(),
+    // P3 orphaned-pin honesty: the thread's pinned audience no longer resolved (deleted /
+    // disconnected), so this Read scored General instead — and says so. The route sets it;
+    // the renderer maps it to one quiet line ("Audience removed · scoring against General.").
+    // A typed literal, not free text: the fact lives here, the copy lives in the renderer.
+    // RUN-level + optional + additive: persisted blocks omit it, and a transient load error
+    // NEVER sets it (that would claim "removed" about an audience that still exists).
+    fallback: z.literal("audience-removed").optional(),
   }),
 });
 
@@ -759,6 +782,30 @@ export const AccountReadBlockSchema = z.object({
 
 export type AccountReadBlock = z.infer<typeof AccountReadBlockSchema>;
 
+// ─── input-request ──────────────────────────────────────────────────────────────
+// An in-thread input affordance the chat AGENT surfaces when a skill needs structured input the
+// creator's sentence didn't supply — the canonical case being Remix, which needs a video LINK.
+// Instead of hallucinating a URL or answering in prose, the agent calls the request_link tool and
+// the loop emits ONE of these; the renderer shows an inline field, and on submit the composer runs
+// the named `action` skill and its card lands in the SAME thread. NO model-generated UI: the model
+// only CHOOSES to request a fixed kind; label/placeholder are set server-side, not by the model.
+export const InputRequestBlockSchema = z.object({
+  type: z.literal("input-request"),
+  props: z.object({
+    // The input shape. Only "link" today (a single URL field); this literal is where new kinds land.
+    kind: z.literal("link"),
+    // The skill the submitted value runs. "remix" today (url → remix-card in-thread).
+    action: z.literal("remix"),
+    // Field label + placeholder (deterministic copy, set by the loop — never model text).
+    label: z.string().min(1),
+    placeholder: z.string().optional(),
+    // Platform the action runs on (carried from the turn so the remix targets the right feed).
+    platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
+  }),
+});
+
+export type InputRequestBlock = z.infer<typeof InputRequestBlockSchema>;
+
 // ─── Union ────────────────────────────────────────────────────────────────────
 
 export const BlockUnionSchema = z.discriminatedUnion("type", [
@@ -773,6 +820,7 @@ export const BlockUnionSchema = z.discriminatedUnion("type", [
   MultiAudienceReadBlockSchema,
   PersonaChatTurnBlockSchema,
   AccountReadBlockSchema,
+  InputRequestBlockSchema,
   ProfileReadBlockSchema,
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,

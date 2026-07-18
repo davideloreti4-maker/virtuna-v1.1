@@ -482,6 +482,29 @@ const MULTI_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
   },
 };
 
+// The DEFAULT Read shape since P3: ONE audience, read alone (the forced General second
+// side is dead). This fixture also carries the orphaned-pin fallback marker, so the one
+// state that says "Audience removed · scoring against General." is visually inspectable.
+const SINGLE_AUDIENCE_READ_BLOCK: MultiAudienceReadBlock = {
+  type: "multi-audience-read",
+  props: {
+    model: "sim1-flash",
+    tier: "Directional",
+    fallback: "audience-removed",
+    audiences: [
+      {
+        name: "General",
+        band: "Mixed",
+        fraction: "5/10 stop",
+        interpretation: "General splits (Mixed).",
+        lever: "Mixed for General. Tighten the opener to push it toward Strong.",
+        whoNotFor: "",
+        personas: PERSONAS.slice(2, 8),
+      },
+    ],
+  },
+};
+
 // ── The ambient audience (the two surfaces the gallery was blind to until 2026-07-13) ──
 //
 // `personas` renders the room that reacted to a concept, and it is the ONLY visible entry
@@ -561,27 +584,35 @@ export interface BlockSection {
 export const BLOCK_SECTIONS: BlockSection[] = [
   {
     type: "profile-read",
-    label: "Profile Read (forensic)",
-    note: "Profile skill → behavioral read: identity + tells (verbatim evidence) + forensic cues (Max tier).",
+    label: "Profile Read (forensic) · HIDDEN",
+    note: "HIDDEN — the Profile skill is behind HORIZONTAL_ENABLED (flag OFF, owner call 2026-07-13). Not shippable today; renderer kept alive on purpose so persisted profile-read blocks in old threads still render (see lib/flags/horizontal.ts). Reference-only — this is the sole cheap way to look at it. Profile skill → behavioral read: identity + tells (verbatim evidence) + forensic cues (Max tier).",
     body: [PROFILE_READ_BLOCK],
   },
   {
     type: "reaction-distribution",
-    label: "Simulate (reaction distribution)",
-    note: "Simulate skill → 1 panel + stimulus: band + fraction + clustered themes + per-persona reactions.",
+    label: "Simulate (reaction distribution) · HIDDEN",
+    note: "HIDDEN — the Simulate skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted reaction-distribution blocks still render. Reference-only. Simulate skill → 1 panel + stimulus: band + fraction + clustered themes + per-persona reactions.",
     body: [REACTION_DISTRIBUTION_BLOCK],
   },
   {
     type: "prediction-gauge",
-    label: "Predict (prediction gauge)",
-    note: "Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
+    label: "Predict (prediction gauge) · HIDDEN",
+    note: "HIDDEN — the Predict skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted prediction-gauge blocks still render. Reference-only. Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
     body: [PREDICTION_GAUGE_BLOCK],
   },
   {
     type: "multi-audience-read",
-    label: "Text Read (multi-audience)",
-    note: "The moat payoff — per-audience band + interpretation + Lever + who-not-for + persona drill.",
+    label: "Text Read (explicit compare)",
+    note: "The compare — per-audience band + interpretation + Lever + who-not-for + persona drill. Explicit-only since P3 (the list page's Compare).",
     body: [MULTI_AUDIENCE_READ_BLOCK],
+  },
+  {
+    // `type` doubles as the section's React key + anchor id on /dev/cards, so this
+    // second multi-audience-read section carries a distinct suffix (same block type).
+    type: "multi-audience-read--single",
+    label: "Text Read (single + orphaned pin)",
+    note: "The DEFAULT Read since P3 — one audience, read alone. This one also shows the orphaned-pin line: the pinned audience was deleted, so it scored General and says so.",
+    body: [SINGLE_AUDIENCE_READ_BLOCK],
   },
   {
     type: "personas",

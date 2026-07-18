@@ -50,13 +50,19 @@ import { aggregateFlash, MIXED_THRESHOLD } from "@/lib/engine/flash/flash-aggreg
 import { deriveAudienceArchetype } from "@/lib/tools/hooks/audience-archetype";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { applyCreatorPersona } from "@/lib/audience/apply-creator-persona";
-import { selectHookTargets, type HookTarget } from "@/lib/audience/select-hook-targets";
+import { selectPersonaTargets, type PersonaTarget } from "@/lib/audience/select-persona-targets";
+import {
+  buildTargetAssignments,
+  normalizeTargetArchetype,
+  bindTarget,
+  type TargetUnitCopy,
+} from "./target-assignment";
 import { buildFlashWeighting } from "@/lib/engine/flash/persona-weighting";
 import type { Audience } from "@/lib/audience/audience-types";
 import type { IntentLens } from "@/lib/audience/intent-lens";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 import { HookCardBlockSchema } from "@/lib/tools/blocks";
-import type { HookCardBlock, HookCardTarget, HookProof } from "@/lib/tools/blocks";
+import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { FlashPersona } from "@/lib/engine/flash/flash-schema";
 import { buildReactionPanel } from "@/lib/engine/flash/build-reaction-panel";
 import { characterizeContent } from "@/lib/audience/characterize-content";
@@ -69,6 +75,7 @@ import {
 import { pinPredictedSignature, type RunnerPinContext } from "./predicted-pin";
 import { gatherCorpusForRun } from "@/lib/grounding/gather-for-run";
 import { buildProofFromSource, coerceSourceIndex } from "./build-proof";
+import { buildAdaptProfile } from "./adapt-profile";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -105,42 +112,6 @@ function isGroundingEnabled(): boolean {
  */
 function isGroundingAdaptEnabled(): boolean {
   return process.env.GROUNDING_HOOKS_ADAPT === "true";
-}
-
-/**
- * Flatten the structured target_audience JSON into the one-line string the adapt briefer wants
- * (it re-voices proven structures toward this reader). Mirrors profile-role-map's audience formatter;
- * null when nothing is set (the briefer simply omits the line). A value that is ALREADY a plain
- * string (a pre-formatted audience line) is used as-is — robust to that shape, inert for the typed
- * object path prod uses.
- */
-function flattenTargetAudience(
-  ta: ProfileRow["target_audience"] | string,
-): string | null {
-  if (!ta) return null;
-  if (typeof ta === "string") return ta.trim() || null;
-  const parts = [
-    ta.age_range ? `age ${ta.age_range}` : null,
-    ta.gender_skew ? `${ta.gender_skew}-skewed` : null,
-    ta.geo,
-    ta.language,
-  ].filter((p): p is string => Boolean(p));
-  return parts.length > 0 ? parts.join(", ") : null;
-}
-
-/**
- * Reduce past_wins/past_flops to the descriptive strings the briefer reasons over. Prod stores them
- * as `{ url }[]` (no scraped text in v1 — the briefer just gets the URLs); tolerate a bare `string[]`
- * too, and drop any empty/undefined entry so the prompt never renders "undefined". null when empty.
- */
-function toOutcomeList(
-  items: ProfileRow["past_wins"] | string[] | null | undefined,
-): string[] | null {
-  if (!items?.length) return null;
-  const out = items
-    .map((w) => (typeof w === "string" ? w : w?.url))
-    .filter((s): s is string => Boolean(s && s.trim()));
-  return out.length > 0 ? out : null;
 }
 
 /**
@@ -181,49 +152,22 @@ Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": strin
 Return a "hooks" array of exactly ${HOOK_COUNT} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).`;
 
 /**
- * PER-PERSONA GENERATION — the ASSIGNMENT block (the whole point of this feature).
+ * PER-PERSONA GENERATION — the craft half of the ASSIGNMENT block.
+ *
+ * The SHAPE of the assignment (the numbered cast, the "name them back to me" instruction, the
+ * binding) is shared across skills in ./target-assignment. What lives HERE is the only part that
+ * is genuinely hook-craft: what it means to write one line FOR one specific person.
  *
  * ⛔ What this is NOT: "more audience text in the prompt". That was built, measured and REVERTED
- * (handoff §4c). Feeding all 10 persona repaints into `overrides` as ambient context moved
- * NOTHING: hook-line embeddings p=0.43, and a blind judge *told exactly who the audience is*
- * classified at 45% — worse than a coin flip. The prompt was dumped and verified; every persona
- * was present. The calibrated prompt was already 7× richer than General's (2,267 chars vs 307)
- * and still produced hooks nobody could tell apart. **The writer ignores ambient audience text.**
- *
- * So the persona stops being CONTEXT and becomes an ASSIGNMENT: hook N is written FOR person N,
- * and the model must name that person back to us in `targetArchetype`. The differentiation is
- * carried by the output contract rather than hoped for — and non-compliance becomes VISIBLE
- * (a hook that names no valid target loses its target line) instead of silently producing
- * generic hooks under a personalised label.
- *
- * F7 — `label` NEVER appears here. The engine binds on `archetype`; the writer is briefed with
- * `repaint`. The workspace tells users in as many words that a persona's display name never
- * reaches the model. Print a label into this block and the UI becomes a lie.
+ * (handoff §4c) — the writer ignores ambient audience text. The persona works only as an
+ * ASSIGNMENT the model must name back. See ./target-assignment for the full autopsy.
  */
-function buildTargetAssignments(targets: HookTarget[]): string {
-  const lines = targets
-    .map(
-      (t, i) =>
-        `${i + 1}. [${t.archetype}] ${t.repaint} (${Math.round(t.share * 100)}% of the audience)`,
-    )
-    .join("\n");
-
-  return `
-
----
-
-WRITE FOR ONE NAMED PERSON PER HOOK. These are real, calibrated segments of THIS creator's actual audience — not personas you should invent or generalise:
-
-${lines}
-
-Hook 1 is written to stop person 1. Hook 2 is written to stop person 2. And so on, in order.
-Write each hook to land on ITS assigned person specifically — the thing THAT person would stop
+const HOOK_UNIT: TargetUnitCopy = {
+  noun: "Hook",
+  craft: `Write each hook to land on ITS assigned person specifically — the thing THAT person would stop
 scrolling for, in the register THAT person responds to. A hook that would work equally well on
-any of them has failed its assignment. Do not hedge toward the middle.
-If the same person appears twice, write two genuinely different ways in — never a rephrase.
-Report the person each hook targets in "targetArchetype" — the bare slug ONLY, exactly as written
-inside the brackets above and WITHOUT the brackets themselves (e.g. "${targets[0]?.archetype ?? "saver"}", not "[${targets[0]?.archetype ?? "saver"}]").`;
-}
+any of them has failed its assignment. Do not hedge toward the middle.`,
+};
 
 /** Output contract for a targeted (calibrated) run — adds the one field that carries the binding. */
 function targetedOutputContract(grounded: boolean): string {
@@ -274,6 +218,13 @@ export interface HooksPipelineInput {
    */
   intent?: IntentLens;
   /**
+   * May THIS run pay for a live outlier scrape on a cache miss? Default false (see gather-for-run
+   * `allowScrape`) — a normal run never bills Apify. Set true ONLY by the explicit "Find new
+   * outliers" action the user takes when they want fresh proven outliers on this subject; the
+   * scrape's write-through then repopulates the cache so the next normal run is grounded for free.
+   */
+  allowScrape?: boolean;
+  /**
    * FLYWHEEL-02: when present, pin the run's predicted disposition vector post-SIM
    * (rank-1 hook's personas) + audience_id. Non-fatal — never blocks the cards.
    */
@@ -296,6 +247,13 @@ export interface HooksPipelineResult {
   warnings: string[];
   /** Which seed-hook extraction path shipped (Open Q1 resolved decision). */
   seedHookPath: "structured" | "markered";
+  /**
+   * Could a live scrape have found outliers this (ungrounded/partial) run couldn't? Surfaced from
+   * gather-for-run — true only when the run degraded purely because `allowScrape` was false on a
+   * scrapable platform. The route forwards it to the client as the `outliers` SSE event, which drives
+   * the "Find new outliers" affordance. False on a clean grounded run or when a scrape can't help.
+   */
+  scrapeAvailable: boolean;
 }
 
 // ─── Structured hook type ─────────────────────────────────────────────────────
@@ -336,7 +294,7 @@ interface StructuredHook {
 async function generateHooksStructured(
   userMessage: string,
   grounded: boolean,
-  targets: HookTarget[],
+  targets: PersonaTarget[],
 ): Promise<StructuredHook[]> {
   const ai = getQwenClient();
 
@@ -447,96 +405,6 @@ function selectLeadScrollQuote(
   return personas[0]?.quote ?? "";
 }
 
-// ─── Target binding (per-persona generation) ──────────────────────────────────
-
-/**
- * Normalize the archetype slug the model hands back.
- *
- * ⚠️ THIS EXISTS BECAUSE THE LIVE RUN CAUGHT WHAT 3,600 GREEN TESTS COULD NOT. The assignment
- * list renders each person as `1. [lurker] …`, and the contract said "use the exact bracketed
- * slug" — so the model dutifully returned `"targetArchetype": "[lurker]"`, brackets and all. The
- * assignment map is keyed on the bare slug, every lookup missed, and EVERY card silently lost its
- * target line. The writer had complied perfectly (its own reasoning cited "the lurker", "the
- * loyalist", "the niche buyer" by name) — the BINDING is what broke. tsc, eslint and the entire
- * suite were green; the feature was 100% dead on the only path a user ever watches.
- *
- * The lesson is not "fix the wording" (that is done too — see targetedOutputContract). It is that
- * an exact-match lookup on free-form model output is a silent-failure machine. Decorations a model
- * may reasonably add — brackets, quotes, backticks, spacing, case — must never be the difference
- * between a bound target and a dropped one. What must STILL fail loudly is a slug we never
- * assigned: that is bindHookTarget's job, and it is unchanged.
- */
-export function normalizeTargetArchetype(value: unknown): string {
-  if (typeof value !== "string") return "";
-  return value
-    .trim()
-    .replace(/^[[({<"'`\s]+|[\])}>"'`\s]+$/g, "") // strip wrapping brackets/quotes/backticks
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, "_"); // "niche deep buyer" / "niche-deep-buyer" → "niche_deep_buyer"
-}
-
-/**
- * Bind a generated hook to the reader it was written for — and attach that reader's OWN reaction.
- *
- * TWO HONESTY RULES, both of which exist because a card that names a person is making a claim:
- *
- * 1. WE ONLY NAME SOMEONE WE ACTUALLY ASSIGNED. The model's `targetArchetype` is checked against
- *    the assignment set. A missing, malformed or unassigned slug → null → the card ships with NO
- *    target line. That is the honest failure: if the writer ignored its brief, the user must see
- *    an absence, not a generic hook wearing a personalised label. (This is also the runtime
- *    tripwire for the §4c failure mode — a writer that ignores the audience shows up as cards
- *    with no target, rather than as cards that lie.)
- *
- * 2. THE REACTION IS LOOKED UP, NEVER INVENTED. `verdict`/`quote` come from the SIM persona whose
- *    archetype matches the target. If that archetype did not appear in this run's panel, both are
- *    null — we do not fabricate a reaction any more than we fabricate a band.
- *
- * Note it reports the target the MODEL named, not the one we assigned by position: if the writer
- * swapped two assignments, the truthful card is the one that says who the hook is actually for.
- * A mismatch is logged as a warning, not silently corrected.
- */
-function bindHookTarget(
-  hook: StructuredHook,
-  positionalTarget: HookTarget | undefined,
-  assignments: Map<string, HookTarget>,
-  personas: FlashPersona[],
-  warnings: string[],
-): HookCardTarget | null {
-  if (assignments.size === 0) return null; // uncalibrated run — nobody to name
-
-  const claimed = assignments.get(hook.targetArchetype);
-  if (!claimed) {
-    warnings.push(
-      hook.targetArchetype
-        ? `Hook "${hook.hookLine.slice(0, 40)}" claimed target "${hook.targetArchetype}", which was never assigned — target line dropped`
-        : `Hook "${hook.hookLine.slice(0, 40)}" named no target — target line dropped`,
-    );
-    return null;
-  }
-
-  if (positionalTarget && positionalTarget.archetype !== claimed.archetype) {
-    // Not corrected — the model wrote for whoever it says it wrote for. Just say so out loud.
-    warnings.push(
-      `Hook targeted "${claimed.archetype}" but was assigned "${positionalTarget.archetype}" — reporting the model's target`,
-    );
-  }
-
-  // The aimed-at reader's real verdict + real words. Absent from the panel → null, never invented.
-  const reaction = personas.find((p) => p.archetype === claimed.archetype);
-
-  return {
-    archetype: claimed.archetype,
-    // Only a CREATOR-SET name is persisted (display only — it never went near the prompt, F7).
-    // When absent, the card derives the name from `archetype` at render, so improving our
-    // vocabulary improves every card ever generated. See HookCardTargetSchema.
-    ...(claimed.label ? { label: claimed.label } : {}),
-    share: claimed.share,
-    verdict: (reaction?.verdict as "stop" | "scroll" | undefined) ?? null,
-    quote: reaction?.quote ?? null,
-  };
-}
-
 // ─── Rank comparator helpers ──────────────────────────────────────────────────
 
 /**
@@ -604,13 +472,14 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
 
   // ── TARGET (per-persona generation): WHO each hook is written for ──────────────
   // Deterministic, no LLM — top-N by share, forced to span the four persona_weights slots
-  // (see select-hook-targets.ts). Empty for General / uncalibrated / no bindable persona: there
+  // (see select-persona-targets.ts). Empty for General / uncalibrated / no bindable persona: there
   // are no real people behind those, so we name none and the run is byte-identical to today's.
-  const targets = selectHookTargets(audience, HOOK_COUNT);
-  const targetAssignments = targets.length > 0 ? buildTargetAssignments(targets) : undefined;
+  const targets = selectPersonaTargets(audience, HOOK_COUNT);
+  const targetAssignments =
+    targets.length > 0 ? buildTargetAssignments(targets, HOOK_UNIT) : undefined;
   // The slugs we are willing to have named back at us. A hook claiming anything outside this set
   // names nobody (bindHookTarget) — we never print a reader we did not brief the writer on.
-  const assignments = new Map<string, HookTarget>(targets.map((t) => [t.archetype, t]));
+  const assignments = new Map<string, PersonaTarget>(targets.map((t) => [t.archetype, t]));
 
   const overrides =
     [audienceOverride, creatorSteer, targetAssignments].filter(Boolean).join("\n") || undefined;
@@ -620,25 +489,24 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   //    ANY failure degrades to ungrounded — corpus stays undefined → byte-identical no-op,
   //    never fabricate a source (honesty spine). `groundingExamples` is retained so the BUILD
   //    step can map each hook's sourceIndex back to the outlier it adapted (the on-card receipt).
-  const { corpus, examples: groundingExamples } = await gatherCorpusForRun({
+  const {
+    corpus,
+    examples: groundingExamples,
+    scrapeAvailable,
+  } = await gatherCorpusForRun({
     enabled: isGroundingEnabled(),
     skill: "hooks", // → the madlib slice: the reusable skeleton a proven hook ran on
     platform,
     queryCandidates: [ask, anchor, genProfileRow?.niche_primary],
     niche: genProfileRow?.niche_primary ?? null,
+    // Explicit-only spend: the user's "Find new outliers" tap is the ONLY thing that sets this.
+    allowScrape: input.allowScrape,
     onStage: input.onStage,
     warnings: allWarnings,
     // Grounding-as-remix: when ON, the corpus is a fitted+dosed brief instead of the raw slice.
     // The briefer re-voices proven structures toward THIS creator, so hand it their profile.
     adapt: isGroundingAdaptEnabled(),
-    adaptProfile: {
-      niche_primary: genProfileRow?.niche_primary ?? null,
-      target_audience: flattenTargetAudience(genProfileRow?.target_audience),
-      primary_goal: genProfileRow?.primary_goal ?? null,
-      writing_voice_sample: genProfileRow?.writing_voice_sample ?? null,
-      past_wins: toOutcomeList(genProfileRow?.past_wins),
-      past_flops: toOutcomeList(genProfileRow?.past_flops),
-    },
+    adaptProfile: buildAdaptProfile(genProfileRow),
   });
 
   // ── GENERATE: assemble bundle → Qwen json_object generation ──────────────────
@@ -805,7 +673,7 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   const firstBatch = await generateHooksStructured(userMessage, Boolean(corpus), targets);
   input.onStage?.("Generating", "done");
   if (firstBatch.length === 0) {
-    return { blocks: [], warnings: allWarnings, seedHookPath };
+    return { blocks: [], warnings: allWarnings, seedHookPath, scrapeAvailable };
   }
 
   // S3′: ONE batched SIM rates all candidates. NO conditional regen (D-06 removed) —
@@ -851,13 +719,15 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // carries no target line (an honest absence beats a personalised label over a generic hook).
     // NOTE the positional lookup uses generationIndex, not `rank`: the cards have been SORTED by
     // band since generation, so rank-1 is not assignment-1.
-    const target = bindHookTarget(
-      candidate.hook,
-      targets[candidate.generationIndex],
+    const target = bindTarget({
+      claimedArchetype: candidate.hook.targetArchetype,
+      positionalTarget: targets[candidate.generationIndex],
       assignments,
-      candidate.personas,
-      allWarnings,
-    );
+      personas: candidate.personas,
+      warnings: allWarnings,
+      unitNoun: "Hook",
+      subject: candidate.hook.hookLine,
+    });
 
     const blockData = {
       type: "hook-card" as const,
@@ -919,5 +789,5 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     }
   }
 
-  return { blocks, warnings: allWarnings, seedHookPath };
+  return { blocks, warnings: allWarnings, seedHookPath, scrapeAvailable };
 }

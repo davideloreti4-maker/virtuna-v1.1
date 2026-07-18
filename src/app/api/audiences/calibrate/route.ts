@@ -25,12 +25,20 @@ import {
   calibrateFromScrape,
   type CalibrationStage,
 } from "@/lib/audience/calibration";
-import { createAudience, updateAudience } from "@/lib/audience/audience-repo";
+import { createAudience, updateAudience, listAudiences } from "@/lib/audience/audience-repo";
+import { audienceForAccount } from "@/components/audience/audience-display";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
+import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
+import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import {
   getOrCreateConnectedAccount,
+  touchAccountSynced,
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
+import type { ProfileBundle } from "@/lib/scraping/types";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "audience.calibrate" });
 
 // Apify runs can take 1-3 minutes — allow max 300s for the serverless function.
 export const maxDuration = 300;
@@ -124,6 +132,11 @@ export async function POST(request: Request): Promise<Response> {
         // ── Staged status, driven by the pipeline itself (not guessed) ────
         // The stages are emitted by calibrateFromScrape/enrichSignature as each phase BEGINS —
         // the route awaits one opaque promise and cannot see those boundaries from out here.
+        // The raw bundle from the ONE scrape — persistence (posts archive → pillars)
+        // reads this after `done` instead of running a second Apify scrape (P4).
+        // Holder object: TS doesn't track assignments made inside the callback.
+        const captured: { bundle: ProfileBundle | null } = { bundle: null };
+
         const calibrationResult = await calibrateFromScrape(
           { handle, type, platform, goalIntent, name, description },
           {
@@ -132,6 +145,9 @@ export async function POST(request: Request): Promise<Response> {
             // ~2 minutes before the audience they produce. A status line claims we are working;
             // the creator's own face and covers prove it.
             onEvidence: (evidence) => send("evidence", evidence),
+            onBundle: (bundle) => {
+              captured.bundle = bundle;
+            },
           },
         );
 
@@ -151,6 +167,9 @@ export async function POST(request: Request): Promise<Response> {
             return;
           }
           // Scrape/network failure — distinct from thin fallback (UI-SPEC copy)
+          log.warn("calibration returned scrape_failed", {
+            detail: calibrationResult.message ?? null,
+          });
           send("error", {
             message: "Calibration failed. Check the handle and try again.",
             retry: true,
@@ -184,10 +203,12 @@ export async function POST(request: Request): Promise<Response> {
               userId: user.id,
               platform,
               handle: reveal.profile.handle || handle || name,
-              displayName: reveal.profile.handle || handle || name,
+              displayName:
+                reveal.profile.displayName || reveal.profile.handle || handle || name,
             });
-          } catch {
+          } catch (e) {
             /* connect is best-effort — calibration proceeds without a linked account */
+            log.warn("connect account failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
 
@@ -196,20 +217,41 @@ export async function POST(request: Request): Promise<Response> {
         // so calibration enriches the existing row instead of leaving an orphan dupe.
         // Falls back to insert when no draft id is supplied (back-compat / API callers).
         // source_account_id links the audience to the account it calibrated from.
+        // One connection → ONE canonical audience: re-connecting an already-synced
+        // handle re-calibrates the audience that account manifests as (the same row
+        // audienceForAccount resolves on the list), instead of stranding a duplicate
+        // behind it. Best-effort — an unreadable list just falls through to insert.
+        let canonicalId: string | undefined = audienceId;
+        if (!canonicalId && type === "personal" && connectedAccount) {
+          try {
+            canonicalId = audienceForAccount(
+              connectedAccount,
+              await listAudiences(supabase),
+            )?.id;
+          } catch (e) {
+            /* fall through to insert */
+            log.warn("canonical audience lookup failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+        }
+
         let persistedAudience;
         try {
           const withSource = connectedAccount
             ? { ...audienceInput, source_account_id: connectedAccount.id }
             : audienceInput;
-          persistedAudience = audienceId
-            ? await updateAudience(supabase, audienceId, withSource)
+          persistedAudience = canonicalId
+            ? await updateAudience(supabase, canonicalId, withSource)
             : await createAudience(supabase, {
                 ...withSource,
                 user_id: user.id, // pre-fill for the repo validation step
               });
-        } catch {
-          // Persist failure is non-fatal in the same style as other routes
-          // (the calibration succeeded — best effort persist)
+        } catch (e) {
+          // The calibration succeeded but the row write didn't — say so in the log
+          // (a silent catch here cost a live-verification run to diagnose, 2026-07-17).
+          log.error("audience persist failed", {
+            canonicalId: canonicalId ?? null,
+            err: e instanceof Error ? e.message : String(e),
+          });
           send("error", { message: "Calibration failed. Check the handle and try again.", retry: true });
           return;
         }
@@ -233,8 +275,38 @@ export async function POST(request: Request): Promise<Response> {
               heartCount: reveal.profile.heartCount,
               videoCount: reveal.profile.videoCount,
             });
-          } catch {
+          } catch (e) {
             /* snapshot capture is best-effort — calibration already succeeded */
+            log.warn("snapshot seed failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+          // A successful scrape IS a sync — without this the SYNC rail reads "Last —"
+          // moments after calibrating (live-caught 2026-07-17). RLS-scoped fine here.
+          try {
+            await touchAccountSynced(supabase, connectedAccount.id);
+          } catch (e) {
+            log.warn("sync stamp failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+        }
+
+        // One-scrape unification (P4): archive the SAME videos the calibration just
+        // watched as account_posts (the SOURCE zone's proof-of-scrape + the pillar
+        // input), then cluster pillars so the detail page is lit at creation instead
+        // of waiting a day for the refresh cron. Both best-effort, both post-`done` —
+        // the audience is already delivered; this work must never cost the creator it.
+        if (connectedAccount && captured.bundle) {
+          try {
+            await upsertAccountPosts(
+              supabase,
+              connectedAccount.id,
+              user.id,
+              connectedAccount.platform,
+              connectedAccount.handle,
+              captured.bundle.videos,
+            );
+            await clusterPillarsForAccount(supabase, user.id, connectedAccount.id);
+          } catch (e) {
+            /* posts archive + pillars are best-effort — the daily cron converges them */
+            log.warn("posts archive / pillar cluster failed", { err: e instanceof Error ? e.message : String(e) });
           }
         }
       } catch (err) {

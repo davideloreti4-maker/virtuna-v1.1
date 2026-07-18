@@ -51,7 +51,7 @@ export function ThreadUserTurn({ text }: { text: string }) {
 export function ThreadAssistantTurn({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-foreground-muted">
+      <span className="text-[11px] font-medium uppercase tracking-[0.05em] text-foreground-muted">
         Maven
       </span>
       <div className="flex flex-col gap-3">{children}</div>

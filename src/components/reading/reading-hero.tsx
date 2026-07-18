@@ -6,7 +6,7 @@ import { resolveKeyframeUrl, type KeyframeSegmentLike } from '@/components/board
 import { usePermalinkFilmstrips } from '@/hooks/queries/use-permalink-filmstrips';
 import { formatTime, totalDuration } from '@/components/board/audience/audience-derive';
 import { ScoreGauge } from './score-gauge';
-import { ReadingSection } from './reading-section';
+import { ReadingSection, READING_CARD } from './reading-section';
 import { AudienceBreakout } from './audience-breakout';
 
 // ReadingHero — "TEST" scorecard (hero v6, D-06 Test reframe 2026-06-18). A tight,
@@ -132,7 +132,7 @@ export function ReadingHero({
       label="Test"
       labelSuffix={
         <span
-          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.1em]"
+          className="ml-1.5 rounded-[4px] border px-1.5 py-px text-[9px] font-medium uppercase tracking-[0.05em]"
           style={{
             borderColor: 'var(--color-cream-secondary)',
             color: 'var(--color-cream-secondary)',
@@ -142,8 +142,14 @@ export function ReadingHero({
           powered by SIM-1 Max
         </span>
       }
+      card={false}
     >
-      <div data-testid="reading-hero">
+      {/* B+tweak (2026-07-18): the hero card holds ONLY the score cluster (poster + gauge +
+          3 stats) so the score is the one unmistakable focal moment. "How far it gets pushed"
+          is pulled OUT, below the card, as a borderless column block — it was making the hero
+          card tall and diluting the focal point. */}
+      <div data-testid="reading-hero" className="flex flex-col gap-5">
+        <div className={READING_CARD}>
         {/* hero-top: poster + gauge + stats, one centered cluster */}
         <div className="flex flex-col items-stretch gap-0 p-[18px] min-[520px]:flex-row min-[520px]:items-center min-[520px]:justify-center min-[520px]:gap-6 min-[520px]:p-6">
           {/* poster + gauge — always side by side, centered */}
@@ -179,9 +185,10 @@ export function ReadingHero({
             </div>
           )}
         </div>
+        </div>
 
-        {/* folded-in audience overview — "How far it gets pushed" (renders null when
-            no cohort is derivable, so the divider never orphans). */}
+        {/* Reach overview — "How far it gets pushed", now a borderless column block BELOW the
+            hero card (renders null when no cohort is derivable). */}
         <AudienceBreakout heatmap={heatmap} simResults={simResults} dropT={dropT} />
       </div>
     </ReadingSection>

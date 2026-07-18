@@ -43,9 +43,13 @@ const NEUTRAL_FILL =
 
 const clampPct = (n: number) => Math.max(0, Math.min(100, n));
 
+// De-boxed (2026-07-18, B+tweak): the sections lost their surrounding card, so the rows
+// align to the column edge (px-0.5, matching the section label) instead of being inset 20px
+// inside a box. Hairline between rows stays — it is the only rule left, and it reads as an
+// editorial divider, not a container.
 const ITEM_CLASS =
   'rounded-none border-0 border-t border-[var(--color-border)] bg-transparent first:border-t-0 data-[disabled]:opacity-60';
-const TRIGGER_CLASS = 'px-5 py-[15px] hover:bg-white/[0.02] [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-foreground-muted';
+const TRIGGER_CLASS = 'px-0.5 py-[15px] rounded-md hover:bg-white/[0.02] [&>svg]:h-4 [&>svg]:w-4 [&>svg]:text-foreground-muted';
 
 interface LeverRow {
   panel: PanelId;
@@ -115,7 +119,7 @@ export function ScoreDriversSection({ data, dims, dropT, id }: ReadingAccordionP
   ];
 
   return (
-    <ReadingSection label="Score drivers">
+    <ReadingSection label="Score drivers" card={false}>
       <AccordionRoot type="single" collapsible className="space-y-0" data-testid="reading-accordion">
         {rows.map((row) => (
           <LeverItem key={row.panel} row={row}>
@@ -154,7 +158,7 @@ function LeverItem({ row, children }: { row: LeverRow; children: ReactNode }) {
           ) : (
             <span className="flex items-center gap-3.5">
               {row.score != null && (
-                <span className="h-[6px] w-14 overflow-hidden rounded-full bg-white/[0.07] sm:w-[128px]">
+                <span className="h-[4px] w-16 overflow-hidden rounded-full bg-white/[0.06] sm:w-[132px]">
                   <span
                     data-testid={`row-fill-${row.panel}`}
                     className="block h-full rounded-full"
@@ -203,7 +207,7 @@ export function AudienceContextSection({ data, dims, id, nicheRank }: ReadingAcc
     data.input_mode !== 'text' && data.signal_availability?.personas === false;
 
   return (
-    <ReadingSection label="The audience">
+    <ReadingSection label="The audience" card={false}>
       <div data-testid="reading-audience-context">
         {nodes.length > 0 ? (
           <ReadingRoom data={data} nodes={nodes} />

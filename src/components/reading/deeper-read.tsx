@@ -86,14 +86,17 @@ export function DeeperRead({ dimensions }: DeeperReadProps) {
     <AccordionRoot type="single" collapsible data-testid="deeper-read">
       <AccordionItem
         value="deeper-read"
-        // Flat-warm: charcoal-transparent panel + 6% border (override the vendored
-        // primitive's elevated tint), matte.
-        className="rounded-[8px] border border-[var(--color-border)] bg-transparent"
+        // De-boxed (2026-07-18, B+tweak): a borderless expand row at the column edge, matching
+        // the Score-drivers rows — a top hairline instead of a rounded panel, so the whole
+        // Reading reads as one calm column, not a stack of boxes. `rounded-none border-0` FIRST
+        // to reset the vendored AccordionItem's default rounded+border (same as ITEM_CLASS in
+        // reading-accordion), THEN the single top hairline.
+        className="rounded-none border-0 border-t border-[var(--color-border)] bg-transparent"
       >
-        <AccordionTrigger className="px-3 py-2 text-[13px] font-medium text-foreground hover:text-foreground/80 [&>svg]:text-foreground-muted">
+        <AccordionTrigger className="px-0.5 py-[15px] text-[13px] font-medium text-foreground hover:text-foreground/80 [&>svg]:text-foreground-muted">
           Deeper read
         </AccordionTrigger>
-        <AccordionContent className="px-3 pb-2 pt-0">
+        <AccordionContent className="px-0.5 pb-3 pt-0">
           <div className="divide-y divide-[var(--color-border)]">
             {rows.map((dim) => (
               <DimensionRow key={dim.name} dim={dim} />

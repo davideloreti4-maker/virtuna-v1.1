@@ -165,6 +165,34 @@ describe("runChatAgentStream [tools]", () => {
     expect(draftSkill.run).not.toHaveBeenCalled();
   });
 
+  it("request_link emits an input-request FIELD (onBlock + persisted uiBlocks), runs no paid skill", async () => {
+    const ideas = mkSkill("generate_ideas");
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      // The model asks for a link instead of guessing a URL.
+      [toolName(0, "c1", "request_link"), toolArgs(0, '{"action": "remix"}')],
+      [textChunk("Drop the link and I'll adapt it.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput({ onBlock }), DEPS(stream, { skills: [ideas] }));
+
+    // The field streamed live…
+    const field = {
+      type: "input-request",
+      props: { kind: "link", action: "remix", label: expect.any(String), placeholder: "https://…", platform: "tiktok" },
+    };
+    expect(onBlock).toHaveBeenCalledWith(expect.objectContaining({ type: "input-request" }));
+    expect(onBlock).toHaveBeenCalledWith(expect.objectContaining(field));
+    // …and is returned for persistence (else it would vanish on the post-turn reload).
+    expect(res.uiBlocks).toHaveLength(1);
+    expect(res.uiBlocks[0]).toMatchObject({ type: "input-request", props: { action: "remix" } });
+    // No paid skill ran; the closing line carries the turn.
+    expect(res.skillRuns).toHaveLength(0);
+    expect(ideas.run).not.toHaveBeenCalled();
+    expect(res.toolCalls.find((t) => t.name === "request_link")?.ran).toBe(true);
+    expect(res.text).toBe("Drop the link and I'll adapt it.");
+  });
+
   it("absorbs a skill run error without throwing", async () => {
     const ideas = mkSkill("generate_ideas", { run: vi.fn(async () => { throw new Error("engine down"); }) });
     const stream = mockStream([

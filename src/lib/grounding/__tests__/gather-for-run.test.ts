@@ -89,13 +89,49 @@ describe("gatherCorpusForRun — read-back first", () => {
     ]);
   });
 
-  it("falls through to the scrape when the cache has too few good rows", async () => {
+  /**
+   * THE SPEND GATE. A cache miss used to reach for Apify on its own — measured 2026-07-17, that
+   * billed the owner on 75% of realistic ideas/script asks (only 3 of 12 cleared the old 0.58
+   * floor), silently and with no way to decline. The scrape is now explicit-only. These three
+   * assert the DEFAULT costs nothing; the trio below assert the authorized path still works.
+   */
+  it("does NOT scrape on a cache miss by default — it degrades to ungrounded, free", async () => {
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather });
+
+    expect(gather).not.toHaveBeenCalled(); // the whole point: no silent Apify bill
+    // `miss` returns 1 partial row — better than nothing, and it cost nothing to have.
+    expect(result.examples.map((e) => e.teardownId)).toEqual(["a"]);
+  });
+
+  it("does NOT scrape when read-back throws, by default", async () => {
+    const warnings: string[] = [];
+    const gather = vi.fn<Gather>();
+
+    const result = await gatherCorpusForRun(baseInput(warnings), {
+      retrieve: async () => {
+        throw new Error("rpc down");
+      },
+      gather,
+    });
+
+    expect(gather).not.toHaveBeenCalled();
+    expect(result.corpus).toBeUndefined();
+    expect(result.examples).toEqual([]);
+    expect(warnings).toEqual([]); // read-back failure stays invisible to the user
+  });
+
+  it("scrapes on a cache miss ONLY when the user authorized it", async () => {
     const gather = vi.fn<Gather>(async () => ({
       examples: [example("live")],
       stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
     }));
 
-    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather });
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve: miss, gather },
+    );
 
     expect(gather).toHaveBeenCalledOnce();
     expect(result.examples.map((e) => e.teardownId)).toEqual(["live"]);
@@ -108,26 +144,32 @@ describe("gatherCorpusForRun — read-back first", () => {
       stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
     }));
 
-    const result = await gatherCorpusForRun(baseInput(warnings), {
-      retrieve: async () => {
-        throw new Error("rpc down");
+    const result = await gatherCorpusForRun(
+      { ...baseInput(warnings), allowScrape: true },
+      {
+        retrieve: async () => {
+          throw new Error("rpc down");
+        },
+        gather,
       },
-      gather,
-    });
+    );
 
     expect(gather).toHaveBeenCalledOnce();
     expect(result.examples).toHaveLength(1);
     expect(warnings).toEqual([]); // read-back failure is invisible to the user
   });
 
-  it("degrades to ungrounded with a warning only when the scrape ALSO fails", async () => {
+  it("degrades to ungrounded with a warning only when an AUTHORIZED scrape ALSO fails", async () => {
     const warnings: string[] = [];
-    const result = await gatherCorpusForRun(baseInput(warnings), {
-      retrieve: miss,
-      gather: async () => {
-        throw new Error("apify down");
+    const result = await gatherCorpusForRun(
+      { ...baseInput(warnings), allowScrape: true },
+      {
+        retrieve: miss,
+        gather: async () => {
+          throw new Error("apify down");
+        },
       },
-    });
+    );
 
     expect(result.corpus).toBeUndefined();
     expect(result.examples).toEqual([]);
@@ -169,7 +211,7 @@ describe("gatherCorpusForRun — read-back first", () => {
   it("keeps the gates: disabled / unsupported platform / empty query short-circuit before any I/O", async () => {
     const retrieve = vi.fn<Retrieve>();
     const gather = vi.fn<Gather>();
-    const none = { corpus: undefined, examples: [] };
+    const none = { corpus: undefined, examples: [], scrapeAvailable: false };
 
     expect(
       await gatherCorpusForRun({ ...baseInput(), enabled: false }, { retrieve, gather }),
@@ -185,6 +227,78 @@ describe("gatherCorpusForRun — read-back first", () => {
     ).toEqual(none);
     expect(retrieve).not.toHaveBeenCalled();
     expect(gather).not.toHaveBeenCalled();
+  });
+});
+
+// ─── scrapeAvailable — the "Find new outliers" capability signal ──────────────
+
+/** A cache read that finds NOTHING usable — the fully-ungrounded degrade (vs `miss`'s 1 partial). */
+const missEmpty: Retrieve = async () => ({
+  examples: [],
+  enough: false,
+  stats: { matched: 0, good: 0, minRows: 2, minSimilarity: 0.6, rank: "topical", archetypes: 0 },
+});
+
+describe("gatherCorpusForRun — scrapeAvailable", () => {
+  // The signal must be true EXACTLY when a live scrape would find outliers this run couldn't:
+  // grounding on, platform scrapable, cache thin, and the spend not yet authorized. The button
+  // that reads it should never dangle where a scrape can't help, and never nag once one has run.
+
+  it("is TRUE when a scrapable run degrades to ungrounded only because the scrape wasn't authorized", async () => {
+    const result = await gatherCorpusForRun(baseInput(), {
+      retrieve: missEmpty,
+      gather: vi.fn<Gather>(),
+    });
+
+    expect(result.examples).toEqual([]); // ungrounded…
+    expect(result.scrapeAvailable).toBe(true); // …but a scrape is a tap away
+  });
+
+  it("is TRUE on a thin partial too — the run is grounded, but more outliers are a scrape away", async () => {
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: miss, gather: vi.fn<Gather>() });
+
+    expect(result.examples).toHaveLength(1); // grounded on the 1 partial row we had
+    expect(result.scrapeAvailable).toBe(true);
+  });
+
+  it("is FALSE on a non-scrapable platform — nothing to reach for, so nothing to offer", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), platform: "instagram" },
+      { retrieve: missEmpty, gather: vi.fn<Gather>() },
+    );
+
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE on a full cache hit — the run is grounded, a scrape adds nothing", async () => {
+    const result = await gatherCorpusForRun(baseInput(), { retrieve: hit, gather: vi.fn<Gather>() });
+
+    expect(result.examples.length).toBeGreaterThan(0);
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE once a scrape is already authorized — there is nothing left to offer", async () => {
+    const gather = vi.fn<Gather>(async () => ({
+      examples: [example("live")],
+      stats: { scraped: 30, selected: 6, withFollowers: 6, gated: 6, usable: 1 },
+    }));
+
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), allowScrape: true },
+      { retrieve: miss, gather },
+    );
+
+    expect(gather).toHaveBeenCalledOnce();
+    expect(result.scrapeAvailable).toBe(false);
+  });
+
+  it("is FALSE when grounding is disabled — the button would be a no-op", async () => {
+    const result = await gatherCorpusForRun(
+      { ...baseInput(), enabled: false },
+      { retrieve: vi.fn<Retrieve>(), gather: vi.fn<Gather>() },
+    );
+
+    expect(result.scrapeAvailable).toBe(false);
   });
 });
 
@@ -222,15 +336,19 @@ describe("gatherCorpusForRun — adapt routing", () => {
     );
   });
 
-  it("does NOT adapt a non-hooks skill even when the flag is on (Phase 1 = hooks only)", async () => {
-    const adapt = fakeAdapt();
-    const result = await gatherCorpusForRun(
-      { ...baseInput(), skill: "ideas", adapt: true, adaptProfile: profile },
-      { retrieve: hit, gather: vi.fn<Gather>(), adapt },
-    );
+  it("routes ideas AND script through the adapt briefer too (Phase 2 fan-out)", async () => {
+    for (const skill of ["ideas", "script"] as const) {
+      const adapt = fakeAdapt();
+      const result = await gatherCorpusForRun(
+        { ...baseInput(), skill, adapt: true, adaptProfile: profile },
+        { retrieve: hit, gather: vi.fn<Gather>(), adapt },
+      );
 
-    expect(adapt).not.toHaveBeenCalled();
-    expect(result.corpus).toContain("Stop buying"); // raw ideas slice
+      expect(adapt).toHaveBeenCalledOnce();
+      expect(adapt).toHaveBeenCalledWith(expect.objectContaining({ skill }));
+      expect(result.corpus).toBe("ADAPTED-BRIEF");
+      expect(result.examples.map((e) => e.teardownId)).toEqual(["z"]);
+    }
   });
 
   it("does NOT adapt when the flag is on but no profile was threaded", async () => {
