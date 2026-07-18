@@ -87,12 +87,15 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
             primitive is shared, so it states it too (2026-07-14). */}
         {proof ? <ProofReceipt proof={proof} /> : grounded ? <NoSourceNote /> : null}
 
-        {/* Proof unit — opener-only (the fraction is scoped to the opening beat). */}
+        {/* Proof unit — opener-only (the fraction is scoped to the opening beat). Variant-A
+            "quiet" de-box: borderless reaction row so the framed receipt above is the card's one
+            inner frame (2026-07-18). */}
         <ProofUnit
           band={band}
           fraction={fraction}
           quote={scrollQuote}
           suffix="opener only"
+          framed={false}
           flatPersonas={cardScrollQuoteReactions(fraction, scrollQuote)}
           conceptText={openingBeatSeed || (beats[0]?.content ?? '')}
           population={population}
@@ -107,14 +110,16 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
         />
       </div>
 
-      {/* BEATS — quiet bordered rows; retention reasoning inline on expand. */}
-      <div className="flex flex-col gap-2 border-t border-white/[0.06] px-4 py-3">
+      {/* BEATS — Variant-A "quiet" de-box (2026-07-18): borderless rows separated by hairlines,
+          aligned to the card edge. Was five bordered boxes-within-the-card (spec-sheet density);
+          whitespace + hairlines carry the rhythm now. Retention reasoning inline on expand. */}
+      <div className="flex flex-col border-t border-white/[0.06] px-4">
         {beats.map((beat, index) => {
           const isExpanded = expandedBeats.has(index);
           return (
             <div
               key={index}
-              className="flex flex-col gap-1.5 rounded-md border border-white/[0.06] px-3.5 py-3"
+              className="flex flex-col gap-1.5 border-b border-white/[0.06] py-3.5 last:border-b-0"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">

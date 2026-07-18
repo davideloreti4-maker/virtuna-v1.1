@@ -115,6 +115,7 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
         <ProofUnit
+          framed={false}
           band={band}
           fraction={fraction}
           scored={scored ?? true}

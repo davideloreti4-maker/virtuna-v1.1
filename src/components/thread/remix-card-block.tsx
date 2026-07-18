@@ -82,7 +82,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
             Falls back to the legacy bare cover for blocks stored before `proof` existed. */}
         {proof ? (
-          <ProofReceipt proof={proof} eyebrow="The post you're remixing" />
+          <ProofReceipt proof={proof} eyebrow="The post you're remixing" compact />
         ) : coverUrl ? (
           <div
             className="flex items-center gap-2.5 self-start"
@@ -133,6 +133,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
         {/* Proof unit — adapted-hook scroll-stop (honesty-scoped). */}
         <ProofUnit
+          framed={false}
           band={band}
           fraction={fraction}
           quote={scrollQuote}
