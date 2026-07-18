@@ -24,35 +24,58 @@ import {
 } from "@/lib/tools/skill-dispatch";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
+import {
+  SKILL_CAPABILITIES,
+  SKILL_INPUT_ACTIONS,
+  isSkillInputAction,
+} from "@/lib/tools/skill-capabilities";
 
-// ─── In-thread input affordance (request_link) ───────────────────────────────
-// A free, non-paid tool: instead of guessing a URL for a Remix, the model asks for one by surfacing
-// an inline LINK FIELD in the thread. The loop services the call by emitting an `input-request`
-// block (the field) — the client runs the remix on submit. Label/placeholder are set HERE, never by
-// the model (no model-generated UI): the model only chooses to request, and which action to bind.
-export const REQUEST_LINK_TOOL = {
+// ─── In-thread input affordance (request_input) ──────────────────────────────
+// A free, non-paid tool: instead of guessing a value (a URL, a concept, a niche) or answering in
+// prose, the model asks for what a skill needs by surfacing an inline FIELD in the thread. The loop
+// services the call by emitting an `input-request` block (the field) — the client runs the skill on
+// its OWN dedicated route on submit. Kind/label/placeholder come from SKILL_CAPABILITIES, set HERE,
+// never by the model (no model-generated UI): the model only chooses WHICH action to request, and may
+// pass an optional `value` to pre-fill a text field with something the creator already stated.
+const REQUEST_INPUT_ACTION_LINES = SKILL_INPUT_ACTIONS.map(
+  (a) => `- "${a}": when ${SKILL_CAPABILITIES[a].when}.`,
+).join("\n");
+
+export const REQUEST_INPUT_TOOL = {
   type: "function",
   function: {
-    name: "request_link",
+    name: "request_input",
     description:
-      "Show the creator an inline LINK FIELD in the thread to collect a video URL, then adapt it. " +
-      "Call this when the creator wants to REMIX / adapt / recreate a specific trending or competitor " +
-      "video but has NOT given a link — do NOT guess or invent a URL, and do NOT just ask for it in " +
-      "prose; call this so a field appears they can paste into. After calling it, add ONE short line " +
-      "telling them to drop the link.",
+      "Surface an inline INPUT FIELD in the thread to collect what a skill needs before it runs — " +
+      "instead of guessing, inventing a value, or just asking for it in prose. Call this when the " +
+      "creator clearly wants one of these skills:\n" +
+      REQUEST_INPUT_ACTION_LINES +
+      "\nSome fields need nothing typed (e.g. an account read) — it renders a single confirm button. " +
+      "After calling it, add ONE short line telling them to fill the field (or press the button). " +
+      "NEVER invent the missing value yourself, and never claim a result before they submit.",
     parameters: {
       type: "object",
       properties: {
         action: {
           type: "string",
-          enum: ["remix"],
-          description: "What to run on the pasted link. Only 'remix' (adapt a video) is available.",
+          enum: [...SKILL_INPUT_ACTIONS],
+          description: "Which skill to run once the creator submits the field (or taps the button).",
+        },
+        value: {
+          type: "string",
+          description:
+            "OPTIONAL — for 'explore' and 'read' only: the niche or concept the creator ALREADY stated " +
+            "in their message, used to PRE-FILL the field so they review-and-go instead of retyping. " +
+            "They can still edit it. Omit entirely when there is nothing to pre-fill.",
         },
       },
       required: ["action"],
     },
   },
 } as const;
+
+/** Server-side cap on a model-supplied prefill value (mirrors the read/chat route ask caps). */
+const PREFILL_CAP = 2000;
 
 // ─── Streaming completion seam ───────────────────────────────────────────────
 
@@ -104,8 +127,8 @@ export interface ChatAgentStreamResult {
   /** Each skill that ran, with its block-cards (the route persists these). */
   skillRuns: SkillRunOutput[];
   /**
-   * Non-skill UI affordance blocks the loop emitted this turn (today: an `input-request` field from
-   * request_link). Emitted via onBlock for the live render AND returned here so the route PERSISTS
+   * Non-skill UI affordance blocks the loop emitted this turn (an `input-request` field from
+   * request_input). Emitted via onBlock for the live render AND returned here so the route PERSISTS
    * them — without persistence the field would vanish the moment the turn completes and the client
    * reloads the thread from the server. Empty on a normal turn.
    */
@@ -154,9 +177,11 @@ function toolUseDirective(grounding: boolean): string {
     "you made and a natural next step, and never re-write the card content in prose. If a tool returns an " +
     "ERROR instead of a card, tell the creator plainly what went wrong and what to do about it (relay the " +
     "error's guidance) — do NOT silently answer the request in prose as though the tool had succeeded. " +
-    "If the creator wants to REMIX / adapt / recreate a specific trending or competitor video but has not " +
-    "given a link, call request_link so an inline field appears for them to paste it — never invent a URL " +
-    "and never just describe adapting a video you cannot see.";
+    "When the creator wants a skill that still needs something from them — a video LINK to remix, a concept " +
+    "to read past their audience, a niche to explore — or an account read (which needs nothing typed), call " +
+    "request_input with the matching action so an inline field (or a confirm button) appears in the thread. " +
+    "Never invent the missing value, never just describe a result you cannot produce, and never claim a card " +
+    "exists before they submit the field.";
   const groundLine = grounding
     ? " When a real, proven real-world example would make a strategy answer stronger, call search_corpus " +
       "and ground your answer on what it returns."
@@ -206,11 +231,11 @@ export async function runChatAgentStream(
   }
 
   const byName = new Map(skills.map((s) => [s.name, s]));
-  // request_link is always bound (free — it just shows an inline field); the corpus tool only when
+  // request_input is always bound (free — it just shows an inline field); the corpus tool only when
   // grounding is on (naming an unbound tool invites a call that can't be serviced).
   const tools = [
     ...skills.map((s) => s.schema),
-    REQUEST_LINK_TOOL,
+    REQUEST_INPUT_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
   ];
 
@@ -297,36 +322,59 @@ export async function runChatAgentStream(
         continue;
       }
 
-      // In-thread input affordance: the model asks for a link → emit an `input-request` block (the
-      // field) instead of running anything paid. The client renders it inline and runs the action on
-      // submit. label/placeholder are fixed here (no model-generated UI); the model only chose to ask.
-      if (call.name === "request_link") {
-        let action = "remix";
+      // In-thread input affordance: the model asks for what a skill needs → emit an `input-request`
+      // block (the field) instead of running anything paid inline. The client renders it inline and
+      // runs the action on its OWN route on submit. kind/label/placeholder come from SKILL_CAPABILITIES
+      // (no model-generated UI); the model only chose which action + an optional text prefill value.
+      if (call.name === "request_input") {
+        let action: unknown;
+        let rawValue: unknown;
         try {
           const parsed = JSON.parse(call.args || "{}");
-          if (parsed.action === "remix") action = "remix";
+          action = parsed.action;
+          rawValue = parsed.value;
         } catch {
-          /* default action */
+          /* handled by the guard below */
         }
+        if (!isSkillInputAction(action)) {
+          toolCalls.push({ name: "request_input", ran: false, note: "unknown action" });
+          messages.push({
+            role: "tool",
+            tool_call_id: call.id,
+            content: JSON.stringify({ error: "unknown input action — cannot show a field" }),
+          });
+          continue;
+        }
+        const cap = SKILL_CAPABILITIES[action];
+        // Prefill only for text kinds the capability marks prefillable; cap the model value.
+        const prefill =
+          cap.prefillable && cap.kind === "text" && typeof rawValue === "string" && rawValue.trim().length > 0
+            ? rawValue.trim().slice(0, PREFILL_CAP)
+            : undefined;
         const fieldBlock = {
           type: "input-request",
           props: {
-            kind: "link",
+            kind: cap.kind,
             action,
-            label: "Paste the video link and I'll adapt it for your audience.",
-            placeholder: "https://…",
+            label: cap.label,
+            ...(cap.placeholder ? { placeholder: cap.placeholder } : {}),
+            ...(prefill ? { prefill } : {}),
             platform: input.context.platform,
           },
         };
         input.onBlock(fieldBlock); // live render this turn…
         uiBlocks.push(fieldBlock); // …and persist it so a reload restores the field (route persists uiBlocks)
-        toolCalls.push({ name: "request_link", ran: true });
+        toolCalls.push({ name: "request_input", ran: true, note: action });
         messages.push({
           role: "tool",
           tool_call_id: call.id,
           content: JSON.stringify({
-            shown: "link input field",
-            note: "a field is now shown to the creator; ask them to paste the link — do not describe a result yet",
+            shown: `${cap.kind} input field`,
+            action,
+            note:
+              cap.kind === "none"
+                ? "a confirm button is now shown to the creator; tell them to press it — do not describe a result yet"
+                : "a field is now shown to the creator; ask them to fill it — do not describe a result yet",
           }),
         });
         continue;

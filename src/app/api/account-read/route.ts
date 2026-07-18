@@ -25,6 +25,9 @@ import { createClient } from "@/lib/supabase/server";
 import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
+import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { insertMessage } from "@/lib/threads/messages";
+import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 
 // Apify own-account scrape can take 1-3 minutes — allow max 300s (Pitfall 4 / P7 parity).
@@ -42,7 +45,7 @@ function sseHeaders(): HeadersInit {
 
 // ─── POST /api/account-read ──────────────────────────────────────────────────
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
 
   // ── (1) Auth gate (CR-01 / T-10-12) — before any scrape or DB read ──────────
@@ -52,6 +55,18 @@ export async function POST(): Promise<Response> {
 
   if (!user) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  // ── Optional persist flag (in-thread chat field ONLY) ───────────────────────
+  // The account TOOL POSTs no body → persist stays false → the route is bodyless-equivalent and
+  // never touches the thread (unchanged). The chat in-thread field POSTs { persist: true } so the
+  // account-read block is written to the open thread and a reload surfaces it in the chat view.
+  let persist = false;
+  try {
+    const body = (await request.json()) as { persist?: unknown } | null;
+    persist = body?.persist === true;
+  } catch {
+    /* no/blank body → persist stays false (the account-tool path) */
   }
 
   // ── (2) Resolve the creator's OWN handle from their personal audience ───────
@@ -137,7 +152,7 @@ export async function POST(): Promise<Response> {
           return;
         }
 
-        // ── Success — emit the composed account-read block (thread persists it) ─
+        // ── Success — emit the composed account-read block ──────────────────────
         const block: AccountReadBlock = {
           type: "account-read",
           props: {
@@ -148,6 +163,19 @@ export async function POST(): Promise<Response> {
             trackRecord: result.trackRecord,
           },
         };
+
+        // In-thread chat field: also persist the block to the open thread so a post-run reload
+        // surfaces it in the chat view (mirrors the explore/read/remix routes). Best-effort — a
+        // persist failure must not swallow the streamed result. The account tool skips this
+        // (persist=false) and renders the block from the live stream, exactly as before.
+        if (persist) {
+          try {
+            const openThread = await createOpenThreadLazy(user.id);
+            await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+          } catch {
+            /* non-fatal — the streamed block still reaches the client */
+          }
+        }
 
         send("done", { block });
       } catch {

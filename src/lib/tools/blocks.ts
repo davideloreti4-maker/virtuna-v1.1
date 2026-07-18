@@ -784,22 +784,31 @@ export type AccountReadBlock = z.infer<typeof AccountReadBlockSchema>;
 
 // ─── input-request ──────────────────────────────────────────────────────────────
 // An in-thread input affordance the chat AGENT surfaces when a skill needs structured input the
-// creator's sentence didn't supply — the canonical case being Remix, which needs a video LINK.
-// Instead of hallucinating a URL or answering in prose, the agent calls the request_link tool and
-// the loop emits ONE of these; the renderer shows an inline field, and on submit the composer runs
-// the named `action` skill and its card lands in the SAME thread. NO model-generated UI: the model
-// only CHOOSES to request a fixed kind; label/placeholder are set server-side, not by the model.
+// creator's sentence didn't supply — a video LINK to remix, a concept to read, a niche to explore —
+// or nothing at all (an account read resolves your own handle server-side). Instead of hallucinating
+// a value or answering in prose, the agent calls request_input({ action }) and the loop emits ONE of
+// these; the renderer shows the right inline field (or a confirm button for `none`), and on submit the
+// client runs the named `action` skill on ITS OWN dedicated route so its card lands in the SAME thread.
+//
+// NO model-generated UI: the model only CHOOSES which action to request (+ an optional prefill value
+// for text fields); kind/label/placeholder are set by the loop from SKILL_CAPABILITIES, never by the
+// model. The `kind`/`action` enums widened from the original link/remix literals (2026-07-18) —
+// already-persisted `{kind:"link", action:"remix"}` blocks still validate byte-identically.
 export const InputRequestBlockSchema = z.object({
   type: z.literal("input-request"),
   props: z.object({
-    // The input shape. Only "link" today (a single URL field); this literal is where new kinds land.
-    kind: z.literal("link"),
-    // The skill the submitted value runs. "remix" today (url → remix-card in-thread).
-    action: z.literal("remix"),
-    // Field label + placeholder (deterministic copy, set by the loop — never model text).
+    // The input shape: a single URL field, a free-text field, or none (a confirm-to-run button).
+    kind: z.enum(["link", "text", "none"]),
+    // The skill the submitted value (or button tap) runs, in-thread on its own route.
+    action: z.enum(["remix", "account", "explore", "read"]),
+    // Field label / confirm-card prompt + placeholder (deterministic copy, set by the loop — never model text).
     label: z.string().min(1),
     placeholder: z.string().optional(),
-    // Platform the action runs on (carried from the turn so the remix targets the right feed).
+    // OPTIONAL prefill for text fields — a value the creator ALREADY stated (a niche, a concept) that
+    // the model extracted, so they review-and-tap instead of retyping. Editable + still requires a
+    // submit tap (never auto-spends). Absent on link/none fields and every pre-2026-07-18 block.
+    prefill: z.string().optional(),
+    // Platform the action runs on (carried from the turn so the skill targets the right feed).
     platform: z.enum(["tiktok", "instagram", "youtube"]).optional(),
   }),
 });

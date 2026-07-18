@@ -284,8 +284,8 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
   },
   {
     id: "in-thread-link",
-    label: "In-thread link field",
-    note: "The agent-surfaced input affordance (input-request block → request_link tool). When you ask to remix/adapt a video without a link, the agent shows this inline field IN THE THREAD; pasting a link runs the Remix in-place. Rendered via MessageBlocks (proves the registry routes input-request → the renderer).",
+    label: "In-thread link field (remix)",
+    note: "The agent-surfaced input affordance (input-request block → request_input tool, action:remix). When you ask to remix/adapt a video without a link, the agent shows this inline LINK field IN THE THREAD; pasting a link runs the Remix in-place. Rendered via MessageBlocks (proves the registry routes input-request → the renderer).",
     node: (
       <div className="flex flex-col gap-4">
         <ChatThreadView
@@ -317,6 +317,111 @@ const THREAD_VIEWS: { id: string; label: string; note: string; node: React.React
           onFollowup={noop}
         />
       </div>
+    ),
+  },
+  {
+    id: "in-thread-account",
+    label: "In-thread account field (none)",
+    note: "request_input(action:account) → a kind:'none' field: it needs nothing typed, so it renders a single confirm-to-run button. The tap runs the Account Read on its own 300s route (persist:true) and reloads the thread.",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        persistedTurns={[
+          {
+            userTurn: "read my account",
+            blocks: [
+              {
+                type: "input-request",
+                props: {
+                  kind: "none",
+                  action: "account",
+                  label: "I'll read your latest posts and pull the patterns.",
+                  platform: "tiktok",
+                },
+              },
+              { type: "markdown", props: { text: "Press the button and I'll read your account.", origin: "chat-agent" } },
+            ],
+          },
+        ]}
+        streamingBlocks={[]}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
+      />
+    ),
+  },
+  {
+    id: "in-thread-explore",
+    label: "In-thread niche field (explore)",
+    note: "request_input(action:explore) → a kind:'text' field for the niche (empty is allowed — an un-niched trending pull). Submit runs Explore on its own route and reloads.",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        persistedTurns={[
+          {
+            userTurn: "show me what's working right now",
+            blocks: [
+              {
+                type: "input-request",
+                props: {
+                  kind: "text",
+                  action: "explore",
+                  label: "Name a niche or a competitor to scan — or leave it blank to pull your niche.",
+                  placeholder: "e.g. fitness coaches, @creator…",
+                  platform: "tiktok",
+                },
+              },
+              { type: "markdown", props: { text: "Name a niche below, or leave it blank and I'll pull your niche.", origin: "chat-agent" } },
+            ],
+          },
+        ]}
+        streamingBlocks={[]}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
+      />
+    ),
+  },
+  {
+    id: "in-thread-read",
+    label: "In-thread concept field (read)",
+    note: "request_input(action:read) → a kind:'text' field PRE-FILLED with the concept the model extracted from the message (still editable). Submit POSTs to /api/tools/read and reloads with the multi-audience-read card.",
+    node: (
+      <ChatThreadView
+        persistedBlocks={[]}
+        persistedTurns={[
+          {
+            userTurn: "what would my audience think of a video on cold plunges?",
+            blocks: [
+              {
+                type: "input-request",
+                props: {
+                  kind: "text",
+                  action: "read",
+                  label: "What should I run past your audience?",
+                  placeholder: "Paste a hook, concept, or draft…",
+                  prefill: "a video on cold plunges",
+                  platform: "tiktok",
+                },
+              },
+              { type: "markdown", props: { text: "Here's what I'll read — tweak it and hit read.", origin: "chat-agent" } },
+            ],
+          },
+        ]}
+        streamingBlocks={[]}
+        isStreaming={false}
+        coldStart={false}
+        nudgeShown={false}
+        error={null}
+        platform="tiktok"
+        onFollowup={noop}
+      />
     ),
   },
   {
