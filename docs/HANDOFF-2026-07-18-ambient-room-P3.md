@@ -1,5 +1,25 @@
 # HANDOFF — Ambient room · remaining P3, 2026-07-18
 
+> ## 🚢 SHIPPED — MILESTONE MERGED TO MAIN (PR #330, 2026-07-18)
+> The whole `milestone/ambient-room-v2` (P0·P2·BCD·P1·P3) landed on `main` via **PR #330** (`--no-ff`).
+> Net diff 45 files, +2716/−789. **Full suite 4148/0 · tsc 0 · `/home` mounts clean · Vercel preview
+> green.** The branch was integration-merged with current main first (2 conflicts resolved:
+> `composer.tsx` import union; `BrainView.tsx` convergent caption fix — kept the flex-row superset,
+> noted in-code for the card owner). A pre-existing main failure (chat SSE Tests 6/7, stale `uiBlocks`
+> mock) was fixed en route so CI is green.
+>
+> **▶ NEXT SESSION / OTHER LANES:**
+> - **Card-polish lane** (active on main, owns `card-primitives`/thread cards): rebase onto the new
+>   main. The BrainView caption is the flex-row superset (keeps "N networks"); re-drop it there if the
+>   simpler one-caption version is preferred — a one-line change, flagged in the code comment.
+> - **`account-read` nits (owner-deferred, cards session owns):** format-mix bars near-invisible
+>   (`0.22→0.40α`) + mobile subline `truncate` clips the post count. Card is otherwise well-crafted;
+>   verdict was stale. Render: `claude.ai/code/artifact/6adf19a4-7fa0-43bf-9ad9-ce839f6b0ac5`.
+> - **Worktree `~/virtuna-ambient-room` is retire-able** once main is confirmed deployed (no stranded
+>   work — everything is in PR #330). The local branch/worktree can be removed after the prod deploy.
+>
+> ---
+>
 > ## ✅ BOTH REMAINING P3 ITEMS CLOSED — MILESTONE P0·P2·BCD·P1·P3 COMPLETE (2026-07-18)
 > **1. `openRoomForCard` dup-concept → FIXED (`eff7b0c7`, pushed).** Resolve a tapped card by its
 > LEDGER id, not concept text: threaded the id MessageBlocks already stamps on `[data-card-id]` down
