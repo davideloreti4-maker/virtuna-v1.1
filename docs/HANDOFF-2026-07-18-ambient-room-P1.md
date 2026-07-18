@@ -1,5 +1,38 @@
 # HANDOFF — Ambient room · P1 (panel craft) → P3, 2026-07-18
 
+> ## ✅ UPDATE 2026-07-18 (later session) — P1 COMPLETE + P3 ROUTING SHIPPED
+> **P1 is done.** The re-measurement pass (below) confirmed the handoff's warning: most of P0 §3 was
+> STALE. Only the survivors were coded, all fails-first-guarded + live-verified, tsc=0. Commits:
+> - **`f276fcc0` §3.6** — dropped the redundant readiness echo from the OPEN/RAIL bar. P0's "10 ready
+>   owns 67%" was **INVERTED**: live, the rail *clipped* it to 39px ("10 read…", identity owned 78%),
+>   the <xl header floated it in ~56% dead space. Collapsed tab keeps its live pulse.
+> - **`9d3998ec` §3.2** — pinned `en-US` on the population counts (`toLocaleString('en-US')`), killing
+>   the locale-dependent `1.000` that collided with the hardcoded `1,000` (#306 family). Guard = source
+>   grep for bare `.toLocaleString()`.
+> - **`8fb508c5` §3.8** — brain well captions no longer OVERPRINT at rail width (two `absolute
+>   left-3/right-3` <p>s → one `inset-x-3` flex row). Found by rendering the cortex via **SwiftShader**
+>   (full Chromium + `--use-angle=swiftshader`) — the WebGL unblock the handoff said needed a real machine.
+> - **`960866d9` §3.8 density (owner call B)** — 9-signal grid 3→2 col (labels stop wrapping), dropped
+>   the ×9 `WHY THIS SCORE` (the single `HOW TO READ` covers it; derivation kept as a hover title),
+>   fixed the `predicted BOLD · vs rest` clip. ⚠️ Owner kept it despite +128px height (1123→1251).
+> - **STALE (no work):** §3.1 (no 160px cell exists), §3.4 (verdict already encoded both renderers),
+>   §3.5 (deleted in P0). §3.7 owner-skipped.
+>
+> **P3 routing SHIPPED — `cdb5c423`:** `/dev/*` 404s in real prod (new `dev/layout.tsx`, `VERCEL_ENV`),
+> `/feed/hooks`·`/feed/channels`·`/competitors/[handle]`·`/competitors/compare` orphans → `redirect('/home')`,
+> `/analyze`→`/home` (was `/start` dead 2-hop), `/competitors`→`/home` (was `/feed?tab` dropped-tab 2-hop).
+> 8 guards fails-first; live-verified (authed browser nav — all 8 land on /home; /dev/cards still 200 in dev).
+>
+> **▶ REMAINING P3 (bigger, un-started):** (1) `account-read` — worst-rated renderer (STRUCTURAL) +
+> the one starter card that RUNS on tap → measure-first, likely DESIGN-HEAVY (owner eye, like the brain).
+> (2) `openRoomForCard` concept-STRING match → two identical-concept cards open the FIRST; thread the
+> descriptor `id` through `ProofUnit` (architecture, family of #306). Scratch drivers: `.scratch/verify-p1-measure.cjs`,
+> `verify-p1-fix.cjs`, `render-brain.cjs` (SwiftShader), `verify-p3-redirects.cjs`.
+>
+> *(Original P1 handoff preserved below for context — its re-measurement recipe still applies to the remaining P3.)*
+
+---
+
 Fresh-session handoff. **P0 ✅ · P2 placement ✅ · B·C·D cleanups ✅ — all shipped + live-verified.**
 What remains: **P1 (panel craft, in the final container) → P3 (separable bugs).**
 
