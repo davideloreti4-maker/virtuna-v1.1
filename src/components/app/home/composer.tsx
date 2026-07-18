@@ -97,7 +97,7 @@ import { AudiencePresence, type AudienceAsk, type AudiencePresenceProps } from "
 import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
-import { buildAmbientDescriptors } from "./ambient-descriptors";
+import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // TikTok-only client check (D-21, WR-01). The pattern is the SHARED trust-
 // boundary regex (src/lib/tiktok-url.ts) imported by BOTH the composer and the
@@ -1828,8 +1828,10 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
   // and bloom the presence open. Returns false when no descriptor matches → ProofUnit keeps its
   // standalone Lens fallback.
   const openRoomForCard = useCallback(
-    (conceptText: string): boolean => {
-      const d = ambientDescriptors.find((x) => x.conceptText === conceptText);
+    (conceptText: string, cardId?: string | null): boolean => {
+      // Resolve by the card's LEDGER id first (dup-concept safe), falling back to concept text —
+      // matching text alone opened the FIRST of two identical concepts (family of #306).
+      const d = resolveFocusDescriptor(ambientDescriptors, conceptText, cardId);
       if (!d) return false;
       setRoomDrill(true);
       focusByTap(d.id);

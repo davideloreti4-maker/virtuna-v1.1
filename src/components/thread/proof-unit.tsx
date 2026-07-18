@@ -26,7 +26,7 @@ import type { FlatPersonaReaction } from '@/components/board/audience/audience-d
 import type { PopulationAggregate } from '@/lib/audience/population';
 import { LensTrigger } from '@/components/audience-lens/LensTrigger';
 import type { LensRewrite } from '@/components/audience-lens/AudienceLens';
-import { useOpenRoomForCard } from '@/lib/hook-test-context';
+import { useOpenRoomForCard, useAmbientCardId } from '@/lib/hook-test-context';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BAND_COLOR } from './band-block';
 import { stripWrappingQuotes } from '@/lib/utils';
@@ -124,6 +124,10 @@ export function ProofUnit({
   // reactions — instead of the standalone per-card Lens (placeholder viewers). Off-composer
   // (calendar / saved / library) the context is null ⇒ fall back to the standalone Lens.
   const openRoomForCard = useOpenRoomForCard();
+  // This card's LEDGER id (provided by MessageBlocks) — passed to the open so two cards with an
+  // identical concept resolve to the RIGHT room, not both to the first (family of #306). Null
+  // off-composer ⇒ the handler falls back to concept-text matching.
+  const ambientCardId = useAmbientCardId();
 
   // Same matte proof-box chrome for both entries so the card looks identical either way.
   const proofBoxClass =
@@ -199,11 +203,11 @@ export function ProofUnit({
         role="button"
         tabIndex={0}
         aria-label={label}
-        onClick={() => openRoomForCard(conceptText)}
+        onClick={() => openRoomForCard(conceptText, ambientCardId)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            openRoomForCard(conceptText);
+            openRoomForCard(conceptText, ambientCardId);
           }
         }}
         style={{ minHeight: 44, cursor: 'pointer' }}

@@ -54,11 +54,30 @@ export function useOnWriteScriptHook(): OnWriteScriptFn | null {
  * Returns true when it handled the open (a matching descriptor was found + focused). Default
  * null ⇒ not inside the home composer (calendar / saved / library) ⇒ ProofUnit keeps the
  * standalone Lens so those surfaces are unaffected.
+ *
+ * `cardId` is the card's LEDGER id (`AmbientCardIdContext`, threaded by MessageBlocks). It
+ * disambiguates two cards with an identical concept — matching on `conceptText` alone opened the
+ * FIRST of a dup pair (family of #306). Optional so off-composer callers (with no id) still work.
  */
-export type OpenRoomForCardFn = (conceptText: string) => boolean;
+export type OpenRoomForCardFn = (conceptText: string, cardId?: string | null) => boolean;
 
 export const OpenRoomContext = createContext<OpenRoomForCardFn | null>(null);
 
 export function useOpenRoomForCard(): OpenRoomForCardFn | null {
   return useContext(OpenRoomContext);
+}
+
+/**
+ * AmbientCardIdContext — the LEDGER id of the card currently being rendered (`hook-0`, `idea-16`…).
+ *
+ * MessageBlocks already computes this per card (the SAME `toAmbientDescriptor` id it stamps on the
+ * scroll-spy `[data-card-id]` anchor) and provides it around each reactable card. ProofUnit reads it
+ * so a "See the room →" tap resolves by id, not by concept text — the fix for the dup-concept open
+ * (two cards, same concept, previously both opened the first). Default null ⇒ no id in context
+ * (off-composer / pre-anchor) ⇒ the tap falls back to concept-text matching.
+ */
+export const AmbientCardIdContext = createContext<string | null>(null);
+
+export function useAmbientCardId(): string | null {
+  return useContext(AmbientCardIdContext);
 }

@@ -10,6 +10,7 @@
  */
 
 import { Fragment } from 'react';
+import { AmbientCardIdContext } from '@/lib/hook-test-context';
 import { validateBlock } from '@/lib/tools/block-registry';
 import type { BlockType } from '@/lib/tools/block-registry';
 import { toAmbientDescriptor } from '@/components/app/home/ambient-descriptors';
@@ -151,9 +152,11 @@ export function MessageBlocks({ body, conceptText, ambientBaseIndex }: MessageBl
         // Not an anchor → a Fragment emits no DOM: the unanchored tree stays byte-identical.
         if (ambientId === null) return <Fragment key={index}>{rendered}</Fragment>;
 
+        // Provide the card's ledger id down to ProofUnit's "See the room →" so a tap resolves by id
+        // (dup-concept safe) instead of by concept text — the SAME id on the scroll-spy anchor below.
         return (
           <div key={index} data-ambient-card="" data-card-id={ambientId}>
-            {rendered}
+            <AmbientCardIdContext.Provider value={ambientId}>{rendered}</AmbientCardIdContext.Provider>
           </div>
         );
       })}

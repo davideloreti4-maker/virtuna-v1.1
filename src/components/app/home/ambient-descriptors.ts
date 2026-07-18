@@ -92,6 +92,29 @@ export function toAmbientDescriptor(block: unknown, idx: number): AmbientCardDes
   };
 }
 
+/**
+ * Which descriptor a card's "See the room →" tap opens.
+ *
+ * THE BUG THIS LOCKS (family of #306 — one fact, two lookups that can disagree): the tap used to
+ * resolve on the concept TEXT alone (`.find(d => d.conceptText === text)`), so two cards with an
+ * identical concept both opened the FIRST — a thread with idea-15 and idea-16 "The Infinite Coffee
+ * Loop" showed idea-15's room no matter which you tapped, while scroll-spy (keyed on the positional
+ * `data-card-id`) correctly tracked idea-16. Prefer the LEDGER id (unique per card by construction —
+ * `${kind}-${idx}`) and fall back to the concept text only for callers with no id in context
+ * (off-composer surfaces, or a pre-anchor persisted card). Returns null when nothing matches.
+ */
+export function resolveFocusDescriptor(
+  descriptors: AmbientCardDescriptor[],
+  conceptText: string,
+  cardId?: string | null,
+): AmbientCardDescriptor | null {
+  if (cardId) {
+    const byId = descriptors.find((d) => d.id === cardId);
+    if (byId) return byId;
+  }
+  return descriptors.find((d) => d.conceptText === conceptText) ?? null;
+}
+
 /** The kind label for a set of blocks: their shared name, 'Card' when mixed, else the fallback. */
 function labelFor(blocks: unknown[]): string {
   const labels = new Set(

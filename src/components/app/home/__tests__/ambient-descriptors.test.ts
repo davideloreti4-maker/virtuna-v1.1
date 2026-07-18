@@ -18,7 +18,8 @@
  *  - a card they CANNOT see must never move it (only the mounted view's blocks count).
  */
 import { describe, it, expect } from 'vitest';
-import { buildAmbientDescriptors, toAmbientDescriptor } from '../ambient-descriptors';
+import { buildAmbientDescriptors, toAmbientDescriptor, resolveFocusDescriptor } from '../ambient-descriptors';
+import type { AmbientCardDescriptor } from '@/components/app/home/use-ambient-focus';
 
 // A scored card block, shaped exactly as the streams/route emit it (type + props).
 const card = (type: string, title: string, fraction = '7/10 stop') => ({
@@ -102,6 +103,50 @@ describe('buildAmbientDescriptors — the ledger is keyed on the blocks, not the
       expect(descriptors).toEqual([]);
       expect(kindLabel).toBe('Concept');
     }
+  });
+});
+
+describe('resolveFocusDescriptor — a tap opens the card that was tapped (dup-concept safe)', () => {
+  // Two cards, IDENTICAL concept text, DIFFERENT ledger ids — the #306 family shape
+  // ("The Infinite Coffee Loop" landing on idea-15 and idea-16).
+  const desc = (id: string, conceptText: string, fraction: string): AmbientCardDescriptor => ({
+    id,
+    conceptText,
+    fraction,
+    scrollQuote: `q-${id}`,
+    personas: undefined,
+    population: undefined,
+  });
+  const dupes: AmbientCardDescriptor[] = [
+    desc('idea-15', 'The Infinite Coffee Loop', '3/10'),
+    desc('idea-16', 'The Infinite Coffee Loop', '8/10'),
+  ];
+
+  it('THE BUG (#306 family): tapping the SECOND dup opens its OWN room, not the first', () => {
+    // Old code matched conceptText alone → always the first (3/10). The id is what disambiguates.
+    const hit = resolveFocusDescriptor(dupes, 'The Infinite Coffee Loop', 'idea-16');
+    expect(hit?.id).toBe('idea-16');
+    expect(hit?.fraction).toBe('8/10');
+  });
+
+  it('the first dup still resolves to the first when its own id is passed', () => {
+    const hit = resolveFocusDescriptor(dupes, 'The Infinite Coffee Loop', 'idea-15');
+    expect(hit?.id).toBe('idea-15');
+    expect(hit?.fraction).toBe('3/10');
+  });
+
+  it('no id in context (off-composer surfaces) falls back to concept text — the first match', () => {
+    const hit = resolveFocusDescriptor(dupes, 'The Infinite Coffee Loop');
+    expect(hit?.id).toBe('idea-15');
+  });
+
+  it('a stale id that matches nothing degrades to the concept-text match (never a hard miss)', () => {
+    const hit = resolveFocusDescriptor(dupes, 'The Infinite Coffee Loop', 'idea-999');
+    expect(hit?.id).toBe('idea-15');
+  });
+
+  it('returns null when nothing matches by id OR concept', () => {
+    expect(resolveFocusDescriptor(dupes, 'Some other concept', 'hook-3')).toBeNull();
   });
 });
 
