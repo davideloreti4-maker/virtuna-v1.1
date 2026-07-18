@@ -1,5 +1,26 @@
 # HANDOFF — Ambient room · remaining P3, 2026-07-18
 
+> ## ✅ BOTH REMAINING P3 ITEMS CLOSED — MILESTONE P0·P2·BCD·P1·P3 COMPLETE (2026-07-18)
+> **1. `openRoomForCard` dup-concept → FIXED (`eff7b0c7`, pushed).** Resolve a tapped card by its
+> LEDGER id, not concept text: threaded the id MessageBlocks already stamps on `[data-card-id]` down
+> to ProofUnit via a new **`AmbientCardIdContext`**; `openRoomForCard(conceptText, cardId?)` now calls
+> a pure, tested **`resolveFocusDescriptor`** (id-first, concept-text fallback for off-composer). Two
+> guards **fail-first** — resolver dup-concept (`ambient-descriptors.test.ts`) + ProofUnit threads the
+> id on tap/Enter (`proof-unit-open-room.test.tsx`, RED against old proof-unit). **tsc 0 · 5 regression
+> suites green · `/home` mounts clean (no bundle break, `.scratch/verify-openroom-mount.cjs`).**
+>
+> **2. `account-read` → RE-MEASURED, verdict STALE, OWNER LEFT AS-IS.** Rendered live at `/dev/cards`
+> (desktop 728×764 / mobile 324×955). The inherited "worst-rated (STRUCTURAL)" rating **does not hold**
+> — 3rd stale inherited verdict this milestone. The card is well-crafted + honest (real profile header,
+> cover strip w/ view counts + expired-cover fallback, 2-col Working/Fix, format bars, drop-points,
+> track record, "Write to my strengths →"); zero desktop clips/collisions. Only 2 cosmetic nits (faint
+> format-mix bars; mobile subline `truncate` clips the post count). **Owner: leave as-is — a separate
+> session owns cards design.** No code. Render artifact: `claude.ai/code/artifact/6adf19a4-7fa0-43bf-9ad9-ce839f6b0ac5`.
+>
+> _Everything below is the pre-close handoff, kept for provenance._
+
+---
+
 Fresh-session handoff. **P0 ✅ · P2 placement ✅ · B·C·D ✅ · P1 panel-craft ✅ · P3 routing ✅ — all
 shipped, live-verified, pushed.** What remains: **two separable P3 items** (account-read renderer +
 openRoomForCard dup-concept bug). Both un-started; both need measure-first.
