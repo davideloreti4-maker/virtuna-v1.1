@@ -165,12 +165,12 @@ describe("runChatAgentStream [tools]", () => {
     expect(draftSkill.run).not.toHaveBeenCalled();
   });
 
-  it("request_link emits an input-request FIELD (onBlock + persisted uiBlocks), runs no paid skill", async () => {
+  it("request_input(remix) emits a LINK input-request FIELD (onBlock + persisted uiBlocks), runs no paid skill", async () => {
     const ideas = mkSkill("generate_ideas");
     const onBlock = vi.fn();
     const stream = mockStream([
       // The model asks for a link instead of guessing a URL.
-      [toolName(0, "c1", "request_link"), toolArgs(0, '{"action": "remix"}')],
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "remix"}')],
       [textChunk("Drop the link and I'll adapt it.")],
     ]);
 
@@ -185,12 +185,83 @@ describe("runChatAgentStream [tools]", () => {
     expect(onBlock).toHaveBeenCalledWith(expect.objectContaining(field));
     // …and is returned for persistence (else it would vanish on the post-turn reload).
     expect(res.uiBlocks).toHaveLength(1);
-    expect(res.uiBlocks[0]).toMatchObject({ type: "input-request", props: { action: "remix" } });
+    expect(res.uiBlocks[0]).toMatchObject({ type: "input-request", props: { kind: "link", action: "remix" } });
     // No paid skill ran; the closing line carries the turn.
     expect(res.skillRuns).toHaveLength(0);
     expect(ideas.run).not.toHaveBeenCalled();
-    expect(res.toolCalls.find((t) => t.name === "request_link")?.ran).toBe(true);
+    expect(res.toolCalls.find((t) => t.name === "request_input")?.ran).toBe(true);
     expect(res.text).toBe("Drop the link and I'll adapt it.");
+  });
+
+  it("request_input(account) emits a NONE field (a confirm button — no typed input)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "account"}')],
+      [textChunk("Press the button and I'll read your account.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks[0]).toMatchObject({ type: "input-request", props: { kind: "none", action: "account" } });
+    // A `none` field carries no placeholder/prefill (nothing to type).
+    expect((res.uiBlocks[0] as { props: { placeholder?: string; prefill?: string } }).props.placeholder).toBeUndefined();
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+  });
+
+  it("request_input(read) carries a model-extracted PREFILL for the text field (editable, user-submitted)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "read", "value": "a video on cold plunges"}')],
+      [textChunk("Here's a field — tweak it and hit read.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks[0]).toMatchObject({
+      type: "input-request",
+      props: { kind: "text", action: "read", prefill: "a video on cold plunges" },
+    });
+  });
+
+  it("request_input(test) emits an UPLOAD field (a video drop — the /test heavy input)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "test"}')],
+      [textChunk("Drop the video and I'll test it.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks[0]).toMatchObject({
+      type: "input-request",
+      props: { kind: "upload", action: "test", label: expect.any(String) },
+    });
+    // Upload kind is not prefillable — a model `value` never lands on it (it's a real video, not text).
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+    expect(res.toolCalls.find((t) => t.name === "request_input")?.ran).toBe(true);
+  });
+
+  it("request_input(test) IGNORES a model-supplied prefill value (upload is not a text field)", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "test", "value": "some text"}')],
+      [textChunk("Drop the video.")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect((res.uiBlocks[0] as { props: { prefill?: string } }).props.prefill).toBeUndefined();
+  });
+
+  it("request_input with an unknown action is refused (no field emitted)", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "request_input"), toolArgs(0, '{"action": "simulate"}')],
+      [textChunk("ok")],
+    ]);
+
+    const res = await runChatAgentStream(baseInput({ onBlock }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(res.uiBlocks).toHaveLength(0);
+    expect(onBlock).not.toHaveBeenCalled();
+    expect(res.toolCalls.find((t) => t.name === "request_input")?.ran).toBe(false);
+    expect(res.toolCalls.find((t) => t.name === "request_input")?.note).toBe("unknown action");
   });
 
   it("absorbs a skill run error without throwing", async () => {

@@ -1088,7 +1088,7 @@ export function Composer({ className, onThreadChange, onConversationChange, onRe
 
   // The in-thread input affordance (input-request block) reloads the chat thread on completion so its
   // result card surfaces in-place. Memoised so the block's context consumers don't re-render each pass.
-  const inThreadInputValue = useMemo(() => ({ onLinkComplete: reloadChatThread }), [reloadChatThread]);
+  const inThreadInputValue = useMemo(() => ({ onComplete: reloadChatThread }), [reloadChatThread]);
 
   // ── Evidence-drop affordance (D-07 — the additive Profile inbox) ────────────
   // reloadProfileThread re-reads the open thread and re-filters the profile-read +

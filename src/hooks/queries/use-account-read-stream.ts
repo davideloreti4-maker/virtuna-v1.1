@@ -25,8 +25,13 @@ export interface UseAccountReadStreamReturn {
   error: string | null;
   /** Honest thin-history fallback message (SELF-02) — a calm warning, not an error. */
   fallbackMessage: string | null;
-  /** POST /api/account-read (bodyless) and stream the result. Fire ONLY on explicit tap (D-05/D-07). */
-  start: () => Promise<void>;
+  /**
+   * POST /api/account-read and stream the result. Fire ONLY on explicit tap (D-05/D-07).
+   * `persist:true` (the in-thread chat field) tells the route to also write the account-read block to
+   * the open thread, so a reload surfaces it in the chat view. The account TOOL omits it → the route
+   * stays bodyless-equivalent and does NOT persist (unchanged behavior).
+   */
+  start: (opts?: { persist?: boolean }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a fresh run (e.g. on tool switch). */
@@ -63,7 +68,7 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     if (isMountedRef.current) setIsStreaming(false);
   }, []);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (opts?: { persist?: boolean }) => {
     // Abort any prior in-flight stream.
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -75,9 +80,15 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setIsStreaming(true);
 
     try {
-      // Bodyless POST — the own handle is resolved from the session (T-10-12).
+      // The own handle is resolved from the session (T-10-12), never from input. The optional
+      // { persist } body flag (in-thread chat field only) asks the route to also write the block to
+      // the open thread; the account tool sends no body → route persists nothing (unchanged).
+      const persist = opts?.persist === true;
       const res = await fetch("/api/account-read", {
         method: "POST",
+        ...(persist
+          ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ persist: true }) }
+          : {}),
         signal: controller.signal,
       });
 

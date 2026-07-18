@@ -29,6 +29,7 @@ import { InputRequestBlockRenderer } from '@/components/thread/input-request-blo
 import { ProfileReadBlockRenderer } from '@/components/thread/profile-read-block';
 import { ReactionDistributionBlockRenderer } from '@/components/thread/reaction-distribution-block';
 import { PredictionGaugeBlockRenderer } from '@/components/thread/prediction-gauge-block';
+import { VideoTestCardRenderer } from '@/components/thread/video-test-card-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -50,6 +51,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "profile-read": ProfileReadBlockRenderer,
   "reaction-distribution": ReactionDistributionBlockRenderer,
   "prediction-gauge": PredictionGaugeBlockRenderer,
+  "video-test-card": VideoTestCardRenderer,
 };
 
 export interface MessageBlocksProps {
