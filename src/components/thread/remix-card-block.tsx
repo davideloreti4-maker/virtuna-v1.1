@@ -133,6 +133,7 @@ export function RemixCardRenderer({ block, onDevelop: onDevelopProp }: RemixCard
 
         {/* Proof unit — adapted-hook scroll-stop (honesty-scoped). */}
         <ProofUnit
+          framed={false}
           band={band}
           fraction={fraction}
           quote={scrollQuote}

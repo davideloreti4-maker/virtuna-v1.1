@@ -139,6 +139,7 @@ export function IdeaCardRenderer({ block }: IdeaCardRendererProps) {
 
         {/* Proof unit — the single audience-reaction block + visible Lens entry. */}
         <ProofUnit
+          framed={false}
           band={band}
           fraction={fraction}
           scored={scored ?? true}

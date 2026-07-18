@@ -75,6 +75,14 @@ export interface ProofUnitProps {
    * persisted/test cards (no `scored` field) render fully-scored, unchanged.
    */
   scored?: boolean;
+  /**
+   * Variant-A "quiet" de-box (Script first, 2026-07-18): when false the unit drops its border +
+   * fill and reads as a borderless reaction row, so it stops being a box-within-the-card. It stays
+   * the click target — a gentle inset hover replaces the border feedback — and keeps the 44px tap
+   * height. Defaults true (the bordered proof box every other Make card still shows), so the roll-out
+   * to hooks/idea/remix is one prop flip each.
+   */
+  framed?: boolean;
 }
 
 /** Byte-identical parse contract to flat-card-reactions. */
@@ -115,6 +123,7 @@ export function ProofUnit({
   platform = 'tiktok',
   label = 'See how the room reacted',
   scored = true,
+  framed = true,
 }: ProofUnitProps) {
   const parsed = parseFraction(fraction);
   const bandColor = BAND_COLOR[band];
@@ -126,8 +135,11 @@ export function ProofUnit({
   const openRoomForCard = useOpenRoomForCard();
 
   // Same matte proof-box chrome for both entries so the card looks identical either way.
-  const proofBoxClass =
-    'flex flex-col gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]';
+  // framed=false ⇒ borderless (Variant A): no persistent box, an inset hover for feedback, but
+  // the -mx-2/px-2 pair keeps the content column aligned to the card's 16px edge.
+  const proofBoxClass = framed
+    ? 'flex flex-col gap-2.5 rounded-md border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition-colors hover:border-white/[0.10] hover:bg-white/[0.035]'
+    : '-mx-2 flex flex-col gap-2.5 rounded-md px-2 py-2 transition-colors hover:bg-white/[0.03]';
 
   const proofBody = (
     <>
