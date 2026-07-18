@@ -584,20 +584,20 @@ export interface BlockSection {
 export const BLOCK_SECTIONS: BlockSection[] = [
   {
     type: "profile-read",
-    label: "Profile Read (forensic)",
-    note: "Profile skill → behavioral read: identity + tells (verbatim evidence) + forensic cues (Max tier).",
+    label: "Profile Read (forensic) · HIDDEN",
+    note: "HIDDEN — the Profile skill is behind HORIZONTAL_ENABLED (flag OFF, owner call 2026-07-13). Not shippable today; renderer kept alive on purpose so persisted profile-read blocks in old threads still render (see lib/flags/horizontal.ts). Reference-only — this is the sole cheap way to look at it. Profile skill → behavioral read: identity + tells (verbatim evidence) + forensic cues (Max tier).",
     body: [PROFILE_READ_BLOCK],
   },
   {
     type: "reaction-distribution",
-    label: "Simulate (reaction distribution)",
-    note: "Simulate skill → 1 panel + stimulus: band + fraction + clustered themes + per-persona reactions.",
+    label: "Simulate (reaction distribution) · HIDDEN",
+    note: "HIDDEN — the Simulate skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted reaction-distribution blocks still render. Reference-only. Simulate skill → 1 panel + stimulus: band + fraction + clustered themes + per-persona reactions.",
     body: [REACTION_DISTRIBUTION_BLOCK],
   },
   {
     type: "prediction-gauge",
-    label: "Predict (prediction gauge)",
-    note: "Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
+    label: "Predict (prediction gauge) · HIDDEN",
+    note: "HIDDEN — the Predict skill is behind HORIZONTAL_ENABLED (flag OFF). Not shippable today; renderer kept so persisted prediction-gauge blocks still render. Reference-only. Predict skill → honest forecast: band word + one feathered range + factors (each names its analyst).",
     body: [PREDICTION_GAUGE_BLOCK],
   },
   {

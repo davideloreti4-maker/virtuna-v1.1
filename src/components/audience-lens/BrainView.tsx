@@ -477,13 +477,14 @@ export function BrainView({
         </p>
 
         {/* Bottom — the lag claim, inside the frame. Load-bearing: the HRF is real, the brain visibly
-            trails the stimulus because of it, and the figure says so out loud. */}
-        <p className="pointer-events-none absolute bottom-2.5 left-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+            trails the stimulus because of it, and the figure says so out loud.
+            It OWNS the bottom row alone: a second bottom-right caption ("N networks · lit at t=…") used
+            to live here and COLLIDED with this one on any narrow well — the room renders in a 640px
+            sheet that is full-width on a phone (mobile-first), so the two absolutely-positioned strings
+            overlapped into garbled text. The dropped caption's scan-time only duplicated the top-right
+            clock, and its network count was decoration — so this claim gets the row and can't collide. */}
+        <p className="pointer-events-none absolute inset-x-3 bottom-2.5 truncate font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
           trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
-        </p>
-        {/* Sapient's cortex caption — how many networks are lit, and at what scan time. */}
-        <p className="pointer-events-none absolute bottom-2.5 right-3 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          7 networks · lit at t = {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
         </p>
       </div>
 
