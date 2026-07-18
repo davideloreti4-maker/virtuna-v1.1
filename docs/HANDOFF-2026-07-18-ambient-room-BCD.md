@@ -4,6 +4,36 @@ Fresh-session handoff. **P2 PLACEMENT IS DONE + SHIPPED** (the re-parent). What 
 copy/mode cleanups. Full history: `docs/HANDOFF-2026-07-17-ambient-room-redesign.md` (§4 = P2 status).
 Memory: `ambient-room-redesign.md`.
 
+---
+
+## ✅ B · C · D — ALL SHIPPED + LIVE-VERIFIED (2026-07-18)
+
+| Fix | Commit | What landed |
+|-----|--------|-------------|
+| **B** | `af2db4b8` | `audienceOpen` MODE killed (19 sites). `Ask the room` is a VERB now (`activeTool === "ask"` → askAudience → `/api/tools/react`), a real skill under the Ask group next to Chat. Visual expand split out to `roomExpanded` (dock bloom + `<xl` header sheet; rail ignores it) — tapping the header no longer arms ask-mode. Chip stays visible in every mode (escape hatch); `+` attach hides in Ask. |
+| **C** | `910d0351` | Idle copy `Type a thought below…` → `Type a thought and watch the whole room react.` (placement-neutral — the composer is a rail/header now, never "below"). |
+| **D** | `4b18253f` | Ranked view: serif rank numerals dropped (sort + bar + score carry the order); a true top tie is NAMED (`Your top N are tied at X/10 — the room can't separate them`), counted on stop-count ONLY — never population (PR #306). |
+
+**Proof (LOOKING IS NOT MEASURING):** tsc 0 · touched suites 237 passed · every new guard proven
+**fails-first** by stashing only the source (B routing+placeholder RED on old; D numeral+tie RED on
+old; regression guards green both ways). **Live `/home` DOM + network** (`.scratch/verify-bcd.cjs`):
+no `"Ask your audience…"` anywhere · Ask verb POSTs the REAL `/api/tools/react` → 200
+`{"fraction":"6/10 stop",…}` → room renders *"6 of 10 would stop"* · Hooks still streams · header
+expand does NOT hijack the input (`placeholderUnchanged: true`).
+
+**Decisions made this session:** the `ask` skill is labeled **"Ask the room"** (verb-explicit; the chip
+shows the skill, so it must say what send does). `LAUNCH_VERB_TOOL.Ask` left as `chat` (a surface
+handoff carrying "Ask" lands on the richer conversation, not the one-shot room probe).
+
+**Residual (unchanged, still DEFERRED):** `openRoomForCard` matches a tapped card by concept STRING
+→ two cards with an identical concept open the FIRST (its own task: thread the descriptor `id`
+through `ProofUnit`). Not touched by B.
+
+▶ **NEXT: P1 (panel craft) → P3 (separable bugs).** The sections below are the ORIGINAL brief, kept
+for the P1/P3 pointers; B/C/D within them are now historical.
+
+---
+
 ## Where to work
 - Worktree `~/virtuna-ambient-room` · branch `milestone/ambient-room-v2` (clean, pushed to origin).
 - Dev server **:3002**. Real `pnpm install` here → Turbopack runs clean; keep it that way.
