@@ -812,7 +812,7 @@ function PopulationView({
         ))}
       </div>
       <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-        {real ? `${roomSize.toLocaleString()} sampled from your audience · a projection` : `1,000 modeled from your ${tot}`}
+        {real ? `${roomSize.toLocaleString('en-US')} sampled from your audience · a projection` : `1,000 modeled from your ${tot}`}
         {!reducedMotion && (
           <>
             {' · '}
@@ -874,7 +874,7 @@ function PopulationView({
       {weakVoices.length > 0 && (
         <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-            Where you&rsquo;re losing them · {bounceK} of {roomSize.toLocaleString()}
+            Where you&rsquo;re losing them · {bounceK} of {roomSize.toLocaleString('en-US')}
           </p>
           <ul className="flex flex-col">
             {weakVoices.map((n) => (
