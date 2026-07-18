@@ -303,15 +303,12 @@ export function AudiencePresence({
       ? `${stopRead.stop} of ${stopRead.total} would stop`
       : `${rosterCount} ready`;
 
-  // OPEN-panel top bar shows READINESS, never the focus score — the Room right below owns
-  // the score (the serif hero in the drill view; per-row meters in the ranked view), and
-  // echoing it in the bar read as two competing reads (and as a phantom aggregate over the
-  // ranked list). "Reading the room…" still takes over while a generation is in flight.
-  const openPulse = reacting
-    ? LOADING_COPY
-    : isPersonSim
-      ? '1 reactor ready'
-      : `${rosterCount} ready`;
+  // §3.6 (P1, 2026-07-18): the OPEN/RAIL top bar used to echo READINESS ("N ready") in a flex-1
+  // cell. Re-measurement killed it: in the 322px rail identity ate 78% and the echo clipped to
+  // 39px ("10 read…"); in the wide <xl header sheet it floated in ~56% dead space. The room body
+  // right below already states readiness (idle cast headline) or the score (focus serif), so the
+  // echo was a redundant restatement either way. The COLLAPSED tab keeps its own live `dockPulse`
+  // (the valuable at-rest read); only the open/rail bar dropped the echo.
 
   // The "N new" arrival badge: on the reacting true→false edge (the room just finished
   // reacting), a terracotta pill pops onto the presence and counts up to the roster size —
@@ -765,15 +762,13 @@ export function AudiencePresence({
                 }
           }
         >
-          {/* Switcher bar — TOP of the card (identity + readiness + collapse). */}
+          {/* Switcher bar — TOP of the card (identity + collapse). The readiness echo is gone
+              (§3.6): the room body below owns readiness/score, and the bar's flex-1 cell either
+              clipped it (rail) or floated it in dead space (header). A spacer holds the arrival
+              badge + collapse to the right edge. */}
           <div className="flex shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-3 py-2.5">
             {identity}
-            <span
-              data-testid="audience-pulse"
-              className="min-w-0 flex-1 truncate text-[13px] font-medium text-[var(--color-foreground-secondary)]"
-            >
-              {openPulse}
-            </span>
+            <div className="min-w-0 flex-1" />
             {arrivalBadge}
             {/* Collapse — bloom presentations only. The rail never dismisses (§2), so no chevron.
                 'thread' blooms up ⇒ collapse points down; 'header' blooms down ⇒ collapse up. */}

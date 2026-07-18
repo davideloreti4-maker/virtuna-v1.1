@@ -664,6 +664,35 @@ describe("AudiencePresence — variant='header' (mobile, expands downward)", () 
   });
 });
 
+// ── §3.6 — the OPEN/RAIL switcher bar drops the redundant readiness echo ──
+// P1 re-measurement (2026-07-18): "N ready" sat in a flex-1 cell in the switcher bar. In the
+// 322px rail identity ate 78% and the pulse was CLIPPED to 39px ("10 read…"); in the wide <xl
+// header sheet the same pulse floated in ~56% dead space. The room body right below already
+// states readiness (idle cast headline) or the score (focus serif), so the bar echo is dropped.
+// Scoped to the OPEN/RAIL bar only — the COLLAPSED tab keeps its live at-rest pulse.
+describe('AudiencePresence — §3.6 open/rail bar (no redundant readiness echo)', () => {
+  it('rail: the top switcher bar carries NO readiness pulse (the body owns it)', () => {
+    setup({ variant: 'rail', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-rail')).toBeInTheDocument();
+    // The rail has no collapsed state → with the echo gone there is no audience-pulse at all.
+    expect(screen.queryByTestId('audience-pulse')).toBeNull();
+    // Identity stays (the switcher is the bar's reason to exist).
+    expect(screen.getByRole('button', { name: /switch audience/i })).toBeInTheDocument();
+  });
+
+  it('open thread panel: the switcher bar drops the pulse (only the open bar renders when open)', () => {
+    setup({ variant: 'thread', open: true, focus: FOCUS });
+    expect(screen.getByTestId('audience-panel')).toBeInTheDocument();
+    expect(screen.queryByTestId('audience-pulse')).toBeNull();
+  });
+
+  it('collapsed tab keeps its live pulse (the valuable at-rest read is untouched)', () => {
+    // Protective pin: the fix must NOT strip the collapsed-state pulse (the closed-tab read).
+    setup({ variant: 'thread', open: false, focus: FOCUS });
+    expect(screen.getByTestId('audience-pulse').textContent).toMatch(/6 of 10 would stop/i);
+  });
+});
+
 // ── Source guards ──
 describe('AudiencePresence — source guards', () => {
   it('is deterministic: no Math.random / Date.now / new Date in code', () => {
