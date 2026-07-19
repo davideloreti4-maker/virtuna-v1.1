@@ -15,9 +15,9 @@
  * row. General is the fallback, not a managed object — when nothing is pinned, one
  * quiet fact-line below the zones says so.
  *
- * A zone is a matte tone panel (no border); the cards inside carry the 6% border +
- * matte depth and are whole-row clickable. Accent budget: the primary account's
- * liveness dot, nothing else.
+ * A zone is a matte tone panel (no border) and the ONE frame per group; the rows
+ * inside are borderless — hairline-divided, whole-row clickable, hover tint only.
+ * Accent budget: the primary account's liveness dot, nothing else.
  */
 
 import { useMemo } from "react";
@@ -80,11 +80,11 @@ export function timeAgo(iso: string | null): string | null {
 
 function Zone({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl bg-white/[0.02] p-3.5">
-      <p className="mb-2.5 px-1 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted">
+    <section className="rounded-2xl bg-white/[0.02] px-2 pb-2 pt-3">
+      <p className="mb-1.5 px-3.5 font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted">
         {label}
       </p>
-      <div className="flex flex-col gap-2.5">{children}</div>
+      <div className="flex flex-col divide-y divide-white/[0.045]">{children}</div>
     </section>
   );
 }
@@ -112,10 +112,10 @@ function RowShell({ onClick, ariaLabel, selectionMode, selected, children }: Row
         }
       }}
       className={cn(
-        "group flex cursor-pointer items-center gap-4 rounded-xl border border-white/[0.06] bg-surface px-4 py-3.5",
-        "elev-lift hover:border-white/[0.10] hover:bg-white/[0.03]",
+        "group flex cursor-pointer items-center gap-4 rounded-[10px] px-3.5 py-3",
+        "transition-colors duration-150 hover:bg-white/[0.03]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
-        selectionMode && selected && "border-white/[0.14] bg-white/[0.04]",
+        selectionMode && selected && "bg-white/[0.04]",
       )}
     >
       {children}
@@ -157,7 +157,7 @@ function RowActions({
           role="button"
           tabIndex={0}
           aria-label="Build"
-          className="text-xs text-foreground-muted opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          className="pointer-coarse:opacity-100 text-xs text-foreground-muted opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
         >
           Build
         </span>
@@ -169,7 +169,7 @@ function RowActions({
             e.stopPropagation();
             onSetDefault(audience);
           }}
-          className="text-xs text-foreground-muted opacity-0 transition-opacity hover:text-foreground-secondary focus-visible:opacity-100 group-hover:opacity-100"
+          className="pointer-coarse:opacity-100 text-xs text-foreground-muted opacity-0 transition-opacity hover:text-foreground-secondary focus-visible:opacity-100 group-hover:opacity-100"
         >
           Set default
         </button>
@@ -279,12 +279,19 @@ export function AudienceIndex({
                     </span>
                   </p>
                   <p className="mt-0.5 truncate text-[13px] text-foreground-muted">
-                    {[built.needsAction ? built.label : null, synced ? `Synced ${synced}` : null, built.sub && !built.needsAction ? built.sub : null]
+                    {[
+                      built.needsAction ? built.label : null,
+                      built.sub && !built.needsAction ? built.sub : null,
+                      !built.needsAction && getPersonaCount(audience) > 0
+                        ? `${getPersonaCount(audience)} personas`
+                        : null,
+                      synced ? `Synced ${synced}` : null,
+                    ]
                       .filter(Boolean)
                       .join(" · ") || built.label}
                   </p>
                 </div>
-                <div className="hidden w-[132px] shrink-0 sm:block">
+                <div className="hidden w-[116px] shrink-0 sm:block">
                   <AudienceCompositionBar audience={audience} />
                 </div>
                 {!selectionMode && (
@@ -315,24 +322,26 @@ export function AudienceIndex({
                   <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
                     {audience.name}
                   </p>
-                  <p
-                    className={cn(
-                      "mt-0.5 truncate text-[13px]",
-                      built.needsAction
-                        ? "text-[color:var(--color-warning-raw)]"
-                        : "text-foreground-muted",
-                    )}
-                  >
-                    <span>{built.label}</span>
+                  <p className="mt-0.5 truncate text-[13px] text-foreground-muted">
+                    <span
+                      className={cn(
+                        built.needsAction && "text-[color:var(--color-warning-raw)]",
+                      )}
+                    >
+                      {built.label}
+                    </span>
                     {built.sub && (
                       <>
                         {" · "}
                         <span>{built.sub}</span>
                       </>
                     )}
+                    {!built.needsAction && getPersonaCount(audience) > 0 && (
+                      <span>{` · ${getPersonaCount(audience)} personas`}</span>
+                    )}
                   </p>
                 </div>
-                <div className="hidden w-[132px] shrink-0 sm:block">
+                <div className="hidden w-[116px] shrink-0 sm:block">
                   <AudienceCompositionBar audience={audience} />
                 </div>
                 {!selectionMode && (

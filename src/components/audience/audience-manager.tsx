@@ -41,17 +41,19 @@ interface AudienceManagerProps {
 
 function AudienceListSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-surface">
-      {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex animate-pulse items-center gap-4 border-b border-white/[0.06] px-4 py-4 last:border-b-0"
-        >
-          <div className="h-4 w-32 flex-1 rounded bg-white/[0.06]" />
-          <div className="h-3 w-40 rounded bg-white/[0.04]" />
-          <div className="h-[7px] w-32 rounded bg-white/[0.04]" />
-        </div>
-      ))}
+    <div className="rounded-2xl bg-white/[0.02] px-2 pb-2 pt-3">
+      <div className="mb-1.5 px-3.5">
+        <div className="h-2.5 w-16 animate-pulse rounded bg-white/[0.05]" />
+      </div>
+      <div className="flex flex-col divide-y divide-white/[0.045]">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex animate-pulse items-center gap-4 px-3.5 py-4">
+            <div className="h-4 w-32 flex-1 rounded bg-white/[0.06]" />
+            <div className="h-3 w-40 rounded bg-white/[0.04]" />
+            <div className="h-[7px] w-28 rounded bg-white/[0.04]" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -204,8 +206,8 @@ export function AudienceManager({ className, accounts = [] }: AudienceManagerPro
 
   return (
     <div className={cn("relative min-h-full text-foreground", className)}>
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">
-        <header className="mb-5 flex items-start justify-between gap-4">
+      <div className="mx-auto w-full max-w-[880px] px-4 pb-24 pt-6 lg:px-6">
+        <header className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-[19px] font-semibold tracking-[-0.01em] text-foreground lg:text-[22px]">
               Audiences
