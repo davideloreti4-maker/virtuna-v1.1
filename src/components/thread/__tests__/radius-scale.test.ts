@@ -27,7 +27,7 @@ import { join } from 'node:path';
 // pass did the ~26 no-op rewrites (`rounded-[8px]` → `rounded-md`) the earlier, looser
 // rule had deferred, so the allowance for on-scale pixel literals is gone: a pixel
 // radius typed by hand is now drift by definition, even when the value happens to sit
-// on the scale. `rounded-[var(--radius-*)]` stays legal — it IS the token, spelled long
+// on the scale. The `var(--radius-…)` arbitrary spelling stays legal — it IS the token, long-form
 // (needed where a class can't be used, e.g. computed styles).
 // ─────────────────────────────────────────────────────────────────────────────
 
