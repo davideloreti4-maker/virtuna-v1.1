@@ -118,26 +118,36 @@ NOT views÷followers) + creator handle + link. Multiplier badge display-capped
    "Find new outliers" offer pattern (server decides availability, user
    authorizes — PR #322/#323).
 
-## 6. Integration fork (the one open architecture decision)
+## 6. Integration fork — ✅ DECIDED: native tool loop (spike passed 2026-07-19)
 
 Chat today routes-and-reloads (`skill-capabilities.ts` action protocol). Tools
 need results to come **back mid-turn**.
 
-- **Target: native tool loop.** Agent calls tool → gets rows → streams answer +
-  `references` block. Requires verifying the chat model's tool-calling on
-  DashScope (`qwen3.7-plus` supports OpenAI-style `tools`; the engine has never
-  used it — `docs/MODEL-POLICY.md`, engine is single-shot `json_object` everywhere).
-- **Fallback v1: detect-and-prefetch.** Intent classifier → run retrieval →
-  inject into the single generation call. Ships without tool-calling; no
-  multi-hop refinement.
+**`scripts/spike-tool-loop.ts` ran three arms against the LIVE corpus
+(qwen3.7-plus, temp 0, seed 7, real embed → real RPC): all PASS.**
 
-Decision rule: spike the tool loop first (one throwaway script proving
-qwen3.7-plus round-trips a `tools` call); if it holds, skip the fallback.
+- **A — round-trip:** emitted valid `tool_calls`, and refined unprompted
+  (called twice: "fitness" then "workout") — multi-hop that prefetch cannot do.
+  Used the niche enum + platform filter correctly. Final answer enforced
+  warrant-vs-claim from the system prompt alone: "PROVEN (≥3×)" vs "one
+  example — no baseline, not proof", citing only returned rows.
+- **B — honest degrade:** on an absurd topic the model refused to fabricate
+  proof and labeled its craft advice ungrounded. See the §8 finding this
+  exposed — the save came from model judgment, which the contract must not
+  rely on.
+- **C — streaming:** `delta.tool_calls` assembled cleanly (371 chunks, FOUR
+  parallel tool calls in one round), streamed final composition. The chat
+  integration path is real.
+
+Latency: 24–52s per full loop (2–4 sequential tool executions, each embed +
+RPC). Fine under the chat progress spine; parallelize tool executions server-side.
+
+The detect-and-prefetch fallback is **discarded**.
 
 ## 7. Sequencing
 
-1. ✅ Shell guard migration + niche backfill (this branch)
-2. Tool-loop spike (throwaway script; decides §6)
+1. ✅ Shell guard migration + niche backfill (PR #335)
+2. ✅ Tool-loop spike (`scripts/spike-tool-loop.ts`) — PASS ×3, §6 decided
 3. RPC migration (new returned columns + filter params) + `SharedMatchRow` widening
 4. `search_examples` + `references` block, E2E on one intent ("show me examples of…")
 5. `corpus_stats` + insight card
@@ -147,7 +157,19 @@ qwen3.7-plus round-trips a `tools` call); if it holds, skip the fallback.
 
 ## 8. Open questions
 
-- Chat model tool-calling reliability on DashScope (spike, §6).
+- ~~Chat model tool-calling reliability on DashScope~~ — ✅ verified, §6.
+- 🔴 **Spike finding — `grounded` must be COMPUTED, not inferred.** Cosine
+  always returns something: arm B got 5 tangential rows at ~0.5 similarity and
+  the naive `grounded = examples.length > 0` said true; only the model's
+  judgment kept the answer honest. `search_examples` v1 must enforce a
+  relevance floor at the tool boundary (reuse the skills' `minSimilarity`
+  machinery, `retrieve.ts:149`) and return `grounded:false` below it.
+- **Spike finding — the model is only as honest as the interface is
+  expressive.** Arm C asked for greenscreen examples; the corpus HAS them
+  (`editing_style`: visual-greenscreen 60 + notes-article-greenscreen 17) but
+  the spike tool didn't expose that facet, so the model reported "no
+  greenscreen tag". The RPC facet migration (§7 step 3) is what makes facet
+  questions answerable.
 - Facet filters at RPC level vs TS post-filter: RPC-level shrinks the vector
   candidate pool under a filter (good: no "20 results, 19 inadmissible" holes);
   TS-level avoids a migration. Default: RPC-level for the 3 high-selectivity
