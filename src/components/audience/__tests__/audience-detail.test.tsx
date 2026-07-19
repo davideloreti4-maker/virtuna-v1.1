@@ -13,10 +13,10 @@
  */
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import type { Audience } from "@/lib/audience/audience-types";
 import { AudienceDetail, type AccountView, type SourceData } from "../audience-detail";
-import { PopulationField } from "../population-field";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
@@ -198,7 +198,8 @@ describe("account-only (no audience behind it)", () => {
     expect(screen.getByText("24.5M")).toBeInTheDocument();
     // No usage card (nothing to pin), no population field.
     expect(screen.queryByText("Usage")).toBeNull();
-    expect(screen.queryByTestId("population-field")).toBeNull();
+    // No room is claimed for an account with no audience behind it.
+    expect(screen.queryByText(/The room/)).toBeNull();
     expect(screen.getByRole("button", { name: "Disconnect @zachking" })).toBeInTheDocument();
   });
 });
@@ -240,31 +241,140 @@ describe("the empty shell", () => {
     );
     expect(screen.getByText("Nothing yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Build this audience" })).toBeInTheDocument();
-    expect(screen.queryByTestId("population-field")).toBeNull();
+    expect(screen.queryByText(/The room/)).toBeNull();
   });
 });
 
-// ─── PopulationField determinism ─────────────────────────────────────────────
+// ─── The rework's two structural locks (2026-07-20) ──────────────────────────
+//
+// PopulationField's determinism suite died with the component — the 1,000-dot cloud
+// was replaced by per-persona share bars. What replaces it here are locks on the two
+// things the owner actually decided, both of which the OLD code fails:
+// source-before-room (it was last), and no fold (it hid everything past six).
 
-describe("PopulationField", () => {
-  it("is deterministic — same shares + seed render byte-identical dots", () => {
-    const shares = [0.4, 0.3, 0.2, 0.1];
-    const a = render(
-      <PopulationField shares={shares} provenance="Generated from account data" />,
+describe("the scrape leads the page", () => {
+  it("renders SOURCE before THE ROOM in document order", () => {
+    const { container } = render(
+      <AudienceDetail
+        audience={baseAudience()}
+        account={account()}
+        {...rest}
+        source={source()}
+      />,
     );
-    const first = a.container.querySelector("svg")!.innerHTML;
-    a.unmount();
-    const b = render(
-      <PopulationField shares={shares} provenance="Generated from account data" />,
-    );
-    expect(b.container.querySelector("svg")!.innerHTML).toBe(first);
+    const text = container.textContent ?? "";
+    const sourceAt = text.indexOf("Source");
+    const roomAt = text.indexOf("The room");
+    expect(sourceAt).toBeGreaterThanOrEqual(0);
+    expect(roomAt).toBeGreaterThanOrEqual(0);
+    // You earn the room by showing what was read first.
+    expect(sourceAt).toBeLessThan(roomAt);
   });
 
-  it("renders ~1,000 dots split by share", () => {
-    const { container } = render(
-      <PopulationField shares={[0.5, 0.5]} provenance="Maven's baseline" />,
+  it("states the videos the scrape read, not the posts we happen to hold", () => {
+    // listAllPosts caps the tiles; videos_analyzed is the stored provenance fact.
+    const withProvenance = baseAudience({
+      signature: {
+        creator_persona: {
+          content_description: "",
+          context: "",
+          writing_style_sample: "",
+          format_signature: "",
+        },
+        audience: {
+          follower_tier: null,
+          maturity: "growing",
+          temperature_mix: { cold: 0.3, warm: 0.5, hot: 0.2 },
+          interest_tags: [],
+          what_resonates: "",
+          what_falls_flat: "",
+          persona_weights: { fyp: 0.65, niche: 0.2, loyalist: 0.1, cross_niche: 0.05 },
+          personas: [],
+        },
+        summary: "",
+        provenance: {
+          handle: "zachking",
+          scraped_at: "2026-07-01T00:00:00Z",
+          videos_analyzed: 84,
+          videos_watched: 8,
+          sub_coverage: "6/8",
+        },
+      },
+    });
+    render(
+      <AudienceDetail
+        audience={withProvenance}
+        account={account()}
+        {...rest}
+        source={source()}
+      />,
     );
-    const dots = container.querySelectorAll("circle");
-    expect(dots.length).toBe(1000);
+    // Two post tiles are held; the scrape read 84. The page must say 84.
+    expect(screen.getByText(/84 videos read/)).toBeInTheDocument();
+    expect(screen.queryByText(/2 videos read/)).toBeNull();
+  });
+});
+
+describe("the roster is ranked by share", () => {
+  const unordered = baseAudience({
+    personas: [
+      {
+        archetype: "tough_crowd",
+        label: "Smallest",
+        repaint: "The smallest slice of the room.",
+        temperature: "cold",
+        disposition: "skeptic",
+        share: 0.2,
+      },
+      {
+        archetype: "lurker",
+        label: "Biggest",
+        repaint: "The biggest slice of the room.",
+        temperature: "warm",
+        disposition: "lurker",
+        share: 0.8,
+      },
+    ],
+  });
+
+  it("renders the largest share first, whatever order the column is in", () => {
+    const { container } = render(
+      <AudienceDetail audience={unordered} account={account()} {...rest} source={source()} />,
+    );
+    const text = container.textContent ?? "";
+    expect(text.indexOf("Biggest")).toBeLessThan(text.indexOf("Smallest"));
+  });
+
+  it("Edit still targets the right persona after the display sort", async () => {
+    // The regression this guards: sorting rows for display while indexing into the
+    // UNSORTED `personas` column. Re-deriving editIndex after the sort opens the
+    // dialog on the wrong person — silently, and with plausible-looking content.
+    const user = userEvent.setup();
+    render(
+      <AudienceDetail audience={unordered} account={account()} {...rest} source={source()} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit Biggest" }));
+    expect(screen.getByDisplayValue("The biggest slice of the room.")).toBeInTheDocument();
+    expect(screen.queryByDisplayValue("The smallest slice of the room.")).toBeNull();
+  });
+});
+
+describe("the roster does not hide itself", () => {
+  it("renders every persona — no fold, no 'N more…'", () => {
+    const ten = baseAudience({
+      personas: Array.from({ length: 10 }, (_, i) => ({
+        archetype: "lurker" as const,
+        label: `Persona ${i}`,
+        repaint: `Description ${i}`,
+        temperature: "warm" as const,
+        disposition: "lurker" as const,
+        share: 0.1,
+      })),
+    });
+    render(<AudienceDetail audience={ten} account={account()} {...rest} source={source()} />);
+    for (let i = 0; i < 10; i++) {
+      expect(screen.getByText(`Persona ${i}`)).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/more…/)).toBeNull();
   });
 });

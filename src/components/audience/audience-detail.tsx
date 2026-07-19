@@ -18,6 +18,19 @@
  * Design rules (owner-locked): facts only, no narration; mono microcopy for zone
  * labels; tone-zones not boxes; the accent budget is the primary account's
  * liveness dot and nothing else.
+ *
+ * REWORK 2026-07-20 (direction A, owner-locked). The page's hierarchy was inverted:
+ * the largest element was a 1,000-dot cloud that read as static, while the actual proof
+ * — 86.2M followers, 1.3B likes, the real scraped captions — sat in the smallest type at
+ * the very bottom. Two owner calls fixed it:
+ *  - SOURCE LEADS. The scraped profile and its videos are the first thing on the page.
+ *    You earn the room by showing what was read before describing what was inferred.
+ *  - `PopulationField` is DELETED. Share is now carried by a proportional bar on each
+ *    persona row, where it can actually be compared — the cloud rendered ten clusters
+ *    that nobody could count. The 1,000-viewer claim survives as the room's stated
+ *    caption (it is the simulated population size, not a decoration).
+ * The six-persona fold is gone with it: a roster you can scan in one column does not
+ * need to hide 40% of itself.
  */
 
 import { useMemo, useState } from "react";
@@ -30,10 +43,9 @@ import {
   resolvePersonaName,
 } from "@/lib/audience/persona-names";
 import { formatCount } from "@/lib/account-metrics/account-metrics";
-import { PersonaEditForm, archetypeDerivedName } from "./persona-edit-form";
-import { PopulationField } from "./population-field";
+import { PersonaEditForm } from "./persona-edit-form";
 import { CalibrationFlow } from "./calibration-flow";
-import { isPersonaGrounded } from "./audience-display";
+import { archetypeDerivedName, isPersonaGrounded } from "./audience-display";
 import { timeAgo } from "./audience-index";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -94,8 +106,9 @@ const ZONE = "rounded-2xl bg-white/[0.02]";
 const ZONE_LABEL =
   "font-mono text-[10px] uppercase tracking-[0.12em] text-foreground-muted";
 
-/** Rosters longer than this fold behind one quiet "N more…" row. */
-const PERSONA_FOLD = 6;
+/** The simulated population the shares divide — the same constant the deleted
+ *  PopulationField rendered as dots, now stated instead of drawn. */
+const POPULATION = 1000;
 
 function LivenessDot() {
   return (
@@ -150,6 +163,17 @@ interface RosterRow {
   editIndex: number | null;
 }
 
+/**
+ * Biggest share first. DB order is arbitrary, and once share is drawn as a bar an
+ * arbitrary order makes the column jump instead of descend — the shape of the room is
+ * only readable when the bars are sorted. Also keeps the detail page's ranking identical
+ * to the list's "top personas" line (`getDisplayRoster` sorts the same way).
+ * Array.prototype.sort is stable, so General's ten equal shares keep their cast order.
+ */
+function byShareDesc(rows: RosterRow[]): RosterRow[] {
+  return [...rows].sort((a, b) => b.sharePct - a.sharePct);
+}
+
 function buildRoster(audience: Audience): RosterRow[] {
   if (audience.is_general) {
     return GENERAL_ROSTER.map((archetype) => ({
@@ -173,26 +197,32 @@ function buildRoster(audience: Audience): RosterRow[] {
   // The editable `personas` column is the display source when present (edits must
   // show); the signature roster is the legacy fallback.
   if (audience.personas.length > 0) {
-    return audience.personas.map((p: CalibratedPersona, i) => ({
-      key: `${p.archetype}-${i}`,
-      name: resolvePersonaName(p.archetype, p.label) ?? archetypeDerivedName(p.archetype),
-      desc: p.repaint,
-      sharePct: Math.round(p.share * 100),
-      disposition: p.disposition,
-      receipt: receipts.get(p.archetype) ?? null,
-      editIndex: i,
-    }));
+    return byShareDesc(
+      audience.personas.map((p: CalibratedPersona, i) => ({
+        key: `${p.archetype}-${i}`,
+        name: resolvePersonaName(p.archetype, p.label) ?? archetypeDerivedName(p.archetype),
+        desc: p.repaint,
+        sharePct: Math.round(p.share * 100),
+        disposition: p.disposition,
+        receipt: receipts.get(p.archetype) ?? null,
+        // Index into the UNSORTED `personas` column — the edit target must survive
+        // display sorting, so it is captured before the sort, never re-derived after.
+        editIndex: i,
+      })),
+    );
   }
 
-  return (audience.signature?.audience.personas ?? []).map((p, i) => ({
-    key: `${p.archetype}-${i}`,
-    name: resolvePersonaName(p.archetype) ?? archetypeDerivedName(p.archetype),
-    desc: p.reaction_frame,
-    sharePct: Math.round(p.share * 100),
-    disposition: p.disposition,
-    receipt: isPersonaGrounded(p) ? p.evidence.trim() : null,
-    editIndex: null,
-  }));
+  return byShareDesc(
+    (audience.signature?.audience.personas ?? []).map((p, i) => ({
+      key: `${p.archetype}-${i}`,
+      name: resolvePersonaName(p.archetype) ?? archetypeDerivedName(p.archetype),
+      desc: p.reaction_frame,
+      sharePct: Math.round(p.share * 100),
+      disposition: p.disposition,
+      receipt: isPersonaGrounded(p) ? p.evidence.trim() : null,
+      editIndex: null,
+    })),
+  );
 }
 
 // ─── The component ────────────────────────────────────────────────────────────
@@ -209,7 +239,6 @@ export function AudienceDetail({
   const [audience, setAudience] = useState<Audience | null>(audienceProp);
   const [defaultAudienceId, setDefaultAudienceId] = useState(defaultProp);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
-  const [showAllPersonas, setShowAllPersonas] = useState(false);
   const [dangerOpen, setDangerOpen] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [recalibrateOpen, setRecalibrateOpen] = useState(false);
@@ -218,6 +247,12 @@ export function AudienceDetail({
   const editable = Boolean(audience && !audience.is_general && !audience.is_preset);
   const roster = useMemo(() => (audience ? buildRoster(audience) : []), [audience]);
   const synced = account ? timeAgo(account.last_synced_at) : null;
+  /** How many videos the scrape actually read — a stored provenance fact, unlike the
+   *  post tiles, whose count is capped by the query that fetched them. */
+  const videosRead =
+    audience?.signature?.provenance && audience.signature.provenance.videos_analyzed > 0
+      ? audience.signature.provenance.videos_analyzed
+      : null;
 
   const isDefault = audience
     ? audience.is_general
@@ -308,6 +343,22 @@ export function AudienceDetail({
   // ── Empty shell (uncalibrated audience, nothing modelled) ──────────────────
   const emptyRoom = Boolean(audience) && roster.length === 0;
 
+  // Which source block leads the page. Hoisted out of the JSX because the blocks
+  // below it need to know whether anything precedes them to space themselves.
+  const scrapeSource = Boolean(
+    source &&
+      (source.posts.length > 0 || source.figures.length > 0 || source.pillars.length > 0),
+  );
+  const wordsSource = Boolean(
+    audience &&
+      !account &&
+      !audience.is_general &&
+      !audience.is_preset &&
+      ((audience.calibration?.source === "description" && audience.goal_label) ||
+        (audience.custom_context ?? []).length > 0),
+  );
+  const hasSource = scrapeSource || wordsSource;
+
   return (
     <div className={cn("flex flex-col", className)}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -331,188 +382,86 @@ export function AudienceDetail({
       <div className="mt-7 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_212px] lg:gap-12 lg:items-start">
         {/* ── Main column ──────────────────────────────────────────────────── */}
         <div className="min-w-0">
-          {/* Population hero — who is in the room at rest. */}
-          {audience && roster.length > 0 && (
-            <section className={cn(ZONE, "px-5 pb-5 pt-6")}>
-              <PopulationField
-                shares={roster.map((r) => r.sharePct / 100)}
-                provenance={heroProvenance}
-              />
-            </section>
-          )}
+          {/* SOURCE LEADS — proof of scrape before any inference (owner-locked).
+              Figures are the profile; the tiles are the posts we actually stored. */}
+          {scrapeSource && source && (
+              <section className={cn(ZONE, "px-5 pb-5 pt-[18px]")}>
+                <p className={cn(ZONE_LABEL, "mb-4")}>Source</p>
 
-          {/* The empty shell states its one fact — the only state that earns colour. */}
-          {emptyRoom && (
-            <section className={cn(ZONE, "px-5 py-6")}>
-              <p className="text-[13.5px] text-[color:var(--color-warning-raw)]">Nothing yet</p>
-              <p className="mt-1 text-[13px] text-foreground-muted">
-                Read your @handle to fill it.
-              </p>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => router.push("/audience/new")}
-                className="mt-4"
-              >
-                Build this audience
-              </Button>
-            </section>
-          )}
+                {source.figures.length > 0 && (
+                  <div className="flex flex-wrap items-baseline gap-x-10 gap-y-4">
+                    {source.figures.map((f) => (
+                      <div key={f.label}>
+                        <div className="text-[26px] font-semibold tracking-[-0.02em] text-foreground tabular-nums">
+                          {f.value}
+                        </div>
+                        <div className={cn(ZONE_LABEL, "mt-1 tracking-[0.12em]")}>{f.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-          {/* Analytics-only account — no room behind it. */}
-          {!audience && account && (
-            <section className={cn(ZONE, "px-5 py-6")}>
-              <p className="text-[13.5px] text-foreground">No audience behind this account</p>
-              <p className="mt-1 text-[13px] text-foreground-muted">
-                {account.platform === "tiktok"
-                  ? "Build one from this handle."
-                  : "Audience simulation reads TikTok accounts. This one syncs analytics."}
-              </p>
-              {account.platform === "tiktok" && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => router.push("/audience/new")}
-                  className="mt-4"
-                >
-                  Build audience
-                </Button>
-              )}
-            </section>
-          )}
-
-          {/* Personas — name · description · share, receipts iff the scrape produced one.
-              Long rosters fold after six; the rest is one quiet fact-row away. */}
-          {roster.length > 0 && (
-            <div className="mt-2.5 px-1">
-              {(showAllPersonas ? roster : roster.slice(0, PERSONA_FOLD)).map((row) => (
-                <div
-                  key={row.key}
-                  className="group flex items-baseline gap-4 border-t border-white/[0.05] py-4 first:border-t-0"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold tracking-[-0.005em] text-foreground">
-                      {row.name}
+                {source.posts.length > 0 && (
+                  <>
+                    {/* "RECENT POSTS", never "N videos read": listAllPosts caps what we
+                        hold, so a count here would understate a bigger scrape. The read
+                        count is a provenance fact and is stated as one, below. */}
+                    <p className={cn(ZONE_LABEL, "mb-2.5 mt-6")}>
+                      Recent posts
+                      {videosRead ? ` · ${videosRead} videos read` : ""}
                     </p>
-                    {row.desc && (
-                      <p className="mt-[3px] text-[13px] leading-[1.5] text-foreground-muted">
-                        {row.desc}
-                      </p>
-                    )}
-                    {row.receipt && (
-                      <p className="mt-1.5 border-l border-white/[0.12] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
-                        <span className="text-foreground-secondary">Evidence · </span>
-                        {row.receipt}
-                      </p>
-                    )}
-                  </div>
-                  <div className="w-[88px] shrink-0 text-right">
-                    <span className="text-[13px] tabular-nums text-foreground-secondary">
-                      {row.sharePct}%
-                    </span>
-                    {row.disposition && (
-                      <span className="mt-0.5 block font-mono text-[9.5px] uppercase tracking-[0.08em] text-foreground-muted">
-                        {row.disposition}
-                      </span>
-                    )}
-                  </div>
-                  {editable && row.editIndex !== null && (
-                    <button
-                      type="button"
-                      onClick={() => setEditingIndex(row.editIndex)}
-                      aria-label={`Edit ${row.name}`}
-                      className="pointer-coarse:opacity-100 shrink-0 self-center rounded-md px-2 py-1 text-[12px] text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 group-hover:opacity-100"
-                    >
-                      Edit
-                    </button>
-                  )}
-                </div>
-              ))}
-              {!showAllPersonas && roster.length > PERSONA_FOLD && (
-                <button
-                  type="button"
-                  onClick={() => setShowAllPersonas(true)}
-                  className="w-full border-t border-white/[0.05] py-3 text-left text-[12.5px] text-foreground-muted transition-colors hover:text-foreground-secondary"
-                >
-                  {roster.length - PERSONA_FOLD} more…
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* SOURCE — proof of scrape: the videos and figures we actually hold. */}
-          {source && (source.posts.length > 0 || source.figures.length > 0 || source.pillars.length > 0) && (
-            <section className={cn(ZONE, "mt-6 px-5 pb-5 pt-[18px]")}>
-              <p className={cn(ZONE_LABEL, "mb-4")}>Source</p>
-
-              {source.posts.length > 0 && (
-                <div
-                  className="flex gap-2 overflow-x-auto pb-1"
-                  style={{
-                    maskImage:
-                      "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
-                    WebkitMaskImage:
-                      "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
-                  }}
-                >
-                  {source.posts.map((post) => (
                     <div
-                      key={post.id}
-                      className="flex h-[118px] w-[72px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-white/[0.06] bg-[linear-gradient(165deg,#33322f_0%,#2a2927_60%,#262523_100%)] p-2"
+                      className="flex gap-2 overflow-x-auto pb-1"
+                      style={{
+                        maskImage:
+                          "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
+                        WebkitMaskImage:
+                          "linear-gradient(90deg, #000 0%, #000 94%, transparent 100%)",
+                      }}
                     >
-                      <p className="line-clamp-4 text-[9px] leading-[1.4] text-foreground-muted">
-                        {post.caption}
-                      </p>
-                      <span className="font-mono text-[9.5px] tabular-nums text-foreground-secondary">
-                        {formatCount(post.views)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {source.figures.length > 0 && (
-                <div className="mt-6 flex flex-wrap items-baseline gap-x-10 gap-y-4">
-                  {source.figures.map((f) => (
-                    <div key={f.label}>
-                      <div className="text-[23px] font-semibold tracking-[-0.02em] text-foreground tabular-nums">
-                        {f.value}
-                      </div>
-                      <div className={cn(ZONE_LABEL, "mt-1 tracking-[0.12em]")}>{f.label}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {source.pillars.length > 0 && (
-                <div className="mt-6">
-                  {source.pillars.map((p) => (
-                    <div key={p.name} className="mt-3 first:mt-0">
-                      <div className="mb-[5px] flex justify-between text-[12.5px]">
-                        <span className="text-foreground-secondary">{p.name}</span>
-                        <span className="tabular-nums text-foreground-muted">
-                          {Math.round(p.share * 100)}%
-                        </span>
-                      </div>
-                      <div className="h-[3px] rounded-sm bg-white/[0.07]">
+                      {source.posts.map((post) => (
                         <div
-                          className="h-full rounded-sm bg-[color:var(--color-foreground-secondary)] opacity-[0.65]"
-                          style={{ width: `${Math.round(p.share * 100)}%` }}
-                        />
-                      </div>
+                          key={post.id}
+                          className="flex h-[150px] w-[94px] shrink-0 flex-col justify-between overflow-hidden rounded-lg border border-white/[0.06] bg-[linear-gradient(165deg,#33322f_0%,#2a2927_60%,#262523_100%)] p-2.5"
+                        >
+                          <p className="line-clamp-6 text-[10px] leading-[1.45] text-foreground-muted">
+                            {post.caption}
+                          </p>
+                          <span className="font-mono text-[10px] tabular-nums text-foreground-secondary">
+                            {formatCount(post.views)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
+                  </>
+                )}
 
-          {/* A simulated room's source is its words — the description + your notes. */}
-          {audience && !account && !audience.is_general && !audience.is_preset && (
-            (audience.calibration?.source === "description" && audience.goal_label) ||
-            (audience.custom_context ?? []).length > 0
-          ) && (
-            <section className={cn(ZONE, "mt-6 px-5 pb-5 pt-[18px]")}>
+                {source.pillars.length > 0 && (
+                  <div className="mt-6">
+                    {source.pillars.map((p) => (
+                      <div key={p.name} className="mt-3 first:mt-0">
+                        <div className="mb-[5px] flex justify-between text-[12.5px]">
+                          <span className="text-foreground-secondary">{p.name}</span>
+                          <span className="tabular-nums text-foreground-muted">
+                            {Math.round(p.share * 100)}%
+                          </span>
+                        </div>
+                        <div className="h-[3px] rounded-sm bg-white/[0.07]">
+                          <div
+                            className="h-full rounded-sm bg-[color:var(--color-foreground-secondary)] opacity-[0.65]"
+                            style={{ width: `${Math.round(p.share * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+          {/* A simulated room's source is its words — same slot, same precedence. */}
+          {wordsSource && audience && (
+            <section className={cn(ZONE, "px-5 pb-5 pt-[18px]")}>
               <p className={cn(ZONE_LABEL, "mb-3")}>Source</p>
               {audience.calibration?.source === "description" && audience.goal_label && (
                 <p className="text-[13.5px] leading-relaxed text-foreground-secondary">
@@ -532,6 +481,116 @@ export function AudienceDetail({
                 </ul>
               )}
             </section>
+          )}
+
+          {/* The empty shell states its one fact — the only state that earns colour. */}
+          {emptyRoom && (
+            <section className={cn(ZONE, "px-5 py-6", hasSource && "mt-6")}>
+              <p className="text-[13.5px] text-[color:var(--color-warning-raw)]">Nothing yet</p>
+              <p className="mt-1 text-[13px] text-foreground-muted">
+                Read your @handle to fill it.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => router.push("/audience/new")}
+                className="mt-4"
+              >
+                Build this audience
+              </Button>
+            </section>
+          )}
+
+          {/* Analytics-only account — no room behind it. */}
+          {!audience && account && (
+            <section className={cn(ZONE, "px-5 py-6", hasSource && "mt-6")}>
+              <p className="text-[13.5px] text-foreground">No audience behind this account</p>
+              <p className="mt-1 text-[13px] text-foreground-muted">
+                {account.platform === "tiktok"
+                  ? "Build one from this handle."
+                  : "Audience simulation reads TikTok accounts. This one syncs analytics."}
+              </p>
+              {account.platform === "tiktok" && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => router.push("/audience/new")}
+                  className="mt-4"
+                >
+                  Build audience
+                </Button>
+              )}
+            </section>
+          )}
+
+          {/* THE ROOM — who the scrape above turned into. Every persona, no fold:
+              share is a proportional bar so the shape of the room is seen, not read.
+              The bar is absolute (12% of the track = 12% of the room), which honestly
+              shows an evenly-split room as evenly split; scaling to the max would
+              manufacture a hierarchy the data doesn't have. */}
+          {roster.length > 0 && (
+            <div className={cn(hasSource && "mt-9")}>
+              <div className="mb-3.5 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <p className={ZONE_LABEL}>
+                  The room · {POPULATION.toLocaleString("en-US")} viewers ·{" "}
+                  {roster.length} personas
+                </p>
+                <p className={cn(ZONE_LABEL, "opacity-60")}>{heroProvenance}</p>
+              </div>
+
+              {roster.map((row) => (
+                <div
+                  key={row.key}
+                  className="group border-t border-white/[0.05] py-4 first:border-t-0"
+                >
+                  <div className="flex items-baseline gap-3">
+                    <p className="min-w-0 flex-1 truncate text-[14px] font-semibold tracking-[-0.005em] text-foreground">
+                      {row.name}
+                    </p>
+                    {row.disposition && (
+                      <span className="shrink-0 font-mono text-[9.5px] uppercase tracking-[0.08em] text-foreground-muted">
+                        {row.disposition}
+                      </span>
+                    )}
+                    <span className="w-[36px] shrink-0 text-right text-[13px] tabular-nums text-foreground-secondary">
+                      {row.sharePct}%
+                    </span>
+                    {editable && row.editIndex !== null && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingIndex(row.editIndex)}
+                        aria-label={`Edit ${row.name}`}
+                        className="pointer-coarse:opacity-100 shrink-0 rounded-md px-2 py-1 text-[12px] text-foreground-muted opacity-0 transition-opacity hover:bg-white/[0.06] hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10 group-hover:opacity-100"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+
+                  {/* The empty track has to be visible or the fill has nothing to be
+                      measured against — at 7–15% the bars are short, and a bar with no
+                      baseline reads as an underline rather than a quantity. */}
+                  <div className="mt-2 h-[4px] rounded-sm bg-white/[0.06]" aria-hidden="true">
+                    <div
+                      className="h-full rounded-sm bg-[color:var(--color-foreground-secondary)] opacity-[0.7]"
+                      style={{ width: `${Math.max(row.sharePct, 1)}%` }}
+                    />
+                  </div>
+
+                  {row.desc && (
+                    <p className="mt-2.5 text-[13px] leading-[1.5] text-foreground-muted">
+                      {row.desc}
+                    </p>
+                  )}
+                  {row.receipt && (
+                    <p className="mt-1.5 border-l border-white/[0.12] pl-2.5 text-[11.5px] leading-relaxed text-foreground-muted">
+                      <span className="text-foreground-secondary">Evidence · </span>
+                      {row.receipt}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
 
           {error && <p className="mt-4 text-[12.5px] text-error">{error}</p>}

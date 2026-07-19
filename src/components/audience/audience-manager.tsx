@@ -31,6 +31,8 @@ export interface AccountOption {
   platform: "tiktok" | "instagram" | "youtube";
   is_primary: boolean;
   last_synced_at: string | null;
+  /** Formatted followers from the latest snapshot ("86.2M"); null when we hold none. */
+  followers?: string | null;
 }
 
 interface AudienceManagerProps {
