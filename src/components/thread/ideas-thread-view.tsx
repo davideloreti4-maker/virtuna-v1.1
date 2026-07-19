@@ -38,6 +38,7 @@ import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-she
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
+import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { IdeaCardBlock } from '@/lib/tools/blocks';
 
@@ -123,7 +124,7 @@ export function IdeasThreadView({
   return (
     <PlatformContext.Provider value={normalizedPlatform}>
       <ThreadShell userTurn={userTurn}>
-        {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
+        {error && !isStreaming && <SkillRunError onRetry={onRetry} retryLabel="Retry the ideas run" />}
 
         {hasAssistantContent && (
           <ThreadAssistantTurn>
@@ -177,43 +178,3 @@ export function IdeasThreadView({
   );
 }
 
-// ── SkillRunError ─────────────────────────────────────────────────────────────
-
-/**
- * Skill-run error block with tap-to-retry (W2 — UI-SPEC §Copywriting).
- * Renders ONLY when error is truthy and the stream has ended.
- * The retry button calls onRetry ONLY on explicit tap — never on render.
- *
- * This same component shape is reused by the refine error path (Plan 05).
- */
-interface SkillRunErrorProps {
-  onRetry?: () => void;
-}
-
-function SkillRunError({ onRetry }: SkillRunErrorProps) {
-  return (
-    <div
-      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1"
-      role="alert"
-      aria-live="assertive"
-    >
-      <p className="text-sm font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
-        Couldn&rsquo;t finish that run.
-      </p>
-      <p className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
-        The generation or SIM-1 pass dropped out. Tap to retry — nothing was charged.
-      </p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-          style={{ color: 'var(--color-cream-secondary)' }}
-          aria-label="Retry the ideas run"
-        >
-          Retry →
-        </button>
-      )}
-    </div>
-  );
-}

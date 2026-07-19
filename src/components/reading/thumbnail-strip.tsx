@@ -48,7 +48,7 @@ export function ThumbnailStrip({ heatmap }: ThumbnailStripProps) {
   if (!src || failed) return null;
 
   return (
-    <div className="w-full overflow-hidden rounded-[12px] border border-[--color-border]">
+    <div className="w-full overflow-hidden rounded-lg border border-[--color-border]">
       {/* signed, dynamic keyframe URL — plain <img>, decorative alt (T-02-03). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

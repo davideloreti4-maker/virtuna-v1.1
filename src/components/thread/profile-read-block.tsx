@@ -36,6 +36,7 @@ import type { ProfileReadBlock } from '@/lib/tools/blocks';
 import { handoffsFor } from '@/lib/tools/chain-handoff';
 import { TrustBadge } from '@/components/audience/trust-badge';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CardPrimaryAction } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 import { stripWrappingQuotes } from '@/lib/utils';
 
@@ -283,16 +284,14 @@ export function ProfileReadBlockRenderer({ block }: ProfileReadBlockRendererProp
               aria-label="Drafted message to simulate"
             />
             <div className="flex items-center gap-3.5">
-              <button
-                type="button"
+              <CardPrimaryAction
                 onClick={() => void handleSimulate()}
                 disabled={simulating || draftedMessage.trim().length === 0}
-                className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
                 aria-label={ctaLabel}
                 title={ctaLabel}
               >
                 {simulating ? 'Simulating…' : 'Test this message →'}
-              </button>
+              </CardPrimaryAction>
               <SaveAffordance
                 className="ml-auto"
                 item_type="read"

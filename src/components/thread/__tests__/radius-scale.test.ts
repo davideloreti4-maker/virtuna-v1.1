@@ -23,12 +23,12 @@ import { join } from 'node:path';
 // surface, still unaudited and next in line to be redesigned — locking the scale
 // BEFORE that pass is the whole point of a guard).
 //
-// WHAT IT BANS: an arbitrary radius whose value is off the scale. It deliberately
-// does NOT ban the arbitrary *syntax* itself: `rounded-[8px]` renders identically
-// to `rounded-md`, so banning it would mean ~26 no-op rewrites across cards that
-// are about to be redesigned anyway. The drift that hurt was off-scale CORNERS,
-// and that is exactly what this fires on. (Tightening the rule to "tokens only"
-// later is a one-line change: drop ON_SCALE_PX from isAllowedRadius.)
+// WHAT IT BANS: any arbitrary pixel radius — tokens only. The 2026-07-19 unification
+// pass did the ~26 no-op rewrites (`rounded-[8px]` → `rounded-md`) the earlier, looser
+// rule had deferred, so the allowance for on-scale pixel literals is gone: a pixel
+// radius typed by hand is now drift by definition, even when the value happens to sit
+// on the scale. `rounded-[var(--radius-*)]` stays legal — it IS the token, spelled long
+// (needed where a class can't be used, e.g. computed styles).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const COMPONENTS = join(__dirname, '..', '..'); // …/src/components
@@ -36,8 +36,7 @@ const COMPONENTS = join(__dirname, '..', '..'); // …/src/components
 /** The guarded surfaces, relative to src/components. */
 const GUARDED_DIRS = ['thread', 'reading'] as const;
 
-/** The token scale (globals.css --radius-xs … --radius-3xl). `full` is a utility, never arbitrary. */
-const ON_SCALE_PX = new Set([4, 6, 8, 12, 16, 20, 24]);
+/** The token utilities (globals.css --radius-xs … --radius-3xl). Pixel literals are banned outright. */
 
 /**
  * Every arbitrary-radius utility, any side: `rounded-[…]`, `rounded-t-[…]`,
@@ -50,15 +49,10 @@ const ARBITRARY_RADIUS_RE = /\brounded(?:-[a-z]{1,2})?-\[([^\]]+)\]/g;
 /** A radius token reference — `rounded-[var(--radius-lg)]` IS the scale, just spelled long. */
 const RADIUS_VAR_RE = /^var\(\s*--radius-[a-z0-9]+\s*\)$/i;
 
-/** A bare pixel length: `12px`. */
-const PX_RE = /^(\d+(?:\.\d+)?)px$/;
-
 function isAllowedRadius(value: string): boolean {
-  const v = value.trim();
-  if (RADIUS_VAR_RE.test(v)) return true;
-  const px = PX_RE.exec(v);
-  if (!px?.[1]) return false; // %, calc(), rem, unitless — none of it is on the scale
-  return ON_SCALE_PX.has(Number(px[1]));
+  // Tokens only: a radius var reference is the single allowed arbitrary spelling.
+  // Pixel literals (on-scale or not), %, calc(), rem — all drift.
+  return RADIUS_VAR_RE.test(value.trim());
 }
 
 /** Collect the off-scale radii in a source file, as `rounded-[10px]`-shaped strings. */
@@ -120,10 +114,13 @@ describe('radius-scale lint — the detector itself', () => {
     }
   });
 
-  it('accepts the token scale, in either spelling', () => {
-    for (const ok of ['4px', '6px', '8px', '12px', '16px', '20px', '24px']) {
-      expect(findRadiusViolations(`className="rounded-[${ok}]"`)).toEqual([]);
+  it('bans pixel literals even when the value sits on the scale (tokens only, 2026-07-19)', () => {
+    for (const px of ['4px', '6px', '8px', '12px', '16px', '20px', '24px']) {
+      expect(findRadiusViolations(`className="rounded-[${px}]"`)).toEqual([`rounded-[${px}]`]);
     }
+  });
+
+  it('accepts the token utilities and the var spelling', () => {
     expect(findRadiusViolations('className="rounded-[var(--radius-lg)]"')).toEqual([]);
     expect(findRadiusViolations('className="rounded-lg rounded-full rounded-md"')).toEqual([]);
   });
@@ -136,7 +133,7 @@ describe('radius-scale lint — the detector itself', () => {
   it('does not trip on a neighbouring arbitrary value that merely contains a length', () => {
     // The Reading tooltip carries both a matte drop-shadow and a max-width; neither is a radius.
     expect(
-      findRadiusViolations('className="max-w-[240px] rounded-[12px] shadow-[0_10px_26px_rgba(0,0,0,0.45)]"'),
+      findRadiusViolations('className="max-w-[240px] rounded-lg shadow-[0_10px_26px_rgba(0,0,0,0.45)]"'),
     ).toEqual([]);
   });
 });

@@ -14,6 +14,8 @@
  * is a genuine, deliberate action — exactly the liveness moment the near-zero accent dosage is for.
  * A status note (role="status"), never the error alert — nothing failed, the cards are real.
  */
+import { CardPrimaryAction } from './card-primitives';
+
 export interface OutliersOfferProps {
   onFindOutliers: () => void;
 }
@@ -32,14 +34,13 @@ export function OutliersOffer({ onFindOutliers }: OutliersOfferProps) {
         This run skipped the live outlier scan. Run it now to pull fresh proven outliers on this
         topic — a few seconds, and they&rsquo;re cached for next time.
       </p>
-      <button
-        type="button"
+      <CardPrimaryAction
         onClick={onFindOutliers}
-        className="mt-1.5 self-start rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-colors hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+        className="mt-1.5 self-start"
         aria-label="Find new outliers with a live scan"
       >
         Find new outliers →
-      </button>
+      </CardPrimaryAction>
     </div>
   );
 }

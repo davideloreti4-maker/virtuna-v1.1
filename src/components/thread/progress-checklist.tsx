@@ -369,7 +369,7 @@ export function SkillProgress({ stages, plan, isStreaming, summaryLabel }: Skill
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="reading-reveal group flex items-center gap-2 self-start rounded-[6px] py-0.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
+        className="reading-reveal group flex items-center gap-2 self-start rounded-sm py-0.5 text-[13px] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
         aria-expanded={expanded}
         aria-label={`${summaryLabel} — ${plan.length} steps. ${expanded ? 'Collapse' : 'Expand'} the steps.`}
       >

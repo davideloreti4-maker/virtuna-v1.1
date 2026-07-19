@@ -36,6 +36,7 @@ import { ThreadShell, ThreadAssistantTurn } from '@/components/thread/thread-she
 import { ThreadIntro, ThreadOutro } from '@/components/thread/conversational-frame';
 import { SkillProgress, STAGE_PLANS } from '@/components/thread/progress-checklist';
 import { OutliersOffer } from '@/components/thread/outliers-offer';
+import { SkillRunError, RunWarnings } from '@/components/thread/run-notices';
 import type { StageState } from '@/components/thread/progress-checklist';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 
@@ -126,7 +127,7 @@ export function ScriptThreadView({
     <PlatformContext.Provider value={normalizedPlatform}>
       <ScriptTestContext.Provider value={onTestScript ?? null}>
         <ThreadShell userTurn={userTurn}>
-          {error && !isStreaming && <SkillRunError onRetry={onRetry} />}
+          {error && !isStreaming && <SkillRunError onRetry={onRetry} retryLabel="Retry the script run" />}
 
           {hasAssistantContent && (
             <ThreadAssistantTurn>
@@ -186,36 +187,3 @@ export function ScriptThreadView({
   );
 }
 
-// ── SkillRunError ─────────────────────────────────────────────────────────────
-
-interface SkillRunErrorProps {
-  onRetry?: () => void;
-}
-
-function SkillRunError({ onRetry }: SkillRunErrorProps) {
-  return (
-    <div
-      className="rounded-xl border border-white/[0.06] px-4 py-3 flex flex-col gap-1"
-      role="alert"
-      aria-live="assertive"
-    >
-      <p className="text-sm font-semibold" style={{ color: 'var(--color-cream-secondary)' }}>
-        Couldn&rsquo;t finish that run.
-      </p>
-      <p className="text-sm" style={{ color: 'var(--color-cream-muted)' }}>
-        The generation or SIM-1 pass dropped out. Tap to retry — nothing was charged.
-      </p>
-      {onRetry && (
-        <button
-          type="button"
-          onClick={onRetry}
-          className="mt-1 text-sm font-medium self-start transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/10"
-          style={{ color: 'var(--color-cream-secondary)' }}
-          aria-label="Retry the script run"
-        >
-          Retry →
-        </button>
-      )}
-    </div>
-  );
-}

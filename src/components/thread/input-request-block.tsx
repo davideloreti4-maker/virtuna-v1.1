@@ -34,6 +34,7 @@ import { VideoUpload } from '@/components/app/video-upload';
 import { createClient } from '@/lib/supabase/client';
 import { TIKTOK_URL_PATTERN } from '@/lib/tiktok-url';
 import { ProgressChecklist } from './progress-checklist';
+import { CardPrimaryAction } from './card-primitives';
 import { Spinner } from '@/components/ui/spinner';
 
 export interface InputRequestBlockRendererProps {
@@ -45,9 +46,9 @@ export interface InputRequestBlockRendererProps {
 const SHELL_CLASS =
   'flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-surface-sunken px-4 py-4';
 const INPUT_CLASS =
-  'min-w-0 flex-1 rounded-[8px] border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
-const CTA_CLASS =
-  'shrink-0 rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40';
+  'min-w-0 flex-1 rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-[13px] text-foreground placeholder:text-foreground-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20';
+// The field CTA is the shared cream primary (<CardPrimaryAction className="shrink-0">) — the
+// old CTA_CLASS string was the third hand-rolled copy of it in the thread.
 
 /** The quiet receipt left in the field's place once the real card is in the thread above. */
 function DoneReceipt({ text }: { text: string }) {
@@ -143,9 +144,9 @@ function RemixField({ block }: InputRequestBlockRendererProps) {
             placeholder={placeholder ?? 'Paste a link…'}
             className={INPUT_CLASS}
           />
-          <button type="button" onClick={handleSubmit} disabled={!url.trim()} className={CTA_CLASS}>
+          <CardPrimaryAction onClick={handleSubmit} disabled={!url.trim()} className="shrink-0">
             Adapt it →
-          </button>
+          </CardPrimaryAction>
         </div>
       )}
       {error && <ErrorLine text={remixErrorCopy(error)} />}
@@ -219,9 +220,9 @@ function ExploreField({ block }: InputRequestBlockRendererProps) {
             placeholder={placeholder ?? 'A niche or a competitor — or leave blank…'}
             className={INPUT_CLASS}
           />
-          <button type="button" onClick={handleSubmit} className={CTA_CLASS}>
+          <CardPrimaryAction onClick={handleSubmit} className="shrink-0">
             Scan it →
-          </button>
+          </CardPrimaryAction>
         </div>
       )}
       {error && <ErrorLine text={error || 'Something went wrong — try again.'} />}
@@ -295,14 +296,9 @@ function ReadField({ block }: InputRequestBlockRendererProps) {
             placeholder={placeholder ?? 'Paste a hook, concept, or draft…'}
             className={`${INPUT_CLASS} resize-none`}
           />
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={!concept.trim()}
-            className={`${CTA_CLASS} self-end`}
-          >
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!concept.trim()} className="self-end">
             Read it →
-          </button>
+          </CardPrimaryAction>
         </div>
       )}
       {error && <ErrorLine text={error} />}
@@ -349,9 +345,9 @@ function AccountField({ block }: InputRequestBlockRendererProps) {
           <span>Reading your account…</span>
         </div>
       ) : (
-        <button type="button" onClick={handleRun} className={`${CTA_CLASS} self-start`}>
+        <CardPrimaryAction onClick={handleRun} className="self-start">
           Read my account →
-        </button>
+        </CardPrimaryAction>
       )}
       {/* Thin-history fallback is a calm warning, not a hard error (SELF-02). */}
       {!error && fallbackMessage && (
@@ -556,14 +552,9 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
               </div>
             </>
           )}
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={!canSubmit}
-            className={`${CTA_CLASS} self-end`}
-          >
+          <CardPrimaryAction onClick={() => void handleSubmit()} disabled={!canSubmit} className="self-end">
             Test it →
-          </button>
+          </CardPrimaryAction>
         </div>
       )}
       {urlError && !file && <ErrorLine text="That doesn't look like a TikTok video URL." />}

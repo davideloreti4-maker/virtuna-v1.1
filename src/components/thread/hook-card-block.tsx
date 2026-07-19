@@ -28,6 +28,7 @@ import { BAND_COLOR } from './band-block';
 import { ProofUnit } from './proof-unit';
 import { ProofReceipt, NoSourceNote } from './proof-receipt';
 import { SaveAffordance } from '@/components/thread/save-affordance';
+import { CardEyebrow, CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 import { CaretToggle } from './caret-toggle';
 import { TargetReaction } from './target-reaction';
 import { archetypeDisplayName } from '@/lib/audience/archetype-names';
@@ -81,15 +82,15 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
             SIM derivation ("who reacted"). Showing both side by side reads as two competing
             labels for one thing; the intent is the stronger, more honest signal, so it wins the
             eyebrow and the derivation stays available in `audienceArchetype` for the handoff. */}
-        <div className="flex items-center justify-between gap-3">
-          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">
-            <span className="h-[6px] w-[6px] rounded-full" style={{ backgroundColor: bandColor }} aria-hidden="true" />
-            {target ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}` : audienceArchetype}
-          </span>
-          <span className="shrink-0 text-[12px] font-semibold tabular-nums text-foreground-muted" aria-label={`Rank ${rank}`}>
-            #{rank}
-          </span>
-        </div>
+        <CardEyebrow
+          kicker={target ? `For your ${target.label ?? archetypeDisplayName(target.archetype)}` : audienceArchetype}
+          dotColor={bandColor}
+          meta={
+            <span className="text-[12px] font-semibold tabular-nums text-foreground-muted" aria-label={`Rank ${rank}`}>
+              #{rank}
+            </span>
+          }
+        />
 
         {/* Hook line — the hero */}
         <p className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-foreground">
@@ -152,36 +153,33 @@ export function HookCardRenderer({ block, onWriteScript: onWriteScriptProp }: Ho
         <div className="flex flex-col gap-3 border-t border-white/[0.06] px-4 py-3">
           {seedHook !== hookLine && (
             <div>
-              <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Seed hook</p>
+              <p className={`mb-1 ${SECTION_LABEL}`}>Seed hook</p>
               <p className="text-[13.5px] leading-relaxed text-foreground-secondary">{seedHook}</p>
             </div>
           )}
           {channel && (
             <div>
-              <p className="mb-1 text-[11px] uppercase tracking-[0.05em] text-foreground-muted">Delivery</p>
+              <p className={`mb-1 ${SECTION_LABEL}`}>Delivery</p>
               <p className="text-[13.5px] capitalize leading-relaxed text-foreground-secondary">{channel}</p>
             </div>
           )}
         </div>
       )}
 
-      {/* Actions — one cream primary (forward chain) + secondary text + Save icon. */}
-      <div className="flex items-center gap-3.5 border-t border-white/[0.06] px-4 py-3">
-        {/* "Write script →" — the forward chain step (hooks→script), cream primary (§1.7). */}
-        <button
-          type="button"
+      {/* Actions — one cream primary (forward chain) + Save icon (§0.5.7, via the primitives). */}
+      <CardActionBar>
+        <CardPrimaryAction
           onClick={onWriteScript}
           disabled={!onWriteScript}
-          className="rounded-[8px] bg-[var(--color-action)] px-3.5 py-2 text-[13px] font-semibold text-[var(--color-action-foreground)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 disabled:cursor-default disabled:opacity-40"
           aria-label="Write a full script from this hook"
           title={onWriteScript ? 'Write a full script anchored on this hook' : 'Write script handoff not wired'}
         >
           Write script →
-        </button>
+        </CardPrimaryAction>
 
         {/* Save (Act→State) — save this hook to the shelf (snapshot = block props). */}
         <SaveAffordance className="ml-auto" item_type="hook" title={hookLine} snapshot={block.props} />
-      </div>
+      </CardActionBar>
     </div>
   );
 }

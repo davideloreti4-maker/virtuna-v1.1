@@ -142,7 +142,7 @@ function CoverStrip({ videos }: { videos: AnalyzedVideos }) {
             <Tag
               key={`cover-${i}`}
               {...(v.videoUrl ? { href: v.videoUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
-              className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-[6px] border border-white/[0.06] bg-white/[0.04]"
+              className="group relative aspect-[9/16] w-[58px] shrink-0 overflow-hidden rounded-sm border border-white/[0.06] bg-white/[0.04]"
               title={v.caption || undefined}
             >
               <CoverFill coverUrl={v.coverUrl} playSize={14} className="transition-opacity group-hover:opacity-90" />

@@ -48,7 +48,7 @@ export function AccountReadThreadView({
       {/* Thin-history honest fallback (SELF-02) — warning-toned, NEVER error/coral. */}
       {!isStreaming && fallbackMessage && (
         <ThreadAssistantTurn>
-          <div className="rounded-[12px] border border-warning/20 bg-warning/5 p-4">
+          <div className="rounded-lg border border-warning/20 bg-warning/5 p-4">
             <p className="text-sm leading-normal text-foreground-secondary">
               {fallbackMessage}
             </p>
@@ -59,7 +59,7 @@ export function AccountReadThreadView({
       {/* Hard error — retryable (generic copy, never echoes the handle — T-10-13). */}
       {!isStreaming && error && !fallbackMessage && (
         <ThreadAssistantTurn>
-          <div className="flex flex-col items-start gap-3 rounded-[12px] border border-border p-4">
+          <div className="flex flex-col items-start gap-3 rounded-lg border border-border p-4">
             <p className="text-sm text-foreground-secondary">
               Couldn&apos;t read your account. Check your handle is public and try again.
             </p>
@@ -96,7 +96,7 @@ function AccountReadSkeleton() {
   return (
     <ThreadAssistantTurn>
       <div
-        className="rounded-[12px] border border-border p-4"
+        className="rounded-lg border border-border p-4"
         aria-busy="true"
         aria-label="Reading your account"
       >
