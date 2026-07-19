@@ -1,9 +1,19 @@
 # Subsystem: Grounding Tools (corpus-as-a-service)
 
-> **DESIGN — not built.** Written 2026-07-19 from a verified prod audit + code trace,
-> not from operating a live surface. Companion to `skills-grounding.md` (the SSOT for
-> the existing skill-side grounding). This doc specifies how the chat agent gets
-> direct, honest access to the corpus.
+> **PARTLY BUILT — and more of it was already shipped than this doc originally knew.**
+> Written 2026-07-19 from a verified prod audit + code trace, not from operating a live
+> surface. Companion to `skills-grounding.md` (the SSOT for the existing skill-side
+> grounding). This doc specifies how the chat agent gets direct, honest access to the corpus.
+>
+> ⚠️ **Correction, 2026-07-20.** The original header said "DESIGN — not built", and the
+> step-4 handoff told the next session to build `search_examples`, a chat tool loop, and a
+> references block from scratch. All three already existed and two were live in production:
+> `src/lib/grounding/corpus-tool.ts` (the tool, as `search_corpus`),
+> `src/lib/tools/chat-agent-loop.ts` (the loop), and `buildReferenceBlock` (prose form) —
+> shipped 2026-07-17, `GROUNDING_CHAT_TOOL` **defaults ON**. The design was written from an
+> audit of the *corpus* and never traced the *consumer*; the handoff flagged that gap
+> honestly ("the chat agent subsystem was deliberately NOT mapped") and the gap was
+> load-bearing. **Trace the consumer before specifying a producer.**
 
 ## 1. What it is (one paragraph)
 
@@ -151,28 +161,50 @@ The detect-and-prefetch fallback is **discarded**.
 3. ✅ RPC facet migration (PR #338) — visual_hook/editing_style returned;
    filter_format/filter_visual/filter_editing accepted; exact-payload guard
    (`corpus-rpc-params.test.ts`); prod-applied + live-verified
-4. `search_examples` + `references` block, E2E on one intent ("show me
-   examples of…") — **START HERE · see docs/HANDOFF-2026-07-19-grounding-tools.md**
-5. `corpus_stats` + insight card
-6. `get_teardown` + teardown card
-7. Converge: hooks/ideas/script retrieval becomes `search_examples` calls —
+4. Retrieval tool in chat — ✅ **shipped 2026-07-17**, discovered 2026-07-20 (see the
+   header correction). `search_corpus` (query + axis) bound into the streaming agent
+   loop, flag default-ON. It shipped without the honesty machinery below.
+4b. ✅ **Warrant + facets (2026-07-20).** Closed the two holes the spike had already
+   found in the shipped tool:
+   - `grounded` is now **computed** from measured cosine at a WARRANT floor
+     (`GROUNDING_WARRANT_MIN_SIMILARITY`, default 0.5) that is deliberately distinct
+     from the recall floor (0.4). Recall decides what the model *sees*; warrant decides
+     what it may *cite*. `RetrievedExample.similarity` carries the measurement out of
+     retrieval; only `citable` rows reach a reference block. Structural batches are
+     warranted on SHAPE with an explicit "never as topic evidence" note.
+   - Facet filters (#338) now have callers: pushed down to the RPC via
+     `RetrieveInput.facets`, exposed to the model as **enums of the real stored
+     vocabulary** (platform · format · hook_archetype · visual_setting · editing_style
+     · niche). Live-verified: `scripts/smoke-corpus-warrant.ts`, 6/6.
+   - Corpus calls in a round execute concurrently; warrant-vs-claim stated in the agent
+     directive.
+5. **NEXT — the `references` block as structured CARDS** (§4). Today the streaming path
+   feeds tool JSON to the model and the model writes prose, so a citation is still model
+   output; `buildReferenceBlock` (prose) is only on the legacy `runChatPipeline`
+   fallback. Cards from structured tool output are what makes hallucinated citations
+   *impossible* rather than *discouraged*. Then the authed E2E gate on one intent.
+6. `corpus_stats` + insight card
+7. `get_teardown` + teardown card
+8. Converge: hooks/ideas/script retrieval becomes `search_corpus` calls —
    one pipeline, one contract
 
 ## 8. Open questions
 
 - ~~Chat model tool-calling reliability on DashScope~~ — ✅ verified, §6.
-- 🔴 **Spike finding — `grounded` must be COMPUTED, not inferred.** Cosine
-  always returns something: arm B got 5 tangential rows at ~0.5 similarity and
-  the naive `grounded = examples.length > 0` said true; only the model's
-  judgment kept the answer honest. `search_examples` v1 must enforce a
-  relevance floor at the tool boundary (reuse the skills' `minSimilarity`
-  machinery, `retrieve.ts:149`) and return `grounded:false` below it.
-- **Spike finding — the model is only as honest as the interface is
-  expressive.** Arm C asked for greenscreen examples; the corpus HAS them
-  (`editing_style`: visual-greenscreen 60 + notes-article-greenscreen 17) but
-  the spike tool didn't expose that facet, so the model reported "no
-  greenscreen tag". The RPC facet migration (§7 step 3) is what makes facet
-  questions answerable.
+- ~~🔴 **Spike finding — `grounded` must be COMPUTED, not inferred.**~~ ✅ **CLOSED
+  2026-07-20** (§7 step 4b). Cosine always returns something: arm B got 5 tangential rows
+  at ~0.5 similarity and the naive `grounded = examples.length > 0` said true; only the
+  model's judgment kept the answer honest. Now enforced at the tool boundary with a
+  warrant floor separate from the recall floor. Live-verified: the absurd ask returns 5
+  rows at `grounded:false`.
+- ~~**Spike finding — the model is only as honest as the interface is
+  expressive.**~~ ✅ **CLOSED 2026-07-20.** Arm C asked for greenscreen examples; the
+  corpus HAS them (`editing_style`: visual-greenscreen 60 + notes-article-greenscreen 17,
+  plus 81 rows whose `visual_hook` setting IS greenscreen) but the tool didn't expose the
+  facet, so the model reported "no greenscreen tag". The RPC migration (#338) made it
+  *possible*; step 4b gave it callers and enum-constrained schema params, which made it
+  *actual*. A shipped migration with no caller changes nothing — check for consumers, not
+  just for columns.
 - Facet filters at RPC level vs TS post-filter: RPC-level shrinks the vector
   candidate pool under a filter (good: no "20 results, 19 inadmissible" holes);
   TS-level avoids a migration. Default: RPC-level for the 3 high-selectivity

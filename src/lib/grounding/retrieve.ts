@@ -300,6 +300,10 @@ export function matchRowToExample(row: SharedMatchRow): RetrievedExample {
     fitLabel: DEFAULT_FIT,
     hookArchetype: row.hook_archetype,
     format: row.format,
+    // visual_hook is a SETTING taxonomy, not a first-frame device — renamed honestly at this boundary.
+    visualSetting: row.visual_hook,
+    editingStyle: row.editing_style,
+    niche: row.niche,
     spokenHook: row.spoken_hook,
     hookTemplate: row.hook_template,
     template: parseTeardownTemplate(row.template),
@@ -308,7 +312,27 @@ export function matchRowToExample(row: SharedMatchRow): RetrievedExample {
     sourcePool: row.source_pool,
     trustWeight: typeof row.trust_weight === "number" ? row.trust_weight : 1.0,
     fromPersonal: false,
+    // The measurement travels with the row so the tool boundary can COMPUTE grounding (see types.ts).
+    similarity: typeof row.similarity === "number" ? row.similarity : null,
   };
+}
+
+/**
+ * Facet constraints pushed down to the RPC (NOT post-filtered in TS).
+ *
+ * RPC-level on purpose: filtering after the vector search shrinks a fixed top-N candidate pool, so a
+ * narrow facet ("greenscreen") returns "12 matches, 1 admissible" holes. Filtering inside the RPC makes
+ * the pool itself obey the constraint. The columns exist and are indexed as of the facet migration.
+ *
+ * `visualSetting` maps to the `visual_hook` column — the legacy name, honest at the edges.
+ */
+export interface RetrieveFacets {
+  platform?: string | null;
+  format?: string | null;
+  hookArchetype?: string | null;
+  visualSetting?: string | null;
+  editingStyle?: string | null;
+  niche?: string | null;
 }
 
 export interface RetrieveInput {
@@ -328,6 +352,12 @@ export interface RetrieveInput {
   skill?: GroundingSkill;
   /** Creator niche — reserved for facet-filtered rungs; NOT a filter in topical MVP. */
   niche?: string | null;
+  /**
+   * Explicit facet constraints (the tool layer's "…greenscreen examples", "…tutorials on TikTok").
+   * Absent for the generation skills, which retrieve on the subject alone. A facet named here OVERRIDES
+   * the config's platform policy — an explicit ask beats a default.
+   */
+  facets?: RetrieveFacets;
 }
 
 export interface RetrieveResult {
@@ -362,12 +392,19 @@ export async function retrieveCachedExamples(
   const supabase = deps.supabase ?? getCorpusClient();
   const embed = deps.embedQuery ?? embedQueryText;
 
+  const facets = input.facets ?? {};
   const embedding = await embed(input.query);
   const rows = await matchSharedTeardowns(supabase, {
     embedding,
     count: config.fetchCount,
+    // An explicitly-asked-for platform beats the config default (which is "read cross-platform").
     // Structural retrieval reads across platforms on purpose — see RetrieveConfig.filterPlatform.
-    filterPlatform: config.filterPlatform ? input.platform : null,
+    filterPlatform: facets.platform ?? (config.filterPlatform ? input.platform : null),
+    filterFormat: facets.format ?? null,
+    filterArchetype: facets.hookArchetype ?? null,
+    filterVisual: facets.visualSetting ?? null,
+    filterEditing: facets.editingStyle ?? null,
+    filterNiche: facets.niche ?? null,
   });
 
   // Admissibility is NOT ranking: these three drop rows that must never reach the model at all

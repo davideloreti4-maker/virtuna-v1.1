@@ -193,7 +193,17 @@ function toolUseDirective(grounding: boolean): string {
     "exists before they submit the field.";
   const groundLine = grounding
     ? " When a real, proven real-world example would make a strategy answer stronger, call search_corpus " +
-      "and ground your answer on what it returns."
+      "and ground your answer on what it returns. Use its FILTERS when the creator names a constraint " +
+      "(a platform, a format, a visual setting like greenscreen, an editing style, a niche) rather than " +
+      "hoping a topical search surfaces it. " +
+      // Warrant-vs-claim, stated where the model composes. The tool already computes `grounded` and
+      // refuses to hand back citable rows without warrant; this is the language half of the same rule.
+      "HONESTY ABOUT PROOF: the tool returns a computed `grounded` flag and a `note` — obey them. " +
+      "Claim something is PROVEN only when you have at least three returned examples clearing 3× " +
+      "against a stated baseline; with one example say 'one example', not 'this works'. When " +
+      "`grounded` is false, say plainly that you have no proven examples for that subject — never " +
+      "imply the corpus contains them, and never dress a craft reference as evidence. Cite only " +
+      "creators and numbers the tool actually returned."
     : "";
   return base + groundLine;
 }
@@ -315,21 +325,33 @@ export async function runChatAgentStream(
     // No tool call → the model answered; the loop is done.
     if (calls.length === 0) break;
 
-    // Execute each call, push a role:"tool" result the next round reads.
-    for (const call of calls) {
-      // Grounding: the corpus search leaf (never throws) → its JSON rows feed back to the model.
-      if (input.grounding && call.name === "search_corpus") {
-        let parsed: { query?: unknown; axis?: unknown } = {};
+    // Grounding searches run FIRST and CONCURRENTLY: they are read-only, side-effect-free, and
+    // independent of each other, and the model emits them in batches (the streaming spike observed
+    // four in one round). Run sequentially they cost the sum of their round-trips — each one is an
+    // embed + an RPC, ~10s+, so a four-call round spent ~52s before a single token resumed streaming.
+    // Skills stay sequential below: they are paid, leashed by a counter, and emit ordered cards.
+    const corpusCalls = input.grounding ? calls.filter((c) => c.name === "search_corpus") : [];
+    const corpusResults = await Promise.all(
+      corpusCalls.map(async (call) => {
+        let parsed: Record<string, unknown> = {};
         try {
           parsed = JSON.parse(call.args || "{}");
         } catch {
           parsed = {};
         }
         const res = await executeCorpus(parsed, input.context.platform, round, retrieve);
-        toolCalls.push({ name: "search_corpus", ran: true });
-        messages.push({ role: "tool", tool_call_id: call.id, content: res.content });
-        continue;
-      }
+        return { id: call.id, content: res.content };
+      }),
+    );
+    // Appended in the model's own call order (Promise.all preserves it) so results line up with ids.
+    for (const r of corpusResults) {
+      toolCalls.push({ name: "search_corpus", ran: true });
+      messages.push({ role: "tool", tool_call_id: r.id, content: r.content });
+    }
+
+    // Execute the remaining calls in order, pushing a role:"tool" result the next round reads.
+    for (const call of calls) {
+      if (input.grounding && call.name === "search_corpus") continue; // already serviced above
 
       // In-thread input affordance: the model asks for what a skill needs → emit an `input-request`
       // block (the field) instead of running anything paid inline. The client renders it inline and

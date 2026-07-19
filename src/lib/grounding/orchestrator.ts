@@ -102,6 +102,10 @@ export function toRetrievedExample(args: {
     fitLabel,
     hookArchetype: teardown.hookArchetype,
     format: teardown.format,
+    visualSetting: teardown.visualHook,
+    editingStyle: teardown.editingStyle,
+    // The scrape path has no niche classification — that is a corpus-side backfill, not an extraction.
+    niche: null,
     spokenHook: teardown.spokenHook,
     hookTemplate: teardown.hookTemplate,
     template: teardown.template,
@@ -110,6 +114,8 @@ export function toRetrievedExample(args: {
     sourcePool,
     trustWeight,
     fromPersonal: false,
+    // Freshly scraped — this row was never matched against a query, so there is no similarity to state.
+    similarity: null,
   };
 }
 
