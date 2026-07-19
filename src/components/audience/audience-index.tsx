@@ -19,6 +19,10 @@
  * inside are borderless — hairline-divided, whole-row clickable, hover tint only.
  * Accent budget: the primary account's liveness dot, nothing else.
  *
+ * A row does ONE thing: it opens. The checkbox/selection mode that used to live here
+ * served concept-Compare, which was cut from this surface on 2026-07-20 — see the
+ * `audience-manager` docblock for why. Rows are `role="button"`, never `checkbox`.
+ *
  * REWORK 2026-07-20 (direction A, owner-locked). The craft pass left a 44px row of thin
  * grey text managing an object built from 12 scraped videos and 86M followers — the page's
  * strongest facts were its smallest type. Two changes carry the weight:
@@ -41,7 +45,7 @@ import {
   getPersonaCount,
 } from "./audience-display";
 import { cn } from "@/lib/utils";
-import { CaretRight, Check } from "@phosphor-icons/react";
+import { CaretRight } from "@phosphor-icons/react";
 
 /** Slim connected-account view the index renders (client-serializable). */
 export interface AccountRow {
@@ -65,10 +69,6 @@ export interface AudienceIndexProps {
   onOpen: (audience: Audience) => void;
   /** Open an account that has no audience behind it (analytics only). */
   onOpenAccount?: (account: AccountRow) => void;
-  /** Compare mode turns rows into checkboxes. */
-  selectionMode?: boolean;
-  selectedIds?: string[];
-  onToggleSelect?: (id: string) => void;
   className?: string;
 }
 
@@ -110,16 +110,13 @@ function Zone({ label, children }: { label: string; children: React.ReactNode })
 interface RowShellProps {
   onClick: () => void;
   ariaLabel: string;
-  selectionMode: boolean;
-  selected: boolean;
   children: React.ReactNode;
 }
 
-function RowShell({ onClick, ariaLabel, selectionMode, selected, children }: RowShellProps) {
+function RowShell({ onClick, ariaLabel, children }: RowShellProps) {
   return (
     <div
-      role={selectionMode ? "checkbox" : "button"}
-      aria-checked={selectionMode ? selected : undefined}
+      role="button"
       aria-label={ariaLabel}
       tabIndex={0}
       onClick={onClick}
@@ -135,25 +132,10 @@ function RowShell({ onClick, ariaLabel, selectionMode, selected, children }: Row
         "group flex cursor-pointer items-start gap-4 rounded-[10px] px-3.5 py-3.5",
         "transition-colors duration-150 hover:bg-white/[0.03]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/10",
-        selectionMode && selected && "bg-white/[0.04]",
       )}
     >
       {children}
     </div>
-  );
-}
-
-function SelectMark({ selected }: { selected: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border transition-colors",
-        selected ? "border-white/[0.14] bg-white/[0.07]" : "border-white/[0.12]",
-      )}
-    >
-      {selected && <Check weight="bold" className="h-3 w-3 text-cream-secondary" />}
-    </span>
   );
 }
 
@@ -225,9 +207,6 @@ export function AudienceIndex({
   onSetDefault,
   onOpen,
   onOpenAccount,
-  selectionMode = false,
-  selectedIds = [],
-  onToggleSelect,
   className,
 }: AudienceIndexProps) {
   const owned = useMemo(() => audiences.filter(isOwned), [audiences]);
@@ -248,15 +227,12 @@ export function AudienceIndex({
     return owned.filter((a) => !claimed.has(a.id));
   }, [accountRows, owned]);
 
-  const rowClick = (audience: Audience) =>
-    selectionMode ? () => onToggleSelect?.(audience.id) : () => onOpen(audience);
-
   return (
     <div className={cn("flex min-w-0 flex-col gap-3.5", className)}>
       {/* The state line. Which audience scores your threads governs everything below it,
           so it leads instead of trailing as a footnote. Copy is unchanged — "New threads
           use General" is locked by the honesty test. */}
-      {defaultAudienceId === null && !selectionMode && (
+      {defaultAudienceId === null && (
         <p className="px-1.5 text-[13px] text-foreground-muted">
           New threads use General.{" "}
           <Link
@@ -273,7 +249,6 @@ export function AudienceIndex({
           {accountRows.map(({ account, audience }) => {
             const synced = timeAgo(account.last_synced_at);
             const isDefault = Boolean(audience) && defaultAudienceId === audience!.id;
-            const selected = Boolean(audience) && selectedIds.includes(audience!.id);
 
             // Analytics-only: an account with no audience behind it. Not selectable
             // in compare mode; opens the account's analytics.
@@ -282,8 +257,6 @@ export function AudienceIndex({
                 <RowShell
                   key={account.id}
                   ariaLabel={`@${account.handle} · ${PLATFORM_LABEL[account.platform]}`}
-                  selectionMode={false}
-                  selected={false}
                   onClick={() => onOpenAccount?.(account)}
                 >
                   <div className="min-w-0 flex-1">
@@ -321,19 +294,13 @@ export function AudienceIndex({
               <RowShell
                 key={account.id}
                 ariaLabel={`@${account.handle} · ${PLATFORM_LABEL[account.platform]}`}
-                selectionMode={selectionMode}
-                selected={selected}
-                onClick={rowClick(audience)}
+                onClick={() => onOpen(audience)}
               >
-                {selectionMode ? (
-                  <SelectMark selected={selected} />
-                ) : (
-                  account.is_primary && (
-                    <span
-                      aria-hidden="true"
-                      className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--color-accent)]"
-                    />
-                  )
+                {account.is_primary && (
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-[color:var(--color-accent)]"
+                  />
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="flex items-baseline gap-2.5 truncate">
@@ -365,9 +332,7 @@ export function AudienceIndex({
                   </p>
                   <RosterLine audience={audience} />
                 </div>
-                {!selectionMode && (
-                  <RowActions audience={audience} isDefault={isDefault} onSetDefault={onSetDefault} />
-                )}
+                <RowActions audience={audience} isDefault={isDefault} onSetDefault={onSetDefault} />
               </RowShell>
             );
           })}
@@ -379,16 +344,12 @@ export function AudienceIndex({
           {simulated.map((audience) => {
             const built = getBuiltFrom(audience);
             const isDefault = defaultAudienceId === audience.id;
-            const selected = selectedIds.includes(audience.id);
             return (
               <RowShell
                 key={audience.id}
                 ariaLabel={audience.name}
-                selectionMode={selectionMode}
-                selected={selected}
-                onClick={rowClick(audience)}
+                onClick={() => onOpen(audience)}
               >
-                {selectionMode && <SelectMark selected={selected} />}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[15px] font-semibold tracking-[-0.01em] text-foreground">
                     {audience.name}
@@ -414,9 +375,7 @@ export function AudienceIndex({
                   </p>
                   <RosterLine audience={audience} />
                 </div>
-                {!selectionMode && (
-                  <RowActions audience={audience} isDefault={isDefault} onSetDefault={onSetDefault} />
-                )}
+                <RowActions audience={audience} isDefault={isDefault} onSetDefault={onSetDefault} />
               </RowShell>
             );
           })}

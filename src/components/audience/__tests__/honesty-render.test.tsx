@@ -17,7 +17,7 @@
  *    says "Nothing yet" instead of promising "receipts pending" from a branch that,
  *    in live data, never fires.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import type {
@@ -29,7 +29,12 @@ import type {
 import { resolveTier } from "@/lib/audience/resolve-tier";
 import { TrustBadge } from "../trust-badge";
 import { AudienceIndex } from "../audience-index";
+import { AudienceManager } from "../audience-manager";
 import { getBuiltFrom, getRung } from "../audience-display";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), back: vi.fn(), refresh: vi.fn() }),
+}));
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -252,6 +257,47 @@ describe("Built from states the real provenance (SPEC §4)", () => {
     ]);
     expect(screen.queryByText("Growth Audience")).toBeNull();
     expect(screen.getByText("Mine")).toBeInTheDocument();
+  });
+});
+
+describe("concept-Compare is gone from the manager (2026-07-20)", () => {
+  // Asserted against AudienceManager, NOT AudienceIndex: the Compare button lived on the
+  // manager, and `selectionMode` defaulted to false, so an index-level assertion would
+  // pass against the old code and guard nothing.
+  //
+  // Why it was cut: the mode took a CONCEPT and returned a Read — a thread artifact asked
+  // for on a management surface — and `api/tools/read` persists into the user's open
+  // thread, so every compare left a stray message behind while this page showed an
+  // ephemeral copy.
+  const audiences = [
+    baseAudience({ id: "mine", name: "Mine", personas: [calibratedPersona()] }),
+    baseAudience({ id: "other", name: "Other", personas: [calibratedPersona()] }),
+  ];
+
+  it("renders no Compare affordance and no selectable rows", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(JSON.stringify({ audiences, lastAudienceId: null }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    try {
+      render(<AudienceManager />);
+      // Wait for the list to land, so we assert against the loaded surface — not the
+      // skeleton, which trivially has no Compare button.
+      expect(await screen.findByText("Mine")).toBeInTheDocument();
+
+      expect(screen.queryByRole("button", { name: /^Compare/i })).toBeNull();
+      expect(screen.queryByLabelText(/Concept to compare/i)).toBeNull();
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+      // The one action the manager still owns.
+      expect(screen.getByRole("button", { name: "New audience" })).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 
