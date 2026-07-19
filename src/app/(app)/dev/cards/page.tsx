@@ -883,7 +883,7 @@ export default function DevCardsPage() {
             <SectionHead
               label="The Room"
               code="AmbientRoom.tsx"
-              note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ Population · 1,000. Fed a fixture focus; the box stands in for the panel."
+              note="What the audience dock blooms open: The brain (simulated neural read — the landing view) ⇄ The people (named voices) ⇄ The population. Fed a fixture focus; the box stands in for the panel."
             />
             <div className="grid gap-4 lg:grid-cols-2">
               <div className="h-[900px] overflow-hidden rounded-[var(--radius-lg)] border border-white/[0.06] bg-[var(--color-surface-elevated)]">
