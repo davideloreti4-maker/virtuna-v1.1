@@ -79,7 +79,7 @@ export function toAmbientDescriptor(block: unknown, idx: number): AmbientCardDes
   // model. Absent on pre-S3′ persisted blocks → the presence falls back to fraction-expansion.
   const personas = Array.isArray(p.personas) ? p.personas : undefined;
   // Audience Sim v2 Stage 2 (AUD-SYNC-02): thread the card's own population projection on so the
-  // Room's "Population · 1,000" view shows THIS card's real N-individual numbers instead of the
+  // Room's "The population" view shows THIS card's real N-individual numbers instead of the
   // honest-lean "MODELED FROM YOUR 10" fallback (which can DISAGREE with the card's projection).
   const population = p.population ?? undefined;
   return {

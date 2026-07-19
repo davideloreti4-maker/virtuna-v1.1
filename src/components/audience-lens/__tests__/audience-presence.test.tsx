@@ -10,7 +10,7 @@
  *  - PEEK focused: a live read pulse ("6 of 10 would stop"), never an aggregate fabrication.
  *  - Tapping the band toggles the panel via the controlled `onOpenChange`.
  *  - The PRESENCE owns switching: the switcher lists audiences + fires onSelectAudience.
- *  - open + focus → the v6 Room body (The people ⇄ Population · 1,000) mounts in the Bloom panel.
+ *  - open + focus → the v6 Room body (The people ⇄ The population) mounts in the Bloom panel.
  *  - open + Population toggle → the stay/bounce hero + weak-spot render from the focus's reactions.
  *  - open + idle → the hero prompt ("type below to test a thought"), no fabricated reaction.
  *  - Determinism guards: no Math.random / Date.now / new Date, mulberry32 seeded, reducedMotion gated.
@@ -396,13 +396,13 @@ describe('AudiencePresence — General reactor', () => {
 
 // ── PANEL (open) — the one Lens + the audience-chat conversation ──
 describe('AudiencePresence — PANEL (expanded over the composer)', () => {
-  it('mounts the v6 Room body (The people ⇄ Population · 1,000) when open + focused', () => {
+  it('mounts the v6 Room body (The people ⇄ The population) when open + focused', () => {
     setup({ open: true, focus: FOCUS });
     const panel = screen.getByTestId('audience-panel');
     expect(panel).toBeInTheDocument();
     expect(screen.getByRole('group', { name: /audience scale/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /the people/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /population · 1,000/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /the population/i })).toBeInTheDocument();
     // The honest serif score for the ONE in-focus concept lives in the room header.
     // Two honest renders of the same read can coexist (the dock pulse echoes the score);
     // the binding assertion is the ROOM's serif score for the one in-focus concept.
@@ -450,7 +450,7 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
 
   it('swaps to the v6 Population view (stay / bounce hero + weak spot) on the scale toggle', () => {
     setup({ open: true, focus: FOCUS });
-    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+    fireEvent.click(screen.getByRole('button', { name: /the population/i }));
     const panel = screen.getByTestId('audience-panel');
     expect(within(panel).getByText(/would stay/i)).toBeInTheDocument();
     expect(within(panel).getByText(/would bounce/i)).toBeInTheDocument();
@@ -466,7 +466,7 @@ describe('AudiencePresence — PANEL (expanded over the composer)', () => {
 // ── PR-3 Rewrite loop (Population weak-spot) ──
 describe('AudiencePresence — PR-3 Rewrite loop', () => {
   const openPopulation = () =>
-    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+    fireEvent.click(screen.getByRole('button', { name: /the population/i }));
   const ctaMatcher = { name: /win back the viewers who bounced/i };
 
   it('shows the coral "Rewrite to win back the N% who bounced →" CTA when the skill is rewritable + bouncers spoke', () => {
@@ -559,7 +559,7 @@ describe('AudiencePresence — PR-3 Rewrite loop', () => {
 describe("AudiencePresence — variant='surface' (read-only)", () => {
   const ctaMatcher = { name: /win back the viewers who bounced/i };
   const openPopulation = () =>
-    fireEvent.click(screen.getByRole('button', { name: /population · 1,000/i }));
+    fireEvent.click(screen.getByRole('button', { name: /the population/i }));
 
   it('surfaces the seam on the dock root as data-variant', () => {
     setup({ variant: 'surface', focus: null });

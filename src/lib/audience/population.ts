@@ -105,7 +105,7 @@ export interface PopulationAggregate {
 
 // ─── Tunables (named; jitter is fixed pending per-segment spread data) ─────────
 
-/** Default population size — matches the "Population · 1,000" surface. Reaction is O(N). */
+/** Default population size — matches "The population" surface. Reaction is O(N). */
 export const DEFAULT_POPULATION_N = 1000;
 /**
  * Default deterministic seed. Same signature + content + seed ⇒ byte-identical aggregate.

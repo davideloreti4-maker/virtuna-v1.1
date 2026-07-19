@@ -35,21 +35,25 @@ describe('BrainView — §3.8 caption layout (no overprint at rail width)', () =
   });
 });
 
-// ── §3.8 (P1) — 9-signal grid density: 2 columns, no repeated per-cell WHY THIS SCORE ──
-// At 3 columns in the ~346px rail the cells were ~100px wide and every multi-word label wrapped;
-// the per-cell "WHY THIS SCORE" disclosure also repeated the same chrome ×9 while the single
-// "How to read these numbers" expander above the grid already states its content once. Owner call
-// (B): keep the full instrument, fix the density.
-describe('SignalGrid — §3.8 density (2-col, no per-cell WHY THIS SCORE ×9)', () => {
-  // Comment-stripped: the source comment legitimately explains why the affordance was removed, so
-  // the absence check must run against real code, not prose (the reskin-matte guard idiom).
+// ── The nine signals are an INDEX, not a dashboard (the production-design pass) ──
+// The tile grid (36px display numerals ×9, mono-caps labels + graded words, bordered cells) put
+// nine MODELED numbers above the room's one real number and inverted the card's honesty
+// hierarchy. The signals now read as index rows — name · meter · value — with no display
+// numerals, no per-cell WHY THIS SCORE ×9, and no per-cell tile chrome. The derivation survives
+// on each row's hover title; the single "How to read these numbers" disclosure states the
+// modeled/not-benchmarked claim once.
+describe('SignalGrid — index rows, never a display-numeral tile grid', () => {
+  // Comment-stripped: the source comment legitimately explains what was removed, so the absence
+  // check must run against real code, not prose (the reskin-matte guard idiom).
   const src = readFileSync(
     join(process.cwd(), 'src/components/audience-lens/SignalGrid.tsx'),
     'utf8',
   ).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
-  it('is a 2-column grid with the repeated per-cell WHY THIS SCORE affordance removed', () => {
-    expect(src).toMatch(/grid-cols-2/);
-    expect(src).not.toMatch(/grid-cols-3/);
+  it('renders rows (data-signal-row), with no tile grid, no 36px numerals, no WHY THIS SCORE ×9', () => {
+    expect(src).toMatch(/data-signal-row/);
+    expect(src).not.toMatch(/grid-cols-[23]/);
+    expect(src).not.toMatch(/text-\[36px\]/);
+    expect(src).not.toMatch(/font-extralight/);
     expect(src).not.toMatch(/Why this score/i);
   });
 });
@@ -87,7 +91,7 @@ describe('AmbientRoom — the brain scale', () => {
     const labels = within(scaleGroup())
       .getAllByRole('button')
       .map((b) => b.textContent);
-    expect(labels).toEqual(['The brain', 'The people', 'Population · 1,000']);
+    expect(labels).toEqual(['The brain', 'The people', 'The population']);
     expect(screen.getByTestId('brain-view')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'The brain' })).toHaveAttribute('aria-pressed', 'true');
   });
@@ -199,7 +203,7 @@ describe('AmbientRoom — the brain scale', () => {
     const labels = within(scaleGroup())
       .getAllByRole('button')
       .map((b) => b.textContent);
-    expect(labels).toEqual(['The people', 'Population · 1,000']);
+    expect(labels).toEqual(['The people', 'The population']);
     expect(screen.queryByTestId('brain-view')).toBeNull();
     expect(screen.getByRole('button', { name: 'The people' })).toHaveAttribute('aria-pressed', 'true');
   });

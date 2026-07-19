@@ -82,7 +82,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { NETWORK_META } from '@/lib/brain/cortex-field';
-import { cssRamp, rampAt, valueToRamp } from '@/lib/brain/cortex-colormap';
+import { cssRamp, valueToRamp } from '@/lib/brain/cortex-colormap';
 import {
   NETWORK_IDS,
   SPOKEN_NETWORKS,
@@ -471,115 +471,90 @@ export function BrainView({
           )}
         </div>
 
-        {/* Top-right — the scan clock. */}
-        <p className="pointer-events-none absolute right-3 top-3 font-mono text-[9.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-          t {t.toFixed(1)}s · TR {TR_S}s
-        </p>
-
-        {/* Bottom captions — the lag claim (load-bearing: the HRF is real, the brain visibly trails
-            the stimulus, and the figure says so out loud) + Sapient's cortex caption (networks lit +
-            scan time). ⚠️ These were TWO independent `absolute left-3`/`right-3` captions and they
-            OVERPRINTED INTO GARBAGE at rail width (~280px well — the brain was tuned for the old
-            ~500px card). Now ONE flex row: the lag claim holds the corner (whitespace-nowrap), the
-            cortex caption truncates instead of colliding, and at the wide video-Read card both show
-            in full. (The card-polish lane converged on the SAME collision and DROPPED the cortex
-            caption as decoration; kept the flex-row superset here — both are collision-safe, this one
-            preserves the Sapient-parity "N networks" signal. Card owner can re-drop if preferred.) */}
-        <div className="pointer-events-none absolute inset-x-3 bottom-2.5 flex items-baseline justify-between gap-3">
-          <p className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
-            trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+        {/* Top-right — the scan clock. GROUNDED ONLY: a real clip has real seconds to report.
+            A hook does not — "t 6.7s" over a one-moment stimulus is fake precision, the exact
+            debug-panel smell the instant rebuild exists to kill. */}
+        {mode === 'grounded' && (
+          <p className="pointer-events-none absolute right-3 top-3 font-mono text-[9.5px] uppercase tracking-[0.08em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
+            t {t.toFixed(1)}s · TR {TR_S}s
           </p>
-          <p className="min-w-0 truncate text-right font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)] tabular-nums">
-            7 networks · t {Math.floor(t / 60)}:{String(Math.floor(t % 60)).padStart(2, '0')}
-          </p>
-        </div>
-      </div>
+        )}
 
-      {/* ══ THE INSTRUMENT ROW ══════════════════════════════════════════════════════════════════
-             TRIBE puts its controls in ONE quiet row beneath the specimen. We take the PATTERN — and
-             the colorbar lives here now, because it used to be crammed into the well's top-right where
-             it collided with the specimen it annotates. A figure's legend belongs UNDER the figure,
-             and moving it is what let the cortex grow to fill its frame.
+        {/* Bottom captions — the figure's LEGEND (left) + its claims (right), in the well where a
+            figure's annotations belong. Moving the legend onto the black is what let the chrome
+            below the well collapse to zero rows — and on black the ramp reads as instrumentation,
+            where on charcoal chrome it read as a loose rainbow. ⚠️ ONE flex row, never two
+            independent absolutes: at rail width (~280px well) two absolutes OVERPRINTED INTO
+            GARBAGE (§3.8). The legend is fixed-width; the claims column truncates instead of
+            colliding.
 
-             ⚠️ TRIBE's `Normal | Inflated` toggle IS NOT HERE, and it is the one thing of theirs we
-             wanted most. It was BUILT and then CUT, for a reason worth keeping (docs, and
-             scripts/build-inflated-mesh.mjs): an inflated surface has to be a real second geometry,
-             and ours cannot be derived from the asset we ship. Smoothing our decimated whole-brain
-             mesh turns its sulcal slivers inside out — measured, 2.3% of triangles inverted after only
-             20 smoothing steps — and back-facing triangles are culled, so the "inflated" brain renders
-             as a rotted, perforated shell. It looked plausible in every statistic (roughness fell 80%,
-             the shape held) and was obviously broken the moment it was on screen.
-             The real fix is upstream: FreeSurfer EMITS an inflated surface (lh/rh.inflated) next to the
-             one this mesh came from. Source that, and the toggle is trivial and correct. ── */}
-      <div className="mt-2 flex items-center gap-3">
-        {/* The colorbar: poles, TICKS, the UNIT — and a LIVE MARKER, which TRIBE's does not have.
-            A legend tells you how to read the map; this one also tells you the reading.
+            The legend keeps its poles, the UNIT and a LIVE MARKER (which TRIBE's does not have) —
+            and the ramp stays honest: `barFill` maps value→colour exactly as the shader paints it,
+            so a quieter ramp would make the legend LIE about the map. The element is small instead
+            (TRIBE's legend is ~30% of their well's width).
 
-            ⚠️ IT IS NARROW ON PURPOSE. Full-bleed, this was the LOUDEST thing on the card — a
-            saturated coral→sage gradient running the whole width, out-shouting the specimen it
-            annotates, in a system whose accent dosage is LOCKED at near-zero. The fix is NOT to
-            desaturate the ramp: `barFill` maps value→colour exactly as the shader paints it, so a
-            quieter ramp would make the legend LIE about the map. So the ramp stays honest and the
-            ELEMENT shrinks — TRIBE's legend is ~30% of their well's width; ours was 100%. */}
-        <div className="pointer-events-none min-w-0 flex-1 max-w-[190px]">
-          <div className="relative">
-            <span className="flex h-[4px] overflow-hidden rounded-full">
-              {Array.from({ length: 40 }, (_, i) => (
-                // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
-                <span key={i} className="h-full flex-1" style={{ background: barFill((i / 39) * 2 - 1) }} />
-              ))}
-            </span>
-            {[0, 50, 100].map((pct) => (
+            THE POLES SAY WHAT THE COLOUR MEANS, NOT WHAT IT IMPLIES: cold is "this system is
+            running BELOW its own resting level" — on an engaged brain that is exactly what the DMN
+            does. The engaged/drifting reading is the VERDICT's job, in words.
+
+            The lag claim is load-bearing (the HRF is real, the brain visibly trails the stimulus,
+            and the figure says so out loud) — it may move, it may not be deleted. */}
+        <div className="pointer-events-none absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-3">
+          <div className="w-[118px] shrink-0">
+            <div className="relative">
+              <span className="flex h-[3px] overflow-hidden rounded-full">
+                {Array.from({ length: 40 }, (_, i) => (
+                  // −1 = full default-mode … 0 = baseline gray … +1 = full task-positive.
+                  <span key={i} className="h-full flex-1" style={{ background: barFill((i / 39) * 2 - 1) }} />
+                ))}
+              </span>
               <span
-                key={pct}
-                className="absolute top-full h-[3px] w-px bg-[rgba(255,255,255,0.22)]"
-                style={{ left: `${pct}%`, transform: pct === 100 ? 'translateX(-1px)' : undefined }}
+                aria-hidden
+                data-testid="brain-colorbar-marker"
+                className="absolute -top-[3px] h-[9px] w-[2px] rounded-full bg-[var(--color-cream-primary)]"
+                style={{
+                  left: `${axisPct}%`,
+                  transform: 'translateX(-1px)',
+                  boxShadow: '0 0 0 1.5px rgba(19,18,16,0.9)',
+                  // Not linear. The marker is riding a haemodynamic response, and the response eases —
+                  // so the thing that reports it should ease too. Linear is the tell of undesigned motion.
+                  ...(reducedMotion ? {} : { transition: `left 320ms ${EASE}` }),
+                }}
               />
-            ))}
-            <span
-              aria-hidden
-              data-testid="brain-colorbar-marker"
-              className="absolute -top-[3px] h-[10px] w-[2px] rounded-full bg-[var(--color-cream-primary)]"
-              style={{
-                left: `${axisPct}%`,
-                transform: 'translateX(-1px)',
-                boxShadow: '0 0 0 1.5px rgba(19,18,16,0.9)',
-                // Not linear. The marker is riding a haemodynamic response, and the response eases —
-                // so the thing that reports it should ease too. Linear is the tell of undesigned motion.
-                ...(reducedMotion ? {} : { transition: `left 320ms ${EASE}` }),
-              }}
-            />
+            </div>
+            <div className="mt-[4px] flex items-baseline justify-between gap-2">
+              <span className="font-mono text-[7px] uppercase tracking-[0.06em] leading-none text-[var(--color-foreground-muted)]">below rest</span>
+              <span className="font-mono text-[7px] uppercase tracking-[0.06em] leading-none text-[var(--color-foreground-muted)]">above rest</span>
+            </div>
           </div>
-          {/* ⚠️ THE POLES SAY WHAT THE COLOUR MEANS, NOT WHAT IT IMPLIES. They read "drifting" and
-              "engaged" while the map was an unsigned magnitude with the default-mode system flipped
-              to the cold pole by hand. The map is the signed contrast now — cold is simply "this
-              system is running BELOW its own resting level", and on an engaged brain that is exactly
-              what the DMN does. Labelling that patch "drifting" would be precisely backwards.
-              The engaged/drifting reading is the VERDICT's job, and it still says it, in words. */}
-          <div className="mt-[5px] flex items-baseline justify-between">
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">below rest</span>
-            <span className="font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">above rest</span>
-          </div>
+          {/* The unit names the QUANTITY (predicted BOLD); the poles beside it already carry the
+              "vs rest" frame, so restating it here truncated the line at rail width. */}
+          <p className="min-w-0 truncate font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+            predicted BOLD
+          </p>
         </div>
-        {/* The unit, and the CLAIM — BESIDE the legend, not crushed under it. The map is a contrast
-            now, not raw activity, and this is the one place that has to say which. */}
-        {/* §3.8: whitespace-nowrap + the colorbar flexing (min-w-0 flex-1) so this caption always
-            shows in full — it was truncating to "vs…" at rail width when the bar took a fixed 62%. */}
-        <span className="shrink-0 whitespace-nowrap font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
-          predicted BOLD · vs rest
-        </span>
       </div>
 
-      {/* ── The stimulus, in its own pane. It is the thing the cortex is responding to; it does not
-             belong dumped on top of the cortex, dimming the object it explains. ── */}
-      <div className="mt-2 flex h-[60px] items-stretch gap-2.5 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2">
+      {/* The figure's one CAPTION, full width under the well — the lag claim is load-bearing (the
+          HRF is real, the brain visibly trails the stimulus, and the figure says so out loud; it
+          may move, it may not be deleted). It lived in the well's corner and truncated to "~5…" at
+          rail width — a load-bearing claim that cannot be read is not being made. */}
+      <p className="mt-1.5 font-mono text-[8.5px] uppercase tracking-[0.1em] leading-none text-[var(--color-foreground-muted)]">
+        trails {stimulusLabel} by ~{HRF_PEAK_S}s · haemodynamic lag
+      </p>
+
+      {/* ── The stimulus, borderless under the figure. It is the thing the cortex is responding
+             to; it does not belong dumped on top of the cortex — and it does not need a box of its
+             own either: the well above and the hairline sections below already frame it. One focal
+             frame per view (the well); everything else is a document. ── */}
+      <div className="mt-3 flex items-center gap-2.5">
         {/* A VIDEO gets a real thumbnail — it is a picture, and it earns the space. A text concept
             does NOT: an empty 9:16 box with a play glyph floating in it is a dead element that
             reads as a broken image. It gets a plain transport button, and the words — which ARE
             the stimulus — get the room instead. */}
         {videoSrc ? (
-          // Sized off the pane's fixed height, at roughly the 9:16 of the vertical video it shows.
-          <div className="relative h-full w-[27px] shrink-0 overflow-hidden rounded-[6px] bg-[rgba(0,0,0,0.35)]">
+          // Roughly the 9:16 of the vertical video it shows.
+          <div className="relative h-[52px] w-[30px] shrink-0 overflow-hidden rounded-[6px] bg-[rgba(0,0,0,0.35)]">
             <video
               ref={videoRef}
               src={videoSrc}
@@ -624,7 +599,7 @@ export function BrainView({
           )
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-1.5">
           {/* The concept landing word by word, on the scan clock — or the video's own name. */}
           {videoSrc ? (
             <p className="line-clamp-2 text-[11.5px] leading-[1.4] text-[var(--color-foreground-secondary)]">
@@ -650,24 +625,38 @@ export function BrainView({
               ))}
             </p>
           )}
-          {/* ── THE TRACE. This is the instrument TRIBE has no equivalent of, and it earns its
-                 place: the card CLAIMS a haemodynamic lag in words, and here you can SEE it. The
-                 pale line is the stimulus's neural drive; the sage line is the BOLD it predicts,
-                 visibly climbing out behind it. It replaces a plain progress bar that carried a
-                 single number (where are we) with the same playhead plus the whole shape of the
-                 encounter. ── */}
-          <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />
+          {/* ── THE TRACE, GROUNDED ONLY. The card claims a haemodynamic lag in words, and over a
+                 real clip you can SEE it: the response climbing out behind the measured retention
+                 that drives it. In INSTANT mode it is gone — a hook has no 15 seconds, and plotting
+                 the model's response to an invented encounter envelope is a manufactured signal
+                 drawn as data (the same judgment buildTrace already passed on its first two
+                 series). ── */}
+          {mode === 'grounded' && <HrfTrace trace={trace} u={u} reducedMotion={reducedMotion} />}
         </div>
       </div>
 
-      {/* ══ HOW TO READ THESE NUMBERS ═══════════════════════════════════════════════════════════
-             Sapient's expander above the grid — the one place the panel says, plainly, that every
-             number is modeled and none is benchmarked. ── */}
-      <HowToRead />
+      {/* ══ THE ROOM (our real votes) ═══════════════════════════════════════════════════════════
+             Not in Sapient's panel — our differentiator, and it comes FIRST: the ten personas
+             actually voted, and a real count outranks any modeled number. The card's hierarchy is
+             its honesty spine — the true thing may not whisper under the modeled things. ── */}
+      {readout && (
+        <RoomReadoutPanel
+          readout={readout}
+          kindLabel={kindLabel}
+          scale={scale}
+          canRewrite={canRewrite}
+          onRewrite={onRewrite}
+          rewriteBusy={rewriteBusy}
+          rewriteError={rewriteError}
+          rewriteDelta={rewriteDelta}
+        />
+      )}
 
       {/* ══ THE NINE BREAKDOWN SIGNALS ══════════════════════════════════════════════════════════
-             Sapient's centre block — nine MODELED brain signals mapped from our seven networks. ── */}
-      <SignalGrid signals={signals} title="The nine breakdown signals" />
+             Sapient's centre block — nine MODELED brain signals mapped from our seven networks,
+             demoted to index rows: modeled texture reads AFTER the real votes, at reading size,
+             never at display size. ── */}
+      <SignalGrid signals={signals} title="Signal breakdown" />
 
       {/* ══ RAW NETWORK ACTIVATION · z-scored ═══════════════════════════════════════════════════
              Sapient's σ bars — the seven networks vs the clip's own baseline at the playhead. Renders
@@ -682,21 +671,11 @@ export function BrainView({
              Sapient's smoothed attention curve — dorsal-attention over the clip, peak dots. Grounded. ── */}
       <AttentionCurve curve={attention} tSec={tSec} durationS={duration} />
 
-      {/* ══ THE ROOM (our real votes) ═══════════════════════════════════════════════════════════
-             Not in Sapient's panel — our differentiator kept at the bottom: the ten personas actually
-             voted. Counts of real votes — no score, no invented benchmark, no threshold to ground. ── */}
-      {readout && (
-        <RoomReadoutPanel
-          readout={readout}
-          kindLabel={kindLabel}
-          scale={scale}
-          canRewrite={canRewrite}
-          onRewrite={onRewrite}
-          rewriteBusy={rewriteBusy}
-          rewriteError={rewriteError}
-          rewriteDelta={rewriteDelta}
-        />
-      )}
+      {/* ══ HOW TO READ THESE NUMBERS ═══════════════════════════════════════════════════════════
+             The one place the panel says, plainly, that every number is modeled and none is
+             benchmarked. A disclosure, not a control — it sits under the numbers it explains, at
+             disclaimer volume (the boxed expander used to be the loudest button on the card). ── */}
+      <HowToRead />
 
       {/* The verdict — the room's voice reading the scan. The ONE serif voice-moment on the card,
           and the finding everything above is evidence for. It used to be clipped off the bottom.
@@ -736,15 +715,16 @@ export function BrainView({
 /**
  * The qualifier chip — the reference's "Moderate" / "Runs High" / "Low". DESCRIPTIVE, never
  * evaluative against an invented bar: it names the SHAPE of a real vote. Coral only where the news
- * is bad, which is the app's one accent doing exactly what it does everywhere else.
+ * is bad (the app's one accent doing its one job); anything else is neutral cream — good news is
+ * not a colour in this system.
  */
 function Chip({ chip, weak, small = false }: { chip: string; weak: boolean; small?: boolean }) {
   return (
     <span
       className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] font-mono uppercase tracking-[0.06em] ${small ? 'text-[8px]' : 'text-[9px]'} leading-none`}
       style={{
-        color: weak ? 'var(--color-accent)' : 'var(--sage, #8aa383)',
-        background: weak ? 'rgba(217,119,87,0.10)' : 'rgba(138,163,131,0.10)',
+        color: weak ? 'var(--color-accent-text)' : 'var(--color-foreground-secondary)',
+        background: weak ? 'rgba(255,99,99,0.10)' : 'rgba(255,255,255,0.05)',
       }}
     >
       {chip}
@@ -792,27 +772,30 @@ function RoomReadoutPanel({
   const scoped = kindLabel?.toLowerCase() === 'script';
   return (
     <div
-      className="mt-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-2"
+      className="mt-4 border-t border-[var(--color-border)] pt-3"
       data-testid="brain-readout"
     >
-      <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--color-foreground-muted)]">
+      {/* De-boxed (a hairline section, like every other section of the Room): the real votes are
+          the card's spine, not a sidebar — they read at document level, in the document's own
+          kicker idiom, not crushed into a sunken box under nine display numerals. */}
+      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
         The room · your 10 real votes
       </p>
       {/* ── THE HERO METRIC. The reference leads with a DISPLAY NUMBER, and it is why their readout
              reads as a product and the segment table this replaced read as a debug dump. Same move:
              a named metric, a figure you can read across the room, and a word for what it means. ── */}
       <div className="flex items-baseline justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.09em] text-[var(--color-foreground-secondary)]">
+        <span className="text-[11.5px] text-[var(--color-foreground-secondary)]">
           Attention hold{scoped ? ' · opening beat' : ''}
         </span>
         <Chip {...holdChip(hold.pct)} />
       </div>
-      <div className="mt-0.5 flex items-baseline gap-1.5">
+      <div className="mt-0.5 flex items-baseline gap-2">
         <span className="font-serif text-[30px] leading-[1.05] tracking-[-0.02em] tabular-nums text-foreground">
           {hold.pct}
           <span className="text-[16px] text-[var(--color-foreground-muted)]">%</span>
         </span>
-        <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--color-foreground-muted)] tabular-nums">
+        <span className="text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
           {hold.stopped} of {hold.total} stopped
         </span>
       </div>
@@ -848,11 +831,14 @@ function RoomReadoutPanel({
         {metrics.reach ? `Reach ${metrics.reach.pct}%.` : ''}
       </p>
 
-      {/* The receipt. A real scroller, verbatim — never a paraphrase, and absent when nobody spoke. */}
+      {/* The receipt. A real scroller, verbatim — never a paraphrase, and absent when nobody
+          spoke. Serif, because a quote is a VOICE (the app's verbatim idiom, same as the People
+          rows) — it was set in 10.5px chrome sans, which dressed the card's one human moment as
+          metadata. */}
       {objection && (
-        <p className="mt-2 border-t border-[var(--color-border)] pt-1.5 text-[10.5px] leading-[1.45] text-[var(--color-foreground-muted)]">
-          <span className="text-[var(--color-foreground-secondary)]">{objection.who}</span> scrolled:
-          “{objection.quote}”
+        <p className="mt-2.5 text-[13px] leading-[1.4]">
+          <span className="text-[11px] text-[var(--color-foreground-muted)]">{objection.who} scrolled · </span>
+          <span className="font-serif text-[var(--color-foreground-secondary)]">&ldquo;{objection.quote}&rdquo;</span>
         </p>
       )}
 
@@ -867,7 +853,7 @@ function RoomReadoutPanel({
           onClick={() => void onRewrite?.(lever)}
           disabled={rewriteBusy}
           data-testid="brain-rewrite"
-          className="mt-2 w-full rounded-[8px] border border-[var(--color-border)] px-2 py-[7px] text-left text-[10.5px] text-[var(--color-accent)] transition-colors hover:border-[var(--color-border-hover)] disabled:opacity-60"
+          className="mt-2.5 w-full rounded-[8px] border border-[var(--color-border)] px-2.5 py-[8px] text-left text-[11px] text-foreground transition-colors hover:border-[var(--color-border-hover)] hover:bg-white/[0.02] disabled:opacity-60"
         >
           {rewriteBusy
             ? 'Rewriting, and re-running the room…'
@@ -1037,10 +1023,13 @@ function HrfTrace({ trace, u, reducedMotion }: { trace: Trace; u: number; reduce
           </clipPath>
         </defs>
 
-        {/* The trace rides the SAME hot/cold axis the map and the colorbar do. It was sage/coral
-            while the specimen went red/yellow — an instrument disagreeing with its own map. */}
-        <path d={area} clipPath="url(#trace-up)" fill={css(TRACE_ENGAGED)} fillOpacity="0.13" />
-        <path d={area} clipPath="url(#trace-down)" fill={css(TRACE_DRIFTING)} fillOpacity="0.13" />
+        {/* The fills speak the ROOM's language, not the specimen's: cream above zero (the room is
+            with you), coral below it (you are losing them) — the same pair every other view of the
+            Room uses. Sampling the cortex ramp here was tried and read as a brown smear at 13%
+            alpha on charcoal; the ramp belongs to the specimen on its black well, and the legend
+            up there keeps it honest. */}
+        <path d={area} clipPath="url(#trace-up)" fill="rgba(236,231,222,0.10)" />
+        <path d={area} clipPath="url(#trace-down)" fill="rgba(255,99,99,0.14)" />
 
         {/* Zero — the line the room is either above or below. */}
         <line
@@ -1107,12 +1096,6 @@ function PlayGlyph({ playing }: { playing: boolean }) {
 // over; TASK_*/DMN_* were the ends of two one-sided ramps growing out of it. The surface is now
 // painted everywhere from ONE diverging ramp (CORTEX_RAMP), so there is no base and there are no
 // poles — and, more to the point, no second copy of the map's colours to fall out of sync with it.
-//
-// The trace's two fills are literally the ends of that ramp, sampled, so the curve above the
-// baseline is the colour the cortex takes when it is engaged and the curve below is the colour it
-// takes when the room is drifting. Read from the ramp, never restated.
-const TRACE_ENGAGED: RGB = rampAt(1);
-const TRACE_DRIFTING: RGB = rampAt(0);
 
 /**
  * THE WELL. A near-black, faintly warm sky for the specimen.
@@ -1160,9 +1143,6 @@ const WELL_ASPECT = '20 / 19';
 // tall instead — the Room's body scrolls in the drawer and renders at natural height in the Read
 // (AmbientRoom), so the 516px "budget" was a self-imposed dev-page box, never a real constraint.
 const WELL_ASPECT_INSTANT = WELL_ASPECT;
-
-import type { RGB } from '@/lib/brain/cortex-colormap';
-const css = ([r, g, b]: RGB) => `rgb(${r}, ${g}, ${b})`;
 
 /**
  * A network's swatch — read straight off CORTEX_RAMP, which is what the surface is painted with.

@@ -14,7 +14,7 @@
  *     re-focuses the Room on the prev/next sibling in place; `⤺ all N` opens the ranked
  *     "How the room ranked your N" list → tap a row to re-focus. Ranked by the real stop-count;
  *     an ad-hoc typed thought (no `focusId`) shows no stepper (the honest state).
- *   • The brain ⇄ The people ⇄ Population · 1,000 — a quiet segmented toggle that SWAPS the
+ *   • The brain ⇄ The people ⇄ The population — a quiet segmented toggle that SWAPS the
  *     view. The brain is FIRST and the dock's landing view (owner call, 2026-07-12); it is an
  *     explicitly-labeled simulated neural read (see BrainView's own honesty spine) gated OFF
  *     the embedded (video-Read / room-drawer) variant, which keeps its two-segment layout.
@@ -22,10 +22,10 @@
  *     cream for a stop; accent-soft for a bounce, the signal), the name, `ask →` (opens the
  *     in-voice PersonaChatDrawer), and its OWN verbatim serif quote as the hero. "▶ Replay"
  *     streams the room's reactions back in one-by-one. No stats, no cluster clutter (spec).
- *   • Population · 1,000 = the v6 hero: serif "N would stay / N would bounce" → a 1,000-from-10
- *     swarm (Play reveals it) → a stats bar (loved / mixed / bounced) → the WEAK SPOT (who
- *     bounced + their exact words, coral) — the diagnostic that IS the value. (The Rewrite
- *     lever that acts on the weak spot lands in PR-3 — it needs the skill self-handoff re-POST.)
+ *   • The population = the v6 hero: serif "N would stay / N would bounce" → a 1,000-from-10
+ *     crowd field (Play reveals it; cream room, coral tail) → the WEAK SPOT (who bounced +
+ *     their exact words) — the diagnostic that IS the value. (The Rewrite lever that acts on
+ *     the weak spot lands in PR-3 — it needs the skill self-handoff re-POST.)
  *
  * Honesty spine (binding): the voices are the REAL per-persona reactions carried on the focus
  * (registry-enum archetypes → named cast, PR-B1). `ask →` is gated to personas whose archetype
@@ -125,11 +125,14 @@ export interface BrainSource {
 
 type Scale = 'brain' | 'people' | 'population';
 
-/** The scale toggle, in view order — the brain first (the dock's landing view). */
+/** The scale toggle, in view order — the brain first (the dock's landing view).
+ *  "The population" carries no hardcoded count: the view's own numbers state the real total
+ *  (which varies in real mode), and a label that restates it is a second source that can
+ *  disagree (§3.2 / the PR #306 family). */
 const SCALES: { value: Scale; label: string }[] = [
   { value: 'brain', label: 'The brain' },
   { value: 'people', label: 'The people' },
-  { value: 'population', label: 'Population · 1,000' },
+  { value: 'population', label: 'The population' },
 ];
 
 /** Parse "6/10 stop" → { stop, total }; null on any unexpected shape. */
@@ -157,12 +160,14 @@ const isGroundable = (n: PersonaNode): boolean =>
 
 const verdictOf = (n: PersonaNode): 'stop' | 'scroll' => (n.watchThrough >= 0.5 ? 'stop' : 'scroll');
 
-/** The compare-row meter tone — sage ≥60% stop, coral ≤40%, else neutral (prototype `toneOf`).
- *  Dosage LOCKED: coral is the bounce SIGNAL, sage the loved one; neither paints en masse. */
+/** The compare-row meter tone — the Room speaks ONE color pair: cream is the room, coral is
+ *  where you lose them. A winning meter is simply LONG (the bar's own job); coral flags only a
+ *  losing one (≤40% stop). Sage left the room — "everything positive stays calm cream" is the
+ *  locked dosage rule this file opens with. */
 const meterTone = (stop: number, total: number): string => {
-  if (total <= 0) return 'rgba(255,255,255,0.4)';
+  if (total <= 0) return 'rgba(236,231,222,0.35)';
   const r = stop / total;
-  return r >= 0.6 ? 'var(--color-positive)' : r <= 0.4 ? 'var(--color-accent)' : 'rgba(255,255,255,0.4)';
+  return r <= 0.4 ? 'var(--color-accent)' : 'rgba(236,231,222,0.55)';
 };
 
 export function AmbientRoom({
@@ -457,7 +462,7 @@ export function AmbientRoom({
           </div>
           )}
 
-          {/* ── The brain ⇄ The people ⇄ Population · 1,000 — quiet text tabs (underline = the
+          {/* ── The brain ⇄ The people ⇄ The population — quiet text tabs (underline = the
                 active view). The brain segment is dock-only (filtered out when !hasBrain); the
                 embedded Read/drawer keeps the two-segment toggle it shipped with. ── */}
           <div className="shrink-0 px-5 pt-3">
@@ -556,9 +561,12 @@ export function AmbientRoom({
 }
 
 /**
- * The people — pure named voices. Each real persona is a calm row: a TONAL avatar (calm cream
- * for a stop; accent-soft for a bounce — the signal), the name, `ask →`, and its OWN verbatim
- * serif quote (the hero). "▶ Replay" streams them in one by one; otherwise every voice shows.
+ * The people — pure named voices. The verdict is STRUCTURE, not paint: two hairline groups
+ * (Stopped · N / Scrolled past · N) answer "which four?" at a glance, and each row keeps only a
+ * quiet identity dot — calm cream for a stop, coral for the bounce (the one signal). The row
+ * ITSELF is the chat target; `ask →` surfaces on hover/focus instead of repeating ten times.
+ * The persona's OWN verbatim serif quote stays the hero. "▶ Replay" streams voices in one by
+ * one (stops first — the cascade order fills the top group, then the bottom).
  */
 function PeopleView({
   ordered,
@@ -592,92 +600,110 @@ function PeopleView({
   }, [reveal, reducedMotion, ordered.length]);
 
   const shown = reveal === null ? ordered : ordered.slice(0, reveal);
+  // Group counts come from the FULL room (stable while a replay streams rows in); the rows
+  // themselves come from `shown`, so a group appears with its first revealed voice.
+  const stoppedAll = ordered.filter((n) => verdictOf(n) === 'stop').length;
+  const groups = [
+    { key: 'stopped', label: `Stopped · ${stoppedAll}`, rows: shown.filter((n) => verdictOf(n) === 'stop') },
+    { key: 'scrolled', label: `Scrolled past · ${ordered.length - stoppedAll}`, rows: shown.filter((n) => verdictOf(n) === 'scroll') },
+  ].filter((g) => g.rows.length > 0);
+  const anyAskable = ordered.some(isGroundable);
 
   return (
     <div className="flex flex-col">
-      <ul className="flex flex-col">
-        {shown.map((n, i) => {
-          const name = n.name ?? n.label;
-          const canAsk = isGroundable(n);
-          const bounced = verdictOf(n) === 'scroll';
-          return (
-            // Reactions-arrive rise-in (Phase 2): each voice rises in staggered as the room's
-            // reactions land (prototype `.prow` rise). Reuses `.reading-reveal` (self-disables
-            // under reduced-motion via its media query, so the inline delay is harmless there).
-            <li
-              key={n.id}
-              className="reading-reveal border-t border-white/[0.045] first:border-t-0"
-              style={reducedMotion ? undefined : { animationDelay: `${i * 40}ms` }}
-            >
-              <button
-                type="button"
-                onClick={() => onAsk(n)}
-                disabled={!canAsk}
-                className={
-                  'group flex w-full items-start gap-3 rounded-[10px] px-1.5 py-3 text-left transition-colors ' +
-                  (canAsk ? 'hover:bg-white/[0.02]' : 'cursor-default')
-                }
-              >
-                {/* Tonal verdict dot — the constellation's own language (a person = a dot), not a
-                    letter-circle. Dosage LOCKED: coral only marks the bounce (the signal). */}
-                <span
-                  aria-hidden
-                  className={
-                    'mt-[5px] h-[9px] w-[9px] shrink-0 rounded-full ' +
-                    (bounced ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-positive)] opacity-70')
-                  }
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-[12px] font-semibold tracking-[0.01em] text-foreground">
-                      {name}
-                    </span>
-                    {canAsk && (
-                      <span className="ml-auto shrink-0 font-mono text-[10px] tracking-wide text-[var(--color-foreground-muted)] transition-colors group-hover:text-[var(--color-accent-text)]">
-                        ask →
+      {groups.map((g, gi) => (
+        <div key={g.key} className={gi > 0 ? 'mt-5' : undefined}>
+          <p className="mb-1 px-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+            {g.label}
+          </p>
+          <ul className="flex flex-col">
+            {g.rows.map((n) => {
+              const i = shown.indexOf(n);
+              const name = n.name ?? n.label;
+              const canAsk = isGroundable(n);
+              const bounced = verdictOf(n) === 'scroll';
+              return (
+                // Reactions-arrive rise-in (Phase 2): each voice rises in staggered as the room's
+                // reactions land (prototype `.prow` rise). Reuses `.reading-reveal` (self-disables
+                // under reduced-motion via its media query, so the inline delay is harmless there).
+                // Delay indexes into the WHOLE revealed list so the stagger runs across groups.
+                <li
+                  key={n.id}
+                  className="reading-reveal border-t border-white/[0.045] first:border-t-0"
+                  style={reducedMotion ? undefined : { animationDelay: `${i * 40}ms` }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onAsk(n)}
+                    disabled={!canAsk}
+                    className={
+                      'group flex w-full items-start gap-3 rounded-[10px] px-1.5 py-3 text-left transition-colors ' +
+                      (canAsk ? 'hover:bg-white/[0.02]' : 'cursor-default')
+                    }
+                  >
+                    {/* The identity dot — the constellation's own language (a person = a dot).
+                        Dosage LOCKED: calm cream for a stop; coral ONLY marks the bounce. */}
+                    <span
+                      aria-hidden
+                      className={
+                        'mt-[5px] h-[8px] w-[8px] shrink-0 rounded-full ' +
+                        (bounced ? 'bg-[var(--color-accent)] opacity-90' : 'bg-[var(--color-cream-primary)] opacity-50')
+                      }
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2">
+                        <span className="text-[12px] font-semibold tracking-[0.01em] text-foreground">
+                          {name}
+                        </span>
+                        {canAsk && (
+                          <span className="ml-auto shrink-0 font-mono text-[10px] tracking-wide text-[var(--color-foreground-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                            ask →
+                          </span>
+                        )}
                       </span>
-                    )}
-                  </span>
-                  {n.quote ? (
-                    <span className="mt-1.5 block font-serif text-[15px] leading-[1.4] tracking-[-0.005em] text-foreground">
-                      &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
+                      {n.quote ? (
+                        <span className="mt-1.5 block font-serif text-[15px] leading-[1.4] tracking-[-0.005em] text-foreground">
+                          &ldquo;{stripWrappingQuotes(n.quote)}&rdquo;
+                        </span>
+                      ) : (
+                        /* An ABSENCE, styled as an absence.
+                         *
+                         * This slot used to render `italic` — and italic IS this app's verbatim idiom
+                         * (PopulationSwarm renders a real quote in italic; the thread's blockquotes are
+                         * italic). So the one thing standing where a quote goes, wearing a quote's
+                         * clothing, was the fact that the persona NEVER SPOKE. We are scrupulous about
+                         * never fabricating a quote, and then dressed the absence of one to look like a
+                         * quiet remark.
+                         *
+                         * Same defect class as the missing proof receipt (#287 → NoSourceNote) and the
+                         * dead audience that shipped as HIGH confidence: STATE THE ABSENCE, DON'T DRESS
+                         * IT UP. So this borrows NoSourceNote's exact spine — dashed hairline, muted,
+                         * NOT italic, a plain declarative sentence — because a slot that is empty
+                         * should LOOK empty. */
+                        <span className="mt-1.5 block rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-2 py-1 text-[12px] not-italic leading-snug text-[var(--color-foreground-muted)]">
+                          {bounced ? 'Scrolled past. No words recorded.' : 'Stopped. No words recorded.'}
+                        </span>
+                      )}
                     </span>
-                  ) : (
-                    /* An ABSENCE, styled as an absence.
-                     *
-                     * This slot used to render `italic` — and italic IS this app's verbatim idiom
-                     * (PopulationSwarm renders a real quote in italic; the thread's blockquotes are
-                     * italic). So the one thing standing where a quote goes, wearing a quote's
-                     * clothing, was the fact that the persona NEVER SPOKE. We are scrupulous about
-                     * never fabricating a quote, and then dressed the absence of one to look like a
-                     * quiet remark.
-                     *
-                     * Same defect class as the missing proof receipt (#287 → NoSourceNote) and the
-                     * dead audience that shipped as HIGH confidence: STATE THE ABSENCE, DON'T DRESS
-                     * IT UP. So this borrows NoSourceNote's exact spine — dashed hairline, muted,
-                     * NOT italic, a plain declarative sentence — because a slot that is empty
-                     * should LOOK empty. */
-                    <span className="mt-1.5 block rounded-md border border-dashed border-white/[0.06] bg-white/[0.01] px-2 py-1 text-[12px] not-italic leading-snug text-[var(--color-foreground-muted)]">
-                      {bounced ? 'Scrolled past. No words recorded.' : 'Stopped. No words recorded.'}
-                    </span>
-                  )}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
 
-      <div className="mt-4 flex items-baseline justify-between">
-        <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
-          Your {ordered.length} people
+      <div className="mt-4 flex items-baseline justify-between gap-3">
+        {/* The rows are the target; this one quiet line teaches it (instead of `ask →` ×10). */}
+        <p className="text-[11px] text-[var(--color-foreground-muted)]">
+          {anyAskable ? 'Tap anyone to ask them why.' : `Your ${ordered.length} people`}
         </p>
         {!reducedMotion && (
           <button
             type="button"
             onClick={() => setReveal(0)}
             disabled={reveal !== null}
-            className="text-[11px] text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)] disabled:opacity-50"
+            className="shrink-0 text-[11px] text-[var(--color-foreground-muted)] transition-colors hover:text-[var(--color-foreground-secondary)] disabled:opacity-50"
           >
             {reveal !== null ? 'Reading the room…' : '▶ Replay the room'}
           </button>
@@ -688,9 +714,9 @@ function PeopleView({
 }
 
 /**
- * Population · 1,000 — the v6 hero. Two data modes:
+ * The population — the v6 hero. Two data modes:
  *   - REAL (Audience Sim v2 Stage 2): when a `population` aggregate is supplied, the stay/bounce
- *     headline + stats bar + per-segment split are a genuine O(N) score of ~1,000 individuals
+ *     headline + per-segment split are a genuine O(N) score of ~1,000 individuals
  *     SAMPLED off the audience's segments (a projection, not 1,000 replies) — a distribution the
  *     10's rollup cannot produce (different hooks light different segments).
  *   - ROLLUP (fallback): with no aggregate, everything is the real 10's verdicts at a denser
@@ -775,10 +801,11 @@ function PopulationView({
 
   return (
     <div className="flex flex-col">
-      {/* HERO — the 1,000-strong room, modeled from your N. */}
+      {/* HERO — the 1,000-strong room, modeled from your N. Cream is the room; coral is ONLY
+          the number you are losing (the signal), so the split reads without a legend. */}
       <div className="flex justify-center gap-8 pb-1 pt-1">
         <div className="text-center">
-          <span className="block font-serif text-[26px] leading-none text-[var(--color-positive)]">{stayK}</span>
+          <span className="block font-serif text-[26px] leading-none text-foreground">{stayK}</span>
           <span className="mt-1.5 block text-[10.5px] text-[var(--color-foreground-muted)]">
             would stay
           </span>
@@ -793,25 +820,27 @@ function PopulationView({
         </div>
       </div>
 
-      {/* SWARM — a dense fixed-grid field of the 1,000, colored by the real split. The block
-          (25 columns, stops first, bounces pooling at the tail) reads as a crowd, not a line. */}
+      {/* THE CROWD — a unit field of the 1,000, colored by the real split: calm cream for the
+          room that stays, coral pooling at the tail for the part you lose. The one place the
+          split is DRAWN — the stat bar that used to restate it below is gone (the same fact,
+          twice, from two encodings — the §3.2 / PR #306 family). */}
       <div
         aria-hidden
-        className="mt-4 grid justify-center gap-[2px]"
-        style={{ gridTemplateColumns: `repeat(${SWARM_COLS}, 6px)` }}
+        className="mt-4 grid justify-center gap-[3px]"
+        style={{ gridTemplateColumns: `repeat(${SWARM_COLS}, 5px)` }}
       >
         {dots.map((d, i) => (
           <span
             key={i}
             className={
-              'h-[6px] w-[6px] rounded-full transition-opacity duration-200 ' +
-              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-positive)]')
+              'h-[5px] w-[5px] rounded-full transition-opacity duration-200 ' +
+              (d === 'bounce' ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-cream-primary)]')
             }
-            style={{ opacity: i < shownDots ? (d === 'bounce' ? 0.95 : 0.75) : 0.14 }}
+            style={{ opacity: i < shownDots ? (d === 'bounce' ? 0.9 : 0.5) : 0.12 }}
           />
         ))}
       </div>
-      <p className="mt-3 text-center text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
+      <p className="mt-3 text-center text-[11px] text-[var(--color-foreground-muted)]">
         {real ? `${roomSize.toLocaleString('en-US')} sampled from your audience · a projection` : `1,000 modeled from your ${tot}`}
         {!reducedMotion && (
           <>
@@ -820,7 +849,7 @@ function PopulationView({
               type="button"
               onClick={() => setRevealed(0)}
               disabled={revealed !== null}
-              className="normal-case tracking-normal text-foreground transition-colors hover:text-[var(--color-accent-text)] disabled:opacity-50"
+              className="text-foreground transition-colors hover:text-[var(--color-foreground-secondary)] disabled:opacity-50"
             >
               {revealed !== null ? 'reading…' : '▶ Play'}
             </button>
@@ -828,27 +857,11 @@ function PopulationView({
         )}
       </p>
 
-      {/* STATS BAR — the exact split (loved / mixed / bounced). */}
-      <div className="mt-4 border-t border-[var(--color-border)] pt-3.5">
-        <div className="flex h-[6px] overflow-hidden rounded-[4px] bg-white/[0.05]">
-          <span className="h-full bg-[var(--color-positive)]" style={{ width: `${stopPctInt}%` }} />
-          <span className="h-full bg-[var(--color-accent)]" style={{ width: `${bouncePctInt}%` }} />
-        </div>
-        <div className="mt-2 flex justify-between text-[11px] text-[var(--color-foreground-muted)] tabular-nums">
-          <span>
-            <b className="font-semibold text-[var(--color-positive)]">{stopPctInt}%</b> loved
-          </span>
-          <span>
-            <b className="font-semibold text-[var(--color-accent-text)]">{bouncePctInt}%</b> bounced
-          </span>
-        </div>
-      </div>
-
       {/* PER-SEGMENT SPLIT — real mode only (Stage 2). WHICH of your people this lands with,
           share-sorted. This is the projection's genuine signal: different hooks light different
           segments (the 10's rollup cannot show this). Meter = each segment's real stop rate. */}
       {real && real.segments.length > 0 && (
-        <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
+        <div className="mt-4 border-t border-[var(--color-border)] pt-3">
           <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
             Who it lands with
           </p>
@@ -858,8 +871,8 @@ function PopulationView({
                 <span className="w-[116px] shrink-0 truncate text-[12px] text-foreground" title={s.displayName}>
                   {s.displayName}
                 </span>
-                <span className="flex h-[5px] flex-1 overflow-hidden rounded-[3px] bg-white/[0.05]">
-                  <span className="h-full bg-[var(--color-positive)]" style={{ width: `${s.stopPct}%` }} />
+                <span className="flex h-[4px] flex-1 overflow-hidden rounded-[3px] bg-white/[0.05]">
+                  <span className="h-full rounded-[3px] bg-[var(--color-cream-primary)] opacity-55" style={{ width: `${s.stopPct}%` }} />
                 </span>
                 <span className="w-[32px] shrink-0 text-right text-[11px] tabular-nums text-[var(--color-foreground-muted)]">
                   {s.stopPct}%
@@ -870,16 +883,19 @@ function PopulationView({
         </div>
       )}
 
-      {/* WEAK SPOT — who you're losing + their exact words (the diagnostic value). */}
+      {/* WEAK SPOT — who you're losing + their exact words (the diagnostic value). The coral
+          dot before each name is the SAME mark the crowd's tail and the People rows use: one
+          language for "a person you lost", everywhere. */}
       {weakVoices.length > 0 && (
-        <div className="mt-3.5 border-t border-[var(--color-border)] pt-3">
+        <div className="mt-4 border-t border-[var(--color-border)] pt-3">
           <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--color-foreground-muted)]">
             Where you&rsquo;re losing them · {bounceK} of {roomSize.toLocaleString('en-US')}
           </p>
           <ul className="flex flex-col">
             {weakVoices.map((n) => (
-              <li key={n.id} className="flex items-baseline gap-3 py-[5px]">
-                <span className="w-[52px] shrink-0 text-[12px] font-semibold text-[var(--color-accent-text)]">
+              <li key={n.id} className="flex items-baseline gap-2.5 py-[5px]">
+                <span aria-hidden className="h-[6px] w-[6px] shrink-0 translate-y-[-1px] self-auto rounded-full bg-[var(--color-accent)] opacity-90" />
+                <span className="w-[46px] shrink-0 text-[12px] font-semibold text-[var(--color-foreground-secondary)]">
                   {n.name ?? n.label}
                 </span>
                 <span className="font-serif text-[13.5px] leading-[1.32] text-[var(--color-foreground-secondary)]">
